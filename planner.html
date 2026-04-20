@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎁 Planner de Regalos - Personal Hub</title>
+    <meta name="description" content="Planificador de regalos con persistencia local">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Estilos compartidos -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page">
+        <!-- ========================================== -->
+        <!-- HEADER -->
+        <!-- ========================================== -->
+        <header class="header glass">
+            <div class="header-top">
+                <div class="brand">
+                    <h1>Personal Hub ✦</h1>
+                    <p>Tu lanzadera de proyectos</p>
+                </div>
+            </div>
+            <nav class="nav-main" aria-label="Navegación principal">
+                <button class="nav-btn" data-page="home" onclick="window.location.href='index.html'">Inicio</button>
+                <button class="nav-btn" data-page="canciones" onclick="window.location.href='canciones.html'">🎵 Canciones</button>
+                <button class="nav-btn" data-page="rincon" onclick="window.location.href='rincon.html'">🏠 Rincón</button>
+                <button class="nav-btn active" data-page="planner">🎁 Planner</button>
+            </nav>
+        </header>
+
+        <!-- ========================================== -->
+        <!-- SECCIÓN PLANNER -->
+        <!-- ========================================== -->
+        <section id="planner" class="page-section">
+            <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom: 20px;">
+                ← Volver al Hub
+            </button>
+
+            <div class="glass" style="padding: 20px;">
+                <h2 style="margin-bottom: 8px;">🎁 Planner de Regalos</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Organiza tus ideas de regalos. Se guardan automáticamente en tu navegador.
+                </p>
+
+                <div class="planner-grid">
+                    <!-- Paso 1: Agregar idea -->
+                    <div class="planner-step">
+                        <strong>💡 Agregar Idea</strong>
+                        <p>Escribe una idea de regalo para alguien especial</p>
+                        <input type="text"
+                               class="planner-input"
+                               id="giftInput"
+                               placeholder="Ej: Peluche gigante 🧸">
+                        <button class="nav-btn"
+                                style="width: 100%; margin-top: 8px; justify-content: center;"
+                                onclick="addGift()">
+                            Agregar
+                        </button>
+                    </div>
+
+                    <!-- Paso 2: Lista de ideas -->
+                    <div class="planner-step">
+                        <strong>📝 Ideas Guardadas</strong>
+                        <p>Tus ideas de regalo (se guardan en localStorage)</p>
+                        <ul class="planner-list" id="giftList"></ul>
+                    </div>
+
+                    <!-- Paso 3: Consejos -->
+                    <div class="planner-step">
+                        <strong>��� Consejos</strong>
+                        <ul style="padding-left: 20px; color: var(--text-secondary); margin-top: 8px;">
+                            <li>Elige ocasión y presupuesto</li>
+                            <li>Anota pistas, gustos y colores</li>
+                            <li>Guarda enlaces e ideas</li>
+                            <li>Marca estado: pendiente/comprado</li>
+                        </ul>
+                    </div>
+
+                    <!-- Ejemplos -->
+                    <div class="planner-step">
+                        <strong>🎁 Ideas de ejemplo</strong>
+                        <ul style="padding-left: 20px; color: var(--text-secondary); margin-top: 8px;">
+                            <li>Peluches 🧸</li>
+                            <li>Flores 💐</li>
+                            <li>Carta manuscrita ✉️</li>
+                            <li>Playlist 💿</li>
+                            <li>Snacks favoritos 🍫</li>
+                            <li>Recuerdos impresos 📸</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- LIGHTBOX -->
+    <!-- ========================================== -->
+    <div id="lightbox" class="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+        <div class="lightbox-content" id="lightboxContent"></div>
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
+    <!-- Datos compartidos -->
+    <script src="datos.js"></script>
+
+    <!-- Scripts compartidos -->
+    <script src="script.js"></script>
+</body>
+</html>

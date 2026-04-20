@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Canciones - Personal Hub</title>
+    <meta name="description" content="Tus canciones favoritas con reproductor y letras completas">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Estilos compartidos -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page">
+        <!-- ========================================== -->
+        <!-- HEADER -->
+        <!-- ========================================== -->
+        <header class="header glass">
+            <div class="header-top">
+                <div class="brand">
+                    <h1>Personal Hub ✦</h1>
+                    <p>Tu lanzadera de proyectos</p>
+                </div>
+            </div>
+            <nav class="nav-main" aria-label="Navegación principal">
+                <button class="nav-btn" data-page="home" onclick="window.location.href='index.html'">Inicio</button>
+                <button class="nav-btn active" data-page="canciones">🎵 Canciones</button>
+                <button class="nav-btn" data-page="rincon" onclick="window.location.href='rincon.html'">🏠 Rincón</button>
+                <button class="nav-btn" data-page="planner" onclick="window.location.href='planner.html'">🎁 Planner</button>
+            </nav>
+        </header>
+
+        <!-- ========================================== -->
+        <!-- SECCIÓN CANCIONES -->
+        <!-- ========================================== -->
+        <section id="canciones" class="page-section">
+            <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom: 20px;">
+                ← Volver al Hub
+            </button>
+
+            <div class="player-layout">
+                <!-- Panel del reproductor -->
+                <div class="player-panel">
+                    <div class="player-album">
+                        <img id="currentCover" src="" alt="Portada del álbum">
+                    </div>
+                    <div class="player-title" id="currentTitle">Cargando...</div>
+                    <div class="player-subtitle" id="currentSubtitle"></div>
+
+                    <div class="player-controls">
+                        <button class="player-btn" id="prevBtn">⏮</button>
+                        <button class="player-btn play" id="playBtn">▶</button>
+                        <button class="player-btn" id="nextBtn">⏭</button>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-time">
+                            <span id="currentTime">0:00</span>
+                            <span id="totalTime">0:00</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+
+                    <audio id="audioPlayer"></audio>
+                </div>
+
+                <!-- Lista de canciones y letra -->
+                <div style="display: grid; gap: 20px;">
+                    <div class="glass" style="padding: 20px;">
+                        <h3 style="margin-bottom: 12px;">📝 Letra</h3>
+                        <div class="lyrics-panel" id="lyricsPanel"></div>
+                    </div>
+                    <div class="glass" style="padding: 20px;">
+                        <h3 style="margin-bottom: 12px;">🎶 Todas las canciones</h3>
+                        <div class="songs-grid" id="songsList"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- LIGHTBOX -->
+    <!-- ========================================== -->
+    <div id="lightbox" class="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+        <div class="lightbox-content" id="lightboxContent"></div>
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
+    <!-- Datos compartidos -->
+    <script src="datos.js"></script>
+
+    <!-- Scripts compartidos -->
+    <script src="script.js"></script>
+</body>
+</html>

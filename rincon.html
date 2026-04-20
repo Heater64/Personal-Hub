@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏠 Mi Rincón - Personal Hub</title>
+    <meta name="description" content="Tu Rincón Favorito: galería, gatos, memes, gustos y más">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Estilos compartidos -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page">
+        <!-- ========================================== -->
+        <!-- HEADER -->
+        <!-- ========================================== -->
+        <header class="header glass">
+            <div class="header-top">
+                <div class="brand">
+                    <h1>Personal Hub ✦</h1>
+                    <p>Tu lanzadera de proyectos</p>
+                </div>
+            </div>
+            <nav class="nav-main" aria-label="Navegación principal">
+                <button class="nav-btn" data-page="home" onclick="window.location.href='index.html'">Inicio</button>
+                <button class="nav-btn" data-page="canciones" onclick="window.location.href='canciones.html'">🎵 Canciones</button>
+                <button class="nav-btn active" data-page="rincon">🏠 Rincón</button>
+                <button class="nav-btn" data-page="planner" onclick="window.location.href='planner.html'">🎁 Planner</button>
+            </nav>
+        </header>
+
+        <!-- ========================================== -->
+        <!-- SECCIÓN RINCÓN -->
+        <!-- ========================================== -->
+        <section id="rincon" class="page-section">
+            <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom: 20px;">
+                ← Volver al Hub
+            </button>
+
+            <div class="glass" style="padding: 20px; margin-bottom: 20px;">
+                <h2 style="margin-bottom: 16px;">🏠 Mi Rincón Favorito</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                    Un espacio especial con todo lo que te gusta: fotos, gatos, memes y más.
+                </p>
+
+                <!-- Sub-navegación -->
+                <nav class="sub-nav">
+                    <button class="sub-tab active" data-subview="rincon-inicio">Inicio</button>
+                    <button class="sub-tab" data-subview="rincon-galeria">Galería</button>
+                    <button class="sub-tab" data-subview="rincon-tú">Tú</button>
+                    <button class="sub-tab" data-subview="rincon-gatos">Gatos</button>
+                    <button class="sub-tab" data-subview="rincon-memes">Memes</button>
+                    <button class="sub-tab" data-subview="rincon-spb">San Petersburgo</button>
+                </nav>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- INICIO -->
+            <!-- ========================================== -->
+            <div id="rincon-inicio" class="sub-view active">
+                <div class="glass" style="padding: 20px;">
+                    <div style="display: grid; gap: 16px; align-items: center; grid-template-columns: 1fr;">
+                        <img src="https://tu-rincon-favorito.vercel.app/imagenes/DADA.jpg"
+                             alt="Avatar"
+                             style="width: 180px; height: 180px; border-radius: 50%; object-fit: cover; margin: 0 auto;">
+                        <div style="text-align: center;">
+                            <h3>Bienvenida a tu rincón favorito 💖</h3>
+                            <p style="color: var(--text-secondary); margin-top: 8px;">
+                                Donde cada día eres especial ✨🌸🐱
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- GALERÍA (Pinterest Style) -->
+            <!-- ========================================== -->
+            <div id="rincon-galeria" class="sub-view">
+                <div class="glass" style="padding: 20px;">
+                    <h3 style="margin-bottom: 16px;">📸 Galería</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.9rem;">
+                        Tus fotos organizadas por carpetas. Click para ver todas.
+                    </p>
+                    <div id="galleryGrid"></div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TÚ (Gustos) -->
+            <!-- ========================================== -->
+            <div id="rincon-tú" class="sub-view">
+                <div class="glass" style="padding: 20px;">
+                    <h3 style="margin-bottom: 16px;">🎨 Tus Gustos</h3>
+                    <div id="gustosPanel"></div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- GATOS -->
+            <!-- ========================================== -->
+            <div id="rincon-gatos" class="sub-view">
+                <div class="glass" style="padding: 20px;">
+                    <h3 style="margin-bottom: 16px;">🐱 Datos sobre Gatos</h3>
+                    <ul id="catFacts" style="padding-left: 20px; color: var(--text-secondary);"></ul>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- MEMES (Instagram Saved Style) -->
+            <!-- ========================================== -->
+            <div id="rincon-memes" class="sub-view">
+                <div class="glass" style="padding: 20px;">
+                    <h3 style="margin-bottom: 16px;">😂 Memes (Guardados Instagram)</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.9rem;">
+                        Primero elige una carpeta, luego los memes
+                    </p>
+                    <div id="memesFoldersNav" class="memes-folders-nav"></div>
+                    <div id="memesGrid"></div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- SAN PETERSBURGO -->
+            <!-- ========================================== -->
+            <div id="rincon-spb" class="sub-view">
+                <div class="glass" style="padding: 20px;">
+                    <h3 style="margin-bottom: 16px;">🌍 San Petersburgo</h3>
+                    <div id="spbPanel"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- LIGHTBOX -->
+    <!-- ========================================== -->
+    <div id="lightbox" class="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+        <div class="lightbox-content" id="lightboxContent"></div>
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
+    <!-- Datos compartidos -->
+    <script src="datos.js"></script>
+
+    <!-- Scripts compartidos -->
+    <script src="script.js"></script>
+</body>
+</html>
