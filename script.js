@@ -6,6 +6,12 @@
 let currentSong = 0;
 let isPlaying = false;
 let currentMemeFolder = "Favoritos ⭐";
+let isSPA = true;
+
+// ========== NAVEGACIÓN EXTERNA DESDE WIDGETS ==========
+function navigateToPage(page) {
+    window.location.href = page + '.html';
+}
 
 // ========== AUDIO ==========
 let audioPlayer = null;
@@ -449,13 +455,15 @@ document.addEventListener('DOMContentLoaded', function() {
     init();
 });
 
-// Event listener para navegación
-document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const page = this.dataset.page;
-        if (page) navigateTo(page);
+// Event listener para navegación (solo en modo SPA)
+if (isSPA) {
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const page = this.dataset.page;
+            if (page) navigateTo(page);
+        });
     });
-});
+}
 
 // Event listeners de sub-navigation
 document.querySelectorAll('.sub-tab[data-subview]').forEach(tab => {

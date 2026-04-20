@@ -24,10 +24,10 @@
                 </div>
             </div>
             <nav class="nav-main" aria-label="Navegación principal">
-                <button class="nav-btn active" data-page="home">Inicio</button>
-                <button class="nav-btn" data-page="canciones">🎵 Canciones</button>
-                <button class="nav-btn" data-page="rincon">🏠 Rincón</button>
-                <button class="nav-btn" data-page="planner">🎁 Planner</button>
+                <button class="nav-btn active" onclick="window.location.href='index.html'">Inicio</button>
+                <button class="nav-btn" onclick="window.location.href='canciones.html'">🎵 Canciones</button>
+                <button class="nav-btn" onclick="window.location.href='rincon.html'">🏠 Rincón</button>
+                <button class="nav-btn" onclick="window.location.href='planner.html'">🎁 Planner</button>
             </nav>
         </header>
 
@@ -59,17 +59,17 @@
             </div>
 
             <div class="bento-grid">
-                <button class="bento-card large" onclick="window.location.href='canciones.html'">
+                <button class="bento-card large" onclick="navigateToPage('canciones')">
                     <div class="icon">🎵</div>
                     <h3>Canciones</h3>
                     <p>14 canciones que me recuerdan a ti con reproductor y letras completas.</p>
                 </button>
-                <button class="bento-card" onclick="window.location.href='rincon.html'">
+                <button class="bento-card" onclick="navigateToPage('rincon')">
                     <div class="icon">🏠</div>
                     <h3>Mi Rincón</h3>
                     <p>Galería, gatos, memes, gustos y más.</p>
                 </button>
-                <button class="bento-card" onclick="window.location.href='planner.html'">
+                <button class="bento-card" onclick="navigateToPage('planner')">
                     <div class="icon">🎁</div>
                     <h3>Planner</h3>
                     <p>Planificador de regalos con persistencia local.</p>
