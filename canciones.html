@@ -3,97 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎵 Canciones - Personal Hub</title>
+    <title>🎵 Canciones — Personal Hub</title>
     <meta name="description" content="Tus canciones favoritas con reproductor y letras completas">
-    <meta name="theme-color" content="#000000">
-
-    <!-- Estilos compartidos -->
+    <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="page">
-        <!-- ========================================== -->
-        <!-- HEADER -->
-        <!-- ========================================== -->
-        <header class="header glass">
-            <div class="header-top">
-                <div class="brand">
-                    <h1>Personal Hub ✦</h1>
-                    <p>Tu lanzadera de proyectos</p>
-                </div>
+<div class="page">
+
+    <!-- HEADER -->
+    <header class="header glass">
+        <div class="header-top">
+            <div class="brand">
+                <h1>Home<span>✦</span></h1>
+                <p>Tu espacio personal</p>
             </div>
-            <nav class="nav-main" aria-label="Navegación principal">
-                <button class="nav-btn" data-page="home" onclick="window.location.href='index.html'">Inicio</button>
-                <button class="nav-btn active" data-page="canciones">🎵 Canciones</button>
-                <button class="nav-btn" data-page="rincon" onclick="window.location.href='rincon.html'">🏠 Rincón</button>
-                <button class="nav-btn" data-page="planner" onclick="window.location.href='planner.html'">🎁 Planner</button>
-            </nav>
-        </header>
+        </div>
+        <nav class="nav-main" aria-label="Navegación principal">
+            <button class="nav-btn" onclick="window.location.href='index.html'">Inicio</button>
+            <button class="nav-btn active">🎵 Canciones</button>
+            <button class="nav-btn" onclick="window.location.href='rincon.html'">🏠 TuRincónFav</button>
+            <button class="nav-btn" onclick="window.location.href='planner.html'">🎁 Regalos</button>
+        </nav>
+    </header>
 
-        <!-- ========================================== -->
-        <!-- SECCIÓN CANCIONES -->
-        <!-- ========================================== -->
-        <section id="canciones" class="page-section">
-            <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom: 20px;">
-                ← Volver al Hub
-            </button>
+    <!-- CANCIONES -->
+    <section id="canciones" class="page-section">
 
-            <div class="player-layout">
-                <!-- Panel del reproductor -->
-                <div class="player-panel">
-                    <div class="player-album">
-                        <img id="currentCover" src="" alt="Portada del álbum">
-                    </div>
-                    <div class="player-title" id="currentTitle">Cargando...</div>
-                    <div class="player-subtitle" id="currentSubtitle"></div>
+        <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
+            ← Volver al Hub
+        </button>
 
-                    <div class="player-controls">
-                        <button class="player-btn" id="prevBtn">⏮</button>
-                        <button class="player-btn play" id="playBtn">▶</button>
-                        <button class="player-btn" id="nextBtn">⏭</button>
-                    </div>
+        <div class="player-layout">
 
-                    <div class="progress-bar">
-                        <div class="progress-time">
-                            <span id="currentTime">0:00</span>
-                            <span id="totalTime">0:00</span>
-                        </div>
-                        <div class="progress-track">
-                            <div class="progress-fill" id="progressFill"></div>
-                        </div>
-                    </div>
+            <!-- PLAYER PANEL -->
+            <div class="player-panel">
+                <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--rose);margin-bottom:4px;">Reproduciendo ahora</div>
+                <div class="player-album">
+                    <img id="currentCover" src="" alt="Portada del álbum">
+                </div>
+                <div class="player-title" id="currentTitle">Cargando…</div>
+                <div class="player-subtitle" id="currentSubtitle"></div>
 
-                    <audio id="audioPlayer"></audio>
+                <div class="player-controls">
+                    <button class="player-btn" id="prevBtn" title="Anterior">⏮</button>
+                    <button class="player-btn play" id="playBtn" title="Reproducir">▶</button>
+                    <button class="player-btn" id="nextBtn" title="Siguiente">⏭</button>
                 </div>
 
-                <!-- Lista de canciones y letra -->
-                <div style="display: grid; gap: 20px;">
-                    <div class="glass" style="padding: 20px;">
-                        <h3 style="margin-bottom: 12px;">📝 Letra</h3>
-                        <div class="lyrics-panel" id="lyricsPanel"></div>
+                <div class="progress-bar">
+                    <div class="progress-time">
+                        <span id="currentTime">0:00</span>
+                        <span id="totalTime">0:00</span>
                     </div>
-                    <div class="glass" style="padding: 20px;">
-                        <h3 style="margin-bottom: 12px;">🎶 Todas las canciones</h3>
-                        <div class="songs-grid" id="songsList"></div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill"></div>
                     </div>
                 </div>
+
+                <audio id="audioPlayer"></audio>
             </div>
-        </section>
-    </div>
 
-    <!-- ========================================== -->
-    <!-- LIGHTBOX -->
-    <!-- ========================================== -->
-    <div id="lightbox" class="lightbox">
-        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
-        <div class="lightbox-content" id="lightboxContent"></div>
-        <div class="lightbox-caption" id="lightboxCaption"></div>
-    </div>
+            <!-- RIGHT COLUMN: LYRICS + LIST -->
+            <div style="display:grid;gap:16px;">
 
-    <!-- Datos compartidos -->
-    <script src="datos.js"></script>
+                <!-- LYRICS -->
+                <div class="section-card">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                        <span style="font-size:1rem;">📝</span>
+                        <h3 style="margin:0;">Letra</h3>
+                    </div>
+                    <div class="lyrics-panel" id="lyricsPanel"></div>
+                </div>
 
-    <!-- Scripts compartidos -->
-    <script src="script.js"></script>
+                <!-- SONGS LIST -->
+                <div class="section-card">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                        <span style="font-size:1rem;">🎶</span>
+                        <h3 style="margin:0;">Todas las canciones</h3>
+                        <span style="margin-left:auto;font-size:0.75rem;font-family:'DM Mono',monospace;color:var(--cream-4);background:var(--fog);border:1px solid var(--wire);padding:3px 10px;border-radius:var(--r-pill);">14</span>
+                    </div>
+                    <div class="songs-grid" id="songsList"></div>
+                </div>
+
+            </div>
+        </div>
+
+    </section>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" class="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <div class="lightbox-content" id="lightboxContent"></div>
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<script src="datos.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

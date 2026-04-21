@@ -3,94 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Hub ✦</title>
-    <meta name="description" content="Tu lanzadera de proyectos personales - Estilo Apple Vision Pro">
-    <meta name="theme-color" content="#000000">
-    <link rel="canonical" href="https://personal-hub.vercel.app/">
-
-    <!-- Estilos compartidos -->
+    <title>Home ✦</title>
+    <meta name="description" content="Tu lanzadera de proyectos personales">
+    <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="page">
-        <!-- ========================================== -->
-        <!-- HEADER -->
-        <!-- ========================================== -->
-        <header class="header glass">
-            <div class="header-top">
-                <div class="brand">
-                    <h1>Personal Hub ✦</h1>
-                    <p>Tu lanzadera de proyectos</p>
+<div class="page">
+
+    <!-- HEADER -->
+    <header class="header glass">
+        <div class="header-top">
+            <div class="brand">
+                <h1>Home<span>✦</span></h1>
+                <p>Tu espacio personal · Todo en un lugar</p>
+            </div>
+        </div>
+        <nav class="nav-main" aria-label="Navegación principal">
+            <button class="nav-btn active" onclick="window.location.href='index.html'">Inicio</button>
+            <button class="nav-btn" onclick="window.location.href='canciones.html'">🎵 Canciones</button>
+            <button class="nav-btn" onclick="window.location.href='rincon.html'">🏠 TuRincónFav</button>
+            <button class="nav-btn" onclick="window.location.href='planner.html'">🎁 Regalos</button>
+        </nav>
+    </header>
+
+    <!-- HOME -->
+    <section id="home" class="page-section">
+
+        <!-- HERO -->
+        <div class="bento-hero glass" style="margin-bottom: 20px;">
+            <p class="eyebrow">✦ Centro de proyectos</p>
+            <h2>Bienvenida<br>a tu <em>mundo</em></h2>
+            <p>Explora las webs que iré subiendo a lo largo del tiempo. Cada tarjeta es una puerta a algo especial para ti.</p>
+        </div>
+
+        <!-- GRID -->
+        <div class="bento-grid">
+
+            <button class="bento-card large" onclick="window.location.href='canciones.html'" style="position:relative;">
+                <span class="icon">🎵</span>
+                <h3>Canciones</h3>
+                <p>Trozos de canciones que me recuerdan a ti, mi princesa.</p>
+                <div style="margin-top:20px; display:flex; gap:10px; align-items:center;">
+                    <div style="width:36px;height:36px;border-radius:8px;background:var(--rose-dim);border:1px solid var(--rose-glow);display:flex;align-items:center;justify-content:center;font-size:0.9rem;">▶</div>
+                    <span style="font-size:0.75rem;color:var(--cream-4);letter-spacing:0.05em;">14 canciones · Escúchalas ahora</span>
                 </div>
-            </div>
-            <nav class="nav-main" aria-label="Navegación principal">
-                <button class="nav-btn active" onclick="window.location.href='index.html'">Inicio</button>
-                <button class="nav-btn" onclick="window.location.href='canciones.html'">Canciones</button>
-                <button class="nav-btn" onclick="window.location.href='rincon.html'">Rincón</button>
-                <button class="nav-btn" onclick="window.location.href='planner.html'">Planner</button>
-            </nav>
-        </header>
+                <!-- decorative bar -->
+                <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--rose),var(--gold),transparent);border-radius:0 0 var(--r-lg) var(--r-lg);"></div>
+            </button>
 
-        <!-- ========================================== -->
-        <!-- HOME: BENTO GRID -->
-        <!-- ========================================== -->
-        <section id="home" class="page-section">
-            <div class="bento-hero glass">
-                <h2>Bienvenido a tu Hub personal</h2>
-                <p>Explora tus proyectos en un entorno visual inmerso. Haz clic en cualquier tarjeta para acceder directamente.</p>
-                <div class="bento-stats">
-                    <div class="bento-stat">
-                        <span>Proyectos</span>
-                        <strong>3</strong>
-                    </div>
-                    <div class="bento-stat">
-                        <span>Canciones</span>
-                        <strong id="songsCount">14</strong>
-                    </div>
-                    <div class="bento-stat">
-                        <span>Secciones</span>
-                        <strong>7</strong>
-                    </div>
-                    <div class="bento-stat">
-                        <span>Estado</span>
-                        <strong>SPA</strong>
-                    </div>
-                </div>
-            </div>
+            <button class="bento-card" onclick="window.location.href='rincon.html'">
+                <span class="icon">🏠</span>
+                <h3>TuRincónFav</h3>
+                <p>Galería, gatos, memes, gustos y tu rincón especial.</p>
+            </button>
 
-            <div class="bento-grid">
-                <button class="bento-card large" onclick="navigateToPage('canciones')">
-                    <div class="icon">🎵</div>
-                    <h3>Canciones</h3>
-                    <p>14 canciones que me recuerdan a ti con reproductor y letras completas.</p>
-                </button>
-                <button class="bento-card" onclick="navigateToPage('rincon')">
-                    <div class="icon">🏠</div>
-                    <h3>Mi Rincón</h3>
-                    <p>Galería, gatos, memes, gustos y más.</p>
-                </button>
-                <button class="bento-card" onclick="navigateToPage('planner')">
-                    <div class="icon">🎁</div>
-                    <h3>Planner</h3>
-                    <p>Planificador de regalos con persistencia local.</p>
-                </button>
-            </div>
-        </section>
-    </div>
+            <button class="bento-card" onclick="window.location.href='planner.html'">
+                <span class="icon">🎁</span>
+                <h3>Regalos</h3>
+                <p>Planificador de ideas de regalo, guardadas localmente.</p>
+            </button>
 
-    <!-- ========================================== -->
-    <!-- LIGHTBOX (compartido) -->
-    <!-- ========================================== -->
-    <div id="lightbox" class="lightbox">
-        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
-        <div class="lightbox-content" id="lightboxContent"></div>
-        <div class="lightbox-caption" id="lightboxCaption"></div>
-    </div>
+        </div>
 
-    <!-- Datos compartidos -->
-    <script src="datos.js"></script>
+        <!-- FOOTER NOTE -->
+        <div style="text-align:center; margin-top:40px; padding: 20px;">
+            <p style="font-size:0.75rem; color:var(--cream-4); letter-spacing:0.06em; font-weight:300;">
+                Hecho con amor · Se irán añadiendo más páginas ✦
+            </p>
+        </div>
 
-    <!-- Scripts compartidos -->
-    <script src="script.js"></script>
+    </section>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" class="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <div class="lightbox-content" id="lightboxContent"></div>
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<script src="datos.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
