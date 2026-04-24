@@ -1017,3 +1017,26 @@ i[data-lucide] {
     border-radius: var(--radius-pill);
 }
 
+/* Móviles: header estático y más compacto */
+@media (max-width: 768px) {
+  .header {
+    position: relative !important; /* anula el sticky */
+    top: 0 !important;
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-lg);
+  }
+  .nav-main {
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+  }
+  .nav-btn {
+    padding: 6px 12px;
+    font-size: 0.7rem;
+  }
+  .brand h1 {
+    font-size: 1.5rem;
+  }
+  .brand p {
+    font-size: 0.6rem;
+  }
+}
