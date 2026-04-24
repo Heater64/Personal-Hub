@@ -1,22 +1,23 @@
 // ==========================================
 // SCRIPT - LógicaSPA para Personal Hub
+// Versión con mejoras en sección de letras
 // ==========================================
+
+
 
 // ========== STATE ==========
 let currentSong = 0;
 let isPlaying = false;
 let currentMemeFolder = "Favoritos ⭐";
 let isSPA = true;
+let lyricsVisible = true;      // Estado del panel de letras (visible/oculto)
+let currentLyricsHTML = '';    // Almacena la letra actual para el lightbox
 
-// ========== NAVEGACIÓN EXTERNA DESDE WIDGETS ==========
+// ========== FUNCIONES AUXILIARES ==========
 function navigateToPage(page) {
     window.location.href = page + '.html';
 }
 
-// ========== AUDIO ==========
-let audioPlayer = null;
-
-// ========== FORMAT TIME ==========
 function formatTime(seconds) {
     if (!isFinite(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -24,116 +25,158 @@ function formatTime(seconds) {
     return `${mins}:${secs}`;
 }
 
-// ========== NAVIGACIÓN ==========
+// ========== NAVEGACIÓN ==========
 function navigateTo(page) {
-    // Actualizar botones de navegación
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.dataset.page === page) {
-            btn.classList.add('active');
-        }
+        if (btn.dataset.page === page) btn.classList.add('active');
     });
-
-    // Mostrar sección对应的
     document.querySelectorAll('.page-section').forEach(section => {
         section.classList.add('hidden');
-        if (section.id === page) {
-            section.classList.remove('hidden');
-        }
+        if (section.id === page) section.classList.remove('hidden');
     });
-
-    // Actualizar URL
     const url = page === 'home' ? '/' : `/${page}`;
     history.pushState({ page }, '', url);
-
-    // Scroll arriba
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ========== SUB-NAVIGATION (RINCÓN) ==========
 function showSubview(viewId) {
     const parent = document.getElementById('rincon');
     if (!parent) return;
-
     parent.querySelectorAll('.sub-tab').forEach(tab => {
         tab.classList.remove('active');
-        if (tab.dataset.subview === viewId) {
-            tab.classList.add('active');
-        }
+        if (tab.dataset.subview === viewId) tab.classList.add('active');
     });
-
     parent.querySelectorAll('.sub-view').forEach(view => {
         view.classList.remove('active');
-        if (view.id === viewId) {
-            view.classList.add('active');
-        }
+        if (view.id === viewId) view.classList.add('active');
     });
 }
 
-// ========== REPRODUCTOR DE CANCIONES ==========
+// ========== REPRODUCTOR ==========
+let audioPlayer = null;
+
 function loadSong(index) {
     currentSong = index;
     const song = window.songsData[index];
-
-    // Actualizar cover, título, subtítulo
     const coverEl = document.getElementById('currentCover');
     const titleEl = document.getElementById('currentTitle');
     const subtitleEl = document.getElementById('currentSubtitle');
-
     if (coverEl) coverEl.src = song.cover;
     if (titleEl) titleEl.textContent = song.title;
     if (subtitleEl) subtitleEl.textContent = song.artist + ' · ' + song.album;
-
-    // Actualizar audio
-    if (audioPlayer) {
-        audioPlayer.src = song.audio;
-    }
-
-    // Actualizar letra
+    if (audioPlayer) audioPlayer.src = song.audio;
     renderLyrics(song.lyrics);
-
-    // Actualizar lista
     renderSongsList();
+    // Si la canción ya estaba sonando, continuar reproduciendo
+    if (isPlaying && audioPlayer) audioPlayer.play();
 }
 
+// ========== MEJORAS EN LETRAS ==========
 function renderLyrics(lyrics) {
     const panel = document.getElementById('lyricsPanel');
-    if (panel) {
+    if (!panel) return;
+    
+    // Guardar el HTML actual para el lightbox y posibles toggles
+    currentLyricsHTML = lyrics;
+    
+    // Si el panel está oculto, solo guardamos el contenido pero no lo mostramos
+    if (!lyricsVisible) return;
+    
+    // Aplicar efecto fade-out
+    panel.classList.add('fade-out');
+    
+    setTimeout(() => {
         panel.innerHTML = lyrics;
-    }
+        panel.classList.remove('fade-out');
+        // Asegurarse de que el panel no tenga la clase hidden-panel
+        if (lyricsVisible) {
+            panel.classList.remove('hidden-panel');
+        }
+        // Actualizar iconos Lucide por si hay algún icono dentro de la letra (no suele haber, pero por si acaso)
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }, 200);
 }
 
+function toggleLyricsPanel() {
+    const panel = document.getElementById('lyricsPanel');
+    const btn = document.getElementById('toggleLyricsBtn');
+    if (!panel) return;
+    
+    lyricsVisible = !lyricsVisible;
+    
+    if (lyricsVisible) {
+        // Mostrar panel con el contenido actual
+        panel.classList.remove('hidden-panel');
+        if (currentLyricsHTML) {
+            panel.innerHTML = currentLyricsHTML;
+        }
+        if (btn) btn.innerHTML = '<i data-lucide="eye"></i>';
+    } else {
+        // Ocultar panel
+        panel.classList.add('hidden-panel');
+        if (btn) btn.innerHTML = '<i data-lucide="eye-off"></i>';
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function expandLyricsLightbox() {
+    const lightbox = document.getElementById('lyricsLightbox');
+    const expandedDiv = document.getElementById('expandedLyricsText');
+    if (!lightbox || !expandedDiv) return;
+    
+    // Usar la letra actual o un mensaje por defecto
+    const lyricsToShow = currentLyricsHTML || '<em>No hay letra disponible para esta canción</em>';
+    expandedDiv.innerHTML = lyricsToShow;
+    lightbox.classList.add('open');
+}
+
+function closeLyricsLightbox() {
+    const lightbox = document.getElementById('lyricsLightbox');
+    if (lightbox) lightbox.classList.remove('open');
+}
+
+// ========== LISTA DE CANCIONES ==========
 function renderSongsList() {
     const list = document.getElementById('songsList');
     if (!list) return;
-
     list.innerHTML = window.songsData.map((song, i) => `
         <button class="song-row ${i === currentSong ? 'active' : ''}" data-index="${i}">
             <img src="${song.cover}" alt="${song.title}">
             <div class="song-info">
-                <strong>${song.title}</strong>
-                <span>${song.artist}</span>
+                <strong>${escapeHtml(song.title)}</strong>
+                <span>${escapeHtml(song.artist)}</span>
             </div>
-            <span>▶</span>
+            <i data-lucide="play"></i>
         </button>
     `).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+// Función auxiliar para evitar XSS
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+// ========== CONTROL DEL REPRODUCTOR ==========
 function togglePlay() {
-    const btn = document.getElementById('playBtn');
-    const currentTimeEl = document.getElementById('currentTime');
-    const progressFillEl = document.getElementById('progressFill');
-
     if (!audioPlayer) return;
-
+    const btn = document.getElementById('playBtn');
     if (isPlaying) {
         audioPlayer.pause();
-        if (btn) btn.textContent = '▶';
+        if (btn) btn.innerHTML = '<i data-lucide="play"></i>';
     } else {
         audioPlayer.play();
-        if (btn) btn.textContent = '⏸';
+        if (btn) btn.innerHTML = '<i data-lucide="pause"></i>';
     }
     isPlaying = !isPlaying;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function prevSong() {
@@ -147,55 +190,45 @@ function nextSong() {
 }
 
 function updateProgress() {
-    const currentTimeEl = document.getElementById('currentTime');
-    const totalTimeEl = document.getElementById('totalTime');
-    const progressFillEl = document.getElementById('progressFill');
-
     if (!audioPlayer) return;
-
     const pct = (audioPlayer.currentTime / (audioPlayer.duration || 1)) * 100;
-    if (progressFillEl) progressFillEl.style.width = pct + '%';
-    if (currentTimeEl) currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
-    if (totalTimeEl && audioPlayer.duration) {
-        totalTimeEl.textContent = formatTime(audioPlayer.duration);
-    }
+    const fill = document.getElementById('progressFill');
+    if (fill) fill.style.width = pct + '%';
+    const currentSpan = document.getElementById('currentTime');
+    if (currentSpan) currentSpan.textContent = formatTime(audioPlayer.currentTime);
+    const totalSpan = document.getElementById('totalTime');
+    if (totalSpan && audioPlayer.duration) totalSpan.textContent = formatTime(audioPlayer.duration);
 }
 
-// ========== BARRA DE PROGRESO - CLICK PARA SALTAR ==========
 function setupProgressClick() {
-    const progressTrack = document.querySelector('.progress-track');
-    if (!progressTrack || !audioPlayer) return;
-
-    progressTrack.addEventListener('click', function(e) {
+    const track = document.querySelector('.progress-track');
+    if (!track || !audioPlayer) return;
+    track.addEventListener('click', function(e) {
         if (!audioPlayer.duration) return;
-
-        const rect = progressTrack.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const percentage = clickX / rect.width;
-        const newTime = percentage * audioPlayer.duration;
-
-        audioPlayer.currentTime = newTime;
+        const rect = track.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        audioPlayer.currentTime = percent * audioPlayer.duration;
         updateProgress();
     });
 }
 
-// ========== GALLERÍA (PINTEREST STYLE) ==========
+// ========== GALERÍA ==========
 let currentFolder = null;
 
 function renderGallery() {
     const grid = document.getElementById('galleryGrid');
     if (!grid) return;
-
     grid.innerHTML = `
         <div class="pinterest-grid">
             ${Object.entries(window.galleryFoldersData).map(([name, images]) => `
-                <div class="pinterest-item" onclick="showFolderContents('${name}')">
-                    <img src="${images[0]}" alt="${name}" loading="lazy">
-                    <div class="overlay"><span>📁 ${name} · ${images.length} fotos</span></div>
+                <div class="pinterest-item" onclick="showFolderContents('${escapeHtml(name)}')">
+                    <img src="${escapeHtml(images[0])}" alt="${escapeHtml(name)}" loading="lazy">
+                    <div class="overlay"><span><i data-lucide="folder"></i> ${escapeHtml(name)} · ${images.length} fotos</span></div>
                 </div>
             `).join('')}
         </div>
     `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function showFolderContents(folderName) {
@@ -203,150 +236,244 @@ function showFolderContents(folderName) {
     const images = window.galleryFoldersData[folderName];
     const grid = document.getElementById('galleryGrid');
     if (!grid) return;
-
     grid.innerHTML = `
         <button class="back-btn" onclick="renderGallery()" style="margin-bottom:16px;">
-            ← Volver a carpetas
+            <i data-lucide="arrow-left"></i> Volver a carpetas
         </button>
         <div class="pinterest-grid">
             ${images.map((src, i) => `
-                <div class="pinterest-item" onclick="openLightbox('${src}', '${folderName} - ${i+1}')">
-                    <img src="${src}" alt="${folderName} ${i+1}" loading="lazy">
-                    <div class="overlay"><span>Ver ${i + 1}</span></div>
+                <div class="pinterest-item" onclick="openLightbox('${escapeHtml(src)}', '${escapeHtml(folderName)} - ${i+1}')">
+                    <img src="${escapeHtml(src)}" alt="${escapeHtml(folderName)} ${i+1}" loading="lazy">
+                    <div class="overlay"><span><i data-lucide="eye"></i> Ver ${i+1}</span></div>
                 </div>
             `).join('')}
         </div>
     `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// ========== MEMES (INSTAGRAM STYLE) ==========
+// ========== MEMES ==========
 function renderMemes() {
-    // Render navegación de carpetas
     const nav = document.getElementById('memesFoldersNav');
     if (nav) {
         nav.innerHTML = Object.keys(window.memeImagesData).map(folder => `
-            <button class="memes-folder-btn ${folder === currentMemeFolder ? 'active' : ''}" onclick="showMemeFolder('${folder}')">
-                📁 ${folder}
+            <button class="memes-folder-btn ${folder === currentMemeFolder ? 'active' : ''}" onclick="showMemeFolder('${escapeHtml(folder)}')">
+                <i data-lucide="folder"></i> ${escapeHtml(folder)}
                 <span class="folder-count">${window.memeImagesData[folder].length}</span>
             </button>
         `).join('');
     }
-
-    // Render grid de la carpeta actual
     const grid = document.getElementById('memesGrid');
     if (!grid) return;
-
     const images = window.memeImagesData[currentMemeFolder];
     grid.innerHTML = `
         <div class="insta-grid">
             ${images.map((src, i) => `
-                <div class="insta-item" onclick="openLightbox('${src}', '${currentMemeFolder} - ${i + 1}')">
-                    <img src="${src}" alt="Meme ${i + 1}" loading="lazy">
-                    <div class="insta-overlay"><span>♥</span></div>
+                <div class="insta-item" onclick="openLightbox('${escapeHtml(src)}', '${escapeHtml(currentMemeFolder)} - ${i + 1}')">
+                    <img src="${escapeHtml(src)}" alt="Meme ${i + 1}" loading="lazy">
+                    <div class="insta-overlay"><i data-lucide="heart"></i></div>
                 </div>
             `).join('')}
         </div>
     `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function showMemeFolder(folder) {
     currentMemeFolder = folder;
     renderMemes();
 }
+// ==========================================
+// Sustituye SOLO las tres funciones siguientes en tu script.js
+// (renderGustos, renderCatFacts, renderSPB)
+// El resto del archivo permanece idéntico.
+// ==========================================
 
-// ========== GUSTOS ==========
+// ========== GUSTOS — Podio + datos personales ==========
 function renderGustos() {
     const panel = document.getElementById('gustosPanel');
     if (!panel) return;
+    const d = window.gustosData;
 
-    panel.innerHTML = Object.entries(window.gustosData).map(([cat, items]) => `
-        <div style="margin-bottom: 16px;">
-            <h4 style="text-transform:capitalize;margin-bottom:8px;">${cat}</h4>
-            <ul style="padding-left:20px;color:var(--text-secondary);">
-                ${items.map(i => `<li>${i}</li>`).join('')}
-            </ul>
+    // --- Podio de series y películas ---
+    const podioHTML = d.podio.map(item => `
+        <div class="planner-step" style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                <span style="font-size:1.8rem;line-height:1;">${item.medalla}</span>
+                <div>
+                    <strong style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:500;display:block;">${escapeHtml(item.titulo)}</strong>
+                    <span style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);">${escapeHtml(item.tipo)}</span>
+                </div>
+            </div>
+            <p style="font-size:0.85rem;line-height:1.7;color:var(--umbra-ash);">${escapeHtml(item.descripcion)}</p>
         </div>
     `).join('');
-}
 
-// ========== DATOS DE GATOS ==========
-function renderCatFacts() {
-    const list = document.getElementById('catFacts');
-    if (!list) return;
-
-    list.innerHTML = window.catFactsData.map(f => `
-        <li style="margin-bottom:8px;">🐱 ${f}</li>
-    `).join('');
-}
-
-// ========== SAN PETERSBURGO ==========
-function renderSPB() {
-    const panel = document.getElementById('spbPanel');
-    if (!panel) return;
-
-    const spb = window.spbData;
-
-    panel.innerHTML = `
-        <div style="margin-bottom:16px;">
-            <h4 style="margin-bottom:12px;">🍽️ Comida</h4>
-            <div class="planner-grid">
-                ${spb.foods.map(food => `
-                    <div class="planner-step">
-                        <img src="${food[1]}" alt="${food[0]}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;margin-bottom:8px;">
-                        <strong>${food[0]}</strong>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-        <div style="margin-bottom:16px;">
-            <h4 style="margin-bottom:12px;">📍 Lugares</h4>
-            <div class="pinterest-grid">
-                ${spb.places.map(src => `
-                    <div class="pinterest-item" onclick="openLightbox('${src}', 'San Petersburgo')">
-                        <img src="${src}" alt="San Petersburgo" loading="lazy">
-                        <div class="overlay"><span>Ver</span></div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-        <div class="planner-grid" style="margin-top:16px;">
+    // --- Datos personales y comida ---
+    const personalHTML = `
+        <div class="planner-grid" style="margin-top:8px;">
             <div class="planner-step">
-                <h4>✨ Tradiciones</h4>
-                <ul style="padding-left:20px;color:var(--text-secondary);margin-top:8px;">
-                    ${spb.traditions.map(t => `<li>${t}</li>`).join('')}
+                <h4 style="margin-bottom:10px;font-size:0.9rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--umbra-ash);">Personal</h4>
+                <ul style="padding-left:18px;color:var(--umbra-ash);line-height:2;font-size:0.85rem;">
+                    ${d.personal.map(i => `<li>${escapeHtml(i)}</li>`).join('')}
                 </ul>
             </div>
             <div class="planner-step">
-                <h4>💬 Frases en ruso</h4>
-                <ul style="padding-left:20px;color:var(--text-secondary);margin-top:8px;">
-                    ${spb.phrases.map(p => `<li>${p}</li>`).join('')}
+                <h4 style="margin-bottom:10px;font-size:0.9rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--umbra-ash);">Comida favorita</h4>
+                <ul style="padding-left:18px;color:var(--umbra-ash);line-height:2;font-size:0.85rem;">
+                    ${d.food.map(i => `<li>${escapeHtml(i)}</li>`).join('')}
                 </ul>
             </div>
         </div>
     `;
+
+    panel.innerHTML = `
+        <div style="margin-bottom:28px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                <i data-lucide="trophy"></i>
+                <h4 style="margin:0;font-family:'Playfair Display',serif;font-size:1.2rem;">Series y películas favoritas</h4>
+            </div>
+            ${podioHTML}
+        </div>
+        <div style="border-top:var(--border-subtle);padding-top:24px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <i data-lucide="sparkles"></i>
+                <h4 style="margin:0;font-family:'Playfair Display',serif;font-size:1.2rem;">Más cosas sobre ti</h4>
+            </div>
+            ${personalHTML}
+        </div>
+    `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// ========== PLANNER (GIFTS) ==========
+// ========== GATOS — Tarjetas con icono, título y texto ==========
+function renderCatFacts() {
+    const list = document.getElementById('catFacts');
+    if (!list) return;
+
+    // Cambiamos el elemento de <ul> a <div> para el nuevo layout
+    // Si en rincon.html el elemento sigue siendo <ul id="catFacts">, funciona igual
+    list.style.listStyle = 'none';
+    list.style.padding   = '0';
+
+    list.innerHTML = `
+        <p style="font-size:0.88rem;line-height:1.7;color:var(--umbra-ash);margin-bottom:20px;">
+            Los gatos son mascotas fascinantes con comportamientos y capacidades que llevan siglos sorprendiendo a los humanos. Aquí van algunos datos que quizás no sabías.
+        </p>
+        <div style="display:grid;gap:14px;">
+            ${window.catFactsData.map(f => `
+                <div class="planner-step" style="display:flex;gap:14px;align-items:flex-start;">
+                    <span style="font-size:1.4rem;line-height:1;flex-shrink:0;margin-top:2px;">${f.icon}</span>
+                    <div>
+                        <strong style="display:block;font-weight:500;margin-bottom:4px;">${escapeHtml(f.titulo)}</strong>
+                        <p style="font-size:0.85rem;line-height:1.7;color:var(--umbra-ash);margin:0;">${escapeHtml(f.texto)}</p>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ========== SAN PETERSBURGO — Intro + curiosidades + fotos + tradiciones ==========
+function renderSPB() {
+    const panel = document.getElementById('spbPanel');
+    if (!panel) return;
+    const spb = window.spbData;
+
+    panel.innerHTML = `
+        <!-- Intro -->
+        <p style="font-size:0.9rem;line-height:1.8;color:var(--umbra-ash);margin-bottom:28px;border-left:2px solid var(--accent-coral);padding-left:16px;">
+            ${escapeHtml(spb.intro)}
+        </p>
+
+        <!-- Curiosidades -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <i data-lucide="sparkles"></i>
+            <h4 style="margin:0;font-family:'Playfair Display',serif;font-size:1.2rem;">Curiosidades</h4>
+        </div>
+        <div style="display:grid;gap:14px;margin-bottom:32px;">
+            ${spb.curiosidades.map(c => `
+                <div class="planner-step" style="display:flex;gap:14px;align-items:flex-start;">
+                    <span style="font-size:1.4rem;line-height:1;flex-shrink:0;margin-top:2px;">${c.icon}</span>
+                    <div>
+                        <strong style="display:block;font-weight:500;margin-bottom:4px;">${escapeHtml(c.titulo)}</strong>
+                        <p style="font-size:0.85rem;line-height:1.7;color:var(--umbra-ash);margin:0;">${escapeHtml(c.texto)}</p>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+
+        <!-- Comida -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <i data-lucide="utensils"></i>
+            <h4 style="margin:0;font-family:'Playfair Display',serif;font-size:1.2rem;">Gastronomía típica</h4>
+        </div>
+        <div class="planner-grid" style="margin-bottom:32px;">
+            ${spb.foods.map(food => `
+                <div class="planner-step">
+                    <img src="${escapeHtml(food[1])}" alt="${escapeHtml(food[0])}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius-md);margin-bottom:10px;">
+                    <strong style="font-family:'Playfair Display',serif;">${escapeHtml(food[0])}</strong>
+                </div>
+            `).join('')}
+        </div>
+
+        <!-- Lugares -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <i data-lucide="map-pin"></i>
+            <h4 style="margin:0;font-family:'Playfair Display',serif;font-size:1.2rem;">Lugares imprescindibles</h4>
+        </div>
+        <div class="pinterest-grid" style="margin-bottom:32px;">
+            ${spb.places.map(src => `
+                <div class="pinterest-item" onclick="openLightbox('${escapeHtml(src)}', 'San Petersburgo')">
+                    <img src="${escapeHtml(src)}" alt="San Petersburgo" loading="lazy">
+                    <div class="overlay"><span><i data-lucide="eye"></i> Ver</span></div>
+                </div>
+            `).join('')}
+        </div>
+
+        <!-- Tradiciones y frases -->
+        <div class="planner-grid">
+            <div class="planner-step">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                    <i data-lucide="star"></i>
+                    <h4 style="margin:0;font-family:'Playfair Display',serif;">Tradiciones</h4>
+                </div>
+                <ul style="padding-left:18px;color:var(--umbra-ash);line-height:2;font-size:0.85rem;">
+                    ${spb.traditions.map(t => `<li>${escapeHtml(t)}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="planner-step">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                    <i data-lucide="message-circle"></i>
+                    <h4 style="margin:0;font-family:'Playfair Display',serif;">Frases en ruso</h4>
+                </div>
+                <ul style="padding-left:18px;color:var(--umbra-ash);line-height:2;font-size:0.85rem;">
+                    ${spb.phrases.map(p => `<li>${escapeHtml(p)}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+// ========== PLANNER (REGLOS) ==========
 function loadGifts() {
     const list = document.getElementById('giftList');
     if (!list) return;
-
     const gifts = JSON.parse(localStorage.getItem('gifts') || '[]');
     list.innerHTML = gifts.map((g, i) => `
         <li class="planner-item">
             <input type="checkbox" ${g.done ? 'checked' : ''} onchange="toggleGift(${i})">
-            <span style="flex:1; text-decoration: ${g.done ? 'line-through' : 'none'}; opacity: ${g.done ? 0.5 : 1}">
-                ${g.text}
-            </span>
-            <button onclick="deleteGift(${i})" style="opacity:0.5">✕</button>
+            <span style="flex:1; text-decoration: ${g.done ? 'line-through' : 'none'}; opacity: ${g.done ? 0.5 : 1}">${escapeHtml(g.text)}</span>
+            <button onclick="deleteGift(${i})"><i data-lucide="trash-2"></i></button>
         </li>
     `).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function addGift() {
     const input = document.getElementById('giftInput');
     if (!input || !input.value.trim()) return;
-
     const gifts = JSON.parse(localStorage.getItem('gifts') || '[]');
     gifts.push({ text: input.value, done: false });
     localStorage.setItem('gifts', JSON.stringify(gifts));
@@ -368,167 +495,291 @@ function deleteGift(index) {
     loadGifts();
 }
 
-// ========== LIGHTBOX ==========
+// ========== LIGHTBOX GENERAL ==========
 function openLightbox(src, caption = '') {
     const content = document.getElementById('lightboxContent');
     const captionEl = document.getElementById('lightboxCaption');
-
-    if (content) {
-        content.innerHTML = `<img src="${src}" alt="${caption}">`;
-    }
-    if (captionEl) {
-        captionEl.textContent = caption;
-    }
-
+    if (content) content.innerHTML = `<img src="${escapeHtml(src)}" alt="${escapeHtml(caption)}">`;
+    if (captionEl) captionEl.textContent = caption;
     const box = document.getElementById('lightbox');
-    if (box) {
-        box.classList.add('open');
-    }
+    if (box) box.classList.add('open');
 }
 
 function closeLightbox() {
     const box = document.getElementById('lightbox');
-    if (box) {
-        box.classList.remove('open');
-    }
+    if (box) box.classList.remove('open');
 }
 
-// ========== INICIALIZAR ==========
+// ========== INICIALIZACIÓN ==========
 function init() {
     console.log('Inicializando Personal Hub...');
-
-    // Obtener audio
     audioPlayer = document.getElementById('audioPlayer');
+    if (audioPlayer) setupProgressClick();
 
-    // Configurar click en barra de progreso
-    if (audioPlayer) {
-        setupProgressClick();
-    }
-
-    // Deep linking - leer URL
-    const path = window.location.pathname.slice(1);
-    if (path && ['home', 'canciones', 'rincon', 'planner'].includes(path)) {
-        navigateTo(path);
-    }
-
-    // Renderizar contenido
-    const songsCountEl = document.getElementById('songsCount');
-    if (songsCountEl && window.songsData) {
-        songsCountEl.textContent = String(window.songsData.length).padStart(2, '0');
-    }
-
-    // Renderizar secciones
-    if (document.getElementById('canciones')) {
+    // Cargar canciones si estamos en esa página
+    if (document.getElementById('canciones') && window.songsData) {
         loadSong(0);
-        setupProgressClick();
+    }
+    if (document.getElementById('galleryGrid')) renderGallery();
+    if (document.getElementById('memesGrid')) renderMemes();
+    if (document.getElementById('gustosPanel')) renderGustos();
+    if (document.getElementById('catFacts')) renderCatFacts();
+    if (document.getElementById('spbPanel')) renderSPB();
+        if (document.getElementById('notesList')) {
+        loadNotes();
+        setupNotesEvents();
     }
 
-    if (document.getElementById('galleryGrid')) {
-        renderGallery();
+    // Inicializar Lucide Icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
     }
-
-    if (document.getElementById('memesGrid')) {
-        renderMemes();
-    }
-
-    if (document.getElementById('gustosPanel')) {
-        renderGustos();
-    }
-
-    if (document.getElementById('catFacts')) {
-        renderCatFacts();
-    }
-
-    if (document.getElementById('spbPanel')) {
-        renderSPB();
-    }
-
-    if (document.getElementById('giftList')) {
-        loadGifts();
-    }
-
-    console.log('Personal Hub inicializado correctamente');
 }
 
 // ========== EVENT LISTENERS ==========
 document.addEventListener('DOMContentLoaded', function() {
     init();
+
+    // Reproductor eventos
+    if (audioPlayer) {
+        audioPlayer.addEventListener('timeupdate', updateProgress);
+        audioPlayer.addEventListener('loadedmetadata', function() {
+            updateProgress();
+        });
+        audioPlayer.addEventListener('ended', nextSong);
+    }
+
+    // Sub-navegación (TuRincónFav)
+    document.querySelectorAll('.sub-tab[data-subview]').forEach(tab => {
+        tab.addEventListener('click', function() {
+            showSubview(this.dataset.subview);
+        });
+    });
+
+    // Controles del reproductor
+    const playBtn = document.getElementById('playBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    if (playBtn) playBtn.addEventListener('click', togglePlay);
+    if (prevBtn) prevBtn.addEventListener('click', prevSong);
+    if (nextBtn) nextBtn.addEventListener('click', nextSong);
+
+    // Click en lista de canciones
+    const songsList = document.getElementById('songsList');
+    if (songsList) {
+        songsList.addEventListener('click', function(e) {
+            const row = e.target.closest('.song-row');
+            if (row) {
+                loadSong(Number(row.dataset.index));
+                if (audioPlayer) {
+                    audioPlayer.play();
+                    isPlaying = true;
+                    const playIcon = document.getElementById('playBtn');
+                    if (playIcon) playIcon.innerHTML = '<i data-lucide="pause"></i>';
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            }
+        });
+    }
+
+    // Botones de letras (toggle y expandir)
+    const toggleLyricsBtn = document.getElementById('toggleLyricsBtn');
+    const expandLyricsBtn = document.getElementById('expandLyricsBtn');
+    if (toggleLyricsBtn) toggleLyricsBtn.addEventListener('click', toggleLyricsPanel);
+    if (expandLyricsBtn) expandLyricsBtn.addEventListener('click', expandLyricsLightbox);
+
+    // Cerrar lightbox de letras con Escape y clic fuera
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeLyricsLightbox();
+            closeLightbox();
+        }
+    });
+    const lyricsLightbox = document.getElementById('lyricsLightbox');
+    if (lyricsLightbox) {
+        lyricsLightbox.addEventListener('click', function(e) {
+            if (e.target === lyricsLightbox) closeLyricsLightbox();
+        });
+    }
+
+    // Gift input Enter
+    const giftInput = document.getElementById('giftInput');
+    if (giftInput) giftInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') addGift();
+    });
+
+    // Cerrar lightbox de imágenes con clic fuera
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox) lightbox.addEventListener('click', function(e) {
+        if (e.target.id === 'lightbox') closeLightbox();
+    });
 });
 
-// Event listener para navegación (solo en modo SPA)
-if (isSPA) {
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const page = this.dataset.page;
-            if (page) navigateTo(page);
+// ========== NUEVA LÓGICA DE NOTAS (reemplaza a los regalos) ==========
+let currentEditNoteIndex = null; // para saber qué nota estamos editando en el lightbox
+
+function loadNotes() {
+    const container = document.getElementById('notesList');
+    if (!container) return;
+    const notes = JSON.parse(localStorage.getItem('notes') || '[]');
+    if (notes.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding: var(--space-lg); color: var(--umbra-ash);"><i data-lucide="inbox"></i><p>No hay notas aún. Escribe una.</p></div>';
+    } else {
+        container.innerHTML = notes.map((note, index) => `
+            <div class="note-item" data-index="${index}">
+                <div class="note-item-preview">${escapeHtml(note.text.substring(0, 100))}${note.text.length > 100 ? '…' : ''}</div>
+                <div class="note-item-footer">
+                    <span>${new Date(note.date).toLocaleDateString()}</span>
+                    <div class="note-item-actions">
+                        <button class="edit-note-btn" data-index="${index}" title="Editar"><i data-lucide="edit-2"></i></button>
+                        <button class="delete-note-btn" data-index="${index}" title="Eliminar"><i data-lucide="trash-2"></i></button>
+                        <button class="expand-note-btn" data-index="${index}" title="Expandir"><i data-lucide="maximize-2"></i></button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    // Inicializar Lucide en los nuevos iconos
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    // Agregar event listeners a los botones dinámicos
+    document.querySelectorAll('.edit-note-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.index);
+            editNote(idx);
+        });
+    });
+    document.querySelectorAll('.delete-note-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.index);
+            deleteNote(idx);
+        });
+    });
+    document.querySelectorAll('.expand-note-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.index);
+            expandNote(idx);
+        });
+    });
+    // Al hacer clic en toda la nota, expandir
+    document.querySelectorAll('.note-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            // si el clic no fue en un botón
+            if (!e.target.closest('button')) {
+                const idx = parseInt(item.dataset.index);
+                expandNote(idx);
+            }
         });
     });
 }
 
-// Event listeners de sub-navigation
-document.querySelectorAll('.sub-tab[data-subview]').forEach(tab => {
-    tab.addEventListener('click', function() {
-        const viewId = this.dataset.subview;
-        if (viewId) showSubview(viewId);
+function addNote() {
+    const textarea = document.getElementById('noteInput');
+    if (!textarea || !textarea.value.trim()) return;
+    const notes = JSON.parse(localStorage.getItem('notes') || '[]');
+    notes.unshift({  // añadir al principio para verlo arriba
+        text: textarea.value.trim(),
+        date: new Date().toISOString()
     });
-});
-
-// Player controls
-document.getElementById('playBtn')?.addEventListener('click', togglePlay);
-document.getElementById('prevBtn')?.addEventListener('click', prevSong);
-document.getElementById('nextBtn')?.addEventListener('click', nextSong);
-
-// Songs list click
-document.getElementById('songsList')?.addEventListener('click', function(e) {
-    const row = e.target.closest('.song-row');
-    if (row) {
-        loadSong(Number(row.dataset.index));
-        if (audioPlayer) {
-            audioPlayer.play();
-            isPlaying = true;
-            document.getElementById('playBtn').textContent = '⏸';
-        }
-    }
-});
-
-// Audio events & real-time progress
-if (audioPlayer) {
-    audioPlayer.addEventListener('loadedmetadata', function() {
-        const totalTimeEl = document.getElementById('totalTime');
-        if (totalTimeEl) {
-            totalTimeEl.textContent = formatTime(audioPlayer.duration);
-        }
-    });
-    audioPlayer.addEventListener('ended', nextSong);
+    localStorage.setItem('notes', JSON.stringify(notes));
+    textarea.value = '';
+    loadNotes();
 }
 
-function startProgressLoop() {
-    if (audioPlayer && isPlaying && !audioPlayer.paused) {
-        updateProgress();
-    }
-    requestAnimationFrame(startProgressLoop);
+function deleteNote(index) {
+    const notes = JSON.parse(localStorage.getItem('notes') || '[]');
+    notes.splice(index, 1);
+    localStorage.setItem('notes', JSON.stringify(notes));
+    loadNotes();
+    // Si el lightbox está abierto y se borró la nota, cerrarlo
+    closeNoteLightbox();
 }
-if (audioPlayer) startProgressLoop();
 
-// Gift input
-document.getElementById('giftInput')?.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') addGift();
-});
+function editNote(index) {
+    const notes = JSON.parse(localStorage.getItem('notes') || '[]');
+    const note = notes[index];
+    if (!note) return;
+    // Abrir lightbox con el texto para editar
+    currentEditNoteIndex = index;
+    const textarea = document.getElementById('expandedNoteText');
+    if (textarea) textarea.value = note.text;
+    const lightbox = document.getElementById('noteLightbox');
+    if (lightbox) lightbox.classList.add('open');
+}
 
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeLightbox();
+function expandNote(index) {
+    // Similar a editNote pero solo lectura? Podemos permitir edición igual.
+    editNote(index); // reutilizamos la misma función, ya que editar es lo natural.
+}
+
+function saveNoteEdit() {
+    if (currentEditNoteIndex === null) return;
+    const textarea = document.getElementById('expandedNoteText');
+    if (!textarea) return;
+    const newText = textarea.value.trim();
+    if (!newText) {
+        // Si está vacío, podríamos eliminar o no guardar. Por ahora no guardamos vacío.
+        return;
     }
-});
+    const notes = JSON.parse(localStorage.getItem('notes') || '[]');
+    if (notes[currentEditNoteIndex]) {
+        notes[currentEditNoteIndex].text = newText;
+        notes[currentEditNoteIndex].date = new Date().toISOString();
+        localStorage.setItem('notes', JSON.stringify(notes));
+    }
+    closeNoteLightbox();
+    loadNotes();
+}
 
-// Lightbox close on background click
-document.getElementById('lightbox')?.addEventListener('click', function(e) {
-    if (e.target.id === 'lightbox') closeLightbox();
-});
+function deleteCurrentNoteFromLightbox() {
+    if (currentEditNoteIndex !== null) {
+        deleteNote(currentEditNoteIndex);
+    }
+    closeNoteLightbox();
+}
 
-// Browser back/forward
-window.addEventListener('popstate', function(e) {
-    const page = e.state?.page || 'home';
-    navigateTo(page);
-});
+function closeNoteLightbox() {
+    const lightbox = document.getElementById('noteLightbox');
+    if (lightbox) lightbox.classList.remove('open');
+    currentEditNoteIndex = null;
+    const textarea = document.getElementById('expandedNoteText');
+    if (textarea) textarea.value = '';
+}
+
+// ========== CONFIGURACIÓN DE EVENTOS ==========
+function setupNotesEvents() {
+    const addBtn = document.getElementById('addNoteBtn');
+    if (addBtn) addBtn.addEventListener('click', addNote);
+    const noteInput = document.getElementById('noteInput');
+    if (noteInput) noteInput.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') addNote();
+    });
+    const saveEditBtn = document.getElementById('saveNoteEditBtn');
+    if (saveEditBtn) saveEditBtn.addEventListener('click', saveNoteEdit);
+    const deleteFromLightboxBtn = document.getElementById('deleteNoteFromLightboxBtn');
+    if (deleteFromLightboxBtn) deleteFromLightboxBtn.addEventListener('click', deleteCurrentNoteFromLightbox);
+    // Cerrar lightbox con Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeNoteLightbox();
+    });
+    const lightbox = document.getElementById('noteLightbox');
+    if (lightbox) lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeNoteLightbox();
+    });
+}
+
+
+
+// Exponer funciones globales necesarias para onclick en HTML
+window.showFolderContents = showFolderContents;
+window.showMemeFolder = showMemeFolder;
+window.openLightbox = openLightbox;
+window.closeLightbox = closeLightbox;
+window.addGift = addGift;
+window.toggleGift = toggleGift;
+window.deleteGift = deleteGift;
+window.closeLyricsLightbox = closeLyricsLightbox;
+window.toggleLyricsPanel = toggleLyricsPanel; // por si se necesita desde el HTML
+window.expandLyricsLightbox = expandLyricsLightbox;

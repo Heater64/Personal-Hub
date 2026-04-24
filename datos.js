@@ -2,10 +2,9 @@
 // DATOS - Todas las canciones, galería y memes
 // ==========================================
 
-// URLs base para canciones y portadas
 const SONGS_BASE_URL = "https://canciones-que-me-recuerdan-a-ti.vercel.app";
 
-// ========== LISTA COMPLETA DE CANCIONES (14 canciones) ==========
+// ========== CANCIONES (sin cambios) ==========
 const songs = [
     {
         title: "Si No Estás",
@@ -21,7 +20,7 @@ const songs = [
         album: "Reguetón · 2024",
         cover: `${SONGS_BASE_URL}/Fotos/maxresdefault.jpg`,
         audio: `${SONGS_BASE_URL}/Canciones/_%C2%BFAcaso_no_te_has_dado_cuenta_de_lo_bien_que_me_complementas_Letra%20(mp3cut.net).m4a`,
-        lyrics: `¿A caso no te has dado cuenta?<br>De lo bien que me complementas<br>Si quieres te invito un helado y te explico lo chido que haces que me sienta<br><br>Contigo estoy high sin avión<br>Me haces perder la razón<br>Estoy todo el día pensándote con mariposas en el corazón<br><br>Y tú (y tú-uh)<br>Me pones todo de cabeza<br>Tú (y tú-uh)<br>Eras esa última pieza`
+        lyrics: `¿A caso no te has dado cuenta?<br>De lo bien que me complementas<br>Si quieres te invito un helado y te explico lo chido que haces que me sienta<br><br>Contigo estoy high sin avión<br>Me haces perder la razón<br>Estoy todo el día pensándote con mariposas en el corazón<br><br>Y tú (y tú-uh)<br>Me pones todo de cabeza<br>Tú (y tú-uh)<br>Eras esa última pieza<br><br>Tú (tú-uh)<br>Eres tan diferente<br>Y no hay nadie que me vuele así la mente como lo haces tú`
     },
     {
         title: "Mi niña",
@@ -37,7 +36,7 @@ const songs = [
         album: "Trap · 2023",
         cover: `${SONGS_BASE_URL}/Fotos/OIP%20(4).webp`,
         audio: `${SONGS_BASE_URL}/Canciones/Taiu,%20Milo%20j%20-%20Rara%20Vez%20(mp3cut.net).m4a`,
-        lyrics: `Sos lo que me da paz<br>Lo que andaba buscando<br>Y esa felicidad<br>Que hace que ande sonriendo<br><br>Quiero verte feliz<br>Mejor si es al lado de mí<br>Love incondicional<br>Como perro a su amo, te sigo amando<br><br>Dama con fama 'e cama alta gama y corazón partido<br>Fono lleno 'e fanes que llaman y solo atiende el mío`
+        lyrics: `Sos lo que me da paz<br>Lo que andaba buscando<br>Y esa felicidad<br>Que hace que ande sonriendo<br><br>Quiero verte feli'<br>Mejor si es al la'o de mí<br>Love incondicional<br>Como perro a su amo, te sigo amando`
     },
     {
         title: "Pareja del año",
@@ -45,7 +44,7 @@ const songs = [
         album: "Pop · 2021",
         cover: `${SONGS_BASE_URL}/Fotos/OIP%20(5).webp`,
         audio: `${SONGS_BASE_URL}/Canciones/Sebasti%C3%A1n_Yatra,_Myke_Towers_Pareja_del_A%C3%B1o_Official_Performance%20(mp3cut.net).m4a`,
-        lyrics: `Qué tan loco sería si yo fuera<br>El dueño de tu corazón por solo un día<br>Si nos gana la alegría, yo por fin te besaría<br>¿Qué pasaría?<br><br>Si me dieran solo veinticuatro horas, yo las aprovecho<br>Juro que yo voy a hacerte cosas que nunca te han hecho<br>Ya yo me cansé de ser amigos con derecho'<br>Yo tal vez no te merezco<br>Pero no hay ni que decirlo<br>Si nos juntamos, seríamos la pareja del siglo`
+        lyrics: `Qué tan loco sería si yo fuera<br>El dueño de tu corazón por solo un día<br>Si nos gana la alegría, yo por fin te besaría<br>¿Qué pasaría?`
     },
     {
         title: "¿A dónde vamos?",
@@ -53,7 +52,7 @@ const songs = [
         album: "Pop · 2022",
         cover: `${SONGS_BASE_URL}/Fotos/OIP%20(6).webp`,
         audio: `${SONGS_BASE_URL}/Canciones/Morat%20-%20A%20D%C3%B3nde%20Vamos%20(Letra)%20_%20Albert%20%26%20Maricheli%20(mp3cut.net).m4a`,
-        lyrics: `Que siendo un extraño, te dije: "te amo"<br>Te he estado buscando por más de mil años"<br>Y tú respondiste: "¿a dónde vamos?"<br>Contra las apuestas, aquí nos quedamos<br><br>Viviendo de fiesta después del verano en el que respondiste<br>"¿A dónde vamos?"<br>Y aunque la historia no estaba prevista<br>Somos la prueba de que existe amor a primera vista`
+        lyrics: `Que siendo un extraño, te dije te amo<br>Te he estado buscando por más de mil años<br>Y tú respondiste: ¿A dónde vamos?<br>Contra las apuestas, aquí nos quedamos`
     },
     {
         title: "Cuando te vi",
@@ -61,7 +60,7 @@ const songs = [
         album: "Urban · 2022",
         cover: `${SONGS_BASE_URL}/Fotos/923cf890949406f52539a8ed4d16a352.1000x1000x1.png`,
         audio: `${SONGS_BASE_URL}/Canciones/Maria%20Becerra,%20Trueno,%20Big%20One%20-%20Cuando%20Te%20Vi%20_%20CROSSOVER%20%235%20(mp3cut.net).m4a`,
-        lyrics: `Aunque todavía no soy rico, te puedo dar amor como de chico<br>Cosquillas en la panza, como antes del primer pico<br>O poder agarrarte de la mano una tarde de verano<br>Momentos que se vuelven infinitos<br><br>Y por favor, no le pongas precio ni valor a mi honor<br>Que sin idealizaciones, no hay dolor<br>Y eso es bueno para mí, que no ando en busca del amor`
+        lyrics: `Aunque todavía no soy rico (no)<br>Te puedo dar amor como de chico<br>Cosquillas en la panza, como antes del primer pico (mai)`
     },
     {
         title: "Todo de Ti",
@@ -69,7 +68,7 @@ const songs = [
         album: "Reguetón · 2021",
         cover: `${SONGS_BASE_URL}/Fotos/OIP%20(7).webp`,
         audio: `${SONGS_BASE_URL}/Canciones/Rauw%20Alejandro%20-%20Todo%20de%20Ti%20(Video%20Oficial).m4a`,
-        lyrics: `El viento soba tu cabello<br>Me matan esos ojos bellos<br>Me gusta tu olor, de tu piel, el color<br>Y como me haces sentir<br><br>Me gusta tu boquita, ese labial rosita<br>Y cómo me besas a mí<br>Contigo quiero despertar<br>Hacerlo después de fumar<br>Ya no tengo na' que buscar<br>Algo fuera de aquí`
+        lyrics: `El viento soba tu cabello<br>Me matan esos ojos bellos<br><br>Me gusta tu olor, de tu piel el color<br>Y cómo me haces sentir<br>Me gusta tu boquita, ese labial rosita (tú)<br>Y cómo me besas a mí`
     },
     {
         title: "Loco Enamorado",
@@ -77,7 +76,7 @@ const songs = [
         album: "Pop · 2020",
         cover: `${SONGS_BASE_URL}/Fotos/f53f05470b4146d4a202cf5df55b4ead.1000x1000x1.png`,
         audio: `${SONGS_BASE_URL}/Canciones/Loco_Enamorado,_de_Abraham_Mateo_Ft_Farruko_%26_Christian_Daniel_Letra.m4a`,
-        lyrics: `Te confieso llevo un rato idealizándote<br>Toda una vida yo buscándote<br>No sé que hacer, te ves muy bien<br>Me acercaré<br><br>Te confieso que lo mío no es realmente hablar<br>Soy algo tímido, como verás<br>Pero, esta vez<br>Me atreveré, te lo diré<br><br>Ya me tienes como un loco enamorado<br>Baby, la verdad es que tú me gustas demasiado`
+        lyrics: `Te confieso, llevo un rato idealizándote<br>Toda una vida yo buscándote<br><br>Ya me tienes como un loco enamorado<br>Baby, la verdad es que tú me gustas demasiado`
     },
     {
         title: "Bailando",
@@ -85,7 +84,7 @@ const songs = [
         album: "Latino · 2014",
         cover: `${SONGS_BASE_URL}/Fotos/R%20(1).png`,
         audio: `${SONGS_BASE_URL}/Canciones/Enrique_Iglesias_%E2%80%93_Bailando_Lyrics_feat_Descemer_Bueno,_Gente_De.m4a`,
-        lyrics: `Yo te miro y se me corta la respiración<br>Cuando tú me miras, se me sube el corazón<br>Y en un silencio tu mirada dice mil palabras<br>La noche en la que te suplico que no salga el sol<br><br>Bailando<br>Tu cuerpo y el mío llenando el vacío<br>Subiendo y bajando<br>Bailando<br>Ese fuego por dentro me va enloqueciendo`
+        lyrics: `Yo te miro y se me corta la respiración<br>Cuando tú me miras, se me sube el corazón<br><br>Bailando, bailando<br>Tu cuerpo y el mío, llenando el vacío<br>Subiendo y bajando`
     },
     {
         title: "La Plena",
@@ -93,7 +92,7 @@ const songs = [
         album: "Urban · 2023",
         cover: `${SONGS_BASE_URL}/Fotos/ab67616d0000b2734740100d84f3667f1eae6870.jpeg`,
         audio: `${SONGS_BASE_URL}/Canciones/Be%C3%A9le,%20Westcol,%20Ovy%20On%20The%20Drums%20-%20LA%20PLENA%20(W%20Sound%2005).m4a`,
-        lyrics: `Eres la niña de mis ojos tú<br>Eres todo lo que quiero yo<br>¿Una cerveza pa calmar la sed?, no<br>Mejor ser besado por su boquita, amor<br><br>Las tentaciones así como tú<br>Merecen pecados como yo<br>Ay, si tú quieres, solo da la lu'<br>Tú sabes que no vo'a a decir que no`
+        lyrics: `Eres la niña de mis ojo', tú<br>Eres todo lo que quiero yo<br><br>Ay, tienes la magia<br>Tú, sí, tienes una vainita que a mí me encanta, me enloquece`
     },
     {
         title: "Tacones Rojos",
@@ -101,7 +100,7 @@ const songs = [
         album: "Pop · 2021",
         cover: `${SONGS_BASE_URL}/Fotos/OIP%20(8).webp`,
         audio: `${SONGS_BASE_URL}/Canciones/Sebasti%C3%A1n%20Yatra%20-%20Tacones%20Rojos%20(Official%20Video)%20(1).m4a`,
-        lyrics: `Hay un rayo de luz<br>Que entró por mi ventana<br>Y me ha devuelto las ganas<br>Me quita el dolor<br><br>Tu amor es uno de esos<br>Que te cambian con un beso<br>Y te pone a volar<br>Mi pedazo de sol<br>La niña de mis ojos<br>Tenía una colección<br>De corazones rotos`
+        lyrics: `Hay un rayo de luz que entró por mi ventana<br>Y me ha devuelto las ganas, me quita el dolor<br><br>Mi pedazo de Sol, la niña de mis ojos<br>La que baila reguetón con tacones rojos`
     },
     {
         title: "Cosas Que No Te Dije",
@@ -109,7 +108,7 @@ const songs = [
         album: "Urban · 2023",
         cover: `${SONGS_BASE_URL}/Fotos/ab67616d0000b273fb045f7dda9773e266437bc6.jpeg`,
         audio: `${SONGS_BASE_URL}/Canciones/Saiko%20-%20COSAS%20QUE%20NO%20TE%20DIJE%20(Official%20Video).m4a`,
-        lyrics: `Dime si te gustaría<br>Vamos a escribir nuestras iniciales juntas<br>La verdad que tú me gusta'<br>En invierno y en verano<br><br>Si te hago la pregunta<br>El horóscopo dice que somos compatible'<br>Y eso que yo no creía<br>Pero habrá que hacerle caso`
+        lyrics: `Que yo te quiero dormida<br>En la cama, con mi hoodie<br>Dime si te gustaría<br>Quiero ser todos tus hobbies, mami<br><br>Solo una cosa te pediría<br>Que si te doy mi corazón<br>Me lo cuides todos los días`
     },
     {
         title: "Indeciso",
@@ -117,37 +116,35 @@ const songs = [
         album: "Reguetón · 2020",
         cover: `${SONGS_BASE_URL}/Fotos/R%20(3).jpeg`,
         audio: `${SONGS_BASE_URL}/Canciones/Reik,%20J%20Balvin,%20Lalo%20Ebratt%20-%20Indeciso%20(Letra).m4a`,
-        lyrics: `Siempre que ella baila así<br>A mí me daña la cabeza<br>El día que la conocí<br>Tomaba tequila y cerveza<br><br>Y ahora yo me la pasó buscando<br>Una razón pa' verte bailando<br>Me robó el corazón sin permiso<br>Su movimiento me tiene indeciso`
+        lyrics: `Siempre que ella baila así<br>A mí me daña la cabeza<br>Me robó el corazón sin permiso<br>Su movimiento me tiene indeciso`
     }
 ];
 
-// ========== GALERÍA POR CARPETAS ==========
+// ========== GALERÍA (sin cambios) ==========
 const galleryFolders = {
-    "Flores": [
-        "https://tse1.mm.bing.net/th/id/OIP.yzoA33gqIWp4VvyFBIgZ9AHaHa?r=0",
-        "https://tse2.mm.bing.net/th/id/OIP.ncCyiDtANWeOuqyeQNPP9gHaE8?r=0",
-        "https://images.immediate.co.uk/production/volatile/sites/10/2021/06/2048x1365-Gypsophila-SEO-GettyImages-1305732961-38ee11b.jpg"
+    "Flores 🌸": [
+        "https://tse4.mm.bing.net/th/id/OIP.siib8QHQtFNbO9UW61p_mgHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
+        "https://images.immediate.co.uk/production/volatile/sites/10/2021/06/2048x1365-Gypsophila-SEO-GettyImages-1305732961-38ee11b.jpg",
+        "https://tse3.mm.bing.net/th/id/OIP.g1ZfCF5vVhcOkJAN78ZtDAHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
+        "https://i.etsystatic.com/13697085/r/il/a2f0e8/3104042304/il_1588xN.3104042304_eqct.jpg",
+        "https://i.pinimg.com/originals/85/7f/00/857f00fec518d3e2490c3026e7f77b10.jpg",
+        "https://bulbs.co.uk/wp-content/uploads/2022/12/Gypsophila.jpg",
+        "https://i.etsystatic.com/25318042/r/il/9a8d07/2772980805/il_1588xN.2772980805_cqio.jpg",
+        "https://inlandflowermarket.com/wp-content/uploads/2021/10/gypsophila-small-1.jpg"
     ],
-    "Gatos": [
-        "https://i.pinimg.com/originals/56/8d/30/568d30ba412ef11370d4abfa5fedc50a.jpg",
-        "https://i.pinimg.com/originals/e2/dd/1e/e2dd1e160a9aea6e58d80d3893449d49.jpg",
-        "https://wonder-day.com/wp-content/uploads/2022/03/wonder-day-avatar-memes-cats-23.jpg"
-    ],
-    "Harry Potter": [
-        "https://th.bing.com/th/id/R.c2c113d0707954ddb1cd5edd31c5e12b?rik=XgiQVDkbBF4Unw",
-        "https://th.bing.com/th/id/OIP.W8yJ7g6y2m1t4p0r0s2e5d6c7b8a9.jpg"
-    ],
-    "Gravity Falls": [
-        "https://images6.alphacoders.com/131/1316755.jpg",
-        "https://image.tmdb.org/t/p/original/l0XvAI856XdyDYEfr1njztjH7u0.jpg"
-    ],
-    "Peluches": [
-        "http2.mlstatic.com/peluches-gigantes-140-metros-peluche-regalo-oso-de-peluche-D_NQ_NP_720797-MCO25739024511_072017-F.jpg",
-        "https://i5.walmartimages.com/asr/f4867e63-2436-40a5-96f6-47bfbf67326a.fc3d124a21ef9ce002233faa3f6bae12.jpeg"
+    "Gatos 🐱": [
+        "https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=600",
+        "https://images.pexels.com/photos/1056251/pexels-photo-1056251.jpeg?auto=compress&cs=tinysrgb&w=600",
+        "https://images.pexels.com/photos/127028/pexels-photo-127028.jpeg?auto=compress&cs=tinysrgb&w=600",
+        "https://images.pexels.com/photos/2071873/pexels-photo-2071873.jpeg?auto=compress&cs=tinysrgb&w=600",
+        "https://images.pexels.com/photos/104827/cat-pet-animal-domestic-104827.jpeg?auto=compress&cs=tinysrgb&w=600",
+        "https://images.pexels.com/photos/33152/cat-kitten-animal-cat-play.jpg?auto=compress&cs=tinysrgb&w=600",
+        "https://i.pinimg.com/1200x/ab/de/70/abde70ec7dd62bf68c9e53ac714a22f3.jpg",
+        "https://i.pinimg.com/1200x/70/97/0c/70970c1c4bb9ae6157a63be625721659.jpg"
     ]
 };
 
-// ========== MEMES POR CARPETAS (Instagram Guardados Style) ==========
+// ========== MEMES (sin cambios) ==========
 const memeImages = {
     "Favoritos ⭐": [
         "https://tu-rincon-favorito.vercel.app/imagenes/GorditoJoker.png",
@@ -164,22 +161,38 @@ const memeImages = {
     ]
 };
 
-// ========== GUSTOS PERSONALES ==========
+// ========== GUSTOS PERSONALES (actualizado: podio) ==========
 const gustos = {
+    podio: [
+        {
+            puesto: "1º",
+            medalla: "🥇",
+            titulo: "Harry Potter",
+            tipo: "Saga de películas · 2001–2011",
+            descripcion: "La saga mágica por excelencia. Siete libros, ocho películas y un mundo que nunca deja de crecer. Hogwarts, los personajes entrañables y la lucha entre el bien y el mal la convierten en una historia que acompaña toda la vida."
+        },
+        {
+            puesto: "2º",
+            medalla: "🥈",
+            titulo: "Frozen",
+            tipo: "Película · Disney · 2013",
+            descripcion: "Más que una película de princesas: una historia sobre el amor entre hermanas, la aceptación de uno mismo y el poder de soltar el miedo. 'Let It Go' sigue siendo un himno."
+        },
+        {
+            puesto: "3º",
+            medalla: "🥉",
+            titulo: "Los Simpson / Gravity Falls",
+            tipo: "Series de animación",
+            descripcion: "Los Simpson llevan décadas siendo los reyes de la comedia familiar con humor inteligente. Gravity Falls, en cambio, es una joya de misterio y aventura para quienes aman los secretos ocultos en cada fotograma."
+        }
+    ],
     personal: [
         "Colores: Rosa y negro",
-        "Números: 4, 7, 27, 46, 48",
+        "Números favoritos: 4, 7, 27, 46, 48",
         "Flores: Gypsophila, manzanilla, rosas",
         "Animal: Gatos",
         "Perfume: Moschino Toy 2",
         "Joyería: anillos, collares, pulseras"
-    ],
-    hobbies: [
-        "Dormir, dibujar, hacer deporte",
-        "Películas: Harry Potter, Frozen",
-        "Series: Los Simpson, Gravity Falls",
-        "Le gusta todo en música",
-        "Quiere ser programadora"
     ],
     food: [
         "Bayas, frutas, verduras, ramen",
@@ -189,18 +202,80 @@ const gustos = {
     ]
 };
 
-// ========== DATOS DE GATOS ==========
+// ========== DATOS DE GATOS (actualizado) ==========
 const catFacts = [
-    "Duermen 12-16 horas al día",
-    "Pueden girar orejas 180°",
-    "Nariz única como huella",
-    "Tienen tercer párpado",
-    "Tapetum lucidum para ver en oscuro",
-    "Les encanta calor y alturas"
+    {
+        icon: "😴",
+        titulo: "Campeones del descanso",
+        texto: "Los gatos pasan alrededor del 70% de su vida durmiendo, unas 13–16 horas al día. No es vagancia: es una adaptación de depredadores que necesitan conservar energía para cazar."
+    },
+    {
+        icon: "⚡",
+        titulo: "Velocidad y agilidad",
+        texto: "Pueden alcanzar hasta 50 km/h en distancias cortas y saltar hasta 5 veces su propia altura. Su columna vertebral extraordinariamente flexible es la clave de esa agilidad."
+    },
+    {
+        icon: "🔊",
+        titulo: "Comunicación increíble",
+        texto: "Los gatos emiten alrededor de 100 sonidos diferentes; los perros solo producen unos 10. Además, el ronroneo se genera cuando el aire pasa unas 25 veces por segundo por la laringe, y los científicos aún no entienden del todo cómo funciona."
+    },
+    {
+        icon: "🐯",
+        titulo: "Primos de los tigres",
+        texto: "Los gatos domésticos comparten el 95,6% de su ADN con los tigres. Por eso exhiben comportamientos muy similares: marcar territorio, acechar a sus presas o frotar la cabeza para dejar su olor."
+    },
+    {
+        icon: "📜",
+        titulo: "Historia de 9.500 años",
+        texto: "El primer gato doméstico del que se tiene registro vivió hace unos 9.500 años, mucho antes de las civilizaciones del antiguo Egipto. Los humanos y los gatos llevan conviviendo más tiempo del que solemos imaginar."
+    },
+    {
+        icon: "🏛️",
+        titulo: "Alcalde felino",
+        texto: "Una pequeña ciudad de Alaska tuvo a un gato llamado Stubbs como alcalde honorario durante más de 20 años. Los vecinos lo adoraban y era la principal atracción turística del pueblo."
+    }
 ];
 
-// ========== DATOS DE SAN PETERSBURGO ==========
+// ========== DATOS DE SAN PETERSBURGO (actualizado) ==========
 const spbData = {
+    intro: "San Petersburgo, fundada por Pedro el Grande en 1703, es la segunda ciudad más grande de Rusia y fue capital imperial hasta la Revolución de 1917. Conocida como la 'Venecia del Norte', es una ciudad de agua, arte y luz que guarda secretos en cada rincón.",
+    curiosidades: [
+        {
+            icon: "🌉",
+            titulo: "Ciudad de los 800 puentes",
+            texto: "San Petersburgo tiene alrededor de 800 puentes, de los cuales 19 son móviles y se elevan cada noche para dejar pasar los barcos por el río Nevá. Durante las noches blancas de verano, verlos abrirse bajo la luz crepuscular es un espectáculo único."
+        },
+        {
+            icon: "🏛️",
+            titulo: "El Hermitage y sus millones de obras",
+            texto: "El Palacio de Invierno alberga el museo Hermitage, con más de 3 millones de piezas. Se calcula que si dedicases un minuto a cada obra, necesitarías más de una década para ver toda la colección."
+        },
+        {
+            icon: "🐱",
+            titulo: "Los gatos del Hermitage",
+            texto: "Tradicionalmente, decenas de gatos viven en el Hermitage con el encargo de ahuyentar roedores. Desde 2014 existe un programa oficial de adopción para los 'gatos sobrantes' del museo, y tienen su propia fiesta anual el 18 de abril."
+        },
+        {
+            icon: "🗿",
+            titulo: "La columna que no necesita tornillos",
+            texto: "En la Plaza del Palacio se levanta la Columna de Alejandro, un monolito de granito de 600 toneladas que lleva erguido desde 1834 sin ningún anclaje: se mantiene en pie únicamente por su propio peso."
+        },
+        {
+            icon: "🚇",
+            titulo: "El metro más profundo del mundo",
+            texto: "El metro de San Petersburgo es uno de los más profundos del planeta. La estación Admiralteyskaya se encuentra a 86 metros bajo tierra, casi como un refugio antiaéreo. Las escaleras mecánicas para llegar al andén son larguísimas."
+        },
+        {
+            icon: "🐦",
+            titulo: "La estatua más pequeña y más robada",
+            texto: "Junto al río Fontanka hay una estatuilla de Chízhik-Pízhik que mide solo 11 cm. Ha sido robada siete veces, aunque siempre regresa a su lugar. La tradición dice que si lanzas una moneda y cae sobre la repisa donde está, tu deseo se cumple."
+        },
+        {
+            icon: "⛪",
+            titulo: "La cúpula que salvó la ciudad",
+            texto: "La enorme cúpula dorada de la Catedral de San Isaac, una de las mayores del mundo, fue pintada de gris durante la Segunda Guerra Mundial para que no sirviese de punto de referencia a los bombardeos alemanes."
+        }
+    ],
     foods: [
         ["Borsch", "https://assets.elgourmet.com/wp-content/uploads/2023/03/cover_xqm3gckj18_shutterstock-489714061.jpg"],
         ["Pelmeni", "https://static.vecteezy.com/system/resources/previews/015/590/084/large_2x/traditional-russian-pelmeni-or-ravioli-dumplings-with-meat-on-wood-black-background-russian-food-and-russian-kitchen-concept-photo.JPG"],
@@ -212,25 +287,24 @@ const spbData = {
         "https://th.bing.com/th/id/R.4310f3839d4dedab0eb8d530509ecc56?rik=c27AsXTIZh%2b1iA"
     ],
     traditions: [
-        "Noches Blancas: crepusculo continuo y conciertos nocturnos.",
-        "Pan y sal: simbolo de hospitalidad y respeto.",
-        "Velas Escarlatas: graduacion con barcos, fuegos artificiales y musica.",
-        "Opera y ballet bajo las estrellas durante el verano."
+        "Noches Blancas: crepúsculo continuo y conciertos nocturnos.",
+        "Pan y sal: símbolo de hospitalidad y respeto.",
+        "Velas Escarlatas: graduación con barcos, fuegos artificiales y música.",
+        "Ópera y ballet bajo las estrellas durante el verano."
     ],
     phrases: [
-        "Privet - Hola",
-        "Spasibo - Gracias",
-        "Pozhaluysta - De nada / Por favor",
-        "Do svidaniya - Adios",
-        "Ya tebya lyublyu - Te amo"
+        "Privet — Hola",
+        "Spasibo — Gracias",
+        "Pozhaluysta — De nada / Por favor",
+        "Do svidaniya — Adiós",
+        "Ya tebya lyublyu — Te amo"
     ]
 };
 
 // ========== EXPORTAR TODO ==========
-// En Vanilla JS, everything is global
-window.songsData = songs;
+window.songsData         = songs;
 window.galleryFoldersData = galleryFolders;
-window.memeImagesData = memeImages;
-window.gustosData = gustos;
-window.catFactsData = catFacts;
-window.spbData = spbData;
+window.memeImagesData    = memeImages;
+window.gustosData        = gustos;
+window.catFactsData      = catFacts;
+window.spbData           = spbData;

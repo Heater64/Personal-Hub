@@ -3,42 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎵 Canciones — Personal Hub</title>
+    <title>Canciones</title>
     <meta name="description" content="Tus canciones favoritas con reproductor y letras completas">
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 <div class="page">
 
-    <!-- HEADER -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
-                <h1>Home<span>✦</span></h1>
-                <p>Tu espacio personal</p>
+                <h1>Canciones<i data-lucide="music" style="width:1.2rem; margin-left: 4px;"></i></h1>
             </div>
         </div>
         <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='index.html'">Inicio</button>
-            <button class="nav-btn active">🎵 Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'">🏠 TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'">🎁 Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
+            <button class="nav-btn active"><i data-lucide="music"></i> Canciones</button>
+            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
+            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='ThoseYourEyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
         </nav>
     </header>
 
-    <!-- CANCIONES -->
     <section id="canciones" class="page-section">
-
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
-            ← Volver al Hub
+            <i data-lucide="arrow-left"></i> Volver al Hub
         </button>
 
         <div class="player-layout">
-
-            <!-- PLAYER PANEL -->
             <div class="player-panel">
-                <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--rose);margin-bottom:4px;">Reproduciendo ahora</div>
+                <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);margin-bottom:4px;">Reproduciendo ahora</div>
                 <div class="player-album">
                     <img id="currentCover" src="" alt="Portada del álbum">
                 </div>
@@ -46,9 +42,9 @@
                 <div class="player-subtitle" id="currentSubtitle"></div>
 
                 <div class="player-controls">
-                    <button class="player-btn" id="prevBtn" title="Anterior">⏮</button>
-                    <button class="player-btn play" id="playBtn" title="Reproducir">▶</button>
-                    <button class="player-btn" id="nextBtn" title="Siguiente">⏭</button>
+                    <button class="player-btn" id="prevBtn" title="Anterior"><i data-lucide="skip-back"></i></button>
+                    <button class="player-btn play" id="playBtn" title="Reproducir"><i data-lucide="play"></i></button>
+                    <button class="player-btn" id="nextBtn" title="Siguiente"><i data-lucide="skip-forward"></i></button>
                 </div>
 
                 <div class="progress-bar">
@@ -60,39 +56,47 @@
                         <div class="progress-fill" id="progressFill"></div>
                     </div>
                 </div>
-
                 <audio id="audioPlayer"></audio>
             </div>
 
-            <!-- RIGHT COLUMN: LYRICS + LIST -->
             <div style="display:grid;gap:16px;">
-
-                <!-- LYRICS -->
-                <div class="section-card">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-                        <span style="font-size:1rem;">📝</span>
-                        <h3 style="margin:0;">Letra</h3>
+                <!-- LYRICS SECTION con mejoras -->
+                <div class="section-card lyrics-card">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+                        <i data-lucide="file-text"></i>
+                        <h3 style="margin:0; flex:1;">Letra</h3>
+                        <button class="icon-btn" id="toggleLyricsBtn" title="Ocultar/Mostrar letra">
+                            <i data-lucide="eye"></i>
+                        </button>
+                        <button class="icon-btn" id="expandLyricsBtn" title="Ver letra en pantalla completa">
+                            <i data-lucide="maximize-2"></i>
+                        </button>
                     </div>
                     <div class="lyrics-panel" id="lyricsPanel"></div>
                 </div>
 
-                <!-- SONGS LIST -->
                 <div class="section-card">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-                        <span style="font-size:1rem;">🎶</span>
+                        <i data-lucide="list-music"></i>
                         <h3 style="margin:0;">Todas las canciones</h3>
-                        <span style="margin-left:auto;font-size:0.75rem;font-family:'DM Mono',monospace;color:var(--cream-4);background:var(--fog);border:1px solid var(--wire);padding:3px 10px;border-radius:var(--r-pill);">14</span>
+                        <span style="margin-left:auto;font-size:0.75rem;font-family:'Inter', monospace;color:var(--umbra-ash);background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);padding:3px 10px;border-radius:var(--radius-pill);">14</span>
                     </div>
                     <div class="songs-grid" id="songsList"></div>
                 </div>
-
             </div>
         </div>
-
     </section>
 </div>
 
-<!-- LIGHTBOX -->
+<!-- LIGHTBOX para letras expandidas -->
+<div id="lyricsLightbox" class="lightbox lyrics-lightbox">
+    <button class="lightbox-close" onclick="closeLyricsLightbox()">✕</button>
+    <div class="lightbox-content lyrics-lightbox-content" id="lyricsLightboxContent">
+        <div class="lyrics-expanded" id="expandedLyricsText"></div>
+    </div>
+</div>
+
+<!-- Lightbox general (imágenes) -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>

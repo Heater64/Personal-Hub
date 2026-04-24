@@ -3,109 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏠 TuRincónFav</title>
+    <title>TuRincónFav</title>
     <meta name="description" content="Tu Rincón Favorito: galería, gatos, memes, gustos y más">
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 <div class="page">
 
-    <!-- HEADER -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
-                <h1>Home<span>✦</span></h1>
-                <p>Tu espacio personal</p>
+                <h1>Tu Rincón Favorito<i data-lucide="heart" style="width:1.2rem; margin-left: 4px;"></i></h1>
             </div>
         </div>
         <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='index.html'">Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='canciones.html'">🎵 Canciones</button>
-            <button class="nav-btn active">🏠 TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'">🎁 Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
+            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
+            <button class="nav-btn active"><i data-lucide="heart"></i> TuRincónFav</button>
+            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='ThoseYourEyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
         </nav>
     </header>
 
-    <!-- RINCÓN -->
     <section id="rincon" class="page-section">
-
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
-            ← Volver al Hub
+            <i data-lucide="arrow-left"></i> Volver al Hub
         </button>
 
         <div class="section-card" style="margin-bottom:20px;">
-            <h2>🏠 Mi Rincón Favorito</h2>
+            <h2><i data-lucide="heart" style="width:1.6rem;"></i> Mi Rincón Favorito</h2>
             <p style="margin-top:8px;margin-bottom:20px;">Un espacio especial con todo lo que te gusta: fotos, gatos, memes y más.</p>
 
             <nav class="sub-nav">
-                <button class="sub-tab active" data-subview="rincon-inicio">Inicio</button>
-                <button class="sub-tab" data-subview="rincon-galeria">Galería</button>
-                <button class="sub-tab" data-subview="rincon-tú">Tú</button>
-                <button class="sub-tab" data-subview="rincon-gatos">Gatos</button>
-                <button class="sub-tab" data-subview="rincon-memes">Memes</button>
-                <button class="sub-tab" data-subview="rincon-spb">San Petersburgo</button>
+                <button class="sub-tab active" data-subview="rincon-inicio"><i data-lucide="home"></i> Inicio</button>
+                <button class="sub-tab" data-subview="rincon-galeria"><i data-lucide="camera"></i> Galería</button>
+                <button class="sub-tab" data-subview="rincon-tú"><i data-lucide="palette"></i> Tú</button>
+                <button class="sub-tab" data-subview="rincon-gatos"><i data-lucide="cat"></i> Gatos</button>
+                <button class="sub-tab" data-subview="rincon-memes"><i data-lucide="smile"></i> Memes</button>
+                <button class="sub-tab" data-subview="rincon-spb"><i data-lucide="globe"></i> San Petersburgo</button>
             </nav>
         </div>
 
-        <!-- INICIO -->
         <div id="rincon-inicio" class="sub-view active">
             <div class="section-card" style="text-align:center;padding:48px 24px;">
                 <img src="https://tu-rincon-favorito.vercel.app/imagenes/DADA.jpg"
                      alt="Avatar"
-                     style="width:160px;height:160px;border-radius:50%;object-fit:cover;margin:0 auto 24px;border:2px solid var(--wire-2);box-shadow:var(--glow-rose);">
-                <h2 style="margin-bottom:10px;">Bienvenida a tu rincón favorito 💖</h2>
+                     style="width:160px;height:160px;border-radius:50%;object-fit:cover;margin:0 auto 24px;border:2px solid var(--border-visible);">
+                <h2 style="margin-bottom:10px;">Bienvenida a tu rincón favorito <i data-lucide="heart" style="display:inline; width:1.2rem;"></i></h2>
                 <p>Donde cada día eres especial ✨🌸🐱</p>
             </div>
         </div>
 
-        <!-- GALERÍA -->
         <div id="rincon-galeria" class="sub-view">
             <div class="section-card">
-                <h3>📸 Galería</h3>
+                <h3><i data-lucide="camera"></i> Galería</h3>
                 <p style="margin-bottom:16px;">Tus fotos organizadas por carpetas. Click para ver todas.</p>
                 <div id="galleryGrid"></div>
             </div>
         </div>
 
-        <!-- TÚ -->
         <div id="rincon-tú" class="sub-view">
             <div class="section-card">
-                <h3>🎨 Tus Gustos</h3>
+                <h3><i data-lucide="palette"></i> Tus Gustos</h3>
                 <div id="gustosPanel"></div>
             </div>
         </div>
 
-        <!-- GATOS -->
         <div id="rincon-gatos" class="sub-view">
             <div class="section-card">
-                <h3>🐱 Datos sobre Gatos</h3>
-                <ul id="catFacts" style="padding-left:20px;color:var(--cream-3);margin-top:12px;line-height:2;"></ul>
+                <h3><i data-lucide="cat"></i> Datos sobre Gatos</h3>
+                <ul id="catFacts" style="padding-left:20px;color:var(--umbra-ash);margin-top:12px;line-height:2;"></ul>
             </div>
         </div>
 
-        <!-- MEMES -->
         <div id="rincon-memes" class="sub-view">
             <div class="section-card">
-                <h3>😂 Memes</h3>
+                <h3><i data-lucide="smile"></i> Memes</h3>
                 <p style="margin-bottom:16px;">Primero elige una carpeta, luego los memes.</p>
                 <div id="memesFoldersNav" class="memes-folders-nav"></div>
                 <div id="memesGrid"></div>
             </div>
         </div>
 
-        <!-- SPB -->
         <div id="rincon-spb" class="sub-view">
             <div class="section-card">
-                <h3>🌍 San Petersburgo</h3>
+                <h3><i data-lucide="globe"></i> San Petersburgo</h3>
                 <div id="spbPanel"></div>
             </div>
         </div>
-
     </section>
 </div>
 
-<!-- LIGHTBOX -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>

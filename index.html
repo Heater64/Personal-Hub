@@ -7,76 +7,68 @@
     <meta name="description" content="Tu lanzadera de proyectos personales">
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 <div class="page">
 
-    <!-- HEADER -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
-                <h1>Home<span>✦</span></h1>
-                <p>Tu espacio personal · Todo en un lugar</p>
+                <h1>Home<i data-lucide="star" style="width:1.2rem; margin-left: 4px;"></i></h1>
+                <p>Aquí añadiré todas las cosas online que te regale miniña guapa · Todo en un lugar</p>
             </div>
         </div>
         <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn active" onclick="window.location.href='index.html'">Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='canciones.html'">🎵 Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'">🏠 TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'">🎁 Regalos</button>
+            <button class="nav-btn active" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
+            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
+            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
+            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='ThoseYourEyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
         </nav>
     </header>
 
-    <!-- HOME -->
     <section id="home" class="page-section">
-
-        <!-- HERO -->
-        <div class="bento-hero glass" style="margin-bottom: 20px;">
-            <p class="eyebrow">✦ Centro de proyectos</p>
-            <h2>Bienvenida<br>a tu <em>Web</em></h2>
-            <p>Explora las webs que iré subiendo a lo largo del tiempo. Cada tarjeta es una diferente pero con el mismo proposito.</p>
+        <div class="bento-hero glass">
+            <p class="eyebrow"><i data-lucide="sparkles" style="width:0.9rem;"></i> centro de webs</p>
+            <h2>Bienvenida<br> mi<em> princesa</em></h2>
+            <p>Explora las webs que iré subiendo a lo largo del tiempo. Cada tarjeta es una diferente pero con el mismo propósito.</p>
         </div>
 
-        <!-- GRID -->
         <div class="bento-grid">
-
-            <button class="bento-card large" onclick="window.location.href='canciones.html'" style="position:relative;">
-                <span class="icon">🎵</span>
+            <button class="bento-card" onclick="window.location.href='canciones.html'">
+                <i data-lucide="music" class="icon"></i>
                 <h3>Canciones</h3>
                 <p>Trozos de canciones que me recuerdan a ti, mi princesa.</p>
                 <div style="margin-top:20px; display:flex; gap:10px; align-items:center;">
-                    <div style="width:36px;height:36px;border-radius:8px;background:var(--rose-dim);border:1px solid var(--rose-glow);display:flex;align-items:center;justify-content:center;font-size:0.9rem;">▶</div>
-                    <span style="font-size:0.75rem;color:var(--cream-4);letter-spacing:0.05em;">14 canciones · Escúchalas ahora</span>
+                    <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;">
+                        <i data-lucide="play-circle" style="width:1.2rem;"></i>
+                    </div>
+                    <span style="font-size:0.75rem;color:var(--umbra-ash);letter-spacing:0.05em;">14 canciones · Escúchalas ahora</span>
                 </div>
-                <!-- decorative bar -->
-                <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--rose),var(--gold),transparent);border-radius:0 0 var(--r-lg) var(--r-lg);"></div>
             </button>
 
             <button class="bento-card" onclick="window.location.href='rincon.html'">
-                <span class="icon">🏠</span>
+                <i data-lucide="heart" class="icon"></i>
                 <h3>TuRincónFav</h3>
                 <p>Galería, gatos, memes, gustos y tu rincón especial.</p>
             </button>
 
             <button class="bento-card" onclick="window.location.href='planner.html'">
-                <span class="icon">🎁</span>
+                <i data-lucide="gift" class="icon"></i>
                 <h3>Regalos</h3>
                 <p>Planificador de ideas de regalo, guardadas localmente.</p>
             </button>
-
         </div>
 
-        <!-- FOOTER NOTE -->
         <div style="text-align:center; margin-top:40px; padding: 20px;">
-            <p style="font-size:0.75rem; color:var(--cream-4); letter-spacing:0.06em; font-weight:300;">
-                Hecho con amor · Se irán añadiendo más páginas ✦
+            <p style="font-size:0.75rem; color:var(--umbra-ash); letter-spacing:0.06em; font-weight:300;">
+                Hecho con amor · Se irán añadiendo más páginas <i data-lucide="asterisk" style="width:0.7rem;"></i>
             </p>
         </div>
-
     </section>
 </div>
 
-<!-- LIGHTBOX -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>

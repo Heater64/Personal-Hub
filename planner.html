@@ -3,96 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎁 Regalos</title>
-    <meta name="description" content="Planificador de regalos con persistencia local">
+    <title>Notas · Regalos</title>
+    <meta name="description" content="Tus notas y recordatorios">
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 <div class="page">
 
-    <!-- HEADER -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
-                <h1>Home<span>✦</span></h1>
-                <p>Tu espacio personal</p>
+                <h1>Regalos<i data-lucide="gift" style="width:1.2rem; margin-left: 4px;"></i></h1>
+                <p>Ideas y recordatorios</p>
             </div>
         </div>
         <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='index.html'">Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='canciones.html'">🎵 Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'">🏠 TuRincónFav</button>
-            <button class="nav-btn active">🎁 Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
+            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
+            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
+            <button class="nav-btn active"><i data-lucide="gift"></i> Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='ThoseYourEyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
         </nav>
     </header>
 
-    <!-- PLANNER -->
     <section id="planner" class="page-section">
-
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
-            ← Volver al Hub
+            <i data-lucide="arrow-left"></i> Volver al Hub
         </button>
 
         <div class="section-card">
-            <h2>🎁 Planner de Regalos</h2>
-            <p style="margin-top:6px;margin-bottom:24px;">Organiza tus ideas de regalo. Se guardan automáticamente en tu navegador.</p>
+            <h2><i data-lucide="sticky-note"></i> Apunta las ideas de regalos</h2>
+            <p style="margin-top:6px;margin-bottom:24px;">Guarda ideas, tareas o lo que quieras recordar.</p>
 
-            <div class="planner-grid">
-
-                <!-- AGREGAR -->
-                <div class="planner-step">
-                    <strong>💡 Agregar Idea</strong>
-                    <p>Escribe una idea de regalo</p>
-                    <input type="text"
-                           class="planner-input"
-                           id="giftInput"
-                           placeholder="Ej: Peluche gigante 🧸">
-                    <button class="nav-btn"
-                            style="width:100%;margin-top:10px;justify-content:center;background:var(--rose);border-color:var(--rose);color:#fff;"
-                            onclick="addGift()">
-                        Agregar idea
+            <div class="notes-layout">
+                <!-- COLUMNA IZQUIERDA: AÑADIR NOTA -->
+                <div class="notes-add">
+                    <strong><i data-lucide="plus-circle"></i> Nueva nota</strong>
+                    <textarea id="noteInput" class="note-input" placeholder="Escribe tu nota aquí..."></textarea>
+                    <button class="nav-btn" id="addNoteBtn" style="width:100%; justify-content:center; background:var(--accent-coral); border-color:var(--accent-coral); color:#fff;">
+                        <i data-lucide="save"></i> Guardar nota
                     </button>
                 </div>
 
-                <!-- LISTA -->
-                <div class="planner-step">
-                    <strong>📝 Ideas Guardadas</strong>
-                    <p>Se guardan en tu navegador</p>
-                    <ul class="planner-list" id="giftList"></ul>
+                <!-- COLUMNA DERECHA: LISTA DE NOTAS -->
+                <div class="notes-list-container">
+                    <strong><i data-lucide="list"></i> Mis Regalos</strong>
+                    <p style="font-size:0.75rem; color:var(--umbra-ash); margin-bottom:16px;">Haz clic en un regalo para expandirlo</p>
+                    <div id="notesList" class="notes-list"></div>
                 </div>
-
-                <!-- CONSEJOS -->
-                <div class="planner-step">
-                    <strong>✨ Consejos</strong>
-                    <ul style="padding-left:18px;color:var(--cream-3);margin-top:10px;line-height:2;font-size:0.85rem;font-weight:300;">
-                        <li>Elige ocasión y presupuesto</li>
-                        <li>Anota pistas, gustos y colores</li>
-                        <li>Guarda enlaces e ideas</li>
-                        <li>Marca estado: pendiente/comprado</li>
-                    </ul>
-                </div>
-
-                <!-- IDEAS -->
-                <div class="planner-step">
-                    <strong>🎁 Ideas de ejemplo</strong>
-                    <ul style="padding-left:18px;color:var(--cream-3);margin-top:10px;line-height:2;font-size:0.85rem;font-weight:300;">
-                        <li>Peluches 🧸</li>
-                        <li>Flores 💐</li>
-                        <li>Carta manuscrita ✉️</li>
-                        <li>Playlist 💿</li>
-                        <li>Snacks favoritos 🍫</li>
-                        <li>Recuerdos impresos 📸</li>
-                    </ul>
-                </div>
-
             </div>
         </div>
-
     </section>
 </div>
 
-<!-- LIGHTBOX -->
+<!-- LIGHTBOX PARA VER/EDITAR NOTA (similar al de letras) -->
+<div id="noteLightbox" class="lightbox note-lightbox">
+    <button class="lightbox-close" onclick="closeNoteLightbox()">✕</button>
+    <div class="lightbox-content note-lightbox-content">
+        <div class="note-expanded">
+            <textarea id="expandedNoteText" class="note-expanded-textarea" placeholder="Escribe tu nota..."></textarea>
+            <div class="note-expanded-actions">
+                <button class="nav-btn" id="saveNoteEditBtn"><i data-lucide="save"></i> Guardar cambios</button>
+                <button class="nav-btn" id="deleteNoteFromLightboxBtn"><i data-lucide="trash-2"></i> Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox genérico (imágenes) -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>
