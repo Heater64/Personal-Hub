@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mal dia</title>
+    <meta name="description" content="Web de emergencia emocional para levantar el animo">
+    <meta name="theme-color" content="#0c0b0b">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
+    <style>
+        body {
+            background:
+                radial-gradient(circle at top left, rgba(255, 198, 64, 0.12), transparent 25%),
+                linear-gradient(180deg, #15120f 0%, #0f0f10 100%);
+        }
+        .warm-card {
+            background: linear-gradient(180deg, rgba(255, 185, 92, 0.12), rgba(255,255,255,0.03));
+            border: 1px solid rgba(255, 185, 92, 0.18);
+        }
+        .boost-grid {
+            display: grid;
+            gap: var(--space-md);
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+        .boost-number {
+            font-size: 2.4rem;
+            font-family: 'Playfair Display', Georgia, serif;
+            color: #ffc567;
+        }
+        .hero-message {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            margin-top: var(--space-sm);
+            color: var(--umbra-light);
+        }
+        .float-hearts {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .float-hearts span {
+            position: absolute;
+            bottom: -40px;
+            font-size: 1.2rem;
+            animation: rise 5s linear forwards;
+            opacity: 0.85;
+        }
+        @keyframes rise {
+            from { transform: translateY(0) scale(0.9); opacity: 0.9; }
+            to { transform: translateY(-110vh) scale(1.2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+<div class="float-hearts" id="floatHearts"></div>
+<div class="page" style="position:relative; z-index:1;">
+    <header class="header glass">
+        <div class="header-top">
+            <div class="brand">
+                <h1>Mal dia<i data-lucide="sun-medium" style="width:1.2rem; margin-left: 4px;"></i></h1>
+                <p>Un abrazo rapido en formato web</p>
+            </div>
+        </div>
+        <nav class="nav-main" aria-label="Navegación principal">
+            <button class="nav-btn" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
+            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
+            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
+            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='ThoseYourEyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
+            <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
+            <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
+            <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
+            <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
+            <button class="nav-btn active"><i data-lucide="sun-medium"></i> Mal dia</button>
+        </nav>
+    </header>
+
+    <section class="page-section">
+        <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
+            <i data-lucide="arrow-left"></i> Volver al Hub
+        </button>
+
+        <div class="section-card warm-card" style="text-align:center; padding:var(--space-xl) var(--space-lg);">
+            <p class="eyebrow" style="color:#ffc567; margin-bottom:var(--space-sm);">boton de emergencia emocional</p>
+            <h2>Si estas teniendo un mal dia...</h2>
+            <p id="heroMessage" class="hero-message">Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un poquito de ternura contigo.</p>
+            <div style="display:flex; gap:var(--space-sm); justify-content:center; flex-wrap:wrap; margin-top:var(--space-lg);">
+                <button class="nav-btn" id="newPhraseBtn" style="border-color:#ffc567; color:#ffc567;"><i data-lucide="sparkles"></i> Otra frase</button>
+                <button class="nav-btn" id="musicBtn" style="border-color:#ffc567; color:#ffc567;"><i data-lucide="play"></i> Pon musica feliz</button>
+                <button class="nav-btn" id="betterBtn" style="border-color:#ffc567; color:#ffc567;"><i data-lucide="heart"></i> Me siento mejor</button>
+            </div>
+            <audio id="happyAudio" preload="none">
+                <source src="" type="audio/mpeg">
+            </audio>
+        </div>
+
+        <div class="boost-grid" style="margin-top:var(--space-lg);">
+            <article class="section-card warm-card">
+                <h3><i data-lucide="smile"></i> Estas hermosa hoy</h3>
+                <div class="boost-number" id="kindCounter"></div>
+                <button class="nav-btn" id="countBtn" style="margin-top:var(--space-sm); border-color:#ffc567; color:#ffc567;">
+                    <i data-lucide="plus"></i> Sorpresa</button>
+            </article>
+            <article class="section-card warm-card">
+                <h3><i data-lucide="image"></i> Recuerdo visual</h3>
+                <img src="https://tu-rincon-favorito.vercel.app/imagenes/Gatosencama.jpg" alt="Recuerdo bonito" style="border-radius:var(--radius-md); margin-top:var(--space-sm);">
+            </article>
+            <article class="section-card warm-card">
+                <h3><i data-lucide="badge-help"></i> Mini recordatorio</h3>
+                <p style="margin-top:var(--space-sm); color:var(--umbra-light); line-height:1.8;">Hoy estabas increíblemente guapa, más que nunca y eso que siempre estás espectacular e… tan bella, divina, mi princesa, mi mujer, mi pequeña traviesa de esos ojitos azules y ese verde tan único que me enamoran cada día. No dejo de pensar en lo hermosa que eres y en lo afortunado que soy de tenerte.
+                Eres lo mejor que me ha pasado, mi amorcito, mi niña preciosa, y quiero que duermas sabiendo que te amo muchísimo y que siempre estaré contigo ❤️</p>
+            </article>
+        </div>
+    </section>
+</div>
+
+<script>
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    const phrases = [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+    ];
+
+    const heroMessage = document.getElementById('heroMessage');
+    const happyAudio = document.getElementById('happyAudio');
+    const kindCounter = document.getElementById('kindCounter');
+    const floatHearts = document.getElementById('floatHearts');
+
+    function randomPhrase() {
+        heroMessage.textContent = phrases[Math.floor(Math.random() * phrases.length)];
+    }
+
+    function launchHearts(amount = 18) {
+        const icons = ['❤', '✦', '☀', '♡'];
+        for (let i = 0; i < amount; i++) {
+            const span = document.createElement('span');
+            span.textContent = icons[Math.floor(Math.random() * icons.length)];
+            span.style.left = `${Math.random() * 100}%`;
+            span.style.animationDelay = `${Math.random() * 0.6}s`;
+            span.style.color = i % 2 === 0 ? '#ffc567' : '#ff8aa1';
+            floatHearts.appendChild(span);
+            setTimeout(() => span.remove(), 5200);
+        }
+    }
+
+    document.getElementById('newPhraseBtn').addEventListener('click', randomPhrase);
+    document.getElementById('musicBtn').addEventListener('click', () => {
+        if (happyAudio.paused) {
+            happyAudio.play();
+        } else {
+            happyAudio.pause();
+        }
+    });
+    document.getElementById('betterBtn').addEventListener('click', () => {
+        randomPhrase();
+        launchHearts();
+    });
+    document.getElementById('countBtn').addEventListener('click', () => {
+        const value = Number(kindCounter.textContent) + 1;
+        kindCounter.textContent = value;
+        launchHearts(8);
+    });
+
+    randomPhrase();
+</script>
+</body>
+</html>
