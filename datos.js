@@ -146,14 +146,36 @@ const galleryFolders = {
 
 // ========== MEMES (con imágenes y videos desde Cloudinary) ==========
 const memeImages = {
-    "Favoritos ⭐": [
+    "Gatos": [
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777135720/CurriculumGatos_tixrwq.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/Gatosencama_m3esg5.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777136105/524724027_18073028165474541_832400577264050365_n_ja2eg2.jpg",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134958/gatitos_tm31wg.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134958/Estos_son_los_gatos_carpinteros_z4i9jw.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134958/Da%C3%B1oFisicoVsEmocionalGato_jvksb6.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/MichisCancioncitaJAJAJJA_jdwrp2.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/MiewMauwLalalalala_hxoqki.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/gatito_isgr4b.mp4",
+    ],
+    "Minecraft": [
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/MinecraftUs_f4yeux.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/MemeAvion_rv5b8a.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777136536/474557684_17994811340751873_655058973688064320_n_a4xwdu.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777137778/comidaMinecraft_s0ba1p.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777137778/CuentaBancaria_iysvsu.jpg",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777136544/Waterdrop_iqvfx4.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777137777/Nosotros_en_otra_vida_ge9znv.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777137779/Pov_vas_a_minar_con_tu_novia_twqri8.mp4",
+    ],
+
+    "Spiderman": [
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777132934/Spidermaaaan.mp4",
+    ],
+
+    "Random": [
         "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/GorditoJoker_q6ntdf.png",
         "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/Peeerry_kvgggd.png",
         "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/Refri_ztpbvv.jpg",
-        // Videos en la misma carpeta (se mostrarán como videos en la cuadrícula)
-        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-1_guzqtm.mp4",
-        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-2_etahyv.mp4",
-        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-3_cotmqd.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-4_g2dugy.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-5_y6tem1.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-6_o3hsbs.mp4",
@@ -161,17 +183,16 @@ const memeImages = {
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-8_swf6ib.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-9_cfnetd.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-10_u2uk0l.mp4",
-        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-11_a2qajj.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-12_gy0tet.mp4",
-        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_o5honc.mp4"
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_o5honc.mp4",
     ],
-    "Gatos 🐱": [
-        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/Gatosencama_m3esg5.jpg"
+
+    "Te amo👑": [
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-1_guzqtm.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-3_cotmqd.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777132934/bailesnowman.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-11_a2qajj.mp4",
     ],
-    "Random 😂": [
-        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/MinecraftUs_f4yeux.jpg",
-        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/MemeAvion_rv5b8a.jpg"
-    ]
 };
 
 // ========== GUSTOS PERSONALES (actualizado: podio) ==========
@@ -249,69 +270,69 @@ const catFacts = [
     }
 ];
 
-// ========== DATOS DE SAN PETERSBURGO (actualizado) ==========
+// ========== DATOS DE SAN JUAN PUEBLO (actualizado) ==========
 const spbData = {
-    intro: "San Petersburgo, fundada por Pedro el Grande en 1703, es la segunda ciudad más grande de Rusia y fue capital imperial hasta la Revolución de 1917. Conocida como la 'Venecia del Norte', es una ciudad de agua, arte y luz que guarda secretos en cada rincón.",
-    curiosidades: [
-        {
-            icon: "🌉",
-            titulo: "Ciudad de los 800 puentes",
-            texto: "San Petersburgo tiene alrededor de 800 puentes, de los cuales 19 son móviles y se elevan cada noche para dejar pasar los barcos por el río Nevá. Durante las noches blancas de verano, verlos abrirse bajo la luz crepuscular es un espectáculo único."
-        },
-        {
-            icon: "🏛️",
-            titulo: "El Hermitage y sus millones de obras",
-            texto: "El Palacio de Invierno alberga el museo Hermitage, con más de 3 millones de piezas. Se calcula que si dedicases un minuto a cada obra, necesitarías más de una década para ver toda la colección."
-        },
-        {
-            icon: "🐱",
-            titulo: "Los gatos del Hermitage",
-            texto: "Tradicionalmente, decenas de gatos viven en el Hermitage con el encargo de ahuyentar roedores. Desde 2014 existe un programa oficial de adopción para los 'gatos sobrantes' del museo, y tienen su propia fiesta anual el 18 de abril."
-        },
-        {
-            icon: "🗿",
-            titulo: "La columna que no necesita tornillos",
-            texto: "En la Plaza del Palacio se levanta la Columna de Alejandro, un monolito de granito de 600 toneladas que lleva erguido desde 1834 sin ningún anclaje: se mantiene en pie únicamente por su propio peso."
-        },
-        {
-            icon: "🚇",
-            titulo: "El metro más profundo del mundo",
-            texto: "El metro de San Petersburgo es uno de los más profundos del planeta. La estación Admiralteyskaya se encuentra a 86 metros bajo tierra, casi como un refugio antiaéreo. Las escaleras mecánicas para llegar al andén son larguísimas."
-        },
-        {
-            icon: "🐦",
-            titulo: "La estatua más pequeña y más robada",
-            texto: "Junto al río Fontanka hay una estatuilla de Chízhik-Pízhik que mide solo 11 cm. Ha sido robada siete veces, aunque siempre regresa a su lugar. La tradición dice que si lanzas una moneda y cae sobre la repisa donde está, tu deseo se cumple."
-        },
-        {
-            icon: "⛪",
-            titulo: "La cúpula que salvó la ciudad",
-            texto: "La enorme cúpula dorada de la Catedral de San Isaac, una de las mayores del mundo, fue pintada de gris durante la Segunda Guerra Mundial para que no sirviese de punto de referencia a los bombardeos alemanes."
-        }
-    ],
-    foods: [
-        ["Borsch", "https://assets.elgourmet.com/wp-content/uploads/2023/03/cover_xqm3gckj18_shutterstock-489714061.jpg"],
-        ["Pelmeni", "https://static.vecteezy.com/system/resources/previews/015/590/084/large_2x/traditional-russian-pelmeni-or-ravioli-dumplings-with-meat-on-wood-black-background-russian-food-and-russian-kitchen-concept-photo.JPG"],
-        ["Blini", "https://letthebakingbegin.com/wp-content/uploads/2020/02/Russian-Blini-Recipe-2.jpg"]
-    ],
-    places: [
-        "https://images.musement.com/cover/0001/70/thumb_69104_cover_header.jpeg",
-        "https://th.bing.com/th/id/R.dd2aeac01da560c0d64a7f36227001a4?rik=OEmRcLGMx33XAQ",
-        "https://th.bing.com/th/id/R.4310f3839d4dedab0eb8d530509ecc56?rik=c27AsXTIZh%2b1iA"
-    ],
-    traditions: [
-        "Noches Blancas: crepúsculo continuo y conciertos nocturnos.",
-        "Pan y sal: símbolo de hospitalidad y respeto.",
-        "Velas Escarlatas: graduación con barcos, fuegos artificiales y música.",
-        "Ópera y ballet bajo las estrellas durante el verano."
-    ],
-    phrases: [
-        "Privet — Hola",
-        "Spasibo — Gracias",
-        "Pozhaluysta — De nada / Por favor",
-        "Do svidaniya — Adiós",
-        "Ya tebya lyublyu — Te amo"
-    ]
+intro: "San Juan Pueblo es una vibrante aldea del municipio de La Masica, en el departamento de Atlántida, Honduras. Situada entre Tela y La Ceiba, esta comunidad de aproximadamente 10,000–15,000 habitantes se fundó alrededor de 1881 y originalmente se llamaba 'San Juan Caite'. Hoy es un próspero centro comercial y agroindustrial, famoso por las aguas cristalinas del río San Juan, su espíritu resiliente y sus tradiciones hondureñas.",
+curiosidades: [
+{
+icon: "🏞️",
+titulo: "Río San Juan: el corazón del pueblo",
+texto: "Las aguas frescas y cristalinas del río San Juan atraviesan la comunidad y sirven como centro de recreación y diversión para pobladores y visitantes. Es el atractivo natural más querido del pueblo."
+},
+{
+icon: "📅",
+titulo: "Fundación y nombre original",
+texto: "San Juan Pueblo fue fundado alrededor de 1881. Originalmente se llamaba 'San Juan Caite' (de 'caite', sandalia) porque estaba alejado de San Juan Benque, una aldea próspera en la época bananera."
+},
+{
+icon: "🌪️",
+titulo: "Resiliencia tras el Huracán Fifí",
+texto: "En 1974, el Huracán Fifí devastó la región, pero provocó un repoblamiento masivo, especialmente de personas del occidente de Honduras. El pueblo se reconstruyó y salió adelante."
+},
+{
+icon: "🌋",
+titulo: "Enjambre sísmico de 2013",
+texto: "En 2013, San Juan Pueblo sufrió un 'enjambre sísmico' con 36 sismos de magnitud entre 3.1 y 5.6. Se destruyeron 140 casas y 66 resultaron dañadas, pero afortunadamente no hubo víctimas mortales."
+},
+{
+icon: "🏛️",
+titulo: "Tres intentos fallidos de ser municipio",
+texto: "Desde 1996, los habitantes han buscado convertir San Juan Pueblo en el noveno municipio de Atlántida. Los intentos han fracasado porque la ley exige al menos 30,000 habitantes y 40 km² de extensión; actualmente tienen unos 15,000 hab. y 5 km²."
+},
+{
+icon: "⚽",
+titulo: "Estadio 'Carlos Calderón'",
+texto: "El fútbol es la pasión local. El estadio municipal lleva el nombre de 'Carlos Calderón' y es el escenario de los encuentros más importantes de la comunidad."
+},
+{
+icon: "🗣️",
+titulo: "Significado de 'San Juan' en lengua tolupán",
+texto: "El nombre 'San Juan' proviene de la lengua xicaque (tolupán): 'xantun' o 'xan' significa 'río entre montañas', una descripción perfecta del paisaje que rodea al pueblo."
+}
+],
+foods: [
+["Baleada", "https://res.cloudinary.com/dcsent4fs/image/upload/v1777138742/Baleada_oucqlv.jpg"],
+["Sopa de Caracol", "https://example.com/sopa_caracol.jpg"],
+["Yuca con Chicharrón", "https://example.com/yuca_chicharron.jpg"]
+],
+places: [
+"https://example.com/rio_san_juan.jpg",
+"https://example.com/iglesia_san_juan.jpg",
+"https://example.com/estadio_carlos_calderon.jpg"
+],
+traditions: [
+"Fiestas Patronales de San Juan Bautista: Se celebran en honor al patrón del pueblo, con procesiones, juegos mecánicos, música y bailes típicos.",
+"Alfombras de Semana Santa: Elaboradas con aserrín coloreado, especialmente en Comayagua, pero también imitadas en San Juan Pueblo.",
+"Desfiles patrios del 15 de septiembre: Día de la Independencia con bandas escolares y palillonas.",
+"Ir al estadio a ver fútbol: Afición compartida por casi todos; los partidos de la Liga Nacional y la Selección son eventos multitudinarios."
+],
+phrases: [
+"¡Pucha! — Expresión de asombro o enfado muy hondureña.",
+"Baleada — La comida típica por excelencia (tortilla de harina con frijoles, queso y mantequilla).",
+"¡Déjeme ver! — Frase coloquial para pedir atención.",
+"Está mero — Significa que algo está cerca o listo.",
+"¿Qué pex? — Versión local de '¿Qué pasa?'"
+]
 };
 
 // ========== EXPORTAR TODO ==========

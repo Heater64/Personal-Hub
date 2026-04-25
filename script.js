@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // script.js · Archivo principal del proyecto
 // Unifica: reproductor, galería, memes, notas, series, etc.
 // ==========================================
@@ -13,6 +13,9 @@ let lyricsVisible = true;
 let currentLyricsHTML = '';
 let currentFolder = null;
 let currentEditNoteIndex = null;
+let currentGalleryItems = [];
+let currentGalleryIndex = 0;
+let activeGalleryType = '';
 
 // ========== 2. FUNCIONES AUXILIARES ==========
 function navigateToPage(page) {
@@ -48,7 +51,87 @@ function showMessage(text, isError = false) {
 }
 
 // ========== 3. LIGHTBOX GENERAL ==========
+function isMediaLightboxOpen() {
+    const box = document.getElementById('reelLightbox');
+    return !!(box && box.classList.contains('open'));
+}
+
+function renderMediaLightboxItem() {
+    const box = document.getElementById('reelLightbox');
+    const content = document.getElementById('reelLightboxContent');
+    const captionEl = document.getElementById('reelLightboxCaption');
+    const counterEl = document.getElementById('reelLightboxCounter');
+    if (!box || !content || !currentGalleryItems.length) return;
+
+    const item = currentGalleryItems[currentGalleryIndex];
+    if (!item) return;
+
+    if (item.type === 'video') {
+        const posterAttr = item.poster ? ` poster="${escapeHtml(item.poster)}"` : '';
+        content.innerHTML = `
+            <video class="reel-media" controls autoplay playsinline preload="metadata"${posterAttr}>
+                <source src="${escapeHtml(item.src)}">
+            </video>
+        `;
+    } else {
+        content.innerHTML = `<img class="reel-media" src="${escapeHtml(item.src)}" alt="${escapeHtml(item.caption || '')}" loading="eager">`;
+    }
+
+    if (captionEl) captionEl.textContent = item.caption || '';
+    if (counterEl) counterEl.textContent = `${currentGalleryIndex + 1} / ${currentGalleryItems.length}`;
+
+    const prevBtn = document.getElementById('reelPrevBtn');
+    const nextBtn = document.getElementById('reelNextBtn');
+    if (prevBtn) prevBtn.disabled = currentGalleryItems.length <= 1;
+    if (nextBtn) nextBtn.disabled = currentGalleryItems.length <= 1;
+}
+
+function openMediaLightbox(items, startIndex = 0, galleryType = 'media') {
+    const box = document.getElementById('reelLightbox');
+    if (!box || !Array.isArray(items) || !items.length) return;
+
+    currentGalleryItems = items;
+    currentGalleryIndex = Math.max(0, Math.min(startIndex, items.length - 1));
+    activeGalleryType = galleryType;
+
+    renderMediaLightboxItem();
+    box.setAttribute('aria-hidden', 'false');
+    box.classList.add('open');
+    document.body.classList.add('reel-lightbox-open');
+}
+
+function closeMediaLightbox() {
+    const box = document.getElementById('reelLightbox');
+    const content = document.getElementById('reelLightboxContent');
+    if (content) content.innerHTML = '';
+    if (box) {
+        box.classList.remove('open');
+        box.setAttribute('aria-hidden', 'true');
+    }
+    document.body.classList.remove('reel-lightbox-open');
+    currentGalleryItems = [];
+    currentGalleryIndex = 0;
+    activeGalleryType = '';
+}
+
+function nextMedia() {
+    if (!isMediaLightboxOpen() || currentGalleryItems.length <= 1) return;
+    currentGalleryIndex = (currentGalleryIndex + 1) % currentGalleryItems.length;
+    renderMediaLightboxItem();
+}
+
+function prevMedia() {
+    if (!isMediaLightboxOpen() || currentGalleryItems.length <= 1) return;
+    currentGalleryIndex = (currentGalleryIndex - 1 + currentGalleryItems.length) % currentGalleryItems.length;
+    renderMediaLightboxItem();
+}
+
 function openLightbox(src, caption = '') {
+    const reelBox = document.getElementById('reelLightbox');
+    if (reelBox) {
+        openMediaLightbox([{ type: 'image', src, caption }], 0, 'single-image');
+        return;
+    }
     const content = document.getElementById('lightboxContent');
     const captionEl = document.getElementById('lightboxCaption');
     if (content) content.innerHTML = `<img src="${escapeHtml(src)}" alt="${escapeHtml(caption)}">`;
@@ -58,6 +141,7 @@ function openLightbox(src, caption = '') {
 }
 
 function closeLightbox() {
+    closeMediaLightbox();
     const box = document.getElementById('lightbox');
     if (box) box.classList.remove('open');
 }
@@ -216,6 +300,15 @@ function renderGallery() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+function buildFolderGalleryItems(folderName) {
+    const images = window.galleryFoldersData[folderName] || [];
+    return images.map((src, i) => ({
+        type: 'image',
+        src,
+        caption: `${folderName} - ${i + 1}`
+    }));
+}
+
 function showFolderContents(folderName) {
     currentFolder = folderName;
     const images = window.galleryFoldersData[folderName];
@@ -227,7 +320,7 @@ function showFolderContents(folderName) {
         </button>
         <div class="pinterest-grid">
             ${images.map((src, i) => `
-                <div class="pinterest-item" onclick="openLightbox('${escapeHtml(src)}', '${escapeHtml(folderName)} - ${i+1}')">
+                <div class="pinterest-item folder-media-item" data-folder="${escapeHtml(folderName)}" data-index="${i}">
                     <img src="${escapeHtml(src)}" alt="${escapeHtml(folderName)} ${i+1}" loading="lazy">
                     <div class="overlay"><span><i data-lucide="eye"></i> Ver ${i+1}</span></div>
                 </div>
@@ -235,9 +328,29 @@ function showFolderContents(folderName) {
         </div>
     `;
     if (typeof lucide !== 'undefined') lucide.createIcons();
+    grid.querySelectorAll('.folder-media-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const startIndex = Number(item.dataset.index);
+            openMediaLightbox(buildFolderGalleryItems(folderName), startIndex, `gallery:${folderName}`);
+        });
+    });
 }
 
 // ========== 7. MEMES (CUADRÍCULA Y VIDEOS) ==========
+function isVideoMeme(src) {
+    return /\.(mp4|webm|mov)$/i.test(src || '');
+}
+
+function getVideoPosterUrl(src) {
+    if (!src) return '';
+    if (src.includes('res.cloudinary.com') && src.includes('/video/upload/')) {
+        return src
+            .replace('/video/upload/', '/video/upload/f_jpg,so_auto/')
+            .replace(/\.(mp4|webm|mov)(\?.*)?$/i, '.jpg');
+    }
+    return '';
+}
+
 function renderMemes() {
     const nav = document.getElementById('memesFoldersNav');
     if (nav) {
@@ -248,51 +361,63 @@ function renderMemes() {
             </button>
         `).join('');
     }
+
     const grid = document.getElementById('memesGrid');
     if (!grid) return;
+    grid.className = 'insta-grid';
+
     const items = window.memeImagesData[currentMemeFolder];
     if (!items || items.length === 0) {
-        grid.innerHTML = '<div class="empty-state">No hay memes en esta carpeta</div>';
+        grid.className = '';
+        grid.innerHTML = '<div class="empty-state">Elije una carpeta para ver sus memes</div>';
         return;
     }
 
     grid.innerHTML = items.map((src, i) => {
-        const isVideo = src.toLowerCase().match(/\.(mp4|webm|mov)$/i);
+        const isVideo = isVideoMeme(src);
+        const caption = `${currentMemeFolder} - ${i + 1}`;
+
         if (isVideo) {
-            const posterUrl = src.replace('/video/upload/', '/video/upload/so_0/').replace(/\.mp4$/, '.jpg');
+            const posterUrl = getVideoPosterUrl(src);
             return `
-                <div class="insta-item" data-type="video" data-src="${escapeHtml(src)}" data-caption="${escapeHtml(currentMemeFolder)} - ${i+1}">
-                    <video class="insta-video" src="${escapeHtml(src)}" poster="${escapeHtml(posterUrl)}" muted loop playsinline preload="metadata"></video>
+                <article class="insta-item" tabindex="0" role="button" aria-label="Abrir video ${i + 1}" data-index="${i}" data-type="video" data-src="${escapeHtml(src)}" data-caption="${escapeHtml(caption)}" data-poster="${escapeHtml(posterUrl)}">
+                    <img src="${escapeHtml(posterUrl || src)}" alt="Miniatura del meme ${i + 1}" loading="lazy">
                     <div class="insta-overlay"><i data-lucide="play-circle"></i></div>
-                </div>
-            `;
-        } else {
-            return `
-                <div class="insta-item" data-type="image" data-src="${escapeHtml(src)}" data-caption="${escapeHtml(currentMemeFolder)} - ${i+1}">
-                    <img src="${escapeHtml(src)}" alt="Meme ${i+1}" loading="lazy">
-                    <div class="insta-overlay"><i data-lucide="eye"></i></div>
-                </div>
+                </article>
             `;
         }
+
+        return `
+            <article class="insta-item" tabindex="0" role="button" aria-label="Abrir imagen ${i + 1}" data-index="${i}" data-type="image" data-src="${escapeHtml(src)}" data-caption="${escapeHtml(caption)}">
+                <img src="${escapeHtml(src)}" alt="Meme ${i + 1}" loading="lazy">
+                <div class="insta-overlay"><i data-lucide="eye"></i></div>
+            </article>
+        `;
     }).join('');
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    document.querySelectorAll('.insta-item').forEach(item => {
-        const type = item.dataset.type;
-        const src = item.dataset.src;
-        const caption = item.dataset.caption;
-        if (type === 'image') {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                openLightbox(src, caption);
-            });
-        } else if (type === 'video') {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                openVideoLightbox(src, caption);
-            });
-        }
+    const memeGalleryItems = items.map((src, i) => ({
+        type: isVideoMeme(src) ? 'video' : 'image',
+        src,
+        caption: `${currentMemeFolder} - ${i + 1}`,
+        poster: isVideoMeme(src) ? getVideoPosterUrl(src) : ''
+    }));
+
+    grid.querySelectorAll('.insta-item').forEach(item => {
+        const startIndex = Number(item.dataset.index || item.getAttribute('data-index'));
+
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openMediaLightbox(memeGalleryItems, startIndex, `memes:${currentMemeFolder}`);
+        });
+
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openMediaLightbox(memeGalleryItems, startIndex, `memes:${currentMemeFolder}`);
+            }
+        });
     });
 }
 
@@ -302,44 +427,14 @@ function showMemeFolder(folder) {
 }
 
 function openVideoLightbox(videoSrc, caption) {
-    let videoLightbox = document.getElementById('videoLightbox');
-    if (!videoLightbox) {
-        videoLightbox = document.createElement('div');
-        videoLightbox.id = 'videoLightbox';
-        videoLightbox.className = 'lightbox video-lightbox';
-        videoLightbox.innerHTML = `
-            <button class="lightbox-close" id="closeVideoLightbox">✕</button>
-            <div class="lightbox-content">
-                <video id="lightboxVideo" controls autoplay playsinline></video>
-            </div>
-            <div class="lightbox-caption"></div>
-        `;
-        document.body.appendChild(videoLightbox);
-
-        document.getElementById('closeVideoLightbox').addEventListener('click', () => {
-            const vid = document.getElementById('lightboxVideo');
-            if (vid) vid.pause();
-            videoLightbox.classList.remove('open');
-        });
-        videoLightbox.addEventListener('click', (e) => {
-            if (e.target === videoLightbox) {
-                const vid = document.getElementById('lightboxVideo');
-                if (vid) vid.pause();
-                videoLightbox.classList.remove('open');
-            }
-        });
-    }
-
-    videoLightbox.classList.add('open');
-    const videoEl = document.getElementById('lightboxVideo');
-    const captionEl = videoLightbox.querySelector('.lightbox-caption');
-    captionEl.textContent = caption;
-    videoEl.src = videoSrc;
-    videoEl.load();
-    videoEl.play().catch(() => {});
+    openMediaLightbox([{
+        type: 'video',
+        src: videoSrc,
+        caption,
+        poster: getVideoPosterUrl(videoSrc)
+    }], 0, 'single-video');
 }
 
-// ========== 8. GUSTOS, GATOS, SAN PETERSBURGO ==========
 function renderGustos() {
     const panel = document.getElementById('gustosPanel');
     if (!panel) return;
@@ -709,7 +804,32 @@ document.addEventListener('DOMContentLoaded', function() {
     if (toggleLyricsBtn) toggleLyricsBtn.addEventListener('click', toggleLyricsPanel);
     if (expandLyricsBtn) expandLyricsBtn.addEventListener('click', expandLyricsLightbox);
 
+    const reelLightbox = document.getElementById('reelLightbox');
+    const reelCloseBtn = document.getElementById('reelCloseBtn');
+    const reelPrevBtn = document.getElementById('reelPrevBtn');
+    const reelNextBtn = document.getElementById('reelNextBtn');
+    if (reelCloseBtn) reelCloseBtn.addEventListener('click', closeMediaLightbox);
+    if (reelPrevBtn) reelPrevBtn.addEventListener('click', prevMedia);
+    if (reelNextBtn) reelNextBtn.addEventListener('click', nextMedia);
+    if (reelLightbox) {
+        reelLightbox.addEventListener('click', function(e) {
+            if (e.target === reelLightbox || e.target.classList.contains('lightbox-reel-backdrop')) {
+                closeMediaLightbox();
+            }
+        });
+    }
+
     document.addEventListener('keydown', function(e) {
+        if (isMediaLightboxOpen()) {
+            if (e.key === 'Escape') {
+                closeMediaLightbox();
+            } else if (e.key === 'ArrowRight') {
+                nextMedia();
+            } else if (e.key === 'ArrowLeft') {
+                prevMedia();
+            }
+            return;
+        }
         if (e.key === 'Escape') {
             closeLyricsLightbox();
             closeLightbox();
@@ -738,6 +858,10 @@ window.showFolderContents = showFolderContents;
 window.showMemeFolder = showMemeFolder;
 window.openLightbox = openLightbox;
 window.closeLightbox = closeLightbox;
+window.openMediaLightbox = openMediaLightbox;
+window.closeMediaLightbox = closeMediaLightbox;
+window.nextMedia = nextMedia;
+window.prevMedia = prevMedia;
 window.closeLyricsLightbox = closeLyricsLightbox;
 window.toggleLyricsPanel = toggleLyricsPanel;
 window.expandLyricsLightbox = expandLyricsLightbox;

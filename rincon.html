@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -53,7 +53,7 @@
                 <button class="sub-tab" data-subview="rincon-tú"><i data-lucide="palette"></i> Tú</button>
                 <button class="sub-tab" data-subview="rincon-gatos"><i data-lucide="cat"></i> Gatos</button>
                 <button class="sub-tab" data-subview="rincon-memes"><i data-lucide="smile"></i> Memes</button>
-                <button class="sub-tab" data-subview="rincon-spb"><i data-lucide="globe"></i> San Petersburgo</button>
+                <button class="sub-tab" data-subview="rincon-spb"><i data-lucide="globe"></i> San Juan Pueblo</button>
             </nav>
         </div>
 
@@ -100,13 +100,380 @@
         </div>
 
         <div id="rincon-spb" class="sub-view">
-            <div class="section-card">
-                <h3><i data-lucide="globe"></i> San Petersburgo</h3>
-                <div id="spbPanel"></div>
+    <div id="rincon-spb" class="sub-view">
+    <div class="section-card" style="padding: 0; overflow: hidden;">
+        <style>
+            /* ========== ANIMACIONES Y ESTILOS EXCLUSIVOS ========== */
+            .hover-card {
+                transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s;
+            }
+            .hover-card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 12px 24px -10px rgba(0,0,0,0.4);
+                border-color: var(--accent-coral) !important;
+            }
+            .curiosity-card, .service-card, .food-card {
+                transition: transform 0.2s ease, background 0.2s;
+            }
+            .curiosity-card:hover, .service-card:hover, .food-card:hover {
+                transform: translateY(-4px);
+                background: rgba(255,215,0,0.12) !important;
+            }
+            
+            /* Tarjetas de Ubicación y Perfil (sin iconos, con fondo dinámico) */
+            .location-card {
+                transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+                background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,215,0,0.02));
+                border: 1px solid rgba(255,215,0,0.1);
+            }
+            .location-card:hover {
+                transform: translateY(-5px) scale(1.02);
+                background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(198,90,58,0.08));
+                border-color: #FFD966;
+                box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3);
+            }
+            
+            /* Tarjetas de Monumentos (sin iconos, con borde animado) */
+            .monument-card {
+                position: relative;
+                transition: all 0.3s ease;
+                background: rgba(255,255,255,0.02);
+                overflow: hidden;
+            }
+            .monument-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: radial-gradient(circle at 30% 20%, rgba(255,215,0,0.1), transparent 70%);
+                opacity: 0;
+                transition: opacity 0.4s;
+                pointer-events: none;
+            }
+            .monument-card:hover::before {
+                opacity: 1;
+            }
+            .monument-card:hover {
+                transform: translateY(-4px);
+                border-color: #FFD966;
+                box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            }
+            .monument-card::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 0%;
+                height: 2px;
+                background: linear-gradient(90deg, #FFD966, var(--accent-coral));
+                transition: width 0.3s ease;
+            }
+            .monument-card:hover::after {
+                width: 100%;
+            }
+            
+            /* Tarjetas de Tradiciones con imágenes grandes y texto */
+            .tradition-card {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 8px;
+                background: rgba(255,255,255,0.02);
+                padding: 16px 12px;
+                border-radius: var(--radius-lg);
+                transition: all 0.2s;
+            }
+            .tradition-card:hover {
+                transform: translateY(-5px);
+                background: rgba(255,215,0,0.1);
+            }
+            .tradition-img {
+                width: 64px;
+                height: 64px;
+                object-fit: contain;
+                border-radius: 16px;
+                filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+                transition: transform 0.2s;
+            }
+            .tradition-card:hover .tradition-img {
+                transform: scale(1.08);
+            }
+            .tradition-card strong {
+                font-size: 1rem;
+                margin: 4px 0 2px;
+            }
+            .tradition-card span {
+                font-size: 0.7rem;
+                color: var(--umbra-ash);
+                line-height: 1.4;
+            }
+            
+            /* Línea de tiempo */
+            .timeline-item {
+                position: relative;
+                padding-left: 30px;
+                margin-bottom: 24px;
+                border-left: 2px solid var(--accent-coral);
+            }
+            .timeline-year {
+                font-family: 'Playfair Display', serif;
+                font-weight: 600;
+                color: #FFD966;
+                margin-bottom: 6px;
+            }
+        </style>
+
+        <!-- ========== CABECERA CON BANDERA ========== -->
+        <div style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.5)), url('https://res.cloudinary.com/dcsent4fs/image/upload/v1777139205/Bandera_de_honduras_ixhmu3.jpg'); background-size: cover; background-position: center 40%; padding: 80px 24px; text-align: center;">
+            <div style="background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); display: inline-block; padding: 16px 32px; border-radius: 60px; border: 1px solid rgba(255,215,0,0.5);">
+                <h2 style="margin:0; color: white; font-family: 'Playfair Display', serif;">🌴 San Juan Pueblo, Atlántida</h2>
+                <p style="color: #FFD966; margin: 8px 0 0; letter-spacing: 1px;">Río entre montañas · Corazón hondureño</p>
             </div>
         </div>
-    </section>
+
+        <!-- ========== DATOS RÁPIDOS (4 tarjetas con iconos Lucide) ========== -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: -30px 20px 30px 20px;">
+            <div class="planner-step hover-card" style="text-align: center; background: rgba(198,90,58,0.1); backdrop-filter: blur(4px);">
+                <i data-lucide="waves" style="width: 40px; height: 40px; color: #4fc3f7; margin-bottom: 8px;"></i>
+                <strong>Río San Juan</strong>
+                <p style="font-size:0.75rem;">Atractivo principal</p>
+            </div>
+            <div class="planner-step hover-card" style="text-align: center;">
+                <i data-lucide="calendar" style="width: 40px; height: 40px; color: #ffb74d; margin-bottom: 8px;"></i>
+                <strong>1881</strong>
+                <p style="font-size:0.75rem;">Año de fundación</p>
+            </div>
+            <div class="planner-step hover-card" style="text-align: center;">
+                <i data-lucide="users" style="width: 40px; height: 40px; color: #81c784; margin-bottom: 8px;"></i>
+                <strong id="habitantesCounter">0</strong>
+                <p style="font-size:0.75rem;">Habitantes aprox.</p>
+            </div>
+            <div class="planner-step hover-card" style="text-align: center;">
+                <i data-lucide="trophy" style="width: 40px; height: 40px; color: #ffd54f; margin-bottom: 8px;"></i>
+                <strong>Carlos Calderón</strong>
+                <p style="font-size:0.75rem;">Estadio local</p>
+            </div>
+        </div>
+
+        <!-- ========== UBICACIÓN Y PERFIL (sin iconos, con animación de fondo) ========== -->
+        <div style="padding: 0 20px; margin-bottom: 40px;">
+            <h3>📍 Ubicación y perfil</h3>
+            <div style="display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+                <div class="planner-step location-card"><strong>Aldea</strong><br>Municipio de La Masica, Atlántida</div>
+                <div class="planner-step location-card"><strong>Coordenadas</strong><br>Entre Tela y La Ceiba · 55 km al oeste de La Ceiba · CA-13</div>
+                <div class="planner-step location-card"><strong>Población</strong><br>10,000–15,000 hab.</div>
+                <div class="planner-step location-card"><strong>Extensión</strong><br>5 km² (requiere 40 km² para ser municipio)</div>
+                <div class="planner-step location-card"><strong>Nombre original</strong><br>"San Juan Caite" → San Juan Pueblo</div>
+                <div class="planner-step location-card"><strong>Economía</strong><br>Ganadería, palma africana, rambután, comercio</div>
+            </div>
+        </div>
+
+        <!-- ========== SERVICIOS E INFRAESTRUCTURA ========== -->
+        <div style="padding: 0 20px; margin-bottom: 40px;">
+            <h3><i data-lucide="building-2"></i> Servicios e infraestructura</h3>
+            <div style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="service-card planner-step" style="background: rgba(255,215,0,0.05);"><i data-lucide="school"></i> <strong>Educación</strong><br>6 jardines, 3 escuelas, 2 institutos</div>
+                <div class="service-card planner-step" style="background: rgba(255,215,0,0.05);"><i data-lucide="heart-pulse"></i> <strong>Salud</strong><br>Centros de salud, farmacias</div>
+                <div class="service-card planner-step" style="background: rgba(255,215,0,0.05);"><i data-lucide="zap"></i> <strong>Servicios básicos</strong><br>Energía, agua potable, internet, telefonía</div>
+                <div class="service-card planner-step" style="background: rgba(255,215,0,0.05);"><i data-lucide="store"></i> <strong>Comercios</strong><br>Restaurantes, bancos, cafeterías, tiendas</div>
+                <div class="service-card planner-step" style="background: rgba(255,215,0,0.05);"><i data-lucide="wrench"></i> <strong>Otros</strong><br>Ferreterías, llanteras, salones de belleza</div>
+                <div class="service-card planner-step" style="background: rgba(255,215,0,0.05);"><i data-lucide="trophy"></i> <strong>Deporte</strong><br>Estadio "Carlos Calderón"</div>
+            </div>
+        </div>
+
+        <!-- ========== HISTORIA (línea de tiempo) ========== -->
+        <div style="padding: 0 20px; margin-bottom: 40px;">
+            <h3><i data-lucide="clock"></i> Historia</h3>
+            <div class="timeline-item"><div class="timeline-year">1881</div><div>Fundación (según tumba de 1914 en el cementerio).</div></div>
+            <div class="timeline-item"><div class="timeline-year">1917</div><div>Llamada "San Juan Caite" por estar alejada de San Juan Benque.</div></div>
+            <div class="timeline-item"><div class="timeline-year">1924</div><div>Reconocido como caserío de La Masica; llega población de Olancho y Yoro.</div></div>
+            <div class="timeline-item"><div class="timeline-year">1972</div><div>Pasa la carretera CA-13.</div></div>
+            <div class="timeline-item"><div class="timeline-year">1974</div><div>Repoblamiento masivo tras el Huracán Fifí (occidente de Honduras).</div></div>
+            <div class="timeline-item"><div class="timeline-year">2013</div><div>Enjambre sísmico: 36 sismos, 140 casas destruidas, 0 víctimas.</div></div>
+            <div class="timeline-item"><div class="timeline-year">Desde 1996</div><div>Tres intentos fallidos de ser municipio (falta población y territorio).</div></div>
+        </div>
+
+        <!-- ========== FIESTAS PATRONALES ========== -->
+        <div style="padding: 0 20px; margin-bottom: 40px;">
+            <h3><i data-lucide="party-popper"></i> Fiestas Patronales</h3>
+            <div class="planner-step" style="background: rgba(255,215,0,0.08);"><i data-lucide="calendar-days"></i> <strong>San Juan Bautista</strong> – Celebraciones en febrero/junio con procesiones, juegos mecánicos, música y bailes típicos.</div>
+        </div>
+
+        <!-- ========== TRADICIONES HONDUREÑAS (solo texto, sin emojis ni imágenes) ========== -->
+<div style="padding: 0 20px; margin-bottom: 40px;">
+    <h3>Tradiciones hondureñas</h3>
+    <div style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="tradition-card"><strong>Baleadas</strong><span>Tortilla + frijoles, queso, mantequilla</span></div>
+        <div class="tradition-card"><strong>Alfombras de Semana Santa</strong><span>Aserrín coloreado</span></div>
+        <div class="tradition-card"><strong>Alborada de la Virgen de Suyapa</strong><span>3 de febrero, vigilia nocturna</span></div>
+        <div class="tradition-card"><strong>Sopa de Caracol</strong><span>Tradición de Semana Santa, leche de coco</span></div>
+        <div class="tradition-card"><strong>Bailes típicos</strong><span>Bombas y punta garífuna</span></div>
+        <div class="tradition-card"><strong>Desfiles patrios</strong><span>15 de septiembre, bandas y palillonas</span></div>
+        <div class="tradition-card"><strong>Comida de maíz</strong><span>Elote, tamalitos, atol, pozol</span></div>
+        <div class="tradition-card"><strong>Ir al Estadio Nacional</strong><span>Pasión por el fútbol</span></div>
+        <div class="tradition-card"><strong>Cristo del Picacho</strong><span>Vista panorámica de Tegucigalpa</span></div>
+        <div class="tradition-card"><strong>Parque La Tigra</strong><span>Reserva ecológica con cascadas</span></div>
+    </div>
 </div>
+
+        <!-- ========== COMIDA TÍPICA ========== -->
+        <div style="padding: 0 20px; margin-bottom: 40px;">
+            <h3><i data-lucide="utensils"></i> Comida típica hondureña</h3>
+            <div style="display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                <div class="food-card planner-step">🌯 Baleada</div>
+                <div class="food-card planner-step">🍚 Casamiento</div>
+                <div class="food-card planner-step">🌮 Taco hondureño</div>
+                <div class="food-card planner-step"> Frijol con pico</div>
+                <div class="food-card planner-step">🐚 Sopa de Caracol</div>
+                <div class="food-card planner-step">🍠 Yuca con Chicharrón</div>
+                <div class="food-card planner-step">🍲 Tapado</div>
+                <div class="food-card planner-step">🌽 Riguas</div>
+                <div class="food-card planner-step">🍘 Tamalitos de elote</div>
+                <div class="food-card planner-step">🥛 Atol</div>
+            </div>
+            <p style="font-size:0.75rem; color:var(--umbra-ash); margin-top:12px;">La tortilla de maíz se consume diariamente en casi todas las comidas.</p>
+        </div>
+
+        <!-- ========== MONUMENTOS HISTÓRICOS (sin iconos, con borde animado) ========== -->
+        <div style="padding: 0 20px; margin-bottom: 40px;">
+            <h3>🏛️ Monumentos históricos de Honduras</h3>
+            <div style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+                <div class="planner-step monument-card"><strong>Iglesia Inmaculada Concepción</strong><br>Comayagua · Reloj más antiguo de América</div>
+                <div class="planner-step monument-card"><strong>Castillo Bográn</strong><br>Santa Bárbara · Vista al Cerro de Guatemalía</div>
+                <div class="planner-step monument-card"><strong>Copán Ruinas</strong><br>Patrimonio UNESCO · Escalinata de jeroglíficos</div>
+                <div class="planner-step monument-card"><strong>Catedral de Comayagua</strong><br>Arte colonial religioso</div>
+                <div class="planner-step monument-card"><strong>Basílica de Suyapa</strong><br>Tegucigalpa · Patrona de Honduras</div>
+                <div class="planner-step monument-card"><strong>Cristo del Picacho</strong><br>Vista panorámica de la capital</div>
+                <div class="planner-step monument-card"><strong>Fortaleza de Omoa</strong><br>Fortaleza colonial más grande de Centroamérica</div>
+                <div class="planner-step monument-card"><strong>Plaza Los Dolores</strong><br>16 chorros de agua iluminados</div>
+            </div>
+        </div>
+
+        <!-- ========== CURIOSIDADES (con Lucide) ========== -->
+        <div style="padding: 0 20px; margin-bottom: 40px;">
+            <h3><i data-lucide="sparkles"></i> Curiosidades del pueblo</h3>
+            <div id="spbCuriosidades" style="display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));"></div>
+        </div>
+
+        <!-- ========== GALERÍA DE FOTOS ========== -->
+        <div style="padding: 0 20px; margin-bottom: 40px;">
+            <h3><i data-lucide="camera"></i> Rincones de San Juan Pueblo</h3>
+            <div id="spbGallery" class="pinterest-grid" style="margin-top: 16px;"></div>
+        </div>
+
+        <!-- ========== TESTIMONIOS ========== -->
+        <div style="background: rgba(255,255,255,0.02); border-radius: 28px; margin: 0 20px 40px; padding: 24px; border: 1px solid rgba(198,90,58,0.3);">
+            <h3 style="text-align: center;"><i data-lucide="message-circle"></i> Lo que dicen sus habitantes</h3>
+            <div style="display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 20px;">
+                <div style="background: rgba(255,215,0,0.08); border-radius: 24px; padding: 20px; border-left: 4px solid #FFC107; transition:0.2s;" onmouseover="this.style.background='rgba(255,215,0,0.15)'" onmouseout="this.style.background='rgba(255,215,0,0.08)'">
+                    <p style="font-style: italic;">“San Juan Pueblo es mi hogar, un lugar próspero y organizado donde todos nos conocemos.”</p>
+                    <p style="margin-top: 12px; font-size:0.8rem; color:var(--accent-coral);">— Doña María, vecina desde 1980</p>
+                </div>
+                <div style="background: rgba(255,215,0,0.08); border-radius: 24px; padding: 20px; border-left: 4px solid #FFC107; transition:0.2s;" onmouseover="this.style.background='rgba(255,215,0,0.15)'" onmouseout="this.style.background='rgba(255,215,0,0.08)'">
+                    <p style="font-style: italic;">“El río nos da vida. Aquí crecí, aquí me casé, y aquí quiero envejecer.”</p>
+                    <p style="margin-top: 12px; font-size:0.8rem; color:var(--accent-coral);">— Don Carlos, pescador y agricultor</p>
+                </div>
+                <div style="background: rgba(255,215,0,0.08); border-radius: 24px; padding: 20px; border-left: 4px solid #FFC107; transition:0.2s;" onmouseover="this.style.background='rgba(255,215,0,0.15)'" onmouseout="this.style.background='rgba(255,215,0,0.08)'">
+                    <p style="font-style: italic;">“Después del Huracán Fifí nos unimos más. Somos resilientes y alegres.”</p>
+                    <p style="margin-top: 12px; font-size:0.8rem; color:var(--accent-coral);">— Elena, maestra de escuela</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== UBICACIÓN CENTRADA CON MAPA ========== -->
+        <div style="padding: 0 20px 30px; text-align: center;">
+            <div class="planner-step" style="display: inline-block; width: 100%; max-width: 500px; text-align: center; margin: 0 auto;">
+                <i data-lucide="map-pin" style="width: 32px; height: 32px; color: #FFC107;"></i>
+                <h4>📍 Ubicación exacta</h4>
+                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3874.812669313342!2d-87.117584385664!3d15.712516989048243!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8f6b6b8b8b8b8b8b%3A0x8b8b8b8b8b8b8b8b!2sSan%20Juan%20Pueblo%2C%20Atl%C3%A1ntida!5e0!3m2!1ses!2shn!4v1640000000000!5m2!1ses!2shn" width="100%" height="240" style="border:0; border-radius: 20px;" allowfullscreen="" loading="lazy"></iframe>
+                <p style="font-size:0.75rem; margin-top: 10px;">Entre Tela y La Ceiba · Carretera CA-13</p>
+            </div>
+        </div>
+
+        <!-- Pie decorativo -->
+        <div style="text-align: center; padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 10px;">
+            <p style="font-size: 0.7rem; color: var(--umbra-ash);">🌿 “Xantun” – río entre montañas en lengua tolupán 🌿</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // Curiosidades con iconos Lucide
+        const curiosidades = [
+            { icon: "droplets", titulo: "Río San Juan", texto: "Aguas frescas y cristalinas que atraviesan la comunidad. Centro de recreación y diversión para todos." },
+            { icon: "scroll-text", titulo: "Nombre original", texto: "Se llamaba 'San Juan Caite' (caite = sandalia) por estar alejado de San Juan Benque." },
+            { icon: "wind", titulo: "Huracán Fifí", texto: "En 1974 devastó la región pero provocó un repoblamiento masivo, especialmente de personas del occidente de Honduras." },
+            { icon: "activity", titulo: "Enjambre sísmico 2013", texto: "36 sismos entre 3.1 y 5.6. 140 casas destruidas, 66 dañadas, cero víctimas mortales." },
+            { icon: "building-2", titulo: "Tres intentos fallidos", texto: "Desde 1996 quieren ser municipio, pero necesitan 30,000 hab. y 40 km²." },
+            { icon: "languages", titulo: "Significado tolupán", texto: "'Xantun' o 'Xan' = 'río entre montañas'." }
+        ];
+
+        const containerCuriosidades = document.getElementById('spbCuriosidades');
+        if (containerCuriosidades) {
+            containerCuriosidades.innerHTML = curiosidades.map(c => `
+                <div class="planner-step curiosity-card" style="background: rgba(255,215,0,0.05); transition: all 0.2s ease;">
+                    <i data-lucide="${c.icon}" style="width: 40px; height: 40px; display: block; margin-bottom: 12px; color: #FFD966;"></i>
+                    <strong style="font-size: 1.1rem;">${c.titulo}</strong>
+                    <p style="margin-top: 8px; font-size: 0.85rem; line-height: 1.6;">${c.texto}</p>
+                </div>
+            `).join('');
+        }
+
+        // Galería de fotos (ajusta las URLs a tus imágenes reales)
+        const galeriaFotos = [
+            { src: "https://res.cloudinary.com/dcsent4fs/image/upload/v1777139714/RioSanjuan_hby0wz.jpg", caption: "Río San Juan" },
+            { src: "https://res.cloudinary.com/dcsent4fs/image/upload/v1777139715/SanJuan_hbfrrb.jpg", caption: "Paisaje del pueblo" },
+            { src: "https://res.cloudinary.com/dcsent4fs/image/upload/v1777139823/2jnguoiwhtlinyh_ncbyju.jpg", caption: "Vistas de la comunidad" }
+        ];
+
+        const galleryContainer = document.getElementById('spbGallery');
+        if (galleryContainer) {
+            galleryContainer.innerHTML = galeriaFotos.map((f, idx) => `
+                <div class="pinterest-item" data-index="${idx}" style="cursor: pointer;">
+                    <img src="${f.src}" alt="${f.caption}" loading="lazy">
+                    <div class="overlay"><span><i data-lucide="eye"></i> ${f.caption}</span></div>
+                </div>
+            `).join('');
+            document.querySelectorAll('#spbGallery .pinterest-item').forEach((item, i) => {
+                item.addEventListener('click', () => {
+                    const items = galeriaFotos.map(f => ({ type: 'image', src: f.src, caption: f.caption }));
+                    if (typeof openMediaLightbox !== 'undefined') {
+                        openMediaLightbox(items, i, 'spb-gallery');
+                    } else if (typeof openLightbox !== 'undefined') {
+                        openLightbox(galeriaFotos[i].src, galeriaFotos[i].caption);
+                    }
+                });
+            });
+        }
+
+        // Contador animado de habitantes (15,000)
+        const counterEl = document.getElementById('habitantesCounter');
+        if (counterEl) {
+            let start = 0;
+            const end = 15000;
+            const duration = 2000;
+            const step = Math.ceil(end / (duration / 30));
+            const timer = setInterval(() => {
+                start += step;
+                if (start >= end) {
+                    counterEl.innerText = end.toLocaleString();
+                    clearInterval(timer);
+                } else {
+                    counterEl.innerText = start.toLocaleString();
+                }
+            }, 30);
+        }
+
+        // Inicializar iconos Lucide (importante)
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    })();
+</script>
 
 <!-- ========== LIGHTBOX GENERAL ========== -->
 <div id="lightbox" class="lightbox">

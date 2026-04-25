@@ -620,6 +620,122 @@ h3 { font-size: 1.4rem; margin-bottom: var(--space-xs); }
   accent-color: var(--accent-coral);
 }
 
+/* ========== ESTILOS EXCLUSIVOS PARA SAN JUAN PUEBLO ========== */
+
+/* Efectos generales para tarjetas con iconos */
+.hover-card {
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s;
+}
+.hover-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px -10px rgba(0,0,0,0.4);
+    border-color: var(--accent-coral) !important;
+}
+
+.curiosity-card, .service-card, .food-card {
+    transition: transform 0.2s ease, background 0.2s;
+}
+.curiosity-card:hover, .service-card:hover, .food-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255,215,0,0.12) !important;
+}
+
+/* Tarjetas de Ubicación y Perfil (sin iconos, con animación de fondo) */
+.location-card {
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,215,0,0.02));
+    border: 1px solid rgba(255,215,0,0.1);
+}
+.location-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(198,90,58,0.08));
+    border-color: #FFD966;
+    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3);
+}
+
+/* Tarjetas de Monumentos (sin iconos, con borde animado y brillo) */
+.monument-card {
+    position: relative;
+    transition: all 0.3s ease;
+    background: rgba(255,255,255,0.02);
+    overflow: hidden;
+}
+.monument-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 30% 20%, rgba(255,215,0,0.1), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+}
+.monument-card:hover::before {
+    opacity: 1;
+}
+.monument-card:hover {
+    transform: translateY(-4px);
+    border-color: #FFD966;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+.monument-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0%;
+    height: 2px;
+    background: linear-gradient(90deg, #FFD966, var(--accent-coral));
+    transition: width 0.3s ease;
+}
+.monument-card:hover::after {
+    width: 100%;
+}
+
+/* Tarjetas de Tradiciones (solo texto, sin imágenes ni emojis) */
+.tradition-card {
+    background: rgba(255,255,255,0.02);
+    padding: 16px 12px;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+.tradition-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255,215,0,0.08);
+    border-color: rgba(255,215,0,0.3);
+}
+.tradition-card strong {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+.tradition-card span {
+    font-size: 0.75rem;
+    color: var(--umbra-ash);
+    line-height: 1.4;
+}
+
+/* Línea de tiempo para la historia */
+.timeline-item {
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 24px;
+    border-left: 2px solid var(--accent-coral);
+}
+.timeline-year {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    color: #FFD966;
+    margin-bottom: 6px;
+}
+
+
+
 /* ------------------------------------------
    14. NOTAS (sección de notas personales)
    ------------------------------------------ */
@@ -720,8 +836,11 @@ h3 { font-size: 1.4rem; margin-bottom: var(--space-xs); }
 .insta-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+  gap: 6px;
   width: 100%;
+  margin: 0;
+  padding: 0;
+  align-items: stretch;
 }
 .insta-item {
   aspect-ratio: 1 / 1;
@@ -729,7 +848,8 @@ h3 { font-size: 1.4rem; margin-bottom: var(--space-xs); }
   overflow: hidden;
   cursor: pointer;
   background: #111;
-  border-radius: 4px;
+  border-radius: 8px;
+  isolation: isolate;
 }
 .insta-item img,
 .insta-item video {
@@ -738,12 +858,12 @@ h3 { font-size: 1.4rem; margin-bottom: var(--space-xs); }
   object-fit: cover;
   display: block;
 }
+.insta-item img {
+  background: rgba(255, 255, 255, 0.03);
+}
 .insta-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
@@ -755,15 +875,21 @@ h3 { font-size: 1.4rem; margin-bottom: var(--space-xs); }
 .insta-item:hover .insta-overlay {
   opacity: 1;
 }
+.insta-item:focus-visible .insta-overlay {
+  opacity: 1;
+}
 .insta-overlay i {
   color: white;
   font-size: 2rem;
-  filter: drop-shadow(0 2px 4px black);
+  filter: drop-shadow(0 1px 2px black);
 }
 #memesGrid {
   width: 100%;
   margin: 0;
   padding: 0;
+}
+#memesGrid.insta-grid {
+  display: grid;
 }
 
 /* Navegación de carpetas de memes */
@@ -793,6 +919,12 @@ h3 { font-size: 1.4rem; margin-bottom: var(--space-xs); }
   margin-left: var(--space-xs);
   font-size: 0.7rem;
   opacity: 0.6;
+}
+@media (max-width: 640px) {
+  .insta-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+  }
 }
 
 /* ------------------------------------------
@@ -871,6 +1003,42 @@ h3 { font-size: 1.4rem; margin-bottom: var(--space-xs); }
   padding: var(--space-md);
 }
 @media (max-width: 640px) {
+  .lightbox-reel {
+    padding: 12px;
+  }
+  .lightbox-reel-shell {
+    width: 100%;
+    min-height: auto;
+    padding: 64px 8px 88px;
+  }
+  .lightbox-reel-stage,
+  .reel-lightbox-content,
+  .reel-media {
+    max-width: 92vw;
+    max-height: 72vh;
+  }
+  .lightbox-reel-stage {
+    min-height: auto;
+  }
+  .reel-ui-btn {
+    width: 46px;
+    height: 46px;
+  }
+  .reel-prev-btn {
+    left: 4px;
+  }
+  .reel-next-btn {
+    right: 4px;
+  }
+  .reel-meta {
+    width: calc(100% - 20px);
+    bottom: 0;
+    gap: 8px;
+  }
+  .reel-lightbox-caption {
+    max-width: calc(100% - 74px);
+    font-size: 0.75rem;
+  }
   .lyrics-expanded {
     font-size: 1rem;
     padding: var(--space-sm);
@@ -930,6 +1098,184 @@ h3 { font-size: 1.4rem; margin-bottom: var(--space-xs); }
   height: auto;
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+body.reel-lightbox-open {
+  overflow: hidden;
+}
+.lightbox-reel {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(7, 7, 8, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 1400;
+}
+.lightbox-reel.open {
+  display: flex;
+}
+.lightbox-reel-backdrop {
+  position: absolute;
+  inset: 0;
+}
+.lightbox-reel-shell {
+  position: relative;
+  z-index: 1;
+  width: min(96vw, 1200px);
+  min-height: min(88vh, 860px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 84px;
+}
+.lightbox-reel-stage {
+  position: relative;
+  width: min(90vw, 860px);
+  max-width: 90vw;
+  max-height: 85vh;
+  min-height: min(72vh, 640px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.reel-lightbox-content {
+  width: 100%;
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.reel-media {
+  max-width: 90vw;
+  max-height: 85vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 24px;
+  background: rgba(12, 11, 11, 0.92);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.lightbox-reel video.reel-media {
+  display: block;
+}
+.reel-ui-btn {
+  position: absolute;
+  z-index: 2;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 20, 21, 0.58);
+  color: var(--umbra-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.25);
+  transition: transform var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast), opacity var(--dur-fast);
+}
+.reel-ui-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(36, 36, 38, 0.82);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.reel-ui-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.reel-close-btn {
+  top: 14px;
+  right: 14px;
+}
+.reel-nav-btn {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.reel-nav-btn:hover {
+  transform: translateY(-50%) scale(1.02);
+}
+.reel-prev-btn {
+  left: 16px;
+}
+.reel-next-btn {
+  right: 16px;
+}
+.reel-meta {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(88vw, 760px);
+}
+.reel-lightbox-caption,
+.reel-lightbox-counter {
+  background: rgba(17, 17, 18, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--umbra-light);
+  border-radius: 999px;
+  padding: 10px 16px;
+  letter-spacing: 0.04em;
+}
+.reel-lightbox-caption {
+  max-width: min(70vw, 620px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+.reel-lightbox-counter {
+  font-size: 0.75rem;
+  color: var(--umbra-ash);
+}
+@media (max-width: 640px) {
+  .lightbox-reel {
+    padding: 12px;
+  }
+  .lightbox-reel-shell {
+    width: 100%;
+    min-height: auto;
+    padding: 64px 8px 88px;
+  }
+  .lightbox-reel-stage,
+  .reel-lightbox-content,
+  .reel-media {
+    max-width: 92vw;
+    max-height: 72vh;
+  }
+  .lightbox-reel-stage {
+    min-height: auto;
+  }
+  .reel-ui-btn {
+    width: 46px;
+    height: 46px;
+  }
+  .reel-prev-btn {
+    left: 4px;
+  }
+  .reel-next-btn {
+    right: 4px;
+  }
+  .reel-meta {
+    width: calc(100% - 20px);
+    bottom: 0;
+    gap: 8px;
+  }
+  .reel-lightbox-caption {
+    max-width: calc(100% - 74px);
+    font-size: 0.75rem;
+  }
 }
 
 /* Asegurar que el lightbox de imágenes no afecte al de letras */
@@ -1083,3 +1429,4 @@ i[data-lucide] {
     font-size: 0.6rem;
   }
 }
+
