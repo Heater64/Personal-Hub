@@ -144,20 +144,33 @@ const galleryFolders = {
     ]
 };
 
-// ========== MEMES (sin cambios) ==========
+// ========== MEMES (con imágenes y videos desde Cloudinary) ==========
 const memeImages = {
     "Favoritos ⭐": [
-        "https://tu-rincon-favorito.vercel.app/imagenes/GorditoJoker.png",
-        "https://tu-rincon-favorito.vercel.app/imagenes/Peeerry.png",
-        "https://tu-rincon-favorito.vercel.app/imagenes/Refri.jpg"
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/GorditoJoker_q6ntdf.png",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/Peeerry_kvgggd.png",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/Refri_ztpbvv.jpg",
+        // Videos en la misma carpeta (se mostrarán como videos en la cuadrícula)
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-1_guzqtm.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-2_etahyv.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-3_cotmqd.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-4_g2dugy.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-5_y6tem1.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-6_o3hsbs.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-7_ywahm1.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-8_swf6ib.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-9_cfnetd.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-10_u2uk0l.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-11_a2qajj.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-12_gy0tet.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_o5honc.mp4"
     ],
     "Gatos 🐱": [
-        "https://tu-rincon-favorito.vercel.app/imagenes/Gatosencama.jpg",
-        "https://i.pinimg.com/originals/56/8d/30/568d30ba412ef11370d4abfa5fedc50a.jpg"
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/Gatosencama_m3esg5.jpg"
     ],
     "Random 😂": [
-        "https://tu-rincon-favorito.vercel.app/imagenes/MinecraftUs.jpg",
-        "https://tu-rincon-favorito.vercel.app/imagenes/MemeAvion.jpg"
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/MinecraftUs_f4yeux.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/MemeAvion_rv5b8a.jpg"
     ]
 };
 

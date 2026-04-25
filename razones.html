@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
     <style>
+        /* Estilos específicos de razones */
         .reasons-hero {
             text-align: center;
             padding: var(--space-xl) var(--space-lg);
@@ -91,6 +92,7 @@
 </head>
 <body>
 <div class="page">
+    <!-- ========== HEADER ========== -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
@@ -112,6 +114,7 @@
         </nav>
     </header>
 
+    <!-- ========== SECCIÓN PRINCIPAL ========== -->
     <section class="page-section">
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub</button>
@@ -119,7 +122,7 @@
         <div class="reasons-hero section-card">
             <p class="eyebrow" style="color:var(--accent-coral); margin-bottom:var(--space-sm);">lista interactiva</p>
             <h2>Razones por las que te quiero</h2>
-            <p style="max-width:620px;margin:0 auto;color:var(--umbra-ash);">No es una lista completa pero puedes llegar a hacerte una idea. Pulsa el bot&oacute;n para dejar que aparezca una distinta.</p>
+            <p style="max-width:620px;margin:0 auto;color:var(--umbra-ash);">No es una lista completa pero puedes llegar a hacerte una idea. Pulsa el botón para dejar que aparezca una distinta.</p>
             <div class="reasons-actions">
                 <button class="nav-btn" id="randomReasonBtn" style="border-color:var(--accent-coral); color:var(--accent-coral);">
                     <i data-lucide="shuffle"></i> Nueva razon aleatoria
@@ -140,8 +143,10 @@
 </div>
 
 <script>
+    // ========== INICIALIZAR ICONOS ==========
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
+    // ========== DATOS (RELLENAR CON TUS RAZONES) ==========
     const reasons = [
         { short: "", long: "" },
         { short: "", long: "" },
@@ -159,12 +164,14 @@
     const randomText = document.getElementById('randomReasonText');
     const list = document.getElementById('reasonsList');
 
+    // ========== RAZÓN ALEATORIA ==========
     function paintRandomReason() {
         const item = reasons[Math.floor(Math.random() * reasons.length)];
         randomTitle.textContent = item.short;
         randomText.textContent = item.long;
     }
 
+    // ========== RENDERIZAR LISTA ==========
     function renderReasons() {
         list.innerHTML = reasons.map((item, index) => `
             <button class="reason-item" data-index="${index}">
@@ -177,6 +184,7 @@
         `).join('');
     }
 
+    // ========== EVENTOS ==========
     document.getElementById('randomReasonBtn').addEventListener('click', paintRandomReason);
     list.addEventListener('click', (event) => {
         const button = event.target.closest('.reason-item');
@@ -185,6 +193,7 @@
         button.classList.add('active');
     });
 
+    // ========== INICIALIZAR ==========
     renderReasons();
     paintRandomReason();
 </script>

@@ -10,10 +10,10 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
     <style>
+        /* Estilos específicos de la página de mal día */
         body {
-            background:
-                radial-gradient(circle at top left, rgba(255, 198, 64, 0.12), transparent 25%),
-                linear-gradient(180deg, #15120f 0%, #0f0f10 100%);
+            background: radial-gradient(circle at top left, rgba(255, 198, 64, 0.12), transparent 25%),
+                        linear-gradient(180deg, #15120f 0%, #0f0f10 100%);
         }
         .warm-card {
             background: linear-gradient(180deg, rgba(255, 185, 92, 0.12), rgba(255,255,255,0.03));
@@ -58,6 +58,7 @@
 <body>
 <div class="float-hearts" id="floatHearts"></div>
 <div class="page" style="position:relative; z-index:1;">
+    <!-- ========== HEADER ========== -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
@@ -79,6 +80,7 @@
         </nav>
     </header>
 
+    <!-- ========== SECCIÓN PRINCIPAL ========== -->
     <section class="page-section">
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub
@@ -119,19 +121,14 @@
 </div>
 
 <script>
+    // ========== INICIALIZACIÓN DE ICONOS ==========
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
+    // ========== VARIABLES Y DATOS ==========
     const phrases = [
+        // Aquí van las frases (originalmente vacías, se deben llenar)
         "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
+        "", "", "", "", "", "", "", "", "" // (10 frases)
     ];
 
     const heroMessage = document.getElementById('heroMessage');
@@ -139,6 +136,7 @@
     const kindCounter = document.getElementById('kindCounter');
     const floatHearts = document.getElementById('floatHearts');
 
+    // ========== FUNCIONES ==========
     function randomPhrase() {
         heroMessage.textContent = phrases[Math.floor(Math.random() * phrases.length)];
     }
@@ -156,6 +154,7 @@
         }
     }
 
+    // ========== EVENTOS ==========
     document.getElementById('newPhraseBtn').addEventListener('click', randomPhrase);
     document.getElementById('musicBtn').addEventListener('click', () => {
         if (happyAudio.paused) {
@@ -174,6 +173,7 @@
         launchHearts(8);
     });
 
+    // ========== INICIALIZAR ==========
     randomPhrase();
 </script>
 </body>

@@ -13,6 +13,7 @@
 <body>
 <div class="page">
 
+    <!-- ========== HEADER ========== -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
@@ -31,9 +32,11 @@
             <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
             <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
             <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
+            <button class="nav-btn" onclick="window.location.href='prueba.html'"><i data-lucide="sun-medium"></i> prueba</button>
         </nav>
     </header>
 
+    <!-- ========== SECCIÓN PRINCIPAL BENTO ========== -->
     <section id="home" class="page-section">
         <div class="bento-hero glass">
             <p class="eyebrow"><i data-lucide="sparkles" style="width:0.9rem;"></i> centro de webs</p>
@@ -42,6 +45,7 @@
         </div>
 
         <div class="bento-grid">
+            <!-- Tarjeta: Canciones -->
             <button class="bento-card" onclick="window.location.href='canciones.html'">
                 <i data-lucide="music" class="icon"></i>
                 <h3>Canciones</h3>
@@ -54,52 +58,60 @@
                 </div>
             </button>
 
+            <!-- Tarjeta: TuRincónFav -->
             <button class="bento-card" onclick="window.location.href='rincon.html'">
                 <i data-lucide="heart" class="icon"></i>
                 <h3>TuRincónFav</h3>
                 <p>Galería, gatos, memes, gustos y tu rincón especial.</p>
             </button>
 
+            <!-- Tarjeta: Regalos -->
             <button class="bento-card" onclick="window.location.href='planner.html'">
                 <i data-lucide="gift" class="icon"></i>
                 <h3>Regalos</h3>
                 <p>Planificador de ideas de regalo, guardadas localmente.</p>
             </button>
 
+            <!-- Tarjeta: Those Eyes -->
             <button class="bento-card" onclick="window.location.href='ThoseYourEyes.html'">
                 <i data-lucide="eye" class="icon"></i>
                 <h3>Those Eyes</h3>
-                <p>Una web mÃ¡s poÃ©tica con la canciÃ³n, la letra y una atmÃ³sfera especial.</p>
+                <p>Una web más poética con la canción, la letra y una atmósfera especial.</p>
             </button>
 
+            <!-- Tarjeta: Series -->
             <button class="bento-card" onclick="window.location.href='series.html'">
                 <i data-lucide="tv" class="icon"></i>
                 <h3>Series</h3>
                 <p>Seguimiento de series, enlaces y progreso de episodios.</p>
             </button>
 
+            <!-- Tarjeta: Razones -->
             <button class="bento-card" onclick="window.location.href='razones.html'">
                 <i data-lucide="heart" class="icon"></i>
                 <h3>Razones</h3>
                 <p>Razones por las que te quiero con sorpresa aleatoria cada vez.</p>
             </button>
 
+            <!-- Tarjeta: Open When -->
             <button class="bento-card" onclick="window.location.href='openwhen.html'">
                 <i data-lucide="mail" class="icon"></i>
                 <h3>Open When</h3>
-                <p>Cartas digitales para abrir segÃºn el momento que estÃ©s viviendo.</p>
+                <p>Cartas digitales para abrir según el momento que estés viviendo.</p>
             </button>
 
+            <!-- Tarjeta: Calendario -->
             <button class="bento-card" onclick="window.location.href='calendario.html'">
                 <i data-lucide="calendar-days" class="icon"></i>
                 <h3>Calendario</h3>
-                <p>Casillas con sorpresas pequeÃ±as, recuerdos y retos bonitos.</p>
+                <p>Casillas con sorpresas pequeñas, recuerdos y retos bonitos.</p>
             </button>
 
+            <!-- Tarjeta: Mal día -->
             <button class="bento-card" onclick="window.location.href='maldia.html'">
                 <i data-lucide="sun-medium" class="icon"></i>
                 <h3>Mal dia</h3>
-                <p>Un botÃ³n de emergencia emocional con frases, alegrÃ­a y mÃºsica.</p>
+                <p>Un botón de emergencia emocional con frases, alegría y música.</p>
             </button>
         </div>
 
@@ -111,6 +123,7 @@
     </section>
 </div>
 
+<!-- ========== LIGHTBOX GENERAL ========== -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>

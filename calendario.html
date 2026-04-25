@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
     <style>
+        /* ========== ESTILOS DEL CALENDARIO ========== */
         .calendar-grid {
             display: grid;
             gap: var(--space-sm);
@@ -53,6 +54,7 @@
 </head>
 <body>
 <div class="page">
+    <!-- ========== HEADER ========== -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
@@ -74,6 +76,7 @@
         </nav>
     </header>
 
+    <!-- ========== SECCIÓN PRINCIPAL ========== -->
     <section class="page-section">
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub
@@ -93,39 +96,11 @@
 </div>
 
 <script>
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-
+    // ========== DATOS (rellenar con tus sorpresas) ==========
     const surprises = [
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
+        "", "", "", "", "", "", "", "", "", "",
+        "", "", "", "", "", "", "", "", "", "",
+        "", "", "", "", "", "", "", "", "", ""
     ];
 
     const openedKey = 'calendarioSorpresasAbiertas';
@@ -135,6 +110,7 @@
     const surpriseTitle = document.getElementById('surpriseTitle');
     const surpriseText = document.getElementById('surpriseText');
 
+    // ========== RENDERIZAR CALENDARIO ==========
     function renderCalendar() {
         grid.innerHTML = surprises.map((text, index) => `
             <button class="day-card ${opened.includes(index) ? 'opened' : ''}" data-day="${index}">
@@ -144,6 +120,7 @@
         `).join('');
     }
 
+    // ========== MANEJAR APERTURA ==========
     grid.addEventListener('click', (event) => {
         const card = event.target.closest('.day-card');
         if (!card) return;

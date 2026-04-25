@@ -13,6 +13,7 @@
 <body>
 <div class="page">
 
+    <!-- ========== HEADER ========== -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
@@ -33,12 +34,14 @@
         </nav>
     </header>
 
+    <!-- ========== SECCIÓN REPRODUCTOR ========== -->
     <section id="canciones" class="page-section">
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub
         </button>
 
         <div class="player-layout">
+            <!-- Panel izquierdo: reproductor -->
             <div class="player-panel">
                 <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);margin-bottom:4px;">Reproduciendo ahora</div>
                 <div class="player-album">
@@ -66,7 +69,7 @@
             </div>
 
             <div style="display:grid;gap:16px;">
-                <!-- LYRICS SECTION con mejoras -->
+                <!-- Panel de letras -->
                 <div class="section-card lyrics-card">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
                         <i data-lucide="file-text"></i>
@@ -81,6 +84,7 @@
                     <div class="lyrics-panel" id="lyricsPanel"></div>
                 </div>
 
+                <!-- Lista de canciones -->
                 <div class="section-card">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
                         <i data-lucide="list-music"></i>
@@ -94,7 +98,7 @@
     </section>
 </div>
 
-<!-- LIGHTBOX para letras expandidas -->
+<!-- ========== LIGHTBOX PARA LETRAS EXPANDIDAS ========== -->
 <div id="lyricsLightbox" class="lightbox lyrics-lightbox">
     <button class="lightbox-close" onclick="closeLyricsLightbox()">✕</button>
     <div class="lightbox-content lyrics-lightbox-content" id="lyricsLightboxContent">
@@ -102,7 +106,7 @@
     </div>
 </div>
 
-<!-- Lightbox general (imágenes) -->
+<!-- ========== LIGHTBOX GENERAL ========== -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>

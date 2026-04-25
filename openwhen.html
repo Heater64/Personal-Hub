@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
     <style>
+        /* Estilos específicos de Open When */
         .letters-grid {
             display: grid;
             gap: var(--space-md);
@@ -44,7 +45,7 @@
             margin-top: 6px;
             line-height: 1.7;
         }
-        /* MODAL DEL SOBRE (ENVOLTORIO) */
+        /* Modal del sobre */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -80,7 +81,6 @@
         .modal-overlay.active .envelope-modal {
             transform: scale(1);
         }
-        /* Animación de la solapa (efecto sobre) */
         .envelope-flap {
             background: #c65a3a;
             height: 6px;
@@ -132,7 +132,6 @@
             background: #c65a3a;
             color: #1e1b1a;
         }
-        /* botón abrir carta dentro de la tarjeta */
         .open-btn {
             cursor: pointer;
         }
@@ -140,6 +139,7 @@
 </head>
 <body>
 <div class="page">
+    <!-- ========== HEADER ========== -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
@@ -161,6 +161,7 @@
         </nav>
     </header>
 
+    <!-- ========== SECCIÓN PRINCIPAL ========== -->
     <section class="page-section">
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub
@@ -175,7 +176,7 @@
     </section>
 </div>
 
-<!-- MODAL DEL SOBRE -->
+<!-- ========== MODAL DEL SOBRE ========== -->
 <div id="envelopeModal" class="modal-overlay">
     <div class="envelope-modal">
         <div class="envelope-flap"></div>
@@ -189,8 +190,10 @@
 </div>
 
 <script>
+    // ========== INICIALIZAR ICONOS ==========
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
+    // ========== DATOS DE LAS CARTAS ==========
     const letters = [
         { title: "Ábrela cuando estés triste", note: "Un empujoncito para los días grises.", message: "No tienes que poder con todo a la vez. Respira, descansa un poco y recuerda que ya has superado cosas muy difíciles antes. Sigues siendo increíble incluso en tus días flojitos." },
         { title: "Ábrela cuando me eches de menos", note: "Para cuando la distancia pese más.", message: "Si ahora mismo pudiera, iría a buscarte para darte un abrazo largo. Mientras tanto, piensa en todo lo bonito que ya tenemos y en todo lo que todavía vamos a vivir." },
@@ -209,52 +212,41 @@
             <button class="nav-btn open-btn" data-title="${letter.title.replace(/['"]/g, '&quot;')}" data-message="${letter.message.replace(/['"]/g, '&quot;')}" style="margin-top:var(--space-md);"><i data-lucide="unlock"></i> Abrir carta</button>
         </article>
     `).join('');
-
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // ---- sistema de modal tipo sobre ----
+    // ========== LÓGICA DEL MODAL ==========
     const modal = document.getElementById('envelopeModal');
     const modalTitle = document.getElementById('modalTitle');
     const modalMessage = document.getElementById('modalMessage');
     const closeBtn = document.getElementById('closeModalBtn');
 
-    // Función para abrir el modal con los datos de la carta
     function openEnvelope(title, message) {
         modalTitle.textContent = title;
         modalMessage.textContent = message;
         modal.classList.add('active');
-        // recrear iconos por si lucide no refresca
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
-    // Cerrar modal
     function closeEnvelope() {
         modal.classList.remove('active');
     }
 
-    // Asignar evento a cada botón "Abrir carta"
     document.querySelectorAll('.open-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            e.stopPropagation(); // evita cualquier efecto no deseado
+            e.stopPropagation();
             const title = btn.getAttribute('data-title');
             const message = btn.getAttribute('data-message');
-            if (title && message) {
-                openEnvelope(title, message);
-            }
+            if (title && message) openEnvelope(title, message);
         });
     });
 
-    // Cerrar al hacer clic en el fondo o en el botón
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeEnvelope();
     });
     closeBtn.addEventListener('click', closeEnvelope);
 
-    // Para cerrar con tecla ESC
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeEnvelope();
-        }
+        if (e.key === 'Escape' && modal.classList.contains('active')) closeEnvelope();
     });
 </script>
 </body>

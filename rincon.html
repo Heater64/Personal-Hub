@@ -9,10 +9,14 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
+    <!-- Plyr para reproducción de videos -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
 </head>
 <body>
 <div class="page">
 
+    <!-- ========== HEADER ========== -->
     <header class="header glass">
         <div class="header-top">
             <div class="brand">
@@ -33,6 +37,7 @@
         </nav>
     </header>
 
+    <!-- ========== SECCIÓN PRINCIPAL ========== -->
     <section id="rincon" class="page-section">
         <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub
@@ -52,6 +57,7 @@
             </nav>
         </div>
 
+        <!-- Subvistas -->
         <div id="rincon-inicio" class="sub-view active">
             <div class="section-card" style="text-align:center;padding:48px 24px;">
                 <img src="https://tu-rincon-favorito.vercel.app/imagenes/DADA.jpg"
@@ -102,6 +108,7 @@
     </section>
 </div>
 
+<!-- ========== LIGHTBOX GENERAL ========== -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>
