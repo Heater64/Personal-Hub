@@ -66,25 +66,40 @@ function renderMediaLightboxItem() {
     const item = currentGalleryItems[currentGalleryIndex];
     if (!item) return;
 
-    content.innerHTML = '';
-
     if (item.type === 'video') {
-        const video = document.createElement('video');
-        video.className = 'reel-media';
-        video.controls = true;
-        video.autoplay = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
-        video.src = item.src;
-        if (item.poster) video.poster = item.poster;
-        content.appendChild(video);
+        const posterAttr = item.poster ? ` poster="${escapeHtml(item.poster)}"` : '';
+        // Estructura personalizada del reproductor
+        content.innerHTML = `
+            <div class="video-player-wrapper">
+                <video id="lightboxVideo" class="lightbox-video" preload="metadata"${posterAttr}>
+                    <source src="${escapeHtml(item.src)}" type="video/mp4">
+                    Tu navegador no soporta videos.
+                </video>
+                <div class="video-controls">
+                    <button class="video-btn play-pause" id="videoPlayPauseBtn">
+                        <i data-lucide="play"></i>
+                    </button>
+                    <div class="video-progress-bar">
+                        <div class="video-progress-track">
+                            <div class="video-progress-fill" id="videoProgressFill"></div>
+                        </div>
+                    </div>
+                    <div class="video-time">
+                        <span id="videoCurrentTime">0:00</span> / <span id="videoDuration">0:00</span>
+                    </div>
+                    <button class="video-btn" id="videoMuteBtn">
+                        <i data-lucide="volume-2"></i>
+                    </button>
+                    <button class="video-btn" id="videoFullscreenBtn">
+                        <i data-lucide="maximize-2"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        // Inicializar el reproductor personalizado
+        initVideoPlayer();
     } else {
-        const image = document.createElement('img');
-        image.className = 'reel-media';
-        image.src = item.src;
-        image.alt = item.caption || '';
-        image.loading = 'eager';
-        content.appendChild(image);
+        content.innerHTML = `<img class="reel-media" src="${escapeHtml(item.src)}" alt="${escapeHtml(item.caption || '')}" loading="eager">`;
     }
 
     if (captionEl) captionEl.textContent = item.caption || '';
@@ -94,10 +109,123 @@ function renderMediaLightboxItem() {
     const nextBtn = document.getElementById('reelNextBtn');
     if (prevBtn) prevBtn.disabled = currentGalleryItems.length <= 1;
     if (nextBtn) nextBtn.disabled = currentGalleryItems.length <= 1;
+}
 
-    requestAnimationFrame(() => {
-        playActiveReelVideo();
+function initVideoPlayer() {
+    const video = document.getElementById('lightboxVideo');
+    if (!video) return;
+
+    const playPauseBtn = document.getElementById('videoPlayPauseBtn');
+    const progressFill = document.getElementById('videoProgressFill');
+    const progressTrack = document.querySelector('.video-progress-track');
+    const currentTimeSpan = document.getElementById('videoCurrentTime');
+    const durationSpan = document.getElementById('videoDuration');
+    const muteBtn = document.getElementById('videoMuteBtn');
+    const fullscreenBtn = document.getElementById('videoFullscreenBtn');
+
+    let isPlaying = false;
+    let controlsTimeout;
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "0:00";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateProgress() {
+        if (video.duration) {
+            const percent = (video.currentTime / video.duration) * 100;
+            progressFill.style.width = percent + '%';
+            currentTimeSpan.textContent = formatTime(video.currentTime);
+        }
+    }
+
+    function togglePlay() {
+        if (video.paused) {
+            video.play();
+            playPauseBtn.innerHTML = '<i data-lucide="pause"></i>';
+            isPlaying = true;
+        } else {
+            video.pause();
+            playPauseBtn.innerHTML = '<i data-lucide="play"></i>';
+            isPlaying = false;
+        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function setProgress(e) {
+        const rect = progressTrack.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        video.currentTime = percent * video.duration;
+        updateProgress();
+    }
+
+    function toggleMute() {
+        video.muted = !video.muted;
+        muteBtn.innerHTML = video.muted ? '<i data-lucide="volume-x"></i>' : '<i data-lucide="volume-2"></i>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            const wrapper = video.closest('.video-player-wrapper');
+            wrapper.requestFullscreen().catch(err => console.log(err));
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    function showControls() {
+        const controls = document.querySelector('.video-controls');
+        if (controls) {
+            controls.style.opacity = '1';
+            controls.style.pointerEvents = 'auto';
+            clearTimeout(controlsTimeout);
+            controlsTimeout = setTimeout(() => {
+                if (isPlaying) {
+                    controls.style.opacity = '0';
+                    controls.style.pointerEvents = 'none';
+                }
+            }, 3000);
+        }
+    }
+
+    video.addEventListener('loadedmetadata', () => {
+        durationSpan.textContent = formatTime(video.duration);
     });
+    video.addEventListener('timeupdate', updateProgress);
+    video.addEventListener('play', () => {
+        playPauseBtn.innerHTML = '<i data-lucide="pause"></i>';
+        isPlaying = true;
+        showControls();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    video.addEventListener('pause', () => {
+        playPauseBtn.innerHTML = '<i data-lucide="play"></i>';
+        isPlaying = false;
+        showControls();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    video.addEventListener('click', togglePlay);
+    video.addEventListener('mousemove', showControls);
+    video.addEventListener('mouseleave', () => {
+        if (isPlaying) {
+            const controls = document.querySelector('.video-controls');
+            if (controls) {
+                controls.style.opacity = '0';
+                controls.style.pointerEvents = 'none';
+            }
+        }
+    });
+
+    playPauseBtn.addEventListener('click', togglePlay);
+    progressTrack.addEventListener('click', setProgress);
+    muteBtn.addEventListener('click', toggleMute);
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+    // Auto-play inicial
+    video.play().catch(() => {});
 }
 
 function playActiveReelVideo() {
