@@ -66,15 +66,25 @@ function renderMediaLightboxItem() {
     const item = currentGalleryItems[currentGalleryIndex];
     if (!item) return;
 
+    content.innerHTML = '';
+
     if (item.type === 'video') {
-        const posterAttr = item.poster ? ` poster="${escapeHtml(item.poster)}"` : '';
-        content.innerHTML = `
-            <video class="reel-media" controls autoplay playsinline preload="metadata"${posterAttr}>
-                <source src="${escapeHtml(item.src)}">
-            </video>
-        `;
+        const video = document.createElement('video');
+        video.className = 'reel-media';
+        video.controls = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.src = item.src;
+        if (item.poster) video.poster = item.poster;
+        content.appendChild(video);
     } else {
-        content.innerHTML = `<img class="reel-media" src="${escapeHtml(item.src)}" alt="${escapeHtml(item.caption || '')}" loading="eager">`;
+        const image = document.createElement('img');
+        image.className = 'reel-media';
+        image.src = item.src;
+        image.alt = item.caption || '';
+        image.loading = 'eager';
+        content.appendChild(image);
     }
 
     if (captionEl) captionEl.textContent = item.caption || '';
@@ -84,20 +94,35 @@ function renderMediaLightboxItem() {
     const nextBtn = document.getElementById('reelNextBtn');
     if (prevBtn) prevBtn.disabled = currentGalleryItems.length <= 1;
     if (nextBtn) nextBtn.disabled = currentGalleryItems.length <= 1;
+
+    requestAnimationFrame(() => {
+        playActiveReelVideo();
+    });
+}
+
+function playActiveReelVideo() {
+    const content = document.getElementById('reelLightboxContent');
+    const video = content ? content.querySelector('video') : null;
+    if (!video) return;
+    video.load();
+    video.play().catch(() => {});
 }
 
 function openMediaLightbox(items, startIndex = 0, galleryType = 'media') {
     const box = document.getElementById('reelLightbox');
-    if (!box || !Array.isArray(items) || !items.length) return;
+    if (!box || !Array.isArray(items) || !items.length) {
+        showMessage('No se pudo abrir el visor', true);
+        return;
+    }
 
     currentGalleryItems = items;
     currentGalleryIndex = Math.max(0, Math.min(startIndex, items.length - 1));
     activeGalleryType = galleryType;
 
-    renderMediaLightboxItem();
     box.setAttribute('aria-hidden', 'false');
     box.classList.add('open');
     document.body.classList.add('reel-lightbox-open');
+    renderMediaLightboxItem();
 }
 
 function closeMediaLightbox() {
@@ -485,7 +510,7 @@ function renderGustos() {
     `;
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
-
+/* DATOS DE GATOS */
 function renderCatFacts() {
     const list = document.getElementById('catFacts');
     if (!list) return;
@@ -866,6 +891,3 @@ window.closeLyricsLightbox = closeLyricsLightbox;
 window.toggleLyricsPanel = toggleLyricsPanel;
 window.expandLyricsLightbox = expandLyricsLightbox;
 window.openVideoLightbox = openVideoLightbox;
-window.addGift = addGift;
-window.toggleGift = toggleGift;
-window.deleteGift = deleteGift;
