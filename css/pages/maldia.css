@@ -1,0 +1,43 @@
+﻿/* Estilos especÃ­ficos de la pÃ¡gina de mal dÃ­a */
+        body {
+            background: radial-gradient(circle at top left, rgba(255, 198, 64, 0.12), transparent 25%),
+                        linear-gradient(180deg, #15120f 0%, #0f0f10 100%);
+        }
+        .warm-card {
+            background: linear-gradient(180deg, rgba(255, 185, 92, 0.12), rgba(255,255,255,0.03));
+            border: 1px solid rgba(255, 185, 92, 0.18);
+        }
+        .boost-grid {
+            display: grid;
+            gap: var(--space-md);
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+        .boost-number {
+            font-size: 2.4rem;
+            font-family: 'Playfair Display', Georgia, serif;
+            color: #ffc567;
+        }
+        .hero-message {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            margin-top: var(--space-sm);
+            color: var(--umbra-light);
+        }
+        .float-hearts {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .float-hearts span {
+            position: absolute;
+            bottom: -40px;
+            font-size: 1.2rem;
+            animation: rise 5s linear forwards;
+            opacity: 0.85;
+        }
+        @keyframes rise {
+            from { transform: translateY(0) scale(0.9); opacity: 0.9; }
+            to { transform: translateY(-110vh) scale(1.2); opacity: 0; }
+        }

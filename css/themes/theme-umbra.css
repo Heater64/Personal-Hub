@@ -1,0 +1,37 @@
+/* ==========================================
+   UMBRA · Sistema de diseño
+   ========================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+:root {
+  --umbra-black: #0f0f10;
+  --umbra-dark: #1a1a1c;
+  --umbra-stone: #2a2a2e;
+  --umbra-ash: #6e6a67;
+  --umbra-light: #e8e6e3;
+  --umbra-white-soft: #f5f3f0;
+
+  --accent-coral: #c65a3a;
+  --accent-rust: #8f3e2e;
+  --accent-dim: rgba(198, 90, 58, 0.15);
+  --accent-border: rgba(198, 90, 58, 0.35);
+
+  --space-xs: 8px;
+  --space-sm: 16px;
+  --space-md: 32px;
+  --space-lg: 64px;
+  --space-xl: 120px;
+  --space-xxl: 200px;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 40px;
+
+  --border-subtle: 1px solid rgba(255, 255, 255, 0.05);
+  --border-visible: 1px solid rgba(255, 255, 255, 0.12);
+
+  --dur-fast: 0.2s ease;
+  --dur-mid: 0.3s ease;
+}

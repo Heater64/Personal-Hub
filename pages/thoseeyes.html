@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Those Eyes</title>
+    <meta name="theme-color" content="#0c0b0b">
+    <link rel="stylesheet" href="../css/themes/theme-umbra.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/pages/thoseeyes.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<canvas id="stars"></canvas>
+
+<div class="page"> <!-- Contenedor para mantener consistencia con otras páginas -->
+
+  <!-- HEADER PRINCIPAL (idéntico al de index.html) -->
+  <header class="header glass">
+    <div class="header-top">
+      <div class="brand">
+        <h1> Those Eyes<i data-lucide="heart" style="width:1.2rem; margin-left: 4px;"></i></h1>
+      </div>
+    </div>
+    <nav class="nav-main" aria-label="Navegación principal">
+      <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
+      <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
+      <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
+      <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
+      <button class="nav-btn active" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
+      <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
+      <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
+      <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
+      <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
+      <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
+    </nav>
+  </header>
+
+  <!-- Contenido específico de la canción (sin duplicar el header hero ya que ya tenemos el header principal) -->
+  <div class="wrap">
+    <div class="hero">
+      <p class="eyebrow">para ti · con todo mi amor</p>
+      <h1 class="hero-title">
+        <span class="t1">Those</span>
+        <span class="t2">Eyes</span>
+      </h1>
+      <div class="hero-meta">
+        <span>New West</span>
+        <div class="hero-meta-dot"></div>
+        <span>2023</span>
+      </div>
+    </div>
+
+    <!-- Reproductor y letras (sin cambios) -->
+    <div class="player-wrap">
+      <div class="player-card">
+        <button class="btn-play" id="playBtn">▶</button>
+        <div class="player-info">
+          <div class="player-song">Those Eyes</div>
+          <div class="player-artist">New West</div>
+        </div>
+        <div class="player-right">
+          <div class="bars" id="bars">
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+          </div>
+          <div class="time-display" id="timeDisplay">0:00</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lyrics" id="lyrics">
+      <!-- Todo el contenido de las letras igual que antes -->
+      <div class="lyric-block">
+        <span class="lyric-line big" data-start="0" data-end="4">When we're done making love</span>
+        <span class="lyric-line italic-soft" data-start="4" data-end="8">And you look up</span>
+        <span class="lyric-line accent" data-start="8" data-end="13">and give me those eyes</span>
+      </div>
+      <div class="ornament"><div class="ornament-line"></div><div class="ornament-sym">✦</div><div class="ornament-line"></div></div>
+      <div class="lyric-block">
+        <span class="lyric-line" data-start="13" data-end="17">'Cause all of the small things</span>
+        <span class="lyric-line italic-soft" data-start="17" data-end="20">that you do</span>
+        <span class="lyric-line" data-start="20" data-end="23">Are what remind me</span>
+        <span class="lyric-line accent" data-start="23" data-end="27">why I fell for you</span>
+      </div>
+      <div class="lyric-block">
+        <span class="lyric-line" data-start="27" data-end="29">And when we're apart,</span>
+        <span class="lyric-line italic-soft" data-start="29" data-end="31">and I'm missing you</span>
+        <span class="lyric-line" data-start="31" data-end="33">I close my eyes</span>
+        <span class="lyric-line accent" data-start="33" data-end="37">and all I see is you</span>
+        <span class="lyric-line italic-soft" data-start="37" data-end="40">And the small things you do</span>
+      </div>
+      <div class="ornament"><div class="ornament-line"></div><div class="ornament-sym">✦</div><div class="ornament-line"></div></div>
+      <div class="lyric-block">
+        <span class="lyric-line big" data-start="49" data-end="52">When you call me at night</span>
+        <span class="lyric-line italic-soft" data-start="52" data-end="55">while you're out</span>
+        <span class="lyric-line italic-soft" data-start="55" data-end="57">Getting high with your friends</span>
+      </div>
+      <div class="lyric-block">
+        <span class="lyric-line" data-start="62" data-end="64">Every "hi", every "bye"</span>
+        <span class="lyric-line accent" data-start="64" data-end="68">every "I love you"</span>
+        <span class="lyric-line italic-soft" data-start="68" data-end="70">you've ever said</span>
+      </div>
+      <div class="ornament"><div class="ornament-line"></div><div class="ornament-sym">✦</div><div class="ornament-line"></div></div>
+      <div class="lyric-block">
+        <span class="lyric-line" data-start="73" data-end="78">'Cause all of the small things</span>
+        <span class="lyric-line italic-soft" data-start="78" data-end="80">that you do</span>
+        <span class="lyric-line" data-start="80" data-end="83">Are what remind me</span>
+        <span class="lyric-line accent" data-start="83" data-end="85">why I fell for you</span>
+      </div>
+      <div class="lyric-block">
+        <span class="lyric-line" data-start="86" data-end="89">And when we're apart,</span>
+        <span class="lyric-line italic-soft" data-start="89" data-end="92">and I'm missing you</span>
+        <span class="lyric-line" data-start="92" data-end="95">I close my eyes</span>
+        <span class="lyric-line accent" data-start="95" data-end="97">and all I see is you</span>
+        <span class="lyric-line big" data-start="97" data-end="100">And the small things you do</span>
+      </div>
+    </div>
+
+    <div class="closing" id="closing">
+      <p class="closing-msg">
+        Cada pequeña cosa que haces<br>
+        me recuerda por qué <strong>me enamoré de ti.</strong>
+      </p>
+      <p class="closing-hearts">♡ ✦ 🌹 ✦ ♡</p>
+    </div>
+  </div>
+</div>
+
+<audio id="audio" loop>
+  <source src="../assets/those-eyes.mp3" type="audio/mpeg">
+</audio>
+    <script src="../js/themes.js"></script>
+    <script src="../js/core.js"></script>
+    <script src="../js/data.js"></script>
+    <script src="../js/pages/thoseeyes.js"></script>
+</body>
+</html>

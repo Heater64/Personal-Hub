@@ -6,9 +6,12 @@
     <title>Notas · Regalos</title>
     <meta name="description" content="Tus notas y recordatorios">
     <meta name="theme-color" content="#0c0b0b">
-    <link rel="stylesheet" href="styles.css">
+        <link rel="stylesheet" href="../css/themes/theme-umbra.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/pages/planner.css">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
+    <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
 <body>
 <div class="page">
@@ -22,11 +25,11 @@
             </div>
         </div>
         <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
+            <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
             <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
             <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
             <button class="nav-btn active"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='ThoseYourEyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
+            <button class="nav-btn" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
             <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
             <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
             <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
@@ -37,7 +40,7 @@
 
     <!-- ========== SECCIÓN PLANNER ========== -->
     <section id="planner" class="page-section">
-        <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
+        <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub
         </button>
 
@@ -86,8 +89,9 @@
     <div class="lightbox-content" id="lightboxContent"></div>
     <div class="lightbox-caption" id="lightboxCaption"></div>
 </div>
-
-<script src="datos.js"></script>
-<script src="script.js"></script>
+    <script src="../js/themes.js"></script>
+    <script src="../js/core.js"></script>
+    <script src="../js/data.js"></script>
+    <script src="../js/pages/planner.js"></script>
 </body>
 </html>

@@ -1,22 +1,18 @@
+﻿// ==========================================
+// planner.js · notas y regalos
 // ==========================================
-// notes.js · Gestión de notas personales (localStorage)
-// Se usa en planner.html y otras páginas con notas.
-// ==========================================
-
-// ========== VARIABLES GLOBALES ==========
 let currentEditNoteIndex = null;
 
-// ========== CARGAR Y MOSTRAR NOTAS ==========
 function loadNotes() {
     const container = document.getElementById('notesList');
     if (!container) return;
     const notes = JSON.parse(localStorage.getItem('notes') || '[]');
     if (notes.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding: var(--space-lg); color: var(--umbra-ash);"><i data-lucide="inbox"></i><p>No hay notas aún. Escribe una.</p></div>';
+        container.innerHTML = '<div class="empty-state"><i data-lucide="inbox"></i><p>No hay notas aun. Escribe una.</p></div>';
     } else {
         container.innerHTML = notes.map((note, index) => `
             <div class="note-item" data-index="${index}">
-                <div class="note-item-preview">${escapeHtml(note.text.substring(0, 100))}${note.text.length > 100 ? '…' : ''}</div>
+                <div class="note-item-preview">${escapeHtml(note.text.substring(0, 100))}${note.text.length > 100 ? '...' : ''}</div>
                 <div class="note-item-footer">
                     <span>${new Date(note.date).toLocaleDateString()}</span>
                     <div class="note-item-actions">
@@ -32,36 +28,34 @@ function loadNotes() {
     attachNoteEvents();
 }
 
-// ========== ASIGNAR EVENTOS A LOS BOTONES DE NOTA ==========
 function attachNoteEvents() {
     document.querySelectorAll('.edit-note-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            editNote(parseInt(btn.dataset.index));
+        btn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            editNote(Number(btn.dataset.index));
         });
     });
     document.querySelectorAll('.delete-note-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteNote(parseInt(btn.dataset.index));
+        btn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            deleteNote(Number(btn.dataset.index));
         });
     });
     document.querySelectorAll('.expand-note-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            expandNote(parseInt(btn.dataset.index));
+        btn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            expandNote(Number(btn.dataset.index));
         });
     });
     document.querySelectorAll('.note-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            if (!e.target.closest('button')) {
-                expandNote(parseInt(item.dataset.index));
+        item.addEventListener('click', function (event) {
+            if (!event.target.closest('button')) {
+                expandNote(Number(item.dataset.index));
             }
         });
     });
 }
 
-// ========== AÑADIR NUEVA NOTA ==========
 function addNote() {
     const textarea = document.getElementById('noteInput');
     if (!textarea || !textarea.value.trim()) return;
@@ -73,20 +67,18 @@ function addNote() {
     localStorage.setItem('notes', JSON.stringify(notes));
     textarea.value = '';
     loadNotes();
-    showMessage('✅ Nota guardada');
+    showMessage('Nota guardada');
 }
 
-// ========== ELIMINAR NOTA ==========
 function deleteNote(index) {
     const notes = JSON.parse(localStorage.getItem('notes') || '[]');
     notes.splice(index, 1);
     localStorage.setItem('notes', JSON.stringify(notes));
     loadNotes();
     closeNoteLightbox();
-    showMessage('🗑️ Nota eliminada');
+    showMessage('Nota eliminada');
 }
 
-// ========== EDITAR NOTA (abre lightbox) ==========
 function editNote(index) {
     const notes = JSON.parse(localStorage.getItem('notes') || '[]');
     if (!notes[index]) return;
@@ -101,28 +93,27 @@ function expandNote(index) {
     editNote(index);
 }
 
-// ========== GUARDAR EDICIÓN ==========
 function saveNoteEdit() {
     if (currentEditNoteIndex === null) return;
     const textarea = document.getElementById('expandedNoteText');
     if (!textarea) return;
     const newText = textarea.value.trim();
     if (!newText) {
-        showMessage('❌ La nota no puede estar vacía', true);
+        showMessage('La nota no puede estar vacia', true);
         return;
     }
+
     const notes = JSON.parse(localStorage.getItem('notes') || '[]');
     if (notes[currentEditNoteIndex]) {
         notes[currentEditNoteIndex].text = newText;
         notes[currentEditNoteIndex].date = new Date().toISOString();
         localStorage.setItem('notes', JSON.stringify(notes));
-        showMessage('✏️ Nota actualizada');
+        showMessage('Nota actualizada');
     }
     closeNoteLightbox();
     loadNotes();
 }
 
-// ========== ELIMINAR DESDE LIGHTBOX ==========
 function deleteCurrentNoteFromLightbox() {
     if (currentEditNoteIndex !== null) {
         deleteNote(currentEditNoteIndex);
@@ -130,7 +121,6 @@ function deleteCurrentNoteFromLightbox() {
     closeNoteLightbox();
 }
 
-// ========== CERRAR LIGHTBOX DE NOTA ==========
 function closeNoteLightbox() {
     const lightbox = document.getElementById('noteLightbox');
     if (lightbox) lightbox.classList.remove('open');
@@ -139,18 +129,33 @@ function closeNoteLightbox() {
     if (textarea) textarea.value = '';
 }
 
-// ========== INICIALIZACIÓN ==========
-document.addEventListener('DOMContentLoaded', () => {
+function initPlanner() {
+    if (!document.getElementById('notesList')) return;
+    loadNotes();
+
     const addBtn = document.getElementById('addNoteBtn');
-    if (addBtn) addBtn.addEventListener('click', addNote);
+    const noteInput = document.getElementById('noteInput');
     const saveEditBtn = document.getElementById('saveNoteEditBtn');
-    if (saveEditBtn) saveEditBtn.addEventListener('click', saveNoteEdit);
-    const deleteFromLightboxBtn = document.getElementById('deleteNoteFromLightboxBtn');
-    if (deleteFromLightboxBtn) deleteFromLightboxBtn.addEventListener('click', deleteCurrentNoteFromLightbox);
+    const deleteBtn = document.getElementById('deleteNoteFromLightboxBtn');
     const lightbox = document.getElementById('noteLightbox');
-    if (lightbox) {
-        lightbox.addEventListener('click', (e) => {
-            if (e.target === lightbox) closeNoteLightbox();
+
+    if (addBtn) addBtn.addEventListener('click', addNote);
+    if (noteInput) {
+        noteInput.addEventListener('keydown', function (event) {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') addNote();
         });
     }
-});
+    if (saveEditBtn) saveEditBtn.addEventListener('click', saveNoteEdit);
+    if (deleteBtn) deleteBtn.addEventListener('click', deleteCurrentNoteFromLightbox);
+    if (lightbox) {
+        lightbox.addEventListener('click', function (event) {
+            if (event.target === lightbox) {
+                closeNoteLightbox();
+            }
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initPlanner);
+
+window.closeNoteLightbox = closeNoteLightbox;

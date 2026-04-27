@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Series · Seguimiento</title>
+    <meta name="theme-color" content="#0c0b0b">
+        <link rel="stylesheet" href="../css/themes/theme-umbra.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/pages/series.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
+</head>
+<body>
+<div class="page">
+    <!-- ========== HEADER ========== -->
+    <header class="header glass">
+        <div class="brand">
+            <h1>Mi Serie<i data-lucide="tv" style="width:1.2rem; margin-left: 4px;"></i></h1>
+            <p>Capítulos vistos · Enlaces directos</p>
+        </div>
+        <nav class="nav-main">
+            <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
+            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
+            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
+            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
+            <button class="nav-btn active"><i data-lucide="tv"></i> Series</button>
+            <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
+            <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
+            <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
+            <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
+        </nav>
+    </header>
+
+    <!-- ========== SECCIÓN PRINCIPAL ========== -->
+    <section class="page-section">
+        <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
+            <i data-lucide="arrow-left"></i> Volver al Hub
+        </button>
+
+        <div class="series-form-container">
+            <button class="toggle-form-btn" id="toggleFormBtn">
+                <span> Añadir serie</span>
+                <i data-lucide="chevron-down" id="toggleIcon"></i>
+            </button>
+            <div id="seriesForm" class="series-form">
+                <div class="form-group">
+                    <label>NOMBRE DE LA SERIE</label>
+                    <input type="text" id="serieName" class="big-input" placeholder="Ej: Gravity Falls">
+                </div>
+                <div class="form-group">
+                    <label>ENLACE DONDE LA VES</label>
+                    <input type="url" id="serieUrl" class="big-input" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>TOTAL DE CAPÍTULOS</label>
+                    <input type="number" id="serieTotal" class="big-input" placeholder="24" min="1">
+                </div>
+                <button id="addSerieBtn" class="btn-primary">Guardar serie</button>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+            <button id="resetAllBtn" class="reset-all-btn"><i data-lucide="rotate-ccw"></i> Reiniciar todo</button>
+        </div>
+
+        <div id="seriesList" class="series-grid"></div>
+    </section>
+</div>
+    <script src="../js/themes.js"></script>
+    <script src="../js/core.js"></script>
+    <script src="../js/data.js"></script>
+    <script src="../js/pages/series.js"></script>
+</body>
+</html>

@@ -6,9 +6,12 @@
     <title>Home ✦</title>
     <meta name="description" content="Tu lanzadera de proyectos personales">
     <meta name="theme-color" content="#0c0b0b">
-    <link rel="stylesheet" href="styles.css">
+        <link rel="stylesheet" href="css/themes/theme-umbra.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages/home.css">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
+    <link rel="icon" type="image/png" href="assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
 <body>
 <div class="page">
@@ -23,16 +26,15 @@
         </div>
         <nav class="nav-main" aria-label="Navegación principal">
             <button class="nav-btn active" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='ThoseYourEyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
-            <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
-            <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
-            <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
-            <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
-            <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
-            <button class="nav-btn" onclick="window.location.href='prueba.html'"><i data-lucide="sun-medium"></i> prueba</button>
+            <button class="nav-btn" onclick="window.location.href='pages/canciones.html'"><i data-lucide="music"></i> Canciones</button>
+            <button class="nav-btn" onclick="window.location.href='pages/rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
+            <button class="nav-btn" onclick="window.location.href='pages/planner.html'"><i data-lucide="gift"></i> Regalos</button>
+            <button class="nav-btn" onclick="window.location.href='pages/thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
+            <button class="nav-btn" onclick="window.location.href='pages/series.html'"><i data-lucide="tv"></i> Series</button>
+            <button class="nav-btn" onclick="window.location.href='pages/razones.html'"><i data-lucide="heart"></i> Razones</button>
+            <button class="nav-btn" onclick="window.location.href='pages/openwhen.html'"><i data-lucide="mail"></i> Open When</button>
+            <button class="nav-btn" onclick="window.location.href='pages/calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
+            <button class="nav-btn" onclick="window.location.href='pages/maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
         </nav>
     </header>
 
@@ -46,7 +48,7 @@
 
         <div class="bento-grid">
             <!-- Tarjeta: Canciones -->
-            <button class="bento-card" onclick="window.location.href='canciones.html'">
+            <button class="bento-card" onclick="window.location.href='pages/canciones.html'">
                 <i data-lucide="music" class="icon"></i>
                 <h3>Canciones</h3>
                 <p>Trozos de canciones que me recuerdan a ti, mi princesa.</p>
@@ -59,56 +61,56 @@
             </button>
 
             <!-- Tarjeta: TuRincónFav -->
-            <button class="bento-card" onclick="window.location.href='rincon.html'">
+            <button class="bento-card" onclick="window.location.href='pages/rincon.html'">
                 <i data-lucide="heart" class="icon"></i>
                 <h3>TuRincónFav</h3>
                 <p>Galería, gatos, memes, gustos y tu rincón especial.</p>
             </button>
 
             <!-- Tarjeta: Regalos -->
-            <button class="bento-card" onclick="window.location.href='planner.html'">
+            <button class="bento-card" onclick="window.location.href='pages/planner.html'">
                 <i data-lucide="gift" class="icon"></i>
                 <h3>Regalos</h3>
                 <p>Planificador de ideas de regalo, guardadas localmente.</p>
             </button>
 
             <!-- Tarjeta: Those Eyes -->
-            <button class="bento-card" onclick="window.location.href='ThoseYourEyes.html'">
+            <button class="bento-card" onclick="window.location.href='pages/thoseeyes.html'">
                 <i data-lucide="eye" class="icon"></i>
                 <h3>Those Eyes</h3>
                 <p>Una web más poética con la canción, la letra y una atmósfera especial.</p>
             </button>
 
             <!-- Tarjeta: Series -->
-            <button class="bento-card" onclick="window.location.href='series.html'">
+            <button class="bento-card" onclick="window.location.href='pages/series.html'">
                 <i data-lucide="tv" class="icon"></i>
                 <h3>Series</h3>
                 <p>Seguimiento de series, enlaces y progreso de episodios.</p>
             </button>
 
             <!-- Tarjeta: Razones -->
-            <button class="bento-card" onclick="window.location.href='razones.html'">
+            <button class="bento-card" onclick="window.location.href='pages/razones.html'">
                 <i data-lucide="heart" class="icon"></i>
                 <h3>Razones</h3>
                 <p>Razones por las que te quiero con sorpresa aleatoria cada vez.</p>
             </button>
 
             <!-- Tarjeta: Open When -->
-            <button class="bento-card" onclick="window.location.href='openwhen.html'">
+            <button class="bento-card" onclick="window.location.href='pages/openwhen.html'">
                 <i data-lucide="mail" class="icon"></i>
                 <h3>Open When</h3>
                 <p>Cartas digitales para abrir según el momento que estés viviendo.</p>
             </button>
 
             <!-- Tarjeta: Calendario -->
-            <button class="bento-card" onclick="window.location.href='calendario.html'">
+            <button class="bento-card" onclick="window.location.href='pages/calendario.html'">
                 <i data-lucide="calendar-days" class="icon"></i>
                 <h3>Calendario</h3>
                 <p>Casillas con sorpresas pequeñas, recuerdos y retos bonitos.</p>
             </button>
 
             <!-- Tarjeta: Mal día -->
-            <button class="bento-card" onclick="window.location.href='maldia.html'">
+            <button class="bento-card" onclick="window.location.href='pages/maldia.html'">
                 <i data-lucide="sun-medium" class="icon"></i>
                 <h3>Mal dia</h3>
                 <p>Un botón de emergencia emocional con frases, alegría y música.</p>
@@ -129,8 +131,8 @@
     <div class="lightbox-content" id="lightboxContent"></div>
     <div class="lightbox-caption" id="lightboxCaption"></div>
 </div>
-
-<script src="datos.js"></script>
-<script src="script.js"></script>
+    <script src="js/themes.js"></script>
+    <script src="js/core.js"></script>
+    <script src="js/data.js"></script>
 </body>
 </html>

@@ -1,0 +1,65 @@
+﻿.bento-hero {
+  padding: var(--space-xl) var(--space-lg);
+  margin-bottom: var(--space-lg);
+  background: rgba(255, 255, 255, 0.02);
+  border: var(--border-subtle);
+  border-radius: var(--radius-xl);
+  position: relative;
+}
+.bento-hero .eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-coral);
+  margin-bottom: var(--space-sm);
+}
+.bento-hero h2 {
+  font-size: clamp(2.4rem, 6vw, 3.8rem);
+  line-height: 1.2;
+  font-weight: 400;
+}
+.bento-hero h2 em {
+  font-style: italic;
+  color: var(--accent-coral);
+}
+.bento-hero p {
+  color: var(--umbra-ash);
+  max-width: 620px;
+  margin-top: var(--space-md);
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+.bento-grid {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.bento-card {
+  padding: var(--space-lg) var(--space-md);
+  text-align: left;
+  transition: opacity var(--dur-fast), border-color var(--dur-fast);
+}
+.bento-card:hover {
+  opacity: 0.85;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.bento-card .icon {
+  font-size: 2.4rem;
+  margin-bottom: var(--space-md);
+  display: block;
+  width: 2.4rem;
+  height: 2.4rem;
+  stroke-width: 1.2;
+}
+.bento-card h3 {
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-bottom: var(--space-xs);
+}
+.bento-card p {
+  color: var(--umbra-ash);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+

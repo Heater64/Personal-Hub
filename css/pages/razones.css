@@ -1,0 +1,78 @@
+﻿/* Estilos especÃ­ficos de razones */
+        .reasons-hero {
+            text-align: center;
+            padding: var(--space-xl) var(--space-lg);
+            background: linear-gradient(180deg, rgba(198, 90, 58, 0.08), rgba(255, 255, 255, 0.02));
+            border-radius: var(--radius-xl);
+            border: var(--border-subtle);
+            margin-bottom: var(--space-lg);
+        }
+        .random-card {
+            padding: var(--space-lg);
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(198, 90, 58, 0.28);
+            background: rgba(198, 90, 58, 0.08);
+            margin-top: var(--space-md);
+        }
+        .random-card small {
+            display: block;
+            color: var(--umbra-ash);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: var(--space-sm);
+        }
+        .random-card h3 {
+            margin-bottom: var(--space-sm);
+        }
+        .reasons-actions {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            margin-top: var(--space-md);
+            justify-content: center;
+        }
+        .reason-list {
+            display: grid;
+            gap: var(--space-sm);
+            margin-top: var(--space-lg);
+        }
+        .reason-item {
+            width: 100%;
+            text-align: left;
+            padding: var(--space-md);
+            border-radius: var(--radius-lg);
+            border: var(--border-subtle);
+            background: rgba(255,255,255,0.02);
+            transition: border-color var(--dur-fast), background var(--dur-fast);
+        }
+        .reason-item:hover,
+        .reason-item.active {
+            border-color: var(--accent-coral);
+            background: rgba(198, 90, 58, 0.08);
+        }
+        .reason-top {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: 8px;
+        }
+        .reason-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(198, 90, 58, 0.15);
+            color: var(--accent-coral);
+            font-size: 0.85rem;
+        }
+        .reason-extra {
+            display: none;
+            color: var(--umbra-ash);
+            margin-top: var(--space-sm);
+            line-height: 1.8;
+        }
+        .reason-item.active .reason-extra {
+            display: block;
+        }

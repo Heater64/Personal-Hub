@@ -6,54 +6,12 @@
     <title>Mal dia</title>
     <meta name="description" content="Web de emergencia emocional para levantar el animo">
     <meta name="theme-color" content="#0c0b0b">
-    <link rel="stylesheet" href="styles.css">
+        <link rel="stylesheet" href="../css/themes/theme-umbra.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/pages/maldia.css">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/png" href="Gemini_Generated_Image_6wkfln6wk.png">
-    <style>
-        /* Estilos específicos de la página de mal día */
-        body {
-            background: radial-gradient(circle at top left, rgba(255, 198, 64, 0.12), transparent 25%),
-                        linear-gradient(180deg, #15120f 0%, #0f0f10 100%);
-        }
-        .warm-card {
-            background: linear-gradient(180deg, rgba(255, 185, 92, 0.12), rgba(255,255,255,0.03));
-            border: 1px solid rgba(255, 185, 92, 0.18);
-        }
-        .boost-grid {
-            display: grid;
-            gap: var(--space-md);
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        }
-        .boost-number {
-            font-size: 2.4rem;
-            font-family: 'Playfair Display', Georgia, serif;
-            color: #ffc567;
-        }
-        .hero-message {
-            font-size: 1.2rem;
-            line-height: 1.8;
-            margin-top: var(--space-sm);
-            color: var(--umbra-light);
-        }
-        .float-hearts {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden;
-            z-index: 0;
-        }
-        .float-hearts span {
-            position: absolute;
-            bottom: -40px;
-            font-size: 1.2rem;
-            animation: rise 5s linear forwards;
-            opacity: 0.85;
-        }
-        @keyframes rise {
-            from { transform: translateY(0) scale(0.9); opacity: 0.9; }
-            to { transform: translateY(-110vh) scale(1.2); opacity: 0; }
-        }
-    </style>
+    <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
 <body>
 <div class="float-hearts" id="floatHearts"></div>
@@ -67,11 +25,11 @@
             </div>
         </div>
         <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
+            <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
             <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
             <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
             <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='ThoseYourEyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
+            <button class="nav-btn" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
             <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
             <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
             <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
@@ -82,7 +40,7 @@
 
     <!-- ========== SECCIÓN PRINCIPAL ========== -->
     <section class="page-section">
-        <button class="back-btn" onclick="window.location.href='index.html'" style="margin-bottom:20px;">
+        <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub
         </button>
 
@@ -119,62 +77,9 @@
         </div>
     </section>
 </div>
-
-<script>
-    // ========== INICIALIZACIÓN DE ICONOS ==========
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-
-    // ========== VARIABLES Y DATOS ==========
-    const phrases = [
-        // Aquí van las frases (originalmente vacías, se deben llenar)
-        "",
-        "", "", "", "", "", "", "", "", "" // (10 frases)
-    ];
-
-    const heroMessage = document.getElementById('heroMessage');
-    const happyAudio = document.getElementById('happyAudio');
-    const kindCounter = document.getElementById('kindCounter');
-    const floatHearts = document.getElementById('floatHearts');
-
-    // ========== FUNCIONES ==========
-    function randomPhrase() {
-        heroMessage.textContent = phrases[Math.floor(Math.random() * phrases.length)];
-    }
-
-    function launchHearts(amount = 18) {
-        const icons = ['❤', '✦', '☀', '♡'];
-        for (let i = 0; i < amount; i++) {
-            const span = document.createElement('span');
-            span.textContent = icons[Math.floor(Math.random() * icons.length)];
-            span.style.left = `${Math.random() * 100}%`;
-            span.style.animationDelay = `${Math.random() * 0.6}s`;
-            span.style.color = i % 2 === 0 ? '#ffc567' : '#ff8aa1';
-            floatHearts.appendChild(span);
-            setTimeout(() => span.remove(), 5200);
-        }
-    }
-
-    // ========== EVENTOS ==========
-    document.getElementById('newPhraseBtn').addEventListener('click', randomPhrase);
-    document.getElementById('musicBtn').addEventListener('click', () => {
-        if (happyAudio.paused) {
-            happyAudio.play();
-        } else {
-            happyAudio.pause();
-        }
-    });
-    document.getElementById('betterBtn').addEventListener('click', () => {
-        randomPhrase();
-        launchHearts();
-    });
-    document.getElementById('countBtn').addEventListener('click', () => {
-        const value = Number(kindCounter.textContent) + 1;
-        kindCounter.textContent = value;
-        launchHearts(8);
-    });
-
-    // ========== INICIALIZAR ==========
-    randomPhrase();
-</script>
+    <script src="../js/themes.js"></script>
+    <script src="../js/core.js"></script>
+    <script src="../js/data.js"></script>
+    <script src="../js/pages/maldia.js"></script>
 </body>
 </html>
