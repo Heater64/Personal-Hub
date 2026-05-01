@@ -6,79 +6,98 @@
     <title>Mal dia</title>
     <meta name="description" content="Web de emergencia emocional para levantar el animo">
     <meta name="theme-color" content="#0c0b0b">
-        <link rel="stylesheet" href="../css/themes/theme-umbra.css">
-    <link rel="stylesheet" href="../css/base.css">
-    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/maldia.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
-<body>
+<body data-sidebar-root=".." data-sidebar-page="maldia">
 <div class="float-hearts" id="floatHearts"></div>
-<div class="page" style="position:relative; z-index:1;">
-    <!-- ========== HEADER ========== -->
-    <header class="header glass">
-        <div class="header-top">
-            <div class="brand">
-                <h1>Mal dia<i data-lucide="sun-medium" style="width:1.2rem; margin-left: 4px;"></i></h1>
-                <p>Un abrazo rapido en formato web</p>
-            </div>
-        </div>
-        <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
-            <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
-            <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
-            <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
-            <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
-            <button class="nav-btn active"><i data-lucide="sun-medium"></i> Mal dia</button>
-        </nav>
-    </header>
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+    <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
 
-    <!-- ========== SECCIÓN PRINCIPAL ========== -->
+<main class="page-shell">
+<div class="page maldia-page">
     <section class="page-section">
-        <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
-            <i data-lucide="arrow-left"></i> Volver al Hub
-        </button>
+        <div class="maldia-intro">
+            <h2>Mal día</h2>
+            <p>Un abrazo rápido en formato web</p>
+        </div>
 
-        <div class="section-card warm-card" style="text-align:center; padding:var(--space-xl) var(--space-lg);">
-            <p class="eyebrow" style="color:#ffc567; margin-bottom:var(--space-sm);">boton de emergencia emocional</p>
-            <h2>Si estas teniendo un mal dia...</h2>
+        <div class="section-card warm-card hero-card">
+            <p class="eyebrow">botón de emergencia emocional</p>
+            <h3 class="hero-title">Si estás teniendo un mal día...</h3>
             <p id="heroMessage" class="hero-message">Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un poquito de ternura contigo.</p>
-            <div style="display:flex; gap:var(--space-sm); justify-content:center; flex-wrap:wrap; margin-top:var(--space-lg);">
-                <button class="nav-btn" id="newPhraseBtn" style="border-color:#ffc567; color:#ffc567;"><i data-lucide="sparkles"></i> Otra frase</button>
-                <button class="nav-btn" id="musicBtn" style="border-color:#ffc567; color:#ffc567;"><i data-lucide="play"></i> Pon musica feliz</button>
-                <button class="nav-btn" id="betterBtn" style="border-color:#ffc567; color:#ffc567;"><i data-lucide="heart"></i> Me siento mejor</button>
+
+            <div class="hero-actions">
+                <button class="warm-action-btn" id="newPhraseBtn" type="button">
+                    <i data-lucide="sparkles"></i>
+                    <span>Otra frase</span>
+                </button>
+                <button class="warm-action-btn" id="musicBtn" type="button">
+                    <i data-lucide="play"></i>
+                    <span>Pon música feliz</span>
+                </button>
+                <button class="warm-action-btn" id="betterBtn" type="button">
+                    <i data-lucide="heart"></i>
+                    <span>Me siento mejor</span>
+                </button>
             </div>
+
+            <div class="music-note-card">
+                <div class="music-note-icon">
+                    <i data-lucide="music-4"></i>
+                </div>
+                <div>
+                    <strong>Canción para abrazar tu alma</strong>
+                    <span>Artista desconocido</span>
+                </div>
+            </div>
+
             <audio id="happyAudio" preload="none">
                 <source src="" type="audio/mpeg">
             </audio>
         </div>
 
-        <div class="boost-grid" style="margin-top:var(--space-lg);">
-            <article class="section-card warm-card">
-                <h3><i data-lucide="smile"></i> Estas hermosa hoy</h3>
+        <div class="boost-grid">
+            <article class="section-card warm-card boost-card counter-card">
+                <div class="card-icon">
+                    <i data-lucide="sparkles"></i>
+                </div>
+                <h3>Estás hermosa hoy</h3>
                 <div class="boost-number" id="kindCounter"></div>
-                <button class="nav-btn" id="countBtn" style="margin-top:var(--space-sm); border-color:#ffc567; color:#ffc567;">
-                    <i data-lucide="plus"></i> Sorpresa</button>
+                <button class="mini-warm-btn" id="countBtn" type="button">
+                    <i data-lucide="plus"></i>
+                    <span>Sorpresa</span>
+                </button>
             </article>
-            <article class="section-card warm-card">
-                <h3><i data-lucide="image"></i> Recuerdo visual</h3>
-                <img src="https://tu-rincon-favorito.vercel.app/imagenes/Gatosencama.jpg" alt="Recuerdo bonito" style="border-radius:var(--radius-md); margin-top:var(--space-sm);">
+
+            <article class="section-card warm-card boost-card visual-card">
+                <div class="card-icon">
+                    <i data-lucide="image"></i>
+                </div>
+                <h3>Recuerdo visual</h3>
+                <p class="card-copy">Para que haya al menos una imagen amable esperándote aquí.</p>
+                <img src="https://tu-rincon-favorito.vercel.app/imagenes/Gatosencama.jpg" alt="Recuerdo bonito" class="memory-image">
             </article>
-            <article class="section-card warm-card">
-                <h3><i data-lucide="badge-help"></i> Mini recordatorio</h3>
-                <p style="margin-top:var(--space-sm); color:var(--umbra-light); line-height:1.8;">Hoy estabas increíblemente guapa, más que nunca y eso que siempre estás espectacular e… tan bella, divina, mi princesa, mi mujer, mi pequeña traviesa de esos ojitos azules y ese verde tan único que me enamoran cada día. No dejo de pensar en lo hermosa que eres y en lo afortunado que soy de tenerte.
+
+            <article class="section-card warm-card boost-card reminder-card">
+                <div class="card-icon">
+                    <i data-lucide="badge-help"></i>
+                </div>
+                <h3>Mini recordatorio</h3>
+                <p class="reminder-copy">Hoy estabas increíblemente guapa, más que nunca y eso que siempre estás espectacular e… tan bella, divina, mi princesa, mi mujer, mi pequeña traviesa de esos ojitos azules y ese verde tan único que me enamoran cada día. No dejo de pensar en lo hermosa que eres y en lo afortunado que soy de tenerte.
                 Eres lo mejor que me ha pasado, mi amorcito, mi niña preciosa, y quiero que duermas sabiendo que te amo muchísimo y que siempre estaré contigo ❤️</p>
             </article>
         </div>
     </section>
 </div>
-    <script src="../js/themes.js"></script>
+</main>
     <script src="../js/core.js"></script>
+    <script src="../js/sidebar.js"></script>
     <script src="../js/data.js"></script>
     <script src="../js/pages/maldia.js"></script>
 </body>

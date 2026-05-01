@@ -1,3 +1,4 @@
+<<<<<<< ours
 ﻿/* Estilos especÃ­ficos de la pÃ¡gina de mal dÃ­a */
         body {
             background: radial-gradient(circle at top left, rgba(255, 198, 64, 0.12), transparent 25%),
@@ -41,3 +42,255 @@
             from { transform: translateY(0) scale(0.9); opacity: 0.9; }
             to { transform: translateY(-110vh) scale(1.2); opacity: 0; }
         }
+=======
+body {
+  background:
+    radial-gradient(circle at top left, rgba(255, 198, 64, 0.13), transparent 24%),
+    radial-gradient(circle at 85% 12%, rgba(255, 138, 122, 0.08), transparent 18%),
+    linear-gradient(180deg, #15120f 0%, #0f0f10 100%);
+}
+
+.maldia-page {
+  position: relative;
+  z-index: 1;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.maldia-intro {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.maldia-intro h2 {
+  margin-bottom: 10px;
+  font-size: clamp(2.5rem, 5vw, 4.2rem);
+}
+
+.maldia-intro p {
+  color: var(--umbra-ash);
+  font-size: 1rem;
+}
+
+.warm-card {
+  background:
+    linear-gradient(135deg, rgba(255, 185, 92, 0.15), rgba(255, 255, 255, 0.02) 45%, rgba(255, 138, 122, 0.04));
+  border: 1px solid rgba(255, 185, 92, 0.24);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.18);
+}
+
+.hero-card {
+  text-align: center;
+  padding: 44px 34px 34px;
+  border-radius: 30px;
+  overflow: hidden;
+}
+
+.hero-card .eyebrow {
+  color: #ffc567;
+  margin-bottom: var(--space-sm);
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  margin-bottom: 14px;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  color: var(--umbra-light);
+}
+
+.hero-message {
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  line-height: 1.8;
+  color: var(--umbra-light);
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 26px;
+}
+
+.warm-action-btn,
+.mini-warm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 197, 103, 0.7);
+  color: #ffc567;
+  background: rgba(255, 197, 103, 0.02);
+  transition: transform var(--dur-fast), background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), opacity var(--dur-fast);
+}
+
+.warm-action-btn:hover,
+.mini-warm-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 197, 103, 0.14);
+  border-color: #ffc567;
+  color: var(--umbra-white-soft);
+}
+
+.music-note-card {
+  margin: 24px auto 0;
+  max-width: 360px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 197, 103, 0.16);
+  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
+}
+
+.music-note-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffc567;
+  background: rgba(255, 197, 103, 0.1);
+  flex: 0 0 auto;
+}
+
+.music-note-card strong {
+  display: block;
+  color: var(--umbra-light);
+  font-size: 0.94rem;
+  margin-bottom: 4px;
+}
+
+.music-note-card span {
+  color: var(--umbra-ash);
+  font-size: 0.82rem;
+}
+
+.boost-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 22px;
+}
+
+.boost-card {
+  border-radius: 28px;
+  padding: 24px 22px;
+}
+
+.card-icon {
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(255, 197, 103, 0.1);
+  color: #ffc567;
+  margin-bottom: 16px;
+}
+
+.boost-card h3 {
+  margin-bottom: 10px;
+}
+
+.card-copy {
+  color: var(--umbra-ash);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.boost-number {
+  font-size: clamp(2.8rem, 4vw, 3.6rem);
+  font-family: 'Playfair Display', Georgia, serif;
+  line-height: 1;
+  color: #ffc567;
+  margin: 8px 0 18px;
+}
+
+.memory-image {
+  width: 100%;
+  border-radius: 18px;
+  margin-top: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.reminder-copy {
+  margin-top: 6px;
+  color: rgba(232, 230, 227, 0.82);
+  line-height: 1.9;
+}
+
+.counter-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.float-hearts {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.float-hearts span {
+  position: absolute;
+  bottom: -40px;
+  font-size: 1.2rem;
+  animation: rise 5s linear forwards;
+  opacity: 0.85;
+}
+
+@keyframes rise {
+  from { transform: translateY(0) scale(0.9); opacity: 0.9; }
+  to { transform: translateY(-110vh) scale(1.2); opacity: 0; }
+}
+
+@media (max-width: 980px) {
+  .boost-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-card {
+    padding: 30px 18px 24px;
+    border-radius: 24px;
+  }
+
+  .maldia-intro h2 {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .warm-action-btn,
+  .mini-warm-btn {
+    width: 100%;
+  }
+
+  .music-note-card {
+    max-width: 100%;
+  }
+
+  .boost-card {
+    padding: 20px 18px;
+    border-radius: 24px;
+  }
+}
+>>>>>>> theirs

@@ -5,44 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Those Eyes</title>
     <meta name="theme-color" content="#0c0b0b">
-    <link rel="stylesheet" href="../css/themes/theme-umbra.css">
-    <link rel="stylesheet" href="../css/base.css">
-    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/thoseeyes.css">
 <script src="https://unpkg.com/lucide@latest"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
-<body>
+<body data-sidebar-root=".." data-sidebar-page="thoseeyes">
 
 <div class="progress-bar" id="progressBar"></div>
 <canvas id="stars"></canvas>
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+  <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
 
-<div class="page"> <!-- Contenedor para mantener consistencia con otras páginas -->
-
-  <!-- HEADER PRINCIPAL (idéntico al de index.html) -->
-  <header class="header glass">
-    <div class="header-top">
-      <div class="brand">
-        <h1> Those Eyes<i data-lucide="heart" style="width:1.2rem; margin-left: 4px;"></i></h1>
-      </div>
-    </div>
-    <nav class="nav-main" aria-label="Navegación principal">
-      <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
-      <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
-      <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
-      <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
-      <button class="nav-btn active" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
-      <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
-      <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
-      <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
-      <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
-      <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
-    </nav>
-  </header>
-
-  <!-- Contenido específico de la canción (sin duplicar el header hero ya que ya tenemos el header principal) -->
+<main class="page-shell">
+<div class="page">
   <div class="wrap">
     <div class="hero">
       <p class="eyebrow">para ti · con todo mi amor</p>
@@ -57,7 +38,6 @@
       </div>
     </div>
 
-    <!-- Reproductor y letras (sin cambios) -->
     <div class="player-wrap">
       <div class="player-card">
         <button class="btn-play" id="playBtn">▶</button>
@@ -76,7 +56,6 @@
     </div>
 
     <div class="lyrics" id="lyrics">
-      <!-- Todo el contenido de las letras igual que antes -->
       <div class="lyric-block">
         <span class="lyric-line big" data-start="0" data-end="4">When we're done making love</span>
         <span class="lyric-line italic-soft" data-start="4" data-end="8">And you look up</span>
@@ -132,12 +111,13 @@
     </div>
   </div>
 </div>
+</main>
 
 <audio id="audio" loop>
   <source src="../assets/those-eyes.mp3" type="audio/mpeg">
 </audio>
-    <script src="../js/themes.js"></script>
     <script src="../js/core.js"></script>
+    <script src="../js/sidebar.js"></script>
     <script src="../js/data.js"></script>
     <script src="../js/pages/thoseeyes.js"></script>
 </body>

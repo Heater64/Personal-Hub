@@ -1,11 +1,24 @@
-﻿.bento-hero {
+.bento-hero {
   padding: var(--space-xl) var(--space-lg);
   margin-bottom: var(--space-lg);
-  background: rgba(255, 255, 255, 0.02);
+  background:
+    radial-gradient(circle at top center, rgba(198, 90, 58, 0.1), transparent 40%),
+    rgba(255, 255, 255, 0.02);
   border: var(--border-subtle);
   border-radius: var(--radius-xl);
   position: relative;
+  overflow: hidden;
 }
+
+.bento-hero::after {
+  content: '✦';
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  color: rgba(255, 179, 71, 0.26);
+  font-size: 1.4rem;
+}
+
 .bento-hero .eyebrow {
   font-size: 0.7rem;
   letter-spacing: 0.18em;
@@ -13,15 +26,18 @@
   color: var(--accent-coral);
   margin-bottom: var(--space-sm);
 }
+
 .bento-hero h2 {
   font-size: clamp(2.4rem, 6vw, 3.8rem);
   line-height: 1.2;
   font-weight: 400;
 }
+
 .bento-hero h2 em {
   font-style: italic;
   color: var(--accent-coral);
 }
+
 .bento-hero p {
   color: var(--umbra-ash);
   max-width: 620px;
@@ -35,15 +51,38 @@
   gap: var(--space-md);
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
+
 .bento-card {
   padding: var(--space-lg) var(--space-md);
   text-align: left;
-  transition: opacity var(--dur-fast), border-color var(--dur-fast);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
 }
+
+.bento-card::after {
+  content: '❤';
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  font-size: 0.95rem;
+  color: rgba(255, 138, 161, 0.22);
+  transition: transform var(--dur-fast), opacity var(--dur-fast);
+}
+
 .bento-card:hover {
-  opacity: 0.85;
+  opacity: 0.95;
   border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.03),
+    0 18px 44px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(198, 90, 58, 0.08);
 }
+
+.bento-card:hover::after {
+  opacity: 0.95;
+  transform: scale(1.1) translateY(-1px);
+}
+
 .bento-card .icon {
   font-size: 2.4rem;
   margin-bottom: var(--space-md);
@@ -52,14 +91,15 @@
   height: 2.4rem;
   stroke-width: 1.2;
 }
+
 .bento-card h3 {
   font-size: 1.5rem;
   font-weight: 400;
   margin-bottom: var(--space-xs);
 }
+
 .bento-card p {
   color: var(--umbra-ash);
   font-size: 0.85rem;
   line-height: 1.6;
 }
-

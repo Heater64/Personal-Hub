@@ -6,66 +6,49 @@
     <title>Razones</title>
     <meta name="description" content="Razones por las que te quiero con sorpresa aleatoria">
     <meta name="theme-color" content="#0c0b0b">
-        <link rel="stylesheet" href="../css/themes/theme-umbra.css">
-    <link rel="stylesheet" href="../css/base.css">
-    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/razones.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
-<body>
+<body data-sidebar-root=".." data-sidebar-page="razones">
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+    <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
+
+<main class="page-shell">
 <div class="page">
-    <!-- ========== HEADER ========== -->
-    <header class="header glass">
-        <div class="header-top">
-            <div class="brand">
-                <h1>Razones<i data-lucide="heart" style="width:1.2rem; margin-left: 4px;"></i></h1>
-                <p>Pequenas razones que explican algo enorme</p>
-            </div>
-        </div>
-        <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
-            <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
-            <button class="nav-btn active"><i data-lucide="heart"></i> Razones</button>
-            <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
-            <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
-            <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
-        </nav>
-    </header>
-
-    <!-- ========== SECCIÓN PRINCIPAL ========== -->
-    <section class="page-section">
-        <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
-            <i data-lucide="arrow-left"></i> Volver al Hub</button>
-
-        <div class="reasons-hero section-card">
-            <p class="eyebrow" style="color:var(--accent-coral); margin-bottom:var(--space-sm);">lista interactiva</p>
+    <section class="page-section reasons-page">
+        <div class="reasons-intro">
             <h2>Razones por las que te quiero</h2>
-            <p style="max-width:620px;margin:0 auto;color:var(--umbra-ash);">No es una lista completa pero puedes llegar a hacerte una idea. Pulsa el botón para dejar que aparezca una distinta.</p>
-            <div class="reasons-actions">
-                <button class="nav-btn" id="randomReasonBtn" style="border-color:var(--accent-coral); color:var(--accent-coral);">
-                    <i data-lucide="shuffle"></i> Nueva razon aleatoria
-                </button>
-            </div>
-            <div class="random-card" id="randomReasonCard">
-                <small>razon destacada</small>
-                <h3 id="randomReasonTitle">Cargando...</h3>
-                <p id="randomReasonText"></p>
-            </div>
+            <p>Pequeñas razones que hacen que tú seas tú, y que a mí me encantes.</p>
         </div>
 
-        <div class="section-card">
-            <h3><i data-lucide="list-ordered"></i> Lista</h3>
-            <div id="reasonsList" class="reason-list"></div>
+        <div class="random-reason-card" id="randomReasonCard">
+            <div class="random-reason-icon">
+                <i data-lucide="heart"></i>
+            </div>
+            <p class="random-reason-quote" id="randomReasonTitle">Cargando...</p>
+            <p class="random-reason-support" id="randomReasonText"></p>
+        </div>
+
+        <div class="reasons-actions">
+            <button class="random-reason-btn" id="randomReasonBtn" type="button">
+                <i data-lucide="shuffle"></i>
+                <span>Nueva razón aleatoria</span>
+            </button>
+        </div>
+
+        <div class="reasons-list-wrap">
+            <div class="reason-list" id="reasonsList"></div>
         </div>
     </section>
 </div>
-    <script src="../js/themes.js"></script>
+</main>
     <script src="../js/core.js"></script>
+    <script src="../js/sidebar.js"></script>
     <script src="../js/data.js"></script>
     <script src="../js/pages/razones.js"></script>
 </body>

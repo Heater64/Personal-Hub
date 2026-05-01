@@ -6,57 +6,40 @@
     <title>Calendario</title>
     <meta name="description" content="Calendario de sorpresas virtual">
     <meta name="theme-color" content="#0c0b0b">
-        <link rel="stylesheet" href="../css/themes/theme-umbra.css">
-    <link rel="stylesheet" href="../css/base.css">
-    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/calendario.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
-<body>
+<body data-sidebar-root=".." data-sidebar-page="calendario">
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+    <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
+
+<main class="page-shell">
 <div class="page">
-    <!-- ========== HEADER ========== -->
-    <header class="header glass">
-        <div class="header-top">
-            <div class="brand">
-                <h1>Calendario<i data-lucide="calendar-days" style="width:1.2rem; margin-left: 4px;"></i></h1>
-                <p>Casillas con mini sorpresas para abrir cuando quieras</p>
-            </div>
+    <section class="page-section calendario-page">
+        <div class="calendario-intro">
+            <h2>Calendario</h2>
+            <p>Casillas con mini sorpresas para abrir cuando quieras.</p>
         </div>
-        <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
-            <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
-            <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
-            <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
-            <button class="nav-btn active"><i data-lucide="calendar-days"></i> Calendario</button>
-            <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
-        </nav>
-    </header>
 
-    <!-- ========== SECCIÓN PRINCIPAL ========== -->
-    <section class="page-section">
-        <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
-            <i data-lucide="arrow-left"></i> Volver al Hub
-        </button>
-
-        <div class="section-card">
-            <h2><i data-lucide="gift"></i> Calendario de sorpresas</h2>
-            <p style="margin-bottom:var(--space-lg);">Abre una casilla, descubre una sorpresa y queda marcada como ya abierta en este navegador.</p>
+        <div class="calendario-panel">
             <div id="calendarGrid" class="calendar-grid"></div>
+
             <div id="surpriseBox" class="surprise-box">
-                <small style="display:block; margin-bottom:8px; color:var(--umbra-ash); text-transform:uppercase; letter-spacing:0.1em;">sorpresa abierta</small>
-                <h3 id="surpriseTitle">Dia 1</h3>
+                <small class="surprise-eyebrow">sorpresa abierta</small>
+                <h3 id="surpriseTitle">Día 1</h3>
                 <p id="surpriseText"></p>
             </div>
         </div>
     </section>
 </div>
-    <script src="../js/themes.js"></script>
+</main>
     <script src="../js/core.js"></script>
+    <script src="../js/sidebar.js"></script>
     <script src="../js/data.js"></script>
     <script src="../js/pages/calendario.js"></script>
 </body>

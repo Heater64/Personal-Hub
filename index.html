@@ -6,39 +6,20 @@
     <title>Home ✦</title>
     <meta name="description" content="Tu lanzadera de proyectos personales">
     <meta name="theme-color" content="#0c0b0b">
-        <link rel="stylesheet" href="css/themes/theme-umbra.css">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/pages/home.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
-<body>
+<body data-sidebar-root="." data-sidebar-page="home">
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+    <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
+
+<main class="page-shell">
 <div class="page">
-
-    <!-- ========== HEADER ========== -->
-    <header class="header glass">
-        <div class="header-top">
-            <div class="brand">
-                <h1>Home<i data-lucide="star" style="width:1.2rem; margin-left: 4px;"></i></h1>
-                <p>Aquí añadiré todas las cosas online que te regale miniña guapa · Todo en un lugar</p>
-            </div>
-        </div>
-        <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn active" onclick="window.location.href='index.html'"><i data-lucide="home"></i> Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='pages/canciones.html'"><i data-lucide="music"></i> Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='pages/rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='pages/planner.html'"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='pages/thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
-            <button class="nav-btn" onclick="window.location.href='pages/series.html'"><i data-lucide="tv"></i> Series</button>
-            <button class="nav-btn" onclick="window.location.href='pages/razones.html'"><i data-lucide="heart"></i> Razones</button>
-            <button class="nav-btn" onclick="window.location.href='pages/openwhen.html'"><i data-lucide="mail"></i> Open When</button>
-            <button class="nav-btn" onclick="window.location.href='pages/calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
-            <button class="nav-btn" onclick="window.location.href='pages/maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
-        </nav>
-    </header>
-
-    <!-- ========== SECCIÓN PRINCIPAL BENTO ========== -->
     <section id="home" class="page-section">
         <div class="bento-hero glass">
             <p class="eyebrow"><i data-lucide="sparkles" style="width:0.9rem;"></i> centro de webs</p>
@@ -47,7 +28,6 @@
         </div>
 
         <div class="bento-grid">
-            <!-- Tarjeta: Canciones -->
             <button class="bento-card" onclick="window.location.href='pages/canciones.html'">
                 <i data-lucide="music" class="icon"></i>
                 <h3>Canciones</h3>
@@ -60,59 +40,45 @@
                 </div>
             </button>
 
-            <!-- Tarjeta: TuRincónFav -->
             <button class="bento-card" onclick="window.location.href='pages/rincon.html'">
                 <i data-lucide="heart" class="icon"></i>
                 <h3>TuRincónFav</h3>
                 <p>Galería, gatos, memes, gustos y tu rincón especial.</p>
             </button>
 
-            <!-- Tarjeta: Regalos -->
-            <button class="bento-card" onclick="window.location.href='pages/planner.html'">
-                <i data-lucide="gift" class="icon"></i>
-                <h3>Regalos</h3>
-                <p>Planificador de ideas de regalo, guardadas localmente.</p>
-            </button>
-
-            <!-- Tarjeta: Those Eyes -->
             <button class="bento-card" onclick="window.location.href='pages/thoseeyes.html'">
                 <i data-lucide="eye" class="icon"></i>
                 <h3>Those Eyes</h3>
                 <p>Una web más poética con la canción, la letra y una atmósfera especial.</p>
             </button>
 
-            <!-- Tarjeta: Series -->
             <button class="bento-card" onclick="window.location.href='pages/series.html'">
                 <i data-lucide="tv" class="icon"></i>
                 <h3>Series</h3>
                 <p>Seguimiento de series, enlaces y progreso de episodios.</p>
             </button>
 
-            <!-- Tarjeta: Razones -->
             <button class="bento-card" onclick="window.location.href='pages/razones.html'">
                 <i data-lucide="heart" class="icon"></i>
                 <h3>Razones</h3>
                 <p>Razones por las que te quiero con sorpresa aleatoria cada vez.</p>
             </button>
 
-            <!-- Tarjeta: Open When -->
             <button class="bento-card" onclick="window.location.href='pages/openwhen.html'">
                 <i data-lucide="mail" class="icon"></i>
                 <h3>Open When</h3>
                 <p>Cartas digitales para abrir según el momento que estés viviendo.</p>
             </button>
 
-            <!-- Tarjeta: Calendario -->
             <button class="bento-card" onclick="window.location.href='pages/calendario.html'">
                 <i data-lucide="calendar-days" class="icon"></i>
                 <h3>Calendario</h3>
                 <p>Casillas con sorpresas pequeñas, recuerdos y retos bonitos.</p>
             </button>
 
-            <!-- Tarjeta: Mal día -->
             <button class="bento-card" onclick="window.location.href='pages/maldia.html'">
                 <i data-lucide="sun-medium" class="icon"></i>
-                <h3>Mal dia</h3>
+                <h3>Mal día</h3>
                 <p>Un botón de emergencia emocional con frases, alegría y música.</p>
             </button>
         </div>
@@ -124,15 +90,15 @@
         </div>
     </section>
 </div>
+</main>
 
-<!-- ========== LIGHTBOX GENERAL ========== -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>
     <div class="lightbox-caption" id="lightboxCaption"></div>
 </div>
-    <script src="js/themes.js"></script>
     <script src="js/core.js"></script>
+    <script src="js/sidebar.js"></script>
     <script src="js/data.js"></script>
 </body>
 </html>

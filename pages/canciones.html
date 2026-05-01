@@ -6,45 +6,26 @@
     <title>Canciones</title>
     <meta name="description" content="Tus canciones favoritas con reproductor y letras completas">
     <meta name="theme-color" content="#0c0b0b">
-        <link rel="stylesheet" href="../css/themes/theme-umbra.css">
-    <link rel="stylesheet" href="../css/base.css">
-    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/canciones.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
-<body>
+<body data-sidebar-root=".." data-sidebar-page="canciones">
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+    <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
+
+<main class="page-shell">
 <div class="page">
-
-    <!-- ========== HEADER ========== -->
-    <header class="header glass">
-        <div class="header-top">
-            <div class="brand">
-                <h1>Canciones<i data-lucide="music" style="width:1.2rem; margin-left: 4px;"></i></h1>
-            </div>
-        </div>
-        <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
-            <button class="nav-btn active"><i data-lucide="music"></i> Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
-            <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
-            <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
-            <button class="nav-btn" onclick="window.location.href='openwhen.html'"><i data-lucide="mail"></i> Open When</button>
-            <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
-            <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
-        </nav>
-    </header>
-
-    <!-- ========== SECCIÓN REPRODUCTOR ========== -->
     <section id="canciones" class="page-section">
         <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
             <i data-lucide="arrow-left"></i> Volver al Hub
         </button>
 
         <div class="player-layout">
-            <!-- Panel izquierdo: reproductor -->
             <div class="player-panel">
                 <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);margin-bottom:4px;">Reproduciendo ahora</div>
                 <div class="player-album">
@@ -72,7 +53,6 @@
             </div>
 
             <div style="display:grid;gap:16px;">
-                <!-- Panel de letras -->
                 <div class="section-card lyrics-card">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
                         <i data-lucide="file-text"></i>
@@ -87,7 +67,6 @@
                     <div class="lyrics-panel" id="lyricsPanel"></div>
                 </div>
 
-                <!-- Lista de canciones -->
                 <div class="section-card">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
                         <i data-lucide="list-music"></i>
@@ -100,8 +79,8 @@
         </div>
     </section>
 </div>
+</main>
 
-<!-- ========== LIGHTBOX PARA LETRAS EXPANDIDAS ========== -->
 <div id="lyricsLightbox" class="lightbox lyrics-lightbox">
     <button class="lightbox-close" onclick="closeLyricsLightbox()">✕</button>
     <div class="lightbox-content lyrics-lightbox-content" id="lyricsLightboxContent">
@@ -109,14 +88,13 @@
     </div>
 </div>
 
-<!-- ========== LIGHTBOX GENERAL ========== -->
 <div id="lightbox" class="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <div class="lightbox-content" id="lightboxContent"></div>
     <div class="lightbox-caption" id="lightboxCaption"></div>
 </div>
-    <script src="../js/themes.js"></script>
     <script src="../js/core.js"></script>
+    <script src="../js/sidebar.js"></script>
     <script src="../js/data.js"></script>
     <script src="../js/pages/canciones.js"></script>
 </body>

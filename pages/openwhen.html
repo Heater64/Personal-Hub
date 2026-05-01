@@ -6,66 +6,62 @@
     <title>Open When</title>
     <meta name="description" content="Cartas digitales para abrir segun el momento">
     <meta name="theme-color" content="#0c0b0b">
-        <link rel="stylesheet" href="../css/themes/theme-umbra.css">
-    <link rel="stylesheet" href="../css/base.css">
-    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/openwhen.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
-<body>
+<body data-sidebar-root=".." data-sidebar-page="openwhen">
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+    <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
+
+<main class="page-shell">
 <div class="page">
-    <!-- ========== HEADER ========== -->
-    <header class="header glass">
-        <div class="header-top">
-            <div class="brand">
-                <h1>Open When<i data-lucide="mail" style="width:1.2rem; margin-left: 4px;"></i></h1>
-                <p>Cartas para abrir solo cuando toque</p>
-            </div>
+    <section class="page-section openwhen-page">
+        <div class="openwhen-intro">
+            <h2>Open When</h2>
+            <p>Cartas para abrir solo cuando toque.</p>
         </div>
-        <nav class="nav-main" aria-label="Navegación principal">
-            <button class="nav-btn" onclick="window.location.href='../index.html'"><i data-lucide="home"></i> Inicio</button>
-            <button class="nav-btn" onclick="window.location.href='canciones.html'"><i data-lucide="music"></i> Canciones</button>
-            <button class="nav-btn" onclick="window.location.href='rincon.html'"><i data-lucide="heart"></i> TuRincónFav</button>
-            <button class="nav-btn" onclick="window.location.href='planner.html'"><i data-lucide="gift"></i> Regalos</button>
-            <button class="nav-btn" onclick="window.location.href='thoseeyes.html'"><i data-lucide="eye"></i> Those Eyes</button>
-            <button class="nav-btn" onclick="window.location.href='series.html'"><i data-lucide="tv"></i> Series</button>
-            <button class="nav-btn" onclick="window.location.href='razones.html'"><i data-lucide="heart"></i> Razones</button>
-            <button class="nav-btn active"><i data-lucide="mail"></i> Open When</button>
-            <button class="nav-btn" onclick="window.location.href='calendario.html'"><i data-lucide="calendar-days"></i> Calendario</button>
-            <button class="nav-btn" onclick="window.location.href='maldia.html'"><i data-lucide="sun-medium"></i> Mal dia</button>
-        </nav>
-    </header>
 
-    <!-- ========== SECCIÓN PRINCIPAL ========== -->
-    <section class="page-section">
-        <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
-            <i data-lucide="arrow-left"></i> Volver al Hub
-        </button>
-
-        <div class="section-card" style="margin-bottom:var(--space-lg);">
-            <h2><i data-lucide="mail-open"></i> Sobres virtuales</h2>
-            <p>La idea es abrir cada carta solo en su momento. No hace falta trampear: ya están aquí para abrazarte cuando toque. Haz clic en "Abrir carta" y descubre el mensaje dentro del sobre.</p>
+        <div class="openwhen-lead section-card">
+            <div class="openwhen-lead-icon">
+                <i data-lucide="mail-heart"></i>
+            </div>
+            <div>
+                <h3>Pequeños sobres para momentos concretos</h3>
+                <p>Haz clic en una carta cuando realmente la necesites. Dentro te espera un mensaje pensado justo para ese instante.</p>
+            </div>
         </div>
 
         <div class="letters-grid" id="lettersGrid"></div>
     </section>
 </div>
+</main>
 
-<!-- ========== MODAL DEL SOBRE ========== -->
 <div id="envelopeModal" class="modal-overlay">
-    <div class="envelope-modal">
+    <div class="envelope-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <button class="modal-close-icon" id="modalCloseIcon" type="button" aria-label="Cerrar carta">
+            <i data-lucide="x"></i>
+        </button>
         <div class="envelope-flap"></div>
         <div class="modal-content">
-            <i data-lucide="mail-open"></i>
+            <div class="modal-icon-wrap">
+                <i data-lucide="mail-open"></i>
+            </div>
             <h3 id="modalTitle"></h3>
             <div id="modalMessage" class="modal-message"></div>
-            <button class="close-modal-btn" id="closeModalBtn">Cerrar sobre ❤️</button>
+            <button class="close-modal-btn" id="closeModalBtn" type="button">
+                <i data-lucide="heart"></i>
+                <span>Cerrar sobre</span>
+            </button>
         </div>
     </div>
 </div>
-    <script src="../js/themes.js"></script>
     <script src="../js/core.js"></script>
+    <script src="../js/sidebar.js"></script>
     <script src="../js/data.js"></script>
     <script src="../js/pages/openwhen.js"></script>
 </body>

@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // openwhen.js · cartas digitales
 // ==========================================
 const letters = [
@@ -10,14 +10,27 @@ const letters = [
     { title: 'Abrela cuando quieras sonreir', note: 'Un mini refugio para momentos random.', message: 'Quiero que recuerdes esta verdad sencilla: haces bonito mi mundo. Incluso cuando no lo intentas. Incluso cuando no lo ves. Y eso ya es una razon enorme para sonreir.' }
 ];
 
-function openEnvelope(title, message) {
+function openEnvelope(title, message, source = null) {
     const modal = document.getElementById('envelopeModal');
     const modalTitle = document.getElementById('modalTitle');
     const modalMessage = document.getElementById('modalMessage');
     if (!modal || !modalTitle || !modalMessage) return;
+
     modalTitle.textContent = title;
     modalMessage.textContent = message;
     modal.classList.add('active');
+
+    if (typeof pulseElement === 'function') pulseElement(modal.querySelector('.envelope-modal'));
+    if (typeof launchParticles === 'function') {
+        launchParticles({
+            amount: 10,
+            symbols: ['❤', '✦', '✉'],
+            colors: ['#c65a3a', '#ffb347', '#ff8aa1'],
+            spread: 120,
+            source: source || modal.querySelector('.envelope-modal')
+        });
+    }
+
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -29,24 +42,31 @@ function closeEnvelope() {
 function initOpenWhen() {
     const grid = document.getElementById('lettersGrid');
     const closeBtn = document.getElementById('closeModalBtn');
+    const closeIconBtn = document.getElementById('modalCloseIcon');
     const modal = document.getElementById('envelopeModal');
     if (!grid) return;
 
     grid.innerHTML = letters.map((letter, index) => `
         <article class="letter-card" data-id="${index}">
-            <div class="letter-icon"><i data-lucide="mail"></i></div>
-            <h3>${letter.title}</h3>
-            <small>${letter.note}</small>
-            <button class="nav-btn open-btn" data-title="${letter.title.replace(/['"]/g, '&quot;')}" data-message="${letter.message.replace(/['"]/g, '&quot;')}" style="margin-top:var(--space-md);"><i data-lucide="unlock"></i> Abrir carta</button>
+            <div class="letter-top">
+                <div class="letter-icon"><i data-lucide="mail"></i></div>
+            </div>
+            <h3>${escapeHtml(letter.title)}</h3>
+            <small class="letter-note">${escapeHtml(letter.note)}</small>
+            <button class="open-btn" type="button" data-title="${escapeHtml(letter.title)}" data-message="${escapeHtml(letter.message)}">
+                <i data-lucide="mail-open"></i>
+                <span>Abrir carta</span>
+            </button>
         </article>
     `).join('');
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    document.querySelectorAll('.open-btn').forEach(btn => {
+    document.querySelectorAll('.open-btn').forEach((btn) => {
         btn.addEventListener('click', function (event) {
             event.stopPropagation();
-            openEnvelope(btn.getAttribute('data-title'), btn.getAttribute('data-message'));
+            if (typeof pulseElement === 'function') pulseElement(btn);
+            openEnvelope(btn.getAttribute('data-title'), btn.getAttribute('data-message'), btn);
         });
     });
 
@@ -55,7 +75,9 @@ function initOpenWhen() {
             if (event.target === modal) closeEnvelope();
         });
     }
+
     if (closeBtn) closeBtn.addEventListener('click', closeEnvelope);
+    if (closeIconBtn) closeIconBtn.addEventListener('click', closeEnvelope);
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape' && modal && modal.classList.contains('active')) {
