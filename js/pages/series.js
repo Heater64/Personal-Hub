@@ -1,7 +1,9 @@
 // ==========================================
-// series.js · seguimiento de series
+// series.js · Lógica de series (diseño imagen referencia)
 // ==========================================
 let series = [];
+const ITEMS_PER_PAGE = 6;
+let currentPage = 1;
 
 function confirmAction(message, onConfirm) {
     const modal = document.createElement('div');
@@ -40,15 +42,31 @@ function loadSeries() {
         series = JSON.parse(stored).map(normalizeSerie);
     } else {
         series = [
-            {
-                id: Date.now(),
-                name: 'DragonBall-Nino',
-                url: 'https://tioanime.com/anime/dragon-ball',
-                total: 153,
-                watched: 0,
-                cover: ''
-            }
-        ];
+    {
+        id: Date.now(),
+        name: 'DragonBall',
+        url: 'https://tioanime.com/anime/dragon-ball',
+        total: 153,
+        watched: 0,
+        cover: 'https://tioanime.com/uploads/portadas/509.jpg'
+    },
+    {
+        id: Date.now() + 1,
+        name: 'DragonBall-Z',
+        url: 'https://tioanime.com/anime/dragon-ball-z',
+        total: 291,
+        watched: 0,
+        cover: 'https://tioanime.com/uploads/portadas/37.jpg'
+    },
+    {
+        id: Date.now() + 2,
+        name: 'DragonBall-Super',
+        url: 'https://dragonballlatino.net/season/dragon-ball-super-1/',
+        total: 131,
+        watched: 0,
+        cover: 'assets/dragon-ball-super.jpg'
+    }
+];
         saveSeries();
     }
     renderSeries();
@@ -66,11 +84,11 @@ function clearSerieForm() {
 }
 
 function closeSerieForm() {
-    const form = document.getElementById('seriesForm');
-    const icon = document.getElementById('toggleIcon');
-    if (!form || !icon) return;
+    const form = document.getElementById('addFormDropdown');
+    const btn = document.getElementById('addSeriesBtn');
+    if (!form) return;
     form.classList.remove('open');
-    icon.setAttribute('data-lucide', 'chevron-down');
+    if (btn) btn.querySelector('.chevron-icon')?.setAttribute('data-lucide', 'chevron-down');
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -96,6 +114,7 @@ function addSerie() {
     const newSerie = { id: Date.now(), name, url, total, watched: 0, cover };
     series.push(newSerie);
     saveSeries();
+    currentPage = Math.ceil(series.length / ITEMS_PER_PAGE);
     renderSeries();
     clearSerieForm();
     closeSerieForm();
@@ -105,9 +124,11 @@ function addSerie() {
 function deleteSerie(id) {
     const serie = series.find((item) => item.id === id);
     if (!serie) return;
-    confirmAction(`Eliminar "${serie.name}"?`, () => {
+    confirmAction(`¿Eliminar "${serie.name}"?`, () => {
         series = series.filter((item) => item.id !== id);
         saveSeries();
+        const totalPages = Math.max(1, Math.ceil(series.length / ITEMS_PER_PAGE));
+        if (currentPage > totalPages) currentPage = totalPages;
         renderSeries();
         showMessage(`"${serie.name}" eliminada`);
     });
@@ -132,7 +153,7 @@ function incrementWatched(id, sourceButton = null) {
         saveSeries();
         renderSeries();
         if (serie.watched === serie.total) {
-            showMessage(`Completaste ${serie.name}`);
+            showMessage(`¡Completaste ${serie.name}! ❤`);
             celebrateSerie(sourceButton);
         }
     } else if (serie && serie.watched === serie.total) {
@@ -151,7 +172,7 @@ function decrementWatched(id, sourceButton = null) {
 }
 
 function resetAllProgress() {
-    confirmAction('Reiniciar el progreso de TODAS las series?', () => {
+    confirmAction('¿Reiniciar el progreso de TODAS las series?', () => {
         series = series.map((item) => ({ ...item, watched: 0 }));
         saveSeries();
         renderSeries();
@@ -174,95 +195,131 @@ function formatSeriesUrl(url) {
 
 function createCoverMarkup(item) {
     if (item.cover) {
-        return `
-            <div class="series-cover">
-                <img src="${escapeHtml(item.cover)}" alt="Portada de ${escapeHtml(item.name)}" loading="lazy">
-            </div>
-        `;
+        return `<img src="${escapeHtml(item.cover)}" alt="Portada de ${escapeHtml(item.name)}" loading="lazy">`;
     }
-
     return `
-        <div class="series-cover series-cover-placeholder">
+        <div class="card-cover-placeholder">
             <i data-lucide="tv-2"></i>
             <span>${escapeHtml(item.name.slice(0, 2).toUpperCase())}</span>
         </div>
     `;
 }
 
+function renderPagination(total) {
+    const container = document.getElementById('seriesPagination');
+    if (!container) return;
+    const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    let html = `
+        <button class="page-btn arrow" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>
+            <i data-lucide="chevron-left"></i>
+        </button>
+    `;
+    for (let i = 1; i <= totalPages; i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    }
+    html += `
+        <button class="page-btn arrow" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>
+            <i data-lucide="chevron-right"></i>
+        </button>
+    `;
+    container.innerHTML = html;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    container.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const p = parseInt(btn.dataset.page);
+            if (p >= 1 && p <= totalPages) {
+                currentPage = p;
+                renderSeries();
+            }
+        });
+    });
+}
+
 function renderSeries() {
     const container = document.getElementById('seriesList');
     if (!container) return;
-
+    const totalPages = Math.max(1, Math.ceil(series.length / ITEMS_PER_PAGE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const pageSeries = series.slice(start, start + ITEMS_PER_PAGE);
     if (series.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i data-lucide="tv-off" style="width:40px;height:40px;"></i><p>Aún no hay series añadidas.</p></div>';
+        container.innerHTML = `
+            <div class="empty-state-new">
+                <i data-lucide="tv-off"></i>
+                <p>Aún no hay series añadidas.</p>
+            </div>
+        `;
     } else {
-        container.innerHTML = series.map((item) => {
+        container.innerHTML = pageSeries.map((item) => {
             const percent = Math.max(0, Math.min(100, (item.watched / item.total) * 100));
             return `
-                <article class="series-card ${item.watched === item.total ? 'completed' : ''}" data-id="${item.id}" data-url="${escapeHtml(item.url)}">
-                    ${createCoverMarkup(item)}
-                    <div class="series-body">
-                        <div class="series-meta">
-                            <div class="series-title-row">
-                                <i data-lucide="clapperboard" class="series-title-icon"></i>
-                                <h3>${escapeHtml(item.name)}</h3>
-                            </div>
-                            <div class="series-link">
-                                <i data-lucide="external-link"></i>
-                                <span>${escapeHtml(formatSeriesUrl(item.url))}</span>
-                            </div>
-                            <p class="series-count">${item.watched} / ${item.total} capítulos</p>
-                            <div class="series-progress" aria-hidden="true">
-                                <div class="series-progress-fill" style="width:${percent}%;"></div>
-                            </div>
+                <article class="series-card-new ${item.watched === item.total ? 'completed' : ''}" data-id="${item.id}" data-url="${escapeHtml(item.url)}">
+                    <div class="card-cover">
+                        ${createCoverMarkup(item)}
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">${escapeHtml(item.name)}</h3>
+                        <div class="card-link">
+                            <i data-lucide="external-link"></i>
+                            <span>${escapeHtml(formatSeriesUrl(item.url))}</span>
                         </div>
-                        <div class="series-controls">
-                            <div class="series-counter">
-                                <button class="counter-btn dec" data-id="${item.id}" title="Restar capítulo">
-                                    <i data-lucide="minus"></i>
-                                </button>
-                                <span class="series-counter-text">${item.watched} / ${item.total} capítulos</span>
-                                <button class="counter-btn inc" data-id="${item.id}" title="Sumar capítulo">
-                                    <i data-lucide="plus"></i>
-                                </button>
-                            </div>
-                            <button class="delete-serie" data-id="${item.id}" title="Eliminar serie">
-                                <i data-lucide="trash-2"></i>
+                        <div class="card-progress-bar">
+                            <div class="card-progress-fill" style="width:${percent}%"></div>
+                        </div>
+                        <p class="card-count">
+                            <span class="watched-num">${item.watched}</span> / ${item.total} capítulos
+                        </p>
+                    </div>
+                    <div class="card-controls">
+                        <div class="ctrl-group">
+                            <button class="ctrl-btn inc" data-id="${item.id}" title="Sumar capítulo">
+                                <i data-lucide="plus"></i>
+                            </button>
+                            <button class="ctrl-btn dec" data-id="${item.id}" title="Restar capítulo">
+                                <i data-lucide="minus"></i>
                             </button>
                         </div>
+                        <button class="ctrl-btn del" data-id="${item.id}" title="Eliminar">
+                            <i data-lucide="trash-2"></i>
+                        </button>
                     </div>
                 </article>
             `;
         }).join('');
     }
-
     if (typeof lucide !== 'undefined') lucide.createIcons();
-
-    document.querySelectorAll('.series-cover img').forEach((image) => {
+    // Manejo de errores de imágenes
+    container.querySelectorAll('.card-cover img').forEach((image) => {
         image.addEventListener('error', () => {
             const parent = image.parentElement;
             if (!parent) return;
-            const card = parent.closest('.series-card');
-            const title = card ? card.querySelector('.series-meta h3')?.textContent || 'TV' : 'TV';
-            parent.classList.add('series-cover-placeholder');
+            const card = parent.closest('.series-card-new');
+            const title = card ? card.querySelector('.card-title')?.textContent || 'TV' : 'TV';
             parent.innerHTML = `
-                <i data-lucide="tv-2"></i>
-                <span>${escapeHtml(title.slice(0, 2).toUpperCase())}</span>
+                <div class="card-cover-placeholder">
+                    <i data-lucide="tv-2"></i>
+                    <span>${escapeHtml(title.slice(0, 2).toUpperCase())}</span>
+                </div>
             `;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }, { once: true });
     });
-
-    document.querySelectorAll('.series-card').forEach((card) => {
+    // Click en tarjeta → abrir enlace
+    container.querySelectorAll('.series-card-new').forEach((card) => {
         card.addEventListener('click', (event) => {
-            if (event.target.closest('.counter-btn') || event.target.closest('.delete-serie')) return;
+            if (event.target.closest('.ctrl-btn')) return;
             openSafeUrl(card.dataset.url, 'Enlace no válido o inseguro');
         });
     });
-
-    document.querySelectorAll('.counter-btn.inc').forEach((btn) => btn.addEventListener('click', incHandler));
-    document.querySelectorAll('.counter-btn.dec').forEach((btn) => btn.addEventListener('click', decHandler));
-    document.querySelectorAll('.delete-serie').forEach((btn) => btn.addEventListener('click', deleteHandler));
+    // Eventos de botones
+    container.querySelectorAll('.ctrl-btn.inc').forEach(btn => btn.addEventListener('click', incHandler));
+    container.querySelectorAll('.ctrl-btn.dec').forEach(btn => btn.addEventListener('click', decHandler));
+    container.querySelectorAll('.ctrl-btn.del').forEach(btn => btn.addEventListener('click', deleteHandler));
+    renderPagination(series.length);
 }
 
 function incHandler(event) {
@@ -283,28 +340,27 @@ function deleteHandler(event) {
 
 function initSeries() {
     if (!document.getElementById('seriesList')) return;
-
     loadSeries();
-
-    const toggleBtn = document.getElementById('toggleFormBtn');
-    const form = document.getElementById('seriesForm');
-    const icon = document.getElementById('toggleIcon');
-    const addBtn = document.getElementById('addSerieBtn');
-    const resetBtn = document.getElementById('resetAllBtn');
-
-    if (toggleBtn && form && icon) {
-        toggleBtn.addEventListener('click', function () {
+    const addBtn = document.getElementById('addSeriesBtn');
+    const form = document.getElementById('addFormDropdown');
+    if (addBtn && form) {
+        addBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
             form.classList.toggle('open');
-            icon.setAttribute('data-lucide', form.classList.contains('open') ? 'chevron-up' : 'chevron-down');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-            if (typeof pulseElement === 'function') pulseElement(toggleBtn);
+            const chevron = addBtn.querySelector('.chevron-icon');
+            if (chevron) {
+                chevron.setAttribute('data-lucide', form.classList.contains('open') ? 'chevron-up' : 'chevron-down');
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+            if (typeof pulseElement === 'function') pulseElement(addBtn);
         });
     }
-
-    if (addBtn) addBtn.addEventListener('click', function () {
-        if (typeof pulseElement === 'function') pulseElement(addBtn);
+    const saveBtn = document.getElementById('addSerieBtn');
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+        if (typeof pulseElement === 'function') pulseElement(saveBtn);
         addSerie();
     });
+    const resetBtn = document.getElementById('resetAllBtn');
     if (resetBtn) resetBtn.addEventListener('click', function () {
         if (typeof pulseElement === 'function') pulseElement(resetBtn);
         resetAllProgress();

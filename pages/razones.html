@@ -3,53 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Razones</title>
-    <meta name="description" content="Razones por las que te quiero con sorpresa aleatoria">
-    <meta name="theme-color" content="#0c0b0b">
+    <title>Razones · por las que te quiero</title>
+    <meta name="description" content="Razones por las que te quiero — UI Umbra">
+    <meta name="theme-color" content="#0F0F10">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/razones.css">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
 <body data-sidebar-root=".." data-sidebar-page="razones">
+
+<!-- Sidebar (igual que en todas las páginas) -->
 <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
     <i data-lucide="menu"></i>
 </button>
 <div class="sidebar-overlay" data-sidebar-overlay></div>
 <aside class="sidebar" data-sidebar></aside>
 
+<!-- Contenido principal -->
 <main class="page-shell">
-<div class="page">
-    <section class="page-section reasons-page">
-        <div class="reasons-intro">
-            <h2>Razones por las que te quiero</h2>
-            <p>Pequeñas razones que hacen que tú seas tú, y que a mí me encantes.</p>
+    <div class="razones-main">
+        <!-- Header con botón volver -->
+        <div class="content-header">
+            <button class="back-hub-btn" onclick="window.location.href='../index.html'">
+                <i data-lucide="arrow-left"></i> Volver al Hub
+            </button>
+            <h1>Razones por las que te quiero</h1>
+            <p class="subtitle">Pequeñas razones que hacen que tú seas tú, y que a mí me encantes.</p>
         </div>
 
-        <div class="random-reason-card" id="randomReasonCard">
-            <div class="random-reason-icon">
-                <i data-lucide="heart"></i>
+        <!-- Tarjeta destacada: razón aleatoria -->
+        <div class="feature-card" id="randomCard">
+            <div class="card-icon"><i data-lucide="heart"></i></div>
+            <div class="random-content">
+                <p class="random-badge">✨ razón del momento</p>
+                <p class="random-reason-text" id="randomReasonText">Tu forma de mirar</p>
             </div>
-            <p class="random-reason-quote" id="randomReasonTitle">Cargando...</p>
-            <p class="random-reason-support" id="randomReasonText"></p>
-        </div>
-
-        <div class="reasons-actions">
-            <button class="random-reason-btn" id="randomReasonBtn" type="button">
-                <i data-lucide="shuffle"></i>
-                <span>Nueva razón aleatoria</span>
+            <button class="randomize-btn" id="randomizeBtn">
+                <i data-lucide="shuffle"></i> Nueva razón aleatoria
             </button>
         </div>
 
-        <div class="reasons-list-wrap">
-            <div class="reason-list" id="reasonsList"></div>
+        <!-- Lista de razones (interactiva) -->
+        <div class="reasons-list-container">
+            <ul class="reasons-list" id="reasonsList">
+                <!-- JS llena esto -->
+            </ul>
         </div>
-    </section>
-</div>
+
+        <!-- Decoraciones flotantes (estrellas/corazones) -->
+        <div class="floating-decor left-decor">✦</div>
+        <div class="floating-decor right-decor">❤</div>
+        <div class="floating-decor bottom-decor">✧</div>
+    </div>
 </main>
-    <script src="../js/core.js"></script>
-    <script src="../js/sidebar.js"></script>
-    <script src="../js/data.js"></script>
-    <script src="../js/pages/razones.js"></script>
+
+<!-- Lightbox (para posibles expansiones) -->
+<div id="lightbox" class="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <div class="lightbox-content" id="lightboxContent"></div>
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<script src="../js/core.js"></script>
+<script src="../js/sidebar.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/pages/razones.js"></script>
 </body>
 </html>

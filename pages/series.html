@@ -18,21 +18,26 @@
 <aside class="sidebar" data-sidebar></aside>
 
 <main class="page-shell">
-<div class="page">
-    <section class="page-section">
-        <div class="series-intro section-card">
-            <p class="eyebrow">seguimiento en lista</p>
-            <h2>Mis series</h2>
-            <p>Una vista más limpia para llevar el progreso, abrir enlaces rápido y seguir lo que vas viendo sin perder el estilo Umbra.</p>
-        </div>
+    <div class="page">
+        <section class="page-section">
+            <!-- Cabecera de la página -->
+            <div class="series-page-header">
+                <h2 class="series-page-title">Series</h2>
+                <div class="series-header-actions">
+                    <button class="add-series-btn" id="addSeriesBtn" type="button">
+                        <span>Añadir serie</span>
+                        <i data-lucide="chevron-down" class="chevron-icon"></i>
+                    </button>
+                    <button class="reset-all-btn-new" id="resetAllBtn" type="button">
+                        <i data-lucide="rotate-ccw"></i>
+                        <span>Reiniciar todo</span>
+                    </button>
+                </div>
+            </div>
 
-        <div class="series-toolbar">
-            <div class="series-form-container">
-                <button class="toggle-form-btn" id="toggleFormBtn" type="button">
-                    <span>Añadir serie</span>
-                    <i data-lucide="chevron-down" id="toggleIcon"></i>
-                </button>
-                <div id="seriesForm" class="series-form">
+            <!-- Formulario desplegable para añadir serie -->
+            <div id="addFormDropdown" class="add-form-dropdown">
+                <div class="form-grid">
                     <div class="form-group">
                         <label for="serieName">Nombre de la serie</label>
                         <input type="text" id="serieName" class="big-input" placeholder="Ej: Gravity Falls">
@@ -49,25 +54,22 @@
                         <label for="serieCover">URL de la portada</label>
                         <input type="url" id="serieCover" class="big-input" placeholder="https://imagen.jpg">
                     </div>
-                    <button id="addSerieBtn" class="btn-primary" type="button">Guardar serie</button>
                 </div>
+                <button id="addSerieBtn" class="btn-primary" type="button">Guardar serie</button>
             </div>
 
-            <div class="series-actions">
-                <button id="resetAllBtn" class="reset-all-btn" type="button">
-                    <i data-lucide="rotate-ccw"></i> Reiniciar todo
-                </button>
-            </div>
-        </div>
+            <!-- Grid de series -->
+            <div id="seriesList" class="series-grid-new"></div>
 
-        <div id="seriesList" class="series-grid"></div>
-    </section>
-</div>
+            <!-- Paginación -->
+            <div id="seriesPagination" class="series-pagination"></div>
+        </section>
+    </div>
 </main>
 
-    <script src="../js/core.js"></script>
-    <script src="../js/sidebar.js"></script>
-    <script src="../js/data.js"></script>
-    <script src="../js/pages/series.js"></script>
+<script src="../js/core.js"></script>
+<script src="../js/sidebar.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/pages/series.js"></script>
 </body>
 </html>

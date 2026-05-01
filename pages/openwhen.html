@@ -3,66 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open When</title>
-    <meta name="description" content="Cartas digitales para abrir segun el momento">
-    <meta name="theme-color" content="#0c0b0b">
+    <title>Open When · Cartas para momentos</title>
+    <meta name="description" content="Cartas digitales para abrir cuando lo necesites">
+    <meta name="theme-color" content="#0F0F10">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/openwhen.css">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
 <body data-sidebar-root=".." data-sidebar-page="openwhen">
+
+<!-- Sidebar universal -->
 <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
     <i data-lucide="menu"></i>
 </button>
 <div class="sidebar-overlay" data-sidebar-overlay></div>
 <aside class="sidebar" data-sidebar></aside>
 
+<!-- Contenido principal -->
 <main class="page-shell">
-<div class="page">
-    <section class="page-section openwhen-page">
-        <div class="openwhen-intro">
-            <h2>Open When</h2>
+    <div class="openwhen-container">
+        <!-- Header -->
+        <div class="openwhen-header">
+            <h1>Open When</h1>
             <p>Cartas para abrir solo cuando toque.</p>
         </div>
 
-        <div class="openwhen-lead section-card">
-            <div class="openwhen-lead-icon">
-                <i data-lucide="mail-heart"></i>
-            </div>
-            <div>
-                <h3>Pequeños sobres para momentos concretos</h3>
-                <p>Haz clic en una carta cuando realmente la necesites. Dentro te espera un mensaje pensado justo para ese instante.</p>
-            </div>
+        <!-- Grid de cartas -->
+        <div class="letters-grid" id="lettersGrid">
+            <!-- Las cartas se llenarán con JS -->
         </div>
 
-        <div class="letters-grid" id="lettersGrid"></div>
-    </section>
-</div>
+        <!-- Decoraciones flotantes -->
+        <div class="floating-ornament ornament-1">✉️</div>
+        <div class="floating-ornament ornament-2">🤍</div>
+        <div class="floating-ornament ornament-3">✨</div>
+        <div class="floating-ornament ornament-4">✧</div>
+    </div>
 </main>
 
-<div id="envelopeModal" class="modal-overlay">
-    <div class="envelope-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <button class="modal-close-icon" id="modalCloseIcon" type="button" aria-label="Cerrar carta">
-            <i data-lucide="x"></i>
-        </button>
-        <div class="envelope-flap"></div>
-        <div class="modal-content">
-            <div class="modal-icon-wrap">
-                <i data-lucide="mail-open"></i>
-            </div>
-            <h3 id="modalTitle"></h3>
-            <div id="modalMessage" class="modal-message"></div>
-            <button class="close-modal-btn" id="closeModalBtn" type="button">
-                <i data-lucide="heart"></i>
-                <span>Cerrar sobre</span>
-            </button>
-        </div>
-    </div>
-</div>
-    <script src="../js/core.js"></script>
-    <script src="../js/sidebar.js"></script>
-    <script src="../js/data.js"></script>
-    <script src="../js/pages/openwhen.js"></script>
+<script src="../js/core.js"></script>
+<script src="../js/sidebar.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/pages/openwhen.js"></script>
 </body>
 </html>

@@ -1,92 +1,155 @@
-// ==========================================
-// razones.js · razones interactivas
-// ==========================================
-const reasons = [
-    { short: '', long: '' },
-    { short: '', long: '' },
-    { short: '', long: '' },
-    { short: '', long: '' },
-    { short: '', long: '' },
-    { short: '', long: '' },
-    { short: '', long: '' },
-    { short: '', long: '' },
-    { short: '', long: '' },
-    { short: '', long: '' }
+// razones.js – UI con favoritos usando emojis (♡ / 🤍)
+const reasonsData = [
+    { short: "Tu forma de mirar", long: "Cuando me miras así, siento que todo se detiene y solo existes tú." },
+    { short: "Cómo me haces sentir", long: "Me haces más ligero, más valiente. Contigo los días grises tienen luz." },
+    { short: "Tu risa", long: "Esa risa tuya, la que sale sin avisar, me desarma y me reconstruye." },
+    { short: "Tu forma de ser", long: "Tan auténtica, sin máscaras. Eso es poco común y muy valioso." },
+    { short: "Los pequeños detalles", long: "Un mensaje sin motivo, una foto, recordar cómo me gusta el café… ahí vives tú." },
+    { short: "Porque estoy mejor contigo", long: "Mi mundo funciona mejor cuando vos estás en él. No necesito más razones." }
 ];
 
-function celebrateReason(source) {
-    if (typeof launchParticles === 'function') {
-        launchParticles({
-            amount: 9,
-            symbols: ['❤', '✦'],
-            colors: ['#c65a3a', '#ff8aa1', '#ffb347'],
-            spread: 110,
-            source: source || null
-        });
+let currentRandomIndex = 0;
+const STORAGE_KEY = 'razones_favoritos';
+
+function loadFavorites() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch(e) { return []; }
     }
+    return [];
 }
 
-function paintRandomReason() {
-    const title = document.getElementById('randomReasonTitle');
-    const text = document.getElementById('randomReasonText');
-    if (!title || !text || !reasons.length) return;
-
-    const item = reasons[Math.floor(Math.random() * reasons.length)];
-    title.textContent = item.short;
-    text.textContent = item.long;
+function saveFavorites(favs) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(favs));
 }
 
-function renderReasons() {
-    const list = document.getElementById('reasonsList');
-    if (!list) return;
+function toggleFavorite(index) {
+    let favs = loadFavorites();
+    if (favs.includes(index)) {
+        favs = favs.filter(i => i !== index);
+    } else {
+        favs.push(index);
+    }
+    saveFavorites(favs);
+    renderReasonsList();
+}
 
-    list.innerHTML = reasons.map((item, index) => `
-        <button class="reason-item" type="button" data-index="${index}">
-            <div class="reason-shell">
-                <span class="reason-number">${index + 1}</span>
-                <span class="reason-title">${escapeHtml(item.short)}</span>
-                <span class="reason-icon" aria-hidden="true">
-                    <i data-lucide="heart"></i>
-                </span>
+function getOrderedReasons() {
+    const favs = loadFavorites();
+    const ordered = [];
+    // favoritos en orden de aparición en favs
+    for (let idx of favs) {
+        if (idx >= 0 && idx < reasonsData.length) {
+            ordered.push({ ...reasonsData[idx], originalIndex: idx, isFav: true });
+        }
+    }
+    // no favoritos en orden original
+    for (let i = 0; i < reasonsData.length; i++) {
+        if (!favs.includes(i)) {
+            ordered.push({ ...reasonsData[i], originalIndex: i, isFav: false });
+        }
+    }
+    return ordered;
+}
+
+function renderReasonsList() {
+    const container = document.getElementById('reasonsList');
+    if (!container) return;
+    
+    const ordered = getOrderedReasons();
+    
+    container.innerHTML = ordered.map((item) => `
+        <li class="reason-item" data-original-index="${item.originalIndex}">
+            <div class="reason-left">
+                <span class="reason-number">${item.originalIndex + 1}</span>
+                <span class="reason-text">${escapeHtml(item.short)}</span>
             </div>
-            <div class="reason-extra">${escapeHtml(item.long)}</div>
-        </button>
+            <span class="reason-heart">${item.isFav ? '🤍' : '♡'}</span>
+            <div class="reason-detail">${escapeHtml(item.long)}</div>
+        </li>
     `).join('');
 
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
+    // Eventos
+    document.querySelectorAll('.reason-item').forEach(item => {
+        const heartSpan = item.querySelector('.reason-heart');
+        const originalIndex = parseInt(item.dataset.originalIndex);
+        
+        // Expandir/colapsar al hacer clic en el ítem (excepto en el corazón)
+        item.addEventListener('click', (e) => {
+            if (e.target === heartSpan) return;
+            
+            const isActive = item.classList.contains('active');
+            document.querySelectorAll('.reason-item.active').forEach(act => {
+                if (act !== item) act.classList.remove('active');
+            });
+            if (!isActive) {
+                item.classList.add('active');
+                if (typeof launchParticles === 'function') {
+                    launchParticles({
+                        amount: 6,
+                        symbols: ['❤', '✦'],
+                        colors: ['#c65a3a', '#ffb347'],
+                        spread: 80,
+                        source: item.querySelector('.reason-number')
+                    });
+                }
+            } else {
+                item.classList.remove('active');
+            }
+            if (typeof pulseElement === 'function') pulseElement(item);
+        });
+        
+        // Clic en el corazón: marcar favorito
+        if (heartSpan) {
+            heartSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleFavorite(originalIndex);
+                if (typeof pulseElement === 'function') pulseElement(heartSpan);
+                if (typeof launchParticles === 'function') {
+                    launchParticles({
+                        amount: 8,
+                        symbols: ['❤', '✧'],
+                        colors: ['#c65a3a', '#ffb347'],
+                        spread: 90,
+                        source: heartSpan
+                    });
+                }
+            });
+        }
+    });
 }
 
-function selectReason(reason) {
-    document.querySelectorAll('.reason-item').forEach((item) => item.classList.remove('active'));
-    reason.classList.add('active');
-    if (typeof pulseElement === 'function') {
-        pulseElement(reason.querySelector('.reason-number'));
-    }
-    celebrateReason(reason.querySelector('.reason-number'));
+function updateRandomReason() {
+    let newIndex;
+    do {
+        newIndex = Math.floor(Math.random() * reasonsData.length);
+    } while (reasonsData.length > 1 && newIndex === currentRandomIndex);
+    currentRandomIndex = newIndex;
+    const reason = reasonsData[currentRandomIndex];
+    const textEl = document.getElementById('randomReasonText');
+    if (textEl) textEl.textContent = reason.short;
 }
 
 function initRazones() {
-    const list = document.getElementById('reasonsList');
-    const button = document.getElementById('randomReasonBtn');
+    renderReasonsList();
+    updateRandomReason();
 
-    renderReasons();
-    paintRandomReason();
-
-    if (button) {
-        button.addEventListener('click', function () {
-            paintRandomReason();
-            if (typeof pulseElement === 'function') pulseElement(button);
-            celebrateReason(button);
-        });
-    }
-
-    if (list) {
-        list.addEventListener('click', function (event) {
-            const reason = event.target.closest('.reason-item');
-            if (!reason) return;
-            selectReason(reason);
+    const randomBtn = document.getElementById('randomizeBtn');
+    if (randomBtn) {
+        randomBtn.addEventListener('click', () => {
+            updateRandomReason();
+            if (typeof pulseElement === 'function') pulseElement(randomBtn);
+            if (typeof launchParticles === 'function') {
+                launchParticles({
+                    amount: 14,
+                    symbols: ['❤', '✦', '✧'],
+                    colors: ['#c65a3a', '#ffb347', '#ff8aa1'],
+                    spread: 140,
+                    source: randomBtn
+                });
+            }
         });
     }
 }
