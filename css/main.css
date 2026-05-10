@@ -243,6 +243,12 @@ a,
   letter-spacing: 0.04em;
 }
 
+.sidebar__link--locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .sidebar__footer {
   margin-top: auto;
   padding: 16px 10px 0;

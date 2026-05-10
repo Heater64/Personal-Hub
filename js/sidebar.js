@@ -1,4 +1,16 @@
 (function () {
+    const FALLBACK_PROGRESS = {
+        home: true,
+        canciones: false,
+        rincon: false,
+        thoseeyes: false,
+        series: false,
+        razones: false,
+        openwhen: false,
+        calendario: false,
+        maldia: false
+    };
+
     const NAV_ITEMS = [
         { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
         { key: 'canciones', label: 'Canciones', icon: 'music', href: 'pages/canciones.html' },
@@ -24,24 +36,35 @@
         const root = body.dataset.sidebarRoot || '.';
         const currentPage = body.dataset.sidebarPage || 'home';
         const year = new Date().getFullYear();
+        const progress = (typeof getProgress === 'function') ? getProgress() : FALLBACK_PROGRESS;
 
         sidebar.innerHTML = `
             <div class="sidebar__brand">
                 <span class="sidebar__eyebrow">Personal Hub</span>
-                <h1>Mis espacios</h1>
-                <p>Todo lo bonito, en un solo sitio.</p>
+                <h1>HOME</h1>
+                <p>Todo lo bonito, en un solo sitio. En ti.</p>
             </div>
             <nav class="sidebar__nav" aria-label="Navegación principal">
-                ${NAV_ITEMS.map((item) => `
-                    <a class="sidebar__link ${item.key === currentPage ? 'is-active' : ''}" href="${buildHref(root, item.href)}">
-                        <i data-lucide="${item.icon}"></i>
-                        <span>${item.label}</span>
-                    </a>
-                `).join('')}
+                ${NAV_ITEMS.map((item) => {
+                    const unlocked = progress[item.key] || item.key === 'home';
+                    const href = unlocked ? buildHref(root, item.href) : '#';
+                    const classes = [
+                        'sidebar__link',
+                        item.key === currentPage ? 'is-active' : '',
+                        !unlocked ? 'sidebar__link--locked' : ''
+                    ].filter(Boolean).join(' ');
+
+                    return `
+                        <a class="${classes}" href="${href}" data-section="${item.key}" ${!unlocked ? 'onclick="event.preventDefault()" title="Sección bloqueada"' : ''}>
+                            <i data-lucide="${unlocked ? item.icon : 'lock'}"></i>
+                            <span>${unlocked ? item.label : '🔒 ' + item.label}</span>
+                        </a>
+                    `;
+                }).join('')}
             </nav>
             <div class="sidebar__footer">
-                <small>Umbra edition</small>
-                <span>${year} · hecho con cariño</span>
+                <small>De hecho te amo</small>
+                <span>${year} · hecho por tu peluche</span>
             </div>
         `;
 
@@ -104,6 +127,7 @@
         bindSidebar();
     });
 
+    window.renderSidebar = renderSidebar;
     window.openSidebar = openSidebar;
     window.closeSidebar = closeSidebar;
     window.toggleSidebar = toggleSidebar;

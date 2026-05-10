@@ -1,17 +1,105 @@
-﻿// maldia.js – Frases, contador, música y animaciones
+// maldia.js - Frases, contador, musica y animaciones
+
 const phrases = [
     "Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un poquito de ternura contigo.",
-    "Estás aquí, y eso ya es suficiente. Un día más, un paso más. Yo te veo, y eres increíble.",
-    "No necesitas rendir cuentas hoy. Solo existir. Y si puedes, sonreír un poquito.",
-    "Eres más fuerte de lo que crees, más bonita de lo que piensas y más querida de lo que imaginas.",
-    "Hoy puede que no sea fácil, pero mañana será otro día. Y yo seguiré estando aquí para ti.",
-    "Tu misión ahora: beber agua, respirar hondo y recordar que te quiero muchísimo.",
-    "No tienes que poder con todo. Permítete descansar. Yo te apaño el resto."
+    "Estas aqui, y eso ya es suficiente. Un dia mas, un paso mas. Yo te veo, y eres increible.",
+    "No necesitas rendir cuentas hoy. Solo existir. Y si puedes, sonreir un poquito.",
+    "Eres mas fuerte de lo que crees, mas bonita de lo que piensas y mas querida de lo que imaginas.",
+    "Hoy puede que no sea facil, pero manana sera otro dia. Yo seguire estando aqui para ti.",
+    "Tu mision ahora: beber agua, respirar hondo y recordar que te quiero muchisimo.",
+    "No tienes que poder con todo. Permitete descansar. Yo te apano el resto."
 ];
 
 let kindCount = 0;
 let isMusicPlaying = false;
-let audio = null;
+let audioElement = null;
+
+const maldiaRef = db.collection('maldia').doc('contador');
+
+async function loadCount() {
+    try {
+        const doc = await maldiaRef.get();
+        if (doc.exists && typeof doc.data().cuenta === 'number') {
+            kindCount = doc.data().cuenta;
+        } else {
+            kindCount = 0;
+            await maldiaRef.set({ cuenta: 0 });
+        }
+    } catch (error) {
+        console.error('Error al cargar contador:', error);
+        kindCount = 0;
+    }
+
+    const counter = document.getElementById('kindCounter');
+    if (counter) counter.textContent = kindCount;
+}
+
+async function saveCount() {
+    try {
+        await maldiaRef.set({ cuenta: kindCount }, { merge: true });
+    } catch (error) {
+        console.error('Error al guardar contador:', error);
+    }
+}
+
+function initMusic() {
+    audioElement = document.getElementById('happyAudio');
+    if (!audioElement) {
+        console.warn("No se encontro <audio id='happyAudio'>");
+        return;
+    }
+
+    audioElement.load();
+
+    const startOnInteraction = () => {
+        if (!isMusicPlaying && audioElement && audioElement.paused) {
+            audioElement.play().catch((error) => console.log('Autoplay denegado:', error));
+            isMusicPlaying = true;
+            updateMusicButtonUI();
+        }
+        document.removeEventListener('click', startOnInteraction);
+        document.removeEventListener('keydown', startOnInteraction);
+    };
+
+    document.addEventListener('click', startOnInteraction);
+    document.addEventListener('keydown', startOnInteraction);
+}
+
+function updateMusicButtonUI() {
+    const musicBtn = document.getElementById('musicBtn');
+    if (!musicBtn) return;
+
+    if (isMusicPlaying) {
+        musicBtn.innerHTML = '<i data-lucide="volume-2"></i> Pausar musica';
+    } else {
+        musicBtn.innerHTML = '<i data-lucide="volume-x"></i> Pon musica feliz';
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function toggleMusic() {
+    if (!audioElement) return;
+
+    if (isMusicPlaying) {
+        audioElement.pause();
+        isMusicPlaying = false;
+    } else {
+        audioElement.play().catch((error) => console.warn('No se pudo reproducir:', error));
+        isMusicPlaying = true;
+    }
+
+    updateMusicButtonUI();
+
+    const waveBars = document.querySelectorAll('.wave-bar');
+    waveBars.forEach((bar) => {
+        if (isMusicPlaying) {
+            bar.style.animation = 'wave 0.8s ease-in-out infinite';
+        } else {
+            bar.style.animation = 'none';
+        }
+    });
+}
 
 function randomPhrase() {
     const heroMsg = document.getElementById('heroMessage');
@@ -30,51 +118,16 @@ function randomPhrase() {
     }
 }
 
-function updateCounter() {
-    const counterEl = document.getElementById('kindCounter');
-    if (counterEl) {
-        kindCount++;
-        counterEl.textContent = kindCount;
-        if (typeof launchParticles === 'function') {
-            launchParticles({
-                amount: 12,
-                symbols: ['❤', '❤️', '♡'],
-                colors: ['#c65a3a', '#ff8aa1', '#ffb347'],
-                spread: 110,
-                source: counterEl
-            });
-        }
-    }
-}
-
-function initMusic() {
-    audio = document.getElementById('happyAudio');
-    if (!audio) return;
-    // Aquí puedes poner una URL real de música alegre
-    // audio.src = "https://ejemplo.com/cancion-feliz.mp3";
-    // Por ahora solo simulamos
-}
-
-function toggleMusic() {
-    if (!audio) return;
-    if (isMusicPlaying) {
-        audio.pause();
-        isMusicPlaying = false;
-    } else {
-        audio.play().catch(() => {});
-        isMusicPlaying = true;
-    }
-}
-
 function betterDay() {
     randomPhrase();
     if (typeof launchParticles === 'function') {
+        const source = document.querySelector('.hero-card') || document.querySelector('.bento-hero') || document.body;
         launchParticles({
             amount: 20,
             symbols: ['❤', '✦', '✧', '☀'],
             colors: ['#c65a3a', '#ffb347', '#ff8aa1', '#ffd966'],
             spread: 150,
-            source: document.querySelector('.hero-card')
+            source
         });
     }
     if (typeof pulseElement === 'function') {
@@ -83,22 +136,33 @@ function betterDay() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadCount();
     randomPhrase();
     initMusic();
-    
-    const counterEl = document.getElementById('kindCounter');
-    if (counterEl) {
-        const saved = localStorage.getItem('maldia_count');
-        if (saved) kindCount = parseInt(saved);
-        counterEl.textContent = kindCount;
-    }
-    
+
     document.getElementById('newPhraseBtn')?.addEventListener('click', randomPhrase);
     document.getElementById('musicBtn')?.addEventListener('click', toggleMusic);
     document.getElementById('betterBtn')?.addEventListener('click', betterDay);
-    document.getElementById('countBtn')?.addEventListener('click', () => {
-        updateCounter();
-        localStorage.setItem('maldia_count', kindCount);
-        if (typeof pulseElement === 'function') pulseElement(document.getElementById('countBtn'));
+    document.getElementById('countBtn')?.addEventListener('click', async () => {
+        kindCount++;
+        const counter = document.getElementById('kindCounter');
+        if (counter) counter.textContent = kindCount;
+        await saveCount();
+
+        if (typeof launchParticles === 'function') {
+            launchParticles({
+                amount: 12,
+                symbols: ['❤', '❤️', '♡'],
+                colors: ['#c65a3a', '#ff8aa1', '#ffb347'],
+                spread: 110,
+                source: counter
+            });
+        }
+
+        if (typeof pulseElement === 'function') {
+            pulseElement(document.getElementById('countBtn'));
+        }
     });
+
+    updateMusicButtonUI();
 });

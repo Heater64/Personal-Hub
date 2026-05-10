@@ -61,8 +61,9 @@
                 <div class="wave-bar"></div>
             </div>
             <span class="music-label">Canción jsjs</span>
-            <audio id="happyAudio" preload="none">
-                <source src="" type="audio/mpeg">
+            <!-- ✅ Aquí está la clave: ahora tiene una URL real -->
+            <audio id="happyAudio" preload="auto">
+                <source src="https://res.cloudinary.com/dcsent4fs/video/upload/v1777746763/Zzoilo_Aitana_-_Mon_Amour_Remix_Letra_Lyrics_jrgcjv.m4a" type="audio/mpeg">
             </audio>
         </div>
 
@@ -71,8 +72,8 @@
             <!-- Contador de halagos -->
             <div class="glass-card counter-card">
                 <div class="card-icon small"><i data-lucide="sparkles"></i></div>
-                <h3>Estás hermosa hoy</h3>
-                <div class="boost-number" id="kindCounter">0</div>
+                <h3>Estás hermosa hoy recuérdalo</h3>
+                <div class="boost-number" id="kindCounter"></div>
                 <button class="mini-btn" id="countBtn">
                     <i data-lucide="plus"></i> Sorpresa
                 </button>
@@ -81,9 +82,9 @@
             <!-- Recuerdo visual -->
             <div class="glass-card visual-card">
                 <div class="card-icon small"><i data-lucide="image"></i></div>
-                <h3>Recuerdo visual</h3>
-                <p>Para que haya al menos una imagen amable esperándote aquí.</p>
-                <img src="https://tu-rincon-favorito.vercel.app/imagenes/Gatosencama.jpg" alt="Recuerdo bonito" class="memory-image">
+                <h3></h3>
+                <p>Para que luego digas que no tienes color en los ojos e jsjsjs.</p>
+                <img src="https://res.cloudinary.com/dcsent4fs/image/upload/v1777747760/5199564237372592635_eqj9v5.jpg" alt="Recuerdo bonito" class="memory-image">
             </div>
 
             <!-- Mini recordatorio -->
@@ -107,6 +108,11 @@
 <script src="../js/core.js"></script>
 <script src="../js/sidebar.js"></script>
 <script src="../js/data.js"></script>
+<script src="../js/progress.js"></script>
+<script src="../js/access-control.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
 <script src="../js/pages/maldia.js"></script>
 </body>
 </html>

@@ -6,9 +6,36 @@ const surprises = [
     '', '', '', '', '', '', '', '', '', '',
     '', '', '', '', '', '', '', '', '', ''
 ];
-const openedKey = 'calendarioSorpresasAbiertas';
-const opened = JSON.parse(localStorage.getItem(openedKey) || '[]');
 const visibleDays = 16;
+
+const calendarioRef = db.collection('calendario').doc('sorpresas');
+
+let opened = [];
+
+async function loadOpened() {
+    try {
+        const doc = await calendarioRef.get();
+        if (doc.exists && doc.data().abiertos) {
+            opened = doc.data().abiertos;
+        } else {
+            opened = [];
+            await calendarioRef.set({ abiertos: [] });
+        }
+    } catch (error) {
+        console.error('Error al cargar calendario:', error);
+        opened = [];
+    }
+    renderCalendar();
+}
+
+async function saveOpened() {
+    try {
+        await calendarioRef.set({ abiertos: opened }, { merge: true });
+    } catch (error) {
+        console.error('Error al guardar calendario:', error);
+        showMessage('No se pudo guardar en la nube', true);
+    }
+}
 
 function renderCalendar() {
     const grid = document.getElementById('calendarGrid');
@@ -30,7 +57,7 @@ function revealSurprise(day, surpriseBox, surpriseTitle, surpriseText) {
     surpriseBox.classList.add('show');
 
     setTimeout(() => {
-        surpriseTitle.textContent = `Día ${day + 1}`;
+        surpriseTitle.textContent = `Dia ${day + 1}`;
         surpriseText.textContent = surprises[day];
     }, 180);
 }
@@ -42,16 +69,16 @@ function initCalendario() {
     const surpriseText = document.getElementById('surpriseText');
     if (!grid || !surpriseBox || !surpriseTitle || !surpriseText) return;
 
-    renderCalendar();
+    loadOpened();
 
-    grid.addEventListener('click', function (event) {
+    grid.addEventListener('click', async function (event) {
         const card = event.target.closest('.day-card');
         if (!card) return;
 
         const day = Number(card.dataset.day);
         if (!opened.includes(day)) {
             opened.push(day);
-            localStorage.setItem(openedKey, JSON.stringify(opened));
+            await saveOpened();
             renderCalendar();
         }
 

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Desbloqueo</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        .admin-box {
+            max-width: 600px;
+            width: 100%;
+            margin: 80px auto;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            padding: 32px;
+            border: var(--border-subtle);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .section-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 16px;
+        }
+
+        .btn-unlock,
+        .btn-lock {
+            border-radius: 20px;
+            cursor: pointer;
+            padding: 6px 16px;
+            font: inherit;
+        }
+
+        .btn-unlock {
+            background: var(--accent-coral);
+            border: none;
+            color: white;
+        }
+
+        .btn-lock {
+            background: transparent;
+            border: 1px solid var(--umbra-ash);
+            color: var(--umbra-ash);
+        }
+    </style>
+</head>
+<body style="background:#0f0f10;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+    <div class="admin-box">
+        <h2 style="margin-bottom:20px;">Panel de Desbloqueo</h2>
+        <p style="color:var(--umbra-ash);margin-bottom:24px;">Activa o desactiva secciones para ella.</p>
+        <div id="sectionsList"></div>
+        <button id="resetAll" style="margin-top:24px;background:red;color:white;border:none;padding:10px 20px;border-radius:20px;cursor:pointer;">Resetear todo</button>
+    </div>
+
+    <script src="js/progress.js"></script>
+    <script>
+        const PASSWORD = 'miprincesa2025';
+        const entered = prompt('Contraseña de administración:');
+
+        if (entered !== PASSWORD) {
+            document.body.innerHTML = '<h1 style="text-align:center;margin-top:100px;">Acceso denegado</h1>';
+            throw new Error('Acceso denegado');
+        }
+
+        const sections = ['canciones', 'rincon', 'thoseeyes', 'series', 'razones', 'openwhen', 'calendario', 'maldia'];
+
+        function render() {
+            const container = document.getElementById('sectionsList');
+            const progress = getProgress();
+
+            container.innerHTML = sections.map((section) => `
+                <div class="section-row">
+                    <span>${section}</span>
+                    <span style="display:flex;gap:8px;align-items:center;">
+                        ${progress[section]
+                            ? `<button class="btn-lock" onclick="lock('${section}')">Bloquear</button>`
+                            : `<button class="btn-unlock" onclick="unlock('${section}')">Desbloquear</button>`
+                        }
+                        <span style="width:24px;">${progress[section] ? '✅' : '🔒'}</span>
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function unlock(section) {
+            unlockSection(section);
+            render();
+        }
+
+        function lock(section) {
+            lockSection(section);
+            render();
+        }
+
+        document.getElementById('resetAll').addEventListener('click', () => {
+            if (confirm('¿Resetear todo el progreso?')) {
+                resetAllProgress();
+                render();
+            }
+        });
+
+        render();
+    </script>
+</body>
+</html>

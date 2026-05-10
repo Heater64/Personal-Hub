@@ -1,5 +1,5 @@
 // ==========================================
-// rincon.js · galeria, memes, gustos y SPB
+// rincon.js · galeria, memes y SPB
 // ==========================================
 let currentFolder = null;
 let currentMemeFolder = 'Favoritos ⭐';
@@ -256,28 +256,150 @@ function buildFolderGalleryItems(folderName) {
     }));
 }
 
-function renderGallery() {
-    const grid = document.getElementById('galleryGrid');
-    if (!grid || !window.galleryFoldersData) return;
+// ---------- GALERÍA (misma lógica que memes) ----------
 
-    grid.innerHTML = `
-        <div class="pinterest-grid">
-            ${Object.entries(window.galleryFoldersData).map(([name, images]) => `
-                <div class="pinterest-item folder-card" data-folder="${escapeHtml(name)}">
-                    <img src="${escapeHtml(images[0] || '')}" alt="${escapeHtml(name)}" loading="lazy">
-                    <div class="overlay"><span><i data-lucide="folder"></i> ${escapeHtml(name)} · ${images.length} fotos</span></div>
-                </div>
-            `).join('')}
-        </div>
-    `;
+let currentGalleryFolder = 'Atardeceres'; // carpeta por defecto
+let hasGalleryRendered = false;
+let galleryRenderToken = 0;
+const GALLERY_BATCH_SIZE = 12;
+const GALLERY_PRELOAD_LIMIT = 18;
 
-    grid.querySelectorAll('.folder-card').forEach((item) => {
-        item.addEventListener('click', () => {
-            showFolderContents(item.dataset.folder);
-        });
+function buildGalleryItems(folderName) {
+    const images = window.galleryFoldersData?.[folderName] || [];
+    return images.map((src, index) => ({
+        type: 'image',
+        src: src,
+        caption: `${folderName} - ${index + 1}`
+    }));
+}
+
+function renderGalleryFolders() {
+    const nav = document.getElementById('galleryFoldersNav');
+    if (!nav || !window.galleryFoldersData) return;
+
+    nav.innerHTML = Object.keys(window.galleryFoldersData).map((folder) => `
+        <button class="memes-folder-btn ${folder === currentGalleryFolder ? 'active' : ''}" data-folder="${escapeHtml(folder)}" type="button">
+            <i data-lucide="folder"></i> ${escapeHtml(folder)}
+            <span class="folder-count">${window.galleryFoldersData[folder].length}</span>
+        </button>
+    `).join('');
+
+    nav.querySelectorAll('.memes-folder-btn').forEach((btn) => {
+        btn.addEventListener('click', () => showGalleryFolder(btn.dataset.folder));
     });
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function ensureGalleryGridInteractions() {
+    const grid = document.getElementById('galleryImagesGrid');
+    if (!grid || grid.dataset.bound === 'true') return;
+
+    grid.dataset.bound = 'true';
+
+    grid.addEventListener('click', (event) => {
+        const item = event.target.closest('.insta-item');
+        if (!item) return;
+
+        event.stopPropagation();
+        const galleryItems = buildGalleryItems(currentGalleryFolder);
+        openMediaLightbox(galleryItems, Number(item.dataset.index), `gallery:${currentGalleryFolder}`);
+    });
+
+    grid.addEventListener('keydown', (event) => {
+        const item = event.target.closest('.insta-item');
+        if (!item) return;
+
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const galleryItems = buildGalleryItems(currentGalleryFolder);
+            openMediaLightbox(galleryItems, Number(item.dataset.index), `gallery:${currentGalleryFolder}`);
+        }
+    });
+}
+
+function warmGalleryCache() {
+    const images = (window.galleryFoldersData?.[currentGalleryFolder] || []).slice(0, GALLERY_PRELOAD_LIMIT);
+    let index = 0;
+
+    function preloadBatch() {
+        for (let step = 0; step < 3 && index < images.length; step += 1, index += 1) {
+            const image = new Image();
+            image.loading = 'eager';
+            image.decoding = 'async';
+            image.src = images[index];
+        }
+
+        if (index < images.length) {
+            setTimeout(preloadBatch, 180);
+        }
+    }
+
+    if (images.length) {
+        setTimeout(preloadBatch, 500);
+    }
+}
+
+function renderGalleryGrid() {
+    const grid = document.getElementById('galleryImagesGrid');
+    if (!grid || !window.galleryFoldersData) return;
+
+    ensureGalleryGridInteractions();
+    grid.className = 'insta-grid';
+    const items = window.galleryFoldersData[currentGalleryFolder];
+    if (!items || items.length === 0) {
+        grid.className = '';
+        grid.innerHTML = '<div class="empty-state">No hay fotos en esta carpeta</div>';
+        return;
+    }
+
+    const renderToken = ++galleryRenderToken;
+    grid.innerHTML = '';
+
+    function appendBatch(startIndex) {
+        if (renderToken !== galleryRenderToken) return;
+
+        const batch = items.slice(startIndex, startIndex + GALLERY_BATCH_SIZE);
+        if (!batch.length) {
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: grid });
+            return;
+        }
+
+        grid.insertAdjacentHTML('beforeend', batch.map((src, offset) => {
+            const index = startIndex + offset;
+            return `
+                <article class="insta-item" tabindex="0" role="button" aria-label="Abrir foto ${index + 1}" data-index="${index}">
+                    <img src="${escapeHtml(src)}" alt="Atardecer ${index + 1}" loading="lazy" decoding="async">
+                    <div class="insta-overlay"><i data-lucide="eye"></i></div>
+                </article>
+            `;
+        }).join(''));
+
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: grid });
+
+        if (startIndex + GALLERY_BATCH_SIZE < items.length) {
+            setTimeout(() => appendBatch(startIndex + GALLERY_BATCH_SIZE), 60);
+        }
+    }
+
+    appendBatch(0);
+    hasGalleryRendered = true;
+}
+
+function showGalleryFolder(folder) {
+    currentGalleryFolder = folder;
+    renderGalleryFolders();
+    renderGalleryGrid();
+}
+
+// Esta función es llamada por initRincon al cargar la página
+function renderGallery() {
+    renderGalleryFolders();
+}
+
+// showFolderContents ya no se usa, la dejamos vacía para no romper nada
+function showFolderContents(folderName) {
+    // vacío
 }
 
 function showFolderContents(folderName) {
@@ -412,83 +534,6 @@ function showMemeFolder(folder) {
     renderMemes();
 }
 
-function renderGustos() {
-    const panel = document.getElementById('gustosPanel');
-    const data = window.gustosData;
-    if (!panel || !data) return;
-
-    const podioHTML = data.podio.map((item) => `
-        <div class="planner-step" style="margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-                <span style="font-size:1.8rem;line-height:1;">${escapeHtml(item.medalla)}</span>
-                <div>
-                    <strong style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:500;display:block;">${escapeHtml(item.titulo)}</strong>
-                    <span style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);">${escapeHtml(item.tipo)}</span>
-                </div>
-            </div>
-            <p style="font-size:0.85rem;line-height:1.7;color:var(--umbra-ash);">${escapeHtml(item.descripcion)}</p>
-        </div>
-    `).join('');
-
-    panel.innerHTML = `
-        <div style="margin-bottom:28px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-                <i data-lucide="trophy"></i>
-                <h4 style="margin:0;font-family:'Playfair Display',serif;font-size:1.2rem;">Series y películas favoritas</h4>
-            </div>
-            ${podioHTML}
-        </div>
-        <div style="border-top:var(--border-subtle);padding-top:24px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-                <i data-lucide="sparkles"></i>
-                <h4 style="margin:0;font-family:'Playfair Display',serif;font-size:1.2rem;">Más cosas sobre ti</h4>
-            </div>
-            <div class="planner-grid" style="margin-top:8px;">
-                <div class="planner-step">
-                    <h4 style="margin-bottom:10px;font-size:0.9rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--umbra-ash);">Personal</h4>
-                    <ul style="padding-left:18px;color:var(--umbra-ash);line-height:2;font-size:0.85rem;">
-                        ${data.personal.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
-                    </ul>
-                </div>
-                <div class="planner-step">
-                    <h4 style="margin-bottom:10px;font-size:0.9rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--umbra-ash);">Comida favorita</h4>
-                    <ul style="padding-left:18px;color:var(--umbra-ash);line-height:2;font-size:0.85rem;">
-                        ${data.food.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
-                    </ul>
-                </div>
-            </div>
-        </div>
-    `;
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function renderCatFacts() {
-    const list = document.getElementById('catFacts');
-    if (!list || !window.catFactsData) return;
-
-    list.style.listStyle = 'none';
-    list.style.padding = '0';
-    list.innerHTML = `
-        <p style="font-size:0.88rem;line-height:1.7;color:var(--umbra-ash);margin-bottom:20px;">
-            Los gatos son mascotas fascinantes con comportamientos y capacidades que llevan siglos sorprendiendo a los humanos. Aquí van algunos datos que quizá no sabías.
-        </p>
-        <div style="display:grid;gap:14px;">
-            ${window.catFactsData.map((fact) => `
-                <div class="planner-step" style="display:flex;gap:14px;align-items:flex-start;">
-                    <span style="font-size:1.4rem;line-height:1;flex-shrink:0;margin-top:2px;">${escapeHtml(fact.icon)}</span>
-                    <div>
-                        <strong style="display:block;font-weight:500;margin-bottom:4px;">${escapeHtml(fact.titulo)}</strong>
-                        <p style="font-size:0.85rem;line-height:1.7;color:var(--umbra-ash);margin:0;">${escapeHtml(fact.texto)}</p>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
 function showSubview(viewId) {
     const parent = document.getElementById('rincon');
     if (!parent) return;
@@ -500,6 +545,10 @@ function showSubview(viewId) {
     parent.querySelectorAll('.sub-view').forEach((view) => {
         view.classList.toggle('active', view.id === viewId);
     });
+
+    if (viewId === 'rincon-galeria' && !hasGalleryRendered) {
+        renderGalleryGrid();
+    }
 }
 
 function initSPBSection() {
@@ -599,8 +648,7 @@ function initRincon() {
 
     renderGallery();
     renderMemes();
-    renderGustos();
-    renderCatFacts();
+    warmGalleryCache();
     initSPBSection();
     initReelLightbox();
 
@@ -631,8 +679,6 @@ window.renderGallery = renderGallery;
 window.showFolderContents = showFolderContents;
 window.renderMemes = renderMemes;
 window.showMemeFolder = showMemeFolder;
-window.renderGustos = renderGustos;
-window.renderCatFacts = renderCatFacts;
 window.showSubview = showSubview;
 window.openMediaLightbox = openMediaLightbox;
 window.closeMediaLightbox = closeMediaLightbox;

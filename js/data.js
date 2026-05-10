@@ -120,28 +120,32 @@ const songs = [
     }
 ];
 
-// ========== GALERÍA (sin cambios) ==========
-const galleryFolders = {
-    "Flores 🌸": [
-        "https://tse4.mm.bing.net/th/id/OIP.siib8QHQtFNbO9UW61p_mgHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
-        "https://images.immediate.co.uk/production/volatile/sites/10/2021/06/2048x1365-Gypsophila-SEO-GettyImages-1305732961-38ee11b.jpg",
-        "https://tse3.mm.bing.net/th/id/OIP.g1ZfCF5vVhcOkJAN78ZtDAHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
-        "https://i.etsystatic.com/13697085/r/il/a2f0e8/3104042304/il_1588xN.3104042304_eqct.jpg",
-        "https://i.pinimg.com/originals/85/7f/00/857f00fec518d3e2490c3026e7f77b10.jpg",
-        "https://bulbs.co.uk/wp-content/uploads/2022/12/Gypsophila.jpg",
-        "https://i.etsystatic.com/25318042/r/il/9a8d07/2772980805/il_1588xN.2772980805_cqio.jpg",
-        "https://inlandflowermarket.com/wp-content/uploads/2021/10/gypsophila-small-1.jpg"
+// ========== GALERÍA DE ATARDECERES ==========
+const fotosatardecer = {
+    "Atardeceres": [
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355903/20260505_070212_sgkvy2.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355904/20260425_070118_c8t3kj.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355904/20260313_190837_aib1zt.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20260131_182652_h5gqlm.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20260210_080032_jobag2.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20260313_072301_qrnboi.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20251220_174233_1_lehzxv.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355906/20260130_182040_sp3qth.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20260430_234216_u7qf2v.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355906/20251211_175213_1_u8khuv.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450227_chbdr5.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450220_rzduse.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450221_qxulyt.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450219_lwa8od.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450222_kj51bc.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450218_em0pnk.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450217_pwjesq.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450223_dgcrpu.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353785/6050762318045450216_gwc122.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353786/6050762318045450215_1_tpqalm.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1778353786/6050762318045450226_agq2lo.jpg",
+        // Añade aquí más imágenes de atardeceres, separadas por comas
     ],
-    "Gatos 🐱": [
-        "https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=600",
-        "https://images.pexels.com/photos/1056251/pexels-photo-1056251.jpeg?auto=compress&cs=tinysrgb&w=600",
-        "https://images.pexels.com/photos/127028/pexels-photo-127028.jpeg?auto=compress&cs=tinysrgb&w=600",
-        "https://images.pexels.com/photos/2071873/pexels-photo-2071873.jpeg?auto=compress&cs=tinysrgb&w=600",
-        "https://images.pexels.com/photos/104827/cat-pet-animal-domestic-104827.jpeg?auto=compress&cs=tinysrgb&w=600",
-        "https://images.pexels.com/photos/33152/cat-kitten-animal-cat-play.jpg?auto=compress&cs=tinysrgb&w=600",
-        "https://i.pinimg.com/1200x/ab/de/70/abde70ec7dd62bf68c9e53ac714a22f3.jpg",
-        "https://i.pinimg.com/1200x/70/97/0c/70970c1c4bb9ae6157a63be625721659.jpg"
-    ]
 };
 
 // ========== MEMES (con imágenes y videos desde Cloudinary) ==========
@@ -156,6 +160,16 @@ const memeImages = {
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/MichisCancioncitaJAJAJJA_jdwrp2.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/MiewMauwLalalalala_hxoqki.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/gatito_isgr4b.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745737/gatitoooo_qyrpil.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745737/gatitoo_e2hlko.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745737/gatomonisimo_ralmhk.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745738/gatito_son_flores_mqcl6a.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745740/gatosandia_ytsfdw.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745741/gato_vyikst.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745742/gatitooo_f0elmx.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745742/Otrogato_mfk3jj.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745744/gatitomonoo_bui2gq.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745739/gatitooooo_r3sp86.mp4",
     ],
     "Minecraft": [
         "https://res.cloudinary.com/dcsent4fs/image/upload/v1777123664/MinecraftUs_f4yeux.jpg",
@@ -166,6 +180,7 @@ const memeImages = {
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777136544/Waterdrop_iqvfx4.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777137777/Nosotros_en_otra_vida_ge9znv.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777137779/Pov_vas_a_minar_con_tu_novia_twqri8.mp4",
+
     ],
 
     "Spiderman": [
@@ -185,6 +200,13 @@ const memeImages = {
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-10_u2uk0l.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-12_gy0tet.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_o5honc.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745736/gorila_g8drhe.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745737/futbol_xrayua.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745738/gorilaandando_luousk.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745738/gritogallina_qftzme.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745739/pezglobo_atprlu.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745740/susto_xokceo.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745743/hombresbelike_jok7ea.mp4",
     ],
 
     "Te amo👑": [
@@ -193,7 +215,559 @@ const memeImages = {
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777132934/bailesnowman.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-11_a2qajj.mp4",
     ],
+
+    "Gravity Falls": [
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777744533/gravityfalls_cancion_bfj4zz.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745739/I_love_Gravity_Falls_bam278.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745739/Hubiera_sido_Muy_bueno_ax5dl3.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745745/Gravity_Falls_Beauty_hknw8n.mp4",
+    ],
+
+    "Que monoo": [
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745737/conejito_icvk2v.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745738/perritocruasant_mpvn4n.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745739/perrito_u87752.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745743/perritooo_gqdrkf.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745738/perroalmohada_ywhcfb.mp4",
+    ],
 };
+
+// ========== NUEVO: Canciones que le gustan a ella (puedes añadir las que quieras) ==========
+const allSongs = [
+    {
+        title: "Mon amour Remix",
+        artist: "Aitana y Zzoilo",
+        album: "",
+        cover: "https://i1.sndcdn.com/artworks-leykoA0rJXWDmQya-cyfPxg-t500x500.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777746763/Zzoilo_Aitana_-_Mon_Amour_Remix_Letra_Lyrics_jrgcjv.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Contando Lunares",
+        artist: "Don Patricio",
+        album: "",
+        cover: "https://res.cloudinary.com/dcsent4fs/image/upload/v1777748473/contando_lunares_bjxcmo.png", // ejemplo
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748328/DON_PATRICIO_CRUZ_CAFUN%C3%89_-_CONTANDO_LUNARES_tsyd6p.m4a", // ⚠️ pon aquí una URL real
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Rara Vez",
+        artist: "Milo J, Taiu",
+        album: "",
+        cover: "https://m.media-amazon.com/images/I/51O0iMUUz7L._UXNaN_FMjpg_QL85_.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748873/Taiu_Milo_j_-_Rara_Vez_bwkba4.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Si Estoy a Tu Lado",
+        artist: "Rabelay",
+        album: "",
+        cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-ywl-ZgPTD9d7uezXWmcCixIhCxdKb0cmRA&s",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748874/Rabelay_-_Si_Estoy_a_Tu_Lado_Oficial_nvbx34.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Pareja del Año",
+        artist: "Sebastián Yatra, Myke Towers",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273311aebbc00f1cd4cd16bacbc",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748875/Sebasti%C3%A1n_Yatra_-_Tacones_Rojos_Official_Video_o09dxd.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "COSAS QUE NO TE DIJE",
+        artist: "Saiko",
+        album: "",
+        cover: "https://images.genius.com/acb90eccfc4f36d9675d8d2f58c86670.1000x1000x1.png",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748875/Saiko_-_COSAS_QUE_NO_TE_DIJE_Official_Video_dbpazx.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Quiero Decirte",
+        artist: "Abraham Mateo, Ana Mena",
+        album: "",
+        cover: "https://images.genius.com/7e834ed5f2fd7a331d2e8d4f948cda4b.1000x1000x1.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748876/Abraham_Mateo_Ana_Mena_-_Quiero_Decirte_myiibs.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Just the Way You Are",
+        artist: "Bruno Mars",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/5b59dc18e109515420f8237719bd2186/1900x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748879/Bruno_Mars_-_Just_The_Way_You_Are_i8mkhd.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Ven a la Carrera",
+        artist: "Pocoyó",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b2730952f5f2ec131e56b3ba7b27",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748881/%EF%B8%8FPOCOY%C3%93_-_Ven_a_la_Carrera_ysppwm.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Besos en Guerra",
+        artist: "Morat, Juanes",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b2738fa1c3557fd95f9dd67ec235",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748882/Morat_Juanes_-_Besos_en_Guerra_Letra._vnnvdn.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Carita de Buena",
+        artist: "Efecto Pasillo",
+        album: "",
+        cover: "https://m.media-amazon.com/images/I/61F144gibPL._UXNaN_FMjpg_QL85_.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748883/Efecto_Pasillo_-_Carita_de_Buena_Letra_ja14lf.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Cupid twin version",
+        artist: "FIFTY FIFTY",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b27337c0b3670236c067c8e8bbcb",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748884/FIFTY_FIFTY_-_Cupid_Twin_Version_Lyrics_hfw31y.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Pan y Mantequilla",
+        artist: "",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b2735953c71f6d0e995f71f63ae4",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748885/Pan_y_Mantequilla_ejmvcl.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "La Plena",
+        artist: "Beéle Westcol, Ovy On The Drums",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273c0353d023daf5ebda0eb003b",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748886/Be%C3%A9le_Westcol_Ovy_On_The_Drums_-_LA_PLENA_W_Sound_05_jz2fsz.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Sia - Snowman",
+        artist: "Sia",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273a75e532b61dac3ddafd022ef",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748887/Sia_-_Snowman_Lyrics_ym54x5.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Young Cister - miau (Video Oficial 2)",
+        artist: "Young Cister",
+        album: "",
+        cover: "https://images.genius.com/aa41a24ecbac2a1324c4cb84cc158f76.1000x1000x1.png",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748889/Young_Cister_-_miau_Video_Oficial_2_rr561t.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "I Love It",
+        artist: "Icona Pop, Charli XCX",
+        album: "",
+        cover: "https://m.media-amazon.com/images/I/51e5k9eRKvL._UXNaN_FMjpg_QL85_.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748890/Vietsub_I_Love_It_Icona_Pop___Charli_XCX_Lyrics_Video_1_tn4f7c.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Capaz",
+        artist: "Alleh Yorghaki",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/88e65c70ef15315045b6bf85d38b11f2/0x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748891/Alleh_Yorghaki_-__capaz__OFFICIAL_VERSION_iutvie.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Downtown",
+        artist: "Anitta, J Balvin",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b2738c6b830c36c7b4ac43c3cee8",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748892/Anitta_J_Balvin_-_DOWNTOWN_Letra_vw8h3l.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Porfa no te vayas",
+        artist: "Beret, Morat",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/82a6297e55cbb85c75cedbbb3a8e1443/1900x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748898/Beret_Morat_-_Porfa_no_te_vayas_Videoclip_Oficial_1_gxrelc.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Count on Me",
+        artist: "Bruno Mars",
+        album: "",
+        cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSaonOWEQEDMwIQmhHmBRiWrqKgcKYWQjQTiQ&s",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748900/Bruno_Mars_-_Count_on_Me_Official_Lyric_Video_1_xli1q5.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Caliente",
+        artist: "Ricky edit",
+        album: "",
+        cover: "https://s.mxmcdn.net/images-storage/albums2/9/5/3/5/2/3/64325359_350_350.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748901/caliente_-_rickyedit_1_pe7zjc.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "X Remix",
+        artist: "Nicky Jam, J Balvin, Ozuna, Maluma",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b27326129b4b928f0f97ba344545",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748902/X_Remix_-_Nicky_Jam_x_J_Balvin_x_Ozuna_x_Maluma_cqklqd.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Viva La Vida",
+        artist: "Coldplay",
+        album: "",
+        cover: "https://m.media-amazon.com/images/I/9145yafeO2L._UF894,1000_QL80_.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748903/Coldplay_-_Viva_La_Vida_Official_Video_rjwiqg.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "3 AM",
+        artist: "Eladio Carrión, Brytiago",
+        album: "",
+        cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCWfQQxORCJbF-JVcNQ2qouJQqMA0C4Arkdg&s",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748904/Eladio_Carri%C3%B3n_Brytiago_-_3_AM_Visualizer___Sauce_Boyz_paeyvx.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Qué Bonita",
+        artist: "Cano",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/e65d06182e60952beb733eefe35a1d75/1900x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748905/El_Mismo_Sol_svyp5p.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Bailando",
+        artist: "Enrique Iglesias",
+        album: "",
+        cover: "https://upload.wikimedia.org/wikipedia/en/thumb/c/c0/Enriquebailandocover.jpg/250px-Enriquebailandocover.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748907/Enrique_Iglesias___Bailando_Lyrics_feat_Descemer_Bueno__Gente_De_pvlefu.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "DUELE EL CORAZÓN",
+        artist: "Enrique Iglesias",
+        album: "",
+        cover: "https://i1.sndcdn.com/artworks-000164317296-txl7y7-t500x500.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748909/Enrique_Iglesias_-_DUELE_EL_CORAZON_Lyric_Video_ft._Wisin_v27ra0.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "La Bachata",
+        artist: "MTZ Manuel Turizo",
+        album: "",
+        cover: "https://i1.sndcdn.com/artworks-HG9Rj4F1lgzFynKw-jpIVmQ-t500x500.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748910/La_Bachata_-_MTZ_Manuel_Turizo___Video_Oficial_thrsqd.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "El Merengue",
+        artist: "MTZ Manuel Turizo",
+        album: "",
+        cover: "https://cdn-p.smehost.net/sites/5b3bac59eb36401694af3a241173447f/wp-content/uploads/2023/03/93201a3b-066d-4ae6-8fba-92694479a310.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748911/Marshmello_Manuel_Turizo_-_El_Merengue_j0d5t6.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "1000 Cosas",
+        artist: "MTZ Manuel Turizo",
+        album: "",
+        cover: "https://res.cloudinary.com/dcsent4fs/image/upload/v1777751326/1000_cosas_nzka1y.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748912/Lola_Indigo_Manuel_Turizo_-_1000_Cosas_Letra___Lyrics_hs1gu0.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Die With a Smile",
+        artist: "Lady Gaga, Bruno Mars",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/4bd5903f4ce8f2601916bfadb44efe8a/1900x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748913/Lady_Gaga_Bruno_Mars_-_Die_With_A_Smile_defupf.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "BELIEVER",
+        artist: "Imagine Dragons",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b2735675e83f707f1d7271e5cf8a",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748915/Imagine_Dragons_-_Believer_Lyrics_kfi5ha.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Si No Estás",
+        artist: "Iñigo Quintero",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273c0a5c14b34a02f242af03359",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748916/i%C3%B1igo_quintero_-_Si_No_Est%C3%A1s_Letra_Oficial_1_lraiuu.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Si Antes Te Hubiera Conocido",
+        artist: "Karol G",
+        album: "",
+        cover: "https://i1.sndcdn.com/artworks-TTDsE8Jj2gF855AL-hFnpUQ-t500x500.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748917/KAROL_G_-_Si_Antes_Te_Hubiera_Conocido___Coke_Studio_sxezkk.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Firework",
+        artist: "Katy Perry",
+        album: "",
+        cover: "https://m.media-amazon.com/images/M/MV5BMWRmMWVlOWYtOWQ2Yi00MjdmLTliNGUtOTk1N2M4MmQwZmJkXkEyXkFqcGc@._V1_QL75_UY190_CR2,0,190,190_.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748918/Katy_Perry_-_Firework_Lyrics_qgmiip.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "I Kissed A Girl",
+        artist: "Katy Perry",
+        album: "",
+        cover: "https://upload.wikimedia.org/wikipedia/en/5/5c/I_Kissed_a_Girl.png",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748919/Katy_Perry_-_I_Kissed_A_Girl_Official_Music_Video_qdtvxf.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "La Cintura",
+        artist: "Alvaro Soler",
+        album: "",
+        cover: "https://i1.sndcdn.com/artworks-000326908518-qfg6dg-t500x500.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748920/La_Cintura_-_Alvaro_Soler_Letra_lyrics_knrjhe.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "como estrellas",
+        artist: "YOUNG",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273866265358ce5d4770b67ab8d",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748921/LA_YounG_-_Como_Estrellas_pvizll.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Until I Found You",
+        artist: "Stephen Sanchez",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/8a6477b222dac17081d9b9b1729a1ca4/1900x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748931/Stephen_Sanchez_-_Until_I_Found_You_Lyrics_1_rakcvt.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Malito",
+        artist: "",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273b89593a15f6a40fd6d7de40c",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748932/Malito_w8w0t2.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "quelamamen",
+        artist: "Ricky edit",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/6c56dd16a8da24c8e59781231e29442b/0x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748937/quelamamen_-_rickyedit_t0yfas.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Ahora Y Siempre",
+        artist: "Quevedo",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b2738517e3f690cdabf1a616b2e8",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748939/Quevedo_-_Ahora_Y_Siempre_Letra_Lyrics_x6edyd.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Cuando Te Vi",
+        artist: "Maria Becerra, Trueno",
+        album: "",
+        cover: "https://akamai.sscdn.co/uploadfile/letras/albuns/6/f/9/d/2282831720092918.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748940/Maria_Becerra_Trueno_Big_One_-_Cuando_Te_Vi___CROSSOVER_5_eaa8fv.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: ">Todo de Ti",
+        artist: "Rauw Alejandro",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273c160ede886e4e54350c0cec9",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748941/Rauw_Alejandro_-_Todo_de_Ti_Video_Oficial_fucazk.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "real gangsta love",
+        artist: "Trueno",
+        album: "",
+        cover: "https://images.genius.com/d7ae872dffe2dda742204c6fd4256e4e.1000x1000x1.png",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748942/Trueno_-_REAL_GANGSTA_LOVE_Official_Video_bzn4xz.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Belong Together",
+        artist: "Mark Ambor",
+        album: "",
+        cover: "https://i.ytimg.com/vi/xPWnNFF-TAw/sddefault.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748944/Mark_Ambor_-_Belong_Together_Lyrics_o7nepu.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "sway",
+        artist: "Michael Bublé",
+        album: "",
+        cover: "https://i1.sndcdn.com/artworks-mfRYr4OtlumkBA1q-pL2Mfg-t500x500.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748945/Michael_Bubl%C3%A9_-_Sway_Lyrics_twaz4d.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "CLASSIC",
+        artist: "mkto",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b2739474419f15773875a495eed3",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748946/MKTO_-_Classic_Lyrics_yrsqeh.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "A Dónde Vamos",
+        artist: "Morat",
+        album: "",
+        cover: "https://akamai.sscdn.co/uploadfile/letras/albuns/3/0/1/4/1111981626430157.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748947/Morat_-_A_D%C3%B3nde_Vamos_Letra___Albert_Maricheli_y9psss.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "La Falda",
+        artist: "Myke Towers",
+        album: "",
+        cover: "https://i1.sndcdn.com/artworks-r0TxDn1vZJbLEO3p-ROydVw-t500x500.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748949/Myke_Towers_-_LA_FALDA_Letra_Lyrics_mwn6s0.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Como Te Atreves",
+        artist: "Morat",
+        album: "",
+        cover: "https://images.genius.com/71945fe483298a6e9a160ba4aa8050c9.1000x1000x1.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748950/Morat_-_C%C3%B3mo_Te_Atreves_Video_Oficial_blq8d9.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "SOLO AMIGOS",
+        artist: "Adexe y Nau",
+        album: "",
+        cover: "https://images.genius.com/ea89db66f1b4f18e011613e093611da1.1000x1000x1.png",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748951/Solo_amigos_-_Adexe_y_Nau_Letra_lyrics_wmuawk.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "THERE'S NOTHING HOLDING ME BACK",
+        artist: "Shawn Mendes",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/3e2d3bad308509ecc59dc6de76ac7896/0x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748952/Shawn_Mendes_There_s_Nothing_Holding_Me_Back_Lyrics_e3lpar.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "save your tears",
+        artist: "The Weeknd",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/4acc3760e12996fe21a77115fc67760b/1900x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748955/The_Weeknd_-_Save_Your_Tears_Official_Music_Video_ed2oy0.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Indeciso",
+        artist: "Reik",
+        album: "",
+        cover: "https://m.media-amazon.com/images/I/51pJA4vGKvL._UXNaN_FMjpg_QL85_.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748956/Reik_J_Balvin_Lalo_Ebratt_-_Indeciso_Letra_lqpkqv.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "La Mordidita",
+        artist: "Ricky Martin",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b27388d450740b559cabdde15d35",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748957/Ricky_Martin_-_La_Mordidita_ft._Yotuel_Letra_vgdin6.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Vente Pa' Ca",
+        artist: "Ricky Martin",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273a7009065e3adf3430e04f63a",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748958/Ricky_Martin_-_Vente_Pa__Ca_ft._Maluma_Letra_Lyrics_bplzdf.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Umbrella",
+        artist: "Rihanna",
+        album: "",
+        cover: "https://cdn-images.dzcdn.net/images/cover/91276466fbc876d96be9e6926060af60/1900x1900-000000-80-0-0.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748960/Rihanna_Umbrella_Orange_Version_Official_Music_Video_ft_JAY_Z_fpihd1.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "APT.",
+        artist: "ROSÉ",
+        album: "",
+        cover: "https://m.media-amazon.com/images/I/51vAIGPAURL._UXNaN_FMjpg_QL85_.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748961/ROSE%CC%81_Bruno_Mars_-_APT._Official_Music_Video_ydbvc7.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Flashes",
+        artist: "RØZ Yng Lvcas",
+        album: "",
+        cover: "https://i1.sndcdn.com/artworks-aRMFevdQLRYYTTXi-IRfYkw-t500x500.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748962/R%C3%98Z_Yng_Lvcas_-_flashes_zvoqsg.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Despechá",
+        artist: "ROSALÍA",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273938660520f09a1bae2ed4699",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748973/ROSAL%C3%8DA_-_DESPECH%C3%81_Official_Video_ehc9gl.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Supernova",
+        artist: "SAIKO",
+        album: "",
+        cover: "https://i.scdn.co/image/ab67616d0000b273c3f5b9580dfc96c80705424a",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748974/SAIKO_-_SUPERNOVA_Official_Video___SAKURA_kiwn0u.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Without Me",
+        artist: "Eminem",
+        album: "",
+        cover: "https://m.media-amazon.com/images/I/819VvnW1QZL._UF894,1000_QL80_.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748976/Eminem_-_Without_Me_Lyrics_rbyen5.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Beauty and a Beat",
+        artist: "Justin Bieber",
+        album: "",
+        cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsKPNxCtWtPm7_d468VnoWxPSBsOyZk67HcA&s",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748977/Justin_Bieber_Beauty_And_A_Beat_Official_Music_Video_ft_Nicki_Minaj_ivdtfp.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Fuego",
+        artist: "Don Omar",
+        album: "",
+        cover: "https://i.musicaimg.com/letras/250x250/don-omar.jpg",
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748984/Fuego_-_Una_Vaina_Loca_Ft._El_Potro_Alvarez_Official_Video_rp0xvr.m4a",
+        lyrics: `Letra no disponible`
+    },
+    
+];
+
+// ========== EXPORTAR TODO ==========
+window.songsData         = songs;          // las que te recuerdan a ti
+window.allSongsData      = allSongs;       // las que le gustan a ella
 
 // ========== DATOS DE SAN JUAN PUEBLO (actualizado) ==========
 const spbData = {
@@ -260,10 +834,71 @@ phrases: [
 ]
 };
 
+// ========== SERIES Y PELÍCULAS ==========
+const seriesData = [
+    {
+        id: 1,
+        name: 'Dragon Ball',
+        url: 'https://tioanime.com/anime/dragon-ball',
+        total: 153,
+        watched: 23,
+        cover: 'https://tioanime.com/uploads/portadas/509.jpg',
+        estado: 'viendo'
+    },
+    {
+        id: 2,
+        name: 'Gravity Falls',
+        url: 'https://tioanime.com/anime/gravity-falls',
+        total: 40,
+        watched: 40,
+        cover: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1777744533/gravityfalls_cancion_bfj4zz.mp4',
+        estado: 'visto'
+    },
+    {
+        id: 3,
+        name: 'One Piece',
+        url: 'https://tioanime.com/anime/one-piece',
+        total: 1100,
+        watched: 0,
+        cover: 'https://tioanime.com/uploads/portadas/one-piece.jpg',
+        estado: 'quiero_ver'
+    }
+];
+
+const peliculasData = [
+    {
+        id: 4,
+        name: 'Your Name',
+        url: 'https://www.netflix.com/title/80166799',
+        total: 1,
+        watched: 0,
+        cover: 'https://example.com/yourname.jpg',
+        estado: 'quiero_ver'
+    },
+    {
+        id: 5,
+        name: 'Spider-Man: No Way Home',
+        url: 'https://www.netflix.com/title/81157374',
+        total: 1,
+        watched: 1,
+        cover: 'https://example.com/spiderman.jpg',
+        estado: 'visto'
+    },
+    {
+        id: 6,
+        name: 'Avengers: Endgame',
+        url: 'https://www.disneyplus.com/movies/avengers-endgame/',
+        total: 1,
+        watched: 1,
+        cover: 'https://example.com/endgame.jpg',
+        estado: 'viendo'
+    }
+];
+
 // ========== EXPORTAR TODO ==========
 window.songsData         = songs;
-window.galleryFoldersData = galleryFolders;
+window.galleryFoldersData = fotosatardecer;
 window.memeImagesData    = memeImages;
-window.gustosData        = gustos;
-window.catFactsData      = catFacts;
 window.spbData           = spbData;
+window.seriesData = seriesData;
+window.peliculasData = peliculasData;

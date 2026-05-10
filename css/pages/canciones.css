@@ -4,9 +4,14 @@
   grid-template-columns: 1fr;
 }
 
+/* AJUSTE: Ancho del panel del reproductor (columna izquierda) 
+   - Aumenta el valor de min-width para hacerlo más ancho.
+   - Cambia la fracción (ej: 0.5fr) para darle más espacio relativo.
+   - Si quieres que sea aún más grande, sube el min-width a 400px o 500px.
+*/
 @media (min-width: 700px) {
   .player-layout {
-    grid-template-columns: minmax(300px, 0.4fr) 1fr;
+    grid-template-columns: minmax(400px, 0.4fr) 1fr;
   }
 }
 
@@ -68,7 +73,7 @@
   justify-content: center;
   font-size: 1.2rem;
   color: var(--umbra-ash);
-  transition: opacity var(--dur-fast);
+  transition: opacity var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
 }
 
 .player-btn:hover {
@@ -82,6 +87,13 @@
   color: var(--accent-coral);
   width: 56px;
   height: 56px;
+}
+
+/* Botón shuffle activo */
+.player-btn.shuffle-active {
+  color: var(--accent-coral);
+  border-color: var(--accent-coral);
+  background: rgba(198, 90, 58, 0.1);
 }
 
 .player-btn i[data-lucide] {
@@ -123,6 +135,42 @@
   transition: width 0.1s linear;
 }
 
+/* ⚡ LISTA DE CANCIONES CON SCROLL */
+#songsListContainer {
+  max-height: 420px;
+  overflow-y: auto;
+  border-radius: var(--radius-md);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+#songsListContainer::-webkit-scrollbar {
+  width: 4px;
+}
+
+#songsListContainer::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: var(--radius-pill);
+}
+
+#songsListContainer::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-pill);
+}
+
+#songsListContainer::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* AJUSTE: Ancho máximo de la tarjeta de canciones (la sección completa con la lista) 
+   - Cambia el valor de max-width para hacerla más ancha o más estrecha.
+   - Actualmente no tiene límite, se adapta al contenedor padre.
+   - Si quieres que ocupe todo el ancho, elimina esta regla o pon max-width: 100%.
+*/
+.section-card {
+  /* max-width: 600px; */ /* Descomenta y ajusta si quieres un ancho fijo */
+}
+
 .songs-grid {
   display: grid;
   gap: var(--space-xs);
@@ -138,6 +186,9 @@
   border-radius: var(--radius-md);
   background: transparent;
   transition: background var(--dur-fast), border-color var(--dur-fast);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
 }
 
 .song-row:hover {
@@ -147,6 +198,7 @@
 
 .song-row.active {
   border-color: var(--accent-coral);
+  background: rgba(198, 90, 58, 0.06);
 }
 
 .song-row img {
@@ -168,6 +220,7 @@
   color: var(--umbra-ash);
 }
 
+/* Panel de letras */
 .lyrics-panel {
   max-height: 400px;
   overflow-y: auto;
@@ -252,4 +305,37 @@
   .lyrics-expanded {
     font-size: 1rem;
   }
+  
+  #songsListContainer {
+    max-height: 300px;
+  }
+}
+
+/* Estilos para las pestañas */
+.sub-nav {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-lg);
+}
+
+.sub-tab {
+    padding: var(--space-xs) var(--space-md);
+    background: transparent;
+    border: var(--border-subtle);
+    border-radius: var(--radius-pill);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    transition: opacity var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+    cursor: pointer;
+    color: var(--umbra-ash);
+}
+
+.sub-tab:hover {
+    opacity: 0.7;
+}
+
+.sub-tab.active {
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
 }

@@ -42,7 +42,7 @@
         <!-- Subvistas -->
         <div id="rincon-inicio" class="sub-view active">
             <div class="section-card" style="text-align:center;padding:48px 24px;">
-                <img src="https://tu-rincon-favorito.vercel.app/imagenes/DADA.jpg"
+                <img src="https://res.cloudinary.com/dcsent4fs/image/upload/v1777744533/DADA_ziogvd.jpg"
                      alt="Avatar"
                      style="width:160px;height:160px;border-radius:50%;object-fit:cover;margin:0 auto 24px;border:2px solid var(--border-visible);">
                 <h2 style="margin-bottom:10px;">Bienvenida a tu rincón favorito <i data-lucide="heart" style="display:inline; width:1.2rem;"></i></h2>
@@ -51,12 +51,13 @@
         </div>
 
         <div id="rincon-galeria" class="sub-view">
-            <div class="section-card">
-                <h3><i data-lucide="camera"></i> Galería</h3>
-                <p style="margin-bottom:16px;">Tus fotos organizadas por carpetas. Click para ver todas.</p>
-                <div id="galleryGrid"></div>
-            </div>
-        </div>
+    <div class="section-card">
+        <h3><i data-lucide="sunrise"></i> Atardeceres </h3>
+        <p style="margin-bottom:16px;">Primero elige una carpeta, luego las fotos.</p>
+        <div id="galleryFoldersNav" class="memes-folders-nav"></div>
+        <div id="galleryImagesGrid"></div>
+    </div>
+</div>
 
         <div id="rincon-memes" class="sub-view">
             <div class="section-card">
@@ -306,6 +307,8 @@
     <script src="../js/core.js"></script>
     <script src="../js/sidebar.js"></script>
     <script src="../js/data.js"></script>
+    <script src="../js/progress.js"></script>
+    <script src="../js/access-control.js"></script>
     <script src="../js/pages/rincon.js"></script>
 </body>
 </html>
