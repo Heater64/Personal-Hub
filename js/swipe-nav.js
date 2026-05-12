@@ -21,7 +21,10 @@
         'pages/razones.html',
         'pages/openwhen.html',
         'pages/calendario.html',
-        'pages/maldia.html'
+        'pages/maldia.html',
+        'pages/decks.html',
+        'pages/dashboard.html',
+        'pages/tutor.html',
     ];
 
     // Obtener página actual

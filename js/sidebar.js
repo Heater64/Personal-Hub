@@ -1,16 +1,4 @@
 (function () {
-    const FALLBACK_PROGRESS = {
-        home: true,
-        canciones: false,
-        rincon: false,
-        thoseeyes: false,
-        series: false,
-        razones: false,
-        openwhen: false,
-        calendario: false,
-        maldia: false
-    };
-
     const NAV_ITEMS = [
         { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
         { key: 'canciones', label: 'Canciones', icon: 'music', href: 'pages/canciones.html' },
@@ -20,7 +8,10 @@
         { key: 'razones', label: 'Razones', icon: 'sparkles', href: 'pages/razones.html' },
         { key: 'openwhen', label: 'Open When', icon: 'mail', href: 'pages/openwhen.html' },
         { key: 'calendario', label: 'Calendario', icon: 'calendar-days', href: 'pages/calendario.html' },
-        { key: 'maldia', label: 'Mal día', icon: 'sun-medium', href: 'pages/maldia.html' }
+        { key: 'maldia', label: 'Mal día', icon: 'sun-medium', href: 'pages/maldia.html' },
+        { key: 'decks', label: 'Mis Decks', icon: 'layers', href: 'pages/decks.html' },
+        { key: 'dashboard', label: 'Progreso', icon: 'bar-chart-2', href: 'pages/dashboard.html' },
+        { key: 'tutor', label: 'Tutor IA', icon: 'brain', href: 'pages/tutor.html' }
     ];
 
     function buildHref(root, href) {
@@ -36,7 +27,6 @@
         const root = body.dataset.sidebarRoot || '.';
         const currentPage = body.dataset.sidebarPage || 'home';
         const year = new Date().getFullYear();
-        const progress = (typeof getProgress === 'function') ? getProgress() : FALLBACK_PROGRESS;
 
         sidebar.innerHTML = `
             <div class="sidebar__brand">
@@ -46,18 +36,16 @@
             </div>
             <nav class="sidebar__nav" aria-label="Navegación principal">
                 ${NAV_ITEMS.map((item) => {
-                    const unlocked = progress[item.key] || item.key === 'home';
-                    const href = unlocked ? buildHref(root, item.href) : '#';
+                    const href = buildHref(root, item.href);
                     const classes = [
                         'sidebar__link',
-                        item.key === currentPage ? 'is-active' : '',
-                        !unlocked ? 'sidebar__link--locked' : ''
+                        item.key === currentPage ? 'is-active' : ''
                     ].filter(Boolean).join(' ');
 
                     return `
-                        <a class="${classes}" href="${href}" data-section="${item.key}" ${!unlocked ? 'onclick="event.preventDefault()" title="Sección bloqueada"' : ''}>
-                            <i data-lucide="${unlocked ? item.icon : 'lock'}"></i>
-                            <span>${unlocked ? item.label : '🔒 ' + item.label}</span>
+                        <a class="${classes}" href="${href}" data-section="${item.key}">
+                            <i data-lucide="${item.icon}"></i>
+                            <span>${item.label}</span>
                         </a>
                     `;
                 }).join('')}

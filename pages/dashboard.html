@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard · Mi progreso</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/pages/dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body data-sidebar-root=".." data-sidebar-page="dashboard">
+
+<button class="sidebar-toggle" type="button" data-sidebar-toggle>
+    <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
+
+<main class="page-shell">
+    <div class="dashboard-container">
+        
+        <!-- Header con estadísticas rápidas -->
+        <div class="dashboard-header">
+            <div class="welcome-card">
+                <h1><i data-lucide="trending-up"></i> Mi progreso</h1>
+                <p>¡Sigue así! Cada día estás más cerca de tus metas</p>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i data-lucide="zap"></i>
+                    <div class="stat-value" id="totalXP">0</div>
+                    <div class="stat-label">XP totales</div>
+                    <div class="stat-progress" id="xpProgress"></div>
+                </div>
+                <div class="stat-card">
+                    <i data-lucide="flame"></i>
+                    <div class="stat-value" id="currentStreak">0</div>
+                    <div class="stat-label">Racha actual 🔥</div>
+                </div>
+                <div class="stat-card">
+                    <i data-lucide="target"></i>
+                    <div class="stat-value" id="accuracy">0%</div>
+                    <div class="stat-label">Precisión</div>
+                </div>
+                <div class="stat-card">
+                    <i data-lucide="clock"></i>
+                    <div class="stat-value" id="studyTime">0h</div>
+                    <div class="stat-label">Tiempo estudiado</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de progreso -->
+        <div class="chart-card">
+            <h3><i data-lucide="bar-chart-2"></i> Evolución de aprendizaje</h3>
+            <canvas id="progressChart" height="200"></canvas>
+        </div>
+
+        <!-- Temas débiles (detectados por IA) -->
+        <div class="weak-topics-card">
+            <h3><i data-lucide="alert-triangle"></i> Temas para reforzar</h3>
+            <div id="weakTopicsList" class="weak-topics-list"></div>
+        </div>
+
+        <!-- Logros recientes -->
+        <div class="achievements-card">
+            <h3><i data-lucide="award"></i> Logros desbloqueados</h3>
+            <div id="achievementsList" class="achievements-grid"></div>
+        </div>
+
+        <!-- Objetivo diario -->
+        <div class="daily-goal-card">
+            <h3><i data-lucide="calendar-check"></i> Objetivo de hoy</h3>
+            <div class="goal-progress">
+                <span id="dailyGoalText"></span>
+                <div class="goal-bar">
+                    <div id="goalFill" class="goal-fill"></div>
+                </div>
+                <span id="dailyProgressText"></span>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/sidebar.js"></script>
+<script src="../js/study/adaptive-engine.js"></script>
+<script src="../js/pages/dashboard.js"></script>
+</body>
+</html>

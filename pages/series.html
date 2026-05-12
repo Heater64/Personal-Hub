@@ -1,108 +1,253 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Series y Películas</title>
-    <meta name="theme-color" content="#0c0b0b">
-    <link rel="stylesheet" href="../css/main.css">
-    <link rel="stylesheet" href="../css/pages/series.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Series y Películas</title>
+  <meta name="description" content="Tu biblioteca personal de series y películas">
+  <meta name="theme-color" content="#0c0b0b">
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/pages/series.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
 </head>
 <body data-sidebar-root=".." data-sidebar-page="series">
+
+<!-- Sidebar vertical -->
 <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
-    <i data-lucide="menu"></i>
+  <i data-lucide="menu"></i>
 </button>
 <div class="sidebar-overlay" data-sidebar-overlay></div>
 <aside class="sidebar" data-sidebar></aside>
 
 <main class="page-shell">
-    <div class="page">
-        <section class="page-section">
-            <div class="series-page-header">
-                <h2 class="series-page-title">Lista de películas o series que quiero ver contigo.</h2>
-                <p>Edita películas y series sin miedo. Compartimos la misma lista. 🤍👑</p>
-                <div class="series-header-actions">
-                    <button class="add-series-btn" id="addSeriesBtn" type="button">
-                        <span>Añadir</span>
-                        <i data-lucide="chevron-down" class="chevron-icon"></i>
-                    </button>
-                </div>
-            </div>
+  <div class="page series-page">
 
-            <!-- Formulario desplegable -->
-            <div id="addFormDropdown" class="add-form-dropdown">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="serieName">Nombre</label>
-                        <input type="text" id="serieName" class="big-input" placeholder="Ej: Breaking Bad">
-                    </div>
-                    <div class="form-group">
-                        <label for="serieUrl">Enlace</label>
-                        <input type="url" id="serieUrl" class="big-input" placeholder="https://...">
-                    </div>
-                    <div class="form-group">
-                        <label for="serieTotal">Total episodios</label>
-                        <input type="number" id="serieTotal" class="big-input" placeholder="24" min="1">
-                    </div>
-                    <div class="form-group">
-                        <label for="serieCover">Portada (URL)</label>
-                        <input type="url" id="serieCover" class="big-input" placeholder="https://imagen.jpg">
-                    </div>
-                    <div class="form-group">
-                        <label for="serieTipo">Tipo</label>
-                        <select id="serieTipo" class="big-input">
-                            <option value="serie">Serie</option>
-                            <option value="pelicula">Película</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="serieEstado">Estado</label>
-                        <select id="serieEstado" class="big-input">
-                            <option value="viendo">Viendo</option>
-                            <option value="quiero_ver">Quiero ver</option>
-                            <option value="visto">Visto</option>
-                        </select>
-                    </div>
-                </div>
-                <button id="addSerieBtn" class="btn-primary" type="button">Guardar</button>
-            </div>
+    <!-- Header -->
+    <header class="cine-header">
+      <h1>Nuestro Cine</h1>
+      <p>Series y películas · Marca tu progreso</p>
+    </header>
 
-            <div class="main-tabs series-main-tabs">
-                <button class="main-tab active" data-type="serie" type="button">
-                    <i data-lucide="tv"></i>
-                    <span>Series</span>
-                </button>
-                <button class="main-tab" data-type="pelicula" type="button">
-                    <i data-lucide="film"></i>
-                    <span>Peliculas</span>
-                </button>
-            </div>
-
-            <div class="sub-nav series-filter-nav">
-                <button class="sub-tab active" data-estado="viendo" type="button">
-                    <i data-lucide="eye"></i>
-                    <span>Viendo</span>
-                </button>
-                <button class="sub-tab" data-estado="quiero_ver" type="button">
-                    <i data-lucide="clock-3"></i>
-                    <span>Quiero ver</span>
-                </button>
-                <button class="sub-tab" data-estado="visto" type="button">
-                    <i data-lucide="check-circle-2"></i>
-                    <span>Visto</span>
-                </button>
-            </div>
-
-            <!-- Grid de tarjetas -->
-            <div id="seriesList" class="series-grid-new"></div>
-            <div id="seriesPagination" class="series-pagination"></div>
-        </section>
+    <!-- Barra de acciones -->
+    <div class="cine-actions">
+      <button class="btn-primary" id="btnAnadir">
+        <i data-lucide="plus"></i> Añadir
+      </button>
+      <button class="btn-danger" id="btnEliminarTodo">
+        <i data-lucide="trash-2"></i> Eliminar todo
+      </button>
     </div>
+
+    <!-- Buscador y filtros -->
+    <div class="filters-bar">
+      <div class="search-wrapper">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="searchInput" class="search-input" placeholder="Buscar título...">
+      </div>
+      <div class="filter-chips" id="filterBtns">
+        <button class="filter-chip active" data-filter="todo">Todo</button>
+        <button class="filter-chip" data-filter="serie">Series</button>
+        <button class="filter-chip" data-filter="pelicula">Películas</button>
+      </div>
+    </div>
+
+    <!-- Grid de contenido -->
+    <div class="catalog-grid" id="contentGrid"></div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <i data-lucide="clapperboard"></i>
+      <p>No hay contenido. Añade tu primera serie o película.</p>
+    </div>
+
+  </div>
 </main>
 
-<!-- Scripts en orden: core, sidebar, data, después series -->
+<!-- MODAL AÑADIR/EDITAR -->
+<div class="modal-overlay" id="overlayForm" style="display: none;">
+  <div class="modal-content modal-form">
+    <button class="close-modal" id="closeFormBtn">✕</button>
+    <h2 id="modalFormTitle">Añadir contenido</h2>
+    <input type="hidden" id="formDocId">
+    
+    <form id="contentForm">
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="fTitulo" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label>Tipo *</label>
+        <select id="fTipo" class="form-input">
+          <option value="serie">Serie</option>
+          <option value="pelicula">Película</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>URL de portada</label>
+        <input type="url" id="fPortada" class="form-input" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>URL web general (JustWatch, oficial, etc.)</label>
+        <input type="url" id="fWeb" class="form-input" placeholder="https://...">
+      </div>
+
+      <div class="episodes-section">
+        <div class="episodes-header">
+          <span>Episodios</span>
+          <button type="button" id="btnAddEpisodio" class="btn-secondary btn-sm">+ Añadir episodio</button>
+        </div>
+        <div id="episodiosList" class="episodes-list"></div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" id="cancelFormBtn" class="btn-secondary">Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL VER (vista interna con episodios) -->
+<div class="modal-overlay" id="overlayView" style="display: none;">
+  <div class="modal-content modal-view">
+    <button class="close-modal" id="closeViewBtn">✕</button>
+    
+    <div class="view-header">
+      <img id="viewCover" class="view-cover" src="" alt="" style="display: none;">
+      <div class="view-info">
+        <h2 id="viewTitle">—</h2>
+        <span class="badge" id="viewTipo">Serie</span>
+      </div>
+    </div>
+
+    <div class="player-wrapper" id="playerWrapper" style="display: none;">
+      <video id="videoPlayer" class="video-player" controls playsinline></video>
+    </div>
+
+    <!-- Botones de acciones masivas -->
+    <div class="bulk-actions" id="bulkActions" style="display: none;">
+      <button class="bulk-btn" id="markAllWatchedBtn">
+        <i data-lucide="check-circle"></i> Marcar todos vistos
+      </button>
+      <button class="bulk-btn" id="unmarkAllBtn">
+        <i data-lucide="refresh-cw"></i> Desmarcar todos
+      </button>
+    </div>
+
+    <div class="episodes-list" id="viewEpisodiosList"></div>
+  </div>
+</div>
+
+<!-- Modal confirmación eliminar todo -->
+<div class="modal-overlay" id="deleteConfirmModal" style="display: none;">
+  <div class="modal-content modal-form">
+    <button class="close-modal" id="closeConfirmBtn">✕</button>
+    <h2 style="color: #dc3545;">⚠️ Confirmar eliminación</h2>
+    <p style="margin: 16px 0;">¿Estás seguro de que quieres eliminar TODAS las series y películas?<br>Esta acción no se puede deshacer.</p>
+    <div class="form-actions">
+      <button class="btn-secondary" id="cancelDeleteBtn">Cancelar</button>
+      <button class="btn-danger" id="confirmDeleteBtn">Eliminar todo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== WIDGET FLOTANTE DE SEGUIMIENTO ========== -->
+<button class="floating-tracker-btn" id="floatingTrackerBtn" title="Mi cuaderno de seguimiento">
+  <i data-lucide="notebook-pen"></i>
+  <span class="floating-tracker-badge" id="trackerBadge">0</span>
+</button>
+
+<div class="floating-tracker-panel" id="floatingTrackerPanel" style="display: none;">
+  <div class="tracker-header">
+    <div class="tracker-title">
+      <i data-lucide="notebook-pen"></i>
+      <span>Mi cuaderno de seguimiento</span>
+    </div>
+    <button class="tracker-close" id="closeTrackerBtn">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+
+  <div class="tracker-search">
+    <i data-lucide="search"></i>
+    <input type="text" id="trackerSearchInput" placeholder="Buscar serie...">
+  </div>
+
+  <div class="tracker-list" id="trackerList">
+    <!-- Series cargadas dinámicamente -->
+  </div>
+
+  <div class="tracker-footer">
+    <button class="tracker-add-btn" id="trackerAddSeriesBtn">
+      <i data-lucide="plus"></i> Añadir serie manual
+    </button>
+  </div>
+</div>
+
+<!-- Modal para añadir serie manual al tracker -->
+<div class="tracker-modal" id="trackerAddModal" style="display: none;">
+  <div class="tracker-modal-content">
+    <div class="tracker-modal-header">
+      <h3><i data-lucide="tv"></i> Añadir serie manual</h3>
+      <button class="tracker-modal-close" id="closeTrackerModalBtn">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="tracker-modal-body">
+      <div class="tracker-form-group">
+        <label>Nombre de la serie</label>
+        <input type="text" id="trackerSerieNombre" placeholder="Ej: Dragon Ball, One Piece..." class="tracker-input">
+      </div>
+      <div class="tracker-form-group">
+        <label>Total de episodios</label>
+        <input type="number" id="trackerSerieTotal" placeholder="Ej: 153" class="tracker-input" min="1" value="1">
+      </div>
+      <div class="tracker-form-group">
+        <label>URL de imagen (opcional)</label>
+        <input type="text" id="trackerSeriePoster" placeholder="https://..." class="tracker-input">
+      </div>
+    </div>
+    <div class="tracker-modal-footer">
+      <button class="tracker-btn-secondary" id="cancelTrackerModalBtn">Cancelar</button>
+      <button class="tracker-btn-primary" id="saveTrackerSerieBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para ver episodios de una serie -->
+<div class="tracker-modal" id="trackerEpisodiosModal" style="display: none;">
+  <div class="tracker-modal-content tracker-modal-episodios">
+    <div class="tracker-modal-header">
+      <h3 id="trackerEpisodiosTitle"><i data-lucide="list"></i> Episodios</h3>
+      <button class="tracker-modal-close" id="closeTrackerEpisodiosBtn">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="tracker-modal-body">
+      <div class="tracker-episodios-actions">
+        <button id="trackerMarcarTodosBtn" class="tracker-btn-small">
+          <i data-lucide="check-square"></i> Marcar todos
+        </button>
+        <button id="trackerDesmarcarTodosBtn" class="tracker-btn-small">
+          <i data-lucide="square"></i> Desmarcar todos
+        </button>
+      </div>
+      <div class="tracker-episodios-list" id="trackerEpisodiosList">
+        <!-- Episodios cargados dinámicamente -->
+      </div>
+    </div>
+    <div class="tracker-modal-footer">
+      <div class="tracker-progress-summary" id="trackerProgressSummary"></div>
+      <button class="tracker-btn-primary" id="closeTrackerEpisodiosModalBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-message" id="toast" style="display: none;"></div>
+
 <script src="../js/core.js"></script>
 <script src="../js/sidebar.js"></script>
 <script src="../js/data.js"></script>

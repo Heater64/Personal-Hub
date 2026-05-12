@@ -1,5 +1,25 @@
 {
   "dependencies": {
-    "firebase": "^12.13.0"
-  }
+    "firebase": "^12.13.0",
+    "playwright": "^1.59.1"
+  },
+  "name": "personal-hub",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Heater64/Personal-Hub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Heater64/Personal-Hub/issues"
+  },
+  "homepage": "https://github.com/Heater64/Personal-Hub#readme"
 }

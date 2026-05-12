@@ -1,9 +1,13 @@
+// access-control.js - Control de acceso simplificado
+// TODAS las secciones están desbloqueadas por defecto
 (function () {
     const body = document.body;
-    const page = body?.dataset.sidebarPage || 'home';
-    if (page === 'home' || !page) return;
-
-    if (typeof isSectionUnlocked === 'function' && !isSectionUnlocked(page)) {
+    const page = body?.dataset?.sidebarPage || 'home';
+    
+    // Si quieres bloquear alguna sección específica en el futuro, añádela aquí
+    const LOCKED_SECTIONS = []; // <-- Vacío = todo desbloqueado
+    
+    if (LOCKED_SECTIONS.includes(page)) {
         const main = document.querySelector('main');
         if (main) {
             main.innerHTML = `

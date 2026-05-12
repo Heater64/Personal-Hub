@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudiar · Sesión Adaptativa</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/pages/study.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+</head>
+<body data-sidebar-root=".." data-sidebar-page="study">
+    <body data-sidebar-root=".." data-sidebar-page="decks"></body>
+
+<button class="sidebar-toggle" type="button" data-sidebar-toggle>
+    <i data-lucide="menu"></i>
+</button>
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+<aside class="sidebar" data-sidebar></aside>
+
+<main class="page-shell">
+    <div class="study-container">
+        
+        <!-- Header de sesión -->
+        <div class="study-header">
+            <button id="backBtn" class="back-btn">
+                <i data-lucide="arrow-left"></i> Salir
+            </button>
+            <div class="session-stats">
+                <div class="stat-item">
+                    <i data-lucide="zap"></i>
+                    <span id="xpDisplay">0 XP</span>
+                </div>
+                <div class="stat-item">
+                    <i data-lucide="trending-up"></i>
+                    <span id="streakDisplay">Racha: 0</span>
+                </div>
+                <div class="stat-item">
+                    <i data-lucide="target"></i>
+                    <span id="accuracyDisplay">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta de pregunta -->
+        <div class="question-card" id="questionCard">
+            <div class="question-header">
+                <span class="question-topic" id="questionTopic">Tema</span>
+                <span class="question-difficulty" id="questionDifficulty">⚡ Media</span>
+            </div>
+            <div class="question-text" id="questionText">Cargando...</div>
+            
+            <!-- Opciones (para multiple choice) -->
+            <div id="optionsContainer" class="options-grid"></div>
+            
+            <!-- Input para respuestas abiertas -->
+            <div id="openInputContainer" style="display: none;">
+                <input type="text" id="openAnswer" class="open-answer-input" placeholder="Escribe tu respuesta...">
+                <button id="submitOpenBtn" class="btn-primary">Responder</button>
+            </div>
+            
+            <!-- Botón "No lo entiendo" -->
+            <button id="dontUnderstandBtn" class="dont-understand-btn">
+                <i data-lucide="help-circle"></i> No lo entiendo
+            </button>
+        </div>
+
+        <!-- Panel de explicación (aparece al fallar o pedir ayuda) -->
+        <div id="explanationPanel" class="explanation-panel" style="display: none;">
+            <div class="explanation-header">
+                <i data-lucide="lightbulb"></i>
+                <h3>Explicación</h3>
+                <button id="closeExplanationBtn" class="close-explanation">✕</button>
+            </div>
+            <div id="explanationContent" class="explanation-content"></div>
+            <div class="explanation-actions">
+                <button id="gotItBtn" class="btn-primary">Entendido, continuar</button>
+                <button id="simplifyBtn" class="btn-secondary">Explícalo más fácil</button>
+            </div>
+        </div>
+
+        <!-- Navegación -->
+        <div class="study-navigation">
+            <div class="progress-info">
+                <span id="cardCounter">Tarjeta 1 / 0</span>
+                <div class="progress-dots" id="progressDots"></div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<script src="../js/firebase-config.js"></script>
+<script src="../js/core.js"></script>
+<script src="../js/sidebar.js"></script>
+<script src="../js/study/adaptive-engine.js"></script>
+<script src="../js/pages/study.js"></script>
+</body>
+</html>

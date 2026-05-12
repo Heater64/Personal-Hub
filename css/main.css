@@ -392,3 +392,21 @@ a,
     max-width: 100%;
   }
 }
+
+/* Secciones de la sidebar */
+.sidebar__section {
+    margin-top: 8px;
+}
+
+.sidebar__section-title {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-coral);
+    padding: 8px 12px 4px;
+    opacity: 0.8;
+}
+
+.sidebar__section:first-child {
+    margin-top: 0;
+}

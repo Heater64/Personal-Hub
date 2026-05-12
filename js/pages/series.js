@@ -1,371 +1,1059 @@
-// ==========================================
-// series.js · Mapa emocional audiovisual
-// ==========================================
+// series.js - Biblioteca completa con widget flotante
 
-let currentType = 'serie';
-let currentEstado = 'viendo';
-let allSeries = [];
-let allPeliculas = [];
-let editingItemId = null;
-let editingItemType = null;
-const seriesRef = db.collection('seriesData').doc('list');
-const peliculasRef = db.collection('peliculasData').doc('list');
+'use strict';
 
-async function loadData() {
-    try {
-        const [seriesSnap, peliculasSnap] = await Promise.all([
-            seriesRef.get(),
-            peliculasRef.get()
-        ]);
+let catalog = [];
+let currentFilter = 'todo';
+let searchTerm = '';
+let currentEditId = null;
+let hlsInstance = null;
+let episodiosTemp = [];
+let currentViewItem = null;
+let currentViewProgress = 0;
 
-        if (seriesSnap.exists) {
-            allSeries = seriesSnap.data().series || [];
-        } else {
-            allSeries = window.seriesData || [];
-            await seriesRef.set({ series: allSeries });
-        }
+// ========== WIDGET FLOTANTE - VARIABLES GLOBALES ==========
+let trackerSeries = [];
+let currentTrackingSerie = null;
 
-        if (peliculasSnap.exists) {
-            allPeliculas = peliculasSnap.data().peliculas || [];
-        } else {
-            allPeliculas = window.peliculasData || [];
-            await peliculasRef.set({ peliculas: allPeliculas });
-        }
-    } catch (error) {
-        console.error('Error al cargar datos de Firestore:', error);
-        allSeries = window.seriesData || [];
-        allPeliculas = window.peliculasData || [];
-        showMessage('Usando datos locales (sin conexion)', true);
-    }
+// Referencias DOM
+const dom = {
+  grid: document.getElementById('contentGrid'),
+  empty: document.getElementById('emptyState'),
+  searchInput: document.getElementById('searchInput'),
+  filterBtns: document.getElementById('filterBtns'),
+  overlayForm: document.getElementById('overlayForm'),
+  overlayView: document.getElementById('overlayView'),
+  modalFormTitle: document.getElementById('modalFormTitle'),
+  formDocId: document.getElementById('formDocId'),
+  fTitulo: document.getElementById('fTitulo'),
+  fTipo: document.getElementById('fTipo'),
+  fPortada: document.getElementById('fPortada'),
+  fWeb: document.getElementById('fWeb'),
+  episodiosList: document.getElementById('episodiosList'),
+  btnAnadir: document.getElementById('btnAnadir'),
+  btnEliminarTodo: document.getElementById('btnEliminarTodo'),
+  btnAddEpisodio: document.getElementById('btnAddEpisodio'),
+  closeFormBtn: document.getElementById('closeFormBtn'),
+  cancelFormBtn: document.getElementById('cancelFormBtn'),
+  closeViewBtn: document.getElementById('closeViewBtn'),
+  viewTitle: document.getElementById('viewTitle'),
+  viewCover: document.getElementById('viewCover'),
+  viewTipo: document.getElementById('viewTipo'),
+  viewEpisodiosList: document.getElementById('viewEpisodiosList'),
+  playerWrapper: document.getElementById('playerWrapper'),
+  videoPlayer: document.getElementById('videoPlayer'),
+  toast: document.getElementById('toast'),
+  bulkActions: document.getElementById('bulkActions'),
+  markAllWatchedBtn: document.getElementById('markAllWatchedBtn'),
+  unmarkAllBtn: document.getElementById('unmarkAllBtn'),
+  deleteConfirmModal: document.getElementById('deleteConfirmModal'),
+  closeConfirmBtn: document.getElementById('closeConfirmBtn'),
+  cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
+  confirmDeleteBtn: document.getElementById('confirmDeleteBtn')
+};
+
+// Firestore
+const COL = 'seriesData';
+const TRACKER_COL = 'seriesTrackerProgress';
+
+function getDB() {
+  if (window.db) return window.db;
+  if (typeof db !== 'undefined') return db;
+  throw new Error('Firestore no inicializado');
 }
 
-function getCurrentList() {
-    return currentType === 'serie' ? allSeries : allPeliculas;
+function showToast(msg, isError = false) {
+  if (!dom.toast) return;
+  dom.toast.textContent = msg;
+  dom.toast.style.display = 'block';
+  if (isError) dom.toast.style.borderLeftColor = '#dc3545';
+  else dom.toast.style.borderLeftColor = 'var(--accent-coral)';
+  setTimeout(() => {
+    if (dom.toast) dom.toast.style.display = 'none';
+  }, 3000);
 }
 
-function getFilteredList() {
-    return getCurrentList().filter((item) => item.estado === currentEstado);
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
 }
 
-async function saveData() {
-    try {
-        if (currentType === 'serie') {
-            await seriesRef.set({ series: allSeries }, { merge: true });
-        } else {
-            await peliculasRef.set({ peliculas: allPeliculas }, { merge: true });
-        }
-    } catch (error) {
-        console.error('Error al guardar en Firestore:', error);
-        showMessage('No se pudo guardar en la nube', true);
-    }
+// ========== PROGRESO ==========
+async function loadProgress(seriesId) {
+  try {
+    const doc = await getDB().collection(COL).doc(seriesId).get();
+    const data = doc.data();
+    if (data && data.progreso) return data.progreso;
+    return 0;
+  } catch (e) {
+    console.error('Error cargando progreso:', e);
+    return 0;
+  }
 }
 
-function renderList() {
-    const container = document.getElementById('seriesList');
-    if (!container) return;
-
-    const items = getFilteredList();
-    if (items.length === 0) {
-        const emptyIcon = currentType === 'serie' ? 'tv' : 'film';
-        container.innerHTML = `<div class="empty-state-new"><i data-lucide="${emptyIcon}"></i><p>No hay nada aqui todavia.</p></div>`;
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-        return;
-    }
-
-    container.innerHTML = items.map((item) => {
-        const esViendo = item.estado === 'viendo';
-        const esVisto = item.estado === 'visto';
-        const percent = item.total > 0 ? Math.round((item.watched / item.total) * 100) : 0;
-        const placeholderIcon = currentType === 'serie' ? 'tv-2' : 'film';
-
-        return `
-        <article class="series-card-new estado-${item.estado}" data-id="${item.id}" data-url="${escapeHtml(item.url)}">
-            <div class="card-cover">
-                ${item.cover ? `<img src="${escapeHtml(item.cover)}" alt="${escapeHtml(item.name)}">` : `<div class="card-cover-placeholder"><i data-lucide="${placeholderIcon}"></i></div>`}
-            </div>
-            <div class="card-content">
-                <h3 class="card-title">${escapeHtml(item.name)}</h3>
-                <div class="card-link"><i data-lucide="external-link"></i> <span>${item.url ? 'Ver' : 'Sin enlace'}</span></div>
-                ${esViendo ? `
-                <div class="card-progress-bar"><div class="card-progress-fill" style="width:${percent}%"></div></div>
-                <p class="card-count"><span class="watched-num">${item.watched}</span> / ${item.total} capitulos</p>
-                ` : ''}
-            </div>
-            <div class="card-controls">
-                ${esVisto ? `<div class="completed-badge"><i data-lucide="check-circle"></i></div>` : `
-                <div class="ctrl-group">
-                    ${esViendo
-                        ? `
-                        <button class="ctrl-btn dec" data-id="${item.id}" type="button" title="Restar">
-                            <i data-lucide="minus"></i>
-                        </button>
-                        <button class="ctrl-btn inc" data-id="${item.id}" type="button" title="Sumar">
-                            <i data-lucide="plus"></i>
-                        </button>
-                        `
-                        : `<button class="ctrl-btn inc" data-id="${item.id}" type="button" title="Empezar"><i data-lucide="play"></i></button>`}
-                </div>`}
-                <button class="ctrl-btn edit" data-id="${item.id}" type="button" title="Editar"><i data-lucide="pencil"></i></button>
-                <button class="ctrl-btn del" data-id="${item.id}" type="button"><i data-lucide="trash-2"></i></button>
-            </div>
-        </article>`;
-    }).join('');
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-
-    container.querySelectorAll('.ctrl-btn.inc').forEach((btn) => {
-        btn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            incrementWatched(Number(btn.dataset.id));
-        });
+async function saveProgress(seriesId, episodeNum) {
+  try {
+    await getDB().collection(COL).doc(seriesId).update({
+      progreso: episodeNum,
+      updatedAt: new Date().toISOString()
     });
-
-    container.querySelectorAll('.ctrl-btn.dec').forEach((btn) => {
-        btn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            decrementWatched(Number(btn.dataset.id));
-        });
-    });
-
-    container.querySelectorAll('.ctrl-btn.del').forEach((btn) => {
-        btn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            deleteItem(Number(btn.dataset.id));
-        });
-    });
-
-    container.querySelectorAll('.ctrl-btn.edit').forEach((btn) => {
-        btn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            startEditItem(Number(btn.dataset.id));
-        });
-    });
-
-    container.querySelectorAll('.series-card-new').forEach((card) => {
-        card.addEventListener('click', function (event) {
-            if (event.target.closest('button') || event.target.closest('.card-controls')) return;
-
-            const url = this.dataset.url;
-            if (url) {
-                window.open(url, '_blank', 'noopener,noreferrer');
-            }
-        });
-    });
+    return true;
+  } catch (e) {
+    console.error('Error guardando progreso:', e);
+    return false;
+  }
 }
 
-async function incrementWatched(id) {
-    const list = getCurrentList();
-    const item = list.find((entry) => entry.id === id);
-    if (!item) return;
-
-    if (item.estado === 'quiero_ver') {
-        item.estado = 'viendo';
-        item.watched = 0;
-    } else if (item.estado === 'viendo' && item.watched < item.total) {
-        item.watched++;
-        if (item.watched === item.total) {
-            item.estado = 'visto';
-            showMessage(`Terminaste "${item.name}"`);
-        }
-    }
-
-    await saveData();
-    renderList();
+async function deleteProgress(seriesId) {
+  try {
+    await getDB().collection(COL).doc(seriesId).update({ progreso: 0 });
+  } catch (e) {
+    console.error('Error eliminando progreso:', e);
+  }
 }
 
-async function decrementWatched(id) {
-    const list = getCurrentList();
-    const item = list.find((entry) => entry.id === id);
-    if (!item) return;
-
-    if (item.estado === 'viendo' && item.watched > 0) {
-        item.watched--;
-    }
-
-    await saveData();
-    renderList();
+// ========== MARCAR EPISODIO ==========
+async function markEpisodeAsWatched(seriesId, episodeNum, totalEpisodes, autoComplete = false) {
+  await saveProgress(seriesId, episodeNum);
+  
+  if (episodeNum === totalEpisodes && !autoComplete) {
+    showToast('🎉 ¡Felicidades! Has completado esta serie');
+  } else if (!autoComplete) {
+    showToast(`📺 Episodio ${episodeNum} marcado como visto`);
+  }
+  
+  if (currentViewItem && currentViewItem.id === seriesId) {
+    await openViewModal(currentViewItem);
+  }
+  await renderGrid();
+  await cargarTrackerSeries();
 }
 
-async function deleteItem(id) {
-    const list = getCurrentList();
-    const index = list.findIndex((entry) => entry.id === id);
-    if (index === -1) return;
-
-    const name = list[index].name;
-    list.splice(index, 1);
-    await saveData();
-    renderList();
-    showMessage(`"${name}" eliminado`);
+async function markAllWatched(seriesId, totalEpisodes) {
+  await saveProgress(seriesId, totalEpisodes);
+  showToast(`✅ Marcados todos los episodios como vistos`);
+  if (currentViewItem && currentViewItem.id === seriesId) {
+    await openViewModal(currentViewItem);
+  }
+  await renderGrid();
+  await cargarTrackerSeries();
 }
 
-function getItemById(id, type = currentType) {
-    const list = type === 'serie' ? allSeries : allPeliculas;
-    return list.find((entry) => entry.id === id) || null;
+async function unmarkAll(seriesId) {
+  await saveProgress(seriesId, 0);
+  showToast(`🔄 Progreso reiniciado desde cero`);
+  if (currentViewItem && currentViewItem.id === seriesId) {
+    await openViewModal(currentViewItem);
+  }
+  await renderGrid();
+  await cargarTrackerSeries();
 }
 
-function startEditItem(id) {
-    const item = getItemById(id);
-    if (!item) return;
-
-    editingItemId = id;
-    editingItemType = currentType;
-
-    document.getElementById('serieName').value = item.name || '';
-    document.getElementById('serieUrl').value = item.url || '';
-    document.getElementById('serieTotal').value = item.total || 1;
-    document.getElementById('serieCover').value = item.cover || '';
-    document.getElementById('serieTipo').value = currentType;
-    document.getElementById('serieEstado').value = item.estado || 'viendo';
-
-    document.getElementById('addSerieBtn').textContent = 'Guardar cambios';
-    document.getElementById('addFormDropdown')?.classList.add('open');
-}
-
-async function addItem() {
-    const name = document.getElementById('serieName').value.trim();
-    const url = document.getElementById('serieUrl').value.trim();
-    const total = parseInt(document.getElementById('serieTotal').value, 10) || 1;
-    const cover = document.getElementById('serieCover').value.trim();
-    const tipo = document.getElementById('serieTipo').value;
-    const estado = document.getElementById('serieEstado').value;
-
-    if (!name) {
-        showMessage('Falta el nombre', true);
-        return;
-    }
-
-    if (editingItemId !== null) {
-        const sourceType = editingItemType || currentType;
-        const sourceList = sourceType === 'serie' ? allSeries : allPeliculas;
-        const targetList = tipo === 'serie' ? allSeries : allPeliculas;
-        const itemIndex = sourceList.findIndex((entry) => entry.id === editingItemId);
-
-        if (itemIndex === -1) {
-            showMessage('No se pudo editar el elemento', true);
-            clearForm();
-            return;
-        }
-
-        const currentItem = sourceList[itemIndex];
-        const updatedItem = {
-            ...currentItem,
-            name,
-            url,
-            total,
-            cover,
-            estado
-        };
-
-        if (estado === 'visto') {
-            updatedItem.watched = total;
-        } else if (estado === 'quiero_ver') {
-            updatedItem.watched = 0;
-        } else {
-            updatedItem.watched = Math.min(currentItem.watched || 0, total);
-        }
-
-        sourceList.splice(itemIndex, 1);
-        targetList.push(updatedItem);
-
-        currentType = tipo;
-        currentEstado = estado;
-        await saveData();
-        clearForm();
-        document.getElementById('addFormDropdown')?.classList.remove('open');
-        updateActiveTabs();
-        renderList();
-        showMessage(`"${name}" actualizado`);
-        return;
-    }
-
-    const newItem = {
-        id: Date.now(),
-        name,
-        url,
-        total,
-        watched: estado === 'visto' ? total : 0,
-        cover,
-        estado
-    };
-
-    if (tipo === 'serie') {
-        allSeries.push(newItem);
+// ========== RENDER EPISODIOS ==========
+function renderEpisodesWithProgress(item, progressEpisode) {
+  const episodios = item.episodios || [];
+  const total = episodios.length;
+  const isCompleted = progressEpisode >= total;
+  
+  if (episodios.length === 0) {
+    return `<div class="empty-state" style="padding: 40px;">
+      <i data-lucide="tv"></i>
+      <p>Esta ${item.tipo === 'serie' ? 'serie' : 'película'} no tiene episodios registrados.</p>
+    </div>`;
+  }
+  
+  return episodios.map((ep, idx) => {
+    const epNum = ep.numero;
+    const isWatched = progressEpisode >= epNum;
+    const isNext = progressEpisode + 1 === epNum;
+    
+    const tieneMedia = ep.mp4 || ep.m3u8;
+    const tieneExterno = ep.externo;
+    
+    let buttonHtml = '';
+    if (tieneMedia) {
+      buttonHtml = `<button class="btn-primary btn-sm play-ep" data-num="${ep.numero}"><i data-lucide="play"></i> Reproducir</button>`;
+    } else if (tieneExterno) {
+      buttonHtml = `<button class="btn-secondary btn-sm open-ext" data-url="${escapeHtml(ep.externo)}">🌐 Abrir web</button>`;
     } else {
-        allPeliculas.push(newItem);
+      buttonHtml = `<span class="no-link">Sin enlace</span>`;
     }
-
-    await saveData();
-    clearForm();
-    document.getElementById('addFormDropdown')?.classList.remove('open');
-    renderList();
-    showMessage(`"${name}" anadido`);
+    
+    const markBtn = (item.tipo === 'serie' || episodios.length > 1) ? `
+      <button class="mark-ep-btn ${isWatched ? 'watched' : ''}" data-num="${ep.numero}" ${isWatched ? 'disabled' : ''}>
+        ${isWatched ? '✅ Visto' : '👁️ Marcar visto'}
+      </button>
+    ` : '';
+    
+    const rowClass = isNext ? 'episode-row next-episode' : 'episode-row';
+    const nextBadge = isNext && !isCompleted ? '<span class="next-badge">▶ Siguiente</span>' : '';
+    const completedBadge = isCompleted && epNum === total ? '<span class="completed-badge">🏆 Completado</span>' : '';
+    
+    return `
+      <div class="${rowClass}" data-ep-num="${ep.numero}">
+        <div class="episode-row-info">
+          <span class="episode-row-num ${isWatched ? 'watched-num' : ''}">${String(ep.numero).padStart(2, '0')}</span>
+          <span class="episode-row-title ${isWatched ? 'watched-title' : ''}">${escapeHtml(ep.titulo || `Episodio ${ep.numero}`)}</span>
+          ${nextBadge}${completedBadge}
+        </div>
+        <div class="episode-row-actions">${buttonHtml}${markBtn}</div>
+      </div>
+    `;
+  }).join('');
 }
 
-function clearForm() {
-    ['serieName', 'serieUrl', 'serieTotal', 'serieCover'].forEach((id) => {
-        const input = document.getElementById(id);
-        if (input) input.value = '';
+// ========== VISTA MODAL ==========
+async function openViewModal(item) {
+  stopPlayer();
+  currentViewItem = item;
+  currentViewProgress = await loadProgress(item.id);
+  const episodios = item.episodios || [];
+  const totalEpisodios = episodios.length;
+  const isCompleted = currentViewProgress >= totalEpisodios;
+  
+  dom.viewTitle.textContent = item.titulo || '—';
+  dom.viewTipo.className = `badge ${item.tipo === 'serie' ? 'serie' : 'pelicula'}`;
+  dom.viewTipo.textContent = item.tipo === 'serie' ? 'Serie' : 'Película';
+  
+  if (item.portada) {
+    dom.viewCover.src = item.portada;
+    dom.viewCover.style.display = 'block';
+  } else {
+    dom.viewCover.style.display = 'none';
+  }
+  
+  dom.playerWrapper.style.display = 'none';
+  
+  if (item.tipo === 'serie' && totalEpisodios > 0) {
+    dom.bulkActions.style.display = 'flex';
+    dom.markAllWatchedBtn.onclick = async () => { await markAllWatched(item.id, totalEpisodios); };
+    dom.unmarkAllBtn.onclick = async () => { await unmarkAll(item.id); };
+  } else {
+    dom.bulkActions.style.display = 'none';
+  }
+  
+  let progressBarHtml = '';
+  if (item.tipo === 'serie' && totalEpisodios > 0) {
+    const percent = (currentViewProgress / totalEpisodios) * 100;
+    progressBarHtml = `
+      <div class="progress-track-serie">
+        <div class="progress-header" style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="font-size: 0.7rem; color: var(--umbra-ash);">Progreso</span>
+          <span style="font-size: 0.7rem; color: var(--accent-coral);">${currentViewProgress} / ${totalEpisodios} episodios</span>
+        </div>
+        <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+          <div style="width: ${percent}%; height: 100%; background: var(--accent-coral); border-radius: 10px; transition: width 0.3s;"></div>
+        </div>
+        ${isCompleted ? '<p style="font-size:0.7rem; color:#4caf50; margin-top:8px;">✨ ¡Serie completada! ✨</p>' : ''}
+      </div>
+    `;
+  }
+  
+  const episodiosHtml = renderEpisodesWithProgress(item, currentViewProgress);
+  dom.viewEpisodiosList.innerHTML = progressBarHtml + episodiosHtml;
+  
+  dom.viewEpisodiosList.querySelectorAll('.play-ep').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const num = parseInt(btn.dataset.num);
+      const ep = episodios.find(e => e.numero === num);
+      if (ep) playEpisode(ep);
     });
-
-    const estado = document.getElementById('serieEstado');
-    if (estado) estado.value = 'viendo';
-
-    const tipo = document.getElementById('serieTipo');
-    if (tipo) tipo.value = currentType;
-
-    editingItemId = null;
-    editingItemType = null;
-
-    const submitBtn = document.getElementById('addSerieBtn');
-    if (submitBtn) submitBtn.textContent = 'Guardar';
-}
-
-function switchMainTab(type) {
-    currentType = type;
-    updateActiveTabs();
-    renderList();
-}
-
-function switchEstadoTab(estado) {
-    currentEstado = estado;
-    updateActiveTabs();
-    renderList();
-}
-
-function updateActiveTabs() {
-    document.querySelectorAll('.main-tab').forEach((tab) => {
-        tab.classList.toggle('active', tab.dataset.type === currentType);
+  });
+  
+  dom.viewEpisodiosList.querySelectorAll('.open-ext').forEach(btn => {
+    btn.addEventListener('click', () => { window.open(btn.dataset.url, '_blank'); });
+  });
+  
+  dom.viewEpisodiosList.querySelectorAll('.mark-ep-btn:not(.watched)').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const num = parseInt(btn.dataset.num);
+      await markEpisodeAsWatched(item.id, num, totalEpisodios);
     });
-
-    document.querySelectorAll('.sub-tab').forEach((tab) => {
-        tab.classList.toggle('active', tab.dataset.estado === currentEstado);
-    });
+  });
+  
+  dom.overlayView.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-async function initSeries() {
-    allSeries = window.seriesData || [];
-    allPeliculas = window.peliculasData || [];
-    updateActiveTabs();
+function playEpisode(ep) {
+  const video = dom.videoPlayer;
+  stopPlayer();
+  dom.playerWrapper.style.display = 'block';
+  
+  if (ep.m3u8 && Hls.isSupported()) {
+    if (hlsInstance) hlsInstance.destroy();
+    hlsInstance = new Hls();
+    hlsInstance.loadSource(ep.m3u8);
+    hlsInstance.attachMedia(video);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+  } else if (ep.mp4) {
+    video.src = ep.mp4;
+    video.play();
+  }
+  
+  dom.playerWrapper.scrollIntoView({ behavior: 'smooth' });
+}
+
+function stopPlayer() {
+  if (hlsInstance) {
+    hlsInstance.destroy();
+    hlsInstance = null;
+  }
+  dom.videoPlayer.pause();
+  dom.videoPlayer.src = '';
+  dom.playerWrapper.style.display = 'none';
+}
+
+// ========== CRUD ==========
+async function loadData() {
+  try {
+    const snap = await getDB().collection(COL).get();
+    catalog = snap.docs.map(doc => {
+      const data = doc.data();
+      return { id: doc.id, ...data, progreso: data.progreso || 0 };
+    });
+    await renderGrid();
+    await cargarTrackerSeries();
+  } catch (e) {
+    console.error('Error:', e);
+    showToast('Error al cargar datos', true);
+  }
+}
+
+async function renderGrid() {
+  let filtered = [...catalog];
+  if (searchTerm) {
+    filtered = filtered.filter(item => (item.titulo || '').toLowerCase().includes(searchTerm));
+  }
+  if (currentFilter === 'serie') {
+    filtered = filtered.filter(item => item.tipo === 'serie');
+  } else if (currentFilter === 'pelicula') {
+    filtered = filtered.filter(item => item.tipo === 'pelicula');
+  }
+
+  if (filtered.length === 0) {
+    dom.grid.innerHTML = '';
+    dom.empty.style.display = 'flex';
+    return;
+  }
+  dom.empty.style.display = 'none';
+
+  dom.grid.innerHTML = filtered.map(item => {
+    const tipoTexto = item.tipo === 'serie' ? 'SERIE' : 'PELÍCULA';
+    const tieneEpisodios = item.episodios && item.episodios.length > 0;
+    const portada = item.portada || '';
+    const totalEp = item.episodios ? item.episodios.length : 0;
+    const progreso = item.progreso || 0;
+    const percent = totalEp > 0 ? (progreso / totalEp) * 100 : 0;
+    const isCompleted = totalEp > 0 && progreso >= totalEp;
+    
+    let progressHtml = '';
+    if (item.tipo === 'serie' && totalEp > 0) {
+      progressHtml = `
+        <div style="margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--umbra-ash); margin-bottom: 3px;">
+            <span>Progreso</span>
+            <span>${progreso}/${totalEp}</span>
+          </div>
+          <div style="height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px;">
+            <div style="width: ${percent}%; height: 100%; background: var(--accent-coral); border-radius: 2px;"></div>
+          </div>
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="movie-card" data-id="${escapeHtml(item.id)}">
+        <div class="card-cover" style="background-image: url('${escapeHtml(portada)}')">
+          <div class="cover-gradient"></div>
+          ${isCompleted ? '<div class="completed-badge-card">✓ Completado</div>' : ''}
+        </div>
+        <div class="card-content">
+          <div class="card-meta">${tipoTexto}</div>
+          <div class="card-title">${escapeHtml(item.titulo || 'Sin título')}</div>
+          ${progressHtml}
+          <div class="card-actions">
+            <button class="card-btn btn-ver" data-id="${escapeHtml(item.id)}">${tieneEpisodios ? 'Ver episodios' : 'Ver ahora'}</button>
+            <button class="card-btn btn-editar" data-id="${escapeHtml(item.id)}">Editar</button>
+            <button class="card-btn btn-eliminar" data-id="${escapeHtml(item.id)}" style="background: rgba(220,53,69,0.6);">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.btn-ver').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const item = catalog.find(i => i.id === id);
+      if (item) handleCardClick(item);
+    });
+  });
+  
+  document.querySelectorAll('.btn-editar').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditModal(btn.dataset.id);
+    });
+  });
+  
+  document.querySelectorAll('.btn-eliminar').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm('¿Eliminar este contenido?')) {
+        deleteContent(btn.dataset.id);
+      }
+    });
+  });
+  
+  document.querySelectorAll('.movie-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const item = catalog.find(i => i.id === id);
+      if (item) handleCardClick(item);
+    });
+  });
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function handleCardClick(item) {
+  if (!item) return;
+  
+  if (!item.episodios || item.episodios.length === 0) {
+    if (item.web) {
+      window.open(item.web, '_blank');
+    } else {
+      showToast('No hay enlace disponible para este contenido', true);
+    }
+    return;
+  }
+  
+  await openViewModal(item);
+}
+
+async function deleteContent(id) {
+  try {
+    await getDB().collection(COL).doc(id).delete();
     await loadData();
-    renderList();
-
-    document.querySelectorAll('.main-tab').forEach((tab) => {
-        tab.addEventListener('click', () => {
-            switchMainTab(tab.dataset.type);
-        });
-    });
-
-    document.querySelectorAll('.sub-tab').forEach((tab) => {
-        tab.addEventListener('click', () => {
-            switchEstadoTab(tab.dataset.estado);
-        });
-    });
-
-    document.getElementById('addSeriesBtn')?.addEventListener('click', () => {
-        document.getElementById('addFormDropdown')?.classList.toggle('open');
-    });
-
-    document.getElementById('addSerieBtn')?.addEventListener('click', addItem);
+    showToast('Contenido eliminado');
+  } catch (e) {
+    console.error(e);
+    showToast('Error al eliminar', true);
+  }
 }
 
-document.addEventListener('DOMContentLoaded', initSeries);
+async function deleteAllContent() {
+  try {
+    const snap = await getDB().collection(COL).get();
+    const batch = getDB().batch();
+    snap.docs.forEach(doc => { batch.delete(doc.ref); });
+    await batch.commit();
+    await loadData();
+    showToast('Todos los contenidos han sido eliminados');
+  } catch (e) {
+    console.error(e);
+    showToast('Error al eliminar todo', true);
+  }
+}
+
+// ========== FORMULARIO ==========
+function openEditModal(id) {
+  const item = catalog.find(i => i.id === id);
+  if (!item) return;
+  
+  currentEditId = id;
+  dom.modalFormTitle.textContent = 'Editar contenido';
+  dom.formDocId.value = id;
+  dom.fTitulo.value = item.titulo || '';
+  dom.fTipo.value = item.tipo || 'serie';
+  dom.fPortada.value = item.portada || '';
+  dom.fWeb.value = item.web || '';
+  
+  episodiosTemp = (item.episodios || []).map(ep => ({ ...ep }));
+  renderEpisodiosForm();
+  
+  dom.overlayForm.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function openAddModal() {
+  currentEditId = null;
+  dom.modalFormTitle.textContent = 'Añadir contenido';
+  dom.formDocId.value = '';
+  dom.fTitulo.value = '';
+  dom.fTipo.value = 'serie';
+  dom.fPortada.value = '';
+  dom.fWeb.value = '';
+  episodiosTemp = [];
+  renderEpisodiosForm();
+  
+  dom.overlayForm.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function renderEpisodiosForm() {
+  if (!dom.episodiosList) return;
+  
+  dom.episodiosList.innerHTML = episodiosTemp.map((ep, idx) => `
+    <div class="episode-item" data-idx="${idx}">
+      <div class="episode-header">
+        <span class="episode-num">EP #${ep.numero}</span>
+        <button type="button" class="btn-secondary btn-sm remove-ep" data-idx="${idx}">Eliminar</button>
+      </div>
+      <div class="episode-fields">
+        <input type="number" placeholder="Número" value="${ep.numero}" class="ep-num" data-field="numero">
+        <input type="text" placeholder="Título" value="${escapeHtml(ep.titulo || '')}" class="ep-titulo" data-field="titulo">
+        <input type="text" placeholder="MP4 URL" value="${escapeHtml(ep.mp4 || '')}" class="ep-mp4" data-field="mp4">
+        <input type="text" placeholder="M3U8 URL" value="${escapeHtml(ep.m3u8 || '')}" class="ep-m3u8" data-field="m3u8">
+        <input type="text" placeholder="Enlace externo" value="${escapeHtml(ep.externo || '')}" class="ep-externo" data-field="externo">
+      </div>
+    </div>
+  `).join('');
+  
+  dom.episodiosList.querySelectorAll('input').forEach(input => {
+    input.addEventListener('change', (e) => {
+      const idx = parseInt(input.closest('.episode-item').dataset.idx);
+      const field = input.dataset.field;
+      if (episodiosTemp[idx]) {
+        episodiosTemp[idx][field] = input.value;
+        if (field === 'numero') episodiosTemp[idx].numero = parseInt(input.value);
+      }
+    });
+  });
+  
+  dom.episodiosList.querySelectorAll('.remove-ep').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(btn.dataset.idx);
+      episodiosTemp.splice(idx, 1);
+      episodiosTemp.forEach((ep, i) => ep.numero = i + 1);
+      renderEpisodiosForm();
+    });
+  });
+}
+
+function addEpisodio() {
+  const newNum = episodiosTemp.length + 1;
+  episodiosTemp.push({
+    numero: newNum,
+    titulo: '',
+    mp4: '',
+    m3u8: '',
+    externo: ''
+  });
+  renderEpisodiosForm();
+}
+
+async function saveContent() {
+  const titulo = dom.fTitulo.value.trim();
+  const tipo = dom.fTipo.value;
+  
+  if (!titulo) {
+    showToast('El título es obligatorio', true);
+    return;
+  }
+  
+  const payload = {
+    titulo,
+    tipo,
+    portada: dom.fPortada.value.trim(),
+    web: dom.fWeb.value.trim(),
+    episodios: episodiosTemp.filter(ep => ep.titulo || ep.mp4 || ep.m3u8 || ep.externo),
+    updatedAt: new Date().toISOString()
+  };
+  
+  try {
+    if (currentEditId) {
+      await getDB().collection(COL).doc(currentEditId).update(payload);
+      showToast('Actualizado correctamente');
+      await loadData();
+    } else {
+      payload.createdAt = new Date().toISOString();
+      const docRef = await getDB().collection(COL).add(payload);
+      showToast('Añadido correctamente');
+      await loadData();
+    }
+    closeFormModal();
+  } catch (e) {
+    console.error(e);
+    showToast('Error al guardar', true);
+  }
+}
+
+function closeFormModal() {
+  dom.overlayForm.style.display = 'none';
+  document.body.style.overflow = '';
+  currentEditId = null;
+}
+
+function closeViewModal() {
+  stopPlayer();
+  dom.overlayView.style.display = 'none';
+  document.body.style.overflow = '';
+  currentViewItem = null;
+}
+
+// ========== WIDGET FLOTANTE - FUNCIONES ==========
+
+function getTrackerUserId() {
+  // Usar un ID fijo para que sea el mismo en todos lados
+  return 'usuario_principal_fijo';
+}
+
+async function cargarTrackerSeries() {
+  const userId = getTrackerUserId();
+  const trackerSeriesMap = new Map();
+  
+  try {
+    const snapshot = await getDB().collection(TRACKER_COL).doc(userId).collection('series').get();
+    snapshot.forEach(doc => {
+      trackerSeriesMap.set(doc.id, { id: doc.id, ...doc.data() });
+    });
+    
+    trackerSeries = Array.from(trackerSeriesMap.values());
+    renderTrackerList();
+    actualizarBadgeTracker();
+  } catch (error) {
+    console.error('Error cargando tracker:', error);
+  }
+}
+
+async function guardarTrackerSerie(serieData) {
+  const userId = getTrackerUserId();
+  try {
+    const serieRef = getDB().collection(TRACKER_COL).doc(userId).collection('series').doc(serieData.id);
+    await serieRef.set({
+      nombre: serieData.nombre,
+      totalEpisodios: serieData.totalEpisodios,
+      poster: serieData.poster || '',
+      vistos: serieData.vistos || 0,
+      esDelCatalogo: serieData.esDelCatalogo || false,
+      createdAt: serieData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    await cargarTrackerSeries();
+    return true;
+  } catch (error) {
+    console.error('Error guardando tracker:', error);
+    showToast('Error al guardar en Firebase', true);
+    return false;
+  }
+}
+
+async function actualizarVistosTracker(serieId, nuevosVistos) {
+  const userId = getTrackerUserId();
+  try {
+    const serie = trackerSeries.find(s => s.id === serieId);
+    if (!serie) return;
+    
+    const totalEp = serie.totalEpisodios;
+    const vistosFinal = Math.min(nuevosVistos, totalEp);
+    
+    await getDB().collection(TRACKER_COL).doc(userId).collection('series').doc(serieId).update({
+      vistos: vistosFinal,
+      updatedAt: new Date().toISOString()
+    });
+    
+    serie.vistos = vistosFinal;
+    await cargarTrackerSeries();
+    await renderGrid();
+    
+    if (currentTrackingSerie && currentTrackingSerie.id === serieId) {
+      currentTrackingSerie.vistos = vistosFinal;
+      abrirModalEpisodiosTracker(currentTrackingSerie);
+    }
+    
+    showToast(`✅ ${serie.nombre}: ${vistosFinal}/${totalEp}`);
+  } catch (error) {
+    console.error('Error actualizando vistos:', error);
+    showToast('Error al guardar', true);
+  }
+}
+
+async function eliminarTrackerSerie(serieId) {
+  const userId = getTrackerUserId();
+  try {
+    await getDB().collection(TRACKER_COL).doc(userId).collection('series').doc(serieId).delete();
+    await cargarTrackerSeries();
+    showToast('Serie eliminada del seguimiento');
+  } catch (error) {
+    console.error('Error eliminando tracker:', error);
+    showToast('Error al eliminar', true);
+  }
+}
+
+function renderTrackerList() {
+  const container = document.getElementById('trackerList');
+  if (!container) return;
+  
+  const searchTerm = document.getElementById('trackerSearchInput')?.value.toLowerCase() || '';
+  let filtered = [...trackerSeries];
+  if (searchTerm) {
+    filtered = filtered.filter(s => s.nombre.toLowerCase().includes(searchTerm));
+  }
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: var(--umbra-ash);">
+        <i data-lucide="inbox" style="width: 40px; height: 40px; margin-bottom: 12px;"></i>
+        <p>No hay series en seguimiento</p>
+        <p style="font-size: 0.75rem;">Haz clic en "+ Añadir serie manual"</p>
+      </div>
+    `;
+    if (typeof lucide !== 'undefined') lucide.createIcons({ root: container });
+    return;
+  }
+  
+  container.innerHTML = filtered.map(serie => {
+    const total = serie.totalEpisodios;
+    const vistos = serie.vistos || 0;
+    const percent = total > 0 ? (vistos / total) * 100 : 0;
+    const posterBg = serie.poster ? `background-image: url('${escapeHtml(serie.poster)}')` : '';
+    
+    return `
+      <div class="tracker-serie-item" data-id="${serie.id}">
+        <div class="tracker-serie-header">
+          <div class="tracker-serie-poster" style="${posterBg}"></div>
+          <div class="tracker-serie-info">
+            <div class="tracker-serie-nombre">${escapeHtml(serie.nombre)}</div>
+            <div class="tracker-serie-progreso">${vistos}/${total} episodios</div>
+          </div>
+        </div>
+        <div class="tracker-progress-bar">
+          <div class="tracker-progress-fill" style="width: ${percent}%"></div>
+        </div>
+        <div class="tracker-serie-actions">
+          <button class="tracker-icon-btn" data-action="ver" data-id="${serie.id}" title="Ver episodios">
+            <i data-lucide="eye"></i>
+          </button>
+          <button class="tracker-icon-btn" data-action="editar" data-id="${serie.id}" title="Editar serie">
+            <i data-lucide="edit-2"></i>
+          </button>
+          <button class="tracker-icon-btn delete" data-action="eliminar" data-id="${serie.id}" title="Eliminar">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  container.querySelectorAll('[data-action="ver"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const serie = trackerSeries.find(s => s.id === id);
+      if (serie) abrirModalEpisodiosTracker(serie);
+    });
+  });
+  
+  container.querySelectorAll('[data-action="editar"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const serie = trackerSeries.find(s => s.id === id);
+      if (serie) {
+        document.getElementById('trackerSerieNombre').value = serie.nombre;
+        document.getElementById('trackerSerieTotal').value = serie.totalEpisodios;
+        document.getElementById('trackerSeriePoster').value = serie.poster || '';
+        window.trackerEditandoId = id;
+        const modal = document.getElementById('trackerAddModal');
+        const modalTitle = modal?.querySelector('.tracker-modal-header h3');
+        if (modalTitle) modalTitle.innerHTML = '<i data-lucide="edit-2"></i> Editar serie';
+        if (modal) modal.style.display = 'flex';
+      }
+    });
+  });
+  
+  container.querySelectorAll('[data-action="eliminar"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      eliminarTrackerSerie(btn.dataset.id);
+    });
+  });
+  
+  container.querySelectorAll('.tracker-serie-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const id = item.dataset.id;
+      const serie = trackerSeries.find(s => s.id === id);
+      if (serie) abrirModalEpisodiosTracker(serie);
+    });
+  });
+  
+  if (typeof lucide !== 'undefined') lucide.createIcons({ root: container });
+}
+
+function actualizarBadgeTracker() {
+  const badge = document.getElementById('trackerBadge');
+  if (badge) {
+    badge.textContent = trackerSeries.length;
+  }
+}
+
+function abrirModalEpisodiosTracker(serie) {
+  currentTrackingSerie = serie;
+  const modal = document.getElementById('trackerEpisodiosModal');
+  const title = document.getElementById('trackerEpisodiosTitle');
+  const container = document.getElementById('trackerEpisodiosList');
+  const summary = document.getElementById('trackerProgressSummary');
+  
+  if (!modal || !container) return;
+  
+  title.innerHTML = '<i data-lucide="list"></i> ' + escapeHtml(serie.nombre);
+  
+  const total = serie.totalEpisodios;
+  const vistos = serie.vistos || 0;
+  const percent = Math.round((vistos / total) * 100);
+  
+  container.innerHTML = '';
+  for (let i = 1; i <= total; i++) {
+    const visto = vistos >= i;
+    container.innerHTML += `
+      <div class="tracker-episodio-item ${visto ? 'visto' : ''}" data-episodio="${i}">
+        <input type="checkbox" class="tracker-episodio-check" ${visto ? 'checked' : ''} data-ep="${i}">
+        <span class="tracker-episodio-numero">Episodio ${i}</span>
+      </div>
+    `;
+  }
+  
+  summary.innerHTML = `
+    <span><i data-lucide="tv"></i> ${vistos}/${total}</span>
+    <span><i data-lucide="trending-up"></i> ${percent}%</span>
+  `;
+  
+  container.querySelectorAll('.tracker-episodio-check').forEach((checkbox) => {
+    checkbox.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      const episodioNum = parseInt(checkbox.dataset.ep);
+      let nuevosVistos = vistos;
+      
+      if (checkbox.checked) {
+        nuevosVistos = Math.max(vistos, episodioNum);
+      } else {
+        const todosChecks = container.querySelectorAll('.tracker-episodio-check');
+        let ultimoMarcado = 0;
+        todosChecks.forEach((ch, idx) => {
+          if (ch.checked && (idx + 1) > ultimoMarcado) {
+            ultimoMarcado = idx + 1;
+          }
+        });
+        nuevosVistos = ultimoMarcado;
+      }
+      
+      await actualizarVistosTracker(serie.id, nuevosVistos);
+    });
+  });
+  
+  modal.style.display = 'flex';
+  if (typeof lucide !== 'undefined') lucide.createIcons({ root: modal });
+}
+
+function toggleTrackerPanel() {
+  const panel = document.getElementById('floatingTrackerPanel');
+  if (panel) {
+    if (panel.style.display === 'none' || getComputedStyle(panel).display === 'none') {
+      panel.style.display = 'flex';
+      cargarTrackerSeries();
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+}
+
+function abrirModalAgregarSerie() {
+  delete window.trackerEditandoId;
+  const modal = document.getElementById('trackerAddModal');
+  const modalTitle = modal?.querySelector('.tracker-modal-header h3');
+  if (modalTitle) modalTitle.innerHTML = '<i data-lucide="plus"></i> Añadir serie manual';
+  document.getElementById('trackerSerieNombre').value = '';
+  document.getElementById('trackerSerieTotal').value = '1';
+  document.getElementById('trackerSeriePoster').value = '';
+  if (modal) modal.style.display = 'flex';
+}
+
+async function guardarSerieManual() {
+  const nombre = document.getElementById('trackerSerieNombre').value.trim();
+  const total = parseInt(document.getElementById('trackerSerieTotal').value, 10);
+  const poster = document.getElementById('trackerSeriePoster').value.trim();
+  
+  if (!nombre) {
+    showToast('El nombre es obligatorio', true);
+    return;
+  }
+  if (isNaN(total) || total < 1) {
+    showToast('Total de episodios válido', true);
+    return;
+  }
+  
+  const modal = document.getElementById('trackerAddModal');
+  
+  if (window.trackerEditandoId) {
+    // EDITAR serie existente
+    const userId = getTrackerUserId();
+    try {
+      await getDB().collection(TRACKER_COL).doc(userId).collection('series').doc(window.trackerEditandoId).update({
+        nombre: nombre,
+        totalEpisodios: total,
+        poster: poster || '',
+        updatedAt: new Date().toISOString()
+      });
+      showToast(`✅ Serie "${nombre}" actualizada`);
+      delete window.trackerEditandoId;
+    } catch (error) {
+      console.error('Error editando:', error);
+      showToast('Error al editar', true);
+      return;
+    }
+  } else {
+    // AÑADIR nueva serie
+    const nuevaSerie = {
+      id: 'manual_' + Date.now(),
+      nombre: nombre,
+      totalEpisodios: total,
+      poster: poster,
+      vistos: 0,
+      esDelCatalogo: false,
+      createdAt: new Date().toISOString()
+    };
+    const guardado = await guardarTrackerSerie(nuevaSerie);
+    if (!guardado) return;
+    showToast(`✅ Serie "${nombre}" añadida`);
+  }
+  
+  const modalTitle = modal?.querySelector('.tracker-modal-header h3');
+  if (modalTitle) modalTitle.innerHTML = '<i data-lucide="plus"></i> Añadir serie manual';
+  if (modal) modal.style.display = 'none';
+  
+  document.getElementById('trackerSerieNombre').value = '';
+  document.getElementById('trackerSerieTotal').value = '1';
+  document.getElementById('trackerSeriePoster').value = '';
+  
+  await cargarTrackerSeries();
+}
+
+// ========== INICIALIZACIÓN ==========
+function init() {
+  loadData();
+  
+  dom.btnAnadir?.addEventListener('click', openAddModal);
+  dom.btnAddEpisodio?.addEventListener('click', addEpisodio);
+  dom.closeFormBtn?.addEventListener('click', closeFormModal);
+  dom.cancelFormBtn?.addEventListener('click', closeFormModal);
+  dom.closeViewBtn?.addEventListener('click', closeViewModal);
+  
+  dom.btnEliminarTodo?.addEventListener('click', () => {
+    dom.deleteConfirmModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  });
+  dom.closeConfirmBtn?.addEventListener('click', () => {
+    dom.deleteConfirmModal.style.display = 'none';
+    document.body.style.overflow = '';
+  });
+  dom.cancelDeleteBtn?.addEventListener('click', () => {
+    dom.deleteConfirmModal.style.display = 'none';
+    document.body.style.overflow = '';
+  });
+  dom.confirmDeleteBtn?.addEventListener('click', async () => {
+    dom.deleteConfirmModal.style.display = 'none';
+    document.body.style.overflow = '';
+    await deleteAllContent();
+  });
+  
+  document.getElementById('contentForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveContent();
+  });
+  
+  dom.searchInput?.addEventListener('input', (e) => {
+    searchTerm = e.target.value.toLowerCase();
+    renderGrid();
+  });
+  
+  dom.filterBtns?.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dom.filterBtns.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      renderGrid();
+    });
+  });
+  
+  dom.overlayForm?.addEventListener('click', (e) => {
+    if (e.target === dom.overlayForm) closeFormModal();
+  });
+  dom.overlayView?.addEventListener('click', (e) => {
+    if (e.target === dom.overlayView) closeViewModal();
+  });
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (dom.overlayForm.style.display === 'flex') closeFormModal();
+      if (dom.overlayView.style.display === 'flex') closeViewModal();
+      if (dom.deleteConfirmModal.style.display === 'flex') {
+        dom.deleteConfirmModal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+      if (document.getElementById('trackerAddModal')?.style.display === 'flex') {
+        document.getElementById('trackerAddModal').style.display = 'none';
+      }
+      if (document.getElementById('trackerEpisodiosModal')?.style.display === 'flex') {
+        document.getElementById('trackerEpisodiosModal').style.display = 'none';
+      }
+      if (document.getElementById('floatingTrackerPanel')?.style.display === 'flex') {
+        document.getElementById('floatingTrackerPanel').style.display = 'none';
+      }
+    }
+  });
+  
+  // ========== EVENTOS DEL WIDGET ==========
+  document.getElementById('floatingTrackerBtn')?.addEventListener('click', toggleTrackerPanel);
+  document.getElementById('closeTrackerBtn')?.addEventListener('click', toggleTrackerPanel);
+  document.getElementById('trackerAddSeriesBtn')?.addEventListener('click', abrirModalAgregarSerie);
+  document.getElementById('closeTrackerModalBtn')?.addEventListener('click', () => {
+    document.getElementById('trackerAddModal').style.display = 'none';
+  });
+  document.getElementById('cancelTrackerModalBtn')?.addEventListener('click', () => {
+    document.getElementById('trackerAddModal').style.display = 'none';
+  });
+  document.getElementById('saveTrackerSerieBtn')?.addEventListener('click', guardarSerieManual);
+  document.getElementById('closeTrackerEpisodiosBtn')?.addEventListener('click', () => {
+    document.getElementById('trackerEpisodiosModal').style.display = 'none';
+  });
+  document.getElementById('closeTrackerEpisodiosModalBtn')?.addEventListener('click', () => {
+    document.getElementById('trackerEpisodiosModal').style.display = 'none';
+  });
+  document.getElementById('trackerMarcarTodosBtn')?.addEventListener('click', async () => {
+    if (currentTrackingSerie) {
+      await actualizarVistosTracker(currentTrackingSerie.id, currentTrackingSerie.totalEpisodios);
+    }
+  });
+  document.getElementById('trackerDesmarcarTodosBtn')?.addEventListener('click', async () => {
+    if (currentTrackingSerie) {
+      await actualizarVistosTracker(currentTrackingSerie.id, 0);
+    }
+  });
+  
+  document.getElementById('trackerSearchInput')?.addEventListener('input', () => {
+    renderTrackerList();
+  });
+  
+  document.getElementById('trackerAddModal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('trackerAddModal')) {
+      document.getElementById('trackerAddModal').style.display = 'none';
+    }
+  });
+  document.getElementById('trackerEpisodiosModal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('trackerEpisodiosModal')) {
+      document.getElementById('trackerEpisodiosModal').style.display = 'none';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
