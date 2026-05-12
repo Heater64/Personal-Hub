@@ -9,9 +9,7 @@
         { key: 'openwhen', label: 'Open When', icon: 'mail', href: 'pages/openwhen.html' },
         { key: 'calendario', label: 'Calendario', icon: 'calendar-days', href: 'pages/calendario.html' },
         { key: 'maldia', label: 'Mal día', icon: 'sun-medium', href: 'pages/maldia.html' },
-        { key: 'decks', label: 'Mis Decks', icon: 'layers', href: 'pages/decks.html' },
-        { key: 'dashboard', label: 'Progreso', icon: 'bar-chart-2', href: 'pages/dashboard.html' },
-        { key: 'tutor', label: 'Tutor IA', icon: 'brain', href: 'pages/tutor.html' }
+        { key: 'ialab', label: 'IA Lab', icon: 'flask-conical', href: 'pages/ia-lab.html' },
     ];
 
     function buildHref(root, href) {

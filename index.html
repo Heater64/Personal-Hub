@@ -28,11 +28,16 @@
         </div>
 
         <div class="bento-grid">
-            <!-- Sección: Música -->
             <button class="bento-card" onclick="window.location.href='pages/canciones.html'">
                 <i data-lucide="music" class="icon"></i>
                 <h3>Canciones</h3>
                 <p>Trozos de canciones que me recuerdan a ti, mi princesa.</p>
+                <div style="margin-top:20px; display:flex; gap:10px; align-items:center;">
+                    <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;">
+                        <i data-lucide="play-circle" style="width:1.2rem;"></i>
+                    </div>
+                    <span style="font-size:0.75rem;color:var(--umbra-ash);letter-spacing:0.05em;">14 canciones · Escúchalas ahora</span>
+                </div>
             </button>
 
             <button class="bento-card" onclick="window.location.href='pages/rincon.html'">
@@ -47,7 +52,6 @@
                 <p>Una web más poética con la canción, la letra y una atmósfera especial.</p>
             </button>
 
-            <!-- Sección: Entretenimiento -->
             <button class="bento-card" onclick="window.location.href='pages/series.html'">
                 <i data-lucide="tv" class="icon"></i>
                 <h3>Series</h3>
@@ -77,33 +81,6 @@
                 <h3>Mal día</h3>
                 <p>Un botón de emergencia emocional con frases, alegría y música.</p>
             </button>
-
-            <!-- ⚡ NUEVA SECCIÓN: EstudIA -->
-            <div class="bento-grid-full" style="grid-column: 1/-1; margin-top: 20px;">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                    <i data-lucide="brain" style="width: 28px; height: 28px; color: var(--accent-coral);"></i>
-                    <h3 style="margin: 0;">EstudIA · Aprendizaje adaptativo con IA</h3>
-                </div>
-                <div class="bento-grid" style="margin-top: 0;">
-                    <button class="bento-card" onclick="window.location.href='pages/decks.html'">
-                        <i data-lucide="layers" class="icon"></i>
-                        <h3>Mis Decks</h3>
-                        <p>Crea y organiza tus mazos de estudio con tarjetas generadas por IA.</p>
-                    </button>
-
-                    <button class="bento-card" onclick="window.location.href='pages/dashboard.html'">
-                        <i data-lucide="bar-chart-2" class="icon"></i>
-                        <h3>Progreso</h3>
-                        <p>Visualiza tu avance, estadísticas, rachas y temas que necesitan refuerzo.</p>
-                    </button>
-
-                    <button class="bento-card" onclick="window.location.href='pages/tutor.html'">
-                        <i data-lucide="brain" class="icon"></i>
-                        <h3>Tutor IA</h3>
-                        <p>Asistente personal con IA para resolver dudas y explicar conceptos.</p>
-                    </button>
-                </div>
-            </div>
         </div>
 
         <div style="text-align:center; margin-top:40px; padding: 20px;">
