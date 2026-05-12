@@ -14,113 +14,98 @@ let engine = null;
 let userId = null;
 let currentStreak = 0;
 
-// Inicialización
+// Inicialización con verificación de Firebase
 async function initStudy() {
-    // Verificar autenticación
-    auth.onAuthStateChanged(async (user) => {
-        if (user) {
-            userId = user.uid;
-            engine = new AdaptiveEngine(userId, db);
-            
-            // Cargar estadísticas del usuario
-            await loadUserStats();
-            
-            // Generar plan de estudio
-            await generateStudySession();
-            
-            // Mostrar primera tarjeta
-            displayCurrentCard();
-            
-            // Configurar eventos
-            setupEventListeners();
-        } else {
-            // Redirigir a login
-            window.location.href = 'login.html';
-        }
-    });
-}
-
-async function loadUserStats() {
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    const userData = userDoc.data() || {};
-    const stats = userData.stats || {};
-    
-    currentStreak = stats.currentStreak || 0;
-    document.getElementById('streakDisplay').innerHTML = `<i data-lucide="flame"></i> Racha: ${currentStreak}`;
-    
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-async function generateStudySession() {
-    // Buscar deck o generar plan general
-    const urlParams = new URLSearchParams(window.location.search);
-    const deckId = urlParams.get('deck');
-    
-    const plan = await engine.generateStudyPlan(deckId, 15);
-    sessionCards = plan.cards;
-    sessionStats = {
-        correct: 0,
-        total: sessionCards.length,
-        xpEarned: 0,
-        startTime: Date.now()
-    };
-    
-    currentCardIndex = 0;
-    updateProgressDisplay();
-}
-
-function displayCurrentCard() {
-    if (currentCardIndex >= sessionCards.length) {
-        endSession();
+    // Esperar a que Firebase esté listo
+    if (typeof db === 'undefined') {
+        setTimeout(initStudy, 200);
         return;
     }
     
-    currentCard = sessionCards[currentCardIndex];
-    
-    // Actualizar UI
-    document.getElementById('questionText').innerHTML = escapeHtml(currentCard.question);
-    document.getElementById('questionTopic').textContent = currentCard.topic || 'General';
-    
-    // Mostrar dificultad
-    const difficultyEl = document.getElementById('questionDifficulty');
-    if (currentCard.difficulty <= 2) {
-        difficultyEl.innerHTML = '<i data-lucide="coffee"></i> Fácil';
-    } else if (currentCard.difficulty <= 4) {
-        difficultyEl.innerHTML = '<i data-lucide="zap"></i> Media';
-    } else {
-        difficultyEl.innerHTML = '<i data-lucide="flame"></i> Difícil';
+    // Usar un ID fijo para el usuario invitado
+    userId = localStorage.getItem('guestUserId');
+    if (!userId) {
+        userId = 'guest_' + Date.now();
+        localStorage.setItem('guestUserId', userId);
     }
     
-    // Mostrar según tipo de pregunta
-    if (currentCard.type === 'multiple_choice' && currentCard.options) {
-        document.getElementById('optionsContainer').style.display = 'grid';
-        document.getElementById('openInputContainer').style.display = 'none';
-        
-        document.getElementById('optionsContainer').innerHTML = 
-            currentCard.options.map(opt => `
-                <button class="option-btn" data-option="${escapeHtml(opt)}">
-                    ${escapeHtml(opt)}
+    engine = new AdaptiveEngine(userId, db);
+    
+    await loadUserStats();
+    await generateStudySession();
+    displayCurrentCard();
+    setupEventListeners();
+}
+
+function showLoginPrompt() {
+    const container = document.querySelector('.study-container');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align:center; padding: 60px 20px;">
+                <i data-lucide="lock" style="width: 64px; height: 64px; color: var(--accent-coral); margin-bottom: 20px;"></i>
+                <h2>Inicia sesión para estudiar</h2>
+                <p style="margin: 20px 0; color: var(--umbra-ash);">Necesitas una cuenta para guardar tu progreso.</p>
+                <button id="tempLoginBtn" class="btn-primary" style="background: var(--accent-coral);">
+                    <i data-lucide="mail"></i> Continuar como invitado
                 </button>
-            `).join('');
+                <button id="googleLoginBtn" class="btn-secondary">
+                    <i data-lucide="chrome"></i> Iniciar con Google
+                </button>
+            </div>
+        `;
         
-        // Añadir eventos a las opciones
-        document.querySelectorAll('.option-btn').forEach(btn => {
-            btn.addEventListener('click', () => handleAnswer(btn.dataset.option));
+        document.getElementById('tempLoginBtn')?.addEventListener('click', async () => {
+            // Crear usuario temporal
+            const tempId = 'temp_' + Date.now();
+            userId = tempId;
+            engine = new AdaptiveEngine(userId, db);
+            
+            await loadUserStats();
+            await generateStudySession();
+            displayCurrentCard();
+            setupEventListeners();
+            
+            // Limpiar el mensaje de login
+            const container = document.querySelector('.study-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="study-header">...</div>
+                    <div class="question-card">...</div>
+                    <div class="explanation-panel">...</div>
+                    <div class="study-navigation">...</div>
+                `;
+                // Recargar la UI...
+                location.reload();
+            }
         });
         
-    } else {
-        document.getElementById('optionsContainer').style.display = 'none';
-        document.getElementById('openInputContainer').style.display = 'flex';
-        document.getElementById('openAnswer').value = '';
-        document.getElementById('openAnswer').focus();
+        document.getElementById('googleLoginBtn')?.addEventListener('click', () => {
+            // Redirigir al login de Google
+            window.location.href = 'login.html';
+        });
+        
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
-    
-    // Ocultar panel de explicación
-    document.getElementById('explanationPanel').style.display = 'none';
+}
+
+async function loadUserStats() {
+    try {
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+        const userData = userDoc.data() || {};
+        const stats = userData.stats || {};
+        
+        currentStreak = stats.currentStreak || 0;
+        const streakEl = document.getElementById('streakDisplay');
+        if (streakEl) streakEl.innerHTML = `<i data-lucide="flame"></i> Racha: ${currentStreak}`;
+    } catch (error) {
+        console.log('Usuario nuevo o invitado');
+        currentStreak = 0;
+    }
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+
 
 async function handleAnswer(userAnswer) {
     const startResponseTime = Date.now();
