@@ -1,41 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Usuarios - solo pueden leer/escribir su propio documento
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Admin - solo lectura/escritura para usuarios autenticados
+    match /admin/{document} {
+      allow read, write: if true;  // En producción, cambia a: request.auth != null
     }
     
-    // Decks - solo el dueño
-    match /decks/{deckId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    // Calendario
+    match /calendario/{document} {
+      allow read, write: if true;
     }
     
-    // Cards - solo el dueño (por userId)
-    match /cards/{cardId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    // Razones
+    match /razones/{document} {
+      allow read, write: if true;
     }
     
-    // Study sessions - solo el dueño
-    match /study_sessions/{sessionId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    // Mal día
+    match /maldia/{document} {
+      allow read, write: if true;
     }
     
-    // Colecciones públicas (calendario, maldia, razones)
-    match /calendario/{doc} {
-      allow read, write: if request.auth != null;
-    }
-    match /maldia/{doc} {
-      allow read, write: if request.auth != null;
-    }
-    match /razones/{doc} {
-      allow read, write: if request.auth != null;
-    }
-    match /seriesData/{doc} {
-      allow read, write: if request.auth != null;
-    }
-    match /seriesTrackerProgress/{userId}/{doc} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Series tracker
+    match /seriesTrackerProgress/{userId}/{document} {
+      allow read, write: if true;
     }
   }
 }
