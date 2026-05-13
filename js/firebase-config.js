@@ -1,12 +1,7 @@
 // js/firebase-config.js
 // Configuración completa de Firebase (Auth, Firestore, Storage)
 
-// Importar Firebase de forma correcta (necesitas agregar los scripts en HTML)
-// En tu HTML debes tener:
-// <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-// <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-// <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-// <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+console.log('🔧 Iniciando Firebase config...');
 
 const firebaseConfig = {
     apiKey: "AIzaSyCYQOZzxIJZ6CPRtoJSJTpJdzyfKQBvAtI",
@@ -18,44 +13,65 @@ const firebaseConfig = {
     measurementId: "G-4BPHW9GS96"
 };
 
-// Inicializar Firebase solo si no existe
-if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-} else if (typeof firebase === 'undefined') {
-    console.error('Firebase no está cargado. Revisa los scripts en HTML.');
+// Variable global para saber si Firebase está listo
+let firebaseReady = false;
+
+// Función para inicializar Firebase
+function initFirebase() {
+    // Verificar si firebase ya está disponible (cargado por script)
+    if (typeof firebase !== 'undefined') {
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+            console.log('✅ Firebase inicializado desde script externo');
+        }
+        
+        // Obtener servicios
+        window.auth = firebase.auth();
+        window.db = firebase.firestore();
+        window.storage = firebase.storage();
+        window.googleProvider = new firebase.auth.GoogleAuthProvider();
+        
+        firebaseReady = true;
+        console.log('✅ Servicios de Firebase disponibles');
+        return true;
+    }
+    
+    // Si no está disponible, esperar
+    console.warn('⏳ Firebase no cargado aún, esperando...');
+    return false;
 }
 
-// Servicios de Firebase (con verificación de existencia)
-const auth = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth() : null;
-const db = typeof firebase !== 'undefined' && firebase.firestore ? firebase.firestore() : null;
-const storage = typeof firebase !== 'undefined' && firebase.storage ? firebase.storage() : null;
-
-// Proveedores de autenticación
-const googleProvider = auth ? new firebase.auth.GoogleAuthProvider() : null;
-
-// Configurar Firestore para usar timestamps (opcional, ya es default)
-if (db) {
-    // Esta línea ya no es necesaria en versiones nuevas, pero no da error
-    // db.settings({ timestampsInSnapshots: true });
+// Intentar inicializar inmediatamente
+if (!initFirebase()) {
+    // Si no está disponible, esperar a que se cargue el script
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            initFirebase();
+        }, 500);
+    });
+    
+    // También intentar cada segundo (por si tarda)
+    let attempts = 0;
+    const interval = setInterval(function() {
+        attempts++;
+        if (initFirebase() || attempts > 10) {
+            clearInterval(interval);
+            if (attempts > 10 && !firebaseReady) {
+                console.error('❌ Firebase no se pudo cargar después de 10 intentos');
+            }
+        }
+    }, 1000);
 }
 
-// Exportar para usar en toda la app
-if (typeof window !== 'undefined') {
-    window.auth = auth;
-    window.db = db;
-    window.storage = storage;
-    window.googleProvider = googleProvider;
-}
-
-// Helper para verificar autenticación (versión corregida)
+// Helper para verificar autenticación
 function requireAuth() {
     return new Promise((resolve, reject) => {
-        if (!auth) {
+        if (!window.auth) {
             reject(new Error('Firebase Auth no está disponible'));
             return;
         }
         
-        const unsubscribe = auth.onAuthStateChanged(user => {
+        const unsubscribe = window.auth.onAuthStateChanged(user => {
             unsubscribe();
             if (user) {
                 resolve(user);
@@ -66,7 +82,33 @@ function requireAuth() {
     });
 }
 
-// Exportar función al window también
+// Verificar si Firebase está listo (para usar en async/await)
+async function waitForFirebase() {
+    return new Promise((resolve) => {
+        if (firebaseReady && window.db) {
+            resolve(true);
+            return;
+        }
+        
+        const checkInterval = setInterval(() => {
+            if (firebaseReady && window.db) {
+                clearInterval(checkInterval);
+                resolve(true);
+            }
+        }, 100);
+        
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve(false);
+        }, 5000);
+    });
+}
+
+// Exportar funciones globales
 if (typeof window !== 'undefined') {
     window.requireAuth = requireAuth;
+    window.waitForFirebase = waitForFirebase;
+    window.firebaseReady = () => firebaseReady;
 }
+
+console.log('📁 firebase-config.js cargado');

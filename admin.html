@@ -7,112 +7,24 @@
     <link rel="stylesheet" href="css/main.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .admin-container {
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
-        }
-        .admin-header {
-            text-align: center;
-            margin-bottom: 32px;
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(198,90,58,0.1), rgba(0,0,0,0.3));
-            border-radius: 24px;
-        }
-        .admin-header h1 {
-            font-family: 'Playfair Display', serif;
-            color: var(--accent-coral);
-        }
-        .admin-card {
-            background: rgba(0,0,0,0.6);
-            border-radius: 24px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-        .section-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        .btn-unlock, .btn-lock {
-            border-radius: 20px;
-            cursor: pointer;
-            padding: 6px 16px;
-            font-size: 0.8rem;
-        }
-        .btn-unlock {
-            background: var(--accent-coral);
-            border: none;
-            color: white;
-        }
-        .btn-lock {
-            background: transparent;
-            border: 1px solid #f44336;
-            color: #f44336;
-        }
-        .status-badge {
-            font-size: 0.7rem;
-            padding: 3px 10px;
-            border-radius: 20px;
-        }
-        .status-unlocked {
-            background: rgba(76,175,80,0.2);
-            color: #4caf50;
-        }
-        .status-locked {
-            background: rgba(244,67,54,0.2);
-            color: #f44336;
-        }
-        .admin-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        .btn-primary {
-            background: var(--accent-coral);
-            padding: 10px 20px;
-            border: none;
-            border-radius: 40px;
-            color: white;
-            cursor: pointer;
-            flex: 1;
-        }
-        .btn-danger {
-            background: #dc3545;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 40px;
-            color: white;
-            cursor: pointer;
-            flex: 1;
-        }
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--umbra-ash);
-            text-decoration: none;
-            margin-bottom: 20px;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--umbra-ash);
-        }
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1a1a1c;
-            border-left: 4px solid var(--accent-coral);
-            padding: 12px 24px;
-            border-radius: 40px;
-            z-index: 2000;
-        }
+        /* Estilos (mantener los mismos) */
+        .admin-container { max-width: 800px; margin: 40px auto; padding: 20px; }
+        .admin-header { text-align: center; margin-bottom: 32px; padding: 20px; background: linear-gradient(135deg, rgba(198,90,58,0.1), rgba(0,0,0,0.3)); border-radius: 24px; }
+        .admin-header h1 { font-family: 'Playfair Display', serif; color: var(--accent-coral); }
+        .admin-card { background: rgba(0,0,0,0.6); border-radius: 24px; padding: 24px; margin-bottom: 24px; }
+        .section-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .btn-unlock, .btn-lock { border-radius: 20px; cursor: pointer; padding: 6px 16px; font-size: 0.8rem; }
+        .btn-unlock { background: var(--accent-coral); border: none; color: white; }
+        .btn-lock { background: transparent; border: 1px solid #f44336; color: #f44336; }
+        .status-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; margin-left: 12px; }
+        .status-unlocked { background: rgba(76,175,80,0.2); color: #4caf50; }
+        .status-locked { background: rgba(244,67,54,0.2); color: #f44336; }
+        .admin-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+        .btn-primary { background: var(--accent-coral); padding: 10px 20px; border: none; border-radius: 40px; color: white; cursor: pointer; flex: 1; }
+        .btn-danger { background: #dc3545; padding: 10px 20px; border: none; border-radius: 40px; color: white; cursor: pointer; flex: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--umbra-ash); text-decoration: none; margin-bottom: 20px; }
+        .loading { text-align: center; padding: 40px; color: var(--umbra-ash); }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1a1a1c; border-left: 4px solid var(--accent-coral); padding: 12px 24px; border-radius: 40px; z-index: 2000; }
     </style>
 </head>
 <body style="background:#0f0f10;">
@@ -127,7 +39,7 @@
         </div>
 
         <div id="loadingState" class="loading">
-            <i data-lucide="loader-circle"></i> Cargando configuración...
+            ⏳ Cargando configuración...
         </div>
 
         <div id="adminContent" style="display: none;">
@@ -144,12 +56,18 @@
         </div>
     </div>
 
+    <!-- 🔥 FIREBASE SCRIPTS - MISMA VERSIÓN EN TODOS LADOS -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <!-- Tu configuración -->
     <script src="js/firebase-config.js"></script>
     <script src="js/progress.js"></script>
+    
     <script>
         const PASSWORD = 'sY2LkBmX';
         
-        // Verificar contraseña
         const entered = prompt('🔐 Contraseña de administrador:');
         if (entered !== PASSWORD) {
             document.body.innerHTML = '<h1 style="text-align:center;margin-top:100px;">Acceso denegado</h1>';
@@ -186,14 +104,26 @@
             const loading = document.getElementById('loadingState');
             const content = document.getElementById('adminContent');
             
+            // Esperar a que Firebase esté listo
+            if (!window.db) {
+                loading.innerHTML = '⏳ Conectando con Firebase...';
+                setTimeout(loadProgress, 500);
+                return;
+            }
+            
             try {
+                if (typeof getProgressAsync !== 'function') {
+                    loading.innerHTML = '❌ Error: progress.js no cargado correctamente';
+                    return;
+                }
                 currentProgress = await getProgressAsync();
-                if (loading) loading.style.display = 'none';
-                if (content) content.style.display = 'block';
+                loading.style.display = 'none';
+                content.style.display = 'block';
                 renderSections();
+                showToast('✅ Panel cargado correctamente');
             } catch (error) {
                 console.error(error);
-                if (loading) loading.innerHTML = '<p style="color:#f44336;">❌ Error cargando datos. ¿Firebase está configurado?</p>';
+                loading.innerHTML = '<p style="color:#f44336;">❌ Error cargando datos. Verifica Firestore.</p>';
             }
         }
 
@@ -208,7 +138,7 @@
                         <div>
                             <span style="margin-right: 12px;">${section.icon}</span>
                             <strong>${section.name}</strong>
-                            <span class="status-badge ${isUnlocked ? 'status-unlocked' : 'status-locked'}" style="margin-left: 12px;">
+                            <span class="status-badge ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
                                 ${isUnlocked ? '✅ Desbloqueada' : '🔒 Bloqueada'}
                             </span>
                         </div>
@@ -222,6 +152,10 @@
         }
 
         async function unlockSectionHandler(sectionId) {
+            if (typeof unlockSection !== 'function') {
+                showToast('Error: función unlockSection no disponible', true);
+                return;
+            }
             await unlockSection(sectionId);
             currentProgress = await getProgressAsync();
             renderSections();
@@ -229,6 +163,10 @@
         }
 
         async function lockSectionHandler(sectionId) {
+            if (typeof lockSection !== 'function') {
+                showToast('Error: función lockSection no disponible', true);
+                return;
+            }
             await lockSection(sectionId);
             currentProgress = await getProgressAsync();
             renderSections();
@@ -246,7 +184,7 @@
         }
 
         async function lockAll() {
-            if (!confirm('¿Bloquear TODAS las secciones (excepto Inicio)?')) return;
+            if (!confirm('¿Bloquear TODAS las secciones?')) return;
             for (const section of sections) {
                 await lockSection(section.id);
             }
@@ -256,11 +194,12 @@
         }
 
         async function resetAll() {
-            if (!confirm('⚠️ ¿Resetear todo al estado por defecto? Esto afecta a todos los usuarios.')) return;
+            if (!confirm('⚠️ ¿Resetear todo al estado por defecto?')) return;
+            if (typeof resetAllProgress !== 'function') return;
             await resetAllProgress();
             currentProgress = await getProgressAsync();
             renderSections();
-            showToast('🔄 Todo reseteado a valores por defecto');
+            showToast('🔄 Todo reseteado');
         }
 
         document.getElementById('unlockAllBtn')?.addEventListener('click', unlockAll);
