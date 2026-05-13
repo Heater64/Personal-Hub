@@ -1,168 +1,304 @@
-// maldia.js - Frases, contador, musica y animaciones
+// maldia.js - Versión completa con recuerdos
 
 const phrases = [
     "Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un poquito de ternura contigo.",
-    "Estas aqui, y eso ya es suficiente. Un dia mas, un paso mas. Yo te veo, y eres increible.",
-    "No necesitas rendir cuentas hoy. Solo existir. Y si puedes, sonreir un poquito.",
-    "Eres mas fuerte de lo que crees, mas bonita de lo que piensas y mas querida de lo que imaginas.",
-    "Hoy puede que no sea facil, pero manana sera otro dia. Yo seguire estando aqui para ti.",
-    "Tu mision ahora: beber agua, respirar hondo y recordar que te quiero muchisimo.",
-    "No tienes que poder con todo. Permitete descansar. Yo te apano el resto."
+    "Estás aquí, y eso ya es suficiente. Un día más, un paso más. Yo te veo, y eres increíble.",
+    "No necesitas rendir cuentas hoy. Solo existir. Y si puedes, sonreír un poquito.",
+    "Eres más fuerte de lo que crees, más bonita de lo que piensas y más querida de lo que imaginas.",
+    "Hoy puede que no sea fácil, pero mañana será otro día. Yo seguiré estando aquí para ti.",
+    "Tu misión ahora: beber agua, respirar hondo y recordar que te quiero muchísimo.",
+    "No tienes que poder con todo. Permítete descansar. Yo te apaño el resto.",
+    "Eres mi persona favorita en este planeta. No lo olvides.",
+    "Aunque hoy sea gris, recuerda que los días bonitos también existen y volverán.",
+    "Tómate un minuto para ti. Cierra los ojos. Respira. Yo cuido de ti."
 ];
 
-let kindCount = 0;
+const dailyMessages = [
+    "✨ Eres única, especial e irrepetible. No hay nadie como tú.",
+    "🌼 Tu sonrisa ilumina incluso los días más nublados.",
+    "🌟 Cada día te conviertes en una versión más maravillosa de ti misma.",
+    "💫 La vida es mejor porque tú estás en ella.",
+    "🌸 Eres como una flor que florece incluso en invierno.",
+    "⭐ Tu fuerza me inspira cada día un poco más.",
+    "💖 Eres el mejor descubrimiento de mi vida.",
+    "🌈 Incluso sin saberlo, haces mi mundo más bonito.",
+    "🎀 Eres perfecta exactamente como eres.",
+    "✨ No cambies nunca. Eres increíble tal cual."
+];
+
+// Recuerdos (imágenes)
+const memories = [
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1777747760/5199564237372592635_eqj9v5.jpg", caption: "Siempre tan linda ✨" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20260131_182652_h5gqlm.jpg", caption: "Atardecer a tu lado 🌅" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355904/20260425_070118_c8t3kj.jpg", caption: "Ese día tan especial 💕" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20260313_072301_qrnboi.jpg", caption: "Momentos que atesoro 📸" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355903/20260505_070212_sgkvy2.jpg", caption: "Tu mirada lo dice todo 👀" }
+];
+
 let isMusicPlaying = false;
 let audioElement = null;
+let breathingInterval = null;
+let currentDailyMessageIndex = 0;
+let currentMemoryIndex = 0;
 
-const maldiaRef = db.collection('maldia').doc('contador');
-
-async function loadCount() {
-    try {
-        const doc = await maldiaRef.get();
-        if (doc.exists && typeof doc.data().cuenta === 'number') {
-            kindCount = doc.data().cuenta;
-        } else {
-            kindCount = 0;
-            await maldiaRef.set({ cuenta: 0 });
-        }
-    } catch (error) {
-        console.error('Error al cargar contador:', error);
-        kindCount = 0;
-    }
-
-    const counter = document.getElementById('kindCounter');
-    if (counter) counter.textContent = kindCount;
-}
-
-async function saveCount() {
-    try {
-        await maldiaRef.set({ cuenta: kindCount }, { merge: true });
-    } catch (error) {
-        console.error('Error al guardar contador:', error);
-    }
-}
-
-function initMusic() {
-    audioElement = document.getElementById('happyAudio');
-    if (!audioElement) {
-        console.warn("No se encontro <audio id='happyAudio'>");
-        return;
-    }
-
-    audioElement.load();
-
-    const startOnInteraction = () => {
-        if (!isMusicPlaying && audioElement && audioElement.paused) {
-            audioElement.play().catch((error) => console.log('Autoplay denegado:', error));
-            isMusicPlaying = true;
-            updateMusicButtonUI();
-        }
-        document.removeEventListener('click', startOnInteraction);
-        document.removeEventListener('keydown', startOnInteraction);
-    };
-
-    document.addEventListener('click', startOnInteraction);
-    document.addEventListener('keydown', startOnInteraction);
-}
-
-function updateMusicButtonUI() {
-    const musicBtn = document.getElementById('musicBtn');
-    if (!musicBtn) return;
-
-    if (isMusicPlaying) {
-        musicBtn.innerHTML = '<i data-lucide="volume-2"></i> Pausar musica';
-    } else {
-        musicBtn.innerHTML = '<i data-lucide="volume-x"></i> Pon musica feliz';
-    }
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function toggleMusic() {
-    if (!audioElement) return;
-
-    if (isMusicPlaying) {
-        audioElement.pause();
-        isMusicPlaying = false;
-    } else {
-        audioElement.play().catch((error) => console.warn('No se pudo reproducir:', error));
-        isMusicPlaying = true;
-    }
-
-    updateMusicButtonUI();
-
-    const waveBars = document.querySelectorAll('.wave-bar');
-    waveBars.forEach((bar) => {
-        if (isMusicPlaying) {
-            bar.style.animation = 'wave 0.8s ease-in-out infinite';
-        } else {
-            bar.style.animation = 'none';
-        }
-    });
-}
+// ==========================================
+// FRASES Y MENSAJES
+// ==========================================
 
 function randomPhrase() {
     const heroMsg = document.getElementById('heroMessage');
     if (heroMsg) {
         const randomIndex = Math.floor(Math.random() * phrases.length);
         heroMsg.textContent = phrases[randomIndex];
-        if (typeof launchParticles === 'function') {
-            launchParticles({
-                amount: 8,
-                symbols: ['❤', '✦'],
-                colors: ['#ffb347', '#c65a3a'],
-                spread: 100,
-                source: heroMsg
-            });
-        }
     }
 }
 
-function betterDay() {
-    randomPhrase();
+function updateDailyMessage() {
+    const msgEl = document.getElementById('dailyMessage');
+    if (msgEl) {
+        currentDailyMessageIndex = (currentDailyMessageIndex + 1) % dailyMessages.length;
+        msgEl.textContent = dailyMessages[currentDailyMessageIndex];
+        if (typeof pulseElement === 'function') pulseElement(msgEl);
+    }
+}
+
+// ==========================================
+// RECUERDOS
+// ==========================================
+
+function changeMemory() {
+    currentMemoryIndex = (currentMemoryIndex + 1) % memories.length;
+    const img = document.getElementById('memoryImage');
+    const caption = document.getElementById('memoryCaption');
+    
+    if (img) {
+        img.style.opacity = '0.5';
+        setTimeout(() => {
+            img.src = memories[currentMemoryIndex].image;
+            img.style.opacity = '1';
+        }, 150);
+    }
+    if (caption) caption.textContent = memories[currentMemoryIndex].caption;
+    
     if (typeof launchParticles === 'function') {
-        const source = document.querySelector('.hero-card') || document.querySelector('.bento-hero') || document.body;
         launchParticles({
-            amount: 20,
-            symbols: ['❤', '✦', '✧', '☀'],
-            colors: ['#c65a3a', '#ffb347', '#ff8aa1', '#ffd966'],
-            spread: 150,
-            source
+            amount: 8,
+            symbols: ['📸', '✨', '❤'],
+            colors: ['#c65a3a', '#ffb347', '#ff8aa1'],
+            spread: 80
+        });
+    }
+    if (typeof pulseElement === 'function') pulseElement(document.getElementById('changeMemoryBtn'));
+}
+
+// ==========================================
+// PARTÍCULAS
+// ==========================================
+
+function launchParticlesEffect() {
+    if (typeof launchParticles === 'function') {
+        launchParticles({
+            amount: 18,
+            symbols: ['❤', '✦', '✨', '🌟', '🫶'],
+            colors: ['#c65a3a', '#ffb347', '#ff8aa1', '#ffd966', '#4caf50'],
+            spread: 140
         });
     }
     if (typeof pulseElement === 'function') {
-        pulseElement(document.getElementById('betterBtn'));
+        pulseElement(document.getElementById('particlesBtn'));
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadCount();
+// ==========================================
+// MÚSICA
+// ==========================================
+
+function initMusic() {
+    audioElement = document.getElementById('happyAudio');
+    if (!audioElement) return;
+    audioElement.load();
+    
+    const startOnInteraction = () => {
+        if (!isMusicPlaying && audioElement && audioElement.paused) {
+            audioElement.play().catch(() => {});
+            isMusicPlaying = true;
+            updateMusicUI();
+        }
+        document.removeEventListener('click', startOnInteraction);
+    };
+    document.addEventListener('click', startOnInteraction);
+}
+
+function updateMusicUI() {
+    const musicWave = document.getElementById('musicWave');
+    const musicLabel = document.getElementById('musicLabel');
+    const musicBtn = document.getElementById('musicBtn');
+    
+    if (musicWave) {
+        if (isMusicPlaying) {
+            musicWave.classList.add('playing');
+            if (musicLabel) musicLabel.textContent = '🎵 Sonando';
+        } else {
+            musicWave.classList.remove('playing');
+            if (musicLabel) musicLabel.textContent = '🎵 Pausada';
+        }
+    }
+    
+    if (musicBtn) {
+        musicBtn.innerHTML = isMusicPlaying ? 
+            '<i data-lucide="volume-x"></i>' : 
+            '<i data-lucide="volume-2"></i>';
+    }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function toggleMusic() {
+    if (!audioElement) return;
+    if (isMusicPlaying) {
+        audioElement.pause();
+        isMusicPlaying = false;
+    } else {
+        audioElement.play().catch(() => {});
+        isMusicPlaying = true;
+    }
+    updateMusicUI();
+}
+
+// ==========================================
+// RESPIRACIÓN GUIADA
+// ==========================================
+
+function startBreathingSession() {
+    const modal = document.getElementById('breathingModal');
+    const circle = document.getElementById('breathingCircle');
+    const text = document.getElementById('breathingText');
+    if (!modal || !circle || !text) return;
+    
+    modal.classList.add('active');
+    let phase = 'inhale';
+    let time = 0;
+    const inhaleTime = 4000;
+    const exhaleTime = 4000;
+    
+    if (breathingInterval) clearInterval(breathingInterval);
+    
+    function updateBreathing() {
+        if (phase === 'inhale') {
+            const progress = time / inhaleTime;
+            const scale = 1 + (progress * 0.4);
+            circle.style.transform = `scale(${scale})`;
+            text.textContent = 'Inhala';
+            if (time >= inhaleTime) {
+                phase = 'exhale';
+                time = 0;
+            }
+        } else {
+            const progress = time / exhaleTime;
+            const scale = 1.4 - (progress * 0.4);
+            circle.style.transform = `scale(${scale})`;
+            text.textContent = 'Exhala';
+            if (time >= exhaleTime) {
+                phase = 'inhale';
+                time = 0;
+            }
+        }
+        time += 100;
+    }
+    
+    breathingInterval = setInterval(updateBreathing, 100);
+}
+
+function stopBreathingSession() {
+    const modal = document.getElementById('breathingModal');
+    if (modal) modal.classList.remove('active');
+    if (breathingInterval) {
+        clearInterval(breathingInterval);
+        breathingInterval = null;
+    }
+    const circle = document.getElementById('breathingCircle');
+    const text = document.getElementById('breathingText');
+    if (circle) circle.style.transform = 'scale(1)';
+    if (text) text.textContent = 'Inhala';
+}
+
+// ==========================================
+// ME SIENTO MEJOR (con cierre tocando fuera)
+// ==========================================
+
+function showBetterModal() {
+    const modal = document.getElementById('betterModal');
+    const video = document.getElementById('betterVideo');
+    
+    if (modal) {
+        modal.classList.add('active');
+        if (video) {
+            video.currentTime = 0;
+            video.play().catch(() => {});
+        }
+    }
+    
+    randomPhrase();
+    updateDailyMessage();
+    launchParticlesEffect();
+}
+
+function closeBetterModal() {
+    const modal = document.getElementById('betterModal');
+    const video = document.getElementById('betterVideo');
+    if (modal) modal.classList.remove('active');
+    if (video) video.pause();
+}
+
+// Cerrar modal haciendo clic fuera del contenido
+function closeBetterModalOnOutsideClick(event) {
+    const modal = document.getElementById('betterModal');
+    const content = modal?.querySelector('.better-modal-content');
+    if (event.target === modal && content) {
+        closeBetterModal();
+    }
+}
+
+// ==========================================
+// INICIALIZACIÓN
+// ==========================================
+
+function initMalDia() {
     randomPhrase();
     initMusic();
-
+    
+    // Event listeners
     document.getElementById('newPhraseBtn')?.addEventListener('click', randomPhrase);
+    document.getElementById('particlesBtn')?.addEventListener('click', launchParticlesEffect);
     document.getElementById('musicBtn')?.addEventListener('click', toggleMusic);
-    document.getElementById('betterBtn')?.addEventListener('click', betterDay);
-    document.getElementById('countBtn')?.addEventListener('click', async () => {
-        kindCount++;
-        const counter = document.getElementById('kindCounter');
-        if (counter) counter.textContent = kindCount;
-        await saveCount();
-
-        if (typeof launchParticles === 'function') {
-            launchParticles({
-                amount: 12,
-                symbols: ['❤', '❤️', '♡'],
-                colors: ['#c65a3a', '#ff8aa1', '#ffb347'],
-                spread: 110,
-                source: counter
-            });
-        }
-
-        if (typeof pulseElement === 'function') {
-            pulseElement(document.getElementById('countBtn'));
+    document.getElementById('betterBtn')?.addEventListener('click', showBetterModal);
+    document.getElementById('refreshMessageBtn')?.addEventListener('click', updateDailyMessage);
+    document.getElementById('changeMemoryBtn')?.addEventListener('click', changeMemory);
+    document.getElementById('breathingBtn')?.addEventListener('click', startBreathingSession);
+    document.getElementById('closeBreathingModal')?.addEventListener('click', stopBreathingSession);
+    document.getElementById('stopBreathingBtn')?.addEventListener('click', stopBreathingSession);
+    document.getElementById('closeBetterModal')?.addEventListener('click', closeBetterModal);
+    
+    // Cerrar modal del gato tocando fuera
+    const betterModal = document.getElementById('betterModal');
+    if (betterModal) {
+        betterModal.addEventListener('click', closeBetterModalOnOutsideClick);
+    }
+    
+    // Cerrar modal de respiración con ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            stopBreathingSession();
+            closeBetterModal();
         }
     });
+    
+    updateMusicUI();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
 
-    updateMusicButtonUI();
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMalDia);
+} else {
+    initMalDia();
+}

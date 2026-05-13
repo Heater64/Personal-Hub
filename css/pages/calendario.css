@@ -1,23 +1,49 @@
+/* ==========================================
+   CALENDARIO CSS - COMPLETO MEJORADO
+   Tarjetas grandes, animaciones suaves, responsive
+   ========================================== */
+
 .calendario-page {
-  max-width: 980px;
+  max-width: 1200px;
   margin: 0 auto;
   padding-top: 18px;
 }
 
 .calendario-intro {
   text-align: center;
-  margin-bottom: 26px;
+  margin-bottom: 32px;
+  opacity: 0;
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .calendario-intro h2 {
   margin-bottom: 10px;
   font-size: clamp(2.4rem, 5vw, 4.1rem);
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-family: 'Playfair Display', serif;
+}
+
+.calendario-intro h2:hover {
+  opacity: 0.8;
 }
 
 .calendario-intro h2::after {
   content: ' ✧';
-  color: rgba(255, 179, 71, 0.5);
+  color: var(--accent-coral);
   font-size: 0.72em;
+  opacity: 0.7;
 }
 
 .calendario-intro p {
@@ -25,62 +51,116 @@
   font-size: 1rem;
 }
 
-.calendario-panel {
-  padding: 10px 0 0;
+.calendario-hint {
+  font-size: 0.7rem !important;
+  margin-top: 8px;
+  opacity: 0.6;
 }
 
+/* ==========================================
+   GRID DEL CALENDARIO
+   ========================================== */
 .calendar-grid {
   display: grid;
-  gap: 14px;
+  gap: 20px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* ==========================================
+   TARJETA DE DÍA - MÁS GRANDE CON ANIMACIÓN
+   ========================================== */
 .day-card {
   position: relative;
   aspect-ratio: 1 / 1;
   min-height: 0;
-  padding: 16px;
-  border-radius: 24px;
-  border: var(--border-subtle);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.024), rgba(255,255,255,0.015));
+  padding: 20px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  opacity: 0;
+  animation: cardAppear 0.5s ease forwards;
 }
 
+/* Animación de aparición progresiva */
+.day-card:nth-child(1) { animation-delay: 0.02s; }
+.day-card:nth-child(2) { animation-delay: 0.04s; }
+.day-card:nth-child(3) { animation-delay: 0.06s; }
+.day-card:nth-child(4) { animation-delay: 0.08s; }
+.day-card:nth-child(5) { animation-delay: 0.10s; }
+.day-card:nth-child(6) { animation-delay: 0.12s; }
+.day-card:nth-child(7) { animation-delay: 0.14s; }
+.day-card:nth-child(8) { animation-delay: 0.16s; }
+.day-card:nth-child(9) { animation-delay: 0.18s; }
+.day-card:nth-child(10) { animation-delay: 0.20s; }
+.day-card:nth-child(11) { animation-delay: 0.22s; }
+.day-card:nth-child(12) { animation-delay: 0.24s; }
+.day-card:nth-child(13) { animation-delay: 0.26s; }
+.day-card:nth-child(14) { animation-delay: 0.28s; }
+.day-card:nth-child(15) { animation-delay: 0.30s; }
+.day-card:nth-child(16) { animation-delay: 0.32s; }
+.day-card:nth-child(17) { animation-delay: 0.34s; }
+.day-card:nth-child(18) { animation-delay: 0.36s; }
+.day-card:nth-child(19) { animation-delay: 0.38s; }
+.day-card:nth-child(20) { animation-delay: 0.40s; }
+.day-card:nth-child(21) { animation-delay: 0.42s; }
+.day-card:nth-child(22) { animation-delay: 0.44s; }
+.day-card:nth-child(23) { animation-delay: 0.46s; }
+.day-card:nth-child(24) { animation-delay: 0.48s; }
+.day-card:nth-child(25) { animation-delay: 0.50s; }
+.day-card:nth-child(26) { animation-delay: 0.52s; }
+.day-card:nth-child(27) { animation-delay: 0.54s; }
+.day-card:nth-child(28) { animation-delay: 0.56s; }
+.day-card:nth-child(29) { animation-delay: 0.58s; }
+.day-card:nth-child(30) { animation-delay: 0.60s; }
+.day-card:nth-child(31) { animation-delay: 0.62s; }
+
+@keyframes cardAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(15px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Decoración esquina superior derecha */
 .day-card::before {
   content: '✦';
   position: absolute;
-  top: 12px;
-  right: 14px;
-  color: rgba(255, 179, 71, 0.22);
-  font-size: 0.68rem;
-  transition: transform var(--dur-fast), opacity var(--dur-fast);
-}
-
-.day-card:hover {
-  transform: translateY(-2px) scale(1.01);
-  border-color: var(--accent-border);
-  box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.18),
-    0 0 24px rgba(198, 90, 58, 0.06);
+  top: 14px;
+  right: 16px;
+  color: rgba(255, 179, 71, 0.2);
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  pointer-events: none;
 }
 
 .day-card:hover::before {
-  transform: scale(1.14);
+  transform: rotate(15deg) scale(1.2);
+  color: rgba(255, 179, 71, 0.5);
 }
 
+/* Efecto hover */
+.day-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(198, 90, 58, 0.3);
+  box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(198, 90, 58, 0.1);
+}
+
+/* Día abierto */
 .day-card.opened {
   border-color: var(--accent-coral);
-  background:
-    radial-gradient(circle at top right, rgba(198, 90, 58, 0.16), transparent 30%),
-    rgba(255, 255, 255, 0.03);
-  box-shadow:
-    inset 0 0 0 1px rgba(198, 90, 58, 0.14),
-    0 16px 32px rgba(0, 0, 0, 0.16),
-    0 0 28px rgba(198, 90, 58, 0.07);
+  background: radial-gradient(circle at top right, rgba(198, 90, 58, 0.12), transparent 40%), rgba(255, 255, 255, 0.02);
+  box-shadow: inset 0 0 0 1px rgba(198, 90, 58, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .day-card.opened::after {
@@ -89,41 +169,94 @@
   top: 12px;
   right: 14px;
   color: var(--accent-coral);
-  font-size: 0.9rem;
-  opacity: 0.9;
+  font-size: 1rem;
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 .day-card.opened::before {
   opacity: 0;
 }
 
+/* Día bloqueado */
+.day-card.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
+.day-card.locked:hover {
+  transform: none;
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+
+.day-card.locked:hover::before {
+  transform: none;
+}
+
+/* Número del día - MÁS GRANDE */
 .day-number {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-size: clamp(2rem, 5vw, 3.2rem);
   line-height: 1;
   color: var(--umbra-light);
+  font-weight: 500;
+  margin-bottom: 8px;
 }
 
-.muted {
-  display: none;
+/* Estado del día */
+.day-status {
+  font-size: 0.75rem;
+  color: var(--umbra-ash);
+  letter-spacing: 0.05em;
 }
 
+/* Icono de candado */
+.lock-icon {
+  position: absolute;
+  font-size: 0.9rem;
+  opacity: 0.6;
+  bottom: 12px;
+  right: 12px;
+  pointer-events: none;
+}
+
+/* Efecto de pulsación al hacer clic */
+.day-card:active {
+  transform: scale(0.98);
+  transition: transform 0.05s ease;
+}
+
+/* ==========================================
+   CAJA DE SORPRESA (MODAL)
+   ========================================== */
 .surprise-box {
   margin-top: 24px;
   padding: 26px 24px;
   border-radius: 26px;
   border: 1px solid rgba(198, 90, 58, 0.28);
-  background:
-    radial-gradient(circle at top right, rgba(255, 179, 71, 0.1), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(198, 90, 58, 0.05));
+  background: radial-gradient(circle at top right, rgba(255, 179, 71, 0.1), transparent 24%), linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(198, 90, 58, 0.05));
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16);
   display: none;
   overflow: hidden;
+  position: relative;
+  animation: glowIn 0.26s ease;
 }
 
 .surprise-box.show {
   display: block;
-  animation: glow-in 260ms ease;
+}
+
+@keyframes glowIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .surprise-box::after {
@@ -133,6 +266,7 @@
   right: 20px;
   color: rgba(255, 179, 71, 0.34);
   font-size: 1rem;
+  pointer-events: none;
 }
 
 .surprise-eyebrow {
@@ -148,6 +282,7 @@
   margin-bottom: 10px;
   color: var(--umbra-light);
   font-size: 1.55rem;
+  font-family: 'Playfair Display', serif;
 }
 
 .surprise-box p {
@@ -155,14 +290,682 @@
   line-height: 1.85;
 }
 
-@keyframes glow-in {
+/* Botón cerrar sorpresa */
+.surprise-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--umbra-ash);
+  cursor: pointer;
+  z-index: 15;
+  transition: all 0.2s ease;
+}
+
+.surprise-close-btn i {
+  width: 20px;
+  height: 20px;
+}
+
+.surprise-close-btn:hover {
+  color: var(--umbra-light);
+  transform: scale(1.05);
+}
+
+/* Contenido dinámico */
+#surpriseDynamicContent {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+#surpriseDynamicContent::-webkit-scrollbar {
+  width: 4px;
+}
+
+#surpriseDynamicContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#surpriseDynamicContent::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+/* ==========================================
+   TIPOS DE SORPRESAS
+   ========================================== */
+
+/* Carta flotante */
+.surprise-letter {
+  perspective: 1000px;
+}
+
+.letter-envelope {
+  position: relative;
+  background: #f9e5c0;
+  padding: 24px;
+  border-radius: 8px;
+  animation: floatLetter 0.6s ease-out;
+}
+
+@keyframes floatLetter {
+  from {
+    transform: translateY(30px) rotateX(-10deg);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) rotateX(0);
+    opacity: 1;
+  }
+}
+
+.letter-body p {
+  color: #2c2c2c !important;
+}
+
+/* Máquina de escribir */
+.paper-stack {
+  background: #fff8e7;
+  color: #2c2c2c;
+  padding: 24px;
+  border-radius: 12px;
+  font-family: 'Courier New', monospace;
+  min-height: 100px;
+}
+
+.paper-text {
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #2c2c2c;
+}
+
+/* Cassette retro */
+.cassette-player {
+  background: linear-gradient(145deg, #2a2a2e, #1a1a1c);
+  padding: 20px;
+  border-radius: 24px;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05), 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.cassette-tape {
+  position: relative;
+  background: #3a3a3e;
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.tape-reel {
+  width: 40px;
+  height: 40px;
+  background: #111;
+  border-radius: 50%;
+  border: 2px solid #555;
+  position: relative;
+}
+
+.tape-reel::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  background: #888;
+  border-radius: 50%;
+}
+
+.tape-label {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #ffb347;
+}
+
+.cassette-player p {
+  color: var(--umbra-light) !important;
+}
+
+.cassette-player audio {
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 8px;
+}
+
+/* Polaroids */
+.polaroid-stack {
+  position: relative;
+  min-height: 220px;
+}
+
+.polaroid {
+  position: absolute;
+  background: #f5f0e8;
+  padding: 10px 10px 15px;
+  border-radius: 8px;
+  width: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.polaroid:hover {
+  transform: translateX(-50%) translateY(-20px) rotate(0deg) !important;
+  z-index: 10 !important;
+}
+
+.polaroid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.polaroid-caption {
+  font-size: 10px;
+  text-align: center;
+  margin-top: 6px;
+  color: #333;
+}
+
+.polaroid-stack p {
+  color: var(--umbra-light) !important;
+  margin-top: 80px;
+  text-align: center;
+}
+
+/* Ticket de cine */
+.movie-ticket {
+  background: linear-gradient(135deg, #1e2a3a, #0f1722);
+  border-radius: 16px;
+  padding: 2px;
+}
+
+.ticket-stub {
+  background: #fff8ed;
+  color: #1a1a1c;
+  padding: 24px;
+  border-radius: 14px;
+  position: relative;
+  text-align: center;
+}
+
+.ticket-movie {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: bold;
+  font-family: 'Playfair Display', serif;
+}
+
+.ticket-quote {
+  display: block;
+  font-style: italic;
+  margin: 8px 0;
+  color: #c65a3a;
+}
+
+.ticket-details {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 0.7rem;
+  margin-top: 12px;
+}
+
+.ticket-tear {
+  position: absolute;
+  right: -6px;
+  top: 20px;
+  width: 12px;
+  height: 60px;
+  background: radial-gradient(circle, #c65a3a 2px, transparent 3px);
+  background-size: 4px 4px;
+}
+
+/* Botón mantener presionado */
+.hold-btn {
+  background: var(--accent-coral);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 40px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.1s;
+  margin-top: 16px;
+}
+
+.hold-btn:active {
+  transform: scale(0.98);
+  background: #b34a2e;
+}
+
+/* Cinematic */
+.cinematic-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.cinematic-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px);
+  opacity: 0.3;
+  z-index: 0;
+}
+
+.cinematic-content {
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+}
+
+.cinematic-quote {
+  font-style: italic;
+  font-size: 1.1rem;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* Playlist secreta */
+.playlist-card {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.playlist-song {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.playlist-song:last-child {
+  border-bottom: none;
+}
+
+.playlist-song strong {
+  color: var(--accent-coral);
+}
+
+/* Cámara instantánea */
+.instant-camera img {
+  max-width: 100%;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Corazón latiente */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
+
+.heart-animation {
+  font-size: 4rem;
+  animation: heartbeat 1s infinite;
+}
+
+/* Caja de regalo */
+.gift-box {
+  text-align: center;
+}
+
+.gift-icon {
+  font-size: 4rem;
+}
+
+/* Carta confidencial */
+.confidential-letter {
+  background: #1a1a2e;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid #c65a3a;
+}
+
+.confidential-letter > div:first-child {
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+/* Constelación */
+.star-card {
+  margin: 12px 0;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.star-card strong {
+  color: #ffb347;
+}
+
+/* ==========================================
+   LIGHTBOX
+   ========================================== */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 8, 9, 0.95);
+  backdrop-filter: blur(12px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.lightbox.active {
+  display: flex;
+}
+
+.lightbox-content {
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.lightbox-content img,
+.lightbox-content video {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 16px;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lightbox-close:hover {
+  background: rgba(198, 90, 58, 0.5);
+}
+
+.lightbox-caption {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  color: var(--umbra-ash);
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+/* ==========================================
+   TOAST NOTIFICACIONES
+   ========================================== */
+.toast-message {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--umbra-dark);
+  border-left: 4px solid var(--accent-coral);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 40px;
+  font-size: 0.85rem;
+  z-index: 2000;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  animation: toastFadeIn 0.3s ease;
+}
+
+@keyframes toastFadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateX(-50%) translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ==========================================
+   MODAL FLOTANTE PARA SORPRESAS
+   ========================================== */
+.surprise-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(8, 8, 9, 0.85);
+  backdrop-filter: blur(16px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: modalFadeIn 0.3s ease;
+}
+
+.surprise-modal.active {
+  display: flex;
+}
+
+.surprise-modal-content {
+  position: relative;
+  max-width: 550px;
+  width: 90%;
+  max-height: 85vh;
+  background: linear-gradient(180deg, rgba(25, 25, 30, 0.98), rgba(15, 15, 18, 0.98));
+  border: 1px solid var(--accent-border);
+  border-radius: 32px;
+  padding: 32px 28px;
+  overflow-y: auto;
+  animation: modalPop 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.surprise-modal-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.surprise-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.surprise-modal-content::-webkit-scrollbar-thumb {
+  background: rgba(198, 90, 58, 0.3);
+  border-radius: 10px;
+}
+
+.surprise-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--umbra-ash);
+  transition: all 0.2s;
+}
+
+.surprise-modal-close:hover {
+  background: rgba(198, 90, 58, 0.2);
+  color: var(--accent-coral);
+  transform: rotate(90deg);
+}
+
+.surprise-modal-close i {
+  width: 18px;
+  height: 18px;
+}
+
+.surprise-modal-icon {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.surprise-modal-content h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem;
+  text-align: center;
+  color: var(--umbra-light);
+  margin-bottom: 20px;
+}
+
+.surprise-modal-body {
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.surprise-modal-body::-webkit-scrollbar {
+  width: 3px;
+}
+
+.surprise-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.surprise-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+.surprise-modal-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: 1px solid var(--accent-border);
+  border-radius: 40px;
+  padding: 10px 28px;
+  color: var(--umbra-light);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.modal-close-btn:hover {
+  background: rgba(198, 90, 58, 0.15);
+  border-color: var(--accent-coral);
+  transform: translateY(-1px);
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Panel de administración */
+.admin-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(180deg, #1a1a1c, #0f0f10);
+  border: 1px solid var(--accent-border);
+  border-radius: 28px;
+  padding: 28px;
+  max-width: 400px;
+  width: 90%;
+  z-index: 2100;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.admin-panel h3 {
+  margin-bottom: 20px;
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+}
+
+.admin-panel input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: white;
+  margin-bottom: 16px;
+}
+
+.admin-panel button {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--accent-coral);
+  border: none;
+  border-radius: 40px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-panel button:hover {
+  background: #b34a2e;
+  transform: translateY(-1px);
+}
+
+.admin-panel .admin-cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-panel .admin-cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: none;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (min-width: 1200px) {
+  .calendar-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .calendar-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
   }
 }
 
@@ -176,204 +979,208 @@
   }
 
   .calendar-grid {
-    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
   }
 
   .day-card {
-    border-radius: 18px;
-    padding: 10px;
+    border-radius: 22px;
+    padding: 14px;
   }
 
   .day-card::before,
   .day-card.opened::after {
-    top: 8px;
-    right: 10px;
-    font-size: 0.72rem;
+    top: 10px;
+    right: 12px;
+    font-size: 0.7rem;
+  }
+
+  .day-number {
+    font-size: clamp(1.5rem, 5vw, 2rem);
   }
 
   .surprise-box {
     padding: 22px 18px;
     border-radius: 22px;
   }
-}
 
-/* Estilos para las nuevas sorpresas interactivas */
+  .surprise-box h3 {
+    font-size: 1.3rem;
+  }
 
-/* Carta flotante */
-.surprise-letter {
-    perspective: 1000px;
-}
-.letter-envelope {
-    position: relative;
-    background: #f9e5c0;
-    padding: 24px;
-    border-radius: 8px;
-    animation: floatLetter 0.6s ease-out;
-}
-@keyframes floatLetter {
-    from { transform: translateY(30px) rotateX(-10deg); opacity: 0; }
-    to { transform: translateY(0) rotateX(0); opacity: 1; }
-}
-
-/* Máquina de escribir */
-.paper-stack {
-    background: #fff8e7;
-    color: #2c2c2c;
-    padding: 24px;
-    border-radius: 12px;
-    font-family: 'Courier New', monospace;
-    min-height: 100px;
-}
-.paper-text {
-    white-space: pre-wrap;
-    font-size: 0.95rem;
-    line-height: 1.6;
-}
-
-/* Cassette retro */
-.cassette-player {
-    background: linear-gradient(145deg, #2a2a2e, #1a1a1c);
-    padding: 20px;
-    border-radius: 24px;
-    box-shadow: inset 0 1px 2px rgba(255,255,255,0.05), 0 8px 20px rgba(0,0,0,0.3);
-}
-.cassette-tape {
-    position: relative;
-    background: #3a3a3e;
-    padding: 16px;
-    border-radius: 12px;
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 16px;
-}
-.tape-reel {
-    width: 40px;
-    height: 40px;
-    background: #111;
-    border-radius: 50%;
-    border: 2px solid #555;
-    position: relative;
-}
-.tape-reel::after {
-    content: '';
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 16px;
-    height: 16px;
-    background: #888;
-    border-radius: 50%;
-}
-.tape-label {
-    position: absolute;
-    bottom: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: #ffb347;
-}
-
-/* Polaroids */
-.polaroid-stack {
-    position: relative;
-    min-height: 220px;
-}
-.polaroid {
-    position: absolute;
-    background: #f5f0e8;
-    padding: 10px 10px 15px;
-    border-radius: 8px;
-    width: 140px;
-    left: 50%;
-    transform: translateX(-50%);
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-.polaroid:hover {
-    transform: translateX(-50%) translateY(-20px) rotate(0deg) !important;
-    z-index: 10 !important;
-}
-.polaroid img {
-    width: 100%;
-    aspect-ratio: 1;
-    object-fit: cover;
-    border-radius: 4px;
-}
-.polaroid-caption {
-    font-size: 10px;
+  .toast-message {
+    white-space: normal;
+    max-width: 90%;
     text-align: center;
-    margin-top: 6px;
-    color: #333;
+    font-size: 0.75rem;
+    padding: 10px 16px;
+  }
+
+  .polaroid {
+    width: 100px;
+  }
+
+  .surprise-modal-content {
+    padding: 24px 20px;
+    width: 92%;
+  }
+
+  .surprise-modal-content h3 {
+    font-size: 1.3rem;
+  }
+
+  .surprise-modal-body {
+    max-height: 50vh;
+  }
 }
 
-/* Ticket de cine */
-.movie-ticket {
-    background: linear-gradient(135deg, #1e2a3a, #0f1722);
-    border-radius: 16px;
-    padding: 2px;
-}
-.ticket-stub {
-    background: #fff8ed;
-    color: #1a1a1c;
-    padding: 24px;
-    border-radius: 14px;
-    position: relative;
-    text-align: center;
-}
-.ticket-movie {
-    display: block;
-    font-size: 1.4rem;
-    font-weight: bold;
-    font-family: 'Playfair Display', serif;
-}
-.ticket-quote {
-    display: block;
-    font-style: italic;
-    margin: 8px 0;
-    color: #c65a3a;
-}
-.ticket-details {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    font-size: 0.7rem;
-    margin-top: 12px;
-}
-.ticket-tear {
-    position: absolute;
-    right: -6px;
-    top: 20px;
-    width: 12px;
-    height: 60px;
-    background: radial-gradient(circle, #c65a3a 2px, transparent 3px);
-    background-size: 4px 4px;
+@media (max-width: 480px) {
+  .calendar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  
+  .day-card {
+    border-radius: 18px;
+    padding: 12px;
+  }
 }
 
-/* Botón mantener presionado */
-.hold-btn {
-    background: var(--accent-coral);
-    border: none;
-    padding: 12px 24px;
-    border-radius: 40px;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.1s;
-    margin-top: 16px;
-}
-.hold-btn:active {
-    transform: scale(0.98);
-    background: #b34a2e;
-}
-
-/* Botón cerrar sorpresa */
-#closeSurpriseBtn i {
-    width: 20px;
-    height: 20px;
-}
-#closeSurpriseBtn:hover {
-    color: var(--umbra-light);
-    transform: scale(1.05);
-}
+/* Estilos de respaldo por si no carga el CSS externo */
+        .calendario-page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .calendario-intro {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .calendario-intro h2 {
+            font-size: 2.5rem;
+            cursor: pointer;
+        }
+        .calendario-intro h2::after {
+            content: ' ✧';
+            color: #c65a3a;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .day-card {
+            aspect-ratio: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .day-card:hover {
+            transform: translateY(-3px);
+            border-color: #c65a3a;
+        }
+        .day-card.opened {
+            border-color: #c65a3a;
+            background: rgba(198,90,58,0.2);
+        }
+        .day-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .day-card.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .day-number {
+            font-size: 1.8rem;
+        }
+        .day-status {
+            font-size: 0.8rem;
+        }
+        .surprise-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(12px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .surprise-modal.active {
+            display: flex;
+        }
+        .surprise-modal-content {
+            background: #1a1a1c;
+            border: 1px solid #c65a3a;
+            border-radius: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+        }
+        .surprise-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .toast-message {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1c;
+            border-left: 4px solid #c65a3a;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 40px;
+            z-index: 2100;
+        }
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+        .lightbox.active {
+            display: flex;
+        }
+        .lightbox-content img {
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+        }

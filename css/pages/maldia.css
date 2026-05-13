@@ -1,83 +1,119 @@
-/* maldia.css – Fondo emocional multicapa con glow, partículas y glassmorphism */
+/* maldia.css · Versión simplificada */
 
-/* ========== 1. Fondo base multicapa ========== */
-body {
-    background: #0F0F10;
-    position: relative;
-}
-
-/* Capa 1: Gradiente cálido radial (top right) */
-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at top right, rgba(255, 165, 0, 0.08), transparent 60%),
-                radial-gradient(ellipse at left, rgba(198, 90, 58, 0.06), transparent 50%);
-    pointer-events: none;
-    z-index: 0;
-}
-
-/* Capa 2: Ruido sutil (noise pattern) */
-body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    opacity: 0.04;
-    pointer-events: none;
-    z-index: 0;
-}
-
-/* Capa 3: Glow ambiental central */
-.glow-overlay {
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(circle at 60% 40%, rgba(255, 179, 71, 0.12), transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-}
-
-/* Contenedor principal */
+/* ==========================================
+   CONTENEDOR PRINCIPAL
+   ========================================== */
 .maldia-container {
     position: relative;
     z-index: 2;
-    max-width: 1280px;
+    max-width: 800px;
     margin: 0 auto;
-    padding: 24px 0 80px;
+    padding: 20px 0 60px;
 }
 
-/* Header */
+/* ==========================================
+   BARRA DE NAVEGACIÓN INTERNA
+   ========================================== */
+.maldia-nav-bar {
+    background: rgba(15, 15, 16, 0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 60px;
+    padding: 6px;
+    margin: 0 auto 28px auto;
+    width: fit-content;
+    max-width: 95%;
+}
+
+.maldia-nav-links {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+}
+
+.maldia-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 40px;
+    color: var(--umbra-ash);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.maldia-nav-link i {
+    width: 16px;
+    height: 16px;
+}
+
+.maldia-nav-link:hover {
+    background: rgba(198, 90, 58, 0.12);
+    color: var(--accent-coral);
+}
+
+.maldia-nav-link.active {
+    background: linear-gradient(135deg, rgba(198, 90, 58, 0.2), rgba(198, 90, 58, 0.08));
+    border: 1px solid rgba(198, 90, 58, 0.3);
+    color: var(--accent-coral);
+}
+
+@media (max-width: 640px) {
+    .maldia-nav-link span {
+        display: none;
+    }
+    .maldia-nav-link {
+        padding: 8px 12px;
+    }
+}
+
+/* ==========================================
+   HEADER
+   ========================================== */
 .maldia-header {
     text-align: center;
     margin-bottom: 40px;
+    animation: fadeInUp 0.6s ease forwards;
 }
+
+.maldia-header-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
 .maldia-header h1 {
     font-family: 'Playfair Display', serif;
-    font-size: 48px;
+    font-size: 2.5rem;
     font-weight: 500;
     color: var(--umbra-light);
-    margin-bottom: 8px;
-}
-.maldia-header p {
-    font-family: 'Inter', sans-serif;
-    color: var(--text-secondary);
-    font-style: italic;
+    margin-bottom: 12px;
 }
 
-/* ========== 2. Tarjeta principal (hero) ========== */
+.maldia-header p {
+    color: var(--umbra-ash);
+    font-size: 0.9rem;
+    max-width: 450px;
+    margin: 0 auto;
+}
+
+/* ==========================================
+   TARJETA PRINCIPAL
+   ========================================== */
 .hero-card {
     position: relative;
-    background: linear-gradient(180deg, rgba(255, 140, 0, 0.2), rgba(0, 0, 0, 0.85));
+    background: linear-gradient(180deg, rgba(198, 90, 58, 0.1), rgba(0, 0, 0, 0.85));
     border-radius: 32px;
-    padding: 48px 36px 56px;
-    margin-bottom: 48px;
+    padding: 40px 32px;
+    margin-bottom: 32px;
     text-align: center;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
 }
 
-/* Glow interno (foco de luz) */
 .hero-glow {
     position: absolute;
     top: -40px;
@@ -85,251 +121,656 @@ body::after {
     transform: translateX(-50%);
     width: 180px;
     height: 180px;
-    background: radial-gradient(circle, rgba(255, 180, 100, 0.4), transparent);
+    background: radial-gradient(circle, rgba(255, 180, 100, 0.2), transparent);
     border-radius: 50%;
     pointer-events: none;
-}
-
-/* Nubes decorativas difuminadas */
-.hero-cloud {
-    position: absolute;
-    bottom: 0;
-    background: radial-gradient(circle, rgba(255, 140, 0, 0.2), transparent);
-    filter: blur(30px);
-    width: 300px;
-    height: 120px;
-    pointer-events: none;
-}
-.cloud-1 {
-    left: -80px;
-}
-.cloud-2 {
-    right: -80px;
-    bottom: -20px;
 }
 
 .hero-card .card-icon {
-    width: 64px;
-    height: 64px;
-    background: rgba(198,90,58,0.2);
+    width: 60px;
+    height: 60px;
+    background: rgba(198, 90, 58, 0.2);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 24px;
-}
-.hero-card .card-icon i {
-    width: 32px;
-    height: 32px;
-    color: var(--accent);
-}
-.hero-card h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.8rem;
-    margin-bottom: 16px;
-    color: var(--umbra-light);
-}
-.hero-message {
-    font-size: 1.2rem;
-    line-height: 1.7;
-    color: rgba(255,255,255,0.85);
-    max-width: 700px;
-    margin: 0 auto 32px;
-    font-style: italic;
+    margin: 0 auto 20px;
 }
 
-/* Botones de acción */
+.hero-card .card-icon i {
+    width: 30px;
+    height: 30px;
+    color: var(--accent-coral);
+}
+
+.hero-card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    margin-bottom: 20px;
+    color: var(--umbra-light);
+}
+
+.hero-message-wrapper {
+    max-width: 600px;
+    margin: 0 auto 28px;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 20px;
+    border-left: 3px solid var(--accent-coral);
+}
+
+.hero-message {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+    font-style: italic;
+    margin: 0;
+}
+
+/* Botones */
 .hero-actions {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
 }
+
 .action-btn {
-    background: rgba(198,90,58,0.15);
-    border: 1px solid var(--accent);
+    background: rgba(198, 90, 58, 0.12);
+    border: 1px solid rgba(198, 90, 58, 0.3);
     border-radius: 40px;
-    padding: 10px 24px;
-    color: var(--accent);
+    padding: 10px 20px;
+    color: var(--accent-coral);
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.9rem;
-    transition: all 0.2s;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
     cursor: pointer;
 }
+
 .action-btn:hover {
-    background: var(--accent);
+    background: var(--accent-coral);
     color: white;
     transform: translateY(-2px);
 }
 
-/* Reproductor minimalista */
+.action-btn.primary {
+    background: var(--accent-coral);
+    color: white;
+}
+
+.action-btn.primary:hover {
+    background: #b34a2e;
+}
+
+/* Reproductor música */
+.music-player {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+}
+
 .music-wave {
     display: flex;
-    justify-content: center;
     align-items: center;
     gap: 4px;
-    margin-bottom: 8px;
 }
+
 .wave-bar {
-    width: 4px;
-    height: 20px;
-    background: linear-gradient(180deg, #C65A3A, rgba(198,90,58,0.2));
+    width: 3px;
+    height: 16px;
+    background: linear-gradient(180deg, var(--accent-coral), rgba(198, 90, 58, 0.3));
     border-radius: 2px;
-    animation: wave 1s ease-in-out infinite;
+    transition: height 0.1s ease;
 }
-.wave-bar:nth-child(1) { animation-delay: 0s; height: 12px; }
-.wave-bar:nth-child(2) { animation-delay: 0.2s; height: 24px; }
-.wave-bar:nth-child(3) { animation-delay: 0.4s; height: 18px; }
-.wave-bar:nth-child(4) { animation-delay: 0.6s; height: 28px; }
-.wave-bar:nth-child(5) { animation-delay: 0.8s; height: 14px; }
-@keyframes wave {
+
+.music-wave.playing .wave-bar {
+    animation: waveAnim 0.8s ease-in-out infinite;
+}
+
+.music-wave.playing .wave-bar:nth-child(1) { animation-delay: 0s; }
+.music-wave.playing .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+.music-wave.playing .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+.music-wave.playing .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+.music-wave.playing .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+.music-wave.playing .wave-bar:nth-child(6) { animation-delay: 0.5s; }
+
+@keyframes waveAnim {
     0%, 100% { transform: scaleY(0.5); opacity: 0.4; }
     50% { transform: scaleY(1); opacity: 1; }
 }
+
 .music-label {
     font-size: 0.7rem;
-    color: var(--text-secondary);
-    letter-spacing: 0.08em;
+    color: var(--umbra-ash);
 }
 
-/* ========== 3. Grid de tarjetas glassmorphism ========== */
-.cards-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-}
-.glass-card {
-    background: rgba(255,255,255,0.02);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 24px;
-    padding: 28px 24px;
+.music-toggle-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--umbra-ash);
     transition: all 0.2s;
 }
-.glass-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(198,90,58,0.1);
+
+.music-toggle-btn:hover {
+    color: var(--accent-coral);
 }
+
+/* ==========================================
+   TARJETA DE MENSAJE (SIMPLE)
+   ========================================== */
+.glass-card {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 28px 24px;
+    margin-bottom: 24px;
+    transition: all 0.2s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(198, 90, 58, 0.2);
+}
+
 .card-icon.small {
     width: 48px;
     height: 48px;
-    background: rgba(198,90,58,0.15);
+    background: rgba(198, 90, 58, 0.12);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 20px;
 }
+
 .card-icon.small i {
     width: 24px;
     height: 24px;
-    color: var(--accent);
+    color: var(--accent-coral);
 }
+
 .glass-card h3 {
     font-family: 'Playfair Display', serif;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     margin-bottom: 16px;
 }
-.boost-number {
-    font-size: 3rem;
-    font-weight: 600;
-    color: var(--accent);
-    margin: 16px 0;
-    font-family: monospace;
+
+.daily-message {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--umbra-light);
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-style: italic;
 }
+
 .mini-btn {
     background: transparent;
-    border: 1px solid var(--accent);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 40px;
     padding: 8px 20px;
-    color: var(--accent);
+    color: var(--umbra-ash);
     display: inline-flex;
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    transition: all 0.2s;
-}
-.mini-btn:hover {
-    background: var(--accent);
-    color: white;
-}
-.memory-image {
+    transition: all 0.2s ease;
     width: 100%;
-    border-radius: 16px;
-    margin-top: 16px;
-    filter: brightness(0.9) contrast(1.1);
-    border: 1px solid rgba(255,255,255,0.1);
-}
-.reminder-text {
-    font-size: 0.85rem;
-    line-height: 1.7;
-    color: var(--text-secondary);
+    justify-content: center;
+    font-size: 0.8rem;
 }
 
-/* ========== 4. Decoraciones flotantes (corazones, estrellas, avión) ========== */
+.mini-btn:hover {
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
+}
+
+/* ==========================================
+   RESPIRACIÓN GUIADA
+   ========================================== */
+.breathing-section {
+    text-align: center;
+}
+
+.breathing-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 60px;
+    padding: 14px 32px;
+    color: var(--umbra-light);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+
+.breathing-btn:hover {
+    background: rgba(198, 90, 58, 0.1);
+    border-color: var(--accent-coral);
+    transform: translateY(-2px);
+}
+
+.breathing-btn i {
+    width: 22px;
+    height: 22px;
+    color: var(--accent-coral);
+}
+
+/* Modal respiración */
+.breathing-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(8, 8, 9, 0.92);
+    backdrop-filter: blur(16px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.breathing-modal.active {
+    display: flex;
+}
+
+.breathing-modal-content {
+    text-align: center;
+    position: relative;
+}
+
+.breathing-circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(198, 90, 58, 0.1);
+    border: 2px solid var(--accent-coral);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    transition: transform 0.1s linear;
+}
+
+.breathing-text {
+    font-size: 1.5rem;
+    color: var(--umbra-light);
+    font-weight: 500;
+}
+
+.breathing-instruction {
+    color: var(--umbra-ash);
+    margin-bottom: 20px;
+}
+
+.breathing-stop-btn {
+    background: rgba(198, 90, 58, 0.2);
+    border: 1px solid var(--accent-coral);
+    border-radius: 40px;
+    padding: 10px 24px;
+    color: var(--accent-coral);
+    cursor: pointer;
+}
+
+.breathing-stop-btn:hover {
+    background: var(--accent-coral);
+    color: white;
+}
+
+.breathing-modal-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: none;
+    border: none;
+    color: var(--umbra-ash);
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+/* ==========================================
+   MODAL "ME SIENTO MEJOR"
+   ========================================== */
+.better-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(8, 8, 9, 0.95);
+    backdrop-filter: blur(16px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+}
+
+.better-modal.active {
+    display: flex;
+}
+
+.better-modal-content {
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    background: linear-gradient(135deg, #1a1a1c, #0f0f10);
+    border: 1px solid var(--accent-border);
+    border-radius: 32px;
+    padding: 32px;
+    animation: modalPop 0.4s ease;
+}
+
+.better-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--umbra-ash);
+    font-size: 1.2rem;
+}
+
+.better-modal-close:hover {
+    background: rgba(198, 90, 58, 0.2);
+    color: var(--accent-coral);
+}
+
+.better-video-container {
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.better-video-container video {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+}
+
+.better-message i {
+    width: 48px;
+    height: 48px;
+    color: var(--accent-coral);
+    margin-bottom: 16px;
+}
+
+.better-message h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--accent-coral);
+    margin-bottom: 8px;
+}
+
+.better-message p {
+    color: var(--umbra-ash);
+}
+
+@keyframes modalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ==========================================
+   DECORACIONES FLOTANTES
+   ========================================== */
 .floating-heart {
     position: fixed;
     font-size: 1.2rem;
-    opacity: 0.2;
-    filter: blur(1px);
+    opacity: 0.12;
     pointer-events: none;
     z-index: 1;
     animation: float-slow 8s ease-in-out infinite;
 }
+
 .heart-1 { top: 15%; right: 5%; font-size: 2rem; animation-delay: 0s; }
 .heart-2 { bottom: 20%; left: 3%; font-size: 1.8rem; animation-delay: 2s; }
-.heart-3 { top: 40%; right: 12%; font-size: 1.5rem; animation-delay: 4s; }
 
 .floating-star {
     position: fixed;
     font-size: 1rem;
-    opacity: 0.3;
+    opacity: 0.12;
     pointer-events: none;
     z-index: 1;
     animation: twinkle 4s ease-in-out infinite;
 }
+
 .star-1 { top: 25%; left: 8%; font-size: 1.2rem; animation-delay: 0.5s; }
 .star-2 { bottom: 35%; right: 15%; font-size: 0.9rem; animation-delay: 1.5s; }
 
-.paper-plane {
-    position: fixed;
-    bottom: 8%;
-    left: 5%;
-    font-size: 1.6rem;
-    opacity: 0.15;
-    transform: rotate(-15deg);
-    pointer-events: none;
-    z-index: 1;
-    animation: glide 12s ease-in-out infinite;
-}
-
 @keyframes float-slow {
-    0%, 100% { transform: translateY(0px); opacity: 0.2; }
-    50% { transform: translateY(-15px); opacity: 0.35; }
-}
-@keyframes twinkle {
-    0%, 100% { opacity: 0.2; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.1); }
-}
-@keyframes glide {
-    0% { transform: translate(0, 0) rotate(-15deg); opacity: 0.1; }
-    50% { transform: translate(20px, -15px) rotate(-10deg); opacity: 0.25; }
-    100% { transform: translate(0, 0) rotate(-15deg); opacity: 0.1; }
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
 }
 
-/* ========== 5. Responsive ========== */
-@media (max-width: 1024px) {
-    .cards-grid {
-        grid-template-columns: repeat(2, 1fr);
+@keyframes twinkle {
+    0%, 100% { opacity: 0.08; transform: scale(1); }
+    50% { opacity: 0.2; transform: scale(1.05); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
 @media (max-width: 768px) {
-    .maldia-header h1 { font-size: 2.5rem; }
-    .hero-card { padding: 32px 24px; }
-    .hero-message { font-size: 1rem; }
-    .cards-grid { grid-template-columns: 1fr; gap: 20px; }
-    .floating-heart, .floating-star, .paper-plane { display: none; }
+    .maldia-header h1 {
+        font-size: 2rem;
+    }
+
+    .hero-card {
+        padding: 28px 20px;
+    }
+
+    .hero-message {
+        font-size: 0.95rem;
+    }
+
+    .action-btn span {
+        display: none;
+    }
+
+    .action-btn {
+        padding: 10px 14px;
+    }
+    
+    .floating-heart,
+    .floating-star {
+        display: none;
+    }
+
+    .breathing-circle {
+        width: 150px;
+        height: 150px;
+    }
+
+    .breathing-text {
+        font-size: 1.2rem;
+    }
+}
+
+/* ==========================================
+   SECCIÓN DE RECUERDOS
+   ========================================== */
+.memory-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.memory-frame {
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.memory-image {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    cursor: pointer;
+}
+
+.memory-image:hover {
+    transform: scale(1.02);
+}
+
+.memory-caption {
+    font-size: 0.8rem;
+    color: var(--umbra-ash);
+    text-align: center;
+    margin: 12px 0;
+    font-style: italic;
+}
+
+.mini-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 40px;
+    padding: 8px 20px;
+    color: var(--umbra-ash);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    justify-content: center;
+    font-size: 0.8rem;
+}
+
+.mini-btn:hover {
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
+    background: rgba(198, 90, 58, 0.05);
+}
+
+/* ==========================================
+   MODAL MEJORADO (cierre tocando fuera)
+   ========================================== */
+.better-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(8, 8, 9, 0.95);
+    backdrop-filter: blur(16px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+}
+
+.better-modal.active {
+    display: flex;
+}
+
+.better-modal-content {
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    background: linear-gradient(135deg, #1a1a1c, #0f0f10);
+    border: 1px solid var(--accent-border);
+    border-radius: 32px;
+    padding: 32px;
+    animation: modalPop 0.4s ease;
+    position: relative;
+    cursor: default;
+}
+
+.better-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--umbra-ash);
+    font-size: 1.2rem;
+    transition: all 0.2s;
+}
+
+.better-modal-close:hover {
+    background: rgba(198, 90, 58, 0.2);
+    color: var(--accent-coral);
+}
+
+.better-video-container {
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.better-video-container video {
+    width: 100%;
+    max-height: 280px;
+    object-fit: cover;
+}
+
+.better-message i {
+    width: 48px;
+    height: 48px;
+    color: var(--accent-coral);
+    margin-bottom: 16px;
+}
+
+.better-message h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--accent-coral);
+    margin-bottom: 8px;
+}
+
+.better-message p {
+    color: var(--umbra-ash);
+}
+
+@keyframes modalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }

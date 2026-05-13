@@ -259,3 +259,62 @@
         display: none;
     }
 }
+
+/* ==========================================
+   Animación suave y lenta para cartas (como en Razones)
+   ========================================== */
+
+/* Animación de entrada tipo fadeInUp (igual que razones) */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Cada carta aparece con un pequeño retraso progresivo */
+.letter-card {
+    opacity: 0;
+    animation: fadeInUp 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+}
+
+.letter-card:nth-child(1) { animation-delay: 0.05s; }
+.letter-card:nth-child(2) { animation-delay: 0.1s; }
+.letter-card:nth-child(3) { animation-delay: 0.15s; }
+.letter-card:nth-child(4) { animation-delay: 0.2s; }
+.letter-card:nth-child(5) { animation-delay: 0.25s; }
+.letter-card:nth-child(6) { animation-delay: 0.3s; }
+
+/* Animación suave para el contenido al abrir la carta */
+.letter-card.open .letter-content-open {
+    display: block;
+    animation: contentReveal 0.5s cubic-bezier(0.2, 0.9, 0.4, 1) forwards;
+}
+
+@keyframes contentReveal {
+    0% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Transición suave para ocultar elementos al abrir */
+.letter-card.open .card-icon,
+.letter-card.open h3,
+.letter-card.open .letter-note,
+.letter-card.open .open-btn {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* Cierre suave */
+.letter-card:not(.open) .letter-content-open {
+    transition: opacity 0.2s ease;
+}

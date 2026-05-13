@@ -12,6 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
+    <script src="../js/sentimientos-nav.js"></script>
 </head>
 <body data-sidebar-root=".." data-sidebar-page="openwhen">
 
@@ -24,23 +25,30 @@
 
 <!-- Contenido principal -->
 <main class="page-shell">
-    <div class="openwhen-container">
-        <!-- Header -->
-        <div class="openwhen-header">
-            <h1>Open When</h1>
-            <p>Cartas para abrir solo cuando toque.</p>
-        </div>
+    <div class="page">
+        <!-- ✅ AÑADIR ESTE BOTÓN -->
+        <button class="back-btn" onclick="window.location.href='/'">
+            <i data-lucide="arrow-left"></i> Volver al Hub
+        </button>
 
-        <!-- Grid de cartas -->
-        <div class="letters-grid" id="lettersGrid">
-            <!-- Las cartas se llenarán con JS -->
-        </div>
+        <div class="openwhen-container">
+            <!-- Header -->
+            <div class="openwhen-header">
+                <h1>Open When</h1>
+                <p>Cartas para abrir solo cuando toque.</p>
+            </div>
 
-        <!-- Decoraciones flotantes -->
-        <div class="floating-ornament ornament-1">✉️</div>
-        <div class="floating-ornament ornament-2">🤍</div>
-        <div class="floating-ornament ornament-3">✨</div>
-        <div class="floating-ornament ornament-4">✧</div>
+            <!-- Grid de cartas -->
+            <div class="letters-grid" id="lettersGrid">
+                <!-- Las cartas se llenarán con JS -->
+            </div>
+
+            <!-- Decoraciones flotantes -->
+            <div class="floating-ornament ornament-1">✉️</div>
+            <div class="floating-ornament ornament-2">🤍</div>
+            <div class="floating-ornament ornament-3">✨</div>
+            <div class="floating-ornament ornament-4">✧</div>
+        </div>
     </div>
 </main>
 

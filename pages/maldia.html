@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mal día · Emergencia emocional</title>
-    <meta name="description" content="Un abrazo rápido en formato web">
+    <title>Mal Día · Un abrazo para ti</title>
+    <meta name="description" content="Un espacio para sentirte mejor">
     <meta name="theme-color" content="#0F0F10">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/maldia.css">
@@ -15,104 +15,188 @@
 </head>
 <body data-sidebar-root=".." data-sidebar-page="maldia">
 
-<!-- Sidebar universal -->
-<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
-    <i data-lucide="menu"></i>
-</button>
-<div class="sidebar-overlay" data-sidebar-overlay></div>
-<aside class="sidebar" data-sidebar></aside>
+    <!-- Sidebar -->
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+        <i data-lucide="menu"></i>
+    </button>
+    <div class="sidebar-overlay" data-sidebar-overlay></div>
+    <aside class="sidebar" data-sidebar></aside>
 
-<!-- Contenido principal -->
-<main class="page-shell">
-    <div class="maldia-container">
-        <!-- Cabecera -->
-        <div class="maldia-header">
-            <h1>Mal día</h1>
-            <p>Un abrazo rápido en formato web</p>
+    <main class="page-shell">
+        <div class="page">
+            <!-- Botón volver -->
+            <button class="back-btn" onclick="window.location.href='/'">
+                <i data-lucide="arrow-left"></i> Volver al Hub
+            </button>
+
+            <!-- Barra de navegación interna -->
+            <div class="maldia-nav-bar">
+                <div class="maldia-nav-links">
+
+                    <a href="sentimientos.html" class="maldia-nav-link">
+                        <i data-lucide="grid"></i>
+                        <span>Hub</span>
+                    </a>
+
+                    <a href="razones.html" class="maldia-nav-link">
+                        <i data-lucide="sparkles"></i>
+                        <span>Razones</span>
+                    </a>
+                    <a href="openwhen.html" class="maldia-nav-link">
+                        <i data-lucide="mail"></i>
+                        <span>Open When</span>
+                    </a>
+                    <a href="calendario.html" class="maldia-nav-link">
+                        <i data-lucide="calendar-days"></i>
+                        <span>Calendario</span>
+                    </a>
+                    <a href="maldia.html" class="maldia-nav-link active">
+                        <i data-lucide="sun-medium"></i>
+                        <span>Mal Día</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="maldia-container">
+                <!-- Cabecera -->
+                <div class="maldia-header">
+                    <div class="maldia-header-icon"></div>
+                    <h1>¿Día gris?</h1>
+                    <p>No estás sola. Respira, tómate un momento y recuerda que te amo.</p>
+                </div>
+
+                <!-- Tarjeta principal -->
+                <div class="hero-card">
+                    <div class="hero-glow"></div>
+                    
+                    <div class="card-icon">
+                        <i data-lucide="heart"></i>
+                    </div>
+                    
+                    <h2>Frases que pueden ayudarte</h2>
+                    
+                    <div class="hero-message-wrapper">
+                        <p class="hero-message" id="heroMessage">
+                            Respira. No tienes que arreglarlo todo ahora mismo. 
+                            Primero: agua, aire y un poquito de ternura contigo.
+                        </p>
+                    </div>
+                    
+                    <div class="hero-actions">
+                        <button class="action-btn" id="newPhraseBtn">
+                            <i data-lucide="sparkles"></i>
+                            <span>Frase nueva</span>
+                        </button>
+                        <button class="action-btn" id="particlesBtn">
+                            <i data-lucide="party-popper"></i>
+                            <span>Algo bonito</span>
+                        </button>
+                        <button class="action-btn primary" id="betterBtn">
+                            <i data-lucide="heart"></i>
+                            <span>Me siento mejor</span>
+                        </button>
+                    </div>
+
+                    <!-- Reproductor de música -->
+                    <div class="music-player">
+                        <div class="music-wave" id="musicWave">
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                        </div>
+                        <span class="music-label" id="musicLabel">🎵 Música feliz</span>
+                        <button class="music-toggle-btn" id="musicBtn">
+                            <i data-lucide="volume-2"></i>
+                        </button>
+                    </div>
+
+                    <audio id="happyAudio" preload="auto" loop>
+                        <source src="https://res.cloudinary.com/dcsent4fs/video/upload/v1777746763/Zzoilo_Aitana_-_Mon_Amour_Remix_Letra_Lyrics_jrgcjv.m4a" type="audio/mpeg">
+                    </audio>
+                </div>
+
+                <!-- Tarjeta de mensaje con recuerdos -->
+                <div class="glass-card message-card">
+                    <div class="card-icon small">
+                        <i data-lucide="message-circle"></i>
+                    </div>
+                    <h3>Mensaje para ti</h3>
+                    <div class="daily-message" id="dailyMessage">
+                        "Eres más fuerte de lo que crees, más bonita de lo que piensas y más querida de lo que imaginas."
+                    </div>
+                    
+                    <!-- Recuerdo visual -->
+                    <div class="memory-section">
+                        <div class="memory-frame">
+                            <img id="memoryImage" class="memory-image" 
+                                 src="https://res.cloudinary.com/dcsent4fs/image/upload/v1777747760/5199564237372592635_eqj9v5.jpg" 
+                                 alt="Recuerdo especial">
+                        </div>
+                        <p class="memory-caption" id="memoryCaption">Siempre tan linda ✨</p>
+                        <button class="mini-btn" id="changeMemoryBtn">
+                            <i data-lucide="refresh-cw"></i>
+                            <span>Cambiar recuerdo</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Botón de respiración guiada -->
+                <div class="breathing-section">
+                    <button class="breathing-btn" id="breathingBtn">
+                        <i data-lucide="wind"></i>
+                        <span>Respiración guiada</span>
+                    </button>
+                </div>
+
+                <!-- Decoraciones flotantes -->
+                <div class="floating-heart heart-1">❤️</div>
+                <div class="floating-heart heart-2">❤️</div>
+                <div class="floating-star star-1">✦</div>
+                <div class="floating-star star-2">✧</div>
+            </div>
         </div>
+    </main>
 
-        <!-- Tarjeta principal (emergencia emocional) -->
-        <div class="hero-card">
-            <div class="hero-glow"></div>
-            <div class="hero-cloud cloud-1"></div>
-            <div class="hero-cloud cloud-2"></div>
-            <div class="card-icon"><i data-lucide="heart"></i></div>
-            <h2>Si estás teniendo un mal día...</h2>
-            <p class="hero-message" id="heroMessage">Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un poquito de ternura contigo.</p>
-            
-            <div class="hero-actions">
-                <button class="action-btn" id="newPhraseBtn">
-                    <i data-lucide="sparkles"></i> Otra frase
-                </button>
-                <button class="action-btn" id="musicBtn">
-                    <i data-lucide="play"></i> Pon música feliz
-                </button>
-                <button class="action-btn" id="betterBtn">
-                    <i data-lucide="heart"></i> Me siento mejor
-                </button>
+    <!-- Modal de respiración guiada -->
+    <div id="breathingModal" class="breathing-modal">
+        <div class="breathing-modal-content">
+            <button class="breathing-modal-close" id="closeBreathingModal">&times;</button>
+            <div class="breathing-circle" id="breathingCircle">
+                <div class="breathing-text" id="breathingText">Inhala</div>
             </div>
-
-            <!-- Reproductor minimalista -->
-            <div class="music-wave">
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-            </div>
-            <span class="music-label">Canción jsjs</span>
-            <!-- ✅ Aquí está la clave: ahora tiene una URL real -->
-            <audio id="happyAudio" preload="auto">
-                <source src="https://res.cloudinary.com/dcsent4fs/video/upload/v1777746763/Zzoilo_Aitana_-_Mon_Amour_Remix_Letra_Lyrics_jrgcjv.m4a" type="audio/mpeg">
-            </audio>
+            <p class="breathing-instruction">Sigue el ritmo del círculo</p>
+            <button class="breathing-stop-btn" id="stopBreathingBtn">Detener</button>
         </div>
-
-        <!-- Grid de tarjetas secundarias -->
-        <div class="cards-grid">
-            <!-- Contador de halagos -->
-            <div class="glass-card counter-card">
-                <div class="card-icon small"><i data-lucide="sparkles"></i></div>
-                <h3>Estás hermosa hoy recuérdalo</h3>
-                <div class="boost-number" id="kindCounter"></div>
-                <button class="mini-btn" id="countBtn">
-                    <i data-lucide="plus"></i> Sorpresa
-                </button>
-            </div>
-
-            <!-- Recuerdo visual -->
-            <div class="glass-card visual-card">
-                <div class="card-icon small"><i data-lucide="image"></i></div>
-                <h3></h3>
-                <p>Para que luego digas que no tienes color en los ojos e jsjsjs.</p>
-                <img src="https://res.cloudinary.com/dcsent4fs/image/upload/v1777747760/5199564237372592635_eqj9v5.jpg" alt="Recuerdo bonito" class="memory-image">
-            </div>
-
-            <!-- Mini recordatorio -->
-            <div class="glass-card reminder-card">
-                <div class="card-icon small"><i data-lucide="badge-help"></i></div>
-                <h3>Mini recordatorio</h3>
-                <p class="reminder-text">Hoy estabas increíblemente guapa, más que nunca y eso que siempre estás espectacular… tan bella, divina, mi princesa, mi mujer, mi pequeña traviesa de esos ojitos azules y ese verde tan único que me enamoran cada día. Eres lo mejor que me ha pasado, mi amorcito, mi niña preciosa. ❤️</p>
-            </div>
-        </div>
-
-        <!-- Decoraciones flotantes (corazones, estrellas, avión) -->
-        <div class="floating-heart heart-1">❤️</div>
-        <div class="floating-heart heart-2">❤️</div>
-        <div class="floating-heart heart-3">❤️</div>
-        <div class="floating-star star-1">✦</div>
-        <div class="floating-star star-2">✧</div>
-        <div class="paper-plane">✈️</div>
     </div>
-</main>
 
-<script src="../js/core.js"></script>
-<script src="../js/sidebar.js"></script>
-<script src="../js/data.js"></script>
-<script src="../js/progress.js"></script>
-<script src="../js/access-control.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="../js/firebase-config.js"></script>
-<script src="../js/pages/maldia.js"></script>
+    <!-- Modal de "Me siento mejor" con video de gatito -->
+    <div id="betterModal" class="better-modal">
+        <div class="better-modal-content">
+            <button class="better-modal-close" id="closeBetterModal">&times;</button>
+            <div class="better-video-container">
+                <video id="betterVideo" autoplay loop muted playsinline>
+                    <source src="https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/gatito_isgr4b.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="better-message">
+                <i data-lucide="heart"></i>
+                <h2>¡Te quiero!</h2>
+                <p>Siempre estaré aquí para ti mi reina 👑🤍</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/core.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/data.js"></script>
+    <script src="../js/progress.js"></script>
+    <script src="../js/access-control.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/pages/maldia.js"></script>
 </body>
 </html>

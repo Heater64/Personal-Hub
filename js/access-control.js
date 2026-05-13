@@ -1,13 +1,24 @@
 // access-control.js - Control de acceso simplificado
-// TODAS las secciones están desbloqueadas por defecto
 (function () {
     const body = document.body;
     const page = body?.dataset?.sidebarPage || 'home';
     
-    // Si quieres bloquear alguna sección específica en el futuro, añádela aquí
-    const LOCKED_SECTIONS = []; // <-- Vacío = todo desbloqueado
+    // Secciones que pueden ser bloqueadas (todas excepto home)
+    const LOCKABLE_SECTIONS = [
+        'canciones', 'rincon', 'sentimientos', 'thoseeyes', 
+        'series', 'razones', 'openwhen', 'calendario', 'maldia'
+    ];
     
-    if (LOCKED_SECTIONS.includes(page)) {
+    // Verificar si la sección actual está bloqueada
+    function isSectionLocked(section) {
+        if (section === 'home') return false;
+        if (!LOCKABLE_SECTIONS.includes(section)) return false;
+        
+        const progress = getProgress();
+        return progress[section] === false;
+    }
+    
+    if (isSectionLocked(page)) {
         const main = document.querySelector('main');
         if (main) {
             main.innerHTML = `

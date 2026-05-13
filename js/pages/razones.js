@@ -1,168 +1,234 @@
-const reasonsData = [
-    { short: "Tu forma de mirar", long: "Cuando me miras asi, siento que todo se detiene y solo existes tu." },
-    { short: "Como me haces sentir", long: "Me haces mas ligero, mas valiente. Contigo los dias grises tienen luz." },
-    { short: "Tu risa", long: "Esa risa tuya, la que sale sin avisar, me desarma y me reconstruye." },
-    { short: "Tu forma de ser", long: "Tan autentica, sin mascaras. Eso es poco comun y muy valioso." },
-    { short: "Los pequenos detalles", long: "Un mensaje sin motivo, una foto, recordar como me gusta el cafe... ahi vives tu." },
-    { short: "Porque estoy mejor contigo", long: "Mi mundo funciona mejor cuando vos estas en el. No necesito mas razones." }
+// razones.js · Versión mejorada con Firebase y UI Umbra
+
+// Lista de razones (prioriza window.razonesData de data.js)
+const DEFAULT_RAZONES = [
+    "Por la forma en que iluminas mi día con solo una sonrisa.",
+    "Porque siempre sabes cómo hacerme reír, incluso en los días difíciles.",
+    "Por tu paciencia infinita y tu forma de escuchar.",
+    "Porque eres mi lugar seguro en este mundo caótico.",
+    "Por la pasión que pones en todo lo que haces.",
+    "Porque contigo el tiempo vuela y cada segundo vale la pena.",
+    "Por esos pequeños detalles que solo tú tienes conmigo.",
+    "Porque me inspiras a ser una mejor versión de mí mismo cada día.",
+    "Por tu inteligencia y la forma en que ves el mundo.",
+    "Simplemente, por ser tú, sin filtros ni pretensiones."
 ];
 
-let currentRandomIndex = 0;
-let favoriteIndices = [];
-const razonesRef = db.collection('razones').doc('favoritos');
+// Usar datos de data.js si existen (window.razonesData)
+const razonesList = (typeof window.razonesData !== 'undefined' && window.razonesData.length > 0) 
+    ? window.razonesData 
+    : DEFAULT_RAZONES;
 
-async function loadFavorites() {
-    try {
-        const doc = await razonesRef.get();
-        if (doc.exists && doc.data().indices) {
-            favoriteIndices = doc.data().indices;
-        } else {
-            favoriteIndices = [];
-            await razonesRef.set({ indices: [] });
-        }
-    } catch (error) {
-        console.error('Error al cargar razones:', error);
-        favoriteIndices = [];
-    }
-    renderReasonsList();
-}
+let favoritos = []; // Array de índices favoritos
+let db = null;
 
-async function saveFavorites() {
-    try {
-        await razonesRef.set({ indices: favoriteIndices }, { merge: true });
-    } catch (error) {
-        console.error('Error al guardar razones:', error);
-        showMessage('No se pudo guardar favoritos', true);
-    }
-}
-
-function toggleFavorite(index) {
-    if (favoriteIndices.includes(index)) {
-        favoriteIndices = favoriteIndices.filter((item) => item !== index);
+// Inicializar Firebase
+function initFirebase() {
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+        db = firebase.firestore();
+        cargarFavoritos();
     } else {
-        favoriteIndices.push(index);
+        console.warn('Firebase no disponible, los favoritos no se guardarán');
+        renderRazones();
     }
-
-    saveFavorites();
-    renderReasonsList();
 }
 
-function getOrderedReasons() {
-    const ordered = [];
-
-    for (const idx of favoriteIndices) {
-        if (idx >= 0 && idx < reasonsData.length) {
-            ordered.push({ ...reasonsData[idx], originalIndex: idx, isFav: true });
-        }
+// Cargar favoritos desde Firestore
+async function cargarFavoritos() {
+    if (!db) {
+        renderRazones();
+        return;
     }
-
-    for (let i = 0; i < reasonsData.length; i++) {
-        if (!favoriteIndices.includes(i)) {
-            ordered.push({ ...reasonsData[i], originalIndex: i, isFav: false });
+    
+    try {
+        const docRef = db.collection('razones').doc('favoritos');
+        const doc = await docRef.get();
+        
+        if (doc.exists && doc.data().indices) {
+            favoritos = doc.data().indices;
+        } else {
+            favoritos = [];
+            await docRef.set({ indices: [] });
         }
+    } catch (error) {
+        console.error('Error cargando favoritos:', error);
+        favoritos = [];
     }
-
-    return ordered;
+    
+    renderRazones();
 }
 
-function renderReasonsList() {
-    const container = document.getElementById('reasonsList');
-    if (!container) return;
+// Guardar favoritos en Firestore
+async function guardarFavoritos() {
+    if (!db) return;
+    
+    try {
+        const docRef = db.collection('razones').doc('favoritos');
+        await docRef.set({ indices: favoritos }, { merge: true });
+    } catch (error) {
+        console.error('Error guardando favoritos:', error);
+        showToast('No se pudieron guardar los favoritos', true);
+    }
+}
 
-    const ordered = getOrderedReasons();
+// Alternar favorito
+function toggleFavorito(index) {
+    if (favoritos.includes(index)) {
+        favoritos = favoritos.filter(i => i !== index);
+        showToast('❤️ Eliminado de favoritos');
+    } else {
+        favoritos.push(index);
+        showToast('✨ ¡Añadido a favoritos! ✨');
+        
+        // Lanzar partículas
+        if (typeof launchParticles === 'function') {
+            launchParticles({
+                amount: 12,
+                symbols: ['❤', '✦', '✧'],
+                colors: ['#c65a3a', '#ffb347', '#ff8aa1'],
+                spread: 100
+            });
+        }
+    }
+    
+    guardarFavoritos();
+    renderRazones();
+}
 
-    container.innerHTML = ordered.map((item) => `
-        <li class="reason-item" data-original-index="${item.originalIndex}">
-            <div class="reason-left">
-                <span class="reason-number">${item.originalIndex + 1}</span>
-                <span class="reason-text">${escapeHtml(item.short)}</span>
+// Renderizar todas las razones
+function renderRazones() {
+    const grid = document.getElementById('razonesGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = razonesList.map((razon, index) => {
+        const esFavorito = favoritos.includes(index);
+        return `
+            <div class="razon-card" data-index="${index}" style="animation: fadeInUp 0.5s forwards ${index * 0.05}s; opacity: 0;">
+                <div class="razon-number">${(index + 1).toString().padStart(2, '0')}</div>
+                <div class="razon-content">${escapeHtml(razon)}</div>
+                <div class="razon-footer">
+                    <button class="fav-btn ${esFavorito ? 'active' : ''}" data-index="${index}">
+                        <i data-lucide="heart" ${esFavorito ? 'fill="currentColor"' : ''}></i>
+                        <span>${esFavorito ? 'Favorito' : 'Favorito'}</span>
+                    </button>
+                </div>
             </div>
-            <span class="reason-heart">${item.isFav ? '🤍' : '♡'}</span>
-            <div class="reason-detail">${escapeHtml(item.long)}</div>
-        </li>
-    `).join('');
-
-    document.querySelectorAll('.reason-item').forEach((item) => {
-        const heartSpan = item.querySelector('.reason-heart');
-        const originalIndex = parseInt(item.dataset.originalIndex, 10);
-
-        item.addEventListener('click', (event) => {
-            if (event.target === heartSpan) return;
-
-            const isActive = item.classList.contains('active');
-            document.querySelectorAll('.reason-item.active').forEach((activeItem) => {
-                if (activeItem !== item) activeItem.classList.remove('active');
-            });
-
-            if (!isActive) {
-                item.classList.add('active');
-                if (typeof launchParticles === 'function') {
-                    launchParticles({
-                        amount: 6,
-                        symbols: ['❤', '✦'],
-                        colors: ['#c65a3a', '#ffb347'],
-                        spread: 80,
-                        source: item.querySelector('.reason-number')
-                    });
-                }
-            } else {
-                item.classList.remove('active');
-            }
-
-            if (typeof pulseElement === 'function') pulseElement(item);
+        `;
+    }).join('');
+    
+    // Inicializar iconos Lucide
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+    
+    // Añadir event listeners a los botones de favorito
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const index = parseInt(btn.dataset.index);
+            toggleFavorito(index);
         });
-
-        if (heartSpan) {
-            heartSpan.addEventListener('click', (event) => {
-                event.stopPropagation();
-                toggleFavorite(originalIndex);
-                if (typeof pulseElement === 'function') pulseElement(heartSpan);
-                if (typeof launchParticles === 'function') {
-                    launchParticles({
-                        amount: 8,
-                        symbols: ['❤', '✧'],
-                        colors: ['#c65a3a', '#ffb347'],
-                        spread: 90,
-                        source: heartSpan
-                    });
-                }
-            });
-        }
+    });
+    
+    // Añadir evento de clic a las tarjetas (animación de pulsación)
+    document.querySelectorAll('.razon-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.fav-btn')) return;
+            
+            if (typeof pulseElement === 'function') {
+                pulseElement(card);
+            }
+            
+            // Opcional: mostrar la razón en un toast o algo similar
+            const index = parseInt(card.dataset.index);
+            showToast(`💭 ${razonesList[index].substring(0, 60)}...`, false, 2000);
+        });
     });
 }
 
-function updateRandomReason() {
-    let newIndex;
-    do {
-        newIndex = Math.floor(Math.random() * reasonsData.length);
-    } while (reasonsData.length > 1 && newIndex === currentRandomIndex);
-
-    currentRandomIndex = newIndex;
-    const reason = reasonsData[currentRandomIndex];
-    const textEl = document.getElementById('randomReasonText');
-    if (textEl) textEl.textContent = reason.short;
-}
-
-function initRazones() {
-    loadFavorites();
-    updateRandomReason();
-
-    const randomBtn = document.getElementById('randomizeBtn');
-    if (randomBtn) {
-        randomBtn.addEventListener('click', () => {
-            updateRandomReason();
-            if (typeof pulseElement === 'function') pulseElement(randomBtn);
-            if (typeof launchParticles === 'function') {
-                launchParticles({
-                    amount: 14,
-                    symbols: ['❤', '✦', '✧'],
-                    colors: ['#c65a3a', '#ffb347', '#ff8aa1'],
-                    spread: 140,
-                    source: randomBtn
-                });
-            }
+// Mostrar razón aleatoria en modal
+function mostrarRazonAleatoria() {
+    const randomIndex = Math.floor(Math.random() * razonesList.length);
+    const randomText = razonesList[randomIndex];
+    const modal = document.getElementById('randomModal');
+    const textEl = document.getElementById('randomText');
+    
+    if (textEl) textEl.textContent = randomText;
+    if (modal) modal.style.display = 'flex';
+    
+    // Lanzar partículas
+    if (typeof launchParticles === 'function') {
+        const btn = document.getElementById('randomBtn');
+        launchParticles({
+            amount: 16,
+            symbols: ['❤', '✦', '✧', '✨'],
+            colors: ['#c65a3a', '#ffb347', '#ff8aa1', '#ffd966'],
+            spread: 130,
+            source: btn
         });
     }
 }
 
-document.addEventListener('DOMContentLoaded', initRazones);
+// Cerrar modal
+function cerrarModal() {
+    const modal = document.getElementById('randomModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Mostrar toast (notificación)
+function showToast(message, isError = false, duration = 2500) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    
+    toast.textContent = message;
+    toast.style.display = 'block';
+    toast.style.borderLeftColor = isError ? '#dc3545' : 'var(--accent-coral)';
+    
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, duration);
+}
+
+// Inicializar todo
+function initRazones() {
+    // Configurar eventos del modal
+    const randomBtn = document.getElementById('randomBtn');
+    const closeModal = document.getElementById('closeModal');
+    const modal = document.getElementById('randomModal');
+    
+    if (randomBtn) {
+        randomBtn.addEventListener('click', mostrarRazonAleatoria);
+    }
+    
+    if (closeModal) {
+        closeModal.addEventListener('click', cerrarModal);
+    }
+    
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) cerrarModal();
+        });
+    }
+    
+    // Escapar con tecla ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+            cerrarModal();
+        }
+    });
+    
+    // Inicializar Firebase y cargar datos
+    initFirebase();
+}
+
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRazones);
+} else {
+    initRazones();
+}
+
+// Exportar funciones globales (por si se necesitan desde consola o eventos inline)
+window.toggleFavorito = toggleFavorito;
+window.mostrarRazonAleatoria = mostrarRazonAleatoria;
+window.cerrarModal = cerrarModal;

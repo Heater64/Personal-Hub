@@ -3,18 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Desbloqueo</title>
+    <title>Admin Panel · Control Total</title>
     <link rel="stylesheet" href="css/main.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .admin-box {
-            max-width: 600px;
-            width: 100%;
-            margin: 80px auto;
-            background: rgba(0, 0, 0, 0.8);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0f0f10;
+            font-family: 'Inter', system-ui, sans-serif;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .admin-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .admin-header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(198, 90, 58, 0.1), rgba(0, 0, 0, 0.3));
+            border-radius: 24px;
+            border: 1px solid rgba(198, 90, 58, 0.2);
+        }
+
+        .admin-header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: var(--accent-coral, #c65a3a);
+            margin-bottom: 8px;
+        }
+
+        .admin-header p {
+            color: var(--umbra-ash, #6e6a67);
+            font-size: 0.85rem;
+        }
+
+        .admin-stats {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
-            padding: 32px;
-            border: var(--border-subtle);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+            padding: 16px 24px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-coral, #c65a3a);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--umbra-ash, #6e6a67);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .admin-card {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--umbra-light, #e8e6e3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 12px;
+        }
+
+        .card-title i {
+            width: 22px;
+            height: 22px;
+            color: var(--accent-coral, #c65a3a);
+        }
+
+        .sections-grid {
+            display: grid;
+            gap: 12px;
         }
 
         .section-row {
@@ -22,87 +111,392 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             gap: 16px;
         }
 
-        .btn-unlock,
-        .btn-lock {
+        .section-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .section-icon {
+            width: 32px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .section-name {
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .section-status {
+            font-size: 0.7rem;
+            padding: 3px 10px;
             border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .section-status.unlocked {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .section-status.locked {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .section-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-unlock, .btn-lock, .btn-reset-section {
+            border-radius: 30px;
             cursor: pointer;
             padding: 6px 16px;
-            font: inherit;
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: all 0.2s;
         }
 
         .btn-unlock {
-            background: var(--accent-coral);
+            background: var(--accent-coral, #c65a3a);
             border: none;
             color: white;
         }
 
+        .btn-unlock:hover {
+            background: #b34a2e;
+            transform: scale(1.02);
+        }
+
         .btn-lock {
             background: transparent;
-            border: 1px solid var(--umbra-ash);
-            color: var(--umbra-ash);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+
+        .btn-lock:hover {
+            background: rgba(244, 67, 54, 0.1);
+            transform: scale(1.02);
+        }
+
+        .btn-reset-section {
+            background: transparent;
+            border: 1px solid #ff9800;
+            color: #ff9800;
+        }
+
+        .btn-reset-section:hover {
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: var(--accent-coral, #c65a3a);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #b34a2e;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 24px;
+            border-radius: 40px;
+            color: var(--umbra-light, #e8e6e3);
+            cursor: pointer;
+            font-weight: 600;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--umbra-ash, #6e6a67);
+            text-decoration: none;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--accent-coral, #c65a3a);
+        }
+
+        @media (max-width: 640px) {
+            .section-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .section-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+            
+            .admin-actions {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
-<body style="background:#0f0f10;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
-    <div class="admin-box">
-        <h2 style="margin-bottom:20px;">Panel de Desbloqueo</h2>
-        <p style="color:var(--umbra-ash);margin-bottom:24px;">Activa o desactiva secciones para ella.</p>
-        <div id="sectionsList"></div>
-        <button id="resetAll" style="margin-top:24px;background:red;color:white;border:none;padding:10px 20px;border-radius:20px;cursor:pointer;">Resetear todo</button>
+<body>
+    <div class="admin-container">
+        <a href="index.html" class="back-link">
+            <i data-lucide="arrow-left"></i> Volver al Hub
+        </a>
+
+        <div class="admin-header">
+            <h1>🔧 Panel de Control</h1>
+            <p>Gestiona el acceso a todas las secciones del sitio</p>
+        </div>
+
+        <div class="admin-stats" id="adminStats"></div>
+
+        <div class="admin-card">
+            <div class="card-title">
+                <i data-lucide="layout-grid"></i>
+                Secciones del sitio
+            </div>
+            <div class="sections-grid" id="sectionsList"></div>
+        </div>
+
+        <div class="admin-actions">
+            <button id="unlockAllBtn" class="btn-primary">🔓 Desbloquear todas</button>
+            <button id="lockAllBtn" class="btn-danger">🔒 Bloquear todas (excepto Inicio)</button>
+            <button id="resetAllBtn" class="btn-secondary">🔄 Resetear a valores por defecto</button>
+        </div>
     </div>
 
     <script src="js/progress.js"></script>
     <script>
-        const PASSWORD = 'miprincesa2025';
-        const entered = prompt('Contraseña de administración:');
+        // Configuración de secciones con metadatos
+        const SECTIONS_CONFIG = [
+            { id: 'home', name: 'Inicio', icon: '🏠', canLock: false, description: 'Página principal siempre visible' },
+            { id: 'canciones', name: 'Canciones', icon: '🎵', canLock: true, description: 'Reproductor de música' },
+            { id: 'rincon', name: 'TuRincónFav', icon: '💖', canLock: true, description: 'Galería y memes' },
+            { id: 'sentimientos', name: 'Sentimientos', icon: '💭', canLock: true, description: 'Razones, cartas, calendario' },
+            { id: 'thoseeyes', name: 'Those Eyes', icon: '👁️', canLock: true, description: 'Página poética' },
+            { id: 'series', name: 'Series', icon: '📺', canLock: true, description: 'Seguimiento de series' },
+            { id: 'razones', name: 'Razones', icon: '✨', canLock: true, description: 'Razones por las que te quiero' },
+            { id: 'openwhen', name: 'Open When', icon: '✉️', canLock: true, description: 'Cartas para momentos' },
+            { id: 'calendario', name: 'Calendario', icon: '📅', canLock: true, description: 'Calendario de sorpresas' },
+            { id: 'maldia', name: 'Mal Día', icon: '☀️', canLock: true, description: 'Emergencia emocional' }
+        ];
 
-        if (entered !== PASSWORD) {
-            document.body.innerHTML = '<h1 style="text-align:center;margin-top:100px;">Acceso denegado</h1>';
-            throw new Error('Acceso denegado');
-        }
-
-        const sections = ['canciones', 'rincon', 'thoseeyes', 'series', 'razones', 'openwhen', 'calendario', 'maldia',];
-
-        function render() {
-            const container = document.getElementById('sectionsList');
+        function updateStats() {
             const progress = getProgress();
-
-            container.innerHTML = sections.map((section) => `
-                <div class="section-row">
-                    <span>${section}</span>
-                    <span style="display:flex;gap:8px;align-items:center;">
-                        ${progress[section]
-                            ? `<button class="btn-lock" onclick="lock('${section}')">Bloquear</button>`
-                            : `<button class="btn-unlock" onclick="unlock('${section}')">Desbloquear</button>`
-                        }
-                        <span style="width:24px;">${progress[section] ? '✅' : '🔒'}</span>
-                    </span>
-                </div>
-            `).join('');
-        }
-
-        function unlock(section) {
-            unlockSection(section);
-            render();
-        }
-
-        function lock(section) {
-            lockSection(section);
-            render();
-        }
-
-        document.getElementById('resetAll').addEventListener('click', () => {
-            if (confirm('¿Resetear todo el progreso?')) {
-                resetAllProgress();
-                render();
+            const totalSections = SECTIONS_CONFIG.filter(s => s.canLock).length;
+            const unlockedSections = SECTIONS_CONFIG.filter(s => s.canLock && progress[s.id] === true).length;
+            const lockedSections = totalSections - unlockedSections;
+            
+            const statsContainer = document.getElementById('adminStats');
+            if (statsContainer) {
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-number">${totalSections}</div>
+                        <div class="stat-label">Total secciones</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: #4caf50;">${unlockedSections}</div>
+                        <div class="stat-label">Desbloqueadas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: #f44336;">${lockedSections}</div>
+                        <div class="stat-label">Bloqueadas</div>
+                    </div>
+                `;
             }
-        });
+        }
 
-        render();
+        function renderSections() {
+            const container = document.getElementById('sectionsList');
+            if (!container) return;
+            
+            const progress = getProgress();
+            
+            container.innerHTML = SECTIONS_CONFIG.map((section) => {
+                const isUnlocked = progress[section.id] === true;
+                const canLock = section.canLock;
+                
+                return `
+                    <div class="section-row">
+                        <div class="section-info">
+                            <div class="section-icon">${section.icon}</div>
+                            <div>
+                                <div class="section-name">${section.name}</div>
+                                <div class="section-status ${isUnlocked ? 'unlocked' : 'locked'}">
+                                    ${isUnlocked ? '✅ Desbloqueada' : '🔒 Bloqueada'}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="section-actions">
+                            ${canLock ? `
+                                ${!isUnlocked ? `<button class="btn-unlock" onclick="unlockSectionHandler('${section.id}')">🔓 Desbloquear</button>` : ''}
+                                ${isUnlocked && section.id !== 'home' ? `<button class="btn-lock" onclick="lockSectionHandler('${section.id}')">🔒 Bloquear</button>` : ''}
+                                ${section.id !== 'home' ? `<button class="btn-reset-section" onclick="resetSectionHandler('${section.id}')">🔄 Reset</button>` : ''}
+                            ` : '<span class="section-status unlocked">⚡ Siempre activa</span>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            updateStats();
+        }
+
+        function unlockSectionHandler(sectionId) {
+            unlockSection(sectionId);
+            renderSections();
+            showToast(`✅ Sección "${sectionId}" desbloqueada`);
+        }
+
+        function lockSectionHandler(sectionId) {
+            lockSection(sectionId);
+            renderSections();
+            showToast(`🔒 Sección "${sectionId}" bloqueada`);
+        }
+
+        function resetSectionHandler(sectionId) {
+            if (confirm(`¿Resetear la sección "${sectionId}" al estado por defecto?`)) {
+                const defaultProgress = { ...DEFAULT_PROGRESS };
+                const newProgress = getProgress();
+                newProgress[sectionId] = defaultProgress[sectionId];
+                saveProgress(newProgress);
+                renderSections();
+                showToast(`🔄 Sección "${sectionId}" reseteada`);
+            }
+        }
+
+        function unlockAllSections() {
+            if (confirm('¿Desbloquear TODAS las secciones? (Inicio siempre visible)')) {
+                const progress = getProgress();
+                SECTIONS_CONFIG.forEach(section => {
+                    if (section.canLock) {
+                        progress[section.id] = true;
+                    }
+                });
+                saveProgress(progress);
+                renderSections();
+                showToast('🔓 Todas las secciones han sido desbloqueadas');
+            }
+        }
+
+        function lockAllSections() {
+            if (confirm('¿Bloquear TODAS las secciones excepto Inicio?')) {
+                const progress = getProgress();
+                SECTIONS_CONFIG.forEach(section => {
+                    if (section.canLock && section.id !== 'home') {
+                        progress[section.id] = false;
+                    }
+                });
+                saveProgress(progress);
+                renderSections();
+                showToast('🔒 Todas las secciones han sido bloqueadas');
+            }
+        }
+
+        function resetAllToDefault() {
+            if (confirm('⚠️ ¿Resetear TODAS las secciones a los valores por defecto?\nEsta acción no se puede deshacer.')) {
+                resetAllProgress();
+                renderSections();
+                showToast('🔄 Todas las secciones han sido reseteadas');
+            }
+        }
+
+        function showToast(message, isError = false) {
+            let toast = document.querySelector('.admin-toast');
+            if (toast) toast.remove();
+            
+            toast = document.createElement('div');
+            toast.className = 'admin-toast';
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: ${isError ? '#dc3545' : '#1a1a1c'};
+                border-left: 4px solid var(--accent-coral, #c65a3a);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 40px;
+                font-size: 0.85rem;
+                z-index: 3000;
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(8px);
+                animation: fadeInUp 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 2500);
+        }
+
+        document.getElementById('unlockAllBtn')?.addEventListener('click', unlockAllSections);
+        document.getElementById('lockAllBtn')?.addEventListener('click', lockAllSections);
+        document.getElementById('resetAllBtn')?.addEventListener('click', resetAllToDefault);
+
+        renderSections();
+        
+        // Añadir estilo para animación del toast
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>

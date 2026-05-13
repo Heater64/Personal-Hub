@@ -2,6 +2,7 @@ const DEFAULT_PROGRESS = {
     home: true,
     canciones: true,
     rincon: true,
+    sentimientos: true,  // NUEVA SECCIÓN
     thoseeyes: true,
     series: true,
     razones: true,

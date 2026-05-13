@@ -3,6 +3,7 @@
 @import url('./components.css');
 
 :root {
+  /* Colores principales - Tema Umbra */
   --umbra-black: #0f0f10;
   --umbra-dark: #1a1a1c;
   --umbra-stone: #2a2a2e;
@@ -10,6 +11,7 @@
   --umbra-light: #e8e6e3;
   --umbra-white-soft: #f5f3f0;
 
+  /* Colores de acento */
   --accent-coral: #c65a3a;
   --accent-rust: #8f3e2e;
   --accent-dim: rgba(198, 90, 58, 0.15);
@@ -19,6 +21,7 @@
   --warm-gold-dim: rgba(255, 179, 71, 0.18);
   --bg-card: rgba(255, 255, 255, 0.02);
 
+  /* Espaciado */
   --space-xs: 8px;
   --space-sm: 16px;
   --space-md: 32px;
@@ -26,6 +29,7 @@
   --space-xl: 120px;
   --space-xxl: 200px;
 
+  /* Bordes */
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 20px;
@@ -35,13 +39,18 @@
   --border-subtle: 1px solid rgba(255, 255, 255, 0.05);
   --border-visible: 1px solid rgba(255, 255, 255, 0.12);
 
+  /* Animaciones */
   --dur-fast: 0.2s ease;
   --dur-mid: 0.3s ease;
 
+  /* Sidebar */
   --sidebar-width: 260px;
   --sidebar-width-mobile: 72px;
 }
 
+/* ==========================================
+   ESTILOS GLOBALES DEL BODY
+   ========================================== */
 body {
   padding: 0;
   min-height: 100vh;
@@ -53,6 +62,7 @@ body {
     linear-gradient(180deg, rgba(13, 13, 15, 0.98), rgba(15, 15, 16, 1));
 }
 
+/* Capas decorativas de fondo */
 body::before,
 body::after {
   content: '';
@@ -64,8 +74,7 @@ body::after {
 
 body::before {
   opacity: 0.12;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cpath d='M36 34c2.7-4.4 9.3-4.1 11.6.5 2.3-4.6 8.9-4.9 11.6-.5 1.8 2.9 1.2 6.7-1.4 9.1L47.6 53.8 37.4 43.1c-2.6-2.4-3.2-6.2-1.4-9.1Z' fill='%23c65a3a' fill-opacity='.34'/%3E%3Cpath d='M132 48l1.8 5.4h5.8l-4.7 3.4 1.8 5.5-4.7-3.4-4.7 3.4 1.8-5.5-4.7-3.4h5.8z' fill='%23ffb347' fill-opacity='.28'/%3E%3Ccircle cx='94' cy='120' r='2' fill='%23e8e6e3' fill-opacity='.24'/%3E%3Ccircle cx='112' cy='134' r='1.6' fill='%23ff8aa1' fill-opacity='.28'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cpath d='M36 34c2.7-4.4 9.3-4.1 11.6.5 2.3-4.6 8.9-4.9 11.6-.5 1.8 2.9 1.2 6.7-1.4 9.1L47.6 53.8 37.4 43.1c-2.6-2.4-3.2-6.2-1.4-9.1Z' fill='%23c65a3a' fill-opacity='.34'/%3E%3Cpath d='M132 48l1.8 5.4h5.8l-4.7 3.4 1.8 5.5-4.7-3.4-4.7 3.4 1.8-5.5-4.7-3.4h5.8z' fill='%23ffb347' fill-opacity='.28'/%3E%3Ccircle cx='94' cy='120' r='2' fill='%23e8e6e3' fill-opacity='.24'/%3E%3Ccircle cx='112' cy='134' r='1.6' fill='%23ff8aa1' fill-opacity='.28'/%3E%3C/g%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 180px 180px;
 }
@@ -76,6 +85,7 @@ body::after {
     radial-gradient(circle at 78% 72%, rgba(255, 138, 161, 0.05), transparent 0 14%);
 }
 
+/* Transiciones globales */
 button,
 a,
 .section-card,
@@ -91,6 +101,9 @@ a,
     opacity var(--dur-fast);
 }
 
+/* ==========================================
+   ESTRUCTURA PRINCIPAL
+   ========================================== */
 .page-shell {
   min-height: 100vh;
   margin-left: var(--sidebar-width);
@@ -107,6 +120,9 @@ a,
   margin-top: 0;
 }
 
+/* ==========================================
+   TARJETAS Y COMPONENTES CON GLASSMORPHISM
+   ========================================== */
 .section-card,
 .bento-card,
 .player-panel,
@@ -157,6 +173,9 @@ a,
   z-index: -1;
 }
 
+/* ==========================================
+   SIDEBAR - NAVEGACIÓN LATERAL
+   ========================================== */
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -253,8 +272,9 @@ a,
   margin-top: auto;
   padding: 16px 10px 0;
   border-top: var(--border-subtle);
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   color: var(--umbra-ash);
 }
 
@@ -270,6 +290,25 @@ a,
   line-height: 1.6;
 }
 
+/* Secciones dentro del sidebar */
+.sidebar__section {
+  margin-top: 8px;
+}
+
+.sidebar__section-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-coral);
+  padding: 8px 12px 4px;
+  opacity: 0.8;
+}
+
+.sidebar__section:first-child {
+  margin-top: 0;
+}
+
+/* Botón toggle del sidebar (móvil) */
 .sidebar-toggle {
   position: fixed;
   top: 14px;
@@ -309,12 +348,43 @@ a,
   pointer-events: auto;
 }
 
+/* ==========================================
+   TOAST Y NOTIFICACIONES
+   ========================================== */
 .toast-message {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--umbra-dark);
+  border-left: 4px solid var(--accent-coral);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 40px;
+  font-size: 0.85rem;
+  z-index: 2000;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.28),
     0 0 0 1px rgba(198, 90, 58, 0.06);
 }
 
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ==========================================
+   DECORACIONES Y PARTÍCULAS
+   ========================================== */
 .decor-layer {
   position: fixed;
   inset: 0;
@@ -356,12 +426,40 @@ a,
   100% { transform: scale(1); }
 }
 
+/* ==========================================
+   BOTONES DE NAVEGACIÓN
+   ========================================== */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 40px;
+  padding: 8px 20px;
+  color: var(--umbra-light);
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.back-btn:hover {
+  border-color: var(--accent-coral);
+  color: var(--accent-coral);
+  transform: translateX(-3px);
+}
+
+/* Ocultar back-btn en escritorio si no es necesario */
 @media (min-width: 769px) {
   .back-btn {
     display: none;
   }
 }
 
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
 @media (max-width: 1024px) {
   .page-shell {
     padding-inline: 24px;
@@ -391,22 +489,18 @@ a,
   .page {
     max-width: 100%;
   }
+
+  .toast-message {
+    white-space: normal;
+    max-width: 90%;
+    text-align: center;
+    font-size: 0.75rem;
+    padding: 10px 16px;
+  }
 }
 
-/* Secciones de la sidebar */
-.sidebar__section {
-    margin-top: 8px;
-}
-
-.sidebar__section-title {
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent-coral);
-    padding: 8px 12px 4px;
-    opacity: 0.8;
-}
-
-.sidebar__section:first-child {
-    margin-top: 0;
+@media (max-width: 480px) {
+  .page-shell {
+    padding: 70px 12px 20px;
+  }
 }

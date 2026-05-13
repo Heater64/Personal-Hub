@@ -196,7 +196,7 @@
 /* Tarjetas de Tradiciones (solo texto, sin imÃ¡genes ni emojis) */
 .tradition-card {
     background: rgba(255,255,255,0.02);
-    padding: 16px 12px;
+    padding: 16px 20px;
     border-radius: var(--radius-lg);
     text-align: center;
     transition: all 0.2s;
@@ -746,7 +746,7 @@ body.reel-lightbox-open {
             /* Resto de tarjetas (comida, etc.) */
             .food-card {
                 background: rgba(255,255,255,0.02);
-                padding: 12px;
+                padding: 16px 20px;
                 border-radius: var(--radius-md);
                 text-align: center;
                 transition: background 0.2s;
@@ -756,7 +756,7 @@ body.reel-lightbox-open {
             }
             .tradition-card {
                 background: rgba(255,255,255,0.02);
-                padding: 16px;
+                padding: 16px 20px;
                 border-radius: var(--radius-lg);
                 text-align: center;
                 transition: transform 0.2s, background 0.2s;
@@ -776,7 +776,7 @@ body.reel-lightbox-open {
             }
             .monument-card {
                 background: rgba(255,255,255,0.02);
-                padding: 16px;
+                padding: 16px 20px;
                 border-radius: var(--radius-lg);
                 transition: background 0.2s, transform 0.2s;
             }
@@ -786,7 +786,7 @@ body.reel-lightbox-open {
             }
             .service-card {
                 background: rgba(255,215,0,0.05);
-                padding: 16px;
+                padding: 16px 20px;
                 border-radius: var(--radius-lg);
                 transition: transform 0.2s, background 0.2s;
             }
