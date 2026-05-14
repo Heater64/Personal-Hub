@@ -86,8 +86,6 @@
             { id: 'maldia', name: 'Mal Día', icon: '☀️' }
         ];
 
-        let currentProgress = {};
-
         function showToast(message, isError = false) {
             let toast = document.querySelector('.toast');
             if (toast) toast.remove();
@@ -118,20 +116,15 @@
                 return;
             }
             
-            try {
-                if (typeof getProgressAsync !== 'function') {
-                    loading.innerHTML = '❌ Error: progress.js no cargado correctamente';
-                    return;
-                }
-                currentProgress = await getProgressAsync();
-                loading.style.display = 'none';
-                content.style.display = 'block';
-                renderSections();
-                showToast('✅ Panel cargado — los cambios afectan a todos los usuarios');
-            } catch (error) {
-                console.error(error);
-                loading.innerHTML = '❌ Error cargando datos. <button onclick="location.reload()" style="background:var(--accent-coral);border:none;color:white;padding:8px 16px;border-radius:20px;cursor:pointer;margin-top:12px;">Recargar</button>';
+            for (let i = 0; i < 30; i++) {
+                if (window._progressReady) break;
+                await new Promise(r => setTimeout(r, 100));
             }
+            
+            loading.style.display = 'none';
+            content.style.display = 'block';
+            renderSections();
+            showToast('✅ Panel en tiempo real — los cambios se reflejan al instante');
         }
 
         function renderSections() {
@@ -139,7 +132,7 @@
             if (!container) return;
             
             container.innerHTML = sections.map(section => {
-                const isUnlocked = currentProgress[section.id] === true;
+                const isUnlocked = typeof isSectionUnlocked === 'function' ? isSectionUnlocked(section.id) : true;
                 return `
                     <div class="section-row">
                         <div>
@@ -159,24 +152,14 @@
         }
 
         async function unlockSectionHandler(sectionId) {
-            if (typeof unlockSection !== 'function') {
-                showToast('Error: función unlockSection no disponible', true);
-                return;
-            }
+            if (typeof unlockSection !== 'function') return;
             await unlockSection(sectionId);
-            currentProgress = await getProgressAsync();
-            renderSections();
             showToast(`✅ "${sectionId}" desbloqueada para todos`);
         }
 
         async function lockSectionHandler(sectionId) {
-            if (typeof lockSection !== 'function') {
-                showToast('Error: función lockSection no disponible', true);
-                return;
-            }
+            if (typeof lockSection !== 'function') return;
             await lockSection(sectionId);
-            currentProgress = await getProgressAsync();
-            renderSections();
             showToast(`🔒 "${sectionId}" bloqueada para todos`);
         }
 
@@ -185,8 +168,6 @@
             for (const section of sections) {
                 await unlockSection(section.id);
             }
-            currentProgress = await getProgressAsync();
-            renderSections();
             showToast('🔓 Todas las secciones desbloqueadas');
         }
 
@@ -195,8 +176,6 @@
             for (const section of sections) {
                 await lockSection(section.id);
             }
-            currentProgress = await getProgressAsync();
-            renderSections();
             showToast('🔒 Todas las secciones bloqueadas');
         }
 
@@ -204,14 +183,15 @@
             if (!confirm('⚠️ ¿Resetear todo al estado por defecto?')) return;
             if (typeof resetAllProgress !== 'function') return;
             await resetAllProgress();
-            currentProgress = await getProgressAsync();
-            renderSections();
             showToast('🔄 Todo reseteado');
         }
 
         document.getElementById('unlockAllBtn')?.addEventListener('click', unlockAll);
         document.getElementById('lockAllBtn')?.addEventListener('click', lockAll);
         document.getElementById('resetAllBtn')?.addEventListener('click', resetAll);
+
+        // Re-render automáticamente cuando cambie el progreso
+        window.addEventListener('progress-changed', renderSections);
 
         window.unlockSectionHandler = unlockSectionHandler;
         window.lockSectionHandler = lockSectionHandler;
