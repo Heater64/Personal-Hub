@@ -1,4 +1,4 @@
-/* maldia.css · Versión simplificada */
+/* maldia.css · Versión mejorada con animaciones más suaves y diseño refinado */
 
 /* ==========================================
    CONTENEDOR PRINCIPAL
@@ -12,7 +12,7 @@
 }
 
 /* ==========================================
-   BARRA DE NAVEGACIÓN INTERNA
+   BARRA DE NAVEGACIÓN INTERNA MEJORADA
    ========================================== */
 .maldia-nav-bar {
     background: rgba(15, 15, 16, 0.85);
@@ -20,9 +20,15 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 60px;
     padding: 6px;
-    margin: 0 auto 28px auto;
+    margin: 0 auto 32px auto;
     width: fit-content;
     max-width: 95%;
+    transition: all 0.3s ease;
+}
+
+.maldia-nav-bar:hover {
+    border-color: rgba(198, 90, 58, 0.3);
+    box-shadow: 0 4px 20px rgba(198, 90, 58, 0.1);
 }
 
 .maldia-nav-links {
@@ -37,29 +43,37 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 18px;
+    padding: 8px 20px;
     border-radius: 40px;
     color: var(--umbra-ash);
     text-decoration: none;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
     font-size: 0.85rem;
     white-space: nowrap;
+    position: relative;
 }
 
 .maldia-nav-link i {
     width: 16px;
     height: 16px;
+    transition: transform 0.2s ease;
 }
 
 .maldia-nav-link:hover {
     background: rgba(198, 90, 58, 0.12);
     color: var(--accent-coral);
+    transform: translateY(-1px);
+}
+
+.maldia-nav-link:hover i {
+    transform: scale(1.1);
 }
 
 .maldia-nav-link.active {
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.2), rgba(198, 90, 58, 0.08));
-    border: 1px solid rgba(198, 90, 58, 0.3);
+    background: linear-gradient(135deg, rgba(198, 90, 58, 0.25), rgba(198, 90, 58, 0.1));
+    border: 1px solid rgba(198, 90, 58, 0.4);
     color: var(--accent-coral);
+    box-shadow: 0 2px 8px rgba(198, 90, 58, 0.15);
 }
 
 @media (max-width: 640px) {
@@ -67,164 +81,223 @@
         display: none;
     }
     .maldia-nav-link {
-        padding: 8px 12px;
+        padding: 10px 14px;
     }
 }
 
 /* ==========================================
-   HEADER
+   HEADER CON ANIMACIÓN MEJORADA
    ========================================== */
 .maldia-header {
     text-align: center;
     margin-bottom: 40px;
-    animation: fadeInUp 0.6s ease forwards;
+    animation: fadeInUp 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
 }
 
 .maldia-header-icon {
-    font-size: 3rem;
+    font-size: 3.5rem;
     margin-bottom: 16px;
+    animation: gentleBounce 2s ease-in-out infinite;
+}
+
+@keyframes gentleBounce {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
 }
 
 .maldia-header h1 {
     font-family: 'Playfair Display', serif;
-    font-size: 2.5rem;
+    font-size: 2.8rem;
     font-weight: 500;
-    color: var(--umbra-light);
+    background: linear-gradient(135deg, var(--umbra-light), var(--umbra-ash));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     margin-bottom: 12px;
 }
 
 .maldia-header p {
     color: var(--umbra-ash);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     max-width: 450px;
     margin: 0 auto;
+    line-height: 1.6;
 }
 
 /* ==========================================
-   TARJETA PRINCIPAL
+   TARJETA PRINCIPAL - REDISEÑADA
    ========================================== */
 .hero-card {
     position: relative;
-    background: linear-gradient(180deg, rgba(198, 90, 58, 0.1), rgba(0, 0, 0, 0.85));
-    border-radius: 32px;
-    padding: 40px 32px;
+    background: linear-gradient(180deg, rgba(198, 90, 58, 0.08), rgba(0, 0, 0, 0.85));
+    border-radius: 40px;
+    padding: 48px 32px;
     margin-bottom: 32px;
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    backdrop-filter: blur(2px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hero-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5);
 }
 
 .hero-glow {
     position: absolute;
-    top: -40px;
+    top: -50%;
     left: 50%;
     transform: translateX(-50%);
-    width: 180px;
-    height: 180px;
-    background: radial-gradient(circle, rgba(255, 180, 100, 0.2), transparent);
-    border-radius: 50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 180, 100, 0.12), transparent 60%);
     pointer-events: none;
+    animation: slowRotate 20s linear infinite;
+}
+
+@keyframes slowRotate {
+    from { transform: translateX(-50%) rotate(0deg); }
+    to { transform: translateX(-50%) rotate(360deg); }
 }
 
 .hero-card .card-icon {
-    width: 60px;
-    height: 60px;
-    background: rgba(198, 90, 58, 0.2);
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, rgba(198, 90, 58, 0.25), rgba(198, 90, 58, 0.1));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 20px;
+    margin: 0 auto 24px;
+    border: 1px solid rgba(198, 90, 58, 0.3);
+    backdrop-filter: blur(4px);
 }
 
 .hero-card .card-icon i {
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     color: var(--accent-coral);
+    animation: subtlePulse 2s ease-in-out infinite;
+}
+
+@keyframes subtlePulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.08); opacity: 1; }
 }
 
 .hero-card h2 {
     font-family: 'Playfair Display', serif;
-    font-size: 1.6rem;
-    margin-bottom: 20px;
+    font-size: 1.8rem;
+    margin-bottom: 24px;
     color: var(--umbra-light);
+    font-weight: 500;
 }
 
 .hero-message-wrapper {
     max-width: 600px;
-    margin: 0 auto 28px;
-    padding: 16px 20px;
+    margin: 0 auto 32px;
+    padding: 20px 24px;
     background: rgba(255, 255, 255, 0.03);
-    border-radius: 20px;
+    border-radius: 24px;
     border-left: 3px solid var(--accent-coral);
+    transition: all 0.3s ease;
+}
+
+.hero-message-wrapper:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-left-width: 4px;
 }
 
 .hero-message {
-    font-size: 1.1rem;
-    line-height: 1.6;
-    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.15rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.92);
     font-style: italic;
     margin: 0;
+    transition: opacity 0.3s ease;
 }
 
-/* Botones */
+/* Botones mejorados */
 .hero-actions {
     display: flex;
-    gap: 12px;
+    gap: 14px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-bottom: 28px;
+    margin-bottom: 32px;
 }
 
 .action-btn {
     background: rgba(198, 90, 58, 0.12);
     border: 1px solid rgba(198, 90, 58, 0.3);
-    border-radius: 40px;
-    padding: 10px 20px;
+    border-radius: 60px;
+    padding: 12px 24px;
     color: var(--accent-coral);
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    transition: all 0.2s ease;
+    gap: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
     cursor: pointer;
+    backdrop-filter: blur(4px);
+}
+
+.action-btn i {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s ease;
 }
 
 .action-btn:hover {
     background: var(--accent-coral);
     color: white;
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(198, 90, 58, 0.3);
+}
+
+.action-btn:hover i {
+    transform: scale(1.15);
+}
+
+.action-btn:active {
+    transform: translateY(-1px);
 }
 
 .action-btn.primary {
     background: var(--accent-coral);
     color: white;
+    box-shadow: 0 4px 12px rgba(198, 90, 58, 0.3);
 }
 
 .action-btn.primary:hover {
     background: #b34a2e;
+    box-shadow: 0 6px 18px rgba(198, 90, 58, 0.4);
 }
 
-/* Reproductor música */
+/* Reproductor música mejorado */
 .music-player {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    margin-top: 8px;
+    gap: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .music-wave {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
 }
 
 .wave-bar {
     width: 3px;
-    height: 16px;
+    height: 18px;
     background: linear-gradient(180deg, var(--accent-coral), rgba(198, 90, 58, 0.3));
-    border-radius: 2px;
+    border-radius: 3px;
     transition: height 0.1s ease;
 }
 
@@ -240,103 +313,178 @@
 .music-wave.playing .wave-bar:nth-child(6) { animation-delay: 0.5s; }
 
 @keyframes waveAnim {
-    0%, 100% { transform: scaleY(0.5); opacity: 0.4; }
-    50% { transform: scaleY(1); opacity: 1; }
+    0%, 100% { transform: scaleY(0.5); opacity: 0.4; height: 12px; }
+    50% { transform: scaleY(1); opacity: 1; height: 24px; }
 }
 
 .music-label {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--umbra-ash);
+    letter-spacing: 0.5px;
 }
 
 .music-toggle-btn {
-    background: transparent;
-    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
     cursor: pointer;
     color: var(--umbra-ash);
-    transition: all 0.2s;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.music-toggle-btn i {
+    width: 20px;
+    height: 20px;
 }
 
 .music-toggle-btn:hover {
+    background: rgba(198, 90, 58, 0.2);
+    border-color: var(--accent-coral);
     color: var(--accent-coral);
+    transform: scale(1.05);
 }
 
 /* ==========================================
-   TARJETA DE MENSAJE (SIMPLE)
+   TARJETA DE MENSAJE - ESTILO ELEGANTE
    ========================================== */
 .glass-card {
     background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 24px;
-    padding: 28px 24px;
-    margin-bottom: 24px;
-    transition: all 0.2s ease;
+    border-radius: 32px;
+    padding: 32px 28px;
+    margin-bottom: 28px;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
 }
 
 .glass-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(198, 90, 58, 0.2);
+    transform: translateY(-4px);
+    border-color: rgba(198, 90, 58, 0.25);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.3);
 }
 
 .card-icon.small {
-    width: 48px;
-    height: 48px;
-    background: rgba(198, 90, 58, 0.12);
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, rgba(198, 90, 58, 0.2), rgba(198, 90, 58, 0.08));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(198, 90, 58, 0.2);
 }
 
 .card-icon.small i {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     color: var(--accent-coral);
 }
 
 .glass-card h3 {
     font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    margin-bottom: 16px;
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+    font-weight: 500;
 }
 
 .daily-message {
-    font-size: 0.95rem;
-    line-height: 1.6;
+    font-size: 1rem;
+    line-height: 1.7;
     color: var(--umbra-light);
-    padding: 16px;
+    padding: 20px;
     background: rgba(255, 255, 255, 0.03);
-    border-radius: 16px;
-    margin-bottom: 20px;
+    border-radius: 20px;
+    margin-bottom: 24px;
     text-align: center;
+    font-style: italic;
+    transition: all 0.3s ease;
+}
+
+.daily-message:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.01);
+}
+
+/* ==========================================
+   SECCIÓN DE RECUERDOS MEJORADA
+   ========================================== */
+.memory-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.memory-frame {
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    background: rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.memory-image {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.4s ease, opacity 0.3s ease;
+    cursor: pointer;
+}
+
+.memory-image:hover {
+    transform: scale(1.02);
+}
+
+.memory-caption {
+    font-size: 0.85rem;
+    color: var(--umbra-ash);
+    text-align: center;
+    margin: 14px 0;
     font-style: italic;
 }
 
 .mini-btn {
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 40px;
-    padding: 8px 20px;
+    border-radius: 60px;
+    padding: 10px 24px;
     color: var(--umbra-ash);
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     width: 100%;
     justify-content: center;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+}
+
+.mini-btn i {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s ease;
 }
 
 .mini-btn:hover {
     border-color: var(--accent-coral);
     color: var(--accent-coral);
+    background: rgba(198, 90, 58, 0.08);
+    transform: translateY(-2px);
+}
+
+.mini-btn:hover i {
+    transform: rotate(180deg);
 }
 
 /* ==========================================
-   RESPIRACIÓN GUIADA
+   RESPIRACIÓN GUIADA - CÍRCULO MEJORADO
    ========================================== */
 .breathing-section {
     text-align: center;
@@ -346,45 +494,58 @@
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 60px;
-    padding: 14px 32px;
+    padding: 16px 36px;
     color: var(--umbra-light);
     display: inline-flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     font-size: 1rem;
-}
-
-.breathing-btn:hover {
-    background: rgba(198, 90, 58, 0.1);
-    border-color: var(--accent-coral);
-    transform: translateY(-2px);
+    font-weight: 500;
 }
 
 .breathing-btn i {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     color: var(--accent-coral);
+    transition: transform 0.2s ease;
 }
 
-/* Modal respiración */
+.breathing-btn:hover {
+    background: rgba(198, 90, 58, 0.12);
+    border-color: var(--accent-coral);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(198, 90, 58, 0.2);
+}
+
+.breathing-btn:hover i {
+    transform: scale(1.1);
+}
+
+/* Modal respiración mejorado */
 .breathing-modal {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(8, 8, 9, 0.92);
-    backdrop-filter: blur(16px);
+    background: rgba(8, 8, 9, 0.96);
+    backdrop-filter: blur(20px);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 2000;
+    animation: fadeIn 0.3s ease;
 }
 
 .breathing-modal.active {
     display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .breathing-modal-content {
@@ -393,56 +554,72 @@
 }
 
 .breathing-circle {
-    width: 200px;
-    height: 200px;
+    width: 240px;
+    height: 240px;
     border-radius: 50%;
-    background: rgba(198, 90, 58, 0.1);
+    background: radial-gradient(circle, rgba(198, 90, 58, 0.15), rgba(198, 90, 58, 0.05));
     border: 2px solid var(--accent-coral);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 24px;
+    margin: 0 auto 28px;
     transition: transform 0.1s linear;
+    box-shadow: 0 0 40px rgba(198, 90, 58, 0.2);
 }
 
 .breathing-text {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     color: var(--umbra-light);
     font-weight: 500;
+    letter-spacing: 2px;
 }
 
 .breathing-instruction {
     color: var(--umbra-ash);
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    font-size: 0.9rem;
 }
 
 .breathing-stop-btn {
     background: rgba(198, 90, 58, 0.2);
     border: 1px solid var(--accent-coral);
-    border-radius: 40px;
-    padding: 10px 24px;
+    border-radius: 60px;
+    padding: 12px 32px;
     color: var(--accent-coral);
     cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
 }
 
 .breathing-stop-btn:hover {
     background: var(--accent-coral);
     color: white;
+    transform: translateY(-2px);
 }
 
 .breathing-modal-close {
     position: absolute;
-    top: -40px;
+    top: -50px;
     right: 0;
-    background: none;
+    background: rgba(255, 255, 255, 0.05);
     border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     color: var(--umbra-ash);
-    font-size: 2rem;
+    font-size: 1.4rem;
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.breathing-modal-close:hover {
+    background: rgba(198, 90, 58, 0.2);
+    color: var(--accent-coral);
+    transform: rotate(90deg);
 }
 
 /* ==========================================
-   MODAL "ME SIENTO MEJOR"
+   MODAL "ME SIENTO MEJOR" - REDISEÑADO
    ========================================== */
 .better-modal {
     position: fixed;
@@ -450,8 +627,8 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(8, 8, 9, 0.95);
-    backdrop-filter: blur(16px);
+    background: rgba(8, 8, 9, 0.96);
+    backdrop-filter: blur(24px);
     display: none;
     align-items: center;
     justify-content: center;
@@ -464,62 +641,15 @@
 
 .better-modal-content {
     text-align: center;
-    max-width: 500px;
+    max-width: 520px;
     width: 90%;
-    background: linear-gradient(135deg, #1a1a1c, #0f0f10);
+    background: linear-gradient(135deg, rgba(25, 25, 28, 0.98), rgba(15, 15, 18, 0.98));
     border: 1px solid var(--accent-border);
-    border-radius: 32px;
-    padding: 32px;
-    animation: modalPop 0.4s ease;
-}
-
-.better-modal-close {
-    position: absolute;
-    top: 16px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.05);
-    border: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--umbra-ash);
-    font-size: 1.2rem;
-}
-
-.better-modal-close:hover {
-    background: rgba(198, 90, 58, 0.2);
-    color: var(--accent-coral);
-}
-
-.better-video-container {
-    border-radius: 20px;
-    overflow: hidden;
-    margin-bottom: 24px;
-}
-
-.better-video-container video {
-    width: 100%;
-    max-height: 300px;
-    object-fit: cover;
-}
-
-.better-message i {
-    width: 48px;
-    height: 48px;
-    color: var(--accent-coral);
-    margin-bottom: 16px;
-}
-
-.better-message h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 2rem;
-    color: var(--accent-coral);
-    margin-bottom: 8px;
-}
-
-.better-message p {
-    color: var(--umbra-ash);
+    border-radius: 40px;
+    padding: 36px;
+    animation: modalPop 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+    position: relative;
+    cursor: default;
 }
 
 @keyframes modalPop {
@@ -533,211 +663,35 @@
     }
 }
 
-/* ==========================================
-   DECORACIONES FLOTANTES
-   ========================================== */
-.floating-heart {
-    position: fixed;
-    font-size: 1.2rem;
-    opacity: 0.12;
-    pointer-events: none;
-    z-index: 1;
-    animation: float-slow 8s ease-in-out infinite;
-}
-
-.heart-1 { top: 15%; right: 5%; font-size: 2rem; animation-delay: 0s; }
-.heart-2 { bottom: 20%; left: 3%; font-size: 1.8rem; animation-delay: 2s; }
-
-.floating-star {
-    position: fixed;
-    font-size: 1rem;
-    opacity: 0.12;
-    pointer-events: none;
-    z-index: 1;
-    animation: twinkle 4s ease-in-out infinite;
-}
-
-.star-1 { top: 25%; left: 8%; font-size: 1.2rem; animation-delay: 0.5s; }
-.star-2 { bottom: 35%; right: 15%; font-size: 0.9rem; animation-delay: 1.5s; }
-
-@keyframes float-slow {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-12px); }
-}
-
-@keyframes twinkle {
-    0%, 100% { opacity: 0.08; transform: scale(1); }
-    50% { opacity: 0.2; transform: scale(1.05); }
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* ==========================================
-   RESPONSIVE
-   ========================================== */
-@media (max-width: 768px) {
-    .maldia-header h1 {
-        font-size: 2rem;
-    }
-
-    .hero-card {
-        padding: 28px 20px;
-    }
-
-    .hero-message {
-        font-size: 0.95rem;
-    }
-
-    .action-btn span {
-        display: none;
-    }
-
-    .action-btn {
-        padding: 10px 14px;
-    }
-    
-    .floating-heart,
-    .floating-star {
-        display: none;
-    }
-
-    .breathing-circle {
-        width: 150px;
-        height: 150px;
-    }
-
-    .breathing-text {
-        font-size: 1.2rem;
-    }
-}
-
-/* ==========================================
-   SECCIÓN DE RECUERDOS
-   ========================================== */
-.memory-section {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.memory-frame {
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 12px;
-    background: rgba(0, 0, 0, 0.2);
-}
-
-.memory-image {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    cursor: pointer;
-}
-
-.memory-image:hover {
-    transform: scale(1.02);
-}
-
-.memory-caption {
-    font-size: 0.8rem;
-    color: var(--umbra-ash);
-    text-align: center;
-    margin: 12px 0;
-    font-style: italic;
-}
-
-.mini-btn {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 40px;
-    padding: 8px 20px;
-    color: var(--umbra-ash);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    width: 100%;
-    justify-content: center;
-    font-size: 0.8rem;
-}
-
-.mini-btn:hover {
-    border-color: var(--accent-coral);
-    color: var(--accent-coral);
-    background: rgba(198, 90, 58, 0.05);
-}
-
-/* ==========================================
-   MODAL MEJORADO (cierre tocando fuera)
-   ========================================== */
-.better-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(8, 8, 9, 0.95);
-    backdrop-filter: blur(16px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 2100;
-}
-
-.better-modal.active {
-    display: flex;
-}
-
-.better-modal-content {
-    text-align: center;
-    max-width: 500px;
-    width: 90%;
-    background: linear-gradient(135deg, #1a1a1c, #0f0f10);
-    border: 1px solid var(--accent-border);
-    border-radius: 32px;
-    padding: 32px;
-    animation: modalPop 0.4s ease;
-    position: relative;
-    cursor: default;
-}
-
 .better-modal-close {
     position: absolute;
-    top: 16px;
-    right: 20px;
+    top: 18px;
+    right: 22px;
     background: rgba(255, 255, 255, 0.05);
     border: none;
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     cursor: pointer;
     color: var(--umbra-ash);
     font-size: 1.2rem;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .better-modal-close:hover {
     background: rgba(198, 90, 58, 0.2);
     color: var(--accent-coral);
+    transform: rotate(90deg);
 }
 
 .better-video-container {
-    border-radius: 20px;
+    border-radius: 24px;
     overflow: hidden;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4);
 }
 
 .better-video-container video {
@@ -747,30 +701,161 @@
 }
 
 .better-message i {
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
     color: var(--accent-coral);
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
 }
 
 .better-message h2 {
     font-family: 'Playfair Display', serif;
-    font-size: 2rem;
+    font-size: 2.2rem;
     color: var(--accent-coral);
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .better-message p {
     color: var(--umbra-ash);
+    font-size: 1rem;
+    line-height: 1.6;
 }
 
-@keyframes modalPop {
+/* ==========================================
+   DECORACIONES FLOTANTES MEJORADAS
+   ========================================== */
+.floating-heart {
+    position: fixed;
+    font-size: 1.5rem;
+    opacity: 0.1;
+    pointer-events: none;
+    z-index: 1;
+    animation: float-slow 8s ease-in-out infinite;
+}
+
+.heart-1 { top: 15%; right: 5%; font-size: 2.5rem; animation-delay: 0s; }
+.heart-2 { bottom: 20%; left: 3%; font-size: 2rem; animation-delay: 2s; }
+
+.floating-star {
+    position: fixed;
+    font-size: 1.2rem;
+    opacity: 0.1;
+    pointer-events: none;
+    z-index: 1;
+    animation: twinkle 4s ease-in-out infinite;
+}
+
+.star-1 { top: 25%; left: 8%; font-size: 1.5rem; animation-delay: 0.5s; }
+.star-2 { bottom: 35%; right: 15%; font-size: 1rem; animation-delay: 1.5s; }
+
+@keyframes float-slow {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.06; transform: scale(1); }
+    50% { opacity: 0.18; transform: scale(1.1); }
+}
+
+@keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: scale(0.9);
+        transform: translateY(30px);
     }
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================
+   RESPONSIVE - MEJORADO
+   ========================================== */
+@media (max-width: 768px) {
+    .maldia-header h1 {
+        font-size: 2.2rem;
+    }
+
+    .hero-card {
+        padding: 32px 20px;
+        border-radius: 32px;
+    }
+
+    .hero-message {
+        font-size: 1rem;
+    }
+
+    .hero-message-wrapper {
+        padding: 16px 18px;
+    }
+
+    .action-btn span {
+        display: inline;
+    }
+    
+    .action-btn {
+        padding: 10px 20px;
+        font-size: 0.85rem;
+    }
+
+    .breathing-circle {
+        width: 180px;
+        height: 180px;
+    }
+
+    .breathing-text {
+        font-size: 1.4rem;
+    }
+
+    .better-modal-content {
+        padding: 28px 20px;
+    }
+    
+    .better-message h2 {
+        font-size: 1.8rem;
+    }
+    
+    .floating-heart,
+    .floating-star {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .action-btn span {
+        display: none;
+    }
+    
+    .action-btn {
+        padding: 12px 16px;
+    }
+    
+    .action-btn i {
+        width: 20px;
+        height: 20px;
+        margin: 0;
+    }
+    
+    .hero-card h2 {
+        font-size: 1.5rem;
+    }
+    
+    .glass-card {
+        padding: 24px 20px;
+    }
+    
+    .daily-message {
+        font-size: 0.9rem;
+        padding: 16px;
+    }
+    
+    .music-label {
+        display: none;
     }
 }

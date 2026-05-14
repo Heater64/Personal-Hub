@@ -6,198 +6,389 @@
     <title>Admin Panel · Control Global</title>
     <link rel="stylesheet" href="css/main.css">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Estilos (mantener los mismos) */
-        .admin-container { max-width: 800px; margin: 40px auto; padding: 20px; }
-        .admin-header { text-align: center; margin-bottom: 32px; padding: 20px; background: linear-gradient(135deg, rgba(198,90,58,0.1), rgba(0,0,0,0.3)); border-radius: 24px; }
-        .admin-header h1 { font-family: 'Playfair Display', serif; color: var(--accent-coral); }
-        .admin-card { background: rgba(0,0,0,0.6); border-radius: 24px; padding: 24px; margin-bottom: 24px; }
-        .section-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .btn-unlock, .btn-lock { border-radius: 20px; cursor: pointer; padding: 6px 16px; font-size: 0.8rem; }
-        .btn-unlock { background: var(--accent-coral); border: none; color: white; }
-        .btn-lock { background: transparent; border: 1px solid #f44336; color: #f44336; }
-        .status-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; margin-left: 12px; }
-        .status-unlocked { background: rgba(76,175,80,0.2); color: #4caf50; }
-        .status-locked { background: rgba(244,67,54,0.2); color: #f44336; }
-        .admin-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
-        .btn-primary { background: var(--accent-coral); padding: 10px 20px; border: none; border-radius: 40px; color: white; cursor: pointer; flex: 1; }
-        .btn-danger { background: #dc3545; padding: 10px 20px; border: none; border-radius: 40px; color: white; cursor: pointer; flex: 1; }
-        .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--umbra-ash); text-decoration: none; margin-bottom: 20px; }
-        .loading { text-align: center; padding: 40px; color: var(--umbra-ash); }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1a1a1c; border-left: 4px solid var(--accent-coral); padding: 12px 24px; border-radius: 40px; z-index: 2000; }
+        /* Estilos adicionales para estadísticas */
+        .admin-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 12px;
+        }
+        .admin-tab {
+            background: transparent;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            color: var(--umbra-ash);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .admin-tab:hover {
+            color: var(--umbra-light);
+        }
+        .admin-tab.active {
+            background: var(--accent-coral);
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Estadísticas */
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .stat-card-mini {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-card-mini i {
+            width: 32px;
+            height: 32px;
+            color: var(--accent-coral);
+            margin-bottom: 12px;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--umbra-light);
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--umbra-ash);
+            margin-top: 4px;
+        }
+        .stats-chart, .stats-top-pages, .stats-devices, .stats-admin-actions {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .stats-chart h3, .stats-top-pages h3, .stats-devices h3, .stats-admin-actions h3 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+        .top-pages-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .top-page-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .page-rank {
+            width: 32px;
+            height: 32px;
+            background: rgba(198,90,58,0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--accent-coral);
+        }
+        .page-name {
+            width: 140px;
+            font-size: 0.9rem;
+        }
+        .page-stats {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-bar {
+            height: 8px;
+            background: var(--accent-coral);
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+        .page-count {
+            font-size: 0.75rem;
+            color: var(--umbra-ash);
+            min-width: 70px;
+        }
+        .devices-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .device-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .device-item i {
+            width: 24px;
+            height: 24px;
+            color: var(--accent-coral);
+        }
+        .device-name {
+            width: 90px;
+            font-size: 0.85rem;
+        }
+        .device-bar-container {
+            flex: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .device-bar {
+            height: 100%;
+            background: var(--accent-coral);
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+        .device-percent {
+            width: 45px;
+            font-size: 0.75rem;
+            color: var(--umbra-ash);
+        }
+        .admin-action-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .action-icon { font-size: 1.2rem; }
+        .action-section { flex: 1; }
+        .action-time { font-size: 0.7rem; color: var(--umbra-ash); }
+        .empty-actions, .error-stats, .loading-stats {
+            text-align: center;
+            padding: 40px;
+            color: var(--umbra-ash);
+        }
+        .btn-primary {
+            background: var(--accent-coral);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .stats-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .top-page-item {
+                flex-wrap: wrap;
+            }
+            .page-name {
+                width: auto;
+                flex: 1;
+            }
+            .page-stats {
+                width: 100%;
+                margin-left: 48px;
+            }
+        }
     </style>
 </head>
 <body style="background:#0f0f10;">
-    <div class="admin-container">
-        <a href="index.html" class="back-link">
-            <i data-lucide="arrow-left"></i> Volver al Hub
-        </a>
 
-        <div class="admin-header">
-            <h1>🔧 Panel de Control Global</h1>
-            <p>Los cambios afectan a TODOS los usuarios</p>
-        </div>
+<div class="admin-container" style="max-width: 1000px; margin: 40px auto; padding: 20px;">
+    <a href="index.html" class="back-link" style="display: inline-flex; align-items: center; gap: 8px; color: var(--umbra-ash); text-decoration: none; margin-bottom: 20px;">
+        <i data-lucide="arrow-left"></i> Volver al Hub
+    </a>
 
-        <div id="loadingState" class="loading">
-            ⏳ Cargando configuración...
-        </div>
+    <div class="admin-header" style="text-align: center; margin-bottom: 32px; padding: 20px; background: linear-gradient(135deg, rgba(198,90,58,0.1), rgba(0,0,0,0.3)); border-radius: 24px;">
+        <h1 style="font-family: 'Playfair Display', serif; color: var(--accent-coral); margin-bottom: 8px;">🔧 Panel de Control</h1>
+        <p>Gestión global del sitio + Estadísticas de uso</p>
+    </div>
 
-        <div id="adminContent" style="display: none;">
-            <div class="admin-card">
-                <h3 style="margin-bottom: 20px;">📱 Secciones del sitio</h3>
-                <div id="sectionsList"></div>
-            </div>
+    <!-- Pestañas -->
+    <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="sections">📱 Secciones</button>
+        <button class="admin-tab" data-tab="stats">📊 Estadísticas</button>
+    </div>
 
-            <div class="admin-actions">
-                <button id="unlockAllBtn" class="btn-primary">🔓 Desbloquear todas</button>
-                <button id="lockAllBtn" class="btn-danger">🔒 Bloquear todas</button>
-                <button id="resetAllBtn" class="btn-primary" style="background:#ff9800;">🔄 Resetear</button>
+    <!-- Contenido: Secciones -->
+    <div id="tabSections" class="tab-content active">
+        <div class="admin-card" style="background: rgba(0,0,0,0.6); border-radius: 24px; padding: 24px;">
+            <h3 style="margin-bottom: 20px;">📱 Secciones del sitio</h3>
+            <div id="sectionsList"></div>
+            <div class="admin-actions" style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+                <button id="unlockAllBtn" class="btn-primary" style="background: var(--accent-coral);">🔓 Desbloquear todas</button>
+                <button id="lockAllBtn" class="btn-primary" style="background: #dc3545;">🔒 Bloquear todas</button>
+                <button id="resetAllBtn" class="btn-primary" style="background: #ff9800;">🔄 Resetear</button>
             </div>
         </div>
     </div>
 
-    <!-- 🔥 FIREBASE SCRIPTS - MISMA VERSIÓN EN TODOS LADOS -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <!-- Contenido: Estadísticas -->
+    <div id="tabStats" class="tab-content">
+        <div id="statsContent" class="stats-container">
+            <div class="loading-stats">📊 Cargando estadísticas...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase scripts -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+<!-- Tu configuración -->
+<script src="js/firebase-config.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/progress.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/pages/admin.js"></script>
+
+<script>
+    const PASSWORD = 'sY2LkBmX';
     
-    <!-- Tu configuración -->
-    <script src="js/firebase-config.js"></script>
-    <script src="js/progress.js"></script>
-    
-    <script>
-        const PASSWORD = 'sY2LkBmX';
+    const entered = prompt('🔐 Contraseña de administrador:');
+    if (entered !== PASSWORD) {
+        document.body.innerHTML = '<h1 style="text-align:center;margin-top:100px;">Acceso denegado</h1>';
+        throw new Error('Acceso denegado');
+    }
+
+    const sections = [
+        { id: 'canciones', name: 'Canciones', icon: '🎵' },
+        { id: 'rincon', name: 'TuRincónFav', icon: '💖' },
+        { id: 'sentimientos', name: 'Sentimientos', icon: '💭' },
+        { id: 'thoseeyes', name: 'Those Eyes', icon: '👁️' },
+        { id: 'series', name: 'Series', icon: '📺' },
+        { id: 'razones', name: 'Razones', icon: '✨' },
+        { id: 'openwhen', name: 'Open When', icon: '✉️' },
+        { id: 'calendario', name: 'Calendario', icon: '📅' },
+        { id: 'maldia', name: 'Mal Día', icon: '☀️' }
+    ];
+
+    function showToast(message, isError = false) {
+        let toast = document.querySelector('.toast');
+        if (toast) toast.remove();
+        toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1a1a1c;border-left:4px solid var(--accent-coral);padding:12px 24px;border-radius:40px;z-index:2000;';
+        if (isError) toast.style.borderLeftColor = '#dc3545';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    function renderSections() {
+        const container = document.getElementById('sectionsList');
+        if (!container) return;
         
-        const entered = prompt('🔐 Contraseña de administrador:');
-        if (entered !== PASSWORD) {
-            document.body.innerHTML = '<h1 style="text-align:center;margin-top:100px;">Acceso denegado</h1>';
-            throw new Error('Acceso denegado');
-        }
-
-        const sections = [
-            { id: 'canciones', name: 'Canciones', icon: '🎵' },
-            { id: 'rincon', name: 'TuRincónFav', icon: '💖' },
-            { id: 'sentimientos', name: 'Sentimientos', icon: '💭' },
-            { id: 'thoseeyes', name: 'Those Eyes', icon: '👁️' },
-            { id: 'series', name: 'Series', icon: '📺' },
-            { id: 'razones', name: 'Razones', icon: '✨' },
-            { id: 'openwhen', name: 'Open When', icon: '✉️' },
-            { id: 'calendario', name: 'Calendario', icon: '📅' },
-            { id: 'maldia', name: 'Mal Día', icon: '☀️' }
-        ];
-
-        function showToast(message, isError = false) {
-            let toast = document.querySelector('.toast');
-            if (toast) toast.remove();
-            
-            toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.textContent = message;
-            if (isError) toast.style.borderLeftColor = '#dc3545';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-
-        let loadAttempts = 0;
-        const MAX_LOAD_ATTEMPTS = 20;
-
-        async function loadProgress() {
-            const loading = document.getElementById('loadingState');
-            const content = document.getElementById('adminContent');
-            
-            if (!window.db) {
-                loadAttempts++;
-                if (loadAttempts > MAX_LOAD_ATTEMPTS) {
-                    loading.innerHTML = '❌ No se pudo conectar con Firebase. Verifica tu conexión o recarga la página.';
-                    return;
-                }
-                loading.innerHTML = `⏳ Conectando con Firebase... (${loadAttempts}/${MAX_LOAD_ATTEMPTS})`;
-                setTimeout(loadProgress, 500);
-                return;
-            }
-            
-            for (let i = 0; i < 30; i++) {
-                if (window._progressReady) break;
-                await new Promise(r => setTimeout(r, 100));
-            }
-            
-            loading.style.display = 'none';
-            content.style.display = 'block';
-            renderSections();
-            showToast('✅ Panel en tiempo real — los cambios se reflejan al instante');
-        }
-
-        function renderSections() {
-            const container = document.getElementById('sectionsList');
-            if (!container) return;
-            
-            container.innerHTML = sections.map(section => {
-                const isUnlocked = typeof isSectionUnlocked === 'function' ? isSectionUnlocked(section.id) : true;
-                return `
-                    <div class="section-row">
-                        <div>
-                            <span style="margin-right: 12px;">${section.icon}</span>
-                            <strong>${section.name}</strong>
-                            <span class="status-badge ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
-                                ${isUnlocked ? '✅ Desbloqueada' : '🔒 Bloqueada'}
-                            </span>
-                        </div>
-                        <div>
-                            ${!isUnlocked ? `<button class="btn-unlock" onclick="unlockSectionHandler('${section.id}')">Desbloquear</button>` : ''}
-                            ${isUnlocked ? `<button class="btn-lock" onclick="lockSectionHandler('${section.id}')">Bloquear</button>` : ''}
-                        </div>
+        container.innerHTML = sections.map(section => {
+            const isUnlocked = typeof isSectionUnlocked === 'function' ? isSectionUnlocked(section.id) : true;
+            return `
+                <div class="section-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <div>
+                        <span style="margin-right: 12px;">${section.icon}</span>
+                        <strong>${section.name}</strong>
+                        <span style="font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; margin-left: 12px; background: ${isUnlocked ? 'rgba(76,175,80,0.2)' : 'rgba(244,67,54,0.2)'}; color: ${isUnlocked ? '#4caf50' : '#f44336'};">
+                            ${isUnlocked ? '✅ Desbloqueada' : '🔒 Bloqueada'}
+                        </span>
                     </div>
-                `;
-            }).join('');
-        }
+                    <div>
+                        ${!isUnlocked ? `<button class="btn-unlock" onclick="unlockSectionHandler('${section.id}')" style="background: var(--accent-coral); border: none; border-radius: 20px; padding: 6px 16px; color: white; cursor: pointer;">Desbloquear</button>` : ''}
+                        ${isUnlocked ? `<button class="btn-lock" onclick="lockSectionHandler('${section.id}')" style="background: transparent; border: 1px solid #f44336; border-radius: 20px; padding: 6px 16px; color: #f44336; cursor: pointer;">Bloquear</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
-        async function unlockSectionHandler(sectionId) {
-            if (typeof unlockSection !== 'function') return;
-            await unlockSection(sectionId);
-            showToast(`✅ "${sectionId}" desbloqueada para todos`);
-        }
+    async function unlockSectionHandler(sectionId) {
+        if (typeof unlockSection !== 'function') return;
+        await unlockSection(sectionId);
+        if (typeof trackAdminAction === 'function') trackAdminAction('unlock', sectionId);
+        showToast(`✅ "${sectionId}" desbloqueada`);
+    }
 
-        async function lockSectionHandler(sectionId) {
-            if (typeof lockSection !== 'function') return;
-            await lockSection(sectionId);
-            showToast(`🔒 "${sectionId}" bloqueada para todos`);
-        }
+    async function lockSectionHandler(sectionId) {
+        if (typeof lockSection !== 'function') return;
+        await lockSection(sectionId);
+        if (typeof trackAdminAction === 'function') trackAdminAction('lock', sectionId);
+        showToast(`🔒 "${sectionId}" bloqueada`);
+    }
 
-        async function unlockAll() {
-            if (!confirm('¿Desbloquear TODAS las secciones para todos los usuarios?')) return;
-            for (const section of sections) {
-                await unlockSection(section.id);
+    async function unlockAll() {
+        if (!confirm('¿Desbloquear TODAS las secciones?')) return;
+        for (const section of sections) {
+            await unlockSection(section.id);
+            if (typeof trackAdminAction === 'function') trackAdminAction('unlock', section.id);
+        }
+        showToast('🔓 Todas las secciones desbloqueadas');
+    }
+
+    async function lockAll() {
+        if (!confirm('¿Bloquear TODAS las secciones?')) return;
+        for (const section of sections) {
+            await lockSection(section.id);
+            if (typeof trackAdminAction === 'function') trackAdminAction('lock', section.id);
+        }
+        showToast('🔒 Todas las secciones bloqueadas');
+    }
+
+    async function resetAll() {
+        if (!confirm('⚠️ ¿Resetear todo al estado por defecto?')) return;
+        if (typeof resetAllProgress !== 'function') return;
+        await resetAllProgress();
+        showToast('🔄 Todo reseteado');
+    }
+
+    // Tabs
+    document.querySelectorAll('.admin-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            const tabId = tab.dataset.tab;
+            document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.add('active');
+            
+            if (tabId === 'stats' && typeof initAdminStats === 'function') {
+                initAdminStats();
             }
-            showToast('🔓 Todas las secciones desbloqueadas');
+        });
+    });
+
+    document.getElementById('unlockAllBtn')?.addEventListener('click', unlockAll);
+    document.getElementById('lockAllBtn')?.addEventListener('click', lockAll);
+    document.getElementById('resetAllBtn')?.addEventListener('click', resetAll);
+
+    window.unlockSectionHandler = unlockSectionHandler;
+    window.lockSectionHandler = lockSectionHandler;
+
+    function waitForProgressAndRender() {
+        if (typeof isSectionUnlocked !== 'undefined' && window._progressReady) {
+            renderSections();
+        } else {
+            setTimeout(waitForProgressAndRender, 200);
         }
-
-        async function lockAll() {
-            if (!confirm('¿Bloquear TODAS las secciones?')) return;
-            for (const section of sections) {
-                await lockSection(section.id);
-            }
-            showToast('🔒 Todas las secciones bloqueadas');
-        }
-
-        async function resetAll() {
-            if (!confirm('⚠️ ¿Resetear todo al estado por defecto?')) return;
-            if (typeof resetAllProgress !== 'function') return;
-            await resetAllProgress();
-            showToast('🔄 Todo reseteado');
-        }
-
-        document.getElementById('unlockAllBtn')?.addEventListener('click', unlockAll);
-        document.getElementById('lockAllBtn')?.addEventListener('click', lockAll);
-        document.getElementById('resetAllBtn')?.addEventListener('click', resetAll);
-
-        // Re-render automáticamente cuando cambie el progreso
-        window.addEventListener('progress-changed', renderSections);
-
-        window.unlockSectionHandler = unlockSectionHandler;
-        window.lockSectionHandler = lockSectionHandler;
-
-        loadProgress();
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-    </script>
+    }
+    waitForProgressAndRender();
+    window.addEventListener('progress-changed', renderSections);
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+</script>
 </body>
 </html>
