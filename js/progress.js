@@ -1,4 +1,4 @@
-// progress.js - Versión de diagnóstico
+// progress.js - Solo Firebase (sin localStorage)
 const DEFAULT_PROGRESS = {
     home: true, canciones: true, rincon: true, sentimientos: true,
     thoseeyes: true, series: true, razones: true, openwhen: true,
@@ -7,73 +7,36 @@ const DEFAULT_PROGRESS = {
 
 let cachedProgress = null;
 
-async function testFirebase() {
-    if (!window.db) {
-        console.error('❌ window.db no existe');
-        return false;
-    }
-    
-    try {
-        const testRef = window.db.collection('admin').doc('test');
-        await testRef.set({ test: true });
-        console.log('✅ Firebase escribiendo correctamente');
-        await testRef.delete();
-        return true;
-    } catch (err) {
-        console.error('❌ Error escribiendo en Firebase:', err);
-        return false;
-    }
-}
-
 async function getProgressAsync() {
     if (cachedProgress) return cachedProgress;
-    
-    if (!window.db) {
-        console.warn('⚠️ Firebase no disponible, usando localStorage');
-        const local = localStorage.getItem('sectionProgress');
-        cachedProgress = local ? JSON.parse(local) : { ...DEFAULT_PROGRESS };
-        return cachedProgress;
-    }
+    if (!window.db) return { ...DEFAULT_PROGRESS };
     
     try {
         const docRef = window.db.collection('admin').doc('sectionProgress');
         const doc = await docRef.get();
         
         if (!doc.exists) {
-            console.log('📝 Creando documento en Firebase...');
             await docRef.set({ progress: DEFAULT_PROGRESS, updatedAt: new Date().toISOString() });
             cachedProgress = { ...DEFAULT_PROGRESS };
         } else {
             cachedProgress = { ...DEFAULT_PROGRESS, ...doc.data().progress };
         }
         
-        console.log('✅ Progreso cargado desde Firebase:', cachedProgress);
         return cachedProgress;
     } catch (err) {
         console.error('❌ Error en Firebase:', err);
-        cachedProgress = { ...DEFAULT_PROGRESS };
-        return cachedProgress;
+        return { ...DEFAULT_PROGRESS };
     }
 }
 
 async function saveProgress(progress) {
     cachedProgress = progress;
+    if (!window.db) return;
     
-    if (!window.db) {
-        localStorage.setItem('sectionProgress', JSON.stringify(progress));
-        return;
-    }
-    
-    try {
-        await window.db.collection('admin').doc('sectionProgress').set({
-            progress: progress,
-            updatedAt: new Date().toISOString()
-        }, { merge: true });
-        console.log('✅ Progreso guardado en Firebase:', progress);
-    } catch (err) {
-        console.error('❌ Error guardando:', err);
-        localStorage.setItem('sectionProgress', JSON.stringify(progress));
-    }
+    await window.db.collection('admin').doc('sectionProgress').set({
+        progress: progress,
+        updatedAt: new Date().toISOString()
+    }, { merge: true });
 }
 
 async function unlockSection(section) {
@@ -97,17 +60,17 @@ async function lockSection(section) {
     return false;
 }
 
-function isSectionUnlocked(section) {
+async function isSectionUnlocked(section) {
     if (section === 'home') return true;
-    return cachedProgress ? cachedProgress[section] === true : true;
+    const progress = await getProgressAsync();
+    return progress[section] === true;
 }
 
 async function resetAllProgress() {
     await saveProgress({ ...DEFAULT_PROGRESS });
 }
 
-// Ejecutar diagnóstico al cargar
-testFirebase();
+// Precargar
 getProgressAsync();
 
 window.DEFAULT_PROGRESS = DEFAULT_PROGRESS;

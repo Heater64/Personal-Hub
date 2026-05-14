@@ -100,13 +100,20 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
+        let loadAttempts = 0;
+        const MAX_LOAD_ATTEMPTS = 20;
+
         async function loadProgress() {
             const loading = document.getElementById('loadingState');
             const content = document.getElementById('adminContent');
             
-            // Esperar a que Firebase esté listo
             if (!window.db) {
-                loading.innerHTML = '⏳ Conectando con Firebase...';
+                loadAttempts++;
+                if (loadAttempts > MAX_LOAD_ATTEMPTS) {
+                    loading.innerHTML = '❌ No se pudo conectar con Firebase. Verifica tu conexión o recarga la página.';
+                    return;
+                }
+                loading.innerHTML = `⏳ Conectando con Firebase... (${loadAttempts}/${MAX_LOAD_ATTEMPTS})`;
                 setTimeout(loadProgress, 500);
                 return;
             }
@@ -120,10 +127,10 @@
                 loading.style.display = 'none';
                 content.style.display = 'block';
                 renderSections();
-                showToast('✅ Panel cargado correctamente');
+                showToast('✅ Panel cargado — los cambios afectan a todos los usuarios');
             } catch (error) {
                 console.error(error);
-                loading.innerHTML = '<p style="color:#f44336;">❌ Error cargando datos. Verifica Firestore.</p>';
+                loading.innerHTML = '❌ Error cargando datos. <button onclick="location.reload()" style="background:var(--accent-coral);border:none;color:white;padding:8px 16px;border-radius:20px;cursor:pointer;margin-top:12px;">Recargar</button>';
             }
         }
 

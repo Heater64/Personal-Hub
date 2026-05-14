@@ -1,4 +1,4 @@
-// access-control.js - Control de acceso con Firebase
+// access-control.js - Control de acceso con Firebase (solo async)
 (function () {
     const body = document.body;
     const page = body?.dataset?.sidebarPage || 'home';
@@ -11,20 +11,10 @@
     if (page === 'home') return;
     if (!LOCKABLE_SECTIONS.includes(page)) return;
     
-    // Verificar si está bloqueada (de forma asíncrona)
     async function checkAndBlock() {
-        if (typeof isSectionUnlockedAsync !== 'function') {
-            // Fallback a la versión síncrona si no está disponible
-            if (typeof isSectionUnlocked === 'function' && !isSectionUnlocked(page)) {
-                showBlockedPage();
-            }
-            return;
-        }
-        
-        const isUnlocked = await isSectionUnlockedAsync(page);
-        if (!isUnlocked) {
-            showBlockedPage();
-        }
+        if (typeof isSectionUnlocked !== 'function') return;
+        const isUnlocked = await isSectionUnlocked(page);
+        if (!isUnlocked) showBlockedPage();
     }
     
     function showBlockedPage() {
@@ -46,6 +36,5 @@
         }
     }
     
-    // Ejecutar verificación
     checkAndBlock();
 })();
