@@ -25,11 +25,8 @@ function initFirebase() {
             console.log('✅ Firebase inicializado desde script externo');
         }
         
-        // Obtener servicios
         window.auth = firebase.auth();
         window.db = firebase.firestore();
-        window.storage = firebase.storage();
-        window.googleProvider = new firebase.auth.GoogleAuthProvider();
         
         firebaseReady = true;
         console.log('✅ Servicios de Firebase disponibles');
