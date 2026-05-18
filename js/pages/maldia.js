@@ -28,11 +28,11 @@ const dailyMessages = [
 
 // Recuerdos (imágenes)
 const memories = [
-    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1777747760/5199564237372592635_eqj9v5.jpg", caption: "Siempre tan linda ✨" },
-    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20260131_182652_h5gqlm.jpg", caption: "Atardecer a tu lado 🌅" },
-    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355904/20260425_070118_c8t3kj.jpg", caption: "Ese día tan especial 💕" },
-    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355905/20260313_072301_qrnboi.jpg", caption: "Momentos que atesoro 📸" },
-    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1778355903/20260505_070212_sgkvy2.jpg", caption: "Tu mirada lo dice todo 👀" }
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777747760/5199564237372592635_eqj9v5.jpg", caption: "Siempre tan linda ✨" },
+    { image: "", caption: "" },
+    { image: "", caption: "" },
+    { image: "", caption: "" },
+    { image: "", caption: "" }
 ];
 
 let isMusicPlaying = false;

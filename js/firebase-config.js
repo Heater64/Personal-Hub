@@ -108,4 +108,21 @@ if (typeof window !== 'undefined') {
     window.firebaseReady = () => firebaseReady;
 }
 
+/** Carga catálogo de regalos desde Firestore (opcional; fallback: gifts.json) */
+async function loadGiftsFromFirebase() {
+    if (!window.db) return null;
+    try {
+        const doc = await window.db.collection('config').doc('gifts').get();
+        if (doc.exists) return doc.data();
+    } catch (err) {
+        console.warn('loadGiftsFromFirebase:', err);
+    }
+    return null;
+}
+
+if (typeof window !== 'undefined') {
+    window.loadGiftsFromFirebase = loadGiftsFromFirebase;
+}
+
+
 console.log('📁 firebase-config.js cargado');

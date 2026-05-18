@@ -1,5 +1,5 @@
 ﻿/* ==========================================
-     UMBRA Â· Those Eyes (solo estilos especÃ­ficos de la canciÃ³n)
+     UMBRA · Those Eyes (solo estilos especificos de la cancion)
      ========================================== */
   :root {
     --umbra-black: #0F0F10;
@@ -41,7 +41,7 @@
     padding: 0 24px 120px;
   }
 
-  /* Hero especÃ­fico de la canciÃ³n */
+  /* Hero especifico de la cancion */
   .hero {
     padding: 72px 0 48px;
     border-bottom: var(--border-subtle);
@@ -296,7 +296,7 @@
     transition: width 0.2s linear;
   }
 
-  /* PartÃ­culas */
+  /* Particulas */
   .petal {
     position: fixed;
     pointer-events: none;

@@ -1,29 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Admin - solo lectura/escritura para usuarios autenticados
-    match /admin/{document} {
-      allow read, write: if true;  // En producción, cambia a: request.auth != null
+    // Configuraciones editables - solo admin
+    match /config_razones/data {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+    }
+    match /config_openwhen/data {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+    }
+    match /config_maldia_frases/data {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+    }
+    match /config_maldia_mensajes/data {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+    }
+    match /config_gifts/catalog {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+    }
+    match /config_canciones_recuerdan/data {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+    }
+    match /config_canciones_gustan/data {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
     }
     
-    // Calendario
-    match /calendario/{document} {
-      allow read, write: if true;
+    // Progreso de usuarios
+    match /users/{userId}/progress/{doc} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Razones
-    match /razones/{document} {
-      allow read, write: if true;
+    // Calendario - lectura pública, escritura solo admin
+    match /calendario/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+    }
+    match /calendario/giftProgress/items/{giftId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
     }
     
-    // Mal día
-    match /maldia/{document} {
-      allow read, write: if true;
+    // Estadísticas - solo admin puede leer
+    match /stats_visits/{doc} {
+      allow read: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+      allow write: if true;
+    }
+    match /stats_sessions/{doc} {
+      allow read: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+      allow write: if true;
+    }
+    match /stats_admin_actions/{doc} {
+      allow read: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+      allow write: if true;
+    }
+    
+    // Admin general
+    match /admin/{document=**} {
+      allow read, write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
     }
     
     // Series tracker
-    match /seriesTrackerProgress/{userId}/{document} {
-      allow read, write: if true;
+    match /seriesTrackerProgress/{userId}/series/{seriesId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Series y películas (biblioteca)
+    match /seriesData/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
     }
   }
 }

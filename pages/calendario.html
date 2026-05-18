@@ -16,7 +16,6 @@
 </head>
 <body data-sidebar-root=".." data-sidebar-page="calendario">
 
-    <!-- Sidebar -->
     <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
     </button>
@@ -26,7 +25,7 @@
     <main class="page-shell">
         <div class="page">
             <section class="page-section calendario-page">
-                
+
                 <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
                     <i data-lucide="arrow-left"></i> Volver al Hub
                 </button>
@@ -34,7 +33,6 @@
                 <div class="calendario-intro">
                     <h2>Calendario de experiencias</h2>
                     <p>31 días, 31 sorpresas distintas. Toca, escucha, juega y siente.</p>
-                    <p class="calendario-hint">✨ <em>Doble clic en el título para administración</em> ✨</p>
                 </div>
 
                 <div id="calendarGrid" class="calendar-grid"></div>
@@ -43,33 +41,28 @@
         </div>
     </main>
 
-    <!-- Modal flotante para sorpresas -->
-    <div id="surpriseModal" class="surprise-modal">
+    <!-- Capa de experiencias (nueva arquitectura) -->
+    <div id="experience-layer" class="experience-layer" aria-hidden="true">
+        <div id="experience-container" class="experience-container"></div>
+    </div>
+
+    <!-- Modal legacy (coexistencia) -->
+    <div id="surpriseModal" class="surprise-modal" aria-hidden="true">
         <div class="surprise-modal-content">
-            <button class="surprise-modal-close" id="closeModalBtn">✕</button>
+            <button class="surprise-modal-close" id="closeModalBtn" type="button">✕</button>
             <h3 id="modalSurpriseTitle" style="margin-bottom: 20px;">Día 1</h3>
             <div id="modalSurpriseContent"></div>
-            <button id="modalCloseFooterBtn" style="margin-top: 20px; padding: 10px 20px; background: #c65a3a; border: none; border-radius: 40px; color: white; cursor: pointer; width: 100%;">Cerrar</button>
+            <button id="modalCloseFooterBtn" type="button" style="margin-top: 20px; padding: 10px 20px; background: #c65a3a; border: none; border-radius: 40px; color: white; cursor: pointer; width: 100%;">Cerrar</button>
         </div>
     </div>
 
-    <!-- Lightbox para imágenes -->
     <div id="lightbox" class="lightbox">
-        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+        <button class="lightbox-close" type="button" onclick="closeLightbox()">✕</button>
         <div class="lightbox-content" id="lightboxContent"></div>
     </div>
-
-    <!-- Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="js/analytics.js"></script>
     <script src="../js/core.js"></script>
     <script src="../js/sidebar.js"></script>
-    <script src="../js/data.js"></script>
-    <script src="../js/progress.js"></script>
-    <script src="../js/access-control.js"></script>
-    <script src="../js/pages/calendario.js"></script>
+    <script>window.USE_GIFT_PLATFORM = true;</script>
+    <script type="module" src="../js/pages/calendario.js"></script>
 </body>
 </html>

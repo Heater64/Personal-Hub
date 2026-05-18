@@ -41,8 +41,8 @@ function renderLetters() {
             <div class="card-icon">
                 <i data-lucide="mail"></i>
             </div>
-            <h3>${escapeHtml(letter.title)}</h3>
-            <div class="letter-note">${escapeHtml(letter.note)}</div>
+            <h3 data-editable="openwhen_title_${index}">${escapeHtml(letter.title)}</h3>
+            <div class="letter-note" data-editable="openwhen_note_${index}">${escapeHtml(letter.note)}</div>
             <button class="open-btn" data-id="${index}">
                 <i data-lucide="mail-open"></i> Abrir carta
             </button>

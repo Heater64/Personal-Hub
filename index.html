@@ -20,87 +20,21 @@
 
 <main class="page-shell">
 <div class="page">
-    <section id="home" class="page-section">
+    <section id="home" class="page-section home-section">
         <div class="bento-hero glass">
             <p class="eyebrow"><i data-lucide="sparkles" style="width:0.9rem;"></i> centro de webs</p>
             <h2>Bienvenida<br> mi<em> princesa</em></h2>
             <p>Explora las webs que iré subiendo a lo largo del tiempo. Cada tarjeta es una diferente pero con el mismo propósito.</p>
         </div>
 
-        <div class="bento-grid">
-            <button class="bento-card" onclick="window.location.href='pages/canciones.html'">
-                <i data-lucide="music" class="icon"></i>
-                <h3>Canciones</h3>
-                <p>Trozos de canciones que me recuerdan a ti, mi princesa.</p>
-                <div style="margin-top:20px; display:flex; gap:10px; align-items:center;">
-                    <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;">
-                        <i data-lucide="play-circle" style="width:1.2rem;"></i>
-                    </div>
-                    <span style="font-size:0.75rem;color:var(--umbra-ash);letter-spacing:0.05em;">14 canciones · Escúchalas ahora</span>
-                </div>
-            </button>
+        <div id="hubGrid" class="bento-grid" aria-label="Secciones del hub"></div>
 
-            <button class="bento-card" onclick="window.location.href='pages/rincon.html'">
-                <i data-lucide="heart" class="icon"></i>
-                <h3>TuRincónFav</h3>
-                <p>Galería, gatos, memes y tu rincón especial.</p>
-            </button>
-
-            <button class="bento-card" onclick="window.location.href='pages/thoseeyes.html'">
-                <i data-lucide="eye" class="icon"></i>
-                <h3>Those Eyes</h3>
-                <p>Simplemente una cancion que me encanta, pero jamás como tú.</p>
-            </button>
-
-            <button class="bento-card" onclick="window.location.href='pages/series.html'">
-                <i data-lucide="tv" class="icon"></i>
-                <h3>Series</h3>
-                <p>Seguimiento de series y progreso de episodios.</p>
-            </button>
-
-            <button class="bento-card" onclick="window.location.href='pages/razones.html'">
-                <i data-lucide="heart" class="icon"></i>
-                <h3>Razones</h3>
-                <p>Razones por las que te quiero. (Y eso que no son todas jsjs).</p>
-            </button>
-
-            <button class="bento-card" onclick="window.location.href='pages/openwhen.html'">
-                <i data-lucide="mail" class="icon"></i>
-                <h3>Open When</h3>
-                <p>Cartas digitales para cuando sientas diferentes emociones.</p>
-            </button>
-
-            <button class="bento-card" onclick="window.location.href='pages/calendario.html'">
-                <i data-lucide="calendar-days" class="icon"></i>
-                <h3>Calendario</h3>
-                <p>Casillas con sorpresas pequeñas, recuerdos y retos bonitos.</p>
-            </button>
-
-            <button class="bento-card" onclick="window.location.href='pages/maldia.html'">
-                <i data-lucide="sun-medium" class="icon"></i>
-                <h3>Mal día</h3>
-                <p>Frases, alegría y música, lo único que necesitas para calmarte.</p>
-            </button>
-
-            <button class="bento-card" onclick="window.location.href='pages/sentimientos.html'">
-    <i data-lucide="heart-handshake" class="icon"></i>
-    <h3>Sentimientos</h3>
-    <p>Razones, cartas, calendario y apoyo, todo en un solo lugar.</p>
-    <div style="margin-top:20px; display:flex; gap:10px; align-items:center;">
-        <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;">
-            <i data-lucide="heart" style="width:1.2rem;"></i>
-        </div>
-        <span style="font-size:0.75rem;color:var(--umbra-ash);letter-spacing:0.05em;">Razones · Cartas · Calendario · Apoyo</span>
-    </div>
-</button>
-
-        </div>
-
-        <div style="text-align:center; margin-top:40px; padding: 20px;">
-            <p style="font-size:0.75rem; color:var(--umbra-ash); letter-spacing:0.06em; font-weight:300;">
-                Hecho con amor · Se irán añadiendo más páginas <i data-lucide="asterisk" style="width:0.7rem;"></i>
+        <footer class="home-footer">
+            <p>
+                Hecho con amor · Se irán añadiendo más páginas
+                <i data-lucide="asterisk" style="width:0.7rem;"></i>
             </p>
-        </div>
+        </footer>
     </section>
 </div>
 </main>
@@ -110,16 +44,8 @@
     <div class="lightbox-content" id="lightboxContent"></div>
     <div class="lightbox-caption" id="lightboxCaption"></div>
 </div>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="js/firebase-config.js"></script>
-<script src="js/analytics.js"></script>
 <script src="js/core.js"></script>
 <script src="js/sidebar.js"></script>
-<script src="js/data.js"></script>
-<script src="js/progress.js"></script>
-<script src="js/access-control.js"></script>
+    <script type="module" src="js/pages/home.js"></script>
 </body>
 </html>

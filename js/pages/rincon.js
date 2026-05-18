@@ -582,9 +582,9 @@ function initSPBSection() {
     }
 
     const galeriaFotos = [
-        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1777139714/RioSanjuan_hby0wz.jpg', caption: 'Río San Juan' },
-        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1777139715/SanJuan_hbfrrb.jpg', caption: 'Paisaje del pueblo' },
-        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1777139823/2jnguoiwhtlinyh_ncbyju.jpg', caption: 'Vistas de la comunidad' }
+        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777139714/RioSanjuan_hby0wz.jpg', caption: 'Río San Juan' },
+        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777139715/SanJuan_hbfrrb.jpg', caption: 'Paisaje del pueblo' },
+        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777139823/2jnguoiwhtlinyh_ncbyju.jpg', caption: 'Vistas de la comunidad' }
     ];
 
     const galleryContainer = document.getElementById('spbGallery');

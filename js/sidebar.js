@@ -1,4 +1,6 @@
 (function () {
+    const prefetchedPages = new Set();
+
     const NAV_ITEMS = [
     { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
     { key: 'canciones', label: 'Canciones', icon: 'music', href: 'pages/canciones.html' },
@@ -11,6 +13,27 @@
     function buildHref(root, href) {
         if (!root || root === '.') return href;
         return `${root}/${href}`;
+    }
+
+    function prefetchPage(href) {
+        if (!href || href.startsWith('#')) return;
+
+        let url;
+        try {
+            url = new URL(href, window.location.href);
+        } catch {
+            return;
+        }
+
+        if (url.origin !== window.location.origin || url.href === window.location.href) return;
+        if (prefetchedPages.has(url.href)) return;
+
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = url.href;
+        link.as = 'document';
+        document.head.appendChild(link);
+        prefetchedPages.add(url.href);
     }
 
     function renderSidebar() {
@@ -47,31 +70,12 @@
         <div class="sidebar__footer">
             <small>De hecho te amo</small>
             <span>${year} · hecho por tu peluche</span>
-            <div id="adminSecretTrigger" style="opacity: 0.15; font-size: 0.5rem; margin-top: 6px; cursor: pointer; text-align: center;">
-                ✦
-            </div>
         </div>
     `;
 
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
-    
-    // Evento para el botón oculto - va DIRECTAMENTE a admin.html
-    setTimeout(() => {
-        const adminTrigger = document.getElementById('adminSecretTrigger');
-        if (adminTrigger) {
-            adminTrigger.addEventListener('click', () => {
-                const secret = prompt('🔐 Clave de administración:');
-                if (secret === 'sY2LkBmX') {
-                    // Ir directamente al panel admin (no necesita archivo intermedio)
-                    window.location.href = buildHref(root, '../admin.html');
-                } else if (secret !== null) {
-                    alert('❌ Clave incorrecta');
-                }
-            });
-        }
-    }, 100);
 }
 
     function closeSidebar() {
@@ -103,6 +107,9 @@
         }
 
         sidebar.querySelectorAll('.sidebar__link').forEach((link) => {
+            link.addEventListener('mouseenter', () => prefetchPage(link.href), { once: true });
+            link.addEventListener('focus', () => prefetchPage(link.href), { once: true });
+
             link.addEventListener('click', () => {
                 if (window.innerWidth < 768) {
                     closeSidebar();

@@ -1,0 +1,374 @@
+{
+  "version": 1,
+  "calendarMapping": {
+    "1": "gift_001", "2": "gift_002", "3": "gift_003", "4": "gift_004", "5": "gift_005",
+    "6": "gift_006", "7": "gift_007", "8": "gift_008", "9": "gift_009", "10": "gift_010",
+    "11": "gift_011", "12": "gift_012", "13": "gift_013", "14": "gift_014", "15": "gift_015",
+    "16": "gift_016", "17": "gift_017", "18": "gift_018", "19": "gift_019", "20": "gift_020",
+    "21": "gift_021", "22": "gift_022", "23": "gift_023", "24": "gift_024", "25": "gift_025",
+    "26": "gift_026", "27": "gift_027", "28": "gift_028", "29": "gift_029", "30": "gift_030",
+    "31": "gift_031"
+  },
+  "gifts": [
+    {
+      "id": "gift_001",
+      "title": "Carta flotante",
+      "type": "letter",
+      "unlock": { "mode": "date", "value": "2026-05-13" },
+      "category": "memories",
+      "thumbnail": "",
+      "data": {
+        "message": "La primera sorpresa de este calendario es simple: te quiero más de lo que las palabras alcanzan a decir.",
+        "image": ""
+      }
+    },
+    {
+      "id": "gift_002",
+      "title": "Polaroids del recuerdo",
+      "type": "polaroid",
+      "unlock": { "mode": "date", "value": "2026-05-14" },
+      "category": "memories",
+      "data": {
+        "photos": [
+          { "src": "https://images.unsplash.com/photo-1518199266791-5375a57590ae?w=400", "caption": "Un momento tuyo" },
+          { "src": "https://images.unsplash.com/photo-1529333166437-7776aaeb1817?w=400", "caption": "Sonrisa guardada" }
+        ],
+        "footer": "Cada foto es un pedacito de nosotros."
+      }
+    },
+    {
+      "id": "gift_003",
+      "title": "Cassette retro",
+      "type": "cassette",
+      "unlock": { "mode": "date", "value": "2026-05-15" },
+      "category": "music",
+      "data": {
+        "label": "PARA TI",
+        "message": "Pon play y piensa en mí.",
+        "audio": ""
+      }
+    },
+    {
+      "id": "gift_004",
+      "title": "Página de diario",
+      "type": "diary",
+      "unlock": { "mode": "date", "value": "2026-05-16" },
+      "category": "memories",
+      "data": {
+        "date": "Hoy",
+        "entry": "Escribí esto pensando en tu risa. Gracias por existir en mi vida."
+      }
+    },
+    {
+      "id": "gift_005",
+      "title": "Ticket de cine",
+      "type": "ticket",
+      "unlock": { "mode": "date", "value": "2026-05-17" },
+      "category": "fun",
+      "data": {
+        "movie": "Nuestra película",
+        "quote": "Contigo cualquier sillón es premiere.",
+        "date": "Cuando quieras",
+        "seat": "A tu lado"
+      }
+    },
+    {
+      "id": "gift_006",
+      "title": "Mantén pulsado",
+      "type": "holdButton",
+      "unlock": { "mode": "date", "value": "2026-05-18" },
+      "category": "interactive",
+      "data": {
+        "hint": "Mantén el botón hasta que el corazón llene la pantalla.",
+        "reveal": "Lo lograste. Eres mi persona favorita."
+      }
+    },
+    {
+      "id": "gift_007",
+      "title": "Colecciona estrellas",
+      "type": "clickStar",
+      "unlock": { "mode": "date", "value": "2026-05-19" },
+      "category": "interactive",
+      "data": {
+        "target": 5,
+        "message": "Cinco estrellas por cinco cosas que adoro de ti."
+      }
+    },
+    {
+      "id": "gift_008",
+      "title": "Nubes que revelan",
+      "type": "cloudReveal",
+      "unlock": { "mode": "date", "value": "2026-05-20" },
+      "category": "interactive",
+      "data": {
+        "hidden": "Detrás de cada nube hay algo bonito: tú."
+      }
+    },
+    {
+      "id": "gift_009",
+      "title": "Momento cinematográfico",
+      "type": "cinematic",
+      "unlock": { "mode": "date", "value": "2026-05-21" },
+      "category": "memories",
+      "data": {
+        "quote": "Si nuestra historia fuera película, no cambiaría ni un fotograma.",
+        "bgImage": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=800"
+      }
+    },
+    {
+      "id": "gift_010",
+      "title": "Frasco de recuerdos",
+      "type": "memoryJar",
+      "unlock": { "mode": "date", "value": "2026-05-22" },
+      "category": "memories",
+      "data": {
+        "memories": [
+          "Tu voz por la mañana",
+          "Cuando me miras así",
+          "Nuestros planes tontos",
+          "El abrazo que arregla todo"
+        ]
+      }
+    },
+    {
+      "id": "gift_011",
+      "title": "Playlist secreta",
+      "type": "secretPlaylist",
+      "unlock": { "mode": "date", "value": "2026-05-23" },
+      "category": "music",
+      "data": {
+        "title": "Solo para ti",
+        "songs": [
+          { "title": "Canción 1", "note": "Me recuerda a tu sonrisa" },
+          { "title": "Canción 2", "note": "Para cuando me extrañes" }
+        ]
+      }
+    },
+    {
+      "id": "gift_012",
+      "title": "Cámara instantánea",
+      "type": "instantCamera",
+      "unlock": { "mode": "date", "value": "2026-05-24" },
+      "category": "memories",
+      "data": {
+        "image": "https://images.unsplash.com/photo-1522673607200-836d12bca0ca?w=600",
+        "caption": "Flash de felicidad contigo."
+      }
+    },
+    {
+      "id": "gift_013",
+      "title": "Rasca y descubre",
+      "type": "scratchCard",
+      "unlock": { "mode": "date", "value": "2026-05-25" },
+      "category": "interactive",
+      "data": {
+        "prize": "Un beso virtual infinito 💋"
+      }
+    },
+    {
+      "id": "gift_014",
+      "title": "Constelación",
+      "type": "constellation",
+      "unlock": { "mode": "date", "value": "2026-05-26" },
+      "category": "memories",
+      "data": {
+        "stars": [
+          { "name": "Estrella 1", "wish": "Que siempre estés bien" },
+          { "name": "Estrella 2", "wish": "Que me elijas otra vez" }
+        ]
+      }
+    },
+    {
+      "id": "gift_015",
+      "title": "Cuenta atrás",
+      "type": "countdown",
+      "unlock": { "mode": "date", "value": "2026-05-27" },
+      "category": "fun",
+      "data": {
+        "targetDate": "2026-12-31T00:00:00",
+        "label": "Para nuestro próximo gran momento"
+      }
+    },
+    {
+      "id": "gift_016",
+      "title": "Tarjeta de ánimo",
+      "type": "moodCard",
+      "unlock": { "mode": "date", "value": "2026-05-28" },
+      "category": "support",
+      "data": {
+        "moods": [
+          { "emoji": "😊", "text": "Hoy brillas" },
+          { "emoji": "🫂", "text": "Te abrazo desde aquí" },
+          { "emoji": "💪", "text": "Eres más fuerte de lo que crees" }
+        ]
+      }
+    },
+    {
+      "id": "gift_017",
+      "title": "Carta confidencial",
+      "type": "confidentialLetter",
+      "unlock": { "mode": "date", "value": "2026-05-29" },
+      "category": "memories",
+      "data": {
+        "sealed": true,
+        "message": "Esto es solo para tus ojos: gracias por confiar en mí."
+      }
+    },
+    {
+      "id": "gift_018",
+      "title": "Lluvia de emojis",
+      "type": "emojiRain",
+      "unlock": { "mode": "date", "value": "2026-05-30" },
+      "category": "fun",
+      "data": {
+        "emojis": ["💖", "✨", "🌸", "💫", "🦋"],
+        "message": "Una tormenta bonita porque te lo mereces."
+      }
+    },
+    {
+      "id": "gift_019",
+      "title": "Pensamiento al azar",
+      "type": "randomThought",
+      "unlock": { "mode": "date", "value": "2026-05-31" },
+      "category": "fun",
+      "data": {
+        "thoughts": [
+          "Hoy pensé en lo afortunado que soy.",
+          "Tu nombre apareció en mi mente sin avisar.",
+          "Si pudiera, te regalaría el cielo entero."
+        ]
+      }
+    },
+    {
+      "id": "gift_020",
+      "title": "Corazón latiente",
+      "type": "beatingHeart",
+      "unlock": { "mode": "date", "value": "2026-06-01" },
+      "category": "memories",
+      "data": {
+        "message": "Late por ti, siempre."
+      }
+    },
+    {
+      "id": "gift_021",
+      "title": "Mensaje cifrado",
+      "type": "cipherMessage",
+      "unlock": { "mode": "date", "value": "2026-06-02" },
+      "category": "interactive",
+      "data": {
+        "cipher": "Uf cebzvgrn",
+        "solution": "Te adoro",
+        "hint": "César -1"
+      }
+    },
+    {
+      "id": "gift_022",
+      "title": "Caja regalo",
+      "type": "giftBox",
+      "unlock": { "mode": "date", "value": "2026-06-03" },
+      "category": "fun",
+      "data": {
+        "surprise": "Dentro no hay cosas, hay nosotros."
+      }
+    },
+    {
+      "id": "gift_023",
+      "title": "Máquina de escribir",
+      "type": "typewriter",
+      "unlock": { "mode": "date", "value": "2026-06-04" },
+      "category": "memories",
+      "data": {
+        "text": "Escribo despacio para que cada palabra dure: te quiero, princesa."
+      }
+    },
+    {
+      "id": "gift_024",
+      "title": "Segunda carta",
+      "type": "letter",
+      "unlock": { "mode": "date", "value": "2026-06-05" },
+      "category": "memories",
+      "data": {
+        "message": "Mitad del camino y sigo encontrando razones para sonreír contigo."
+      }
+    },
+    {
+      "id": "gift_025",
+      "title": "Polaroid extra",
+      "type": "polaroid",
+      "unlock": { "mode": "date", "value": "2026-06-06" },
+      "category": "memories",
+      "data": {
+        "photos": [
+          { "src": "https://images.unsplash.com/photo-1529333166437-7776aaeb1817?w=400", "caption": "Tú" }
+        ],
+        "footer": "Un recuerdo más para la colección."
+      }
+    },
+    {
+      "id": "gift_026",
+      "title": "Mini cassette",
+      "type": "cassette",
+      "unlock": { "mode": "date", "value": "2026-06-07" },
+      "category": "music",
+      "data": {
+        "label": "DÍA 26",
+        "message": "La banda sonora de hoy eres tú."
+      }
+    },
+    {
+      "id": "gift_027",
+      "title": "Entrada VIP",
+      "type": "ticket",
+      "unlock": { "mode": "date", "value": "2026-06-08" },
+      "category": "fun",
+      "data": {
+        "movie": "Noche contigo",
+        "quote": "Entrada válida para siempre.",
+        "date": "Siempre",
+        "seat": "Junto a mí"
+      }
+    },
+    {
+      "id": "gift_028",
+      "title": "Cielo interactivo",
+      "type": "clickStar",
+      "unlock": { "mode": "date", "value": "2026-06-09" },
+      "category": "interactive",
+      "data": {
+        "target": 3,
+        "message": "Tres deseos: salud, risas y nosotros."
+      }
+    },
+    {
+      "id": "gift_029",
+      "title": "Película corta",
+      "type": "cinematic",
+      "unlock": { "mode": "date", "value": "2026-06-10" },
+      "category": "memories",
+      "data": {
+        "quote": "Capítulo 29: seguimos escribiendo juntos.",
+        "bgImage": ""
+      }
+    },
+    {
+      "id": "gift_030",
+      "title": "Casi final",
+      "type": "giftBox",
+      "unlock": { "mode": "date", "value": "2026-06-11" },
+      "category": "fun",
+      "data": {
+        "surprise": "Mañana es el último día… pero no el último regalo de mi corazón."
+      }
+    },
+    {
+      "id": "gift_031",
+      "title": "Gran final",
+      "type": "typewriter",
+      "unlock": { "mode": "date", "value": "2026-06-12" },
+      "category": "memories",
+      "data": {
+        "text": "31 días, 31 formas de decirte lo mismo de mil maneras: eres mi persona favorita. Gracias por abrir cada puerta."
+      }
+    }
+  ]
+}

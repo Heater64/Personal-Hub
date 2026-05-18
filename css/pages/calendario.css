@@ -7,6 +7,10 @@
   max-width: 1200px;
   margin: 0 auto;
   padding-top: 18px;
+  --experience-width: min(960px, 94vw);
+  --experience-min-height: min(72vh, 680px);
+  --experience-max-height: min(90vh, 900px);
+  --experience-padding: clamp(24px, 4vw, 48px);
 }
 
 .calendario-intro {
@@ -748,6 +752,247 @@
 }
 
 /* ==========================================
+   CAPA DE EXPERIENCIAS — modal escenario grande
+   ========================================== */
+#experience-layer {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 8, 10, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  padding: clamp(12px, 3vw, 32px);
+  box-sizing: border-box;
+}
+
+#experience-layer.active,
+#experience-layer.is-open {
+  display: flex;
+  opacity: 1;
+}
+
+/* Contenedor solo centra; el “escenario” es .experience-modal-inner */
+#experience-layer #experience-container,
+#experience-layer .experience-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+  overflow: visible;
+}
+
+#experience-layer .experience-modal-inner {
+  position: relative;
+  width: var(--experience-width);
+  min-height: var(--experience-min-height);
+  max-height: var(--experience-max-height);
+  display: flex;
+  flex-direction: column;
+  padding: var(--experience-padding);
+  padding-top: clamp(48px, 6vw, 56px);
+  background: linear-gradient(180deg, rgba(28, 28, 34, 0.99), rgba(12, 12, 15, 0.99));
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  overflow: hidden;
+  transform: scale(0.94);
+  opacity: 0;
+  animation: experienceModalIn 0.45s cubic-bezier(0.34, 1.15, 0.64, 1) forwards;
+}
+
+@keyframes experienceModalIn {
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+#experience-layer .experience-modal-title,
+#experience-layer .experience-modal-inner > h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.65rem, 4vw, 2.35rem);
+  font-weight: 500;
+  text-align: center;
+  color: var(--umbra-light);
+  margin: 0 0 clamp(16px, 3vw, 28px);
+  padding: 0 40px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+#experience-layer .experience-modal-body {
+  flex: 1;
+  min-height: 200px;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  scrollbar-width: thin;
+}
+
+#experience-layer .experience-modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+#experience-layer .experience-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(198, 90, 58, 0.35);
+  border-radius: 10px;
+}
+
+#experience-layer .gift-loader {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  color: var(--umbra-ash);
+  text-align: center;
+}
+
+#experience-layer .heart-pulse {
+  font-size: 2.4rem;
+  line-height: 1;
+  animation: heartPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes heartPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.16);
+    opacity: 1;
+  }
+}
+
+#experience-layer .experience-modal-close {
+  position: absolute;
+  top: clamp(12px, 2vw, 20px);
+  right: clamp(12px, 2vw, 20px);
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--umbra-ash);
+  font-size: 1.25rem;
+  line-height: 1;
+  z-index: 20;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+#experience-layer .experience-modal-close:hover {
+  background: rgba(198, 90, 58, 0.25);
+  border-color: var(--accent-coral);
+  color: var(--accent-coral);
+  transform: rotate(90deg);
+}
+
+#experience-layer .experience-modal-footer {
+  flex-shrink: 0;
+  margin-top: clamp(20px, 3vw, 32px);
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+#experience-layer .experience-modal-footer-btn,
+#experience-layer .modal-close-btn {
+  background: transparent;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-pill);
+  padding: 12px 32px;
+  color: var(--umbra-light);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+#experience-layer .experience-modal-footer-btn:hover,
+#experience-layer .modal-close-btn:hover {
+  background: rgba(198, 90, 58, 0.15);
+  border-color: var(--accent-coral);
+  transform: translateY(-1px);
+}
+
+/* Contenido de módulos dentro del escenario */
+#experience-layer .experience-modal-body .polaroid-stack {
+  min-height: 280px;
+}
+
+#experience-layer .experience-modal-body .polaroid {
+  width: clamp(120px, 22vw, 180px);
+}
+
+#experience-layer .experience-modal-body .cinematic-card {
+  min-height: 280px;
+}
+
+#experience-layer .experience-modal-body .cinematic-quote {
+  font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+}
+
+#experience-layer .experience-modal-body .cassette-player,
+#experience-layer .experience-modal-body .gift-box,
+#experience-layer .experience-modal-body .scratch-card-wrap {
+  margin: 8px 0;
+}
+
+#experience-layer .experience-modal-body .instant-camera img {
+  max-width: 100%;
+  width: 100%;
+  max-height: min(50vh, 420px);
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+}
+
+#experience-layer .experience-modal-body .letter-envelope {
+  max-width: 100%;
+}
+
+#experience-layer .experience-modal-body .paper-stack {
+  font-size: clamp(0.95rem, 2vw, 1.05rem);
+}
+
+#experience-layer .gift-module {
+  animation: contentPop 0.4s cubic-bezier(0.2, 0.9, 0.4, 1) forwards;
+}
+
+@keyframes contentPop {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================
    MODAL FLOTANTE PARA SORPRESAS
    ========================================== */
 .surprise-modal {
@@ -894,65 +1139,6 @@
   }
 }
 
-/* Panel de administración */
-.admin-panel {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: linear-gradient(180deg, #1a1a1c, #0f0f10);
-  border: 1px solid var(--accent-border);
-  border-radius: 28px;
-  padding: 28px;
-  max-width: 400px;
-  width: 90%;
-  z-index: 2100;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-}
-
-.admin-panel h3 {
-  margin-bottom: 20px;
-  text-align: center;
-  font-family: 'Playfair Display', serif;
-}
-
-.admin-panel input {
-  width: 100%;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: white;
-  margin-bottom: 16px;
-}
-
-.admin-panel button {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 10px;
-  background: var(--accent-coral);
-  border: none;
-  border-radius: 40px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.admin-panel button:hover {
-  background: #b34a2e;
-  transform: translateY(-1px);
-}
-
-.admin-panel .admin-cancel {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.admin-panel .admin-cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
-  transform: none;
-}
-
 /* ==========================================
    RESPONSIVE
    ========================================== */
@@ -1020,17 +1206,44 @@
     width: 100px;
   }
 
-  .surprise-modal-content {
+  /* Modal legacy pequeño */
+  #surpriseModal .surprise-modal-content {
     padding: 24px 20px;
     width: 92%;
   }
 
-  .surprise-modal-content h3 {
+  #surpriseModal .surprise-modal-content h3 {
     font-size: 1.3rem;
   }
 
-  .surprise-modal-body {
+  #surpriseModal .surprise-modal-body {
     max-height: 50vh;
+  }
+
+  /* Experiencia: casi pantalla completa en móvil */
+  #experience-layer {
+    padding: 0;
+  }
+
+  #experience-layer .experience-modal-inner {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+    padding-top: max(52px, calc(env(safe-area-inset-top) + 44px));
+  }
+
+  #experience-layer .experience-modal-title {
+    padding: 0 36px;
+    font-size: 1.5rem;
+  }
+
+  #experience-layer .experience-modal-body .polaroid {
+    width: 110px;
   }
 }
 
@@ -1184,3 +1397,295 @@
             font-size: 2rem;
             cursor: pointer;
         }
+
+        /* Día disponible (desbloqueado no abierto) */
+.day-card.available {
+  border-color: rgba(198, 90, 58, 0.3);
+  animation: gentlePulse 2s infinite;
+}
+
+.day-card.available::before {
+  content: '✨';
+  color: rgba(255, 179, 71, 0.6);
+}
+
+@keyframes gentlePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(198, 90, 58, 0.2); }
+  50% { box-shadow: 0 0 0 4px rgba(198, 90, 58, 0.1); }
+}
+
+/* Día actual (hoy) */
+.day-card.today {
+  border: 2px solid var(--accent-coral);
+  background: radial-gradient(circle at top right, rgba(198, 90, 58, 0.15), transparent 50%);
+  box-shadow: 0 0 20px rgba(198, 90, 58, 0.2);
+}
+
+.day-card.today .day-number {
+  color: var(--accent-coral);
+}
+
+.day-card.today::after {
+  content: '🎁';
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 0.8rem;
+  color: var(--accent-coral);
+}
+
+/* Día favorito */
+.day-card.favorite {
+  border-color: #ffb347;
+}
+
+.day-card.favorite::after {
+  content: '⭐';
+  color: #ffb347;
+  font-size: 0.8rem;
+}
+
+/* Día completado */
+.day-card.completed {
+  background: linear-gradient(145deg, rgba(76, 175, 80, 0.08), rgba(15, 15, 18, 0.95));
+}
+
+.day-card.completed .day-status {
+  color: #4caf50;
+}
+
+/* Alias: botón cerrar legacy con clase experience-close */
+#experience-layer .experience-close {
+  position: absolute;
+  top: clamp(12px, 2vw, 20px);
+  right: clamp(12px, 2vw, 20px);
+  width: 44px;
+  height: 44px;
+  z-index: 20;
+}
+
+#experience-content {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* Flor CSS */
+.flower-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.css-flower {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.css-flower:hover {
+  transform: scale(1.05);
+}
+
+/* Carta 3D */
+.letter-3d {
+  position: relative;
+  width: 200px;
+  height: 140px;
+  margin: 20px auto;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+}
+
+.letter-3d.open {
+  transform: rotateX(180deg);
+}
+
+/* Globos */
+.balloons-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+
+.balloon {
+  cursor: pointer;
+  animation: float 3s ease-in-out infinite;
+  transition: transform 0.2s;
+}
+
+.balloon:hover {
+  transform: scale(1.1);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Galleta de la fortuna */
+.fortune-cookie {
+  width: 120px;
+  height: 100px;
+  background: #deb887;
+  border-radius: 50% 50% 40% 40%;
+  margin: 20px auto;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.fortune-cookie.cracked {
+  transform: scale(0.9);
+  opacity: 0.5;
+}
+
+.fortune-message {
+  text-align: center;
+  margin-top: 20px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.fortune-message.show {
+  opacity: 1;
+}
+
+/* Mariposas */
+.butterflies-container {
+  position: relative;
+  min-height: 200px;
+  margin: 20px 0;
+}
+
+.butterfly {
+  position: absolute;
+  font-size: 1.8rem;
+  cursor: pointer;
+  animation: butterflyFloat 4s ease-in-out infinite;
+}
+
+@keyframes butterflyFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(10px, -15px) rotate(10deg); }
+  50% { transform: translate(-5px, -25px) rotate(-5deg); }
+  75% { transform: translate(15px, -10px) rotate(15deg); }
+}
+
+/* Vela */
+.candle-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.candle {
+  position: relative;
+  width: 40px;
+  height: 80px;
+  background: #f5e6d3;
+  border-radius: 10px 10px 5px 5px;
+  cursor: pointer;
+}
+
+.flame {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 20px;
+  background: #ff8c00;
+  border-radius: 50% 50% 20% 20%;
+  opacity: 0;
+  transition: opacity 0.3s;
+  animation: flicker 0.5s infinite alternate;
+}
+
+.candle.lit .flame {
+  opacity: 1;
+}
+
+@keyframes flicker {
+  0% { transform: translateX(-50%) scale(1); opacity: 0.8; }
+  100% { transform: translateX(-50%) scale(1.1); opacity: 1; }
+}
+
+/* Barra de progreso del calendario */
+.calendar-progress {
+  margin: 0 0 32px 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.progress-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.progress-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.progress-number {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--accent-coral);
+  font-family: 'Playfair Display', serif;
+}
+
+.progress-label {
+  font-size: 0.7rem;
+  color: var(--umbra-ash);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.progress-bar-container {
+  flex: 1;
+  min-width: 150px;
+}
+
+.progress-bar-bg {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-coral), #ffb347);
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+@media (max-width: 640px) {
+  #experience-content {
+    padding: 20px;
+  }
+  
+  .calendar-progress {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .progress-stats {
+    justify-content: center;
+  }
+}
