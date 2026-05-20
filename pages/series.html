@@ -30,6 +30,12 @@
       <p>Series y películas · Marca tu progreso</p>
     </header>
 
+    <!-- Vistas: Catálogo / Podio -->
+    <div class="cine-view-tabs">
+      <button class="cine-view-tab active" data-view="catalog">Catálogo</button>
+      <button class="cine-view-tab" data-view="podium">Podio</button>
+    </div>
+
     <!-- Barra de acciones -->
     <div class="cine-actions">
       <button class="btn-primary" id="btnAnadir">
@@ -62,8 +68,45 @@
       <p>No hay contenido. Añade tu primera serie o película.</p>
     </div>
 
+    <!-- ========== PODIO TOP 5 ========== -->
+    <div class="podium-section" id="podiumSection" style="display: none;">
+      <div class="podium-header">
+        <h2><i data-lucide="trophy"></i> Top 5</h2>
+        <button class="btn-secondary btn-sm" id="editPodiumBtn">
+          <i data-lucide="pencil"></i> Editar podio
+        </button>
+      </div>
+      <div class="podium-tabs">
+        <button class="podium-tab active" data-podium-type="series">Series</button>
+        <button class="podium-tab" data-podium-type="movies">Películas</button>
+      </div>
+      <div id="podiumGrid" class="podium-grid"></div>
+      <div class="podium-empty" id="podiumEmpty">
+        <i data-lucide="trophy"></i>
+        <p>Aún no has elegido tu top 5. ¡Edita el podio para añadir tus favoritas!</p>
+      </div>
+    </div>
+
   </div>
 </main>
+
+<!-- MODAL GESTIONAR PODIO -->
+<div class="modal-overlay" id="podiumModal" style="display: none;">
+  <div class="modal-content modal-form podium-modal-content">
+    <button class="close-modal" id="closePodiumModalBtn">✕</button>
+    <h2><i data-lucide="trophy"></i> Gestionar podio</h2>
+    <div class="podium-modal-tabs">
+      <button class="podium-tab active" data-pm-type="series">Series</button>
+      <button class="podium-tab" data-pm-type="movies">Películas</button>
+    </div>
+    <p class="podium-modal-hint">Selecciona hasta 5 y asígnales una posición (1 = mejor).</p>
+    <div id="podiumEditList" class="podium-edit-list"></div>
+    <div class="form-actions">
+      <button class="btn-secondary" id="cancelPodiumBtn">Cancelar</button>
+      <button class="btn-primary" id="savePodiumBtn">Guardar podio</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL AÑADIR/EDITAR -->
 <div class="modal-overlay" id="overlayForm" style="display: none;">

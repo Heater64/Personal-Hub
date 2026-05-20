@@ -11,6 +11,11 @@ let episodiosTemp = [];
 let currentViewItem = null;
 let currentViewProgress = 0;
 
+// ========== PODIO TOP 5 ==========
+let podioData = { series: [], movies: [] };
+let currentPodiumType = 'series';
+let editingPodiumType = 'series';
+
 // ========== WIDGET FLOTANTE - VARIABLES GLOBALES ==========
 let trackerSeries = [];
 let currentTrackingSerie = null;
@@ -319,6 +324,7 @@ async function loadData() {
       const data = doc.data();
       return { id: doc.id, ...data, progreso: data.progreso || 0 };
     });
+    await loadPodio();
     await renderGrid();
     await cargarTrackerSeries();
   } catch (e) {
@@ -938,6 +944,186 @@ async function guardarSerieManual() {
   await cargarTrackerSeries();
 }
 
+// ========== PODIO ==========
+
+async function loadPodio() {
+  try {
+    const doc = await getDB().collection('config').doc('podio').get();
+    if (doc.exists) {
+      const data = doc.data();
+      podioData.series = data.series || [];
+      podioData.movies = data.movies || [];
+    } else {
+      podioData = { series: [], movies: [] };
+    }
+  } catch (e) {
+    console.error('Error cargando podio:', e);
+    podioData = { series: [], movies: [] };
+  }
+}
+
+async function savePodio() {
+  try {
+    await getDB().collection('config').doc('podio').set({
+      series: podioData.series,
+      movies: podioData.movies,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('Error guardando podio:', e);
+    showToast('Error al guardar podio', true);
+  }
+}
+
+function renderPodium() {
+  const grid = document.getElementById('podiumGrid');
+  const empty = document.getElementById('podiumEmpty');
+  const section = document.getElementById('podiumSection');
+  if (!grid || !empty || !section) return;
+
+  const items = podioData[currentPodiumType] || [];
+  const sorted = [...items].sort((a, b) => a.position - b.position);
+  const tipoLabel = currentPodiumType === 'series' ? 'Serie' : 'Película';
+
+  if (sorted.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.innerHTML = sorted.map((item, idx) => {
+    const rank = item.position;
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+    const coverBg = item.portada ? `background-image: url('${escapeHtml(item.portada)}')` : '';
+    return `
+      <div class="podium-card">
+        <div class="podium-rank podium-rank-${rank}">${medal}</div>
+        <div class="podium-card-cover" style="${coverBg}"></div>
+        <div class="podium-card-info">
+          <div class="podium-card-title">${escapeHtml(item.titulo)}</div>
+          <div class="podium-card-sub">${tipoLabel} · Puesto #${rank}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (typeof lucide !== 'undefined') lucide.createIcons({ root: grid });
+}
+
+function openPodiumModal(type) {
+  editingPodiumType = type || currentPodiumType;
+  const modal = document.getElementById('podiumModal');
+  const list = document.getElementById('podiumEditList');
+  if (!modal || !list) return;
+
+  renderPodiumEditList();
+
+  document.querySelectorAll('.podium-modal-tabs .podium-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.pmType === editingPodiumType || (!t.dataset.pmType && editingPodiumType === 'series'));
+  });
+
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closePodiumModal() {
+  const modal = document.getElementById('podiumModal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderPodiumEditList() {
+  const list = document.getElementById('podiumEditList');
+  if (!list) return;
+
+  const tipo = editingPodiumType === 'series' ? 'serie' : 'pelicula';
+  const filtered = catalog.filter(item => item.tipo === tipo);
+  const podioItems = podioData[editingPodiumType] || [];
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:var(--umbra-ash);">
+      <p>No hay ${editingPodiumType} en tu catálogo. ¡Añade algunas primero!</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(item => {
+    const current = podioItems.find(p => p.itemId === item.id);
+    const selectedPos = current ? current.position : '';
+    const coverBg = item.portada ? `background-image: url('${escapeHtml(item.portada)}')` : '';
+    return `
+      <div class="podium-edit-item">
+        <div class="podium-edit-cover" style="${coverBg}"></div>
+        <span class="podium-edit-title">${escapeHtml(item.titulo)}</span>
+        <select class="podium-edit-select" data-item-id="${item.id}" data-titulo="${escapeHtml(item.titulo)}" data-portada="${escapeHtml(item.portada || '')}">
+          <option value="">—</option>
+          <option value="1" ${selectedPos === 1 ? 'selected' : ''}>#1</option>
+          <option value="2" ${selectedPos === 2 ? 'selected' : ''}>#2</option>
+          <option value="3" ${selectedPos === 3 ? 'selected' : ''}>#3</option>
+          <option value="4" ${selectedPos === 4 ? 'selected' : ''}>#4</option>
+          <option value="5" ${selectedPos === 5 ? 'selected' : ''}>#5</option>
+        </select>
+      </div>
+    `;
+  }).join('');
+}
+
+function collectPodiumData(type) {
+  const selects = document.querySelectorAll('#podiumEditList .podium-edit-select');
+  const items = [];
+  selects.forEach(sel => {
+    if (sel.value) {
+      items.push({
+        itemId: sel.dataset.itemId,
+        position: parseInt(sel.value),
+        titulo: sel.dataset.titulo,
+        portada: sel.dataset.portada
+      });
+    }
+  });
+  const positions = items.map(i => i.position);
+  const unique = new Set(positions);
+  if (positions.length !== unique.size) {
+    showToast('No puedes repetir posiciones. Cada puesto debe ser único.', true);
+    return null;
+  }
+  return items;
+}
+
+async function savePodium() {
+  const items = collectPodiumData(editingPodiumType);
+  if (items === null) return;
+
+  podioData[editingPodiumType] = items;
+  await savePodio();
+  renderPodium();
+  closePodiumModal();
+  showToast('✅ Podio guardado');
+}
+
+function switchView(view) {
+  const catalogElements = [
+    document.querySelector('.filters-bar'),
+    document.getElementById('contentGrid'),
+    document.getElementById('emptyState')
+  ];
+  const podiumSection = document.getElementById('podiumSection');
+  const viewTabs = document.querySelectorAll('.cine-view-tab');
+
+  viewTabs.forEach(t => t.classList.toggle('active', t.dataset.view === view));
+
+  if (view === 'podium') {
+    catalogElements.forEach(el => { if (el) el.style.display = 'none'; });
+    if (podiumSection) podiumSection.style.display = 'block';
+    renderPodium();
+  } else {
+    catalogElements.forEach(el => { if (el) el.style.display = ''; });
+    if (podiumSection) podiumSection.style.display = 'none';
+    renderGrid();
+  }
+}
+
 // ========== INICIALIZACIÓN ==========
 function init() {
   loadData();
@@ -1009,6 +1195,9 @@ function init() {
       if (document.getElementById('floatingTrackerPanel')?.style.display === 'flex') {
         document.getElementById('floatingTrackerPanel').style.display = 'none';
       }
+      if (document.getElementById('podiumModal')?.style.display === 'flex') {
+        closePodiumModal();
+      }
     }
   });
   
@@ -1053,6 +1242,37 @@ function init() {
     if (e.target === document.getElementById('trackerEpisodiosModal')) {
       document.getElementById('trackerEpisodiosModal').style.display = 'none';
     }
+  });
+
+  // ========== PODIO EVENTOS ==========
+  document.querySelectorAll('.cine-view-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchView(tab.dataset.view));
+  });
+
+  document.querySelectorAll('.podium-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.podium-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentPodiumType = tab.dataset.podiumType;
+      renderPodium();
+    });
+  });
+
+  document.querySelectorAll('.podium-modal-tabs .podium-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.podium-modal-tabs .podium-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      editingPodiumType = tab.dataset.pmType;
+      renderPodiumEditList();
+    });
+  });
+
+  document.getElementById('editPodiumBtn')?.addEventListener('click', () => openPodiumModal(currentPodiumType));
+  document.getElementById('savePodiumBtn')?.addEventListener('click', savePodium);
+  document.getElementById('cancelPodiumBtn')?.addEventListener('click', closePodiumModal);
+  document.getElementById('closePodiumModalBtn')?.addEventListener('click', closePodiumModal);
+  document.getElementById('podiumModal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('podiumModal')) closePodiumModal();
   });
 }
 

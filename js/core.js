@@ -2,6 +2,21 @@
 // core.js · utilidades comunes compartidas
 // ==========================================
 
+function daysSince(dateStr) {
+    const target = new Date(dateStr);
+    const today = new Date();
+    target.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return Math.floor((today - target) / (1000 * 60 * 60 * 24));
+}
+
+function initDayCounter(containerId, dateStr, label) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const days = daysSince(dateStr);
+    el.innerHTML = `<span class="day-counter-number">${days}</span> ${label}`;
+}
+
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>]/g, function (match) {
@@ -188,6 +203,8 @@ document.addEventListener('keydown', function (event) {
 
 document.addEventListener('DOMContentLoaded', initCoreUi);
 
+window.daysSince = daysSince;
+window.initDayCounter = initDayCounter;
 window.escapeHtml = escapeHtml;
 window.showMessage = showMessage;
 window.showToast = showToast;

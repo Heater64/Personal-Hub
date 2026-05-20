@@ -34,6 +34,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+    match /config/podio {
+      allow read: if true;
+      allow write: if true;
+    }
     
     // Progreso de usuarios
     match /users/{userId}/progress/{doc} {

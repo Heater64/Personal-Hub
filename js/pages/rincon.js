@@ -671,6 +671,10 @@ function initRincon() {
     });
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    if (typeof initDayCounter === 'function') {
+        initDayCounter('rinconDayCounter', '2025-07-03', 'días juntos 🤍👑');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initRincon);
