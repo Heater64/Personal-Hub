@@ -7,6 +7,9 @@ let currentGalleryItems = [];
 let currentGalleryIndex = 0;
 let activeGalleryType = '';
 let currentVideoElement = null;
+let reelTouchStartX = 0;
+let reelTouchStartY = 0;
+let currentMediaRotation = 0;
 
 function formatMediaTime(seconds) {
     if (!isFinite(seconds)) return '0:00';
@@ -34,6 +37,48 @@ function isMediaLightboxOpen() {
     return !!(box && box.classList.contains('open'));
 }
 
+function updateMediaRotation(mediaEl) {
+    if (!mediaEl) return;
+
+    const fullscreenRoot = document.fullscreenElement;
+    const stage = document.querySelector('.lightbox-reel-stage');
+    const boundsRoot = fullscreenRoot && fullscreenRoot.contains(mediaEl) ? fullscreenRoot : stage;
+    const stageWidth = boundsRoot?.clientWidth || window.innerWidth;
+    const stageHeight = boundsRoot?.clientHeight || window.innerHeight;
+    const mediaWidth = mediaEl.offsetWidth || mediaEl.videoWidth || mediaEl.naturalWidth || stageWidth;
+    const mediaHeight = mediaEl.offsetHeight || mediaEl.videoHeight || mediaEl.naturalHeight || stageHeight;
+    const normalizedRotation = ((currentMediaRotation % 360) + 360) % 360;
+    const isSideways = normalizedRotation === 90 || normalizedRotation === 270;
+    const scale = isSideways
+        ? Math.min(stageWidth / mediaHeight, stageHeight / mediaWidth, 1)
+        : 1;
+
+    mediaEl.style.transform = `rotate(${normalizedRotation}deg) scale(${scale})`;
+    mediaEl.style.setProperty('--media-rotation', `${normalizedRotation}deg`);
+    mediaEl.style.setProperty('--media-rotation-scale', scale.toFixed(3));
+}
+
+function rotateActiveMedia() {
+    const mediaEl = document.querySelector('#reelLightboxContent .reel-media');
+    currentMediaRotation = (currentMediaRotation + 90) % 360;
+    updateMediaRotation(mediaEl);
+}
+
+function createRotateButton(mediaEl) {
+    const rotateBtn = document.createElement('button');
+    rotateBtn.className = 'control-btn rotate-media-btn';
+    rotateBtn.type = 'button';
+    rotateBtn.title = 'Girar 90 grados';
+    rotateBtn.setAttribute('aria-label', 'Girar 90 grados');
+    rotateBtn.innerHTML = '<i data-lucide="rotate-cw"></i>';
+    rotateBtn.addEventListener('click', () => {
+        rotateActiveMedia();
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: rotateBtn });
+    });
+
+    return rotateBtn;
+}
+
 function renderMediaLightboxItem() {
     const box = document.getElementById('reelLightbox');
     const content = document.getElementById('reelLightboxContent');
@@ -46,15 +91,19 @@ function renderMediaLightboxItem() {
 
     cleanupActiveVideo();
     content.innerHTML = '';
+    currentMediaRotation = 0;
+    box.classList.toggle('showing-video', item.type === 'video');
 
     if (item.type === 'video') {
         const wrapper = document.createElement('div');
         wrapper.className = 'video-player-wrapper';
+        wrapper.tabIndex = 0;
 
         const video = document.createElement('video');
         video.className = 'reel-media';
         video.preload = 'metadata';
         video.playsInline = true;
+        video.loop = true;
         if (item.poster) video.poster = item.poster;
 
         const source = document.createElement('source');
@@ -97,10 +146,12 @@ function renderMediaLightboxItem() {
         fullscreenBtn.className = 'control-btn fullscreen-btn';
         fullscreenBtn.type = 'button';
         fullscreenBtn.innerHTML = '<i data-lucide="maximize"></i>';
+        const rotateBtn = createRotateButton(video);
 
         controls.appendChild(playPauseBtn);
         controls.appendChild(muteBtn);
         controls.appendChild(progressContainer);
+        controls.appendChild(rotateBtn);
         controls.appendChild(fullscreenBtn);
 
         wrapper.appendChild(video);
@@ -171,11 +222,17 @@ function renderMediaLightboxItem() {
         });
 
         video.addEventListener('timeupdate', updateProgress);
-        video.addEventListener('loadedmetadata', updateProgress);
+        video.addEventListener('loadedmetadata', () => {
+            updateProgress();
+            updateMediaRotation(video);
+        });
         video.addEventListener('play', refreshPlayIcon);
         video.addEventListener('pause', refreshPlayIcon);
         video.addEventListener('volumechange', refreshMuteIcon);
-        wrapper.addEventListener('fullscreenchange', refreshFullscreenIcon);
+        wrapper.addEventListener('fullscreenchange', () => {
+            refreshFullscreenIcon();
+            requestAnimationFrame(() => updateMediaRotation(video));
+        });
 
         currentVideoElement = video;
         if (typeof lucide !== 'undefined') lucide.createIcons({ root: wrapper });
@@ -186,12 +243,25 @@ function renderMediaLightboxItem() {
             });
         });
     } else {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'media-viewer-wrapper image-viewer-wrapper';
+        wrapper.tabIndex = 0;
+
         const image = document.createElement('img');
         image.className = 'reel-media';
         image.src = item.src;
         image.alt = item.caption || '';
         image.loading = 'eager';
-        content.appendChild(image);
+        image.addEventListener('load', () => updateMediaRotation(image), { once: true });
+
+        const controls = document.createElement('div');
+        controls.className = 'custom-video-controls image-media-controls';
+        controls.appendChild(createRotateButton(image));
+
+        wrapper.appendChild(image);
+        wrapper.appendChild(controls);
+        content.appendChild(wrapper);
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: wrapper });
     }
 
     if (captionEl) captionEl.textContent = item.caption || '';
@@ -215,9 +285,13 @@ function openMediaLightbox(items, startIndex = 0, galleryType = 'media') {
     activeGalleryType = galleryType;
 
     box.setAttribute('aria-hidden', 'false');
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.tabIndex = -1;
     box.classList.add('open');
     document.body.classList.add('reel-lightbox-open');
     renderMediaLightboxItem();
+    requestAnimationFrame(() => box.focus({ preventScroll: true }));
 }
 
 function closeMediaLightbox() {
@@ -227,7 +301,10 @@ function closeMediaLightbox() {
     if (content) content.innerHTML = '';
     if (box) {
         box.classList.remove('open');
+        box.classList.remove('showing-video');
         box.setAttribute('aria-hidden', 'true');
+        box.removeAttribute('role');
+        box.removeAttribute('aria-modal');
     }
     document.body.classList.remove('reel-lightbox-open');
     currentGalleryItems = [];
@@ -246,6 +323,11 @@ function prevMedia() {
     currentGalleryIndex = (currentGalleryIndex - 1 + currentGalleryItems.length) % currentGalleryItems.length;
     renderMediaLightboxItem();
 }
+
+window.addEventListener('resize', () => {
+    if (!isMediaLightboxOpen()) return;
+    updateMediaRotation(document.querySelector('#reelLightboxContent .reel-media'));
+});
 
 function buildFolderGalleryItems(folderName) {
     const images = window.galleryFoldersData?.[folderName] || [];
@@ -464,8 +546,14 @@ function renderMemes() {
     const grid = document.getElementById('memesGrid');
     if (!grid || !window.memeImagesData) return;
 
+    const memeFolders = Object.keys(window.memeImagesData);
+    if (!memeFolders.length) return;
+    if (!window.memeImagesData[currentMemeFolder]) {
+        currentMemeFolder = memeFolders[0];
+    }
+
     if (nav) {
-        nav.innerHTML = Object.keys(window.memeImagesData).map((folder) => `
+        nav.innerHTML = memeFolders.map((folder) => `
             <button class="memes-folder-btn ${folder === currentMemeFolder ? 'active' : ''}" data-folder="${escapeHtml(folder)}" type="button">
                 <i data-lucide="folder"></i> ${escapeHtml(folder)}
                 <span class="folder-count">${window.memeImagesData[folder].length}</span>
@@ -641,6 +729,27 @@ function initReelLightbox() {
             closeMediaLightbox();
         }
     });
+
+    reelLightbox.addEventListener('touchstart', (event) => {
+        if (event.touches.length !== 1) return;
+        reelTouchStartX = event.touches[0].clientX;
+        reelTouchStartY = event.touches[0].clientY;
+    }, { passive: true });
+
+    reelLightbox.addEventListener('touchend', (event) => {
+        if (!isMediaLightboxOpen() || currentGalleryItems.length <= 1 || !event.changedTouches.length) return;
+
+        const deltaX = event.changedTouches[0].clientX - reelTouchStartX;
+        const deltaY = event.changedTouches[0].clientY - reelTouchStartY;
+        const isHorizontalSwipe = Math.abs(deltaX) > 58 && Math.abs(deltaX) > Math.abs(deltaY) * 1.35;
+
+        if (!isHorizontalSwipe) return;
+        if (deltaX < 0) {
+            nextMedia();
+        } else {
+            prevMedia();
+        }
+    }, { passive: true });
 }
 
 function initRincon() {

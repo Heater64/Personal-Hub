@@ -83,9 +83,15 @@ const memeImages = {
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745739/pezglobo_atprlu.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745740/susto_xokceo.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745743/hombresbelike_jok7ea.mp4",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1779995986/Captura_de_pantalla_2026-05-28_141550_zzw4cc.png",
     ],
 
     "Te amo👑": [
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995342/video5821142400889790149_rueytb.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995254/video5821142400889790150_hzrdbr.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995342/video5821142400889790151_sl6h3e.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995503/video5821142400889790153_1_auvfsc.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995259/video5821142400889790148_pqiwwn.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-1_guzqtm.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-3_cotmqd.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777132934/bailesnowman.mp4",
