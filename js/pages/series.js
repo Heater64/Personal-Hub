@@ -59,12 +59,66 @@ const dom = {
 
 // Firestore
 const COL = 'seriesData';
-const TRACKER_COL = 'seriesTrackerProgress';
 
-function getDB() {
+async function getDB() {
   if (window.db) return window.db;
-  if (typeof db !== 'undefined') return db;
+  if (typeof window.waitForFirebase === 'function') {
+    await window.waitForFirebase();
+    if (window.db) return window.db;
+  }
+  if (typeof firebase !== 'undefined' && firebase.firestore) {
+    window.db = firebase.firestore();
+    return window.db;
+  }
   throw new Error('Firestore no inicializado');
+}
+
+async function ensureFirebaseAuth() {
+  const auth = window.auth || (typeof firebase !== 'undefined' && firebase.auth ? firebase.auth() : null);
+  if (!auth || auth.currentUser) return true;
+
+  try {
+    const credential = await auth.signInAnonymously();
+    window.auth = auth;
+    console.log('Sesión anónima iniciada para guardar en Firebase:', credential.user?.uid);
+    return true;
+  } catch (error) {
+    console.warn('No se pudo iniciar sesión anónima en Firebase:', error);
+    if (error?.code === 'auth/admin-restricted-operation') {
+      showToast('Firebase no permite login anónimo. Actívalo o ajusta las reglas.', true);
+    }
+    return false;
+  }
+}
+
+async function loadTrackerItems(userId) {
+  const snap = await (await getDB()).collection(COL).get();
+  return snap.docs
+    .map(doc => doc.data())
+    .filter(item => item.isTracker && item.userId === userId)
+    .map(item => ({ id: item.serieId, ...item }));
+}
+
+async function saveTrackerItems(userId, items) {
+  await ensureFirebaseAuth();
+  const database = await getDB();
+  const snap = await database.collection(COL).get();
+  const batch = database.batch();
+  snap.docs.forEach(doc => {
+    const data = doc.data();
+    if (data.isTracker && data.userId === userId) batch.delete(doc.ref);
+  });
+  items.forEach(item => {
+    const ref = database.collection(COL).doc(`tracker_${userId}_${item.id}`);
+    batch.set(ref, {
+      ...item,
+      userId,
+      serieId: item.id,
+      isTracker: true,
+      updatedAt: item.updatedAt || new Date().toISOString()
+    });
+  });
+  await batch.commit();
 }
 
 function showToast(msg, isError = false) {
@@ -91,7 +145,7 @@ function escapeHtml(str) {
 // ========== PROGRESO ==========
 async function loadProgress(seriesId) {
   try {
-    const doc = await getDB().collection(COL).doc(seriesId).get();
+    const doc = await (await getDB()).collection(COL).doc(seriesId).get();
     const data = doc.data();
     if (data && data.progreso) return data.progreso;
     return 0;
@@ -103,7 +157,8 @@ async function loadProgress(seriesId) {
 
 async function saveProgress(seriesId, episodeNum) {
   try {
-    await getDB().collection(COL).doc(seriesId).update({
+    await ensureFirebaseAuth();
+    await (await getDB()).collection(COL).doc(seriesId).update({
       progreso: episodeNum,
       updatedAt: new Date().toISOString()
     });
@@ -116,7 +171,8 @@ async function saveProgress(seriesId, episodeNum) {
 
 async function deleteProgress(seriesId) {
   try {
-    await getDB().collection(COL).doc(seriesId).update({ progreso: 0 });
+    await ensureFirebaseAuth();
+    await (await getDB()).collection(COL).doc(seriesId).update({ progreso: 0 });
   } catch (e) {
     console.error('Error eliminando progreso:', e);
   }
@@ -319,8 +375,8 @@ function stopPlayer() {
 // ========== CRUD ==========
 async function loadData() {
   try {
-    const snap = await getDB().collection(COL).get();
-    catalog = snap.docs.map(doc => {
+    const snap = await (await getDB()).collection(COL).get();
+    catalog = snap.docs.filter(doc => !doc.data().isTracker).map(doc => {
       const data = doc.data();
       return { id: doc.id, ...data, progreso: data.progreso || 0 };
     });
@@ -448,7 +504,8 @@ async function handleCardClick(item) {
 
 async function deleteContent(id) {
   try {
-    await getDB().collection(COL).doc(id).delete();
+    await ensureFirebaseAuth();
+    await (await getDB()).collection(COL).doc(id).delete();
     await loadData();
     showToast('Contenido eliminado');
   } catch (e) {
@@ -459,9 +516,12 @@ async function deleteContent(id) {
 
 async function deleteAllContent() {
   try {
-    const snap = await getDB().collection(COL).get();
-    const batch = getDB().batch();
-    snap.docs.forEach(doc => { batch.delete(doc.ref); });
+    await ensureFirebaseAuth();
+    const snap = await (await getDB()).collection(COL).get();
+    const batch = (await getDB()).batch();
+    snap.docs.forEach(doc => {
+      if (!doc.data().isTracker) batch.delete(doc.ref);
+    });
     await batch.commit();
     await loadData();
     showToast('Todos los contenidos han sido eliminados');
@@ -577,13 +637,14 @@ async function saveContent() {
   };
   
   try {
+    await ensureFirebaseAuth();
     if (currentEditId) {
-      await getDB().collection(COL).doc(currentEditId).update(payload);
+      await (await getDB()).collection(COL).doc(currentEditId).update(payload);
       showToast('Actualizado correctamente');
       await loadData();
     } else {
       payload.createdAt = new Date().toISOString();
-      const docRef = await getDB().collection(COL).add(payload);
+      const docRef = await (await getDB()).collection(COL).add(payload);
       showToast('Añadido correctamente');
       await loadData();
     }
@@ -619,9 +680,9 @@ async function cargarTrackerSeries() {
   const trackerSeriesMap = new Map();
   
   try {
-    const snapshot = await getDB().collection(TRACKER_COL).doc(userId).collection('series').get();
-    snapshot.forEach(doc => {
-      trackerSeriesMap.set(doc.id, { id: doc.id, ...doc.data() });
+    const items = await loadTrackerItems(userId);
+    items.forEach(item => {
+      if (item?.id) trackerSeriesMap.set(item.id, item);
     });
     
     trackerSeries = Array.from(trackerSeriesMap.values());
@@ -635,8 +696,9 @@ async function cargarTrackerSeries() {
 async function guardarTrackerSerie(serieData) {
   const userId = getTrackerUserId();
   try {
-    const serieRef = getDB().collection(TRACKER_COL).doc(userId).collection('series').doc(serieData.id);
-    await serieRef.set({
+    const items = await loadTrackerItems(userId);
+    const item = {
+      id: serieData.id,
       nombre: serieData.nombre,
       totalEpisodios: serieData.totalEpisodios,
       poster: serieData.poster || '',
@@ -644,7 +706,11 @@ async function guardarTrackerSerie(serieData) {
       esDelCatalogo: serieData.esDelCatalogo || false,
       createdAt: serieData.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    });
+    };
+    const index = items.findIndex(serie => serie.id === serieData.id);
+    if (index >= 0) items[index] = { ...items[index], ...item };
+    else items.push(item);
+    await saveTrackerItems(userId, items);
     await cargarTrackerSeries();
     return true;
   } catch (error) {
@@ -657,16 +723,19 @@ async function guardarTrackerSerie(serieData) {
 async function actualizarVistosTracker(serieId, nuevosVistos) {
   const userId = getTrackerUserId();
   try {
+    await ensureFirebaseAuth();
     const serie = trackerSeries.find(s => s.id === serieId);
     if (!serie) return;
     
     const totalEp = serie.totalEpisodios;
     const vistosFinal = Math.min(nuevosVistos, totalEp);
     
-    await getDB().collection(TRACKER_COL).doc(userId).collection('series').doc(serieId).update({
-      vistos: vistosFinal,
-      updatedAt: new Date().toISOString()
-    });
+    const items = await loadTrackerItems(userId);
+    const updatedItems = items.map(item => item.id === serieId
+      ? { ...item, vistos: vistosFinal, updatedAt: new Date().toISOString() }
+      : item
+    );
+    await saveTrackerItems(userId, updatedItems);
     
     serie.vistos = vistosFinal;
     await cargarTrackerSeries();
@@ -687,7 +756,9 @@ async function actualizarVistosTracker(serieId, nuevosVistos) {
 async function eliminarTrackerSerie(serieId) {
   const userId = getTrackerUserId();
   try {
-    await getDB().collection(TRACKER_COL).doc(userId).collection('series').doc(serieId).delete();
+    await ensureFirebaseAuth();
+    const items = await loadTrackerItems(userId);
+    await saveTrackerItems(userId, items.filter(item => item.id !== serieId));
     await cargarTrackerSeries();
     showToast('Serie eliminada del seguimiento');
   } catch (error) {
@@ -904,12 +975,13 @@ async function guardarSerieManual() {
     // EDITAR serie existente
     const userId = getTrackerUserId();
     try {
-      await getDB().collection(TRACKER_COL).doc(userId).collection('series').doc(window.trackerEditandoId).update({
-        nombre: nombre,
-        totalEpisodios: total,
-        poster: poster || '',
-        updatedAt: new Date().toISOString()
-      });
+      await ensureFirebaseAuth();
+      const items = await loadTrackerItems(userId);
+      const updatedItems = items.map(item => item.id === window.trackerEditandoId
+        ? { ...item, nombre, totalEpisodios: total, poster: poster || '', updatedAt: new Date().toISOString() }
+        : item
+      );
+      await saveTrackerItems(userId, updatedItems);
       showToast(`✅ Serie "${nombre}" actualizada`);
       delete window.trackerEditandoId;
     } catch (error) {
@@ -948,7 +1020,7 @@ async function guardarSerieManual() {
 
 async function loadPodio() {
   try {
-    const doc = await getDB().collection('config').doc('podio').get();
+    const doc = await (await getDB()).collection('config').doc('podio').get();
     if (doc.exists) {
       const data = doc.data();
       podioData.series = data.series || [];
@@ -964,7 +1036,8 @@ async function loadPodio() {
 
 async function savePodio() {
   try {
-    await getDB().collection('config').doc('podio').set({
+    await ensureFirebaseAuth();
+    await (await getDB()).collection('config').doc('podio').set({
       series: podioData.series,
       movies: podioData.movies,
       updatedAt: new Date().toISOString()

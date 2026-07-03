@@ -1,38 +1,41 @@
 // maldia.js - Versión completa con recuerdos
 
 const phrases = [
-    "Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un poquito de ternura contigo.",
+    "Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un abrazo.",
     "Estás aquí, y eso ya es suficiente. Un día más, un paso más. Yo te veo, y eres increíble.",
-    "No necesitas rendir cuentas hoy. Solo existir. Y si puedes, sonreír un poquito.",
+    "No necesitas demostrar nada a nadie. Solo a ti misma. Y si puedes, sonreír un poquito.",
     "Eres más fuerte de lo que crees, más bonita de lo que piensas y más querida de lo que imaginas.",
     "Hoy puede que no sea fácil, pero mañana será otro día. Yo seguiré estando aquí para ti.",
     "Tu misión ahora: beber agua, respirar hondo y recordar que te quiero muchísimo.",
     "No tienes que poder con todo. Permítete descansar. Yo te apaño el resto.",
     "Eres mi persona favorita en este planeta. No lo olvides.",
     "Aunque hoy sea gris, recuerda que los días bonitos también existen y volverán.",
-    "Tómate un minuto para ti. Cierra los ojos. Respira. Yo cuido de ti."
-];
-
-const dailyMessages = [
+    "Tómate un minuto para ti. Cierra los ojos. Respira. Yo cuido de ti.",
     "✨ Eres única, especial e irrepetible. No hay nadie como tú.",
     "🌼 Tu sonrisa ilumina incluso los días más nublados.",
-    "🌟 Cada día te conviertes en una versión más maravillosa de ti misma.",
     "💫 La vida es mejor porque tú estás en ella.",
     "🌸 Eres como una flor que florece incluso en invierno.",
     "⭐ Tu fuerza me inspira cada día un poco más.",
     "💖 Eres el mejor descubrimiento de mi vida.",
     "🌈 Incluso sin saberlo, haces mi mundo más bonito.",
     "🎀 Eres perfecta exactamente como eres.",
-    "✨ No cambies nunca. Eres increíble tal cual."
+];
+
+const dailyMessages = [
+    "🌟 Cada día te conviertes en una versión más maravillosa de ti misma.",
 ];
 
 // Recuerdos (imágenes)
 const memories = [
     { image: "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777747760/5199564237372592635_eqj9v5.jpg", caption: "Siempre tan linda ✨" },
-    { image: "", caption: "" },
-    { image: "", caption: "" },
-    { image: "", caption: "" },
-    { image: "", caption: "" }
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766240/5913325400387948133_1_t6a24g.jpg", caption: "piscina con mi princesa" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766239/5913325400387948134_efteqk.jpg", caption: "comprando papitash jsjs" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766239/5913325400387948135_diq97c.jpg", caption: "Que hermosa que eres" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948138_ryirj6.jpg", caption: "Batooon" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948137_i6fcp2.jpg", caption: "Que preciosidad" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948136_n6ayva.jpg", caption: "JSsjsjsj" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948139_qdgn0l.jpg", caption: "Que ojazos tiene mi princesa" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/6046582610491806111_mx6qc3.jpg", caption: "Yo tambien te amo miniñaaaaaaaaaa" },
 ];
 
 let isMusicPlaying = false;

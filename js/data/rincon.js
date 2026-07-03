@@ -21,8 +21,12 @@ const fotosatardecer = {
         "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1778353785/6050762318045450216_gwc122.jpg",
         "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1778353786/6050762318045450215_1_tpqalm.jpg",
         "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1778353786/6050762318045450226_agq2lo.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1783103541/5922494403945631596_lwqef8.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1783103541/5926900567944925253_v3yyhh.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/v1783103541/5926900567944925254_ygf4wm.jpg",
         // Añade aquí más imágenes de atardeceres, separadas por comas
     ],
+
 };
 
 const memeImages = {

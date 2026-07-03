@@ -1,21 +1,18 @@
 const FAVORITES_KEY = 'personalHub.razonesFavoritas';
 
 const DEFAULT_RAZONES = [
-    'Por la forma en que iluminas mi dia con solo una sonrisa.',
-    'Porque siempre sabes como hacerme reir, incluso en los dias dificiles.',
-    'Por tu paciencia infinita y tu forma de escuchar.',
-    'Porque eres mi lugar seguro en este mundo caotico.',
-    'Por la pasion que pones en todo lo que haces.',
-    'Porque contigo el tiempo vuela y cada segundo vale la pena.',
-    'Por esos pequenos detalles que solo tu tienes conmigo.',
-    'Porque me inspiras a ser una mejor version de mi mismo cada dia.',
-    'Por tu inteligencia y la forma en que ves el mundo.',
-    'Simplemente, por ser tu, sin filtros ni pretensiones.'
+    'Por lo lista, lo hermosa y lo increíble que eres.',
+    'Por todo lo que me has enseñado y lo que me sigues enseñando cada día.',
+    'Por toda la paciencia que tienes conmigo.',
+    'No son las unicas razones pero así te obligaré a entrar de vez en cuando para ver las nuevas jsjjs 👑🤍',
+    '',
+    '',
+    '',
+    '',
+    '',
 ];
 
-const razonesList = Array.isArray(window.razonesData) && window.razonesData.length
-    ? window.razonesData
-    : DEFAULT_RAZONES;
+const razonesList = DEFAULT_RAZONES;
 
 let favoritos = [];
 

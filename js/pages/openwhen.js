@@ -1,35 +1,35 @@
 // openwhen.js – Cartas interactivas con expansión en grid
 const lettersData = [
     {
-        title: "Abrela cuando estes triste",
-        note: "Un empujoncito para los dias grises.",
-        message: "No tienes que poder con todo a la vez. Respira, descansa un poco y recuerda que ya has superado cosas muy dificiles antes. Sigues siendo increible incluso en tus dias flojitos.\n\n❤️ Tómate tu tiempo, yo estaré aquí."
+        title: "Abrela cuando sientas que no te amo.",
+        note: "Cosa que no es verdad, yo siempre te amo y te amaré por siempre jamás.",
+        message: "Te amo mucho y quiero que sepas que siempre estaré aquí para ti, apoyándote en cada paso del camino. Porque estamos juntos en esto. Peluche y princesa para siempre. 🤍🤍🤍"
     },
     {
-        title: "Abrela cuando me eches de menos",
-        note: "Para cuando la distancia pese mas.",
-        message: "Si ahora mismo pudiera, iria a buscarte para darte un abrazo largo. Mientras tanto, piensa en todo lo bonito que ya tenemos y en todo lo que todavia vamos a vivir.\n\n✨ Te llevo conmigo siempre."
+        title: "Abrela cuando...",
+        note: "",
+        message: ""
     },
     {
-        title: "Abrela cuando tengas un exito",
-        note: "Para celebrar contigo aunque sea en pantalla.",
-        message: "Sabia que podias hacerlo. Estoy orgulloso de ti no solo por lograrlo, sino por todo lo que has trabajado para llegar hasta ahi. Hoy toca presumir de ti un poquito.\n\n🎉 ¡Felicidades, campeona!"
+        title: "Abrela cuando...",
+        note: "",
+        message: ""
     },
     {
-        title: "Abrela cuando dudes de ti",
-        note: "Para recordarte quien eres.",
-        message: "A veces te miras mas duro de lo que mereces. Yo veo a una persona valiente, lista, sensible y especial. No necesitas ser perfecta para ser maravillosa.\n\n💪 Confía en ti, yo confío."
+        title: "Abrela cuando...",
+        note: "",
+        message: ""
     },
     {
-        title: "Abrela cuando no puedas dormir",
-        note: "Una carta tranquilita para bajar revoluciones.",
-        message: "Imagina una noche calmada, una manta, una luz tenue y mi mano buscando la tuya. No corras. El mundo puede esperar a manana. Ahora solo toca descansar.\n\n🌙 Buenas noches, mi amor."
+        title: "Abrela cuando...",
+        note: "",
+        message: ""
     },
     {
-        title: "Abrela cuando quieras sonreir",
-        note: "Un mini refugio para momentos random.",
-        message: "Quiero que recuerdes esta verdad sencilla: haces bonito mi mundo. Incluso cuando no lo intentas. Incluso cuando no lo ves. Y eso ya es una razon enorme para sonreir.\n\n😊 Gracias por existir."
-    }
+        title: "Abrela cuando...",
+        note: "",
+        message: ""
+    },
 ];
 
 function renderLetters() {
@@ -47,9 +47,9 @@ function renderLetters() {
                 <i data-lucide="mail-open"></i> Abrir carta
             </button>
             <div class="letter-content-open">
-                <div class="letter-heart">❤️</div>
+                <div class="letter-heart">🤍</div>
                 <div class="letter-message">${escapeHtml(letter.message).replace(/\n/g, '<br>')}</div>
-                <div class="letter-signature">— Con todo mi cariño</div>
+                <div class="letter-signature">— Con todo mi cariño: Peluchito</div>
                 <button class="close-btn" data-id="${index}">
                     <i data-lucide="x"></i> Cerrar sobre
                 </button>
