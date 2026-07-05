@@ -1,0 +1,69 @@
+// js/data/homeData.js
+// Datos editables para la página de inicio
+
+export const HOME_DATA = {
+    // ==========================================
+    // NOTICIAS / NOVEDADES (Edita aquí)
+    // ==========================================
+    news: [
+        {
+            id: 1,
+            date: "5 de julio de 2026",
+            title: "🎬 Nuevo video en la sección Memes",
+            description: "Se ha añadido un video especial en la carpeta 'Te amo👑' dentro de la sección de Memes. ¡No te lo pierdas! 🤍",
+            // Nuevo: ruta para saber dónde está
+            
+        },
+        {
+            id: 2,
+            date: "5 de julio de 2026",
+            title: "📅 Calendario de experiencias activado",
+            description: "El calendario ya está disponible. 31 días con sorpresas, juegos y momentos especiales."
+        },
+        {
+            id: 3,
+            date: "5 de julio de 2026",
+            title: "🎵 Música para ti",
+            description: "Se han añadido una cancion en la sección de música. ¡Escúchala!"
+        },
+        
+        {
+            id: 4,
+            date: "5 de julio de 2026",
+            title: "☀️ Mal día",
+            description: "Se ha añadido una foto nueva en 'Mal dia'."
+        }
+        // Añade más noticias aquí cuando quieras
+    ],
+
+    // ==========================================
+    // DATOS CURIOSOS (Edita aquí)
+    // ==========================================
+    curiosities: [
+        {
+            id: 1,
+            icon: "🎨",
+            title: "Paleta de colores",
+            description: "Los colores de esta web están inspirados en el personaje animado 'Darwin' y tu color favorito (negro) por esa la web es un poco oscura."
+        },
+        {
+            id: 2,
+            icon: "✨",
+            title: "La estrella fugaz",
+            description: "Cada ✧ que ves en la web representa lo deslumbrante que eres."
+        },
+        {
+            id: 3,
+            icon: "🤍",
+            title: "El corazón",
+            description: "Porque simplemente es especial."
+        },
+        {
+            id: 4,
+            icon: "📅",
+            title: "El calendario",
+            description: "El calendario es una metáfora de nuestro tiempo juntos. Cada día es una oportunidad para crear un recuerdo nuevo."
+        }
+        // Añade más curiosidades aquí
+    ]
+};

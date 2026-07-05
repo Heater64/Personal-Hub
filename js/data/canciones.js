@@ -112,7 +112,15 @@ const songs = [
         cover: `${SONGS_BASE_URL}/Fotos/R%20(3).jpeg`,
         audio: `${SONGS_BASE_URL}/Canciones/Reik,%20J%20Balvin,%20Lalo%20Ebratt%20-%20Indeciso%20(Letra).m4a`,
         lyrics: `Siempre que ella baila así<br>A mí me daña la cabeza<br>Me robó el corazón sin permiso<br>Su movimiento me tiene indeciso`
-    }
+    },
+    {
+        title: "Tiroteo (Remix)",
+        artist: "",
+        album: "",
+        cover: "https://i.ytimg.com/vi/7lZW4UgBuWQ/maxresdefault.jpg", 
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1783251965/Marc_Segu%C3%AD_Tiroteo_Remix_ft_Rauw_Alejandro___Pol_Granch_etwg28.m4a", 
+        lyrics: `Letra no disponible`
+    },
 ];
 
 const allSongs = [
@@ -122,6 +130,14 @@ const allSongs = [
         album: "",
         cover: "https://i1.sndcdn.com/artworks-leykoA0rJXWDmQya-cyfPxg-t500x500.jpg",
         audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777746763/Zzoilo_Aitana_-_Mon_Amour_Remix_Letra_Lyrics_jrgcjv.m4a",
+        lyrics: `Letra no disponible`
+    },
+    {
+        title: "Tiroteo (Remix)",
+        artist: "",
+        album: "",
+        cover: "https://i.ytimg.com/vi/7lZW4UgBuWQ/maxresdefault.jpg", 
+        audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1783251965/Marc_Segu%C3%AD_Tiroteo_Remix_ft_Rauw_Alejandro___Pol_Granch_etwg28.m4a", 
         lyrics: `Letra no disponible`
     },
     {

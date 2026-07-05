@@ -99,13 +99,13 @@
         },
         {
             "id": "dia_flores",
-            "title": "🎁 Flores para ti",
+            "title": "Tu si fueses una gatita",
             "type": "giftBox",
             "unlock": { "mode": "date", "value": "2026-07-03" },
             "redirect": false,
             "data": {
-                "message": "Para la princesa más bonita. 🌹",
-                "image": "https://source.unsplash.com/featured/400x400/?rose,flower"
+                "message": "Serías la gatita más bonita. 🌹",
+                "image": "https://i.pinimg.com/736x/6f/5f/ea/6f5fea843a9a5d7fefba02a26ad0e2db.jpg"
             }
         },
         {

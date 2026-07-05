@@ -817,3 +817,37 @@
         margin-top: 1px;
     }
 }
+
+/* Asegurar que el modal de experiencia sea responsive */
+#experience-layer .experience-modal-inner {
+    max-width: min(560px, 96vw);
+    width: 100%;
+    margin: 0 auto;
+}
+
+#experience-layer .experience-modal-body {
+    padding: clamp(12px, 2vw, 24px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+#experience-layer .gift-module {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* Móvil */
+@media (max-width: 480px) {
+    #experience-layer .experience-modal-inner {
+        padding: clamp(16px, 4vw, 24px);
+        border-radius: 16px;
+        min-height: auto;
+        max-height: 90vh;
+    }
+    #experience-layer .experience-modal-body {
+        padding: 8px 4px;
+    }
+}
