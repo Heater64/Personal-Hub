@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🎯 Lanza Cuchillos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg-deep: #0a0a12;
+        --bg-mid: #14141f;
+        --panel: rgba(255,255,255,0.04);
+        --panel-border: rgba(255,255,255,0.08);
+        --ink: #ece9e4;
+        --ash: #8b889a;
+        --coral: #c65a3a;
+        --coral-dark: #9a4530;
+        --gold: #ffd166;
+        --green: #5fd08a;
+        --red: #ff5d5d;
+        --font-display: 'Playfair Display', Georgia, serif;
+        --font-body: 'Inter', system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(ellipse at 50% 0%, var(--bg-mid), var(--bg-deep));
+        color: var(--ink);
+        font-family: var(--font-body);
+    }
+
+    .game-container {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 28px 20px 40px;
+        text-align: center;
+    }
+
+    h1 {
+        font-family: var(--font-display);
+        font-size: 1.7rem;
+        font-weight: 700;
+        margin: 0 0 4px;
+        letter-spacing: 0.01em;
+    }
+
+    .subtitle {
+        color: var(--ash);
+        font-size: 0.85rem;
+        margin: 0 0 18px;
+    }
+
+    .toolbar {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .icon-btn {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        color: var(--ink);
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .icon-btn:hover { border-color: var(--coral); color: var(--coral); }
+    .icon-btn.active { color: var(--gold); border-color: var(--gold); }
+
+    .score-display {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin: 0 0 18px;
+        flex-wrap: wrap;
+    }
+    .score-item {
+        background: var(--panel);
+        padding: 8px 18px;
+        border-radius: 16px;
+        border: 1px solid var(--panel-border);
+        min-width: 74px;
+    }
+    .score-item .label {
+        font-size: 0.55rem;
+        color: var(--ash);
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+    }
+    .score-item .value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        font-family: var(--font-display);
+    }
+    .score-item .value.gold { color: var(--gold); }
+    .score-item .value.green { color: var(--green); }
+    .score-item .value.red { color: var(--red); }
+
+    .canvas-wrap {
+        position: relative;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+
+    canvas {
+        width: 100%;
+        max-width: 480px;
+        aspect-ratio: 1/1;
+        background: radial-gradient(ellipse at center, #1a1a2a, #0a0a12);
+        border-radius: 22px;
+        border: 1px solid var(--panel-border);
+        touch-action: none;
+        cursor: pointer;
+        display: block;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 16px;
+    }
+    .btn-ghost {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        padding: 10px 24px;
+        border-radius: 40px;
+        color: var(--ink);
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-family: var(--font-body);
+        transition: all 0.2s;
+    }
+    .btn-ghost:hover { border-color: var(--coral); color: var(--coral); }
+
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 22px;
+        padding: 10px 24px;
+        border: 1px solid var(--panel-border);
+        border-radius: 40px;
+        color: var(--ash);
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+    .back-btn:hover { border-color: var(--coral); color: var(--coral); transform: translateX(-3px); }
+
+    .game-message {
+        position: fixed; inset: 0; background: rgba(6,6,8,0.92);
+        backdrop-filter: blur(16px); display: none; align-items: center;
+        justify-content: center; z-index: 2000; padding: 20px;
+    }
+    .game-message.show { display: flex; }
+    .game-message-content {
+        background: linear-gradient(180deg, rgba(26,26,30,0.98), rgba(14,14,18,0.98));
+        border: 1px solid var(--panel-border);
+        border-radius: 28px;
+        padding: 40px 44px;
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+        animation: modalPop 0.35s cubic-bezier(0.34,1.4,0.64,1);
+    }
+    .game-message-content .icon { font-size: 3.2rem; margin-bottom: 14px; }
+    .game-message-content h2 {
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        margin: 0 0 10px;
+        color: var(--ink);
+    }
+    .game-message-content p { color: var(--ash); margin: 0 0 22px; line-height: 1.55; font-size: 0.92rem; }
+    .game-message-content .btn-primary {
+        background: var(--coral);
+        border: none;
+        padding: 12px 32px;
+        border-radius: 40px;
+        color: white;
+        cursor: pointer;
+        font-size: 0.88rem;
+        font-family: var(--font-body);
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .game-message-content .btn-primary:hover { background: var(--coral-dark); transform: translateY(-2px); }
+
+    @keyframes modalPop {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .combo-display {
+        position: fixed;
+        top: 42%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2.6rem;
+        font-weight: 700;
+        color: var(--gold);
+        text-shadow: 0 0 30px rgba(255,209,102,0.45);
+        pointer-events: none;
+        opacity: 0;
+        transition: all 0.3s ease;
+        z-index: 100;
+        font-family: var(--font-display);
+        white-space: nowrap;
+    }
+    .combo-display.show {
+        opacity: 1;
+        transform: translate(-50%, -62%) scale(1.08);
+    }
+
+    .toast {
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translate(-50%, -20px);
+        background: rgba(20,20,26,0.95);
+        border: 1px solid var(--panel-border);
+        padding: 10px 22px;
+        border-radius: 40px;
+        font-size: 0.85rem;
+        color: var(--ink);
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s ease;
+        z-index: 150;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 480px) {
+        .game-message-content { padding: 30px 22px; }
+        .score-item { padding: 6px 12px; min-width: 62px; }
+        .score-item .value { font-size: 1.1rem; }
+    }
+</style>
+</head>
+<body>
+<div class="game-container">
+    <h1>🎯 Lanza Cuchillos</h1>
+    <p class="subtitle">Toca o pulsa Espacio para lanzar · Evita los cuchillos ya clavados</p>
+
+    <div class="toolbar">
+        <button class="icon-btn" id="soundBtn" title="Silenciar/activar sonido">🔊</button>
+        <button class="icon-btn" id="pauseBtn" title="Pausar">⏸️</button>
+    </div>
+
+    <div class="score-display">
+        <div class="score-item"><div class="label">Aciertos</div><div class="value gold" id="scoreDisplay">0</div></div>
+        <div class="score-item"><div class="label">Racha</div><div class="value green" id="streakDisplay">0</div></div>
+        <div class="score-item"><div class="label">Nivel</div><div class="value" id="levelDisplay">1</div></div>
+        <div class="score-item"><div class="label">Vidas</div><div class="value red" id="missDisplay">3/3</div></div>
+    </div>
+
+    <div class="canvas-wrap">
+        <canvas id="gameCanvas" width="480" height="480"></canvas>
+    </div>
+
+    <div class="actions">
+        <button class="btn-ghost" id="resetBtn">🔄 Reiniciar</button>
+    </div>
+
+    <a href="/pages/calendario.html" class="back-btn">← Volver al calendario</a>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="combo-display" id="comboDisplay"></div>
+
+<div class="game-message" id="gameMessage">
+    <div class="game-message-content">
+        <div class="icon" id="msgIcon">🎯</div>
+        <h2 id="msgTitle">¡Bien!</h2>
+        <p id="msgText">Has acertado.</p>
+        <button class="btn-primary" id="msgBtn">Continuar</button>
+    </div>
+</div>
+
+<script>
+(() => {
+    'use strict';
+
+    // ==============================================================
+    // LANZA CUCHILLOS — motor de juego autocontenido
+    // ==============================================================
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const CENTER = { x: W / 2, y: H / 2 };
+    const TARGET_R = 82;
+    const LAUNCH = { x: CENTER.x, y: H - 26 };
+
+    const COLORS = { blade: '#eceae5', handle: '#c65a3a', handleDark: '#8f3e2e' };
+
+    // --- Estado ---
+    let level = 1;
+    let score = 0;            // aciertos totales (histórico)
+    let hitsThisLevel = 0;    // aciertos del nivel actual
+    let requiredHits = 10;    // objetivo del nivel (5 + nivel*5)
+    let streak = 0, maxStreak = 0;
+    let misses = 0, maxMisses = 3;
+    let targetAngle = 0;
+    let targetSpeed = 0.018;
+    let minGap = 0.34;        // separación angular mínima entre cuchillos clavados
+    let stuckLifespan = 6500; // ms antes de que un cuchillo clavado se desvanezca
+
+    let knives = [];          // { stuck, baseAngle, x, y, rotation, stuckAt, ... } o en vuelo
+    let particles = [];
+    let flyingKnife = null;   // solo un cuchillo en vuelo a la vez
+    let canThrow = true;
+    let cooldown = 0;
+
+    let gameRunning = true;
+    let paused = false;
+    let rafId = null;
+    let comboTimeout = null;
+    let toastTimeout = null;
+    let soundOn = true;
+
+    // --- Audio sintetizado (sin archivos externos) ---
+    let actx = null;
+    function ac() {
+        if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+        return actx;
+    }
+    function beep({ freq = 440, dur = 0.08, type = 'sine', gain = 0.15, slideTo = null, delay = 0 }) {
+        if (!soundOn) return;
+        try {
+            const c = ac();
+            const osc = c.createOscillator();
+            const g = c.createGain();
+            osc.type = type;
+            const t0 = c.currentTime + delay;
+            osc.frequency.setValueAtTime(freq, t0);
+            if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+            g.gain.setValueAtTime(gain, t0);
+            g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+            osc.connect(g).connect(c.destination);
+            osc.start(t0);
+            osc.stop(t0 + dur + 0.02);
+        } catch (e) { /* audio no disponible */ }
+    }
+    const sfx = {
+        throw: () => beep({ freq: 500, slideTo: 900, dur: 0.09, type: 'triangle', gain: 0.08 }),
+        hit: () => { beep({ freq: 700, slideTo: 300, dur: 0.07, type: 'square', gain: 0.12 }); },
+        miss: () => beep({ freq: 180, slideTo: 60, dur: 0.25, type: 'sawtooth', gain: 0.14 }),
+        levelUp: () => {
+            [523, 659, 784, 1047].forEach((f, i) => beep({ freq: f, dur: 0.14, type: 'sine', gain: 0.1, delay: i * 0.09 }));
+        }
+    };
+
+    // --- Utilidades ---
+    function norm(a) {
+        a = a % (Math.PI * 2);
+        if (a < 0) a += Math.PI * 2;
+        return a;
+    }
+    function angularDist(a, b) {
+        const d = Math.abs(norm(a) - norm(b));
+        return Math.min(d, Math.PI * 2 - d);
+    }
+
+    function updateUI() {
+        document.getElementById('scoreDisplay').textContent = score;
+        document.getElementById('streakDisplay').textContent = streak;
+        document.getElementById('levelDisplay').textContent = level;
+        document.getElementById('missDisplay').textContent = `${maxMisses - misses}/${maxMisses}`;
+    }
+
+    function showToast(text) {
+        const el = document.getElementById('toast');
+        el.textContent = text;
+        el.classList.add('show');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => el.classList.remove('show'), 1400);
+    }
+
+    function showCombo(count) {
+        if (count < 3) return;
+        const el = document.getElementById('comboDisplay');
+        el.textContent = `🔥 ${count}x COMBO`;
+        el.classList.add('show');
+        clearTimeout(comboTimeout);
+        comboTimeout = setTimeout(() => el.classList.remove('show'), 700);
+    }
+
+    function spawnParticles(x, y, color, count = 14) {
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1 + Math.random() * 4;
+            particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 1,
+                decay: 0.02 + Math.random() * 0.025,
+                size: 2 + Math.random() * 4,
+                color
+            });
+        }
+    }
+
+    // --- Configuración de nivel ---
+    function difficultyForLevel(lvl) {
+        return {
+            speed: Math.min(0.05, 0.016 + lvl * 0.0032),
+            gap: Math.max(0.20, 0.36 - lvl * 0.012),
+            lifespan: Math.max(2600, 6500 - lvl * 220),
+            obstacles: Math.min(6, Math.floor(lvl / 2))
+        };
+    }
+
+    function initLevel(fresh = true) {
+        const d = difficultyForLevel(level);
+        targetSpeed = d.speed;
+        minGap = d.gap;
+        stuckLifespan = d.lifespan;
+        requiredHits = 5 + level * 5;
+        hitsThisLevel = 0;
+        maxMisses = Math.max(1, 3 - Math.floor((level - 1) / 6));
+        misses = Math.min(misses, maxMisses - 1);
+
+        if (fresh) {
+            knives = [];
+            const obstacles = d.obstacles;
+            const used = [];
+            let tries = 0;
+            while (used.length < obstacles && tries < 200) {
+                tries++;
+                const a = Math.random() * Math.PI * 2;
+                if (used.every(u => angularDist(u, a) > minGap * 1.6)) used.push(a);
+            }
+            for (const a of used) {
+                knives.push(makeStuckKnife(a - targetAngle));
+            }
+        }
+        updateUI();
+    }
+
+    function makeStuckKnife(baseAngle) {
+        return { stuck: true, baseAngle, stuckAt: performance.now(), fading: false };
+    }
+
+    // --- Lanzar ---
+    function throwKnife() {
+        if (!gameRunning || paused) return;
+        if (!canThrow || cooldown > 0 || flyingKnife) return;
+
+        canThrow = false;
+        cooldown = 10;
+        flyingKnife = {
+            x: LAUNCH.x,
+            y: LAUNCH.y,
+            speed: 9.5 + level * 0.25,
+            rotation: 0,
+            trail: []
+        };
+        sfx.throw();
+    }
+
+    // --- Fin de nivel / juego ---
+    function levelUp() {
+        level++;
+        initLevel(true);
+        showToast(`🎉 ¡Nivel ${level}!`);
+        sfx.levelUp();
+    }
+
+    function gameOver() {
+        gameRunning = false;
+        showMessage('💀', 'Fin del juego', `Aciertos totales: ${score} · Nivel alcanzado: ${level} · Racha máxima: ${maxStreak}`);
+    }
+
+    function showMessage(icon, title, text) {
+        document.getElementById('msgIcon').textContent = icon;
+        document.getElementById('msgTitle').textContent = title;
+        document.getElementById('msgText').textContent = text;
+        document.getElementById('msgBtn').textContent = gameRunning ? 'Continuar' : 'Jugar de nuevo';
+        document.getElementById('gameMessage').classList.add('show');
+    }
+    function hideMessage() {
+        document.getElementById('gameMessage').classList.remove('show');
+    }
+
+    document.getElementById('msgBtn').addEventListener('click', () => {
+        hideMessage();
+        if (!gameRunning) resetGame();
+    });
+
+    // --- Reset ---
+    function resetGame() {
+        gameRunning = true;
+        paused = false;
+        score = 0; streak = 0; maxStreak = 0; misses = 0; level = 1;
+        canThrow = true; cooldown = 0; flyingKnife = null; particles = [];
+        document.getElementById('pauseBtn').textContent = '⏸️';
+        initLevel(true);
+        updateUI();
+        if (!rafId) loop();
+    }
+
+    // --- Actualización por frame ---
+    function update() {
+        if (cooldown > 0) cooldown--;
+        targetAngle += targetSpeed;
+
+        // partículas
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy; p.vy += 0.06;
+            p.life -= p.decay;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        // cuchillos clavados: desvanecer y eliminar tras su vida útil
+        for (let i = knives.length - 1; i >= 0; i--) {
+            const k = knives[i];
+            const age = performance.now() - k.stuckAt;
+            if (age > stuckLifespan) {
+                knives.splice(i, 1);
+            }
+        }
+
+        // cuchillo en vuelo
+        if (flyingKnife) {
+            const k = flyingKnife;
+            k.y -= k.speed;
+            k.rotation += 0.22;
+            k.trail.push({ x: k.x, y: k.y });
+            if (k.trail.length > 9) k.trail.shift();
+
+            const dx = k.x - CENTER.x, dy = k.y - CENTER.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist <= TARGET_R) {
+                const impactAngle = Math.atan2(dy, dx); // ~ -PI/2
+                const collision = knives.some(o => angularDist(o.baseAngle + targetAngle, impactAngle) < minGap);
+
+                if (collision) {
+                    misses++;
+                    streak = 0;
+                    spawnParticles(k.x, k.y, '#ff5d5d', 18);
+                    sfx.miss();
+                    flyingKnife = null;
+                    canThrow = true;
+                    updateUI();
+                    if (misses >= maxMisses) { gameOver(); }
+                    else showToast('💥 ¡Chocaste con otro cuchillo!');
+                } else {
+                    knives.push(makeStuckKnife(impactAngle - targetAngle));
+                    score++; hitsThisLevel++; streak++;
+                    if (streak > maxStreak) maxStreak = streak;
+                    spawnParticles(CENTER.x + Math.cos(impactAngle) * TARGET_R * 0.85, CENTER.y + Math.sin(impactAngle) * TARGET_R * 0.85, '#ffd166', 12);
+                    sfx.hit();
+                    showCombo(streak);
+                    flyingKnife = null;
+                    canThrow = true;
+                    updateUI();
+                    if (hitsThisLevel >= requiredHits) levelUp();
+                }
+            } else if (k.y < -40) {
+                // se perdió por arriba sin impactar (no debería ocurrir en condiciones normales)
+                flyingKnife = null;
+                canThrow = true;
+            }
+        }
+    }
+
+    // --- Dibujo ---
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        const bg = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, W * 0.75);
+        bg.addColorStop(0, '#1a1a2e');
+        bg.addColorStop(1, '#0a0a12');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        // partículas
+        for (const p of particles) {
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * Math.max(0, p.life), 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+
+        // diana
+        const r = TARGET_R;
+        const rings = [
+            { radius: r, color: '#4a2a1a' },
+            { radius: r * 0.9, color: '#c65a3a' },
+            { radius: r * 0.7, color: '#e8e6e3' },
+            { radius: r * 0.5, color: '#c65a3a' },
+            { radius: r * 0.3, color: '#e8e6e3' },
+            { radius: r * 0.12, color: '#ff4d4d' }
+        ];
+        for (const ring of rings) {
+            ctx.beginPath();
+            ctx.arc(CENTER.x, CENTER.y, ring.radius, 0, Math.PI * 2);
+            ctx.fillStyle = ring.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2 + targetAngle;
+            ctx.beginPath();
+            ctx.moveTo(CENTER.x + Math.cos(a) * r * 0.7, CENTER.y + Math.sin(a) * r * 0.7);
+            ctx.lineTo(CENTER.x + Math.cos(a) * r * 0.95, CENTER.y + Math.sin(a) * r * 0.95);
+            ctx.stroke();
+        }
+        const glow = ctx.createRadialGradient(CENTER.x, CENTER.y, 0, CENTER.x, CENTER.y, r);
+        glow.addColorStop(0, 'rgba(255,209,102,0.06)');
+        glow.addColorStop(1, 'rgba(255,209,102,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(CENTER.x, CENTER.y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // marcador del punto de impacto (arriba)
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,209,102,0.35)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(CENTER.x, CENTER.y - r - 14);
+        ctx.lineTo(CENTER.x, CENTER.y - r - 4);
+        ctx.stroke();
+        ctx.restore();
+
+        // cuchillos clavados
+        for (const k of knives) {
+            const age = performance.now() - k.stuckAt;
+            const fadeStart = stuckLifespan - 700;
+            const alpha = age > fadeStart ? Math.max(0, 1 - (age - fadeStart) / 700) : 1;
+            const angle = k.baseAngle + targetAngle;
+            const x = CENTER.x + Math.cos(angle) * r * 0.82;
+            const y = CENTER.y + Math.sin(angle) * r * 0.82;
+            drawKnife(x, y, angle + Math.PI / 2, alpha);
+        }
+
+        // cuchillo en vuelo
+        if (flyingKnife) {
+            const k = flyingKnife;
+            for (let t = 0; t < k.trail.length; t++) {
+                const alpha = (t / k.trail.length) * 0.3;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = '#ffb347';
+                ctx.beginPath();
+                ctx.arc(k.trail[t].x, k.trail[t].y, 2 + t * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            drawKnife(k.x, k.y, k.rotation, 1);
+        }
+
+        // HUD inferior
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`Nivel ${level} · Racha máx. ${maxStreak}`, 12, H - 8);
+        ctx.textAlign = 'right';
+        ctx.fillText(`${hitsThisLevel}/${requiredHits}`, W - 12, H - 8);
+
+        const barX = 12, barY = H - 20, barW = W - 24, barH = 3;
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(barX, barY, barW, barH);
+        const pct = Math.min(1, hitsThisLevel / requiredHits);
+        ctx.fillStyle = '#ffd166';
+        ctx.fillRect(barX, barY, barW * pct, barH);
+
+        if (paused) {
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#ece9e4';
+            ctx.font = '600 22px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⏸️ Pausa', W / 2, H / 2);
+        }
+    }
+
+    function drawKnife(x, y, rotation, alpha) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(x, y);
+        ctx.rotate(rotation);
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = COLORS.blade;
+        ctx.beginPath();
+        ctx.moveTo(0, -20);
+        ctx.lineTo(-3, 0);
+        ctx.lineTo(-1, 6);
+        ctx.lineTo(0, 10);
+        ctx.lineTo(1, 6);
+        ctx.lineTo(3, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.shadowBlur = 2;
+        ctx.fillStyle = COLORS.handle;
+        ctx.fillRect(-4, 4, 8, 14);
+        ctx.fillStyle = COLORS.handleDark;
+        ctx.fillRect(-3, 8, 6, 6);
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(-0.5, -15, 1, 10);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+    }
+
+    // --- Bucle principal ---
+    function loop() {
+        if (gameRunning && !paused) update();
+        draw();
+        rafId = requestAnimationFrame(loop);
+    }
+
+    // --- Eventos ---
+    canvas.addEventListener('click', throwKnife);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); throwKnife(); }, { passive: false });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') { e.preventDefault(); throwKnife(); }
+        if (e.key === 'p' || e.key === 'P') togglePause();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+    document.getElementById('soundBtn').addEventListener('click', (e) => {
+        soundOn = !soundOn;
+        e.currentTarget.textContent = soundOn ? '🔊' : '🔇';
+        e.currentTarget.classList.toggle('active', soundOn);
+    });
+
+    function togglePause() {
+        if (!gameRunning) return;
+        paused = !paused;
+        document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+    }
+    document.getElementById('pauseBtn').addEventListener('click', togglePause);
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && gameRunning) {
+            paused = true;
+            document.getElementById('pauseBtn').textContent = '▶️';
+        }
+    });
+
+    // --- Inicio ---
+    initLevel(true);
+    updateUI();
+    loop();
+})();
+</script>
+</body>
+</html>

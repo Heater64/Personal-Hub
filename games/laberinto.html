@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🏃 Laberinto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0a0a12;
+            --bg-mid: #14141f;
+            --panel: rgba(255,255,255,0.04);
+            --panel-border: rgba(255,255,255,0.08);
+            --ink: #ece9e4;
+            --ash: #8b889a;
+            --coral: #c65a3a;
+            --coral-dark: #9a4530;
+            --gold: #ffd166;
+            --green: #5fd08a;
+            --red: #ff5d5d;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 50% 0%, var(--bg-mid), var(--bg-deep));
+            color: var(--ink);
+            font-family: var(--font-body);
+        }
+
+        .game-container {
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 24px 16px 40px;
+            text-align: center;
+        }
+
+        .game-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .game-header h1 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .game-header .subtitle {
+            color: var(--ash);
+            font-size: 0.75rem;
+            margin: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            color: var(--ink);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .icon-btn:hover { border-color: var(--coral); color: var(--coral); }
+
+        .score-display {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 12px 0 16px;
+            flex-wrap: wrap;
+        }
+
+        .score-item {
+            background: var(--panel);
+            padding: 6px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--panel-border);
+            min-width: 56px;
+        }
+
+        .score-item .label {
+            font-size: 0.5rem;
+            color: var(--ash);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .score-item .value {
+            font-size: 1.15rem;
+            font-weight: 700;
+            font-family: var(--font-display);
+        }
+        .score-item .value.gold { color: var(--gold); }
+        .score-item .value.green { color: var(--green); }
+        .score-item .value.white { color: var(--ink); }
+
+        .canvas-wrap {
+            position: relative;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        canvas {
+            width: 100%;
+            max-width: 480px;
+            aspect-ratio: 1/1;
+            background: #0a0a12;
+            border-radius: 20px;
+            border: 1px solid var(--panel-border);
+            touch-action: none;
+            display: block;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+        }
+
+        .controls-hint {
+            color: var(--ash);
+            font-size: 0.7rem;
+            margin: 10px 0;
+            opacity: 0.6;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .btn-ghost {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            padding: 10px 24px;
+            border-radius: 40px;
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: var(--font-body);
+            transition: all 0.2s;
+        }
+        .btn-ghost:hover { border-color: var(--coral); color: var(--coral); }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 18px;
+            padding: 10px 24px;
+            border: 1px solid var(--panel-border);
+            border-radius: 40px;
+            color: var(--ash);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .back-btn:hover { border-color: var(--coral); color: var(--coral); transform: translateX(-3px); }
+
+        .game-message {
+            position: fixed; inset: 0; background: rgba(6,6,8,0.92);
+            backdrop-filter: blur(16px); display: none; align-items: center;
+            justify-content: center; z-index: 2000; padding: 20px;
+        }
+        .game-message.show { display: flex; }
+
+        .game-message-content {
+            background: linear-gradient(180deg, rgba(26,26,30,0.98), rgba(14,14,18,0.98));
+            border: 1px solid var(--panel-border);
+            border-radius: 28px;
+            padding: 36px 40px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            animation: modalPop 0.35s cubic-bezier(0.34,1.4,0.64,1);
+        }
+
+        .game-message-content .icon { font-size: 3rem; margin-bottom: 12px; }
+        .game-message-content h2 {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            margin: 0 0 8px;
+            color: var(--ink);
+        }
+        .game-message-content p {
+            color: var(--ash);
+            margin: 0 0 20px;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+        .game-message-content .btn-primary {
+            background: var(--coral);
+            border: none;
+            padding: 12px 32px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: var(--font-body);
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .game-message-content .btn-primary:hover { background: var(--coral-dark); transform: translateY(-2px); }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translate(-50%, -20px);
+            background: rgba(20,20,26,0.95);
+            border: 1px solid var(--panel-border);
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            color: var(--ink);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 150;
+        }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+        @media (max-width: 480px) {
+            .game-message-content { padding: 28px 20px; }
+            .score-item { padding: 4px 10px; min-width: 50px; }
+            .score-item .value { font-size: 1rem; }
+            .game-header h1 { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>🏃 Laberinto</h1>
+            <div class="toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa">⏸️</button>
+            </div>
+            <span class="subtitle">Encuentra la salida · Cada nivel es más grande</span>
+        </div>
+
+        <div class="score-display">
+            <div class="score-item"><div class="label">Nivel</div><div class="value gold" id="levelDisplay">1</div></div>
+            <div class="score-item"><div class="label">Tiempo</div><div class="value white" id="timeDisplay">0s</div></div>
+            <div class="score-item"><div class="label">Mejor</div><div class="value green" id="bestDisplay">--</div></div>
+        </div>
+
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="480" height="480"></canvas>
+        </div>
+
+        <div class="controls-hint">⬆ ⬇ ⬅ ➡ · WASD · Toca y arrastra</div>
+
+        <div class="actions">
+            <button class="btn-ghost" id="resetBtn">🔄 Reiniciar</button>
+        </div>
+
+        <a href="/pages/calendario.html" class="back-btn">← Volver al calendario</a>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🏆</div>
+            <h2 id="msgTitle">¡Has ganado!</h2>
+            <p id="msgText">Has salido del laberinto.</p>
+            <button class="btn-primary" id="msgBtn">Siguiente nivel</button>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            'use strict';
+
+            // ==============================================================
+            // LABERINTO - VERSIÓN SIMPLIFICADA (Sin enemigos ni trampas)
+            // ==============================================================
+
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+
+            // --- Estado del juego ---
+            let level = 1;
+            let time = 0;
+            let bestTime = localStorage.getItem('laberintoBestTime') || null;
+            let gameRunning = true;
+            let paused = false;
+            let timerInterval = null;
+            let rafId = null;
+
+            // --- Elementos del laberinto ---
+            let maze = [];
+            let player = { x: 1, y: 1 };
+            let exit = { x: 0, y: 0 };
+            let cellSize = 0;
+            let cols = 0, rows = 0;
+
+            // --- Controles táctiles ---
+            let touchStartX = 0, touchStartY = 0;
+            let isTouching = false;
+
+            // --- Configuración de nivel ---
+            function getLevelConfig(lvl) {
+                // Tamaño: empieza en 11x11, crece hasta 31x31
+                const size = Math.min(31, 9 + Math.floor(lvl / 1.5) * 2);
+                return { size };
+            }
+
+            // --- Generación de laberinto (DFS) ---
+            function generateMaze(size) {
+                cols = size;
+                rows = size;
+                cellSize = W / size;
+
+                maze = Array.from({ length: rows }, () => Array(cols).fill(1));
+
+                const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+                const stack = [];
+                const startX = 1,
+                    startY = 1;
+                visited[startY][startX] = true;
+                maze[startY][startX] = 0;
+                stack.push({ x: startX, y: startY });
+
+                while (stack.length > 0) {
+                    const current = stack[stack.length - 1];
+                    const neighbors = [];
+                    const dirs = [
+                        { dx: 0, dy: -2 }, { dx: 0, dy: 2 },
+                        { dx: -2, dy: 0 }, { dx: 2, dy: 0 }
+                    ];
+
+                    const shuffled = dirs.sort(() => Math.random() - 0.5);
+
+                    for (const d of shuffled) {
+                        const nx = current.x + d.dx,
+                            ny = current.y + d.dy;
+                        if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && !visited[ny][nx]) {
+                            neighbors.push({ x: nx, y: ny, dx: d.dx / 2, dy: d.dy / 2 });
+                        }
+                    }
+
+                    if (neighbors.length > 0) {
+                        const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        visited[next.y][next.x] = true;
+                        visited[current.y + next.dy][current.x + next.dx] = true;
+                        maze[next.y][next.x] = 0;
+                        maze[current.y + next.dy][current.x + next.dx] = 0;
+                        stack.push({ x: next.x, y: next.y });
+                    } else {
+                        stack.pop();
+                    }
+                }
+
+                maze[1][1] = 0;
+                maze[rows - 2][cols - 2] = 0;
+
+                // Añadir caminos alternativos para evitar callejones sin salida
+                const extraPaths = Math.floor(size / 4) + 1;
+                for (let i = 0; i < extraPaths; i++) {
+                    let x = 2 + Math.floor(Math.random() * (cols - 4));
+                    let y = 2 + Math.floor(Math.random() * (rows - 4));
+                    if (maze[y][x] === 1) {
+                        let pathNeighbors = 0;
+                        const dirs2 = [
+                            [0, -1],
+                            [0, 1],
+                            [-1, 0],
+                            [1, 0]
+                        ];
+                        for (const d of dirs2) {
+                            const nx = x + d[0],
+                                ny = y + d[1];
+                            if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && maze[ny][nx] === 0) {
+                                pathNeighbors++;
+                            }
+                        }
+                        if (pathNeighbors >= 2) {
+                            maze[y][x] = 0;
+                        }
+                    }
+                }
+
+                player = { x: 1, y: 1 };
+                exit = { x: cols - 2, y: rows - 2 };
+            }
+
+            // --- Movimiento del jugador ---
+            function movePlayer(dx, dy) {
+                if (!gameRunning || paused) return;
+
+                const nx = player.x + dx;
+                const ny = player.y + dy;
+
+                if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) return;
+                if (maze[ny][nx] === 1) return;
+
+                player.x = nx;
+                player.y = ny;
+
+                // Verificar salida
+                if (player.x === exit.x && player.y === exit.y) {
+                    gameRunning = false;
+                    clearInterval(timerInterval);
+
+                    // Guardar mejor tiempo
+                    if (bestTime === null || time < parseInt(bestTime)) {
+                        bestTime = time;
+                        localStorage.setItem('laberintoBestTime', String(time));
+                        document.getElementById('bestDisplay').textContent = time + 's';
+                        showToast('🏆 ¡Nuevo récord! ' + time + 's');
+                    } else {
+                        document.getElementById('bestDisplay').textContent = bestTime + 's';
+                    }
+
+                    showMessage('🏆', '¡Has ganado!', `Nivel ${level} completado en ${time}s`);
+                }
+
+                draw();
+            }
+
+            // --- Resetear nivel ---
+            function resetLevel() {
+                const config = getLevelConfig(level);
+                generateMaze(config.size);
+                player.x = 1;
+                player.y = 1;
+                gameRunning = true;
+                time = 0;
+                document.getElementById('timeDisplay').textContent = '0s';
+                if (bestTime !== null) {
+                    document.getElementById('bestDisplay').textContent = bestTime + 's';
+                } else {
+                    document.getElementById('bestDisplay').textContent = '--';
+                }
+                draw();
+
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    if (gameRunning && !paused) {
+                        time++;
+                        document.getElementById('timeDisplay').textContent = time + 's';
+                    }
+                }, 1000);
+            }
+
+            // --- Siguiente nivel ---
+            function nextLevel() {
+                level++;
+                resetLevel();
+                document.getElementById('levelDisplay').textContent = level;
+            }
+
+            // --- Dibujar ---
+            function draw() {
+                ctx.clearRect(0, 0, W, H);
+
+                // Fondo
+                ctx.fillStyle = '#0a0a12';
+                ctx.fillRect(0, 0, W, H);
+
+                // --- Laberinto ---
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        if (maze[y][x] === 1) {
+                            // Paredes
+                            ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                            ctx.strokeStyle = 'rgba(255,255,255,0.015)';
+                            ctx.lineWidth = 0.5;
+                            ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                        } else {
+                            // Camino
+                            ctx.fillStyle = (x + y) % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.005)';
+                            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                        }
+                    }
+                }
+
+                // --- Línea guía hacia la salida ---
+                const distToExit = Math.abs(player.x - exit.x) + Math.abs(player.y - exit.y);
+                if (distToExit < 20) {
+                    ctx.strokeStyle = 'rgba(76, 175, 80, 0.08)';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 6]);
+                    ctx.beginPath();
+                    const px = player.x * cellSize + cellSize / 2;
+                    const py = player.y * cellSize + cellSize / 2;
+                    const ex = exit.x * cellSize + cellSize / 2;
+                    const ey = exit.y * cellSize + cellSize / 2;
+                    ctx.moveTo(px, py);
+                    ctx.lineTo(ex, ey);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // --- Salida ---
+                const ex = exit.x * cellSize + cellSize / 2;
+                const ey = exit.y * cellSize + cellSize / 2;
+                ctx.shadowColor = 'rgba(76, 175, 80, 0.3)';
+                ctx.shadowBlur = 25;
+                ctx.fillStyle = 'rgba(76, 175, 80, 0.12)';
+                ctx.beginPath();
+                ctx.arc(ex, ey, cellSize * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.font = `${cellSize * 0.6}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🚪', ex, ey);
+
+                // --- Jugador ---
+                const px = player.x * cellSize + cellSize / 2;
+                const py = player.y * cellSize + cellSize / 2;
+                ctx.shadowColor = 'rgba(198, 90, 58, 0.5)';
+                ctx.shadowBlur = 20;
+
+                const gradP = ctx.createRadialGradient(px - cellSize * 0.1, py - cellSize * 0.1, 0, px, py, cellSize * 0.35);
+                gradP.addColorStop(0, '#ff8a65');
+                gradP.addColorStop(1, '#c65a3a');
+                ctx.fillStyle = gradP;
+                ctx.beginPath();
+                ctx.arc(px, py, cellSize * 0.33, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                // Cara del jugador
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.beginPath();
+                ctx.arc(px - cellSize * 0.1, py - cellSize * 0.08, cellSize * 0.06, 0, Math.PI * 2);
+                ctx.arc(px + cellSize * 0.1, py - cellSize * 0.08, cellSize * 0.06, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#3a2a1a';
+                ctx.beginPath();
+                ctx.arc(px - cellSize * 0.08, py - cellSize * 0.06, cellSize * 0.025, 0, Math.PI * 2);
+                ctx.arc(px + cellSize * 0.12, py - cellSize * 0.06, cellSize * 0.025, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Sonrisa
+                ctx.strokeStyle = '#3a2a1a';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(px, py + cellSize * 0.06, cellSize * 0.1, 0.1, Math.PI - 0.1);
+                ctx.stroke();
+
+                // --- HUD en canvas ---
+                ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(`Nivel ${level} · ${cols}x${rows}`, 8, H - 6);
+
+                if (paused) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                    ctx.fillRect(0, 0, W, H);
+                    ctx.fillStyle = '#ece9e4';
+                    ctx.font = '600 22px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('⏸️ Pausa', W / 2, H / 2);
+                }
+            }
+
+            // --- UI ---
+            function showToast(text) {
+                const el = document.getElementById('toast');
+                el.textContent = text;
+                el.classList.add('show');
+                clearTimeout(window._toastTimeout);
+                window._toastTimeout = setTimeout(() => el.classList.remove('show'), 1800);
+            }
+
+            function showMessage(icon, title, text) {
+                document.getElementById('msgIcon').textContent = icon;
+                document.getElementById('msgTitle').textContent = title;
+                document.getElementById('msgText').textContent = text;
+                document.getElementById('msgBtn').textContent = 'Siguiente nivel';
+                document.getElementById('gameMessage').classList.add('show');
+            }
+
+            function hideMessage() {
+                document.getElementById('gameMessage').classList.remove('show');
+            }
+
+            document.getElementById('msgBtn').addEventListener('click', () => {
+                hideMessage();
+                nextLevel();
+            });
+
+            // --- Reset completo ---
+            function resetGame() {
+                level = 1;
+                time = 0;
+                gameRunning = true;
+                paused = false;
+                document.getElementById('pauseBtn').textContent = '⏸️';
+                document.getElementById('levelDisplay').textContent = '1';
+                resetLevel();
+            }
+
+            // --- Pausa ---
+            function togglePause() {
+                if (!gameRunning) return;
+                paused = !paused;
+                document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+                draw();
+            }
+
+            // --- Bucle de animación ---
+            function gameLoop() {
+                if (gameRunning && !paused) {
+                    draw();
+                }
+                rafId = requestAnimationFrame(gameLoop);
+            }
+
+            // --- Eventos ---
+            document.addEventListener('keydown', (e) => {
+                const key = e.key;
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 'a', 'A', 's', 'S', 'd', 'D', ' '].includes(key)) {
+                    e.preventDefault();
+                }
+                if (key === ' ' && gameRunning) {
+                    togglePause();
+                    return;
+                }
+                if (paused) return;
+                switch (key) {
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                        movePlayer(0, -1);
+                        break;
+                    case 'ArrowDown':
+                    case 's':
+                    case 'S':
+                        movePlayer(0, 1);
+                        break;
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        movePlayer(-1, 0);
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        movePlayer(1, 0);
+                        break;
+                }
+            });
+
+            // Controles táctiles
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = (touch.clientX - rect.left) / rect.width * W;
+                const y = (touch.clientY - rect.top) / rect.height * H;
+                touchStartX = x;
+                touchStartY = y;
+                isTouching = true;
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!gameRunning || paused || !isTouching) return;
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = (touch.clientX - rect.left) / rect.width * W;
+                const y = (touch.clientY - rect.top) / rect.height * H;
+
+                const dx = x - touchStartX;
+                const dy = y - touchStartY;
+                const threshold = 15;
+
+                if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        movePlayer(dx > 0 ? 1 : -1, 0);
+                    } else {
+                        movePlayer(0, dy > 0 ? 1 : -1);
+                    }
+                    touchStartX = x;
+                    touchStartY = y;
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', () => {
+                isTouching = false;
+                touchStartX = 0;
+                touchStartY = 0;
+            }, { passive: false });
+
+            // Botones
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+            document.getElementById('pauseBtn').addEventListener('click', togglePause);
+
+            // Pausa automática al cambiar de pestaña
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && gameRunning) {
+                    paused = true;
+                    document.getElementById('pauseBtn').textContent = '▶️';
+                }
+            });
+
+            // --- Iniciar ---
+            if (bestTime !== null) {
+                document.getElementById('bestDisplay').textContent = bestTime + 's';
+            }
+            resetLevel();
+            gameLoop();
+
+            window.resetGame = resetGame;
+            window.nextLevel = nextLevel;
+        })();
+    </script>
+</body>
+</html>

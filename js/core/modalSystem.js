@@ -1,102 +1,102 @@
-// Sistema modal universal para experiencias
+// js/core/modalSystem.js
+// Sistema de modal para experiencias
 
-let activeCloseHandler = null;
-let keyHandler = null;
+let currentModal = null;
 
-function getLayer() {
-    return document.getElementById('experience-layer');
-}
-
-function getContainer() {
-    return document.getElementById('experience-container');
-}
-
-function unbindGlobalClose() {
-    if (keyHandler) {
-        document.removeEventListener('keydown', keyHandler);
-        keyHandler = null;
+export function openExperienceModal({ title, contentNode, onClose = null }) {
+    // Si ya hay un modal abierto, lo cerramos
+    if (currentModal) {
+        closeExperienceModal();
     }
-    const layer = getLayer();
-    if (layer && activeCloseHandler) {
-        layer.removeEventListener('click', activeCloseHandler);
-        activeCloseHandler = null;
+
+    // Crear la capa del modal
+    const layer = document.createElement('div');
+    layer.id = 'experience-layer';
+    layer.className = 'active is-open';
+    layer.setAttribute('role', 'dialog');
+    layer.setAttribute('aria-modal', 'true');
+
+    // Contenedor interno
+    const inner = document.createElement('div');
+    inner.className = 'experience-modal-inner';
+
+    // Título
+    const titleEl = document.createElement('h3');
+    titleEl.className = 'experience-modal-title';
+    titleEl.textContent = title || 'Sorpresa';
+    inner.appendChild(titleEl);
+
+    // Botón cerrar
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'experience-modal-close';
+    closeBtn.setAttribute('aria-label', 'Cerrar');
+    closeBtn.innerHTML = '✕';
+    closeBtn.addEventListener('click', () => {
+        if (typeof onClose === 'function') onClose();
+        closeExperienceModal();
+    });
+    inner.appendChild(closeBtn);
+
+    // Cuerpo donde irá el contenido
+    const body = document.createElement('div');
+    body.className = 'experience-modal-body';
+    body.id = 'experience-content';
+    if (contentNode) {
+        body.appendChild(contentNode);
     }
+    inner.appendChild(body);
+
+    // Pie (opcional, con un botón de cerrar)
+    const footer = document.createElement('div');
+    footer.className = 'experience-modal-footer';
+    const closeFooterBtn = document.createElement('button');
+    closeFooterBtn.className = 'experience-modal-footer-btn';
+    closeFooterBtn.textContent = 'Cerrar ✧';
+    closeFooterBtn.addEventListener('click', () => {
+        if (typeof onClose === 'function') onClose();
+        closeExperienceModal();
+    });
+    footer.appendChild(closeFooterBtn);
+    inner.appendChild(footer);
+
+    layer.appendChild(inner);
+    document.body.appendChild(layer);
+
+    // Guardar referencia
+    currentModal = {
+        element: layer,
+        setContent: (newContent) => {
+            body.innerHTML = '';
+            if (newContent) body.appendChild(newContent);
+        },
+        close: () => {
+            if (typeof onClose === 'function') onClose();
+            closeExperienceModal();
+        }
+    };
+
+    // Cerrar con Escape
+    const escHandler = (e) => {
+        if (e.key === 'Escape') {
+            if (typeof onClose === 'function') onClose();
+            closeExperienceModal();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    return currentModal;
 }
 
 export function closeExperienceModal() {
-    const layer = getLayer();
-    const container = getContainer();
-    unbindGlobalClose();
-    if (layer) layer.classList.remove('active', 'is-open');
-    if (container) container.innerHTML = '';
-}
-
-export function openExperienceModal({ title, contentNode, onClose }) {
-    const layer = getLayer();
-    const container = getContainer();
-    if (!layer || !container) {
-        console.error('experience-layer / experience-container no encontrados');
-        return;
-    }
-
-    const close = () => {
-        closeExperienceModal();
-        if (typeof onClose === 'function') onClose();
-    };
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'experience-modal-inner';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'experience-modal-close';
-    closeBtn.setAttribute('aria-label', 'Cerrar');
-    closeBtn.textContent = '✕';
-
-    const titleEl = document.createElement('h3');
-    titleEl.className = 'experience-modal-title';
-    titleEl.textContent = title || '';
-
-    const bodyEl = document.createElement('div');
-    bodyEl.className = 'experience-modal-body';
-
-    function setContent(nextContentNode) {
-        bodyEl.innerHTML = '';
-        if (nextContentNode && !nextContentNode.classList.contains('gift-module')) {
-            nextContentNode.classList.add('gift-module');
+    if (currentModal) {
+        const el = currentModal.element;
+        if (el && el.parentNode) {
+            el.classList.remove('active', 'is-open');
+            setTimeout(() => {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }, 350);
         }
-        if (nextContentNode) bodyEl.appendChild(nextContentNode);
+        currentModal = null;
     }
-
-    if (contentNode) setContent(contentNode);
-
-    const footer = document.createElement('div');
-    footer.className = 'experience-modal-footer';
-
-    const footerBtn = document.createElement('button');
-    footerBtn.type = 'button';
-    footerBtn.className = 'modal-close-btn experience-modal-footer-btn';
-    footerBtn.textContent = 'Cerrar';
-    footer.appendChild(footerBtn);
-
-    wrapper.append(closeBtn, titleEl, bodyEl, footer);
-    container.innerHTML = '';
-    container.appendChild(wrapper);
-
-    closeBtn.addEventListener('click', close);
-    footerBtn.addEventListener('click', close);
-
-    keyHandler = (e) => {
-        if (e.key === 'Escape') close();
-    };
-    document.addEventListener('keydown', keyHandler);
-
-    activeCloseHandler = (e) => {
-        if (e.target === layer) close();
-    };
-    layer.addEventListener('click', activeCloseHandler);
-
-    requestAnimationFrame(() => layer.classList.add('active', 'is-open'));
-
-    return { close, setContent };
 }

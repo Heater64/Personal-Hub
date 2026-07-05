@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakout</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .game-container {
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        canvas {
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1/1;
+            background: #0a0a12;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .score-display {
+            display: flex; gap: 24px; justify-content: center; margin: 16px 0;
+        }
+        .score-item {
+            background: rgba(255,255,255,0.04); padding: 8px 20px;
+            border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);
+        }
+        .score-item .label { font-size: 0.6rem; color: var(--umbra-ash); text-transform: uppercase; letter-spacing: 0.1em; }
+        .score-item .value { font-size: 1.4rem; font-weight: 600; color: var(--accent-coral); font-family: 'Playfair Display', serif; }
+        .controls-hint { color: var(--umbra-ash); font-size: 0.8rem; margin: 12px 0; }
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 8px; margin-top: 16px;
+            padding: 10px 24px; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 40px; color: var(--umbra-light); text-decoration: none;
+            transition: all 0.2s;
+        }
+        .back-btn:hover { border-color: var(--accent-coral); color: var(--accent-coral); transform: translateX(-3px); }
+        .game-message {
+            position: fixed; inset: 0; background: rgba(8,8,9,0.92);
+            backdrop-filter: blur(16px); display: none; align-items: center;
+            justify-content: center; z-index: 2000;
+        }
+        .game-message.show { display: flex; }
+        .game-message-content {
+            background: linear-gradient(180deg, rgba(25,25,28,0.98), rgba(15,15,18,0.98));
+            border: 1px solid var(--accent-border); border-radius: 32px;
+            padding: 40px 48px; max-width: 420px; width: 90%; text-align: center;
+            animation: modalPop 0.4s cubic-bezier(0.34,1.2,0.64,1);
+        }
+        .game-message-content .icon { font-size: 3.5rem; margin-bottom: 16px; }
+        .game-message-content h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin-bottom: 12px; color: var(--umbra-light); }
+        .game-message-content p { color: var(--umbra-ash); margin-bottom: 24px; line-height: 1.6; }
+        .game-message-content .btn-primary {
+            background: var(--accent-coral); border: none; padding: 12px 32px;
+            border-radius: 40px; color: white; cursor: pointer; font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .game-message-content .btn-primary:hover { background: #b34a2e; transform: translateY(-2px); }
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @media (max-width: 500px) {
+            .game-message-content { padding: 28px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h2>🧊 Breakout</h2>
+        <p style="color: var(--umbra-ash);">Mueve el mouse o toca la pantalla</p>
+
+        <div class="score-display">
+            <div class="score-item"><div class="label">Puntuación</div><div class="value" id="scoreDisplay">0</div></div>
+            <div class="score-item"><div class="label">Vidas</div><div class="value" id="livesDisplay">❤️❤️❤️</div></div>
+        </div>
+
+        <canvas id="gameCanvas" width="500" height="500"></canvas>
+
+        <div class="controls-hint">← → o mouse/touch</div>
+
+        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+            <button onclick="resetGame()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:12px 32px; border-radius:40px; color:var(--umbra-light); cursor:pointer;">🔄 Reiniciar</button>
+        </div>
+
+        <a href="/pages/calendario.html" class="back-btn">← Volver al calendario</a>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🏆</div>
+            <h2 id="msgTitle">¡Has ganado!</h2>
+            <p id="msgText">Has destruido todos los bloques.</p>
+            <button class="btn-primary" id="msgBtn">Reintentar</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 500, H = 500;
+
+        let paddle = {x: W/2 - 50, y: H - 30, w: 80, h: 10};
+        let ball = {x: W/2, y: H - 45, r: 6, dx: 4, dy: -4};
+        let bricks = [];
+        let score = 0, lives = 3;
+        let gameRunning = true, animationId = null;
+        let keys = {};
+
+        const ROWS = 6, COLS = 8;
+        const BRICK_W = 52, BRICK_H = 18, BRICK_GAP = 4;
+
+        function initBricks() {
+            bricks = [];
+            const colors = ['#c65a3a', '#ffb347', '#ff8aa1', '#4caf50', '#2196f3', '#9c27b0'];
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const x = c * (BRICK_W + BRICK_GAP) + 10;
+                    const y = r * (BRICK_H + BRICK_GAP) + 30;
+                    bricks.push({
+                        x, y, w: BRICK_W, h: BRICK_H,
+                        color: colors[r % colors.length],
+                        alive: true,
+                        points: (ROWS - r) * 10
+                    });
+                }
+            }
+        }
+
+        function resetBall() {
+            ball.x = W/2;
+            ball.y = H - 45;
+            ball.dx = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 2);
+            ball.dy = -4;
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            // Paddle movimiento
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) paddle.x -= 6;
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) paddle.x += 6;
+            paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
+
+            // Bola
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // Paredes
+            if (ball.x - ball.r < 0 || ball.x + ball.r > W) ball.dx *= -1;
+            if (ball.y - ball.r < 0) ball.dy *= -1;
+
+            // Paddle
+            if (ball.dy > 0 &&
+                ball.y + ball.r >= paddle.y &&
+                ball.y + ball.r <= paddle.y + paddle.h + 5 &&
+                ball.x >= paddle.x - ball.r &&
+                ball.x <= paddle.x + paddle.w + ball.r) {
+                const hitPos = (ball.x - paddle.x) / paddle.w;
+                const angle = (hitPos - 0.5) * 1.2;
+                const speed = Math.sqrt(ball.dx*ball.dx + ball.dy*ball.dy);
+                ball.dx = Math.sin(angle) * speed;
+                ball.dy = -Math.cos(angle) * speed;
+                ball.y = paddle.y - ball.r;
+            }
+
+            // Bloques
+            for (const brick of bricks) {
+                if (!brick.alive) continue;
+                if (ball.x + ball.r > brick.x &&
+                    ball.x - ball.r < brick.x + brick.w &&
+                    ball.y + ball.r > brick.y &&
+                    ball.y - ball.r < brick.y + brick.h) {
+                    brick.alive = false;
+                    score += brick.points;
+                    document.getElementById('scoreDisplay').textContent = score;
+
+                    // Rebote
+                    const overlapX = Math.min(ball.x + ball.r - brick.x, brick.x + brick.w - (ball.x - ball.r));
+                    const overlapY = Math.min(ball.y + ball.r - brick.y, brick.y + brick.h - (ball.y - ball.r));
+                    if (overlapX < overlapY) ball.dx *= -1;
+                    else ball.dy *= -1;
+
+                    // Verificar victoria
+                    if (bricks.every(b => !b.alive)) {
+                        gameRunning = false;
+                        showMessage('🏆', '¡Has ganado!', `Puntuación: ${score}`);
+                        return;
+                    }
+                    break;
+                }
+            }
+
+            // Caída
+            if (ball.y + ball.r > H) {
+                lives--;
+                const hearts = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
+                document.getElementById('livesDisplay').textContent = hearts || '💀';
+                if (lives <= 0) {
+                    gameRunning = false;
+                    showMessage('💀', '¡Game Over!', `Puntuación: ${score}`);
+                    return;
+                }
+                resetBall();
+            }
+
+            draw();
+            animationId = requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+
+            // Bloques
+            bricks.forEach(b => {
+                if (!b.alive) return;
+                ctx.shadowColor = 'rgba(198,90,58,0.15)';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = b.color;
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(b.x, b.y, b.w, b.h);
+            });
+
+            // Paddle
+            ctx.shadowColor = 'rgba(198,90,58,0.3)';
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#c65a3a';
+            ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+            ctx.shadowBlur = 0;
+
+            // Bola
+            ctx.shadowColor = 'rgba(255,179,71,0.4)';
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#ffb347';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function hideMessage() {
+            document.getElementById('gameMessage').classList.remove('show');
+        }
+
+        document.getElementById('msgBtn').addEventListener('click', () => {
+            hideMessage();
+            resetGame();
+        });
+
+        function resetGame() {
+            if (animationId) cancelAnimationFrame(animationId);
+            score = 0;
+            lives = 3;
+            gameRunning = true;
+            document.getElementById('scoreDisplay').textContent = '0';
+            document.getElementById('livesDisplay').textContent = '❤️❤️❤️';
+            paddle.x = W/2 - 50;
+            initBricks();
+            resetBall();
+            draw();
+            update();
+        }
+
+        // Mouse
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameRunning) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width * W;
+            paddle.x = Math.max(0, Math.min(W - paddle.w, x - paddle.w/2));
+        });
+
+        // Touch
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!gameRunning) return;
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = (touch.clientX - rect.left) / rect.width * W;
+            paddle.x = Math.max(0, Math.min(W - paddle.w, x - paddle.w/2));
+        }, { passive: false });
+
+        document.addEventListener('keydown', (e) => { keys[e.key] = true; if (['ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault(); });
+        document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+        initBricks();
+        resetBall();
+        draw();
+        update();
+
+        window.resetGame = resetGame;
+    </script>
+</body>
+</html>

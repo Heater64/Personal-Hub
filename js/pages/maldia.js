@@ -36,6 +36,7 @@ const memories = [
     { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948136_n6ayva.jpg", caption: "JSsjsjsj" },
     { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948139_qdgn0l.jpg", caption: "Que ojazos tiene mi princesa" },
     { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/6046582610491806111_mx6qc3.jpg", caption: "Yo tambien te amo miniñaaaaaaaaaa" },
+    { image: "https://res.cloudinary.com/dcsent4fs/image/upload/v1783252673/5931306366871997939_mpvodw.jpg", caption: "jijijiji si somosh" },
 ];
 
 let isMusicPlaying = false;

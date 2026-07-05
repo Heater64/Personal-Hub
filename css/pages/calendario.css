@@ -1,98 +1,159 @@
 /* ==========================================
-   CALENDARIO CSS - COMPLETO MEJORADO
-   Tarjetas grandes, animaciones suaves, responsive
+   CALENDARIO CSS - VERSIÓN CON COLORES CLAROS
+   VERDE = Disponible sin abrir
+   NARANJA = Abierto
+   CANDADO = Bloqueado
    ========================================== */
 
 .calendario-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding-top: 18px;
-  --experience-width: min(960px, 94vw);
-  --experience-min-height: min(72vh, 680px);
-  --experience-max-height: min(90vh, 900px);
-  --experience-padding: clamp(24px, 4vw, 48px);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 18px;
+    --experience-width: min(960px, 94vw);
+    --experience-min-height: min(72vh, 680px);
+    --experience-max-height: min(90vh, 900px);
+    --experience-padding: clamp(24px, 4vw, 48px);
 }
 
+/* ==========================================
+   INTRO
+   ========================================== */
 .calendario-intro {
-  text-align: center;
-  margin-bottom: 32px;
-  opacity: 0;
-  animation: fadeInUp 0.6s ease forwards;
+    text-align: center;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeInUp 0.6s ease forwards;
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .calendario-intro h2 {
-  margin-bottom: 10px;
-  font-size: clamp(2.4rem, 5vw, 4.1rem);
-  cursor: pointer;
-  transition: opacity 0.2s;
-  font-family: 'Playfair Display', serif;
+    margin-bottom: 10px;
+    font-size: clamp(2.4rem, 5vw, 4.1rem);
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-family: 'Playfair Display', serif;
 }
 
-.calendario-intro h2:hover {
-  opacity: 0.8;
-}
-
+.calendario-intro h2:hover { opacity: 0.8; }
 .calendario-intro h2::after {
-  content: ' ✧';
-  color: var(--accent-coral);
-  font-size: 0.72em;
-  opacity: 0.7;
+    content: ' ✧';
+    color: var(--accent-coral);
+    font-size: 0.72em;
+    opacity: 0.7;
 }
-
 .calendario-intro p {
-  color: var(--umbra-ash);
-  font-size: 1rem;
+    color: var(--umbra-ash);
+    font-size: 1rem;
 }
 
-.calendario-hint {
-  font-size: 0.7rem !important;
-  margin-top: 8px;
-  opacity: 0.6;
+/* ==========================================
+   SELECTOR DE MESES
+   ========================================== */
+.month-selector {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 16px 0 24px;
+}
+
+.month-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 40px;
+    padding: 8px 20px;
+    color: var(--umbra-ash);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    font-weight: 400;
+}
+
+.month-btn:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--umbra-light);
+}
+
+.month-btn.active {
+    background: rgba(198, 90, 58, 0.15);
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
+}
+
+.month-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: var(--umbra-light);
+    margin: 8px 0 4px;
+    text-align: center;
+}
+
+.month-title::after {
+    content: ' ✧';
+    color: var(--accent-coral);
+    font-size: 0.7em;
+    opacity: 0.7;
+}
+
+@media (max-width: 480px) {
+    .month-btn { font-size: 0.7rem; padding: 6px 14px; }
 }
 
 /* ==========================================
    GRID DEL CALENDARIO
    ========================================== */
 .calendar-grid {
-  display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (min-width: 1200px) {
+    .calendar-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-width: 1024px) {
+    .calendar-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+}
+@media (max-width: 768px) {
+    .calendar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+}
+@media (max-width: 480px) {
+    .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 }
 
 /* ==========================================
-   TARJETA DE DÍA - MÁS GRANDE CON ANIMACIÓN
+   TARJETA DE DÍA - ESTADOS CON COLORES
    ========================================== */
 .day-card {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  min-height: 0;
-  padding: 20px;
-  border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-  opacity: 0;
-  animation: cardAppear 0.5s ease forwards;
+    position: relative;
+    aspect-ratio: 1 / 1;
+    min-height: 0;
+    padding: 20px;
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    opacity: 0;
+    animation: cardAppear 0.5s ease forwards;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Animación de aparición progresiva */
+@keyframes cardAppear {
+    0% { opacity: 0; transform: translateY(15px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .day-card:nth-child(1) { animation-delay: 0.02s; }
 .day-card:nth-child(2) { animation-delay: 0.04s; }
 .day-card:nth-child(3) { animation-delay: 0.06s; }
@@ -125,1567 +186,634 @@
 .day-card:nth-child(30) { animation-delay: 0.60s; }
 .day-card:nth-child(31) { animation-delay: 0.62s; }
 
-@keyframes cardAppear {
-  0% {
-    opacity: 0;
-    transform: translateY(15px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Decoración esquina superior derecha */
-.day-card::before {
-  content: '✦';
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  color: rgba(255, 179, 71, 0.2);
-  font-size: 0.8rem;
-  transition: all 0.3s ease;
-  pointer-events: none;
-}
-
-.day-card:hover::before {
-  transform: rotate(15deg) scale(1.2);
-  color: rgba(255, 179, 71, 0.5);
-}
-
-/* Efecto hover */
-.day-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  border-color: rgba(198, 90, 58, 0.3);
-  box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(198, 90, 58, 0.1);
-}
-
-/* Día abierto */
-.day-card.opened {
-  border-color: var(--accent-coral);
-  background: radial-gradient(circle at top right, rgba(198, 90, 58, 0.12), transparent 40%), rgba(255, 255, 255, 0.02);
-  box-shadow: inset 0 0 0 1px rgba(198, 90, 58, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.day-card.opened::after {
-  content: '♥';
-  position: absolute;
-  top: 12px;
-  right: 14px;
-  color: var(--accent-coral);
-  font-size: 1rem;
-  opacity: 0.8;
-  pointer-events: none;
-}
-
-.day-card.opened::before {
-  opacity: 0;
-}
-
-/* Día bloqueado */
+/* --- ESTADO: DÍA BLOQUEADO (locked) --- */
 .day-card.locked {
-  opacity: 0.4;
-  cursor: not-allowed;
-  filter: grayscale(0.2);
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .day-card.locked:hover {
-  transform: none;
-  border-color: rgba(255, 255, 255, 0.06);
-  box-shadow: none;
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.04);
+    box-shadow: none;
 }
 
-.day-card.locked:hover::before {
-  transform: none;
+.day-card.locked .day-type-badge {
+    display: none !important;
 }
 
-/* Número del día - MÁS GRANDE */
+/* --- ESTADO: DÍA DISPONIBLE SIN ABRIR (available) - VERDE --- */
+.day-card.available {
+    background: radial-gradient(circle at top right, rgba(76, 175, 80, 0.15), transparent 50%),
+                rgba(255, 255, 255, 0.08);
+    border: 2px solid #4caf50;
+    box-shadow: 0 0 30px rgba(76, 175, 80, 0.12);
+    animation: gentlePulseGreen 2.5s infinite;
+}
+
+@keyframes gentlePulseGreen {
+    0%, 100% { box-shadow: 0 0 10px rgba(76, 175, 80, 0.08); }
+    50% { box-shadow: 0 0 25px rgba(76, 175, 80, 0.2); }
+}
+
+.day-card.available:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: #66bb6a;
+    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(76, 175, 80, 0.3);
+}
+
+/* --- ESTADO: DÍA ABIERTO (opened) - NARANJA --- */
+.day-card.opened {
+    background: radial-gradient(circle at top right, rgba(198, 90, 58, 0.18), transparent 40%),
+                rgba(255, 255, 255, 0.04);
+    border: 2px solid var(--accent-coral);
+    box-shadow: inset 0 0 0 1px rgba(198, 90, 58, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.day-card.opened::after {
+    content: '♥';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    color: var(--accent-coral);
+    font-size: 1.2rem;
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+.day-card.opened::before {
+    display: none;
+}
+
+.day-card.opened:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: var(--accent-coral);
+    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(198, 90, 58, 0.15);
+}
+
+/* --- Decoración esquina superior derecha --- */
+.day-card:not(.opened):not(.locked):not(.available)::before {
+    content: '✦';
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    color: rgba(255, 179, 71, 0.15);
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.day-card:not(.opened):not(.locked):not(.available):hover::before {
+    transform: rotate(15deg) scale(1.2);
+    color: rgba(255, 179, 71, 0.4);
+}
+
+.day-card.available::before {
+    content: '✨';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 1rem;
+    color: rgba(76, 175, 80, 0.8);
+    pointer-events: none;
+}
+
+/* --- Número del día --- */
 .day-number {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: clamp(2rem, 5vw, 3.2rem);
-  line-height: 1;
-  color: var(--umbra-light);
-  font-weight: 500;
-  margin-bottom: 8px;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    line-height: 1;
+    color: var(--umbra-light);
+    font-weight: 500;
 }
 
-/* Estado del día */
+/* --- Badge de tipo de regalo --- */
+.day-type-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 3px 12px;
+    color: var(--umbra-light);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+    white-space: nowrap;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+    font-weight: 400;
+}
+
+/* Badge en días disponibles (verde) */
+.day-card.available .day-type-badge {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: rgba(76, 175, 80, 0.35);
+    color: #81c784;
+}
+
+/* Badge en días abiertos (naranja) */
+.day-card.opened .day-type-badge {
+    background: rgba(198, 90, 58, 0.2);
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
+}
+
+/* --- Estado del día (corazón, estrella, candado) --- */
 .day-status {
-  font-size: 0.75rem;
-  color: var(--umbra-ash);
-  letter-spacing: 0.05em;
+    font-size: 0.9rem;
+    color: var(--umbra-ash);
+    letter-spacing: 0.05em;
+    margin-top: 2px;
 }
 
-/* Icono de candado */
-.lock-icon {
-  position: absolute;
-  font-size: 0.9rem;
-  opacity: 0.6;
-  bottom: 12px;
-  right: 12px;
-  pointer-events: none;
-}
-
-/* Efecto de pulsación al hacer clic */
-.day-card:active {
-  transform: scale(0.98);
-  transition: transform 0.05s ease;
+/* --- CANDADO GRANDE PARA DÍAS BLOQUEADOS --- */
+.day-card.locked .day-status {
+    font-size: 2rem !important;
+    color: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* ==========================================
-   CAJA DE SORPRESA (MODAL)
+   BADGE DE CATEGORÍA - FORZADO
    ========================================== */
-.surprise-box {
-  margin-top: 24px;
-  padding: 26px 24px;
-  border-radius: 26px;
-  border: 1px solid rgba(198, 90, 58, 0.28);
-  background: radial-gradient(circle at top right, rgba(255, 179, 71, 0.1), transparent 24%), linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(198, 90, 58, 0.05));
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16);
-  display: none;
-  overflow: hidden;
-  position: relative;
-  animation: glowIn 0.26s ease;
+.day-type-badge {
+    display: inline-block !important;
+    font-size: 0.7rem !important;
+    padding: 3px 12px !important;
 }
 
-.surprise-box.show {
-  display: block;
+.day-card.locked .day-type-badge {
+    display: none !important;
 }
 
-@keyframes glowIn {
-  from {
+@media (max-width: 480px) {
+    .day-type-badge {
+        font-size: 0.55rem !important;
+        padding: 2px 8px !important;
+        margin-top: 2px !important;
+    }
+    .day-card { padding: 12px !important; border-radius: 18px; }
+    .day-number { font-size: clamp(1.6rem, 5vw, 2.2rem); }
+    .day-status { font-size: 0.8rem; }
+    .day-card.locked .day-status { font-size: 1.4rem !important; }
+}
+
+/* ==========================================
+   MODAL DE EXPERIENCIAS
+   ========================================== */
+#experience-layer {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 8, 10, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
     opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
+    transition: opacity 0.35s ease;
+    padding: clamp(12px, 3vw, 32px);
+    box-sizing: border-box;
+}
+
+#experience-layer.active,
+#experience-layer.is-open {
+    display: flex;
     opacity: 1;
-    transform: translateY(0);
-  }
 }
 
-.surprise-box::after {
-  content: '✨';
-  position: absolute;
-  top: 18px;
-  right: 20px;
-  color: rgba(255, 179, 71, 0.34);
-  font-size: 1rem;
-  pointer-events: none;
-}
-
-.surprise-eyebrow {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--umbra-ash);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 0.74rem;
-}
-
-.surprise-box h3 {
-  margin-bottom: 10px;
-  color: var(--umbra-light);
-  font-size: 1.55rem;
-  font-family: 'Playfair Display', serif;
-}
-
-.surprise-box p {
-  color: rgba(232, 230, 227, 0.78);
-  line-height: 1.85;
-}
-
-/* Botón cerrar sorpresa */
-.surprise-close-btn {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  background: none;
-  border: none;
-  color: var(--umbra-ash);
-  cursor: pointer;
-  z-index: 15;
-  transition: all 0.2s ease;
-}
-
-.surprise-close-btn i {
-  width: 20px;
-  height: 20px;
-}
-
-.surprise-close-btn:hover {
-  color: var(--umbra-light);
-  transform: scale(1.05);
-}
-
-/* Contenido dinámico */
-#surpriseDynamicContent {
-  max-height: 400px;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-#surpriseDynamicContent::-webkit-scrollbar {
-  width: 4px;
-}
-
-#surpriseDynamicContent::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-#surpriseDynamicContent::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-}
-
-/* ==========================================
-   TIPOS DE SORPRESAS
-   ========================================== */
-
-/* Carta flotante */
-.surprise-letter {
-  perspective: 1000px;
-}
-
-.letter-envelope {
-  position: relative;
-  background: #f9e5c0;
-  padding: 24px;
-  border-radius: 8px;
-  animation: floatLetter 0.6s ease-out;
-}
-
-@keyframes floatLetter {
-  from {
-    transform: translateY(30px) rotateX(-10deg);
+#experience-layer .experience-modal-inner {
+    position: relative;
+    width: var(--experience-width);
+    min-height: var(--experience-min-height);
+    max-height: var(--experience-max-height);
+    display: flex;
+    flex-direction: column;
+    padding: var(--experience-padding);
+    padding-top: clamp(48px, 6vw, 56px);
+    background: linear-gradient(180deg, rgba(28, 28, 34, 0.99), rgba(12, 12, 15, 0.99));
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    overflow: hidden;
+    transform: scale(0.94);
     opacity: 0;
-  }
-  to {
-    transform: translateY(0) rotateX(0);
-    opacity: 1;
-  }
+    animation: experienceModalIn 0.45s cubic-bezier(0.34, 1.15, 0.64, 1) forwards;
 }
 
-.letter-body p {
-  color: #2c2c2c !important;
+@keyframes experienceModalIn {
+    to { transform: scale(1); opacity: 1; }
 }
 
-/* Máquina de escribir */
-.paper-stack {
-  background: #fff8e7;
-  color: #2c2c2c;
-  padding: 24px;
-  border-radius: 12px;
-  font-family: 'Courier New', monospace;
-  min-height: 100px;
+#experience-layer .experience-modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.65rem, 4vw, 2.35rem);
+    font-weight: 500;
+    text-align: center;
+    color: var(--umbra-light);
+    margin: 0 0 clamp(16px, 3vw, 28px);
+    padding: 0 40px;
+    line-height: 1.2;
+    flex-shrink: 0;
 }
 
-.paper-text {
-  white-space: pre-wrap;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: #2c2c2c;
+#experience-layer .experience-modal-body {
+    flex: 1;
+    min-height: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 8px;
+    scrollbar-width: thin;
 }
 
-/* Cassette retro */
-.cassette-player {
-  background: linear-gradient(145deg, #2a2a2e, #1a1a1c);
-  padding: 20px;
-  border-radius: 24px;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05), 0 8px 20px rgba(0, 0, 0, 0.3);
+#experience-layer .experience-modal-body::-webkit-scrollbar {
+    width: 5px;
+}
+#experience-layer .experience-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(198, 90, 58, 0.35);
+    border-radius: 10px;
 }
 
-.cassette-tape {
-  position: relative;
-  background: #3a3a3e;
-  padding: 16px;
-  border-radius: 12px;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 16px;
+#experience-layer .experience-modal-close {
+    position: absolute;
+    top: clamp(12px, 2vw, 20px);
+    right: clamp(12px, 2vw, 20px);
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--umbra-ash);
+    font-size: 1.25rem;
+    z-index: 20;
+    transition: all 0.2s ease;
 }
 
-.tape-reel {
-  width: 40px;
-  height: 40px;
-  background: #111;
-  border-radius: 50%;
-  border: 2px solid #555;
-  position: relative;
+#experience-layer .experience-modal-close:hover {
+    background: rgba(198, 90, 58, 0.25);
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
+    transform: rotate(90deg);
 }
 
-.tape-reel::after {
-  content: '';
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 16px;
-  height: 16px;
-  background: #888;
-  border-radius: 50%;
+#experience-layer .experience-modal-footer {
+    flex-shrink: 0;
+    margin-top: clamp(20px, 3vw, 32px);
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: center;
 }
 
-.tape-label {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: #ffb347;
+#experience-layer .experience-modal-footer-btn {
+    background: transparent;
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius-pill);
+    padding: 12px 32px;
+    color: var(--umbra-light);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.cassette-player p {
-  color: var(--umbra-light) !important;
+#experience-layer .experience-modal-footer-btn:hover {
+    background: rgba(198, 90, 58, 0.15);
+    border-color: var(--accent-coral);
+    transform: translateY(-1px);
 }
 
-.cassette-player audio {
-  width: 100%;
-  margin-top: 8px;
-  border-radius: 8px;
+#experience-layer .gift-loader {
+    min-height: 220px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 14px;
+    color: var(--umbra-ash);
+    text-align: center;
 }
 
-/* Polaroids */
-.polaroid-stack {
-  position: relative;
-  min-height: 220px;
+#experience-layer .heart-pulse {
+    font-size: 2.4rem;
+    line-height: 1;
+    animation: heartPulse 1.1s ease-in-out infinite;
 }
 
-.polaroid {
-  position: absolute;
-  background: #f5f0e8;
-  padding: 10px 10px 15px;
-  border-radius: 8px;
-  width: 140px;
-  left: 50%;
-  transform: translateX(-50%);
-  transition: all 0.3s ease;
-  cursor: pointer;
+@keyframes heartPulse {
+    0%, 100% { transform: scale(1); opacity: 0.72; }
+    50% { transform: scale(1.16); opacity: 1; }
 }
 
-.polaroid:hover {
-  transform: translateX(-50%) translateY(-20px) rotate(0deg) !important;
-  z-index: 10 !important;
+#experience-layer .gift-module {
+    animation: contentPop 0.4s cubic-bezier(0.2, 0.9, 0.4, 1) forwards;
 }
 
-.polaroid img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 4px;
+@keyframes contentPop {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.polaroid-caption {
-  font-size: 10px;
-  text-align: center;
-  margin-top: 6px;
-  color: #333;
-}
-
-.polaroid-stack p {
-  color: var(--umbra-light) !important;
-  margin-top: 80px;
-  text-align: center;
-}
-
-/* Ticket de cine */
-.movie-ticket {
-  background: linear-gradient(135deg, #1e2a3a, #0f1722);
-  border-radius: 16px;
-  padding: 2px;
-}
-
-.ticket-stub {
-  background: #fff8ed;
-  color: #1a1a1c;
-  padding: 24px;
-  border-radius: 14px;
-  position: relative;
-  text-align: center;
-}
-
-.ticket-movie {
-  display: block;
-  font-size: 1.4rem;
-  font-weight: bold;
-  font-family: 'Playfair Display', serif;
-}
-
-.ticket-quote {
-  display: block;
-  font-style: italic;
-  margin: 8px 0;
-  color: #c65a3a;
-}
-
-.ticket-details {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  font-size: 0.7rem;
-  margin-top: 12px;
-}
-
-.ticket-tear {
-  position: absolute;
-  right: -6px;
-  top: 20px;
-  width: 12px;
-  height: 60px;
-  background: radial-gradient(circle, #c65a3a 2px, transparent 3px);
-  background-size: 4px 4px;
-}
-
-/* Botón mantener presionado */
-.hold-btn {
-  background: var(--accent-coral);
-  border: none;
-  padding: 12px 24px;
-  border-radius: 40px;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.1s;
-  margin-top: 16px;
-}
-
-.hold-btn:active {
-  transform: scale(0.98);
-  background: #b34a2e;
-}
-
-/* Cinematic */
-.cinematic-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: 16px;
-}
-
-.cinematic-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-size: cover;
-  background-position: center;
-  filter: blur(8px);
-  opacity: 0.3;
-  z-index: 0;
-}
-
-.cinematic-content {
-  position: relative;
-  z-index: 1;
-  padding: 20px;
-}
-
-.cinematic-quote {
-  font-style: italic;
-  font-size: 1.1rem;
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-/* Playlist secreta */
-.playlist-card {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 16px;
-  padding: 16px;
-}
-
-.playlist-song {
-  padding: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.playlist-song:last-child {
-  border-bottom: none;
-}
-
-.playlist-song strong {
-  color: var(--accent-coral);
-}
-
-/* Cámara instantánea */
-.instant-camera img {
-  max-width: 100%;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-/* Corazón latiente */
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.3); }
-}
-
-.heart-animation {
-  font-size: 4rem;
-  animation: heartbeat 1s infinite;
-}
-
-/* Caja de regalo */
-.gift-box {
-  text-align: center;
-}
-
-.gift-icon {
-  font-size: 4rem;
-}
-
-/* Carta confidencial */
-.confidential-letter {
-  background: #1a1a2e;
-  padding: 24px;
-  border-radius: 16px;
-  border: 1px solid #c65a3a;
-}
-
-.confidential-letter > div:first-child {
-  text-align: center;
-  font-size: 1.2rem;
-}
-
-/* Constelación */
-.star-card {
-  margin: 12px 0;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-}
-
-.star-card strong {
-  color: #ffb347;
-}
-
-/* ==========================================
-   LIGHTBOX
-   ========================================== */
-.lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 8, 9, 0.95);
-  backdrop-filter: blur(12px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.lightbox.active {
-  display: flex;
-}
-
-.lightbox-content {
-  max-width: 90vw;
-  max-height: 90vh;
-}
-
-.lightbox-content img,
-.lightbox-content video {
-  max-width: 100%;
-  max-height: 90vh;
-  object-fit: contain;
-  border-radius: 16px;
-}
-
-.lightbox-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  color: white;
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.lightbox-close:hover {
-  background: rgba(198, 90, 58, 0.5);
-}
-
-.lightbox-caption {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  color: var(--umbra-ash);
-  font-size: 0.8rem;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 6px 12px;
-  border-radius: 20px;
+@media (max-width: 768px) {
+    #experience-layer { padding: 0; }
+    #experience-layer .experience-modal-inner {
+        width: 100%;
+        max-width: 100%;
+        min-height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+        padding-top: max(52px, calc(env(safe-area-inset-top) + 44px));
+    }
+    #experience-layer .experience-modal-title {
+        padding: 0 36px;
+        font-size: 1.5rem;
+    }
 }
 
 /* ==========================================
    TOAST NOTIFICACIONES
    ========================================== */
 .toast-message {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--umbra-dark);
-  border-left: 4px solid var(--accent-coral);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 40px;
-  font-size: 0.85rem;
-  z-index: 2000;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  white-space: nowrap;
-  animation: toastFadeIn 0.3s ease;
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--umbra-dark);
+    border-left: 4px solid var(--accent-coral);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    z-index: 2000;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+    animation: toastFadeIn 0.3s ease;
 }
 
 @keyframes toastFadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-/* ==========================================
-   CAPA DE EXPERIENCIAS — modal escenario grande
-   ========================================== */
-#experience-layer {
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 8, 10, 0.96);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 2100;
-  opacity: 0;
-  transition: opacity 0.35s ease;
-  padding: clamp(12px, 3vw, 32px);
-  box-sizing: border-box;
-}
-
-#experience-layer.active,
-#experience-layer.is-open {
-  display: flex;
-  opacity: 1;
-}
-
-/* Contenedor solo centra; el “escenario” es .experience-modal-inner */
-#experience-layer #experience-container,
-#experience-layer .experience-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  max-height: none;
-  min-width: 0;
-  padding: 0;
-  margin: 0;
-  background: none;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  transform: none;
-  overflow: visible;
-}
-
-#experience-layer .experience-modal-inner {
-  position: relative;
-  width: var(--experience-width);
-  min-height: var(--experience-min-height);
-  max-height: var(--experience-max-height);
-  display: flex;
-  flex-direction: column;
-  padding: var(--experience-padding);
-  padding-top: clamp(48px, 6vw, 56px);
-  background: linear-gradient(180deg, rgba(28, 28, 34, 0.99), rgba(12, 12, 15, 0.99));
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-xl);
-  box-shadow:
-    0 32px 64px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-  overflow: hidden;
-  transform: scale(0.94);
-  opacity: 0;
-  animation: experienceModalIn 0.45s cubic-bezier(0.34, 1.15, 0.64, 1) forwards;
-}
-
-@keyframes experienceModalIn {
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-#experience-layer .experience-modal-title,
-#experience-layer .experience-modal-inner > h3 {
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(1.65rem, 4vw, 2.35rem);
-  font-weight: 500;
-  text-align: center;
-  color: var(--umbra-light);
-  margin: 0 0 clamp(16px, 3vw, 28px);
-  padding: 0 40px;
-  line-height: 1.2;
-  flex-shrink: 0;
-}
-
-#experience-layer .experience-modal-body {
-  flex: 1;
-  min-height: 200px;
-  max-height: none;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 8px;
-  scrollbar-width: thin;
-}
-
-#experience-layer .experience-modal-body::-webkit-scrollbar {
-  width: 5px;
-}
-
-#experience-layer .experience-modal-body::-webkit-scrollbar-thumb {
-  background: rgba(198, 90, 58, 0.35);
-  border-radius: 10px;
-}
-
-#experience-layer .gift-loader {
-  min-height: 220px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 14px;
-  color: var(--umbra-ash);
-  text-align: center;
-}
-
-#experience-layer .heart-pulse {
-  font-size: 2.4rem;
-  line-height: 1;
-  animation: heartPulse 1.1s ease-in-out infinite;
-}
-
-@keyframes heartPulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.72;
-  }
-  50% {
-    transform: scale(1.16);
-    opacity: 1;
-  }
-}
-
-#experience-layer .experience-modal-close {
-  position: absolute;
-  top: clamp(12px, 2vw, 20px);
-  right: clamp(12px, 2vw, 20px);
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--umbra-ash);
-  font-size: 1.25rem;
-  line-height: 1;
-  z-index: 20;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-}
-
-#experience-layer .experience-modal-close:hover {
-  background: rgba(198, 90, 58, 0.25);
-  border-color: var(--accent-coral);
-  color: var(--accent-coral);
-  transform: rotate(90deg);
-}
-
-#experience-layer .experience-modal-footer {
-  flex-shrink: 0;
-  margin-top: clamp(20px, 3vw, 32px);
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  text-align: center;
-}
-
-#experience-layer .experience-modal-footer-btn,
-#experience-layer .modal-close-btn {
-  background: transparent;
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-pill);
-  padding: 12px 32px;
-  color: var(--umbra-light);
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-
-#experience-layer .experience-modal-footer-btn:hover,
-#experience-layer .modal-close-btn:hover {
-  background: rgba(198, 90, 58, 0.15);
-  border-color: var(--accent-coral);
-  transform: translateY(-1px);
-}
-
-/* Contenido de módulos dentro del escenario */
-#experience-layer .experience-modal-body .polaroid-stack {
-  min-height: 280px;
-}
-
-#experience-layer .experience-modal-body .polaroid {
-  width: clamp(120px, 22vw, 180px);
-}
-
-#experience-layer .experience-modal-body .cinematic-card {
-  min-height: 280px;
-}
-
-#experience-layer .experience-modal-body .cinematic-quote {
-  font-size: clamp(1.05rem, 2.5vw, 1.35rem);
-}
-
-#experience-layer .experience-modal-body .cassette-player,
-#experience-layer .experience-modal-body .gift-box,
-#experience-layer .experience-modal-body .scratch-card-wrap {
-  margin: 8px 0;
-}
-
-#experience-layer .experience-modal-body .instant-camera img {
-  max-width: 100%;
-  width: 100%;
-  max-height: min(50vh, 420px);
-  object-fit: cover;
-  border-radius: var(--radius-lg);
-}
-
-#experience-layer .experience-modal-body .letter-envelope {
-  max-width: 100%;
-}
-
-#experience-layer .experience-modal-body .paper-stack {
-  font-size: clamp(0.95rem, 2vw, 1.05rem);
-}
-
-#experience-layer .gift-module {
-  animation: contentPop 0.4s cubic-bezier(0.2, 0.9, 0.4, 1) forwards;
-}
-
-@keyframes contentPop {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ==========================================
-   MODAL FLOTANTE PARA SORPRESAS
-   ========================================== */
-.surprise-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(8, 8, 9, 0.85);
-  backdrop-filter: blur(16px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  animation: modalFadeIn 0.3s ease;
-}
-
-.surprise-modal.active {
-  display: flex;
-}
-
-.surprise-modal-content {
-  position: relative;
-  max-width: 550px;
-  width: 90%;
-  max-height: 85vh;
-  background: linear-gradient(180deg, rgba(25, 25, 30, 0.98), rgba(15, 15, 18, 0.98));
-  border: 1px solid var(--accent-border);
-  border-radius: 32px;
-  padding: 32px 28px;
-  overflow-y: auto;
-  animation: modalPop 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
-}
-
-.surprise-modal-content::-webkit-scrollbar {
-  width: 4px;
-}
-
-.surprise-modal-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.surprise-modal-content::-webkit-scrollbar-thumb {
-  background: rgba(198, 90, 58, 0.3);
-  border-radius: 10px;
-}
-
-.surprise-modal-close {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--umbra-ash);
-  transition: all 0.2s;
-}
-
-.surprise-modal-close:hover {
-  background: rgba(198, 90, 58, 0.2);
-  color: var(--accent-coral);
-  transform: rotate(90deg);
-}
-
-.surprise-modal-close i {
-  width: 18px;
-  height: 18px;
-}
-
-.surprise-modal-icon {
-  text-align: center;
-  font-size: 2.5rem;
-  margin-bottom: 8px;
-}
-
-.surprise-modal-content h3 {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.6rem;
-  text-align: center;
-  color: var(--umbra-light);
-  margin-bottom: 20px;
-}
-
-.surprise-modal-body {
-  max-height: 55vh;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.surprise-modal-body::-webkit-scrollbar {
-  width: 3px;
-}
-
-.surprise-modal-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.surprise-modal-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-}
-
-.surprise-modal-footer {
-  margin-top: 24px;
-  text-align: center;
-}
-
-.modal-close-btn {
-  background: transparent;
-  border: 1px solid var(--accent-border);
-  border-radius: 40px;
-  padding: 10px 28px;
-  color: var(--umbra-light);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.85rem;
-}
-
-.modal-close-btn:hover {
-  background: rgba(198, 90, 58, 0.15);
-  border-color: var(--accent-coral);
-  transform: translateY(-1px);
-}
-
-@keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes modalPop {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* ==========================================
-   RESPONSIVE
-   ========================================== */
-@media (min-width: 1200px) {
-  .calendar-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1024px) {
-  .calendar-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
-  }
+    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 @media (max-width: 768px) {
-  .calendario-page {
-    padding-top: 0;
-  }
+    .toast-message {
+        white-space: normal;
+        max-width: 90%;
+        text-align: center;
+        font-size: 0.75rem;
+        padding: 10px 16px;
+    }
+}
 
-  .calendario-intro h2 {
-    font-size: clamp(2rem, 10vw, 3rem);
-  }
+/* ==========================================
+   LIGHTBOX
+   ========================================== */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 8, 9, 0.95);
+    backdrop-filter: blur(12px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
 
-  .calendar-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-  }
+.lightbox.active { display: flex; }
 
-  .day-card {
-    border-radius: 22px;
-    padding: 14px;
-  }
+.lightbox-content {
+    max-width: 90vw;
+    max-height: 90vh;
+}
 
-  .day-card::before,
-  .day-card.opened::after {
-    top: 10px;
-    right: 12px;
-    font-size: 0.7rem;
-  }
-
-  .day-number {
-    font-size: clamp(1.5rem, 5vw, 2rem);
-  }
-
-  .surprise-box {
-    padding: 22px 18px;
-    border-radius: 22px;
-  }
-
-  .surprise-box h3 {
-    font-size: 1.3rem;
-  }
-
-  .toast-message {
-    white-space: normal;
-    max-width: 90%;
-    text-align: center;
-    font-size: 0.75rem;
-    padding: 10px 16px;
-  }
-
-  .polaroid {
-    width: 100px;
-  }
-
-  /* Modal legacy pequeño */
-  #surpriseModal .surprise-modal-content {
-    padding: 24px 20px;
-    width: 92%;
-  }
-
-  #surpriseModal .surprise-modal-content h3 {
-    font-size: 1.3rem;
-  }
-
-  #surpriseModal .surprise-modal-body {
-    max-height: 50vh;
-  }
-
-  /* Experiencia: casi pantalla completa en móvil */
-  #experience-layer {
-    padding: 0;
-  }
-
-  #experience-layer .experience-modal-inner {
-    width: 100%;
+.lightbox-content img,
+.lightbox-content video {
     max-width: 100%;
-    min-height: 100dvh;
-    max-height: 100dvh;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
-    padding-top: max(52px, calc(env(safe-area-inset-top) + 44px));
-  }
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 16px;
+}
 
-  #experience-layer .experience-modal-title {
-    padding: 0 36px;
-    font-size: 1.5rem;
-  }
+.lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
 
-  #experience-layer .experience-modal-body .polaroid {
-    width: 110px;
-  }
+.lightbox-close:hover { background: rgba(198, 90, 58, 0.5); }
+
+.lightbox-caption {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    color: var(--umbra-ash);
+    font-size: 0.8rem;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+/* ==========================================
+   TIPOS DE SORPRESAS (dentro del modal)
+   ========================================== */
+.letter-envelope {
+    max-width: 400px;
+    margin: 0 auto;
+    background: #f9e5c0;
+    padding: 24px;
+    border-radius: 12px;
+    color: #2c2c2c;
+}
+
+.letter-body p {
+    white-space: pre-wrap;
+    line-height: 1.8;
+    color: #2c2c2c !important;
+}
+
+.cassette-player {
+    background: linear-gradient(145deg, #2a2a2e, #1a1a1c);
+    padding: 20px;
+    border-radius: 24px;
+    max-width: 400px;
+    margin: 0 auto;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05), 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.cassette-player audio {
+    width: 100%;
+    margin-top: 8px;
+    border-radius: 8px;
+}
+
+.gift-box {
+    text-align: center;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.gift-box img {
+    max-width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.polaroid-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.polaroid-stack > div {
+    background: #f5f0e8;
+    padding: 12px 12px 18px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    width: 100%;
+}
+
+.polaroid-stack img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.polaroid-stack p {
+    text-align: center;
+    margin-top: 8px;
+    color: #333;
+    font-size: 0.85rem;
+}
+
+/* ==========================================
+   SURPRISE MODAL (legacy)
+   ========================================== */
+.surprise-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(8, 8, 9, 0.85);
+    backdrop-filter: blur(16px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.surprise-modal.active { display: flex; }
+
+.surprise-modal-content {
+    position: relative;
+    max-width: 550px;
+    width: 90%;
+    max-height: 85vh;
+    background: linear-gradient(180deg, rgba(25, 25, 30, 0.98), rgba(15, 15, 18, 0.98));
+    border: 1px solid var(--accent-border);
+    border-radius: 32px;
+    padding: 32px 28px;
+    overflow-y: auto;
+    animation: modalPop 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.surprise-modal-content h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    text-align: center;
+    color: var(--umbra-light);
+    margin-bottom: 20px;
+}
+
+.surprise-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--umbra-ash);
+    transition: all 0.2s;
+}
+
+.surprise-modal-close:hover {
+    background: rgba(198, 90, 58, 0.2);
+    color: var(--accent-coral);
+    transform: rotate(90deg);
+}
+
+/* ==========================================
+   RESPONSIVE ADICIONAL
+   ========================================== */
+@media (max-width: 768px) {
+    .calendario-page { padding-top: 0; }
+    .calendario-intro h2 { font-size: clamp(2rem, 10vw, 3rem); }
+    .day-card { border-radius: 22px; padding: 14px; }
 }
 
 @media (max-width: 480px) {
-  .calendar-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-  
-  .day-card {
-    border-radius: 18px;
-    padding: 12px;
-  }
+    .day-card { border-radius: 18px; padding: 12px; }
+    .day-number { font-size: clamp(1.6rem, 5vw, 2.2rem); }
+    .day-status { font-size: 0.8rem; }
+    .day-card.locked .day-status { font-size: 1.4rem !important; }
 }
 
-/* Estilos de respaldo por si no carga el CSS externo */
-        .calendario-page {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .calendario-intro {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        .calendario-intro h2 {
-            font-size: 2.5rem;
-            cursor: pointer;
-        }
-        .calendario-intro h2::after {
-            content: ' ✧';
-            color: #c65a3a;
-        }
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-        .day-card {
-            aspect-ratio: 1;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .day-card:hover {
-            transform: translateY(-3px);
-            border-color: #c65a3a;
-        }
-        .day-card.opened {
-            border-color: #c65a3a;
-            background: rgba(198,90,58,0.2);
-        }
-        .day-card.locked {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .day-card.disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        .day-number {
-            font-size: 1.8rem;
-        }
-        .day-status {
-            font-size: 0.8rem;
-        }
-        .surprise-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(12px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-        .surprise-modal.active {
-            display: flex;
-        }
-        .surprise-modal-content {
-            background: #1a1a1c;
-            border: 1px solid #c65a3a;
-            border-radius: 24px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            padding: 30px;
-            position: relative;
-        }
-        .surprise-modal-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-        .toast-message {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1a1a1c;
-            border-left: 4px solid #c65a3a;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 40px;
-            z-index: 2100;
-        }
-        .lightbox {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.95);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 3000;
-        }
-        .lightbox.active {
-            display: flex;
-        }
-        .lightbox-content img {
-            max-width: 90vw;
-            max-height: 90vh;
-        }
-        .lightbox-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 2rem;
-            cursor: pointer;
-        }
-
-        /* Día disponible (desbloqueado no abierto) */
-.day-card.available {
-  border-color: rgba(198, 90, 58, 0.3);
-  animation: gentlePulse 2s infinite;
+/* Nombre del regalo debajo del número */
+.day-gift-name {
+    font-size: 0.55rem;
+    color: var(--umbra-light);
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+    padding: 0 4px;
+    opacity: 0.8;
+    font-weight: 400;
+    letter-spacing: 0.02em;
 }
 
-.day-card.available::before {
-  content: '✨';
-  color: rgba(255, 179, 71, 0.6);
+.day-card.locked .day-gift-name {
+    opacity: 0.3 !important;
+    color: rgba(255,255,255,0.2) !important;
 }
 
-@keyframes gentlePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(198, 90, 58, 0.2); }
-  50% { box-shadow: 0 0 0 4px rgba(198, 90, 58, 0.1); }
-}
-
-/* Día actual (hoy) */
-.day-card.today {
-  border: 2px solid var(--accent-coral);
-  background: radial-gradient(circle at top right, rgba(198, 90, 58, 0.15), transparent 50%);
-  box-shadow: 0 0 20px rgba(198, 90, 58, 0.2);
-}
-
-.day-card.today .day-number {
-  color: var(--accent-coral);
-}
-
-.day-card.today::after {
-  content: '🎁';
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  font-size: 0.8rem;
-  color: var(--accent-coral);
-}
-
-/* Día favorito */
-.day-card.favorite {
-  border-color: #ffb347;
-}
-
-.day-card.favorite::after {
-  content: '⭐';
-  color: #ffb347;
-  font-size: 0.8rem;
-}
-
-/* Día completado */
-.day-card.completed {
-  background: linear-gradient(145deg, rgba(76, 175, 80, 0.08), rgba(15, 15, 18, 0.95));
-}
-
-.day-card.completed .day-status {
-  color: #4caf50;
-}
-
-/* Alias: botón cerrar legacy con clase experience-close */
-#experience-layer .experience-close {
-  position: absolute;
-  top: clamp(12px, 2vw, 20px);
-  right: clamp(12px, 2vw, 20px);
-  width: 44px;
-  height: 44px;
-  z-index: 20;
-}
-
-#experience-content {
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-
-/* Flor CSS */
-.flower-container {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.css-flower {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  cursor: pointer;
-  transition: transform 0.3s;
-}
-
-.css-flower:hover {
-  transform: scale(1.05);
-}
-
-/* Carta 3D */
-.letter-3d {
-  position: relative;
-  width: 200px;
-  height: 140px;
-  margin: 20px auto;
-  cursor: pointer;
-  transform-style: preserve-3d;
-  transition: transform 0.6s;
-}
-
-.letter-3d.open {
-  transform: rotateX(180deg);
-}
-
-/* Globos */
-.balloons-container {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin: 20px 0;
-}
-
-.balloon {
-  cursor: pointer;
-  animation: float 3s ease-in-out infinite;
-  transition: transform 0.2s;
-}
-
-.balloon:hover {
-  transform: scale(1.1);
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* Galleta de la fortuna */
-.fortune-cookie {
-  width: 120px;
-  height: 100px;
-  background: #deb887;
-  border-radius: 50% 50% 40% 40%;
-  margin: 20px auto;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.fortune-cookie.cracked {
-  transform: scale(0.9);
-  opacity: 0.5;
-}
-
-.fortune-message {
-  text-align: center;
-  margin-top: 20px;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.fortune-message.show {
-  opacity: 1;
-}
-
-/* Mariposas */
-.butterflies-container {
-  position: relative;
-  min-height: 200px;
-  margin: 20px 0;
-}
-
-.butterfly {
-  position: absolute;
-  font-size: 1.8rem;
-  cursor: pointer;
-  animation: butterflyFloat 4s ease-in-out infinite;
-}
-
-@keyframes butterflyFloat {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(10px, -15px) rotate(10deg); }
-  50% { transform: translate(-5px, -25px) rotate(-5deg); }
-  75% { transform: translate(15px, -10px) rotate(15deg); }
-}
-
-/* Vela */
-.candle-container {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.candle {
-  position: relative;
-  width: 40px;
-  height: 80px;
-  background: #f5e6d3;
-  border-radius: 10px 10px 5px 5px;
-  cursor: pointer;
-}
-
-.flame {
-  position: absolute;
-  top: -15px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 12px;
-  height: 20px;
-  background: #ff8c00;
-  border-radius: 50% 50% 20% 20%;
-  opacity: 0;
-  transition: opacity 0.3s;
-  animation: flicker 0.5s infinite alternate;
-}
-
-.candle.lit .flame {
-  opacity: 1;
-}
-
-@keyframes flicker {
-  0% { transform: translateX(-50%) scale(1); opacity: 0.8; }
-  100% { transform: translateX(-50%) scale(1.1); opacity: 1; }
-}
-
-/* Barra de progreso del calendario */
-.calendar-progress {
-  margin: 0 0 32px 0;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 20px;
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.progress-stats {
-  display: flex;
-  gap: 24px;
-}
-
-.progress-stat {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.progress-number {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--accent-coral);
-  font-family: 'Playfair Display', serif;
-}
-
-.progress-label {
-  font-size: 0.7rem;
-  color: var(--umbra-ash);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.progress-bar-container {
-  flex: 1;
-  min-width: 150px;
-}
-
-.progress-bar-bg {
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--accent-coral), #ffb347);
-  border-radius: 10px;
-  transition: width 0.5s ease;
-}
-
-@media (max-width: 640px) {
-  #experience-content {
-    padding: 20px;
-  }
-  
-  .calendar-progress {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: center;
-  }
-  
-  .progress-stats {
-    justify-content: center;
-  }
+@media (max-width: 480px) {
+    .day-gift-name {
+        font-size: 0.45rem !important;
+        margin-top: 1px;
+    }
 }

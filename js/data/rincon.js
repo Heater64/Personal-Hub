@@ -96,6 +96,9 @@ const memeImages = {
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995342/video5821142400889790151_sl6h3e.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995503/video5821142400889790153_1_auvfsc.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995259/video5821142400889790148_pqiwwn.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1783252994/video5931306366412005204_fr36uy.mp4",
+
+        //Extra//
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-1_guzqtm.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-3_cotmqd.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777132934/bailesnowman.mp4",

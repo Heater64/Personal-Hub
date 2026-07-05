@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>💣 Buscaminas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0a0a12;
+            --bg-mid: #14141f;
+            --panel: rgba(255,255,255,0.04);
+            --panel-border: rgba(255,255,255,0.08);
+            --ink: #ece9e4;
+            --ash: #8b889a;
+            --coral: #c65a3a;
+            --coral-dark: #9a4530;
+            --gold: #ffd166;
+            --green: #5fd08a;
+            --red: #ff5d5d;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 50% 0%, var(--bg-mid), var(--bg-deep));
+            color: var(--ink);
+            font-family: var(--font-body);
+        }
+
+        .game-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px 16px 40px;
+            text-align: center;
+        }
+
+        .game-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .game-header h1 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .game-header .subtitle {
+            color: var(--ash);
+            font-size: 0.7rem;
+            margin: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 6px;
+        }
+
+        .icon-btn {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            color: var(--ink);
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .icon-btn:hover { border-color: var(--coral); color: var(--coral); }
+        .icon-btn.active { border-color: var(--gold); color: var(--gold); }
+
+        .score-display {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 10px 0 14px;
+            flex-wrap: wrap;
+        }
+
+        .score-item {
+            background: var(--panel);
+            padding: 5px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--panel-border);
+            min-width: 52px;
+        }
+
+        .score-item .label {
+            font-size: 0.45rem;
+            color: var(--ash);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .score-item .value {
+            font-size: 1.05rem;
+            font-weight: 700;
+            font-family: var(--font-display);
+        }
+        .score-item .value.gold { color: var(--gold); }
+        .score-item .value.green { color: var(--green); }
+        .score-item .value.white { color: var(--ink); }
+        .score-item .value.red { color: var(--red); }
+
+        .board-wrap {
+            position: relative;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .board {
+            display: grid;
+            gap: 2px;
+            max-width: 480px;
+            margin: 0 auto;
+            aspect-ratio: 1/1;
+            padding: 4px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 16px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .cell {
+            aspect-ratio: 1/1;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            color: var(--ink);
+            font-family: var(--font-body);
+            position: relative;
+        }
+
+        .cell:hover:not(.revealed):not(.flagged) {
+            background: rgba(255,255,255,0.15);
+            transform: scale(1.02);
+            z-index: 1;
+        }
+
+        .cell.revealed {
+            background: rgba(255,255,255,0.03);
+            border-color: rgba(255,255,255,0.02);
+            cursor: default;
+            transform: scale(1);
+        }
+
+        .cell.revealed.empty {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .cell.flagged {
+            background: rgba(198, 90, 58, 0.15);
+            border-color: rgba(198, 90, 58, 0.2);
+        }
+
+        .cell.flagged .flag-icon {
+            color: var(--coral);
+            font-size: 1.2rem;
+        }
+
+        .cell.mine-exploded {
+            background: #ff4d4d !important;
+            animation: explode 0.3s ease;
+        }
+
+        .cell .mine-icon {
+            color: #ff4d4d;
+            font-size: 1.1rem;
+            animation: mineAppear 0.3s ease;
+        }
+
+        .cell .number-1 { color: #4caf50; }
+        .cell .number-2 { color: #2196f3; }
+        .cell .number-3 { color: #ff4d4d; }
+        .cell .number-4 { color: #9c27b0; }
+        .cell .number-5 { color: #ff9800; }
+        .cell .number-6 { color: #00bcd4; }
+        .cell .number-7 { color: #e91e63; }
+        .cell .number-8 { color: #607d8b; }
+
+        @keyframes explode {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes mineAppear {
+            0% { transform: scale(0) rotate(180deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .cell.reveal-anim {
+            animation: revealPop 0.15s ease;
+        }
+
+        @keyframes revealPop {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .controls-hint {
+            color: var(--ash);
+            font-size: 0.65rem;
+            margin: 10px 0;
+            opacity: 0.5;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .btn-ghost {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            padding: 10px 22px;
+            border-radius: 40px;
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-family: var(--font-body);
+            transition: all 0.2s;
+        }
+        .btn-ghost:hover { border-color: var(--coral); color: var(--coral); }
+
+        .btn-primary {
+            background: var(--coral);
+            border: none;
+            padding: 10px 28px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: var(--font-body);
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { background: var(--coral-dark); transform: translateY(-2px); }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 10px 24px;
+            border: 1px solid var(--panel-border);
+            border-radius: 40px;
+            color: var(--ash);
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        .back-btn:hover { border-color: var(--coral); color: var(--coral); transform: translateX(-3px); }
+
+        .game-message {
+            position: fixed; inset: 0; background: rgba(6,6,8,0.92);
+            backdrop-filter: blur(16px); display: none; align-items: center;
+            justify-content: center; z-index: 2000; padding: 20px;
+        }
+        .game-message.show { display: flex; }
+
+        .game-message-content {
+            background: linear-gradient(180deg, rgba(26,26,30,0.98), rgba(14,14,18,0.98));
+            border: 1px solid var(--panel-border);
+            border-radius: 28px;
+            padding: 32px 36px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            animation: modalPop 0.35s cubic-bezier(0.34,1.4,0.64,1);
+        }
+
+        .game-message-content .icon { font-size: 2.8rem; margin-bottom: 10px; }
+        .game-message-content h2 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            margin: 0 0 6px;
+            color: var(--ink);
+        }
+        .game-message-content p {
+            color: var(--ash);
+            margin: 0 0 18px;
+            line-height: 1.5;
+            font-size: 0.85rem;
+        }
+        .game-message-content .btn-primary {
+            background: var(--coral);
+            border: none;
+            padding: 10px 28px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: var(--font-body);
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .game-message-content .btn-primary:hover { background: var(--coral-dark); transform: translateY(-2px); }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translate(-50%, -20px);
+            background: rgba(20,20,26,0.95);
+            border: 1px solid var(--panel-border);
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            color: var(--ink);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 150;
+        }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+        .difficulty-selector {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .diff-btn {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            padding: 4px 14px;
+            border-radius: 20px;
+            color: var(--ash);
+            cursor: pointer;
+            font-size: 0.65rem;
+            font-family: var(--font-body);
+            transition: all 0.2s;
+        }
+        .diff-btn:hover { border-color: var(--coral); color: var(--ink); }
+        .diff-btn.active {
+            border-color: var(--coral);
+            color: var(--coral);
+            background: rgba(198, 90, 58, 0.1);
+        }
+
+        @media (max-width: 480px) {
+            .game-message-content { padding: 24px 18px; }
+            .score-item { padding: 4px 8px; min-width: 44px; }
+            .score-item .value { font-size: 0.9rem; }
+            .game-header h1 { font-size: 1.2rem; }
+            .cell { font-size: 0.8rem; }
+            .board { gap: 1.5px; padding: 2px; }
+        }
+
+        @media (max-width: 380px) {
+            .cell { font-size: 0.65rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>💣 Buscaminas</h1>
+            <div class="toolbar">
+                <button class="icon-btn" id="flagModeBtn" title="Modo bandera">🚩</button>
+            </div>
+            <span class="subtitle">Click izquierdo para revelar · Derecho para bandera</span>
+        </div>
+
+        <div class="difficulty-selector">
+            <button class="diff-btn active" data-diff="easy">😊 Fácil</button>
+            <button class="diff-btn" data-diff="medium">🤔 Medio</button>
+            <button class="diff-btn" data-diff="hard">😈 Difícil</button>
+        </div>
+
+        <div class="score-display">
+            <div class="score-item"><div class="label">Minas</div><div class="value red" id="minesDisplay">10</div></div>
+            <div class="score-item"><div class="label">Reveladas</div><div class="value white" id="revealedDisplay">0</div></div>
+            <div class="score-item"><div class="label">Tiempo</div><div class="value gold" id="timeDisplay">0s</div></div>
+            <div class="score-item"><div class="label">Estado</div><div class="value" id="statusDisplay">🎮</div></div>
+        </div>
+
+        <div class="board-wrap">
+            <div class="board" id="board"></div>
+        </div>
+
+        <div class="controls-hint">🖱 Click izq: Revelar · Click der: Bandera · 🚩 Modo bandera</div>
+
+        <div class="actions">
+            <button class="btn-primary" id="resetBtn">🔄 Nuevo juego</button>
+        </div>
+
+        <a href="/pages/calendario.html" class="back-btn">← Volver al calendario</a>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">💥</div>
+            <h2 id="msgTitle">¡Boom!</h2>
+            <p id="msgText">Has pisado una mina.</p>
+            <button class="btn-primary" id="msgBtn">Reintentar</button>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            'use strict';
+
+            // ==============================================================
+            // BUSCAMINAS - VERSIÓN COMPLETA
+            // ==============================================================
+
+            // --- Configuración de dificultad ---
+            const DIFFICULTIES = {
+                easy: { rows: 8, cols: 8, mines: 8, label: 'Fácil' },
+                medium: { rows: 12, cols: 12, mines: 18, label: 'Medio' },
+                hard: { rows: 16, cols: 16, mines: 40, label: 'Difícil' }
+            };
+
+            let currentDifficulty = 'easy';
+            let ROWS, COLS, MINES;
+            let board = [],
+                revealed = [],
+                flagged = [];
+            let gameOver = false;
+            let firstClick = true;
+            let totalRevealed = 0;
+            let timer = 0;
+            let timerInterval = null;
+            let flagMode = false;
+            let isGameActive = false;
+
+            // --- Referencias DOM ---
+            const boardEl = document.getElementById('board');
+            const minesDisplay = document.getElementById('minesDisplay');
+            const revealedDisplay = document.getElementById('revealedDisplay');
+            const timeDisplay = document.getElementById('timeDisplay');
+            const statusDisplay = document.getElementById('statusDisplay');
+            const resetBtn = document.getElementById('resetBtn');
+            const flagModeBtn = document.getElementById('flagModeBtn');
+
+            // --- Inicializar ---
+            function initBoard() {
+                const config = DIFFICULTIES[currentDifficulty];
+                ROWS = config.rows;
+                COLS = config.cols;
+                MINES = config.mines;
+
+                board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+                revealed = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+                flagged = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+                totalRevealed = 0;
+                gameOver = false;
+                firstClick = true;
+                timer = 0;
+                isGameActive = false;
+
+                clearInterval(timerInterval);
+                timerInterval = null;
+
+                minesDisplay.textContent = MINES;
+                revealedDisplay.textContent = '0';
+                timeDisplay.textContent = '0s';
+                statusDisplay.textContent = '🎮';
+                render();
+            }
+
+            // --- Colocar minas ---
+            function placeMines(excludeX, excludeY) {
+                let placed = 0;
+                while (placed < MINES) {
+                    const x = Math.floor(Math.random() * COLS);
+                    const y = Math.floor(Math.random() * ROWS);
+                    if (board[y][x] === -1 || (x === excludeX && y === excludeY)) continue;
+                    board[y][x] = -1;
+                    placed++;
+                }
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (board[y][x] === -1) continue;
+                        let count = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                const ny = y + dy,
+                                    nx = x + dx;
+                                if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS && board[ny][nx] === -1) count++;
+                            }
+                        }
+                        board[y][x] = count;
+                    }
+                }
+            }
+
+            // --- Revelar celda ---
+            function reveal(x, y) {
+                if (gameOver || revealed[y][x] || flagged[y][x]) return;
+
+                // Iniciar timer en el primer click
+                if (firstClick) {
+                    placeMines(x, y);
+                    firstClick = false;
+                    isGameActive = true;
+                    timerInterval = setInterval(() => {
+                        timer++;
+                        timeDisplay.textContent = timer + 's';
+                    }, 1000);
+                }
+
+                if (board[y][x] === -1) {
+                    gameOver = true;
+                    isGameActive = false;
+                    clearInterval(timerInterval);
+                    statusDisplay.textContent = '💥';
+                    showMessage('💥', '¡Boom!', 'Has pisado una mina.');
+                    revealAllMines(x, y);
+                    render();
+                    return;
+                }
+
+                revealed[y][x] = true;
+                totalRevealed++;
+                revealedDisplay.textContent = totalRevealed;
+
+                // Efecto de revelado
+                const cell = getCellElement(x, y);
+                if (cell) cell.classList.add('reveal-anim');
+
+                if (board[y][x] === 0) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const ny = y + dy,
+                                nx = x + dx;
+                            if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS && !revealed[ny][nx] && !flagged[ny][nx]) {
+                                reveal(nx, ny);
+                            }
+                        }
+                    }
+                }
+
+                render();
+                checkWin();
+            }
+
+            // --- Alternar bandera ---
+            function toggleFlag(x, y) {
+                if (gameOver || revealed[y][x]) return;
+                flagged[y][x] = !flagged[y][x];
+                render();
+            }
+
+            // --- Verificar victoria ---
+            function checkWin() {
+                const totalSafe = ROWS * COLS - MINES;
+                if (totalRevealed === totalSafe) {
+                    gameOver = true;
+                    isGameActive = false;
+                    clearInterval(timerInterval);
+                    statusDisplay.textContent = '🏆';
+                    showMessage('🎉', '¡Has ganado!',
+                        `Has despejado todas las casillas seguras en ${timer}s.`);
+                    render();
+                }
+            }
+
+            // --- Revelar todas las minas ---
+            function revealAllMines(explodeX, explodeY) {
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (board[y][x] === -1) {
+                            revealed[y][x] = true;
+                        }
+                    }
+                }
+                // Marcar la mina que explotó
+                if (explodeX !== undefined && explodeY !== undefined) {
+                    // Guardar para el render
+                }
+            }
+
+            // --- Obtener elemento de celda ---
+            function getCellElement(x, y) {
+                return boardEl.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+            }
+
+            // --- Renderizar ---
+            function render() {
+                boardEl.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
+                boardEl.innerHTML = '';
+
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.x = x;
+                        cell.dataset.y = y;
+
+                        const isRevealed = revealed[y][x];
+                        const isFlagged = flagged[y][x];
+                        const value = board[y][x];
+
+                        if (isRevealed) {
+                            cell.classList.add('revealed');
+                            if (value === -1) {
+                                cell.classList.add('mine');
+                                cell.innerHTML = '<span class="mine-icon">💣</span>';
+                            } else if (value > 0) {
+                                cell.textContent = value;
+                                cell.classList.add('number-' + value);
+                            } else {
+                                cell.classList.add('empty');
+                                cell.textContent = '·';
+                                cell.style.color = 'rgba(255,255,255,0.08)';
+                            }
+                        } else if (isFlagged) {
+                            cell.classList.add('flagged');
+                            cell.innerHTML = '<span class="flag-icon">🚩</span>';
+                        } else {
+                            cell.textContent = '';
+                        }
+
+                        // Eventos
+                        cell.addEventListener('click', () => {
+                            if (flagMode) {
+                                toggleFlag(x, y);
+                            } else {
+                                reveal(x, y);
+                            }
+                        });
+
+                        cell.addEventListener('contextmenu', (e) => {
+                            e.preventDefault();
+                            toggleFlag(x, y);
+                        });
+
+                        // Doble click para revelar alrededor (si está marcado con banderas)
+                        cell.addEventListener('dblclick', (e) => {
+                            e.preventDefault();
+                            if (isRevealed && value > 0) {
+                                // Contar banderas alrededor
+                                let flagCount = 0;
+                                for (let dy = -1; dy <= 1; dy++) {
+                                    for (let dx = -1; dx <= 1; dx++) {
+                                        const ny = y + dy,
+                                            nx = x + dx;
+                                        if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS && flagged[ny][nx]) {
+                                            flagCount++;
+                                        }
+                                    }
+                                }
+                                if (flagCount === value) {
+                                    for (let dy = -1; dy <= 1; dy++) {
+                                        for (let dx = -1; dx <= 1; dx++) {
+                                            const ny = y + dy,
+                                                nx = x + dx;
+                                            if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS && !revealed[ny][nx] && !flagged[ny][nx]) {
+                                                reveal(nx, ny);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        boardEl.appendChild(cell);
+                    }
+                }
+
+                // Actualizar contador de minas restantes
+                const flaggedCount = flagged.flat().filter(Boolean).length;
+                minesDisplay.textContent = MINES - flaggedCount;
+
+                if (gameOver) {
+                    statusDisplay.textContent = '💀';
+                } else if (isGameActive) {
+                    statusDisplay.textContent = '🎯';
+                }
+            }
+
+            // --- Mostrar mensaje ---
+            function showMessage(icon, title, text) {
+                document.getElementById('msgIcon').textContent = icon;
+                document.getElementById('msgTitle').textContent = title;
+                document.getElementById('msgText').textContent = text;
+                document.getElementById('msgBtn').textContent = 'Reintentar';
+                document.getElementById('gameMessage').classList.add('show');
+            }
+
+            function hideMessage() {
+                document.getElementById('gameMessage').classList.remove('show');
+            }
+
+            document.getElementById('msgBtn').addEventListener('click', () => {
+                hideMessage();
+                resetGame();
+            });
+
+            // --- Reset ---
+            function resetGame() {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                initBoard();
+            }
+
+            // --- Cambiar dificultad ---
+            function setDifficulty(diff) {
+                currentDifficulty = diff;
+                document.querySelectorAll('.diff-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.diff === diff);
+                });
+                resetGame();
+                showToast(`🎯 Dificultad: ${DIFFICULTIES[diff].label}`);
+            }
+
+            // --- Toast ---
+            function showToast(text) {
+                const el = document.getElementById('toast');
+                el.textContent = text;
+                el.classList.add('show');
+                clearTimeout(window._toastTimeout);
+                window._toastTimeout = setTimeout(() => el.classList.remove('show'), 1600);
+            }
+
+            // --- Eventos ---
+            resetBtn.addEventListener('click', resetGame);
+
+            flagModeBtn.addEventListener('click', () => {
+                flagMode = !flagMode;
+                flagModeBtn.classList.toggle('active', flagMode);
+                flagModeBtn.textContent = flagMode ? '🚩 ON' : '🚩';
+                showToast(flagMode ? '🔴 Modo bandera activado' : '🟢 Modo revelar activado');
+            });
+
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.addEventListener('click', () => setDifficulty(btn.dataset.diff));
+            });
+
+            // Tecla B para alternar modo bandera
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'b' || e.key === 'B') {
+                    flagModeBtn.click();
+                }
+                if (e.key === 'r' || e.key === 'R') {
+                    resetGame();
+                }
+            });
+
+            // --- Iniciar ---
+            initBoard();
+
+            window.resetGame = resetGame;
+            window.setDifficulty = setDifficulty;
+        })();
+    </script>
+</body>
+</html>

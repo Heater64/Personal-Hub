@@ -1,0 +1,299 @@
+{
+    "version": 3,
+    "months": {
+        "2026-07": {
+            "label": "Julio 2026",
+            "calendarMapping": {
+                "1": "carta_inicial",
+                "2": "dia_musica",
+                "3": "dia_flores",
+                "4": "video_kiss",
+                "5": "minijuego_click",
+                "6": "juego_memoria",
+                "7": "carta_amor",
+                "8": "juego_ahorcado",
+                "9": "juego_tiroarco",
+                "10": "juego_snake",
+                "11": "juego_buscaminas",
+                "12": "juego_laberinto",
+                "13": "juego_meteoritos",
+                "14": "juego_cuchillos",
+                "15": "juego_torre",
+                "16": "juego_breakout",
+                "17": "sorpresa_confeti",
+                "18": "video_mensaje",
+                "19": "pregunta_dia",
+                "20": "lista_deseos",
+                "21": "",
+                "22": "",
+                "23": "",
+                "24": "",
+                "25": "",
+                "26": "",
+                "27": "",
+                "28": "",
+                "29": "",
+                "30": "",
+                "31": ""
+            }
+        },
+        "2026-08": {
+            "label": "Agosto 2026",
+            "calendarMapping": {
+                "1": "carta_agosto1",
+                "2": "",
+                "3": "",
+                "4": "",
+                "5": "",
+                "6": "",
+                "7": "",
+                "8": "",
+                "9": "",
+                "10": "",
+                "11": "",
+                "12": "",
+                "13": "",
+                "14": "",
+                "15": "",
+                "16": "",
+                "17": "",
+                "18": "",
+                "19": "",
+                "20": "",
+                "21": "",
+                "22": "",
+                "23": "",
+                "24": "",
+                "25": "",
+                "26": "",
+                "27": "",
+                "28": "",
+                "29": "",
+                "30": "",
+                "31": ""
+            }
+        }
+    },
+    "gifts": [
+        {
+            "id": "carta_inicial",
+            "title": "✉️ Carta de Bienvenida",
+            "type": "letter",
+            "unlock": { "mode": "date", "value": "2026-07-01" },
+            "redirect": false,
+            "data": {
+                "content": "Querida princesa...\n\nEste es el primer regalo de nuestro calendario. Cada día tendrás una sorpresa diferente. Espero que te gusten.\n\nCon mucho amor,\ntu peluche favorito 🤍"
+            }
+        },
+        {
+            "id": "dia_musica",
+            "title": "🎵 Tiroteo (Remix)",
+            "type": "cassette",
+            "unlock": { "mode": "date", "value": "2026-07-02" },
+            "redirect": false,
+            "data": {
+                "message": "Esta canción me recuerda a ti. Espero que te guste. 💕",
+                "audioUrl": "https://res.cloudinary.com/dcsent4fs/video/upload/v1783251965/Marc_Segu%C3%AD_Tiroteo_Remix_ft_Rauw_Alejandro___Pol_Granch_etwg28.m4a",
+                "coverImage": "https://i.ytimg.com/vi/7lZW4UgBuWQ/maxresdefault.jpg"
+            }
+        },
+        {
+            "id": "dia_flores",
+            "title": "🎁 Flores para ti",
+            "type": "giftBox",
+            "unlock": { "mode": "date", "value": "2026-07-03" },
+            "redirect": false,
+            "data": {
+                "message": "Para la princesa más bonita. 🌹",
+                "image": "https://source.unsplash.com/featured/400x400/?rose,flower"
+            }
+        },
+        {
+            "id": "video_kiss",
+            "title": "🎬 Te amooo",
+            "type": "video",
+            "unlock": { "mode": "date", "value": "2026-07-04" },
+            "redirect": false,
+            "data": {
+                "videoUrl": "https://res.cloudinary.com/dcsent4fs/video/upload/v1783252994/video5931306366412005204_fr36uy.mp4",
+                "caption": "✨ Un momento especial para ti. Te amo con todo mi corazón. ✨"
+            }
+        },
+        {
+            "id": "minijuego_click",
+            "title": "🎮 Mini Juego: Estrellas",
+            "type": "clickStar",
+            "unlock": { "mode": "date", "value": "2026-07-05" },
+            "redirect": false,
+            "data": {
+                "message": "Haz clic en las estrellas que aparecen."
+            }
+        },
+        {
+            "id": "juego_memoria",
+            "title": "🧠 Juego de Memoria",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-06" },
+            "redirect": true,
+            "redirectUrl": "games/memoria.html",
+            "data": { "message": "Encuentra todas las parejas." }
+        },
+        {
+            "id": "carta_amor",
+            "title": "✉️ Carta de Amor",
+            "type": "letter",
+            "unlock": { "mode": "date", "value": "2026-07-07" },
+            "redirect": false,
+            "data": {
+                "content": "Mi princesa...\n\nCada día que pasa me enamoro más de ti. Eres la luz de mi vida, mi razón para sonreír cada mañana.\n\nCuando pienso en ti, mi corazón late más fuerte. No hay nadie en este mundo que pueda compararse a ti.\n\nTe amo con todo mi corazón, hoy y siempre.\n\nSiempre tuyo,\ntu peluche 🤍"
+            }
+        },
+        {
+            "id": "juego_ahorcado",
+            "title": "🎮 Ahorcado",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-08" },
+            "redirect": true,
+            "redirectUrl": "games/ahorcado.html",
+            "data": { "message": "Adivina la palabra secreta." }
+        },
+        {
+            "id": "juego_tiroarco",
+            "title": "🎮 Tiro con Arco",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-09" },
+            "redirect": true,
+            "redirectUrl": "games/tiroarco.html",
+            "data": { "message": "Ajusta ángulo y potencia." }
+        },
+        {
+            "id": "juego_snake",
+            "title": "🎮 Snake",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-10" },
+            "redirect": true,
+            "redirectUrl": "games/snake.html",
+            "data": { "message": "¡Come la comida y no choques!" }
+        },
+        {
+            "id": "juego_buscaminas",
+            "title": "🎮 Buscaminas",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-11" },
+            "redirect": true,
+            "redirectUrl": "games/buscaminas.html",
+            "data": { "message": "Encuentra las minas sin pisarlas." }
+        },
+        {
+            "id": "juego_laberinto",
+            "title": "🎮 Laberinto",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-12" },
+            "redirect": true,
+            "redirectUrl": "games/laberinto.html",
+            "data": { "message": "Encuentra la salida del laberinto." }
+        },
+        {
+            "id": "juego_meteoritos",
+            "title": "🎮 Evita los Meteoritos",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-13" },
+            "redirect": true,
+            "redirectUrl": "games/meteoritos.html",
+            "data": { "message": "Esquiva los meteoritos." }
+        },
+        {
+            "id": "juego_cuchillos",
+            "title": "🎮 Lanza Cuchillos",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-14" },
+            "redirect": true,
+            "redirectUrl": "games/cuchillos.html",
+            "data": { "message": "Acierta en el blanco." }
+        },
+        {
+            "id": "juego_torre",
+            "title": "🎮 Equilibra la Torre",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-15" },
+            "redirect": true,
+            "redirectUrl": "games/torre.html",
+            "data": { "message": "Construye la torre más alta." }
+        },
+        {
+            "id": "juego_breakout",
+            "title": "🎮 Breakout",
+            "type": "game",
+            "unlock": { "mode": "date", "value": "2026-07-16" },
+            "redirect": true,
+            "redirectUrl": "games/breakout.html",
+            "data": { "message": "Destruye todos los bloques." }
+        },
+        {
+            "id": "sorpresa_confeti",
+            "title": "🎊 ¡Sorpresa!",
+            "type": "surprise",
+            "unlock": { "mode": "date", "value": "2026-07-17" },
+            "redirect": false,
+            "data": {
+                "message": "¡Felicidades! Has llegado al día 17. Esto es solo el comienzo de muchas sorpresas más.",
+                "effect": "confetti"
+            }
+        },
+        {
+            "id": "video_mensaje",
+            "title": "🎬 Mensaje en video",
+            "type": "video",
+            "unlock": { "mode": "date", "value": "2026-07-18" },
+            "redirect": false,
+            "data": {
+                "videoUrl": "",
+                "caption": "Próximamente... un mensaje especial para ti. 💕"
+            }
+        },
+        {
+            "id": "pregunta_dia",
+            "title": "🤔 Pregunta del día",
+            "type": "quiz",
+            "unlock": { "mode": "date", "value": "2026-07-19" },
+            "redirect": false,
+            "data": {
+                "question": "¿Cuál es tu recuerdo favorito conmigo?",
+                "options": [
+                    "El primer día que nos vimos",
+                    "Nuestra primera cita",
+                    "Cuando me dijiste 'te quiero' por primera vez",
+                    "Ese día random que fue perfecto"
+                ]
+            }
+        },
+        {
+            "id": "lista_deseos",
+            "title": "📝 Lista de deseos",
+            "type": "wishlist",
+            "unlock": { "mode": "date", "value": "2026-07-20" },
+            "redirect": false,
+            "data": {
+                "items": [
+                    "Viajar juntos a la playa",
+                    "Ver el atardecer en la montaña",
+                    "Cocinar juntos una cena especial",
+                    "Ver una película bajo las estrellas",
+                    "Hacer un viaje sorpresa",
+                    "Bailar bajo la lluvia",
+                    "Despertar juntos y ver el amanecer"
+                ]
+            }
+        },
+        {
+            "id": "carta_agosto1",
+            "title": "✉️ Carta de Agosto",
+            "type": "letter",
+            "unlock": { "mode": "date", "value": "2026-08-01" },
+            "redirect": false,
+            "data": {
+                "content": "Bienvenida a Agosto, mi amor.\n\nUn nuevo mes lleno de sorpresas y momentos bonitos.\n\nTe quiero mucho, más de lo que las palabras pueden expresar.\n\nSiempre tuyo,\ntu peluche 🤍"
+            }
+        }
+    ]
+}
