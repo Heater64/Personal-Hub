@@ -4,10 +4,10 @@ const DEFAULT_RAZONES = [
     'Por lo lista, lo hermosa y lo increíble que eres.',
     'Por todo lo que me has enseñado y lo que me sigues enseñando cada día.',
     'Por toda la paciencia que tienes conmigo.',
+    'Por lo mucho que me cuidas y te preocupas por mí.',
+    'Por lo cariñosa que eres en cada momento.',
+    'Por lo divertida y graciosa que eres.',
     'No son las unicas razones pero así te obligaré a entrar de vez en cuando para ver las nuevas jsjjs 👑🤍',
-    '',
-    '',
-    '',
     '',
     '',
 ];

@@ -644,3 +644,12 @@ a,
     padding: 70px 12px 20px;
   }
 }
+
+/* ==========================================
+   PUFFY WORLD - OCULTAR SIDEBAR GLOBAL
+   ========================================== */
+body[data-sidebar-page="puffy-world"] .sidebar,
+body[data-sidebar-page="puffy-world"] .sidebar-toggle,
+body[data-sidebar-page="puffy-world"] .sidebar-overlay {
+    display: none !important;
+}

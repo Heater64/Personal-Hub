@@ -21,6 +21,8 @@ function boot() {
     setupNewsToggle();
 }
 
+// js/pages/home.js - Función renderNews con separador
+
 function renderNews() {
     const container = document.getElementById('newsContent');
     if (!container) return;
@@ -36,16 +38,33 @@ function renderNews() {
         return;
     }
 
-    // Mostrar solo las 3 primeras inicialmente
+    // Contar cuántas noticias reales hay (excluyendo separadores)
+    const realNews = news.filter(item => item.type !== 'separator');
     const visibleCount = 3;
-    const hasMore = news.length > visibleCount;
+    const hasMore = realNews.length > visibleCount;
 
-    container.innerHTML = news.map((item, index) => {
-        // Verificar si tiene ubicación
+    let renderedCount = 0;
+
+    container.innerHTML = news.map((item) => {
+        // Si es un separador
+        if (item.type === 'separator') {
+            return `
+                <div class="news-separator">
+                    <span class="news-separator-line"></span>
+                    <span class="news-separator-label">${escapeHtml(item.label || '—')}</span>
+                    <span class="news-separator-line"></span>
+                </div>
+            `;
+        }
+
+        // Si es una noticia normal
+        const isHidden = renderedCount >= visibleCount;
+        renderedCount++;
+
         const hasLocation = item.location && item.location.section;
         
         return `
-            <div class="news-item ${index >= visibleCount ? 'news-hidden' : ''}" data-index="${index}">
+            <div class="news-item ${isHidden ? 'news-hidden' : ''}" data-index="${item.id}">
                 <div class="news-item-top">
                     <span class="news-date">${escapeHtml(item.date)}</span>
                     ${hasLocation ? `

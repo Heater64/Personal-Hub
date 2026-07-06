@@ -1,0 +1,2214 @@
+/* ==========================================
+   OSITOS WORLD - ESTILO COMPLETO
+   ========================================== */
+
+/* ===== OCULTAR SIDEBAR GLOBAL ===== */
+body[data-sidebar-page="ositos-world"] .sidebar,
+body[data-sidebar-page="ositos-world"] .sidebar-toggle,
+body[data-sidebar-page="ositos-world"] .sidebar-overlay {
+    display: none !important;
+}
+
+body[data-sidebar-page="ositos-world"] .ositos-world-main {
+    margin-left: 0 !important;
+    min-height: 100vh;
+}
+
+/* ===== FUENTES ===== */
+.ositos-world-main {
+    font-family: 'Nunito', 'Baloo 2', 'Fredoka', 'Lilita One', sans-serif;
+}
+
+/* ===== CONTENEDOR PRINCIPAL ===== */
+.ositos-world-main {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #F6F8FC;
+    margin-left: 0;
+    padding: 0;
+}
+
+/* ===== NAVBAR SUPERIOR ===== */
+.ositos-navbar {
+    background: #09142E;
+    height: 75px;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 24px;
+}
+
+.ositos-logo-link {
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: opacity 0.2s ease;
+}
+
+.ositos-logo-link:hover {
+    opacity: 0.8;
+}
+
+.ositos-logo {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+
+.ositos-logo-text {
+    font-family: 'Lilita One', 'Baloo 2', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: 1px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ositos-logo-title {
+    color: white;
+}
+
+.ositos-logo-heart {
+    font-size: 14px;
+    color: #F79C2D;
+    transform: rotate(15deg);
+}
+
+.ositos-logo-sub {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.5px;
+    margin-top: -2px;
+}
+
+.ositos-nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    justify-content: center;
+}
+
+.ositos-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 40px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    transition: all 0.25s ease;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+}
+
+.ositos-nav-link i {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.5;
+}
+
+.ositos-nav-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ositos-nav-link.active {
+    background: #FFD44A;
+    color: #1E284B;
+    box-shadow: 0 4px 16px rgba(255, 212, 74, 0.35);
+}
+
+.ositos-nav-link.active i {
+    color: #1E284B;
+}
+
+.ositos-nav-spacer {
+    width: 120px;
+    flex-shrink: 0;
+}
+
+/* ===== CUERPO PRINCIPAL ===== */
+.ositos-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ===== SIDEBAR IZQUIERDA ===== */
+.ositos-sidebar {
+    width: 210px;
+    background: #0E2148;
+    padding: 28px 18px 24px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ositos-sidebar-title {
+    font-family: 'Lilita One', 'Baloo 2', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: white;
+    margin: 0;
+    line-height: 1;
+    letter-spacing: 1px;
+}
+
+.ositos-sidebar-underline {
+    font-size: 18px;
+    color: #F79C2D;
+    line-height: 1;
+    margin-top: -4px;
+    letter-spacing: 4px;
+}
+
+.ositos-sidebar-desc {
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.ositos-sidebar-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.ositos-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: left;
+}
+
+.ositos-filter-btn i {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.5;
+    flex-shrink: 0;
+}
+
+.ositos-filter-btn .ositos-filter-count {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.6);
+    min-width: 28px;
+    text-align: center;
+}
+
+.ositos-filter-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.ositos-filter-btn.active {
+    background: #4169FF;
+    color: white;
+    box-shadow: 0 4px 12px rgba(65, 105, 255, 0.3);
+}
+
+.ositos-filter-btn.active .ositos-filter-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.ositos-sidebar-favorites {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 16px 16px 18px;
+    margin-top: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ositos-fav-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    font-size: 15px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+}
+
+.ositos-fav-icon {
+    color: #FF6B6B;
+    width: 18px;
+    height: 18px;
+    fill: #FF6B6B;
+}
+
+.ositos-fav-desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.5;
+    margin: 6px 0 12px;
+}
+
+.ositos-fav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    background: #4169FF;
+    border: none;
+    border-radius: 30px;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    justify-content: center;
+}
+
+.ositos-fav-btn:hover {
+    background: #3458E0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(65, 105, 255, 0.3);
+}
+
+.ositos-fav-btn i {
+    width: 16px;
+    height: 16px;
+}
+
+.ositos-sidebar-mascot {
+    margin-top: auto;
+    text-align: center;
+    padding-bottom: 0;
+}
+
+.ositos-mascot-emoji {
+    font-size: 72px;
+    display: block;
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.3));
+    animation: ositosMascotFloat 3s ease-in-out infinite;
+}
+
+@keyframes ositosMascotFloat {
+    0%, 100% { transform: translateY(0px) rotate(-2deg); }
+    50% { transform: translateY(-10px) rotate(2deg); }
+}
+
+/* ===== ZONA PRINCIPAL ===== */
+.ositos-content {
+    flex: 1;
+    padding: 28px 32px 24px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: #F6F8FC;
+}
+
+/* ===== PÁGINAS DE CONTENIDO ===== */
+.ositos-page-content {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    animation: ositosFadeIn 0.4s ease;
+}
+
+.ositos-page-content.active {
+    display: flex;
+}
+
+@keyframes ositosFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================================== */
+/* SECCIÓN HEADER COMÚN                       */
+/* ========================================== */
+
+.ositos-section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.ositos-section-title {
+    font-family: 'Fredoka', 'Baloo 2', sans-serif;
+    font-size: 34px;
+    font-weight: 700;
+    color: #1E284B;
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+
+.ositos-orange-curl {
+    display: inline-block;
+    width: 48px;
+    height: 5px;
+    background: #F79C2D;
+    border-radius: 20px;
+    transform: skewX(-8deg);
+}
+
+/* ========================================== */
+/* PERSONAJES - TOOLBAR                       */
+/* ========================================== */
+
+.ositos-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.ositos-toolbar-left,
+.ositos-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ositos-sort-select {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 40px;
+    background: white;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: #1E284B;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    outline: none;
+    min-width: 180px;
+}
+
+.ositos-sort-select:focus {
+    box-shadow: 0 2px 8px rgba(65, 105, 255, 0.2);
+}
+
+.ositos-view-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 10px;
+    background: white;
+    color: #9AA0B0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.ositos-view-btn i {
+    width: 18px;
+    height: 18px;
+}
+
+.ositos-view-btn:hover {
+    background: #F0F2F5;
+}
+
+.ositos-view-btn.active {
+    background: #4169FF;
+    color: white;
+    box-shadow: 0 2px 8px rgba(65, 105, 255, 0.25);
+}
+
+/* ========================================== */
+/* PERSONAJES - GRID Y TARJETAS              */
+/* ========================================== */
+
+.ositos-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    flex: 1;
+    align-content: start;
+}
+
+.ositos-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    padding: 16px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+    border: 1px solid #E7ECF5;
+    position: relative;
+    min-height: 280px;
+}
+
+.ositos-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.10);
+}
+
+.ositos-card.selected {
+    border-color: #4169FF;
+    box-shadow: 0 8px 28px rgba(65, 105, 255, 0.15);
+}
+
+.ositos-card-fav {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #DDE0E8;
+    padding: 4px;
+    line-height: 1;
+    z-index: 2;
+}
+
+.ositos-card-fav:hover {
+    transform: scale(1.2);
+}
+
+.ositos-card-fav.active {
+    color: #FF6B6B;
+    animation: ositosHeartPop 0.3s ease;
+}
+
+@keyframes ositosHeartPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+}
+
+.ositos-card-image {
+    width: 100%;
+    aspect-ratio: 1/1;
+    max-height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    background: #F8FAFC;
+    position: relative;
+    overflow: hidden;
+}
+
+.ositos-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 12px;
+}
+
+.ositos-card-image .ositos-card-emoji {
+    font-size: 72px;
+    line-height: 1;
+}
+
+.ositos-card-name {
+    font-family: 'Lilita One', 'Baloo 2', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    color: #1E284B;
+    margin: 0 0 4px;
+    letter-spacing: 0.5px;
+}
+
+.ositos-card-role {
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 30px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white;
+    margin-bottom: 6px;
+}
+
+.ositos-card-role.heroe { background: #4169FF; }
+.ositos-card-role.villano { background: #D32F2F; }
+.ositos-card-role.aliado { background: #43A047; }
+
+.ositos-card-desc {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5C6475;
+    line-height: 1.4;
+    margin: 0;
+    font-family: 'Nunito', sans-serif;
+    white-space: pre-line;
+    max-width: 100%;
+}
+
+/* ========================================== */
+/* HISTORIA - HERO CARD                      */
+/* ========================================== */
+
+.ositos-hero-card {
+    background: white;
+    border-radius: 26px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.02);
+    display: flex;
+    height: 330px;
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
+    margin-bottom: 40px;
+}
+
+.ositos-hero-left {
+    flex: 1 1 50%;
+    padding: 50px 40px 50px 50px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ositos-hero-title {
+    font-size: 60px;
+    font-weight: 800;
+    color: #1E284B;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+}
+
+.ositos-hero-title span {
+    display: block;
+}
+
+.ositos-hero-text {
+    font-size: 17px;
+    line-height: 1.7;
+    color: #555F72;
+    max-width: 90%;
+    font-weight: 400;
+}
+
+.ositos-hero-right {
+    flex: 1 1 50%;
+    background: linear-gradient(145deg, #9ac8f0, #5f9bd0);
+    background-image: 
+        radial-gradient(circle at 15% 75%, #f3e9c0 14px, transparent 14px),
+        radial-gradient(circle at 60% 80%, #8bc34a 40px, transparent 40px),
+        radial-gradient(circle at 20% 30%, #ffd54f 80px, transparent 80px),
+        radial-gradient(circle at 70% 20%, #b3d9ff 100px, transparent 100px),
+        radial-gradient(circle at 85% 50%, #e1f5fe 60px, transparent 60px),
+        linear-gradient(180deg, #7bb8e6 0%, #a3d0f0 100%);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    border-radius: 0 26px 26px 0;
+}
+
+.ositos-hero-right::before {
+    content: "🏰";
+    position: absolute;
+    font-size: 56px;
+    bottom: 30px;
+    left: 30px;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.1));
+}
+
+.ositos-hero-right::after {
+    content: "☁️";
+    position: absolute;
+    font-size: 64px;
+    top: 20px;
+    right: 30px;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));
+}
+
+.ositos-hero-illustration {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 0 16px 20px 0;
+    position: relative;
+}
+
+.ositos-hero-illustration span {
+    font-size: 80px;
+    transform: rotate(-8deg);
+    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.1));
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+/* ========================================== */
+/* HISTORIA - LÍNEA DEL TIEMPO               */
+/* ========================================== */
+
+.ositos-timeline-track {
+    position: relative;
+    padding: 24px 0 12px;
+    width: 100%;
+}
+
+.ositos-timeline-line {
+    position: relative;
+    width: 100%;
+    height: 4px;
+    background: #4169FF;
+    border-radius: 6px;
+    margin: 16px 0 32px;
+}
+
+.ositos-timeline-cards {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: -8px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ositos-timeline-item {
+    flex: 0 0 180px;
+    max-width: 180px;
+    background: white;
+    border-radius: 28px;
+    padding: 18px 10px 16px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.02);
+    text-align: center;
+    position: relative;
+    transition: 0.2s;
+    border: 1px solid rgba(65, 105, 255, 0.06);
+}
+
+.ositos-timeline-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(65, 105, 255, 0.08);
+}
+
+.ositos-timeline-item .icon-big {
+    font-size: 36px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.ositos-timeline-item h4 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1E284B;
+    margin-bottom: 6px;
+    line-height: 1.2;
+}
+
+.ositos-timeline-item p {
+    font-size: 13px;
+    color: #555F72;
+    line-height: 1.4;
+    font-weight: 400;
+    margin: 0;
+}
+
+.ositos-timeline-dot {
+    position: absolute;
+    top: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    background: #4169FF;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(65, 105, 255, 0.3);
+    z-index: 2;
+}
+
+/* ========================================== */
+/* NOTICIAS - GRID                           */
+/* ========================================== */
+
+.ositos-news-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 20px;
+}
+
+.ositos-news-card {
+    background: white;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.02);
+    display: flex;
+    height: 180px;
+    transition: 0.2s;
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+.ositos-news-card:hover {
+    box-shadow: 0 12px 28px rgba(0,0,0,0.06);
+    transform: translateY(-3px);
+}
+
+.ositos-news-thumb {
+    flex: 0 0 40%;
+    background: #d4e2f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.ositos-news-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ositos-news-thumb .placeholder-icon {
+    font-size: 48px;
+    color: rgba(255,255,255,0.7);
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.06));
+}
+
+.ositos-news-body {
+    flex: 1;
+    padding: 18px 18px 14px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.ositos-news-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 40px;
+    background: #eef2f9;
+    color: #1E284B;
+    width: fit-content;
+    margin-bottom: 6px;
+}
+
+.ositos-news-tag.tag-actualizacion { background: #dbeafe; color: #1e4a8a; }
+.ositos-news-tag.tag-evento { background: #d1fae5; color: #065f46; }
+.ositos-news-tag.tag-anuncio { background: #ede9fe; color: #5b21b6; }
+
+.ositos-news-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1E284B;
+    line-height: 1.25;
+    max-height: 2.5em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    margin-bottom: 4px;
+}
+
+.ositos-news-summary {
+    font-size: 14px;
+    color: #555F72;
+    line-height: 1.5;
+    max-height: 4.2em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    flex: 1;
+}
+
+.ositos-news-date {
+    font-size: 12px;
+    color: #8a94a6;
+    margin-top: 6px;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+}
+
+/* ========================================== */
+/* EXTRAS - LAYOUT                           */
+/* ========================================== */
+
+#page-extras {
+    display: block;
+    padding: 0;
+    background: transparent;
+}
+
+.ositos-extras-layout {
+    display: flex;
+    gap: 28px;
+    width: 100%;
+}
+
+.ositos-extras-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: #0E2148;
+    border-radius: 32px;
+    padding: 32px 18px 28px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.06);
+}
+
+.ositos-extras-title {
+    font-family: 'Fredoka', 'Baloo 2', sans-serif;
+    font-size: 44px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.ositos-extras-desc {
+    color: rgba(255,255,255,0.8);
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 8px 0 24px 0;
+    font-weight: 400;
+}
+
+.ositos-extras-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+
+.ositos-extras-menu-btn {
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 40px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+    width: 100%;
+    text-align: left;
+}
+
+.ositos-extras-menu-btn i {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.25s ease;
+}
+
+.ositos-extras-menu-btn:hover i {
+    transform: translateY(-3px) scale(1.05);
+}
+
+.ositos-extras-menu-btn.active {
+    background: #4169FF;
+    box-shadow: 0 4px 12px rgba(65, 105, 255, 0.25);
+}
+
+.ositos-extras-menu-btn:not(.active):hover {
+    background: rgba(255,255,255,0.06);
+}
+
+.ositos-extras-fact {
+    margin-top: auto;
+    background: rgba(255,255,255,0.07);
+    border-radius: 28px;
+    padding: 20px 14px 18px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.ositos-fact-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #FFD44A;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    margin-bottom: 8px;
+}
+
+.ositos-fact-header i {
+    width: 22px;
+    height: 22px;
+}
+
+.ositos-fact-text {
+    color: rgba(255,255,255,0.85);
+    font-size: 16px;
+    line-height: 1.5;
+    margin: 8px 0 10px;
+    font-weight: 400;
+    font-family: 'Baloo 2', cursive;
+}
+
+.ositos-fact-icon {
+    font-size: 44px;
+    display: block;
+    margin-top: 6px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+    transition: transform 0.3s;
+}
+
+.ositos-fact-icon:hover {
+    transform: scale(1.08) rotate(-4deg);
+}
+
+.ositos-extras-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.ositos-extra-section {
+    display: none;
+    animation: ositosFadeIn 0.4s ease;
+}
+
+.ositos-extra-section.active {
+    display: block;
+}
+
+.ositos-extra-header {
+    margin-bottom: 24px;
+}
+
+.ositos-extra-header h3 {
+    font-family: 'Fredoka', 'Baloo 2', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1E284B;
+    margin: 0 0 4px;
+}
+
+.ositos-extra-underline {
+    width: 60px;
+    height: 3px;
+    background: #F79C2D;
+    border-radius: 4px;
+}
+
+/* ===== JUEGOS ===== */
+.ositos-games-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+}
+
+.ositos-game-card {
+    background: white;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+    cursor: default;
+    height: 340px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(0,0,0,0.02);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: ositosFadeUp 0.5s forwards;
+}
+
+.ositos-game-card:nth-child(1) { animation-delay: 0.05s; }
+.ositos-game-card:nth-child(2) { animation-delay: 0.10s; }
+.ositos-game-card:nth-child(3) { animation-delay: 0.15s; }
+.ositos-game-card:nth-child(4) { animation-delay: 0.20s; }
+
+@keyframes ositosFadeUp {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ositos-game-card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 16px 36px rgba(0,0,0,0.08);
+}
+
+.ositos-game-thumb {
+    height: 65%;
+    background: #dce6f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+    color: rgba(255,255,255,0.7);
+    position: relative;
+    overflow: hidden;
+}
+
+.ositos-game-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ositos-game-thumb span {
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.06));
+}
+
+.ositos-game-body {
+    padding: 16px 16px 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.ositos-game-body h4 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1E284B;
+    font-family: 'Fredoka', sans-serif;
+}
+
+.ositos-game-body p {
+    font-size: 14px;
+    color: #5C6475;
+    line-height: 1.4;
+    font-family: 'Baloo 2', cursive;
+    font-weight: 400;
+    max-height: 2.8em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.ositos-game-btn {
+    background: #FFD44A;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 0;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: #1E284B;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    width: 100%;
+    margin-top: 6px;
+    box-shadow: 0 4px 8px rgba(255, 212, 74, 0.25);
+}
+
+.ositos-game-btn:hover {
+    background: #f0c73a;
+    transform: scale(1.02);
+}
+
+/* ===== DESCARGAS ===== */
+.ositos-downloads-list {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.ositos-download-item {
+    background: white;
+    border-radius: 22px;
+    padding: 14px 18px;
+    flex: 0 0 200px;
+    min-width: 170px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    transition: all 0.25s ease;
+    border: 1px solid rgba(0,0,0,0.02);
+    opacity: 0;
+    transform: translateY(16px);
+    animation: ositosFadeUp 0.45s forwards;
+}
+
+.ositos-download-item:nth-child(1) { animation-delay: 0.08s; }
+.ositos-download-item:nth-child(2) { animation-delay: 0.14s; }
+.ositos-download-item:nth-child(3) { animation-delay: 0.20s; }
+.ositos-download-item:nth-child(4) { animation-delay: 0.26s; }
+.ositos-download-item:nth-child(5) { animation-delay: 0.32s; }
+
+.ositos-download-item:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 14px 32px rgba(0,0,0,0.07);
+}
+
+.ositos-download-icon {
+    width: 48px;
+    height: 48px;
+    background: #eaf0f8;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex-shrink: 0;
+}
+
+.ositos-download-info {
+    flex: 1;
+}
+
+.ositos-download-info .name {
+    font-weight: 700;
+    font-size: 16px;
+    color: #1E284B;
+    font-family: 'Fredoka', sans-serif;
+}
+
+.ositos-download-info .meta {
+    font-size: 13px;
+    color: #5C6475;
+    font-family: 'Baloo 2', cursive;
+    font-weight: 400;
+}
+
+.ositos-download-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: #4169FF;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(65, 105, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.ositos-download-btn:hover {
+    background: #2f55e0;
+    transform: scale(1.06);
+}
+
+/* ===== COLECCIONABLES ===== */
+.ositos-collectibles-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.ositos-collectible-card {
+    background: white;
+    border-radius: 22px;
+    padding: 24px 20px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border: 1px solid #E7ECF5;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+}
+
+.ositos-collectible-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.10);
+}
+
+.ositos-collectible-emoji {
+    font-size: 40px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.ositos-collectible-card h4 {
+    font-family: 'Fredoka', 'Baloo 2', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1E284B;
+    margin: 0 0 4px;
+}
+
+.ositos-collectible-card p {
+    font-size: 13px;
+    color: #5C6475;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ===== FONDOS ===== */
+.ositos-wallpapers-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.ositos-wallpaper-card {
+    border-radius: 22px;
+    padding: 32px 20px 20px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.ositos-wallpaper-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.10);
+}
+
+.ositos-wallpaper-card span:first-child {
+    font-size: 48px;
+    display: block;
+}
+
+.ositos-wallpaper-name {
+    font-family: 'Fredoka', 'Baloo 2', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== CURIOSIDADES ===== */
+.ositos-curiosities-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.ositos-curiosity-card {
+    background: white;
+    border-radius: 22px;
+    padding: 24px 24px 28px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border: 1px solid #E7ECF5;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+}
+
+.ositos-curiosity-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.10);
+}
+
+.ositos-curiosity-icon {
+    font-size: 28px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.ositos-curiosity-card h4 {
+    font-family: 'Fredoka', 'Baloo 2', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: #1E284B;
+    margin: 0 0 4px;
+}
+
+.ositos-curiosity-card p {
+    font-size: 14px;
+    color: #5C6475;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* ========================================== */
+/* PAGINACIÓN UNIFICADA                      */
+/* ========================================== */
+
+.ositos-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 32px 0 8px;
+    margin-top: 8px;
+}
+
+.ositos-page-btn {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: #5C6475;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ositos-page-btn:hover {
+    color: #1E284B;
+}
+
+.ositos-page-btn.active {
+    background: #4169FF;
+    color: white;
+    box-shadow: 0 2px 8px rgba(65, 105, 255, 0.25);
+}
+
+.ositos-page-btn.disabled {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
+}
+
+.ositos-page-btn.arrow {
+    font-size: 18px;
+    padding: 6px 12px;
+}
+
+/* ========================================== */
+/* FOOTER                                    */
+/* ========================================== */
+
+.ositos-footer {
+    background: #0E2148;
+    height: 65px;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.ositos-footer-text {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    font-family: 'Nunito', sans-serif;
+}
+
+.ositos-footer-social {
+    display: flex;
+    gap: 10px;
+}
+
+.ositos-social-icon {
+    width: 32px;
+    height: 32px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0E2148;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.ositos-social-icon i {
+    width: 16px;
+    height: 16px;
+}
+
+.ositos-social-icon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ositos-footer-heart {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #F79C2D;
+    font-size: 16px;
+}
+
+/* ========================================== */
+/* MODAL                                     */
+/* ========================================== */
+
+.ositos-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    padding: 20px;
+}
+
+.ositos-modal.open {
+    display: flex;
+}
+
+.ositos-modal-content {
+    background: white;
+    border-radius: 32px;
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 32px;
+    position: relative;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+    animation: ositosModalIn 0.3s ease;
+}
+
+@keyframes ositosModalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ositos-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: #F0F2F5;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    color: #5C6475;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Nunito', sans-serif;
+}
+
+.ositos-modal-close:hover {
+    background: #FF6B6B;
+    color: white;
+}
+
+.ositos-modal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.ositos-modal-emoji {
+    font-size: 80px;
+    line-height: 1;
+    background: #F8FAFC;
+    padding: 20px;
+    border-radius: 24px;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ositos-modal-name {
+    font-family: 'Lilita One', 'Baloo 2', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: #1E284B;
+    margin: 0;
+}
+
+.ositos-modal-role {
+    padding: 4px 16px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 800;
+    color: white;
+    text-transform: uppercase;
+}
+
+.ositos-modal-role.heroe { background: #4169FF; }
+.ositos-modal-role.villano { background: #D32F2F; }
+.ositos-modal-role.aliado { background: #43A047; }
+
+.ositos-modal-desc {
+    font-size: 15px;
+    color: #4A5268;
+    line-height: 1.6;
+    text-align: center;
+    margin: 4px 0;
+    white-space: pre-line;
+}
+
+.ositos-modal-divider {
+    width: 60px;
+    height: 3px;
+    background: #FFD44A;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+.ositos-modal-story {
+    font-size: 14px;
+    color: #5C6475;
+    line-height: 1.7;
+    text-align: center;
+    padding: 0 8px;
+}
+
+.ositos-modal-personality {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 8px 0;
+}
+
+.ositos-modal-trait {
+    background: #F0F2F5;
+    padding: 4px 14px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1E284B;
+}
+
+.ositos-modal-skill {
+    background: #FFD44A;
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1E284B;
+    margin-top: 4px;
+}
+
+/* ========================================== */
+/* RESPONSIVE                                 */
+/* ========================================== */
+
+@media (max-width: 1100px) {
+    .ositos-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+    .ositos-timeline-cards {
+        justify-content: center;
+    }
+    .ositos-timeline-item {
+        flex: 0 0 150px;
+    }
+    .ositos-news-grid {
+        grid-template-columns: 1fr;
+    }
+    .ositos-games-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .ositos-collectibles-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .ositos-wallpapers-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .ositos-hero-card {
+        flex-direction: column;
+        height: auto;
+        min-height: 420px;
+    }
+    .ositos-hero-left {
+        padding: 32px;
+    }
+    .ositos-hero-right {
+        border-radius: 0 0 26px 26px;
+        min-height: 160px;
+    }
+    .ositos-hero-title {
+        font-size: 40px;
+    }
+}
+
+@media (max-width: 850px) {
+    .ositos-sidebar {
+        width: 180px;
+        padding: 20px 14px;
+    }
+    .ositos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+    }
+    .ositos-nav-link span {
+        display: none;
+    }
+    .ositos-nav-link {
+        padding: 10px 14px;
+    }
+    .ositos-nav-spacer {
+        width: 40px;
+    }
+    .ositos-nav-menu {
+        gap: 4px;
+    }
+    
+    .ositos-extras-layout {
+        flex-direction: column;
+    }
+    .ositos-extras-sidebar {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 16px 20px;
+        gap: 8px 12px;
+        align-items: center;
+    }
+    .ositos-extras-title {
+        font-size: 28px;
+        margin-right: auto;
+    }
+    .ositos-extras-desc {
+        display: none;
+    }
+    .ositos-extras-menu {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px;
+        flex: 1;
+    }
+    .ositos-extras-menu-btn {
+        padding: 6px 14px;
+        font-size: 14px;
+        width: auto;
+        border-radius: 999px;
+    }
+    .ositos-extras-fact {
+        display: none;
+    }
+    .ositos-curiosities-grid {
+        grid-template-columns: 1fr;
+    }
+    .ositos-hero-title {
+        font-size: 32px;
+    }
+    .ositos-hero-text {
+        max-width: 100%;
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 700px) {
+    .ositos-body {
+        flex-direction: column;
+    }
+    .ositos-sidebar {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 16px 20px;
+        gap: 8px 16px;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .ositos-sidebar-title {
+        font-size: 20px;
+    }
+    .ositos-sidebar-underline {
+        display: none;
+    }
+    .ositos-sidebar-desc {
+        display: none;
+    }
+    .ositos-sidebar-filters {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 0;
+    }
+    .ositos-filter-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        width: auto;
+        border-radius: 30px;
+    }
+    .ositos-filter-btn .ositos-filter-count {
+        padding: 0 8px;
+        font-size: 10px;
+        min-width: 20px;
+    }
+    .ositos-sidebar-favorites {
+        display: none;
+    }
+    .ositos-sidebar-mascot {
+        display: none;
+    }
+    .ositos-content {
+        padding: 16px;
+    }
+    .ositos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+    }
+    .ositos-card {
+        padding: 12px;
+        min-height: 220px;
+    }
+    .ositos-card-image {
+        max-height: 100px;
+        font-size: 60px;
+    }
+    .ositos-card-image img {
+        padding: 8px;
+    }
+    .ositos-card-image .ositos-card-emoji {
+        font-size: 56px;
+    }
+    .ositos-card-name {
+        font-size: 15px;
+    }
+    .ositos-card-desc {
+        font-size: 10px;
+    }
+    .ositos-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .ositos-toolbar-left,
+    .ositos-toolbar-right {
+        justify-content: center;
+    }
+    .ositos-sort-select {
+        min-width: 140px;
+        width: 100%;
+    }
+    .ositos-footer {
+        flex-direction: column;
+        height: auto;
+        padding: 16px;
+        gap: 8px;
+        text-align: center;
+    }
+    .ositos-footer-heart {
+        position: static;
+        transform: none;
+    }
+    .ositos-modal-content {
+        padding: 24px;
+        margin: 12px;
+    }
+    .ositos-modal-emoji {
+        width: 80px;
+        height: 80px;
+        font-size: 56px;
+        padding: 12px;
+    }
+    .ositos-modal-name {
+        font-size: 22px;
+    }
+    
+    .ositos-timeline-item {
+        flex: 0 0 140px;
+        max-width: 140px;
+    }
+    .ositos-news-card {
+        flex-direction: column;
+        height: auto;
+    }
+    .ositos-news-thumb {
+        flex: 0 0 100px;
+    }
+    .ositos-news-body {
+        padding: 14px;
+    }
+    .ositos-news-title {
+        font-size: 18px;
+    }
+    .ositos-games-grid {
+        grid-template-columns: 1fr;
+    }
+    .ositos-game-card {
+        height: 300px;
+    }
+    .ositos-collectibles-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .ositos-wallpapers-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .ositos-downloads-list {
+        justify-content: center;
+    }
+    .ositos-download-item {
+        flex: 0 0 180px;
+    }
+    .ositos-section-title {
+        font-size: 24px;
+    }
+    .ositos-extra-header h3 {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    .ositos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .ositos-card {
+        padding: 10px;
+        min-height: 180px;
+        border-radius: 14px;
+    }
+    .ositos-card-image {
+        max-height: 80px;
+        font-size: 40px;
+    }
+    .ositos-card-image .ositos-card-emoji {
+        font-size: 40px;
+    }
+    .ositos-card-name {
+        font-size: 13px;
+    }
+    .ositos-card-role {
+        font-size: 8px;
+        padding: 1px 10px;
+    }
+    .ositos-card-desc {
+        font-size: 9px;
+        line-height: 1.3;
+    }
+    .ositos-card-fav {
+        font-size: 14px;
+        top: 8px;
+        right: 10px;
+    }
+    .ositos-navbar {
+        padding: 0 12px;
+        height: 60px;
+    }
+    .ositos-logo-text {
+        font-size: 20px;
+    }
+    .ositos-logo-heart {
+        font-size: 10px;
+    }
+    .ositos-logo-sub {
+        font-size: 8px;
+    }
+    
+    .ositos-collectibles-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .ositos-wallpapers-grid {
+        grid-template-columns: 1fr;
+    }
+    .ositos-section-title {
+        font-size: 20px;
+    }
+    .ositos-hero-title {
+        font-size: 26px;
+    }
+    .ositos-timeline-item {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    .ositos-download-item {
+        flex: 1 1 100%;
+    }
+    .ositos-news-card {
+        height: auto;
+    }
+    .ositos-extras-sidebar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+    }
+    .ositos-extras-title {
+        font-size: 22px;
+    }
+    .ositos-extras-menu {
+        flex-wrap: wrap;
+    }
+    .ositos-extras-menu-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    .ositos-extras-menu-btn i {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* ========================================== */
+/* CORRECCIÓN: Extras solo visible en su pestaña */
+/* ========================================== */
+#page-extras {
+    display: none !important;
+}
+#page-extras.active {
+    display: block !important;
+}
+
+/* ========================================== */
+/* CORRECCIÓN: Hero de Historia con imagen */
+/* ========================================== */
+.ositos-hero-right {
+    background-image: url('IMAGEN_EN_EL_CSS') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    /* Eliminamos los gradientes y decoraciones anteriores */
+    background: none !important;
+    /* Volvemos a poner la imagen */
+    background-image: url('IMAGEN_EN_EL_CSS') !important;
+    background-size: cover !important;
+    background-position: center !important;
+}
+
+/* Ocultamos los pseudoelementos decorativos (castillo y nube) */
+.ositos-hero-right::before,
+.ositos-hero-right::after {
+    display: none !important;
+}
+
+/* Ocultamos también la ilustración con el emoji */
+.ositos-hero-illustration {
+    display: none !important;
+}
+
+/* ========================================== */
+/* HISTORIA - Tarjetas más anchas y scroll    */
+/* ========================================== */
+
+.ositos-timeline-item {
+    flex: 0 0 240px; /* Aumentamos el ancho base */
+    max-width: 280px; /* Permitimos que se expanda un poco más */
+    min-height: 180px; /* Altura mínima para que no se encojan demasiado */
+    padding: 18px 14px 16px;
+}
+
+/* Contenedor de la descripción con scroll */
+.ositos-timeline-desc-scroll {
+    max-height: 80px; /* Altura máxima antes de hacer scroll */
+    overflow-y: auto;
+    padding-right: 4px;
+    font-size: 13px;
+    color: #555F72;
+    line-height: 1.4;
+    font-weight: 400;
+    text-align: center;
+    scrollbar-width: thin;
+}
+
+.ositos-timeline-desc-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ositos-timeline-desc-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ositos-timeline-desc-scroll::-webkit-scrollbar-thumb {
+    background: #4169FF;
+    border-radius: 4px;
+}
+
+/* Ajuste responsive */
+@media (max-width: 1100px) {
+    .ositos-timeline-item {
+        flex: 0 0 200px;
+        max-width: 220px;
+    }
+}
+
+@media (max-width: 850px) {
+    .ositos-timeline-item {
+        flex: 0 0 180px;
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 700px) {
+    .ositos-timeline-item {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 850px) {
+    .ositos-timeline-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 550px) {
+    .ositos-timeline-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ========================================== */
+/* MODAL PARA TEXTO COMPLETO DE HISTORIA      */
+/* ========================================== */
+
+.ositos-modal-timeline {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.ositos-modal-timeline.open {
+    display: flex;
+}
+
+.ositos-modal-timeline-content {
+    background: white;
+    border-radius: 24px;
+    max-width: 520px;
+    width: 100%;
+    max-height: 80vh;
+    padding: 32px 28px 28px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: ositosModalTimelineIn 0.3s ease;
+}
+
+@keyframes ositosModalTimelineIn {
+    from { opacity: 0; transform: scale(0.95) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ositos-modal-timeline-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: #F0F2F5;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    color: #5C6475;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Nunito', sans-serif;
+}
+
+.ositos-modal-timeline-close:hover {
+    background: #FF6B6B;
+    color: white;
+}
+
+.ositos-modal-timeline-title {
+    font-family: 'Fredoka', 'Baloo 2', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1E284B;
+    margin: 0 0 12px 0;
+    padding-right: 30px;
+}
+
+.ositos-modal-timeline-body {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #4A5268;
+    font-family: 'Nunito', sans-serif;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 4px;
+    white-space: pre-wrap;
+}
+
+.ositos-modal-timeline-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ositos-modal-timeline-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ositos-modal-timeline-body::-webkit-scrollbar-thumb {
+    background: #4169FF;
+    border-radius: 10px;
+}
+
+/* ========================================== */
+/* BOTÓN "LEER MÁS" EN TARJETAS DE HISTORIA  */
+/* ========================================== */
+
+.ositos-timeline-desc {
+    font-size: 13px;
+    color: #555F72;
+    line-height: 1.5;
+    font-weight: 400;
+    margin: 4px 0 0;
+}
+
+.ositos-timeline-desc-short {
+    display: block;
+}
+
+.ositos-timeline-readmore {
+    background: transparent;
+    border: none;
+    color: #4169FF;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 0 0 0;
+    transition: color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ositos-timeline-readmore:hover {
+    color: #1E284B;
+}
+
+.ositos-timeline-readmore .arrow {
+    display: inline-block;
+    transition: transform 0.2s;
+}
+
+.ositos-timeline-readmore:hover .arrow {
+    transform: translateY(2px);
+}
