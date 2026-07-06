@@ -9,7 +9,7 @@ export const HOME_DATA = {
         // ─── NOTICIAS NUEVAS ───
         {
             id: 0,
-            date: "5 de julio de 2026",
+            date: "6 de julio de 2026",
             title: "Nuevas razones añadidas",
             description: "Ya tienes disponible nuevas razones en la sección de 'Razones por las que te amo'. ¡Échales un vistazo!",
         },
