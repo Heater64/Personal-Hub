@@ -1,128 +1,118 @@
 // js/pages/ositos-world.js
-// Galería de personajes Ositos World - Estilo Brawl Stars
-
-import { OSITOS_CHARACTERS } from '../data/ositos-characters.js';
+// Lógica completa de Ositos World
 
 // ==========================================
 // ESTADO
 // ==========================================
 
 const state = {
-    characters: OSITOS_CHARACTERS,
-    currentFilter: 'todos',
-    currentPage: 1,
-    pageSize: 8,
-    viewMode: 'grid',
-    sortBy: 'name',
-    favorites: [],
-    selectedCharacter: null,
-    currentPageContent: 'personajes'
+    currentSection: 'home',
+    currentChapterIndex: 0,
+    modalOpen: false,
+    favorites: JSON.parse(localStorage.getItem('ositosFavorites') || '[]')
 };
 
 // ==========================================
-// PERSISTENCIA (localStorage)
+// DOM REFERENCIAS
 // ==========================================
 
-const STORAGE_KEY = 'ositosWorld.favorites';
+const mainContent = document.getElementById('ositosContent');
+const modal = document.getElementById('ositosModal');
+const modalBody = document.getElementById('ositosModalBody');
+const modalClose = document.getElementById('ositosModalClose');
+const hamburger = document.getElementById('ositosHamburger');
+const mobileMenu = document.getElementById('ositosMobileMenu');
+const navLinks = document.querySelectorAll('.ositos-nav-link, .ositos-mobile-nav-link');
 
-function loadFavorites() {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            state.favorites = JSON.parse(saved);
-            state.characters.forEach(char => {
-                char.favorite = state.favorites.includes(char.id);
-            });
-        }
-    } catch (e) {
-        console.warn('Error loading favorites:', e);
+// ==========================================
+// FAVORITOS
+// ==========================================
+
+function toggleFavorite(characterId) {
+    const index = state.favorites.indexOf(characterId);
+    if (index > -1) {
+        state.favorites.splice(index, 1);
+        showOsitosMessage('💔 Quitado de favoritos');
+    } else {
+        state.favorites.push(characterId);
+        showOsitosMessage('❤️ Añadido a favoritos');
+    }
+    localStorage.setItem('ositosFavorites', JSON.stringify(state.favorites));
+    updateFavoriteCounters();
+    
+    if (state.currentSection === 'personajes') {
+        renderCharacters();
     }
 }
 
-function saveFavorites() {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.favorites));
-    } catch (e) {
-        console.warn('Error saving favorites:', e);
-    }
+function isFavorite(characterId) {
+    return state.favorites.includes(characterId);
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        if (m === '"') return '&quot;';
-        return m;
-    });
+function updateFavoriteCounters() {
+    const totalFavs = state.favorites.length;
+    const favBtn = document.getElementById('showFavoritesBtn');
+    if (favBtn) {
+        favBtn.innerHTML = totalFavs > 0 
+            ? `❤️ FAVORITOS (${totalFavs})` 
+            : `❤️ FAVORITOS`;
+    }
 }
 
 // ==========================================
 // NAVEGACIÓN
 // ==========================================
 
-function setupNavigation() {
-    const navLinks = document.querySelectorAll('.ositos-nav-link');
+function navigateTo(section) {
+    state.currentSection = section;
     
     navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            const page = this.dataset.page;
-            
-            if (page === 'home') {
-                window.location.href = '../index.html';
-                return;
-            }
-            
-            if (this.classList.contains('active')) return;
-            
-            e.preventDefault();
-            switchPage(page);
-        });
+        link.classList.toggle('active', link.dataset.section === section);
     });
+    
+    closeMobileMenu();
+    renderSection(section);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function switchPage(page) {
-    state.currentPageContent = page;
-    
-    document.querySelectorAll('.ositos-page-content').forEach(el => {
-        el.classList.remove('active');
-    });
-    
-    const target = document.getElementById(`page-${page}`);
-    if (target) {
-        target.classList.add('active');
+function renderSection(section) {
+    switch(section) {
+        case 'home': renderHome(); break;
+        case 'historia': renderHistory(); break;
+        case 'personajes': renderCharacters(); break;
+        case 'mundo': renderWorld(); break;
+        case 'noticias': renderNews(); break;
+        default: renderHome();
     }
     
-    document.querySelectorAll('.ositos-nav-link').forEach(l => {
-        l.classList.remove('active');
-        if (l.dataset.page === page) {
-            l.classList.add('active');
-        }
-    });
-    
-    if (page === 'personajes') {
-        renderGrid();
-    } else if (page === 'historia') {
-        renderHistoriaPage(historiaCurrentPage);
-    } else if (page === 'noticias') {
-        renderNoticiasPage(noticiasCurrentPage);
-    }
-    // EXTRAS no necesita renderizado adicional (ya está en HTML)
-    
-    document.querySelector('.ositos-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => {
+        setupSidebarFilters();
+        updateSidebarCounters();
+        updateFavoriteCounters();
+    }, 100);
 }
 
 // ==========================================
-// SISTEMA DE TOAST
+// MENÚ MÓVIL
+// ==========================================
+
+function toggleMobileMenu() {
+    hamburger.classList.toggle('active');
+    mobileMenu.classList.toggle('open');
+    document.body.style.overflow = mobileMenu.classList.contains('open') ? 'hidden' : '';
+}
+
+function closeMobileMenu() {
+    hamburger.classList.remove('active');
+    mobileMenu.classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+// ==========================================
+// TOAST NOTIFICACIONES
 // ==========================================
 
 function showOsitosMessage(text) {
-    if (typeof showToast === 'function') {
-        showToast(text);
-        return;
-    }
-    
     const existing = document.querySelector('.ositos-temp-message');
     if (existing) existing.remove();
     
@@ -134,17 +124,20 @@ function showOsitosMessage(text) {
         bottom: 30px;
         left: 50%;
         transform: translateX(-50%);
-        background: #1A2745;
+        background: #09142E;
         color: white;
-        padding: 12px 28px;
+        padding: 14px 32px;
         border-radius: 40px;
         font-family: 'Nunito', sans-serif;
         font-weight: 700;
         font-size: 14px;
         z-index: 9999;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.08);
         animation: ositosToastIn 0.3s ease;
+        max-width: 90%;
+        text-align: center;
+        backdrop-filter: blur(8px);
     `;
     
     if (!document.getElementById('ositos-toast-style')) {
@@ -168,819 +161,707 @@ function showOsitosMessage(text) {
     setTimeout(() => {
         msg.style.animation = 'ositosToastOut 0.3s ease forwards';
         setTimeout(() => msg.remove(), 300);
-    }, 2000);
-}
-
-window.showOsitosMessage = showOsitosMessage;
-
-// ==========================================
-// FILTROS Y ORDENAMIENTO (personajes)
-// ==========================================
-
-function getFilteredCharacters() {
-    let filtered = [...state.characters];
-
-    if (state.currentFilter !== 'todos') {
-        filtered = filtered.filter(c => c.role === state.currentFilter);
-    }
-
-    switch (state.sortBy) {
-        case 'name':
-            filtered.sort((a, b) => a.name.localeCompare(b.name));
-            break;
-        case 'favorite':
-            filtered.sort((a, b) => {
-                if (a.favorite && !b.favorite) return -1;
-                if (!a.favorite && b.favorite) return 1;
-                return a.name.localeCompare(b.name);
-            });
-            break;
-        default:
-            break;
-    }
-
-    return filtered;
-}
-
-function getPaginatedCharacters(filtered) {
-    const start = (state.currentPage - 1) * state.pageSize;
-    const end = start + state.pageSize;
-    return filtered.slice(start, end);
-}
-
-function getTotalPagesForCharacters(filtered) {
-    return Math.ceil(filtered.length / state.pageSize);
+    }, 2500);
 }
 
 // ==========================================
-// CONTADORES
+// RENDER: INICIO
 // ==========================================
 
-function updateCounters() {
-    const total = state.characters.length;
-    const heroes = state.characters.filter(c => c.role === 'heroe').length;
-    const villanos = state.characters.filter(c => c.role === 'villano').length;
-    const aliados = state.characters.filter(c => c.role === 'aliado').length;
-
-    document.getElementById('countTodos').textContent = total;
-    document.getElementById('countHeroes').textContent = heroes;
-    document.getElementById('countVillanos').textContent = villanos;
-    document.getElementById('countAliados').textContent = aliados;
-}
-
-// ==========================================
-// RENDERIZADO DEL GRID DE PERSONAJES
-// ==========================================
-
-function renderGrid() {
-    const grid = document.getElementById('ositosGrid');
-    if (!grid) return;
+function renderHome() {
+    const heroChapter = chapters[0];
+    const latestNews = news[0];
+    const featuredCharacters = characters.slice(0, 4);
+    const totalChapters = chapters.length;
+    const totalCharacters = characters.length;
+    const totalPlaces = places.length;
+    const totalFavs = state.favorites.length;
     
-    const filtered = getFilteredCharacters();
-    const totalPages = getTotalPagesForCharacters(filtered);
-    const paginated = getPaginatedCharacters(filtered);
+    mainContent.innerHTML = `
+        <div class="ositos-page-content active">
+            <!-- HERO -->
+            <div class="ositos-hero-section">
+                <span class="hero-icon">🧸</span>
+                <h1>Bienvenida a <span>Ositos World</span></h1>
+                <p>Un pequeño lugar lleno de aventuras, personajes curiosos y muchas historias por descubrir.</p>
+                <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                    <button class="btn-primary" onclick="openChapterPDF(${heroChapter ? heroChapter.id : 1})">
+                        📖 Empezar a leer
+                    </button>
+                    <button class="btn-primary" style="background:rgba(255,255,255,0.2); box-shadow:none;" onclick="navigateTo('personajes')">
+                        🧸 Conocer personajes
+                    </button>
+                </div>
+            </div>
 
-    if (state.currentPage > totalPages) {
-        state.currentPage = Math.max(1, totalPages);
-    }
+            <!-- ESTADÍSTICAS RÁPIDAS -->
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:40px;">
+                <div style="background:white; border-radius:16px; padding:20px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+                    <div style="font-size:32px;">📖</div>
+                    <div style="font-size:28px; font-weight:900; color:#1E284B;">${totalChapters}</div>
+                    <div style="font-size:13px; color:#5C6475;">Capítulos</div>
+                </div>
+                <div style="background:white; border-radius:16px; padding:20px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+                    <div style="font-size:32px;">🧸</div>
+                    <div style="font-size:28px; font-weight:900; color:#1E284B;">${totalCharacters}</div>
+                    <div style="font-size:13px; color:#5C6475;">Personajes</div>
+                </div>
+                <div style="background:white; border-radius:16px; padding:20px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+                    <div style="font-size:32px;">🏰</div>
+                    <div style="font-size:28px; font-weight:900; color:#1E284B;">${totalPlaces}</div>
+                    <div style="font-size:13px; color:#5C6475;">Lugares</div>
+                </div>
+                <div style="background:white; border-radius:16px; padding:20px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+                    <div style="font-size:32px;">❤️</div>
+                    <div style="font-size:28px; font-weight:900; color:#FF6B6B;">${totalFavs}</div>
+                    <div style="font-size:13px; color:#5C6475;">Favoritos</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
-    if (paginated.length === 0) {
-        grid.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #5C6475;">
-                <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
-                <h3 style="font-size: 20px; font-weight: 800; color: #1E284B; margin: 0 0 8px;">No hay personajes</h3>
-                <p style="font-size: 14px;">Pronto llegará más gente a este mundo.</p>
+// ==========================================
+// RENDER: HISTORIA (con PDF)
+// ==========================================
+
+function renderHistory() {
+    const sagas = {};
+    chapters.forEach(ch => {
+        if (!sagas[ch.saga]) sagas[ch.saga] = [];
+        sagas[ch.saga].push(ch);
+    });
+    
+    let html = `
+        <div class="ositos-page-content active">
+            <div class="ositos-section-header">
+                <h2 class="ositos-section-title">📖 Biblioteca de Capítulos</h2>
+                <span class="ositos-orange-curl"></span>
+            </div>
+    `;
+    
+    const sagaKeys = Object.keys(sagas).sort((a, b) => a - b);
+    sagaKeys.forEach(sagaKey => {
+        const sagaChapters = sagas[sagaKey];
+        html += `
+            <div style="margin-bottom: 32px;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; padding: 10px 16px; background: linear-gradient(135deg, #09142E, #1a2a5e); border-radius: 12px;">
+                    <span style="font-size:24px;">📜</span>
+                    <h3 style="font-family:'Lilita One','Baloo 2',sans-serif; font-size:22px; color:white; margin:0;">Ositos World ${sagaKey}</h3>
+                    <span style="color:rgba(255,255,255,0.5); font-size:13px; margin-left:auto;">${sagaChapters.length} capítulos</span>
+                </div>
+                <div class="ositos-grid-3">
+                    ${sagaChapters.map(ch => `
+                        <div class="ositos-card-home" style="cursor:pointer;" onclick="openChapterPDF(${ch.id})">
+                            <div class="card-image">
+                                <span>📖</span>
+                            </div>
+                            <span class="tag">Capítulo ${ch.id}</span>
+                            <h3>${ch.title}</h3>
+                            <p>${ch.summary}</p>
+                            <button class="btn-sm" onclick="event.stopPropagation();openChapterPDF(${ch.id})">📖 Leer capítulo</button>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
         `;
-        renderPagination(totalPages);
-        return;
-    }
+    });
+    
+    html += `</div>`;
+    mainContent.innerHTML = html;
+}
 
-    grid.innerHTML = paginated.map(char => `
-        <div class="ositos-card ${char.favorite ? 'selected' : ''}" data-id="${char.id}">
-            <button class="ositos-card-fav ${char.favorite ? 'active' : ''}" data-id="${char.id}" title="Favorito">
-                ${char.favorite ? '❤️' : '🤍'}
+// ==========================================
+// ABRIR CAPÍTULO PDF
+// ==========================================
+
+function openChapterPDF(id) {
+    const ch = chapters.find(c => c.id === id);
+    if (!ch) return;
+    
+    const prev = ch.previous ? chapters.find(c => c.id === ch.previous) : null;
+    const next = ch.next ? chapters.find(c => c.id === ch.next) : null;
+    
+    const charLinks = (ch.characters || []).map(name => {
+        const char = characters.find(c => c.name === name);
+        return char ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openCharacter('${char.id}')">${name}</span>` : `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
+    }).join('');
+    
+    const placeLinks = (ch.places || []).map(name => {
+        const place = places.find(p => p.name === name);
+        return place ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openPlaceModal('${place.id}')">${name}</span>` : `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
+    }).join('');
+    
+    const html = `
+        <div class="ositos-modal-image" style="aspect-ratio:16/9;">
+            <span>📖</span>
+        </div>
+        <h2 class="ositos-modal-name">Capítulo ${ch.id}: ${ch.title}</h2>
+        
+        <div style="width:100%; margin:12px 0;">
+            <iframe src="${ch.pdfUrl}" style="width:100%; height:500px; border:none; border-radius:12px; background:#f5f5f5;"></iframe>
+            <div style="text-align:center; margin-top:8px;">
+                <a href="${ch.pdfUrl}" target="_blank" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; background:#4169FF; color:white; border-radius:30px; text-decoration:none; font-weight:700; font-family:'Nunito',sans-serif; font-size:14px;">
+                    📄 Abrir en nueva ventana
+                </a>
+            </div>
+        </div>
+        
+        ${charLinks ? `
+            <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
+                <h4 style="font-family:'Fredoka','Baloo 2',sans-serif;font-size:16px;color:#1E284B;margin-bottom:8px;">🧸 Personajes que aparecen</h4>
+                <div>${charLinks}</div>
+            </div>
+        ` : ''}
+        
+        ${placeLinks ? `
+            <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
+                <h4 style="font-family:'Fredoka','Baloo 2',sans-serif;font-size:16px;color:#1E284B;margin-bottom:8px;">🏰 Lugares mencionados</h4>
+                <div>${placeLinks}</div>
+            </div>
+        ` : ''}
+        
+        <div style="display:flex;justify-content:space-between;gap:12px;width:100%;margin-top:20px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
+            <button ${!prev ? 'disabled' : ''} style="padding:8px 20px;border-radius:30px;font-weight:600;font-size:14px;background:${prev ? '#FFD44A' : '#F0F2F5'};color:${prev ? '#1E284B' : '#B0B8C8'};border:none;cursor:${prev ? 'pointer' : 'default'};transition:all 0.2s;" onclick="${prev ? `closeModal();openChapterPDF(${prev.id})` : ''}">
+                ← Anterior
             </button>
-            <div class="ositos-card-image" style="background: ${char.bgColor || '#F8FAFC'}">
-                ${char.image ? 
-                    `<img src="${char.image}" alt="${char.name}" loading="lazy">` :
-                    `<span class="ositos-card-emoji">${char.icon || '🧸'}</span>`
-                }
+            <button ${!next ? 'disabled' : ''} style="padding:8px 20px;border-radius:30px;font-weight:600;font-size:14px;background:${next ? '#FFD44A' : '#F0F2F5'};color:${next ? '#1E284B' : '#B0B8C8'};border:none;cursor:${next ? 'pointer' : 'default'};transition:all 0.2s;" onclick="${next ? `closeModal();openChapterPDF(${next.id})` : ''}">
+                Siguiente →
+            </button>
+        </div>
+    `;
+    
+    openModal(html);
+}
+
+// ==========================================
+// RENDER: PERSONAJES
+// ==========================================
+
+function renderCharacters() {
+    const allCharacters = [...characters];
+    
+    let html = `
+        <div class="ositos-page-content active">
+            <div class="ositos-section-header">
+                <h2 class="ositos-section-title">🧸 Personajes</h2>
+                <span class="ositos-orange-curl"></span>
+                ${state.favorites.length > 0 ? `<span style="margin-left:auto; font-size:13px; color:#FF6B6B; font-weight:700;">❤️ ${state.favorites.length} favoritos</span>` : ''}
+            </div>
+            <div class="ositos-grid">
+                ${allCharacters.map(c => createCharacterCard(c)).join('')}
+            </div>
+        </div>
+    `;
+    
+    mainContent.innerHTML = html;
+    
+    setTimeout(() => {
+        const activeFilter = document.querySelector('.ositos-filter-btn.active');
+        if (activeFilter) {
+            const filter = activeFilter.dataset.filter;
+            if (filter !== 'todos') {
+                const cards = document.querySelectorAll('.ositos-card');
+                cards.forEach(c => {
+                    const role = c.querySelector('.ositos-card-role');
+                    if (role) {
+                        c.style.display = role.classList.contains(filter) ? 'flex' : 'none';
+                    }
+                });
+            }
+        }
+    }, 100);
+}
+
+function createCharacterCard(char) {
+    const hasImage = char.image && char.image.length > 0;
+    const fav = isFavorite(char.id);
+    
+    return `
+        <div class="ositos-card ${fav ? 'selected' : ''}" onclick="openCharacter('${char.id}')">
+            <button class="ositos-card-fav ${fav ? 'active' : ''}" onclick="event.stopPropagation();toggleFavorite('${char.id}')">
+                ${fav ? '❤️' : '🤍'}
+            </button>
+            <span class="ositos-card-role ${char.role}">${char.role.toUpperCase()}</span>
+            <div class="ositos-card-image" style="background:#FAFAFA">
+                ${hasImage ? `<img src="${char.image}" alt="${char.name}">` : `<span class="ositos-card-emoji">${getEmojiForCharacter(char.name)}</span>`}
             </div>
             <div class="ositos-card-name">${char.name.toUpperCase()}</div>
-            <span class="ositos-card-role ${char.role}">${char.role.toUpperCase()}</span>
-            <p class="ositos-card-desc">${char.description}</p>
         </div>
-    `).join('');
-
-    grid.querySelectorAll('.ositos-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-            if (e.target.closest('.ositos-card-fav')) return;
-            const id = card.dataset.id;
-            const character = state.characters.find(c => c.id === id);
-            if (character) openModal(character);
-        });
-    });
-
-    grid.querySelectorAll('.ositos-card-fav').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleFavorite(btn.dataset.id);
-        });
-    });
-
-    renderPagination(totalPages);
-}
-
-// ==========================================
-// PAGINACIÓN - PERSONAJES
-// ==========================================
-
-function renderPagination(totalPages) {
-    const container = document.getElementById('ositosPagination');
-    if (!container) return;
-    
-    if (totalPages <= 1) {
-        container.innerHTML = '';
-        return;
-    }
-
-    let html = '';
-    html += `<button class="ositos-page-btn arrow ${state.currentPage === 1 ? 'disabled' : ''}" data-page="prev">‹</button>`;
-
-    for (let i = 1; i <= totalPages; i++) {
-        html += `<button class="ositos-page-btn ${i === state.currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-    }
-
-    html += `<button class="ositos-page-btn arrow ${state.currentPage === totalPages ? 'disabled' : ''}" data-page="next">›</button>`;
-
-    container.innerHTML = html;
-
-    container.querySelectorAll('.ositos-page-btn:not(.disabled)').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const page = btn.dataset.page;
-            if (page === 'prev') {
-                if (state.currentPage > 1) state.currentPage--;
-            } else if (page === 'next') {
-                if (state.currentPage < totalPages) state.currentPage++;
-            } else {
-                state.currentPage = parseInt(page);
-            }
-            renderGrid();
-            document.querySelector('.ositos-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    });
-}
-
-// ==========================================
-// FAVORITOS
-// ==========================================
-
-function toggleFavorite(id) {
-    const index = state.favorites.indexOf(id);
-    if (index > -1) {
-        state.favorites.splice(index, 1);
-    } else {
-        state.favorites.push(id);
-        if (typeof launchParticles === 'function') {
-            launchParticles({
-                amount: 12,
-                symbols: ['❤️', '✨', '⭐'],
-                colors: ['#FF6B6B', '#FFD44A', '#4169FF'],
-                spread: 80
-            });
-        }
-    }
-    state.characters.forEach(char => {
-        char.favorite = state.favorites.includes(char.id);
-    });
-    saveFavorites();
-    renderGrid();
-}
-
-// ==========================================
-// MODAL DE DETALLE
-// ==========================================
-
-function openModal(character) {
-    const modal = document.getElementById('ositosModal');
-    const body = document.getElementById('ositosModalBody');
-
-    body.innerHTML = `
-        <div class="ositos-modal-emoji" style="background: ${character.bgColor || '#F8FAFC'}">
-            ${character.icon || '🧸'}
-        </div>
-        <h2 class="ositos-modal-name">${character.name.toUpperCase()}</h2>
-        <span class="ositos-modal-role ${character.role}">${character.role.toUpperCase()}</span>
-        <p class="ositos-modal-desc">${character.description}</p>
-        
-        <div class="ositos-modal-divider"></div>
-        
-        <h4 style="font-family: 'Fredoka', 'Baloo 2', sans-serif; font-size: 18px; color: #1E284B; margin: 8px 0 4px;">📖 Historia</h4>
-        <p class="ositos-modal-story">${character.story || 'Este personaje aún no tiene una historia registrada.'}</p>
-        
-        <div class="ositos-modal-divider"></div>
-        
-        <h4 style="font-family: 'Fredoka', 'Baloo 2', sans-serif; font-size: 18px; color: #1E284B; margin: 8px 0 4px;">🧠 Personalidad</h4>
-        <div class="ositos-modal-personality">
-            ${(character.personality || ['Por descubrir']).map(trait => 
-                `<span class="ositos-modal-trait">${trait}</span>`
-            ).join('')}
-        </div>
-        
-        <div class="ositos-modal-divider"></div>
-        
-        <div class="ositos-modal-skill">
-            ⚡ ${character.specialSkill || 'Habilidad especial no definida'}
-        </div>
-        
-        <button class="ositos-fav-btn" style="max-width: 200px; margin-top: 12px;" data-id="${character.id}">
-            ${character.favorite ? '❤️ Quitar de favoritos' : '🤍 Añadir a favoritos'}
-        </button>
     `;
+}
 
-    modal.classList.add('open');
+// ==========================================
+// ABRIR PERSONAJE
+// ==========================================
 
-    body.querySelector('.ositos-fav-btn')?.addEventListener('click', (e) => {
-        toggleFavorite(character.id);
-        const btn = e.target;
-        const isFav = state.favorites.includes(character.id);
-        btn.innerHTML = isFav ? '❤️ Quitar de favoritos' : '🤍 Añadir a favoritos';
-        renderGrid();
+function openCharacter(id) {
+    const char = characters.find(c => c.id === id);
+    if (!char) return;
+    
+    const hasImage = char.image && char.image.length > 0;
+    const fav = isFavorite(char.id);
+    
+    const friendLinks = (char.friends || []).map(name => {
+        const friend = characters.find(c => c.name === name);
+        return friend ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openCharacter('${friend.id}')">${name}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
+    }).join('');
+    
+    const homeLink = places.find(p => p.name === char.home);
+    const homeHtml = homeLink ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openPlaceModal('${homeLink.id}')">${char.home}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${char.home}</span>`;
+    
+    const html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
+            <div></div>
+            <button onclick="toggleFavorite('${char.id}'); closeModal(); openCharacter('${char.id}')" style="background:none; border:none; font-size:28px; cursor:pointer; transition:transform 0.2s; padding:8px;">
+                ${fav ? '❤️' : '🤍'}
+            </button>
+        </div>
+        <div class="ositos-modal-image" style="aspect-ratio:1/1; max-width:200px; border-radius:50%; margin:0 auto;">
+            ${hasImage ? `<img src="${char.image}" alt="${char.name}">` : `<span>${getEmojiForCharacter(char.name)}</span>`}
+        </div>
+        <h2 class="ositos-modal-name">${char.name}</h2>
+        <span class="ositos-modal-role ${char.role}">${char.role.toUpperCase()}</span>
+        
+        <div style="font-size:14px;color:#4A5268;line-height:1.6;text-align:left;width:100%;margin-top:8px;">
+            <p><strong>Descripción:</strong> ${char.description}</p>
+            <p><strong>Personalidad:</strong> ${char.personality}</p>
+            ${char.curiosities ? `<p><strong>Curiosidades:</strong> ${char.curiosities}</p>` : ''}
+        </div>
+        
+        <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
+            <h4 style="font-family:'Fredoka','Baloo 2',sans-serif;font-size:16px;color:#1E284B;margin-bottom:8px;">🏠 Lugar donde vive</h4>
+            <div>${homeHtml}</div>
+        </div>
+        
+        ${friendLinks ? `
+            <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
+                <h4 style="font-family:'Fredoka','Baloo 2',sans-serif;font-size:16px;color:#1E284B;margin-bottom:8px;">🤝 Amigos</h4>
+                <div>${friendLinks}</div>
+            </div>
+        ` : ''}
+    `;
+    
+    openModal(html);
+}
+
+// ==========================================
+// RENDER: MUNDO (con imagen principal)
+// ==========================================
+
+function renderWorld() {
+    mainContent.innerHTML = `
+        <div class="ositos-page-content active">
+            <!-- IMAGEN PRINCIPAL DEL MUNDO -->
+            <div style="width:100%; border-radius:20px; overflow:hidden; margin-bottom:32px; box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+                <img src="" alt="El Mundo de Ositos" style="width:100%; height:auto; aspect-ratio:16/6; object-fit:cover; display:block;">
+            </div>
+
+            <div class="ositos-section-header">
+                <h2 class="ositos-section-title">🏰 Lugares del Mundo</h2>
+                <span class="ositos-orange-curl"></span>
+            </div>
+            <div class="ositos-grid-3">
+                ${places.map(p => `
+                    <div class="ositos-card-home" onclick="openPlaceModal('${p.id}')" style="cursor:pointer;">
+                        <div class="card-image">
+                            <span>${getEmojiForPlace(p.name)}</span>
+                        </div>
+                        <h3>${p.name}</h3>
+                        <p>${p.description}</p>
+                        <button class="btn-sm" onclick="event.stopPropagation();openPlaceModal('${p.id}')">🔍 Explorar</button>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// ==========================================
+// ABRIR LUGAR (modal con PDF - sin mapa)
+// ==========================================
+
+function openPlaceModal(id) {
+    const place = places.find(p => p.id === id);
+    if (!place) return;
+    
+    const charLinks = (place.characters || []).map(name => {
+        const char = characters.find(c => c.name === name);
+        return char ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openCharacter('${char.id}')">${name}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
+    }).join('');
+    
+    const html = `
+        <div class="ositos-modal-image" style="aspect-ratio:16/9;">
+            <span>${getEmojiForPlace(place.name)}</span>
+        </div>
+        <h2 class="ositos-modal-name">${place.name}</h2>
+        
+        <div style="font-size:14px;color:#4A5268;line-height:1.6;text-align:left;width:100%;margin-top:8px;">
+            <p>${place.description}</p>
+            ${place.curiosities ? `<p><strong>Curiosidad:</strong> ${place.curiosities}</p>` : ''}
+        </div>
+        
+        <!-- PDF del lugar -->
+        <div style="width:100%; margin:12px 0;">
+            <iframe src="${place.pdfUrl}" style="width:100%; height:450px; border:none; border-radius:12px; background:#f5f5f5;"></iframe>
+            <div style="text-align:center; margin-top:8px;">
+                <a href="${place.pdfUrl}" target="_blank" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; background:#4169FF; color:white; border-radius:30px; text-decoration:none; font-weight:700; font-family:'Nunito',sans-serif; font-size:14px;">
+                    📄 Abrir guía completa
+                </a>
+            </div>
+        </div>
+        
+        ${charLinks ? `
+            <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
+                <h4 style="font-family:'Fredoka','Baloo 2',sans-serif;font-size:16px;color:#1E284B;margin-bottom:8px;">🧸 Personajes que viven aquí</h4>
+                <div>${charLinks}</div>
+            </div>
+        ` : ''}
+    `;
+    
+    openModal(html);
+}
+
+// ==========================================
+// RENDER: NOTICIAS
+// ==========================================
+
+function getNoticiasFiltradas() {
+    const hoy = new Date();
+    const semanaMs = 7 * 24 * 60 * 60 * 1000;
+    
+    const noticiasConFecha = news.map(n => {
+        let fecha = new Date(n.date);
+        if (isNaN(fecha.getTime())) {
+            fecha = new Date();
+        }
+        return { ...n, fecha };
     });
+    
+    noticiasConFecha.sort((a, b) => b.fecha - a.fecha);
+    
+    const recientes = noticiasConFecha.filter(n => 
+        (hoy - n.fecha) < semanaMs
+    );
+    
+    const anteriores = noticiasConFecha.filter(n => 
+        (hoy - n.fecha) >= semanaMs
+    );
+    
+    return { recientes, anteriores };
+}
+
+function renderNews() {
+    const { recientes, anteriores } = getNoticiasFiltradas();
+    
+    let html = `
+        <div class="ositos-page-content active">
+            <div class="ositos-section-header">
+                <h2 class="ositos-section-title">📰 Periódico del Mundo</h2>
+                <span class="ositos-orange-curl"></span>
+            </div>
+    `;
+    
+    if (recientes.length > 0) {
+        html += `
+            <div style="margin-bottom: 28px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                    <span style="font-size:20px;">🆕</span>
+                    <h3 style="font-family:'Fredoka','Baloo 2',sans-serif; font-size:18px; color:#1E284B; margin:0;">Noticias Recientes</h3>
+                    <span style="font-size:12px; color:#5C6475; background:#F0F2F5; padding:2px 12px; border-radius:30px;">Esta semana</span>
+                </div>
+                <div class="ositos-grid-3">
+                    ${recientes.map(n => createNewsCardHTML(n)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (anteriores.length > 0) {
+        html += `
+            <div style="margin-bottom: 16px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                    <span style="font-size:20px;">📜</span>
+                    <h3 style="font-family:'Fredoka','Baloo 2',sans-serif; font-size:18px; color:#5C6475; margin:0;">Noticias Anteriores</h3>
+                    <span style="font-size:12px; color:#8a94a6; background:#F0F2F5; padding:2px 12px; border-radius:30px;">Archivo</span>
+                </div>
+                <div class="ositos-grid-3">
+                    ${anteriores.map(n => createNewsCardHTML(n)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (recientes.length === 0 && anteriores.length === 0) {
+        html += `
+            <div style="text-align:center; padding:40px 20px; color:#5C6475;">
+                <span style="font-size:48px; display:block; margin-bottom:12px;">📭</span>
+                <h3 style="font-family:'Fredoka','Baloo 2',sans-serif; font-size:20px; color:#1E284B;">No hay noticias</h3>
+                <p>Vuelve pronto para ver las últimas novedades del mundo Ositos.</p>
+            </div>
+        `;
+    }
+    
+    html += `</div>`;
+    mainContent.innerHTML = html;
+}
+
+function createNewsCardHTML(n) {
+    return `
+        <div class="ositos-card-home" onclick="openNews(${n.id})" style="cursor:pointer;">
+            <div class="card-image">
+                <span>📰</span>
+            </div>
+            <span class="date" style="font-size:12px; color:#8a94a6;">${n.date}</span>
+            <h3>${n.title}</h3>
+            <p>${n.content.substring(0, 100)}${n.content.length > 100 ? '...' : ''}</p>
+            <button class="btn-sm" onclick="event.stopPropagation();openNews(${n.id})">📰 Leer noticia</button>
+        </div>
+    `;
+}
+
+function openNews(id) {
+    const newsItem = news.find(n => n.id === id);
+    if (!newsItem) return;
+    
+    const charLinks = (newsItem.relatedCharacters || []).map(name => {
+        const char = characters.find(c => c.name === name);
+        return char ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openCharacter('${char.id}')">${name}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
+    }).join('');
+    
+    const placeLinks = (newsItem.relatedPlaces || []).map(name => {
+        const place = places.find(p => p.name === name);
+        return place ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openPlaceModal('${place.id}')">${name}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
+    }).join('');
+    
+    const html = `
+        <div class="ositos-modal-image" style="aspect-ratio:16/6;">
+            <span>📰</span>
+        </div>
+        <h2 class="ositos-modal-name">${newsItem.title}</h2>
+        <div style="font-size:13px;color:#8a94a6;width:100%;text-align:center;">${newsItem.date}</div>
+        <div style="font-size:15px;color:#4A5268;line-height:1.8;text-align:left;width:100%;margin-top:12px;">
+            <p>${newsItem.content}</p>
+        </div>
+        
+        ${charLinks ? `
+            <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
+                <h4 style="font-family:'Fredoka','Baloo 2',sans-serif;font-size:16px;color:#1E284B;margin-bottom:8px;">🧸 Personajes relacionados</h4>
+                <div>${charLinks}</div>
+            </div>
+        ` : ''}
+        
+        ${placeLinks ? `
+            <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
+                <h4 style="font-family:'Fredoka','Baloo 2',sans-serif;font-size:16px;color:#1E284B;margin-bottom:8px;">🏰 Lugares relacionados</h4>
+                <div>${placeLinks}</div>
+            </div>
+        ` : ''}
+    `;
+    
+    openModal(html);
+}
+
+// ==========================================
+// EMojis
+// ==========================================
+
+function getEmojiForCharacter(name) {
+    const map = { 
+        'Batón Gordito': '🧸', 
+        'Lili y Lolo': '🐰', 
+        'Tito': '🦝', 
+        'Vaca Lola': '🐿️', 
+        'Rey Esqueleto': '💀' 
+    };
+    return map[name] || '🧸';
+}
+
+function getEmojiForPlace(name) {
+    const map = { 
+        'Bosque Azul': '🌳', 
+        'Pueblo de los Conejos': '🏘️', 
+        'Castillo Oscuro': '🏰', 
+        'Lago de los Deseos': '🌊' 
+    };
+    return map[name] || '📍';
+}
+
+// ==========================================
+// MODALES
+// ==========================================
+
+function openModal(html) {
+    modalBody.innerHTML = html;
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
-    document.getElementById('ositosModal').classList.remove('open');
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
 }
 
 // ==========================================
-// FILTROS
+// SIDEBAR
 // ==========================================
 
-function setupFilters() {
+function setupSidebarFilters() {
     const filterBtns = document.querySelectorAll('.ositos-filter-btn');
+    if (!filterBtns.length) return;
+    
     filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', function() {
             filterBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.currentFilter = btn.dataset.filter;
-            state.currentPage = 1;
+            this.classList.add('active');
             
-            if (state.currentPageContent !== 'personajes') {
-                switchPage('personajes');
-            }
-            renderGrid();
+            const filter = this.dataset.filter;
+            
+            navigateTo('personajes');
+            
+            setTimeout(() => {
+                const grid = document.querySelector('.ositos-grid');
+                const cards = document.querySelectorAll('.ositos-card');
+                
+                if (filter === 'todos') {
+                    cards.forEach(c => c.style.display = 'flex');
+                    if (grid) {
+                        grid.style.display = 'grid';
+                        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
+                    }
+                } else {
+                    let hasVisible = false;
+                    cards.forEach(c => {
+                        const role = c.querySelector('.ositos-card-role');
+                        if (role) {
+                            const roleClass = role.classList.contains(filter);
+                            c.style.display = roleClass ? 'flex' : 'none';
+                            if (roleClass) hasVisible = true;
+                        }
+                    });
+                    
+                    if (!hasVisible && grid) {
+                        let noResults = grid.querySelector('.ositos-no-results');
+                        if (!noResults) {
+                            noResults = document.createElement('div');
+                            noResults.className = 'ositos-no-results';
+                            noResults.style.cssText = `
+                                grid-column: 1 / -1;
+                                text-align: center;
+                                padding: 60px 20px;
+                                color: #5C6475;
+                            `;
+                            noResults.innerHTML = `
+                                <div style="font-size:48px; margin-bottom:16px;">🔍</div>
+                                <h3 style="font-size:22px; font-weight:800; color:#1E284B; font-family:'Lilita One','Baloo 2',sans-serif; margin:0 0 8px;">No hay personajes</h3>
+                                <p style="font-size:15px; color:#5C6475; font-family:'Nunito',sans-serif;">Pronto llegará más gente a este mundo.</p>
+                            `;
+                            grid.appendChild(noResults);
+                        }
+                        noResults.style.display = 'block';
+                    } else {
+                        const noResults = grid?.querySelector('.ositos-no-results');
+                        if (noResults) noResults.style.display = 'none';
+                    }
+                }
+            }, 300);
         });
     });
+}
 
-    document.getElementById('sortSelect')?.addEventListener('change', (e) => {
-        state.sortBy = e.target.value;
-        state.currentPage = 1;
-        renderGrid();
-    });
-
-    document.querySelectorAll('.ositos-view-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.ositos-view-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.viewMode = btn.dataset.view;
-            if (state.viewMode === 'list') {
-                document.querySelector('.ositos-grid').style.gridTemplateColumns = '1fr';
+function setupSidebarFavorites() {
+    const favBtn = document.getElementById('showFavoritesBtn');
+    if (!favBtn) return;
+    
+    favBtn.addEventListener('click', function() {
+        navigateTo('personajes');
+        setTimeout(() => {
+            const cards = document.querySelectorAll('.ositos-card');
+            const hasFavorites = state.favorites.length > 0;
+            
+            if (hasFavorites) {
+                cards.forEach(c => {
+                    const favBtn = c.querySelector('.ositos-card-fav');
+                    if (favBtn && favBtn.classList.contains('active')) {
+                        c.style.display = 'flex';
+                    } else {
+                        c.style.display = 'none';
+                    }
+                });
+                showOsitosMessage(`❤️ Mostrando ${state.favorites.length} favoritos`);
             } else {
-                document.querySelector('.ositos-grid').style.gridTemplateColumns = '';
+                cards.forEach(c => c.style.display = 'flex');
+                showOsitosMessage('💔 No tienes favoritos aún');
             }
-        });
-    });
-
-    document.getElementById('showFavoritesBtn')?.addEventListener('click', () => {
-        state.currentFilter = 'todos';
-        state.sortBy = 'favorite';
-        document.getElementById('sortSelect').value = 'favorite';
-        document.querySelectorAll('.ositos-filter-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('.ositos-filter-btn[data-filter="todos"]')?.classList.add('active');
-        state.currentPage = 1;
-        
-        if (state.currentPageContent !== 'personajes') {
-            switchPage('personajes');
-        }
-        renderGrid();
-        document.querySelector('.ositos-grid')?.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
     });
 }
 
+function updateSidebarCounters() {
+    const total = characters.length;
+    const heroes = characters.filter(c => c.role === 'heroe').length;
+    const villanos = characters.filter(c => c.role === 'villano').length;
+    const aliados = characters.filter(c => c.role === 'aliado').length;
+    
+    const countTodos = document.getElementById('countTodos');
+    const countHeroes = document.getElementById('countHeroes');
+    const countVillanos = document.getElementById('countVillanos');
+    const countAliados = document.getElementById('countAliados');
+    
+    if (countTodos) countTodos.textContent = total;
+    if (countHeroes) countHeroes.textContent = heroes;
+    if (countVillanos) countVillanos.textContent = villanos;
+    if (countAliados) countAliados.textContent = aliados;
+}
+
 // ==========================================
-// EXTRAS - NAVEGACIÓN POR PESTAÑAS
+// EVENTOS
 // ==========================================
 
-function setupExtrasMenu() {
-    const menuBtns = document.querySelectorAll('.ositos-extras-menu-btn');
-    const sections = document.querySelectorAll('.ositos-extra-section');
-    
-    menuBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            menuBtns.forEach(b => b.classList.remove('active'));
-            sections.forEach(s => s.classList.remove('active'));
-            
-            btn.classList.add('active');
-            const target = document.getElementById(`extra-${btn.dataset.extra}`);
-            if (target) target.classList.add('active');
-            
-            document.querySelector('.ositos-extras-content')?.scrollIntoView({ behavior: 'smooth' });
-        });
+navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigateTo(link.dataset.section);
     });
+});
+
+hamburger.addEventListener('click', toggleMobileMenu);
+
+modalClose.addEventListener('click', closeModal);
+
+modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
+
+document.querySelector('.ositos-logo-link')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateTo('home');
+});
+
+// ==========================================
+// INICIO
+// ==========================================
+
+renderHome();
+
+setTimeout(() => {
+    setupSidebarFilters();
+    setupSidebarFavorites();
+    updateSidebarCounters();
+    updateFavoriteCounters();
+}, 200);
+
+if (typeof lucide !== 'undefined') {
+    setTimeout(() => lucide.createIcons(), 300);
 }
 
-// ==========================================
-// EXTRAS - CURIOSIDADES ALEATORIAS
-// ==========================================
-
-const OSITOS_FACTS = [
-    "Que te amo",
-];
-
-let currentFactIndex = 0;
-let factInterval = null;
-
-function updateRandomFact() {
-    const factEl = document.getElementById('ositosFactText');
-    if (!factEl) return;
-    
-    let newIndex;
-    do {
-        newIndex = Math.floor(Math.random() * OSITOS_FACTS.length);
-    } while (newIndex === currentFactIndex && OSITOS_FACTS.length > 1);
-    
-    currentFactIndex = newIndex;
-    factEl.style.transition = 'opacity 0.3s ease';
-    factEl.style.opacity = '0';
-    setTimeout(() => {
-        factEl.textContent = OSITOS_FACTS[currentFactIndex];
-        factEl.style.opacity = '1';
-    }, 300);
-}
-
-function startFactRotation() {
-    updateRandomFact();
-    if (factInterval) clearInterval(factInterval);
-    factInterval = setInterval(updateRandomFact, 8000);
-}
-
-// ==========================================
-// DATOS DE HISTORIA (Línea del tiempo)
-// ==========================================
-
-const HISTORIA_DATA = [
-    { icon: '', title: '', desc: '' },
-    { icon: '', title: '', desc: '' },
-    { icon: '', title: '', desc: '' },
-    { icon: '', title: '', desc: '' },
-    { icon: '', title: '', desc: '' },
-    { icon: '', title: '', desc: '' },
-];
-
-// ==========================================
-// DATOS DE NOTICIAS (con imágenes)
-// ==========================================
-
-const NOTICIAS_DATA = [
-    { 
-        image: '',
-        title: '',
-        summary: '',
-        date: '',
-        tag: '',
-        tagClass: ''
-    },
-    { 
-        image: '',
-        title: '',
-        summary: '',
-        date: '',
-        tag: '',
-        tagClass: ''
-    },
-    { 
-        image: '',
-        title: '',
-        summary: '',
-        date: '',
-        tag: '',
-        tagClass: ''
-    },
-    { 
-        image: '',
-        title: '',
-        summary: '',
-        date: '',
-        tag: '',
-        tagClass: ''
-    },
-    { 
-        image: '',
-        title: '',
-        summary: '',
-        date: '',
-        tag: '',
-        tagClass: ''
-    },
-    { 
-        image: '',
-        title: '',
-        summary: '',
-        date: '',
-        tag: '',
-        tagClass: ''
-    },
-];
-
-// ==========================================
-// DATOS DE JUEGOS
-// ==========================================
-
-const JUEGOS_DATA = [
-    { image: '', title: '', desc: '' },
-    { image: '', title: '', desc: '' },
-    { image: '', title: '', desc: '' },
-    { image: '', title: '', desc: '' }
-];
-
-// ==========================================
-// DATOS DE DESCARGAS
-// ==========================================
-
-const DESCARGAS_DATA = [
-    { icon: '', name: '', meta: '' },
-    { icon: '', name: '', meta: '' },
-    { icon: '', name: '', meta: '' },
-    { icon: '', name: '', meta: '' },
-    { icon: '', name: '', meta: '' }
-];
-
-// ==========================================
-// DATOS DE COLECCIONABLES
-// ==========================================
-
-const COLECCIONABLES_DATA = [
-    { emoji: '', title: '', desc: '' },
-    { emoji: '', title: '', desc: '' },
-    { emoji: '', title: '', desc: '' },
-    { emoji: '', title: '', desc: '' }
-];
-
-// ==========================================
-// DATOS DE FONDOS
-// ==========================================
-
-const FONDOS_DATA = [
-    { emoji: '', name: '', bg: '' },
-    { emoji: '', name: '', bg: '' },
-    { emoji: '', name: '', bg: '' },
-    { emoji: '', name: '', bg: '' }
-];
-
-// ==========================================
-// DATOS DE CURIOSIDADES
-// ==========================================
-
-const CURIOSIDADES_DATA = [
-    { icon: '', title: '', desc: '' },
-    { icon: '', title: '', desc: '' },
-    { icon: '', title: '', desc: '' },
-    { icon: '', title: '', desc: '' }
-];
-
-// ==========================================
-// FUNCIONES DE PAGINACIÓN PARA HISTORIA Y NOTICIAS
-// ==========================================
-
-let historiaCurrentPage = 1;
-let noticiasCurrentPage = 1;
-const ITEMS_PER_PAGE = 6;
-
-function getPaginatedData(data, page) {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE;
-    return data.slice(start, end);
-}
-
-function getTotalPagesForData(data) {
-    return Math.ceil(data.length / ITEMS_PER_PAGE);
-}
-
-// ==========================================
-// RENDER HISTORIA
-// ==========================================
-
-function renderHistoriaPage(pageNum) {
-    const container = document.getElementById('historiaGrid');
-    if (!container) return;
-    
-    const totalPages = getTotalPagesForData(HISTORIA_DATA);
-    const pageData = getPaginatedData(HISTORIA_DATA, pageNum);
-    
-    if (pageNum > totalPages) {
-        pageNum = Math.max(1, totalPages);
-    }
-    
-    historiaCurrentPage = pageNum;
-    
-    // Definir límite de caracteres para mostrar el botón "leer más"
-    const CHAR_LIMIT = 100;
-    
-    container.innerHTML = pageData.map((item, index) => {
-        const desc = item.desc || '';
-        const isLong = desc.length > CHAR_LIMIT;
-        const shortDesc = isLong ? desc.substring(0, CHAR_LIMIT) + '...' : desc;
-        
-        return `
-        <div class="ositos-timeline-item" data-index="${index}" data-fulltext="${escapeHtml(desc)}">
-            <div class="ositos-timeline-dot"></div>
-            <span class="icon-big">${item.icon}</span>
-            <h4>${item.title}</h4>
-            <div class="ositos-timeline-desc">
-                <span class="ositos-timeline-desc-short">${escapeHtml(shortDesc)}</span>
-                ${isLong ? `<button class="ositos-timeline-readmore" data-index="${index}">▼ Leer más</button>` : ''}
-            </div>
-        </div>
-    `}).join('');
-    
-    // Eventos para los botones "Leer más"
-    container.querySelectorAll('.ositos-timeline-readmore').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const item = this.closest('.ositos-timeline-item');
-            const fullText = item.dataset.fulltext || '';
-            const title = item.querySelector('h4')?.textContent || 'Historia';
-            openTimelineModal(title, fullText);
-        });
-    });
-    
-    updatePagination('historia', totalPages, historiaCurrentPage);
-}
-
-// ==========================================
-// MODAL PARA TEXTO COMPLETO DE HISTORIA
-// ==========================================
-
-function openTimelineModal(title, text) {
-    // Buscar o crear el modal
-    let modal = document.getElementById('ositosTimelineModal');
-    
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'ositosTimelineModal';
-        modal.className = 'ositos-modal-timeline';
-        modal.innerHTML = `
-            <div class="ositos-modal-timeline-content">
-                <button class="ositos-modal-timeline-close">✕</button>
-                <h3 class="ositos-modal-timeline-title"></h3>
-                <div class="ositos-modal-timeline-body"></div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        // Cerrar al hacer clic fuera
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                closeTimelineModal();
-            }
-        });
-        
-        // Cerrar con el botón
-        modal.querySelector('.ositos-modal-timeline-close').addEventListener('click', closeTimelineModal);
-        
-        // Cerrar con Escape
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && modal.classList.contains('open')) {
-                closeTimelineModal();
-            }
-        });
-    }
-    
-    // Llenar el modal
-    modal.querySelector('.ositos-modal-timeline-title').textContent = title;
-    modal.querySelector('.ositos-modal-timeline-body').textContent = text;
-    
-    modal.classList.add('open');
-}
-
-function closeTimelineModal() {
-    const modal = document.getElementById('ositosTimelineModal');
-    if (modal) {
-        modal.classList.remove('open');
-    }
-}
-
-
-// ==========================================
-// RENDER NOTICIAS
-// ==========================================
-
-function renderNoticiasPage(pageNum) {
-    const container = document.getElementById('noticiasGrid');
-    if (!container) return;
-    
-    const totalPages = getTotalPagesForData(NOTICIAS_DATA);
-    const pageData = getPaginatedData(NOTICIAS_DATA, pageNum);
-    
-    if (pageNum > totalPages) {
-        pageNum = Math.max(1, totalPages);
-    }
-    
-    noticiasCurrentPage = pageNum;
-    
-    container.innerHTML = pageData.map(item => `
-        <article class="ositos-news-card">
-            <div class="ositos-news-thumb">
-                <img src="${item.image}" alt="${item.title}" loading="lazy">
-            </div>
-            <div class="ositos-news-body">
-                <span class="ositos-news-tag ${item.tagClass}">${item.tag}</span>
-                <h3 class="ositos-news-title">${item.title}</h3>
-                <p class="ositos-news-summary">${item.summary}</p>
-                <span class="ositos-news-date">${item.date}</span>
-            </div>
-        </article>
-    `).join('');
-    
-    updatePagination('noticias', totalPages, noticiasCurrentPage);
-}
-
-// ==========================================
-// RENDER EXTRAS (todo en HTML, solo se llenan los grids dinámicos)
-// ==========================================
-
-function renderExtras() {
-    // Juegos
-    const juegosContainer = document.getElementById('juegosGrid');
-    if (juegosContainer) {
-        juegosContainer.innerHTML = JUEGOS_DATA.map(game => `
-            <div class="ositos-game-card">
-                <div class="ositos-game-thumb">
-                    <img src="${game.image}" alt="${game.title}" loading="lazy">
-                </div>
-                <div class="ositos-game-body">
-                    <h4>${game.title}</h4>
-                    <p>${game.desc}</p>
-                    <button class="ositos-game-btn" onclick="showOsitosMessage('🎮 ¡Próximamente!')">JUGAR</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // Descargas
-    const descargasContainer = document.getElementById('descargasList');
-    if (descargasContainer) {
-        descargasContainer.innerHTML = DESCARGAS_DATA.map(item => `
-            <div class="ositos-download-item">
-                <div class="ositos-download-icon">${item.icon}</div>
-                <div class="ositos-download-info">
-                    <div class="name">${item.name}</div>
-                    <div class="meta">${item.meta}</div>
-                </div>
-                <button class="ositos-download-btn" onclick="showOsitosMessage('📥 Descargando...')">
-                    <i data-lucide="download"></i>
-                </button>
-            </div>
-        `).join('');
-    }
-
-    // Coleccionables
-    const coleccionablesContainer = document.getElementById('coleccionablesGrid');
-    if (coleccionablesContainer) {
-        coleccionablesContainer.innerHTML = COLECCIONABLES_DATA.map(item => `
-            <div class="ositos-collectible-card">
-                <span class="ositos-collectible-emoji">${item.emoji}</span>
-                <h4>${item.title}</h4>
-                <p>${item.desc}</p>
-            </div>
-        `).join('');
-    }
-
-    // Fondos
-    const fondosContainer = document.getElementById('fondosGrid');
-    if (fondosContainer) {
-        fondosContainer.innerHTML = FONDOS_DATA.map(item => `
-            <div class="ositos-wallpaper-card" style="background: ${item.bg};">
-                <span>${item.emoji}</span>
-                <span class="ositos-wallpaper-name">${item.name}</span>
-            </div>
-        `).join('');
-    }
-
-    // Curiosidades
-    const curiosidadesContainer = document.getElementById('curiosidadesGrid');
-    if (curiosidadesContainer) {
-        curiosidadesContainer.innerHTML = CURIOSIDADES_DATA.map(item => `
-            <div class="ositos-curiosity-card">
-                <span class="ositos-curiosity-icon">${item.icon}</span>
-                <h4>${item.title}</h4>
-                <p>${item.desc}</p>
-            </div>
-        `).join('');
-    }
-
-    // Lucide icons
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-}
-
-// ==========================================
-// PAGINACIÓN (Historia y Noticias)
-// ==========================================
-
-function updatePagination(section, totalPages, currentPage) {
-    let containerId = '';
-    if (section === 'historia') {
-        containerId = 'ositosPaginationHistoria';
-    } else if (section === 'noticias') {
-        containerId = 'ositosPaginationNoticias';
-    }
-    
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    if (totalPages <= 1) {
-        container.innerHTML = '';
-        return;
-    }
-    
-    let html = '';
-    html += `<button class="ositos-page-btn arrow ${currentPage === 1 ? 'disabled' : ''}" data-section="${section}" data-page="prev">‹</button>`;
-    
-    for (let i = 1; i <= totalPages; i++) {
-        html += `<button class="ositos-page-btn ${i === currentPage ? 'active' : ''}" data-section="${section}" data-page="${i}">${i}</button>`;
-    }
-    
-    html += `<button class="ositos-page-btn arrow ${currentPage === totalPages ? 'disabled' : ''}" data-section="${section}" data-page="next">›</button>`;
-    
-    container.innerHTML = html;
-    
-    container.querySelectorAll('.ositos-page-btn:not(.disabled)').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const section = btn.dataset.section;
-            const page = btn.dataset.page;
-            let newPage = currentPage;
-            
-            if (page === 'prev') {
-                newPage = Math.max(1, currentPage - 1);
-            } else if (page === 'next') {
-                newPage = Math.min(totalPages, currentPage + 1);
-            } else {
-                newPage = parseInt(page);
-            }
-            
-            if (section === 'historia') {
-                renderHistoriaPage(newPage);
-            } else if (section === 'noticias') {
-                renderNoticiasPage(newPage);
-            }
-        });
-    });
-}
-
-// ==========================================
-// INICIALIZACIÓN
-// ==========================================
-
-function init() {
-    loadFavorites();
-    updateCounters();
-    setupNavigation();
-    setupFilters();
-    setupExtrasMenu();
-    startFactRotation();
-
-    renderGrid();
-    renderHistoriaPage(1);
-    renderNoticiasPage(1);
-    renderExtras();
-
-    // Asegurar que la página de personajes está visible
-    switchPage('personajes');
-
-    // Modal
-    const modal = document.getElementById('ositosModal');
-    document.getElementById('ositosModalClose')?.addEventListener('click', closeModal);
-    modal?.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeModal();
-    });
-
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-
-    console.log('🧸 Ositos World iniciado!', state.characters.length, 'personajes');
-}
-
-// Ejecutar
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
+console.log('🧸 Ositos World iniciado!');
+console.log(`📚 ${chapters.length} capítulos`);
+console.log(`🧸 ${characters.length} personajes`);
+console.log(`🏰 ${places.length} lugares`);
+console.log(`📰 ${news.length} noticias`);
+console.log(`❤️ ${state.favorites.length} favoritos`);

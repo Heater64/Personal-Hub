@@ -2,37 +2,33 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- ✅ VIEWPORT OBLIGATORIO PARA MÓVILES -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Ositos World · Personajes</title>
-    <meta name="description" content="Conoce a todos los habitantes del mundo Puffy">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ositos World</title>
+    <meta name="description" content="Bienvenido a Ositos World, un pequeño lugar lleno de aventuras, personajes curiosos y muchas historias por descubrir.">
     <meta name="theme-color" content="#09142E">
     
-    <!-- ✅ HOJAS DE ESTILO -->
-    <link rel="stylesheet" href="../css/main.css">
-    <link rel="stylesheet" href="../css/pages/ositos-world.css">
-    
-    <!-- ✅ LUCIDE ICONS -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- ✅ FUENTES GOOGLE -->
+    <link rel="stylesheet" href="/css/pages/ositos-world.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- ✅ FAVICON -->
-    <link rel="icon" type="image/png" href="../assets/ositos/favicon.png">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧸</text></svg>">
 </head>
 <body data-sidebar-page="ositos-world">
 
-    <!-- ========================================== -->
-    <!-- OSITOS WORLD - CONTENEDOR PRINCIPAL        -->
-    <!-- ========================================== -->
     <main class="ositos-world-main">
 
         <!-- ===== NAVBAR SUPERIOR ===== -->
         <header class="ositos-navbar">
-            <a href="../index.html" class="ositos-logo-link">
+            <!-- BOTÓN VOLVER -->
+            <a href="../index.html" class="ositos-nav-back" id="navBack" aria-label="Volver">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                <span>Volver</span>
+            </a>
+
+            <a href="#" class="ositos-logo-link" id="logoLink">
                 <div class="ositos-logo">
                     <div class="ositos-logo-text">
                         <span class="ositos-logo-title">OSITOSWORLD</span>
@@ -43,30 +39,62 @@
             </a>
 
             <nav class="ositos-nav-menu">
-                <a href="../index.html" class="ositos-nav-link" data-page="home">
+                <a href="#" class="ositos-nav-link active" data-section="home">
                     <i data-lucide="home"></i>
                     <span>INICIO</span>
                 </a>
-                <a href="#" class="ositos-nav-link active" data-page="personajes">
-                    <i data-lucide="users"></i>
-                    <span>PERSONAJES</span>
-                </a>
-                <a href="#" class="ositos-nav-link" data-page="historia">
+                <a href="#" class="ositos-nav-link" data-section="historia">
                     <i data-lucide="book-open"></i>
                     <span>HISTORIA</span>
                 </a>
-                <a href="#" class="ositos-nav-link" data-page="noticias">
+                <a href="#" class="ositos-nav-link" data-section="personajes">
+                    <i data-lucide="users"></i>
+                    <span>PERSONAJES</span>
+                </a>
+                <a href="#" class="ositos-nav-link" data-section="mundo">
+                    <i data-lucide="map"></i>
+                    <span>MUNDO</span>
+                </a>
+                <a href="#" class="ositos-nav-link" data-section="noticias">
                     <i data-lucide="newspaper"></i>
                     <span>NOTICIAS</span>
                 </a>
-                <a href="#" class="ositos-nav-link" data-page="extras">
-                    <i data-lucide="package"></i>
-                    <span>EXTRAS</span>
-                </a>
             </nav>
+
+            <button class="ositos-hamburger" id="ositosHamburger" aria-label="Menú">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
 
             <div class="ositos-nav-spacer"></div>
         </header>
+
+        <!-- ===== MENÚ MÓVIL ===== -->
+        <div class="ositos-mobile-menu" id="ositosMobileMenu">
+            <nav class="ositos-mobile-nav">
+                <a href="#" class="ositos-mobile-nav-link active" data-section="home">
+                    <i data-lucide="home"></i>
+                    <span>INICIO</span>
+                </a>
+                <a href="#" class="ositos-mobile-nav-link" data-section="historia">
+                    <i data-lucide="book-open"></i>
+                    <span>HISTORIA</span>
+                </a>
+                <a href="#" class="ositos-mobile-nav-link" data-section="personajes">
+                    <i data-lucide="users"></i>
+                    <span>PERSONAJES</span>
+                </a>
+                <a href="#" class="ositos-mobile-nav-link" data-section="mundo">
+                    <i data-lucide="map"></i>
+                    <span>MUNDO</span>
+                </a>
+                <a href="#" class="ositos-mobile-nav-link" data-section="noticias">
+                    <i data-lucide="newspaper"></i>
+                    <span>NOTICIAS</span>
+                </a>
+            </nav>
+        </div>
 
         <!-- ===== CUERPO PRINCIPAL ===== -->
         <div class="ositos-body">
@@ -127,184 +155,17 @@
             </aside>
 
             <!-- ===== ZONA PRINCIPAL ===== -->
-            <section class="ositos-content">
-
-                <!-- ========== PERSONAJES ========== -->
-                <div class="ositos-page-content active" id="page-personajes">
-                    <div class="ositos-toolbar">
-                        <div class="ositos-toolbar-left">
-                            <select class="ositos-sort-select" id="sortSelect">
-                                <option value="name">Ordenar por defecto</option>
-                                <option value="favorite">Favoritos primero</option>
-                            </select>
-                        </div>
-                        <div class="ositos-toolbar-right">
-                            <button class="ositos-view-btn active" data-view="grid" title="Vista cuadrícula">
-                                <i data-lucide="grid-3x3"></i>
-                            </button>
-                            <button class="ositos-view-btn" data-view="list" title="Vista lista">
-                                <i data-lucide="list"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="ositos-grid" id="ositosGrid"></div>
-                    <div class="ositos-pagination" id="ositosPagination"></div>
-                </div>
-
-                <!-- ========== HISTORIA ========== -->
-                <div class="ositos-page-content" id="page-historia">
-                    <!-- Hero card -->
-                    <div class="ositos-hero-card">
-                        <div class="ositos-hero-left">
-                            <h1 class="ositos-hero-title"><span>Texto</span></h1>
-                            <p class="ositos-hero-text">
-                                Texto (imagen en el css)
-                            </p>
-                        </div>
-                        <div class="ositos-hero-right">
-                            <div class="ositos-hero-illustration">
-                                <span>🧸</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="ositos-section-header">
-                        <h2 class="ositos-section-title">LÍNEA DEL TIEMPO</h2>
-                        <span class="ositos-orange-curl"></span>
-                    </div>
-
-                    <div class="ositos-timeline-track">
-                        <div class="ositos-timeline-line"></div>
-                        <div class="ositos-timeline-cards" id="historiaGrid">
-                            <!-- Se llena con JS -->
-                        </div>
-                    </div>
-
-                    <div class="ositos-pagination" id="ositosPaginationHistoria"></div>
-                </div>
-
-                <!-- ========== NOTICIAS ========== -->
-                <div class="ositos-page-content" id="page-noticias">
-                    <div class="ositos-section-header">
-                        <h2 class="ositos-section-title">ÚLTIMAS NOTICIAS</h2>
-                        <span class="ositos-orange-curl"></span>
-                    </div>
-
-                    <div class="ositos-news-grid" id="noticiasGrid">
-                        <!-- Se llena con JS -->
-                    </div>
-
-                    <div class="ositos-pagination" id="ositosPaginationNoticias"></div>
-                </div>
-
-                <!-- ========== EXTRAS ========== -->
-                <div class="ositos-page-content" id="page-extras">
-                    <div class="ositos-extras-layout">
-                        <!-- Sidebar Extras -->
-                        <aside class="ositos-extras-sidebar">
-                            <h2 class="ositos-extras-title">EXTRAS</h2>
-                            <p class="ositos-extras-desc">Contenido divertido,<br>descargas y actividades.</p>
-                            
-                            <nav class="ositos-extras-menu">
-                                <button class="ositos-extras-menu-btn active" data-extra="juegos">
-                                    <i data-lucide="gamepad-2"></i>
-                                    <span>JUEGOS</span>
-                                </button>
-                                <button class="ositos-extras-menu-btn" data-extra="descargas">
-                                    <i data-lucide="download"></i>
-                                    <span>DESCARGAS</span>
-                                </button>
-                                <button class="ositos-extras-menu-btn" data-extra="coleccionables">
-                                    <i data-lucide="star"></i>
-                                    <span>COLECCIONABLES</span>
-                                </button>
-                                <button class="ositos-extras-menu-btn" data-extra="fondos">
-                                    <i data-lucide="image"></i>
-                                    <span>FONDOS</span>
-                                </button>
-                                <button class="ositos-extras-menu-btn" data-extra="curiosidades">
-                                    <i data-lucide="sparkles"></i>
-                                    <span>CURIOSIDADES</span>
-                                </button>
-                            </nav>
-
-                            <div class="ositos-extras-fact">
-                                <div class="ositos-fact-header">
-                                    <i data-lucide="lightbulb"></i>
-                                    <span>¿SABÍAS QUÉ?</span>
-                                </div>
-                                <p class="ositos-fact-text" id="ositosFactText">DATO CURIOSO</p>
-                                <div class="ositos-fact-icon">✨</div>
-                            </div>
-                        </aside>
-
-                        <div class="ositos-extras-content">
-                            <!-- JUEGOS -->
-                            <div class="ositos-extra-section active" id="extra-juegos">
-                                <div class="ositos-extra-header">
-                                    <h3>JUEGOS DIVERTIDOS</h3>
-                                    <div class="ositos-extra-underline"></div>
-                                </div>
-                                <div class="ositos-games-grid" id="juegosGrid">
-                                    <!-- Se llena con JS -->
-                                </div>
-                            </div>
-
-                            <!-- DESCARGAS -->
-                            <div class="ositos-extra-section" id="extra-descargas">
-                                <div class="ositos-extra-header">
-                                    <h3>DESCARGAS POPULARES</h3>
-                                    <div class="ositos-extra-underline"></div>
-                                </div>
-                                <div class="ositos-downloads-list" id="descargasList">
-                                    <!-- Se llena con JS -->
-                                </div>
-                            </div>
-
-                            <!-- COLECCIONABLES -->
-                            <div class="ositos-extra-section" id="extra-coleccionables">
-                                <div class="ositos-extra-header">
-                                    <h3>COLECCIONABLES</h3>
-                                    <div class="ositos-extra-underline"></div>
-                                </div>
-                                <div class="ositos-collectibles-grid" id="coleccionableGrid">
-                                    <!-- Se llena con JS -->
-                                </div>
-                            </div>
-
-                            <!-- FONDOS -->
-                            <div class="ositos-extra-section" id="extra-fondos">
-                                <div class="ositos-extra-header">
-                                    <h3>FONDOS DE PANTALLA</h3>
-                                    <div class="ositos-extra-underline"></div>
-                                </div>
-                                <div class="ositos-wallpapers-grid" id="fondosGrid">
-                                    <!-- Se llena con JS -->
-                                </div>
-                            </div>
-
-                            <!-- CURIOSIDADES -->
-                            <div class="ositos-extra-section" id="extra-curiosidades">
-                                <div class="ositos-extra-header">
-                                    <h3>CURIOSIDADES</h3>
-                                    <div class="ositos-extra-underline"></div>
-                                </div>
-                                <div class="ositos-curiosities-grid" id="curiosidadesGrid">
-                                    <!-- Se llena con JS -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            <section class="ositos-content" id="ositosContent">
+                <!-- El contenido se renderiza desde JavaScript -->
             </section>
+
         </div>
 
         <!-- ===== FOOTER ===== -->
         <footer class="ositos-footer">
             <span class="ositos-footer-text">Hecho con amor para mi princesa.</span>
             <div class="ositos-footer-social">
-                <a><span class="ositos-footer-text">👑✨</span></a>
+                <span class="ositos-footer-text">👑✨</span>
             </div>
             <span class="ositos-footer-heart">🤍</span>
         </footer>
@@ -319,12 +180,9 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="../js/core.js"></script>
-    <script src="../js/sidebar.js"></script>
-    <script type="module" src="../js/pages/ositos-world.js"></script>
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/js/data/ositos-characters.js"></script>
+    <script src="/js/pages/ositos-world.js"></script>
 </body>
 </html>

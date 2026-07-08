@@ -9,9 +9,9 @@ export const HOME_DATA = {
         // ─── NOTICIAS NUEVAS ───
         {
             id: 0,
-            date: "6 de julio de 2026",
-            title: "Nuevas razones añadidas",
-            description: "Ya tienes disponible nuevas razones en la sección de 'Razones por las que te amo'. ¡Échales un vistazo!",
+            date: "8 de julio de 2026",
+            title: "NUEVA SECCION AÑADIDA",
+            description: "Disfruta invesigando la nueva sección princesa.",
         },
 
         // ─── SEPARADOR ───
@@ -22,25 +22,31 @@ export const HOME_DATA = {
 
         // ─── NOTICIAS ANTIGUAS ───
         {
-            id: 0,
+            id: 1,
+            date: "6 de julio de 2026",
+            title: "Nuevas razones añadidas",
+            description: "Ya tienes disponible nuevas razones en la sección de 'Razones por las que te amo'. ¡Échales un vistazo!",
+        },
+        {
+            id: 2,
             date: "5 de julio de 2026",
             title: "🎬 Nuevo video en la sección Memes",
             description: "Se ha añadido un video especial en la carpeta 'Te amo👑' dentro de la sección de Memes. ¡No te lo pierdas! 🤍",
         },
         {
-            id: 1,
+            id: 3,
             date: "5 de julio de 2026",
             title: "📅 Calendario de experiencias activado",
             description: "El calendario ya está disponible. 31 días con sorpresas, juegos y momentos especiales.",
         },
         {
-            id: 2,
+            id: 4,
             date: "5 de julio de 2026",
             title: "🎵 Música para ti",
             description: "Se ha añadido una canción en la sección de música. ¡Escúchala! 🎧",
         },
         {
-            id: 3,
+            id: 5,
             date: "5 de julio de 2026",
             title: "☀️ Mal día",
             description: "Se ha añadido una foto nueva en la sección 'Mal día' para alegrarte el día. 🌸",

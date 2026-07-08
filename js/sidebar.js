@@ -13,7 +13,7 @@
     { key: 'thoseeyes', label: 'Those Eyes', icon: 'eye', href: 'pages/thoseeyes.html' },
     { key: 'series', label: 'Series', icon: 'tv', href: 'pages/series.html' },
     { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
-    { key: 'puffy', label: 'Puffy World', icon: 'star', href: 'pages/ositos-world.html' },  // 👈 NUEVO
+    { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: 'pages/ositos-world.html' },  // 👈 NUEVO
     { key: '4eso', label: 'Apuntes 4ESO', icon: 'book-open', href: 'https://web-4eso.vercel.app/dashboard.html' },
 ];
 
