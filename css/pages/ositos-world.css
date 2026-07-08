@@ -1669,3 +1669,98 @@ body[data-sidebar-page="ositos-world"] .ositos-world-main {
     }
 }
 
+/* ========================================== */
+/* ESTADÍSTICAS - INICIO                      */
+/* ========================================== */
+
+.ositos-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.ositos-stat-item {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ositos-stat-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.ositos-stat-icon {
+    font-size: 32px;
+    margin-bottom: 4px;
+}
+
+.ositos-stat-number {
+    font-size: 28px;
+    font-weight: 900;
+    color: #1E284B;
+    line-height: 1.2;
+}
+
+.ositos-stat-label {
+    font-size: 13px;
+    color: #5C6475;
+    font-weight: 600;
+}
+
+/* ===== RESPONSIVE - ESTADÍSTICAS ===== */
+/* Tablets y móviles grandes - 2 columnas */
+@media (max-width: 768px) {
+    .ositos-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+        margin-bottom: 28px !important;
+    }
+    
+    .ositos-stat-item {
+        padding: 16px 12px !important;
+        border-radius: 14px !important;
+    }
+    
+    .ositos-stat-icon {
+        font-size: 28px !important;
+    }
+    
+    .ositos-stat-number {
+        font-size: 22px !important;
+    }
+    
+    .ositos-stat-label {
+        font-size: 11px !important;
+    }
+}
+
+/* Móviles pequeños - 2 columnas */
+@media (max-width: 480px) {
+    .ositos-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 24px !important;
+    }
+    
+    .ositos-stat-item {
+        padding: 12px 8px !important;
+        border-radius: 12px !important;
+    }
+    
+    .ositos-stat-icon {
+        font-size: 24px !important;
+    }
+    
+    .ositos-stat-number {
+        font-size: 20px !important;
+    }
+    
+    .ositos-stat-label {
+        font-size: 10px !important;
+    }
+}

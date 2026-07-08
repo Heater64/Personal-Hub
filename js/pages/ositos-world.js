@@ -184,37 +184,37 @@ function renderHome() {
                 <span class="hero-icon">🧸</span>
                 <h1>Bienvenida a <span>Ositos World</span></h1>
                 <p>Un pequeño lugar lleno de aventuras, personajes curiosos y muchas historias por descubrir.</p>
-                <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
-                    <button class="btn-primary" onclick="openChapterPDF(${heroChapter ? heroChapter.id : 1})">
+                <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; flex-direction:column; align-items:center; max-width:400px; margin:0 auto;">
+                    <button class="btn-primary" onclick="openChapterPDF(${heroChapter ? heroChapter.id : 1})" style="width:100%; justify-content:center;">
                         📖 Empezar a leer
                     </button>
-                    <button class="btn-primary" style="background:rgba(255,255,255,0.2); box-shadow:none;" onclick="navigateTo('personajes')">
+                    <button class="btn-primary" style="background:rgba(255,255,255,0.15); box-shadow:none; width:100%; justify-content:center;" onclick="navigateTo('personajes')">
                         🧸 Conocer personajes
                     </button>
                 </div>
             </div>
 
             <!-- ESTADÍSTICAS RÁPIDAS -->
-            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:40px;">
-                <div style="background:white; border-radius:16px; padding:20px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
-                    <div style="font-size:32px;">📖</div>
-                    <div style="font-size:28px; font-weight:900; color:#1E284B;">${totalChapters}</div>
-                    <div style="font-size:13px; color:#5C6475;">Capítulos</div>
+            <div class="ositos-stats">
+                <div class="ositos-stat-item">
+                    <div class="ositos-stat-icon">📖</div>
+                    <div class="ositos-stat-number">${totalChapters}</div>
+                    <div class="ositos-stat-label">Capítulos</div>
                 </div>
-                <div style="background:white; border-radius:16px; padding:20px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
-                    <div style="font-size:32px;">🧸</div>
-                    <div style="font-size:28px; font-weight:900; color:#1E284B;">${totalCharacters}</div>
-                    <div style="font-size:13px; color:#5C6475;">Personajes</div>
+                <div class="ositos-stat-item">
+                    <div class="ositos-stat-icon">🧸</div>
+                    <div class="ositos-stat-number">${totalCharacters}</div>
+                    <div class="ositos-stat-label">Personajes</div>
                 </div>
-                <div style="background:white; border-radius:16px; padding:20px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
-                    <div style="font-size:32px;">🏰</div>
-                    <div style="font-size:28px; font-weight:900; color:#1E284B;">${totalPlaces}</div>
-                    <div style="font-size:13px; color:#5C6475;">Lugares</div>
+                <div class="ositos-stat-item">
+                    <div class="ositos-stat-icon">🏰</div>
+                    <div class="ositos-stat-number">${totalPlaces}</div>
+                    <div class="ositos-stat-label">Lugares</div>
                 </div>
-                <div style="background:white; border-radius:16px; padding:20px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
-                    <div style="font-size:32px;">❤️</div>
-                    <div style="font-size:28px; font-weight:900; color:#FF6B6B;">${totalFavs}</div>
-                    <div style="font-size:13px; color:#5C6475;">Favoritos</div>
+                <div class="ositos-stat-item">
+                    <div class="ositos-stat-icon">❤️</div>
+                    <div class="ositos-stat-number">${totalFavs}</div>
+                    <div class="ositos-stat-label">Favoritos</div>
                 </div>
             </div>
         </div>

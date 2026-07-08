@@ -11,7 +11,7 @@ export const HOME_DATA = {
             id: 0,
             date: "8 de julio de 2026",
             title: "NUEVA SECCION AÑADIDA",
-            description: "Disfruta invesigando la nueva sección princesa.",
+            description: "Disfruta invesigando la nueva sección princesa. Aún esta vacía pero estará llena de sorpresas y cosas nuevas. ¡No te la pierdas! 🤍",
         },
 
         // ─── SEPARADOR ───
