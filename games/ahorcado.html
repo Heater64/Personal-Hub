@@ -5,91 +5,298 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ahorcado</title>
     <link rel="stylesheet" href="../css/main.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        /* ===== ESTILOS GLOBALES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f1115;
+            color: #e8e6e3;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
         .game-container {
-            max-width: 500px;
-            margin: 40px auto;
-            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            margin: 20px auto;
+            padding: 32px 28px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 24px;
             text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .game-container h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+
+        .game-container .subtitle {
+            color: #6e6a67;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        /* ===== CATEGORÍAS ===== */
+        .categories-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 4px 0;
+        }
+
+        .category-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 30px;
+            background: transparent;
+            color: #6e6a67;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: 'Inter', sans-serif;
+            white-space: nowrap;
+        }
+
+        .category-btn i {
+            width: 16px;
+            height: 16px;
+        }
+
+        .category-btn:hover {
+            border-color: rgba(198,90,58,0.4);
+            color: #e8e6e3;
+        }
+
+        .category-btn.active {
+            background: rgba(198,90,58,0.15);
+            border-color: #c65a3a;
+            color: #c65a3a;
+        }
+
+        .category-btn .count {
+            font-size: 0.65rem;
+            opacity: 0.5;
+            margin-left: 4px;
+        }
+
+        /* ===== JUEGO ===== */
+        .hangman-display {
+            font-size: 4rem;
+            margin: 8px 0 4px;
+            line-height: 1.2;
+        }
+
+        .status-msg {
+            font-size: 0.95rem;
+            color: #6e6a67;
+            margin: 4px 0 12px;
+        }
+
+        .status-msg .hint {
+            color: #9ca3af;
+            font-size: 0.8rem;
+            display: block;
+            margin-top: 2px;
         }
 
         .word-display {
-            font-size: 2.5rem;
-            letter-spacing: 8px;
-            margin: 24px 0;
+            font-size: 2.2rem;
+            letter-spacing: 6px;
+            margin: 16px 0 24px;
             font-family: 'Courier New', monospace;
+            color: #e8e6e3;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .word-display .letter-slot {
+            display: inline-block;
+            min-width: 28px;
+            border-bottom: 2px solid rgba(255,255,255,0.15);
+            padding-bottom: 4px;
+            font-size: 2rem;
+            text-align: center;
+        }
+
+        .word-display .space-slot {
+            display: inline-block;
+            min-width: 18px;
+        }
+
+        .word-display .letter-slot.revealed-by-hint {
+            color: #c65a3a;
+            border-bottom-color: #c65a3a;
+            animation: hintPop 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+        }
+
+        @keyframes hintPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
         }
 
         .letters-grid {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 8px;
-            margin: 20px 0;
+            gap: 6px;
+            margin: 16px 0 20px;
         }
 
         .letter-btn {
-            width: 40px;
-            height: 40px;
-            border: 1px solid rgba(255,255,255,0.1);
+            width: 38px;
+            height: 38px;
+            border: 1px solid rgba(255,255,255,0.08);
             border-radius: 8px;
-            background: rgba(255,255,255,0.05);
-            color: var(--umbra-light);
+            background: rgba(255,255,255,0.03);
+            color: #e8e6e3;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .letter-btn:hover {
-            border-color: var(--accent-coral);
-            background: rgba(198,90,58,0.1);
+        .letter-btn:hover:not(.used) {
+            border-color: rgba(198,90,58,0.4);
+            background: rgba(198,90,58,0.08);
+            transform: translateY(-2px);
         }
 
         .letter-btn.used {
-            opacity: 0.3;
+            opacity: 0.25;
             cursor: not-allowed;
-            transform: scale(0.9);
+            transform: scale(0.92);
         }
 
         .letter-btn.correct {
             border-color: #4caf50;
-            background: rgba(76,175,80,0.2);
+            background: rgba(76,175,80,0.15);
+            opacity: 0.7;
         }
 
         .letter-btn.wrong {
             border-color: #ff4d4d;
-            background: rgba(255,77,77,0.2);
+            background: rgba(255,77,77,0.12);
+            opacity: 0.7;
         }
 
-        .hangman-display {
-            font-size: 3rem;
-            margin: 16px 0;
+        .letter-btn.hint-revealed {
+            border-color: #c65a3a;
+            background: rgba(198,90,58,0.2);
+            color: #c65a3a;
+        }
+
+        .actions-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .btn-ghost {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 40px;
+            padding: 8px 20px;
+            color: #6e6a67;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.8rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-ghost i {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-ghost:hover {
+            border-color: rgba(198,90,58,0.3);
+            color: #e8e6e3;
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost.reset {
+            color: #ff4d4d;
+        }
+        .btn-ghost.reset:hover {
+            border-color: #ff4d4d;
+            color: #ff4d4d;
+        }
+
+        .btn-ghost.hint-btn {
+            color: #c65a3a;
+        }
+        .btn-ghost.hint-btn:hover {
+            border-color: #c65a3a;
+            color: #c65a3a;
+        }
+
+        .btn-ghost.hint-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
         }
 
         .back-btn {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-top: 20px;
-            padding: 10px 24px;
-            border: 1px solid rgba(255,255,255,0.1);
+            margin-top: 16px;
+            padding: 8px 20px;
+            border: 1px solid rgba(255,255,255,0.06);
             border-radius: 40px;
-            color: var(--umbra-light);
+            color: #6e6a67;
             text-decoration: none;
             transition: all 0.2s;
+            font-size: 0.8rem;
+        }
+
+        .back-btn i {
+            width: 16px;
+            height: 16px;
         }
 
         .back-btn:hover {
-            border-color: var(--accent-coral);
-            color: var(--accent-coral);
+            border-color: #c65a3a;
+            color: #c65a3a;
             transform: translateX(-3px);
         }
 
-        .status-msg {
-            font-size: 1.1rem;
-            margin: 12px 0;
-        }
-
+        /* ===== MODAL ===== */
         .game-message {
             position: fixed;
             top: 0;
@@ -110,7 +317,7 @@
 
         .game-message-content {
             background: linear-gradient(180deg, rgba(25,25,28,0.98), rgba(15,15,18,0.98));
-            border: 1px solid var(--accent-border);
+            border: 1px solid rgba(198,90,58,0.3);
             border-radius: 32px;
             padding: 40px 48px;
             max-width: 420px;
@@ -121,31 +328,48 @@
 
         .game-message-content .icon {
             font-size: 3.5rem;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .game-message-content h2 {
             font-family: 'Playfair Display', serif;
-            font-size: 1.6rem;
-            margin-bottom: 12px;
-            color: var(--umbra-light);
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: #e8e6e3;
+        }
+
+        .game-message-content .answer {
+            color: #c65a3a;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 4px 0 16px;
+            letter-spacing: 2px;
         }
 
         .game-message-content p {
-            color: var(--umbra-ash);
-            margin-bottom: 24px;
+            color: #6e6a67;
+            margin-bottom: 20px;
             line-height: 1.6;
         }
 
         .game-message-content .btn-primary {
-            background: var(--accent-coral);
+            background: #c65a3a;
             border: none;
-            padding: 12px 32px;
+            padding: 10px 32px;
             border-radius: 40px;
             color: white;
             cursor: pointer;
             font-size: 0.9rem;
             transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .game-message-content .btn-primary i {
+            width: 18px;
+            height: 18px;
         }
 
         .game-message-content .btn-primary:hover {
@@ -154,136 +378,465 @@
         }
 
         @keyframes modalPop {
-            from {
-                opacity: 0;
-                transform: scale(0.9);
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 500px) {
+            .game-container {
+                padding: 20px 16px;
+                border-radius: 16px;
             }
-            to {
-                opacity: 1;
-                transform: scale(1);
+            .game-container h2 {
+                font-size: 1.5rem;
+            }
+            .word-display {
+                font-size: 1.5rem;
+                letter-spacing: 4px;
+            }
+            .word-display .letter-slot {
+                min-width: 20px;
+                font-size: 1.5rem;
+            }
+            .letter-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 0.75rem;
+            }
+            .game-message-content {
+                padding: 24px 16px;
+            }
+            .categories-bar {
+                gap: 6px;
+            }
+            .category-btn {
+                font-size: 0.7rem;
+                padding: 4px 12px;
+            }
+            .hangman-display {
+                font-size: 3rem;
+            }
+            .btn-ghost {
+                padding: 6px 14px;
+                font-size: 0.7rem;
             }
         }
 
-        @media (max-width: 500px) {
-            .game-message-content {
-                padding: 28px 20px;
+        @media (max-width: 400px) {
+            .letter-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 0.65rem;
             }
             .word-display {
-                font-size: 1.8rem;
-                letter-spacing: 4px;
+                font-size: 1.2rem;
+                letter-spacing: 2px;
             }
-            .letter-btn {
-                width: 34px;
-                height: 34px;
-                font-size: 0.85rem;
+            .word-display .letter-slot {
+                min-width: 16px;
+                font-size: 1.2rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <h2>🔤 Ahorcado</h2>
-        <p style="color: var(--umbra-ash);">Adivina la palabra secreta</p>
 
+    <div class="game-container">
+
+        <!-- ===== TÍTULO ===== -->
+        <h2>🔤 Ahorcado</h2>
+        <p class="subtitle">Elige una categoría y adivina la palabra</p>
+
+        <!-- ===== CATEGORÍAS ===== -->
+        <div class="categories-bar" id="categoriesBar">
+            <!-- Se genera con JS -->
+        </div>
+
+        <!-- ===== JUEGO ===== -->
         <div class="hangman-display" id="hangmanDisplay">👑</div>
-        <div class="status-msg" id="statusMsg">Intentos: 0/6</div>
-        <div class="word-display" id="wordDisplay">_ _ _ _ _</div>
+        <div class="status-msg" id="statusMsg">
+            Intentos: 0/6
+            <span class="hint" id="hintText"></span>
+        </div>
+
+        <div class="word-display" id="wordDisplay"></div>
 
         <div class="letters-grid" id="lettersGrid"></div>
 
-        <button onclick="resetGame()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 40px; padding: 8px 20px; color: var(--umbra-light); cursor: pointer; margin-top: 8px;">
-            🔄 Reiniciar
-        </button>
+        <div class="actions-row">
+            <button class="btn-ghost hint-btn" id="hintBtn" onclick="revealHint()">
+                <i data-lucide="lightbulb"></i>
+                <span>Pista</span>
+                <span id="hintCount"></span>
+            </button>
+            <button class="btn-ghost reset" onclick="resetGame()">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Reiniciar</span>
+            </button>
+        </div>
 
         <br>
-        <a href="/pages/calendario.html" class="back-btn">← Volver al calendario</a>
+        <a href="/pages/calendario.html" class="back-btn">
+            <i data-lucide="arrow-left"></i>
+            Volver al calendario
+        </a>
     </div>
 
-    <!-- Modal de mensaje -->
+    <!-- ===== MODAL ===== -->
     <div class="game-message" id="gameMessage">
         <div class="game-message-content">
             <div class="icon" id="msgIcon">🎉</div>
             <h2 id="msgTitle">¡Felicidades!</h2>
+            <div class="answer" id="msgAnswer"></div>
             <p id="msgText">Has ganado el juego.</p>
-            <button class="btn-primary" id="msgBtn">Entendido</button>
+            <button class="btn-primary" id="msgBtn">
+                <i data-lucide="check"></i>
+                Entendido
+            </button>
         </div>
     </div>
 
     <script>
-        const words = ['amor', 'corazon', 'beso', 'abrazos', 'princesa', 'eterno', 'luz', 'sonrisa'];
+        // ==========================================
+        // DATOS DE PALABRAS POR CATEGORÍA
+        // ==========================================
+
+        const categories = {
+            'disney': {
+                label: 'Disney',
+                icon: 'film',
+                hint: 'Películas de Disney',
+                words: [
+                    'mulan', 'luca', 'wish', 'elemental', 'hercules', 'tarzan',
+                    'pocahontas', 'frozen', 'moana', 'ralph', 'tiana y el sapo',
+                    'la bella y la bestia', 'peter pan', 'aladdin', 'el rey leon', 'lilo y stich',
+                    'la sirenita'
+                ]
+            },
+            'peliculas': {
+                label: 'Películas',
+                icon: 'clapperboard',
+                hint: 'Películas famosas de todos los géneros',
+                words: [
+                    'avatar', 'avengers end game', 'titanic', 'star wars', 'frozen',
+                    'el rey leon', 'harry potter', 'spiderman no way home',
+                    'mario bros', 'iron man', 'capitan america', 'la sirenita'
+                ]
+            },
+            'casa': {
+                label: 'Casa',
+                icon: 'home',
+                hint: 'Cosas que encuentras en una casa',
+                words: [
+                    'mesa', 'silla', 'armario', 'cama', 'lampara', 'ventana',
+                    'puerta', 'espejo', 'alfombra', 'cuadro', 'libro', 'reloj',
+                    'telefono', 'ordenador', 'television', 'nevera', 'horno',
+                    'microondas', 'lavadora', 'secadora', 'plancha', 'aspiradora',
+                    'escoba', 'jabon', 'toalla', 'cortina', 'percha',
+                    'zapatero', 'bastidor', 'perchero', 'sabanas', 'cojin', 'manta',
+                    'edredon', 'almohada', 'cortina de ducha', 'alfombrilla'
+                ]
+            },
+            'animales': {
+                label: 'Animales',
+                icon: 'paw-print',
+                hint: 'Animales de todo tipo',
+                words: [
+                    'perro', 'gato', 'elefante', 'jirafa', 'leon', 'tigre',
+                    'oso panda', 'koala', 'canguro', 'delfin', 'ballena',
+                    'tiburon', 'ornitorrinco', 'pinguino', 'aguila', 'halcon',
+                    'buitre', 'colibri', 'mariposa', 'abeja', 'hormiga',
+                    'escorpion', 'araña', 'camaleon', 'iguana', 'serpiente',
+                    'tortuga', 'cocodrilo', 'hipopotamo', 'rinoceronte',
+                    'cebra', 'gacela', 'ñu', 'suricata', 'lemur', 'lince'
+                ]
+            },
+            'ciencias': {
+                label: 'Ciencias',
+                icon: 'earth',
+                hint: 'Palabras relacionadas con la ciencia',
+                words: [
+                    'atomo', 'molecula', 'celula', 'genetica', 'evolucion',
+                    'fotosintesis', 'mitosis', 'meiosis', 'adn', 'arn',
+                    'proteinas', 'carbohidratos', 'lipidos', 'enzima', 'hormona',
+                    'neuronas', 'sinapsis', 'cerebro', 'corazon', 'pulmon',
+                    'mitocondria', 'cloroplasto', 'membrana', 'nucleo',
+                    'gravedad', 'electricidad', 'magnetismo', 'energia',
+                    'materia', 'espacio', 'tiempo', 'planeta', 'estrella',
+                    'galaxia', 'agujero negro', 'supernova'
+                ]
+            },
+            'geografia': {
+                label: 'Geografía',
+                icon: 'globe',
+                hint: 'Países y ciudades',
+                words: [
+                    'españa', 'francia', 'italia', 'alemania', 'portugal',
+                    'marruecos', 'argelia', 'egipto', 'senegal', 'ghana',
+                    'argentina', 'chile', 'peru', 'colombia', 'mexico',
+                    'estados unidos', 'canada', 'japon', 'china', 'india',
+                    'australia', 'nueva zelanda', 'islandia', 'noruega',
+                    'suecia', 'dinamarca', 'holanda', 'belgica', 'suiza',
+                    'paises bajos', 'reino unido', 'irlanda', 'polonia',
+                    'grecia', 'turquia', 'rusia', 'ucrania', 'amazonas',
+                    'nilo', 'ganges', 'danubio', 'rin', 'everest', 'alpes'
+                ]
+            }
+        };
+
+        // ==========================================
+        // ESTADO DEL JUEGO
+        // ==========================================
+
+        let currentCategory = 'disney';
+        let wordsPool = [];
         let selectedWord = '';
         let guessedLetters = [];
         let wrongGuesses = 0;
-        const maxWrong = 6;
+        const maxWrong = 7;
+        let usedHints = 0;
+        const maxHints = 4;
+        let hintRevealedLetters = [];
+        let gameOver = false;
 
-        function showMessage(icon, title, text) {
-            const modal = document.getElementById('gameMessage');
-            document.getElementById('msgIcon').textContent = icon || '🎉';
-            document.getElementById('msgTitle').textContent = title || '¡Bien hecho!';
-            document.getElementById('msgText').textContent = text || '';
-            modal.classList.add('show');
+        // ==========================================
+        // DOM REFERENCIAS
+        // ==========================================
+
+        const categoriesBar = document.getElementById('categoriesBar');
+        const hangmanDisplay = document.getElementById('hangmanDisplay');
+        const statusMsg = document.getElementById('statusMsg');
+        const hintText = document.getElementById('hintText');
+        const wordDisplay = document.getElementById('wordDisplay');
+        const lettersGrid = document.getElementById('lettersGrid');
+        const gameMessage = document.getElementById('gameMessage');
+        const msgIcon = document.getElementById('msgIcon');
+        const msgTitle = document.getElementById('msgTitle');
+        const msgAnswer = document.getElementById('msgAnswer');
+        const msgText = document.getElementById('msgText');
+        const msgBtn = document.getElementById('msgBtn');
+        const hintBtn = document.getElementById('hintBtn');
+        const hintCount = document.getElementById('hintCount');
+
+        // ==========================================
+        // FUNCIONES DE CATEGORÍAS
+        // ==========================================
+
+        function renderCategories() {
+            const keys = Object.keys(categories);
+            categoriesBar.innerHTML = keys.map(key => `
+                <button class="category-btn ${key === currentCategory ? 'active' : ''}" data-category="${key}">
+                    <i data-lucide="${categories[key].icon || 'book'}"></i>
+                    ${categories[key].label}
+                    <span class="count">(${categories[key].words.length})</span>
+                </button>
+            `).join('');
+
+            categoriesBar.querySelectorAll('.category-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const cat = this.dataset.category;
+                    if (cat !== currentCategory) {
+                        currentCategory = cat;
+                        resetGame();
+                    }
+                });
+            });
         }
 
-        function hideMessage() {
-            document.getElementById('gameMessage').classList.remove('show');
-        }
-
-        document.getElementById('msgBtn').addEventListener('click', hideMessage);
+        // ==========================================
+        // FUNCIONES DEL JUEGO
+        // ==========================================
 
         function initGame() {
-            selectedWord = words[Math.floor(Math.random() * words.length)];
+            const categoryData = categories[currentCategory];
+            wordsPool = categoryData.words || [];
+            if (wordsPool.length === 0) wordsPool = ['error'];
+            selectedWord = wordsPool[Math.floor(Math.random() * wordsPool.length)];
             guessedLetters = [];
             wrongGuesses = 0;
+            usedHints = 0;
+            hintRevealedLetters = [];
+            gameOver = false;
+            hintBtn.disabled = false;
             renderGame();
         }
 
+        function calculateHints() {
+            const letters = selectedWord.split('').filter(c => c !== ' ');
+            const uniqueLetters = [...new Set(letters)];
+
+            // Si la palabra tiene menos de 4 letras únicas, dar 1 pista
+            if (uniqueLetters.length <= 4) return 1;
+
+            // Si tiene 5-6 letras únicas, dar 2 pistas
+            if (uniqueLetters.length <= 6) return 2;
+
+            // Si tiene 7-9 letras únicas, dar 3 pistas
+            if (uniqueLetters.length <= 9) return 3;
+
+            // Si tiene 10+ letras únicas, dar 4 pistas (máximo)
+            return 4;
+        }
+
+        function getRandomUnrevealedLetter() {
+            const letters = selectedWord.split('').filter(c => c !== ' ');
+            const unrevealed = [...new Set(letters)].filter(l => !guessedLetters.includes(l) && !hintRevealedLetters.includes(l));
+            if (unrevealed.length === 0) return null;
+            return unrevealed[Math.floor(Math.random() * unrevealed.length)];
+        }
+
+        function revealHint() {
+            if (gameOver) return;
+
+            const maxHintsForWord = calculateHints();
+
+            if (usedHints >= maxHintsForWord) {
+                hintText.textContent = `💡 Ya usaste todas las pistas disponibles (${maxHintsForWord}/${maxHintsForWord})`;
+                return;
+            }
+
+            const letter = getRandomUnrevealedLetter();
+            if (!letter) {
+                hintText.textContent = '💡 No hay más letras para revelar';
+                return;
+            }
+
+            // Revelar la letra
+            hintRevealedLetters.push(letter);
+            usedHints++;
+
+            // Actualizar contador
+            updateHintCounter();
+
+            // Renderizar para mostrar la letra revelada
+            renderGame();
+
+            // Efecto visual adicional
+            hintText.textContent = `💡 Letra revelada: "${letter}" (${usedHints}/${maxHintsForWord})`;
+
+            // Marcar la letra en el teclado
+            document.querySelectorAll('.letter-btn').forEach(btn => {
+                if (btn.textContent === letter) {
+                    btn.classList.add('hint-revealed');
+                }
+            });
+
+            // Si se han usado todas las pistas, deshabilitar el botón
+            if (usedHints >= maxHintsForWord) {
+                hintBtn.disabled = true;
+                hintText.textContent = `💡 Pistas agotadas (${maxHintsForWord}/${maxHintsForWord})`;
+            }
+
+            // Verificar si se ha ganado después de revelar
+            const allLetters = selectedWord.split('').filter(c => c !== ' ');
+            const allGuessed = allLetters.every(letter => guessedLetters.includes(letter) || hintRevealedLetters.includes(letter));
+
+            if (allGuessed && wrongGuesses < maxWrong && selectedWord.length > 0) {
+                gameOver = true;
+                setTimeout(() => {
+                    showModal('🎉', '¡Ganaste!', `"${selectedWord}"`, 'Siempre ganas porque eres la mejor. 🤍');
+                    statusMsg.innerHTML = '🎉 ¡Felicidades! Has ganado.';
+                }, 400);
+            }
+        }
+
+        function updateHintCounter() {
+            const maxHintsForWord = calculateHints();
+            hintCount.textContent = `(${usedHints}/${maxHintsForWord})`;
+        }
+
         function renderGame() {
-            const display = document.getElementById('wordDisplay');
-            display.textContent = selectedWord
-                .split('')
-                .map(letter => guessedLetters.includes(letter) ? letter : '_')
-                .join(' ');
+            // Mostrar estado
+            statusMsg.innerHTML = `Intentos: ${wrongGuesses}/${maxWrong}<span class="hint" id="hintText"></span>`;
 
-            document.getElementById('statusMsg').textContent = `Intentos: ${wrongGuesses}/${maxWrong}`;
+            // Hangman
+            const hangmanFaces = ['👑', '🙂', '😮', '😰', '😱', '💀', '💀', '💀'];
+            const emoji = hangmanFaces[Math.min(wrongGuesses, hangmanFaces.length - 1)];
+            hangmanDisplay.textContent = emoji;
 
-            const hangman = ['👑', '🙂', '😮', '😰', '😱', '💀'];
-            document.getElementById('hangmanDisplay').textContent = hangman[Math.min(wrongGuesses, hangman.length - 1)];
+            // Palabra
+            const allRevealed = [...guessedLetters, ...hintRevealedLetters];
+            const displayWord = selectedWord.split('').map(char => {
+                if (char === ' ') return { isSpace: true, char: ' ' };
+                const isRevealed = allRevealed.includes(char);
+                const isHint = hintRevealedLetters.includes(char) && !guessedLetters.includes(char);
+                return {
+                    isSpace: false,
+                    char: char,
+                    revealed: isRevealed,
+                    isHint: isHint
+                };
+            });
 
-            const grid = document.getElementById('lettersGrid');
-            grid.innerHTML = '';
+            wordDisplay.innerHTML = displayWord.map(item => {
+                if (item.isSpace) {
+                    return `<span class="space-slot">&nbsp;</span>`;
+                }
+                const hintClass = item.isHint ? 'revealed-by-hint' : '';
+                return `<span class="letter-slot ${hintClass}">${item.revealed ? item.char : '_'}</span>`;
+            }).join('');
+
+            // Actualizar contador de pistas
+            updateHintCounter();
+
+            // Letras
             const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+            lettersGrid.innerHTML = '';
             alphabet.split('').forEach(letter => {
                 const btn = document.createElement('button');
                 btn.className = 'letter-btn';
                 btn.textContent = letter;
 
-                if (guessedLetters.includes(letter)) {
+                const isGuessed = guessedLetters.includes(letter);
+                const isHintRevealed = hintRevealedLetters.includes(letter);
+
+                if (isGuessed || isHintRevealed) {
                     btn.classList.add('used');
                     if (selectedWord.includes(letter)) {
                         btn.classList.add('correct');
-                    } else {
+                    } else if (isGuessed && !selectedWord.includes(letter)) {
                         btn.classList.add('wrong');
+                    }
+                    if (isHintRevealed && !isGuessed) {
+                        btn.classList.add('hint-revealed');
                     }
                 }
 
                 btn.addEventListener('click', () => guessLetter(letter));
-                grid.appendChild(btn);
+                lettersGrid.appendChild(btn);
             });
 
-            const wordComplete = selectedWord.split('').every(letter => guessedLetters.includes(letter));
-            if (wordComplete && wrongGuesses < maxWrong) {
+            // Comprobar victoria
+            const allLetters = selectedWord.split('').filter(c => c !== ' ');
+            const allGuessed = allLetters.every(letter => allRevealed.includes(letter));
+
+            if (allGuessed && wrongGuesses < maxWrong && selectedWord.length > 0 && !gameOver) {
+                gameOver = true;
                 setTimeout(() => {
-                    showMessage('🎉', '¡Ganaste, TU SIEMPRE GANAS!', `La palabra era: "${selectedWord}"`);
-                }, 300);
-                document.getElementById('statusMsg').textContent = '🎉 ¡Felicidades!';
-            } else if (wrongGuesses >= maxWrong) {
-                document.getElementById('statusMsg').textContent = `💀 Perdiste. La palabra era: "${selectedWord}"`;
+                    showModal('🎉', '¡Ganaste!', `"${selectedWord}"`, 'Siempre ganas porque eres la mejor. 🤍');
+                    statusMsg.innerHTML = '🎉 ¡Felicidades! Has ganado.';
+                }, 400);
+            } else if (wrongGuesses >= maxWrong && !gameOver) {
+                gameOver = true;
+                setTimeout(() => {
+                    showModal('💀', 'Has perdido', `"${selectedWord}"`, 'No pasa nada, vuelve a intentarlo. ¡Tú puedes!');
+                    statusMsg.innerHTML = `💀 Perdiste. La palabra era: "${selectedWord}"`;
+                }, 400);
+            }
+
+            // Actualizar hintText si no hay mensaje de pista
+            if (!hintText.textContent || hintText.textContent === '') {
+                const maxHintsForWord = calculateHints();
+                const remaining = maxHintsForWord - usedHints;
+                hintText.textContent = `💡 Pistas disponibles: ${remaining}`;
             }
         }
 
         function guessLetter(letter) {
             if (guessedLetters.includes(letter)) return;
             if (wrongGuesses >= maxWrong) return;
+            if (gameOver) return;
 
             guessedLetters.push(letter);
 
@@ -295,10 +848,66 @@
         }
 
         function resetGame() {
+            hideModal();
             initGame();
+            renderCategories();
+            // Actualizar Lucide después del renderizado
+            setTimeout(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }, 50);
         }
 
+        // ==========================================
+        // MODAL
+        // ==========================================
+
+        function showModal(icon, title, answer, text) {
+            msgIcon.textContent = icon || '🎉';
+            msgTitle.textContent = title || '¡Bien hecho!';
+            msgAnswer.textContent = answer || '';
+            msgText.textContent = text || '';
+            gameMessage.classList.add('show');
+            // Actualizar Lucide en el modal
+            setTimeout(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }, 50);
+        }
+
+        function hideModal() {
+            gameMessage.classList.remove('show');
+        }
+
+        msgBtn.addEventListener('click', hideModal);
+        gameMessage.addEventListener('click', (e) => {
+            if (e.target === gameMessage) hideModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideModal();
+            // Tecla H para pista
+            if (e.key === 'h' || e.key === 'H') {
+                revealHint();
+            }
+        });
+
+        // ==========================================
+        // INICIO
+        // ==========================================
+
+        renderCategories();
         initGame();
+
+        // Inicializar Lucide
+        setTimeout(() => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }, 100);
     </script>
+
 </body>
 </html>
