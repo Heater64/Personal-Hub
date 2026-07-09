@@ -8,6 +8,12 @@ export const HOME_DATA = {
     news: [
         // ─── NOTICIAS NUEVAS ───
         {
+            id: 7,
+            date: "9 de julio de 2026",
+            title: "Contenido EXTRA en el juego 'MEMORIA'",
+            description: "¡Prueba la nueva versión del juego!",
+        },
+        {
             id: 6,
             date: "9 de julio de 2026",
             title: "Contenido EXTRA en el juego 'AHORCADO'",
