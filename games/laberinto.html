@@ -492,10 +492,10 @@
                     for (let x = 0; x < cols; x++) {
                         if (maze[y][x] === 1) {
                             // Paredes
-                            ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                            ctx.fillStyle = 'rgba(255,255,255,0.14)';
                             ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-                            ctx.strokeStyle = 'rgba(255,255,255,0.015)';
-                            ctx.lineWidth = 0.5;
+                            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                            ctx.lineWidth = 0.8;
                             ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
                         } else {
                             // Camino
