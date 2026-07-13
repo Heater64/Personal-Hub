@@ -1,5 +1,6 @@
 // js/firebase-config.js
 // Configuración completa de Firebase (Auth, Firestore, Storage)
+// Con sesión persistente y soporte para Email + Google
 
 console.log('🔧 Iniciando Firebase config...');
 
@@ -15,45 +16,86 @@ const firebaseConfig = {
 
 // Variable global para saber si Firebase está listo
 let firebaseReady = false;
+let authReady = false;
 
 // Función para inicializar Firebase
 function initFirebase() {
-    // Verificar si firebase ya está disponible (cargado por script)
     if (typeof firebase !== 'undefined') {
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
             console.log('✅ Firebase inicializado desde script externo');
         }
-        
+
         window.auth = firebase.auth();
         window.db = firebase.firestore();
-        
+
         firebaseReady = true;
+
+        // ==========================================
+        // PERSISTENCIA DE SESIÓN: LOCAL (sobrevive al cerrar navegador)
+        // ==========================================
+        window.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+            .then(() => {
+                authReady = true;
+                console.log('✅ Auth persistence: LOCAL (sesión persistente)');
+            })
+            .catch((err) => {
+                authReady = true;
+                console.error('❌ Error configurando persistence:', err);
+            });
+
         console.log('✅ Servicios de Firebase disponibles');
         return true;
     }
-    
-    // Si no está disponible, esperar
+
     console.warn('⏳ Firebase no cargado aún, esperando...');
     return false;
 }
 
-// Intentar inicializar inmediatamente (los scripts de Firebase cargan antes en el HTML)
+// Intentar inicializar inmediatamente
 if (!initFirebase()) {
-    // Fallback: esperar a que la página termine de cargar
-    window.addEventListener('load', function() {
+    window.addEventListener('load', function () {
         initFirebase();
     });
 }
 
-// Helper para verificar autenticación
+// ==========================================
+// FUNCIONES DE AUTENTICACIÓN
+// ==========================================
+
+/** Iniciar sesión con email y contraseña */
+async function loginWithEmail(email, password) {
+    if (!window.auth) throw new Error('Firebase Auth no disponible');
+    const result = await window.auth.signInWithEmailAndPassword(email, password);
+    return result.user;
+}
+
+/** Cerrar sesión */
+async function logoutUser() {
+    if (!window.auth) throw new Error('Firebase Auth no disponible');
+    await window.auth.signOut();
+}
+
+/** Obtener usuario actual (síncrono) */
+function getCurrentUser() {
+    if (!window.auth) return null;
+    return window.auth.currentUser;
+}
+
+/** Verificar si el usuario actual es admin */
+function isAdminUser(user) {
+    if (!user || !user.email) return false;
+    return user.email === 'admin@personalhub.com';
+}
+
+/** Helper para autenticación */
 function requireAuth() {
     return new Promise((resolve, reject) => {
         if (!window.auth) {
             reject(new Error('Firebase Auth no está disponible'));
             return;
         }
-        
+
         const unsubscribe = window.auth.onAuthStateChanged(user => {
             unsubscribe();
             if (user) {
@@ -65,21 +107,38 @@ function requireAuth() {
     });
 }
 
-// Verificar si Firebase está listo (para usar en async/await)
+/** Esperar a que Firebase esté listo */
 async function waitForFirebase() {
     return new Promise((resolve) => {
         if (firebaseReady && window.db) {
             resolve(true);
             return;
         }
-        
+
         const checkInterval = setInterval(() => {
             if (firebaseReady && window.db) {
                 clearInterval(checkInterval);
                 resolve(true);
             }
         }, 100);
-        
+
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve(false);
+        }, 5000);
+    });
+}
+
+/** Esperar a que Auth esté listo con persistencia */
+async function waitForAuth() {
+    if (authReady && window.auth) return true;
+    return new Promise((resolve) => {
+        const checkInterval = setInterval(() => {
+            if (authReady && window.auth) {
+                clearInterval(checkInterval);
+                resolve(true);
+            }
+        }, 100);
         setTimeout(() => {
             clearInterval(checkInterval);
             resolve(false);
@@ -91,24 +150,35 @@ async function waitForFirebase() {
 if (typeof window !== 'undefined') {
     window.requireAuth = requireAuth;
     window.waitForFirebase = waitForFirebase;
+    window.waitForAuth = waitForAuth;
     window.firebaseReady = () => firebaseReady;
+    window.loginWithEmail = loginWithEmail;
+    window.logoutUser = logoutUser;
+    window.getCurrentUser = getCurrentUser;
+    window.isAdminUser = isAdminUser;
 }
 
-/** Carga catálogo de regalos desde Firestore (opcional; fallback: gifts.json) */
-async function loadGiftsFromFirebase() {
-    if (!window.db) return null;
-    try {
-        const doc = await window.db.collection('config').doc('gifts').get();
-        if (doc.exists) return doc.data();
-    } catch (err) {
-        console.warn('loadGiftsFromFirebase:', err);
+// ==========================================
+// AUTO-CREACIÓN DE PERFIL AL INICIAR SESIÓN
+// ==========================================
+function setupProfileTrigger() {
+    if (typeof window.auth === 'undefined' || !window.auth) {
+        setTimeout(setupProfileTrigger, 300);
+        return;
     }
-    return null;
+
+    window.auth.onAuthStateChanged(function (user) {
+        if (user && typeof ProfileSystem !== 'undefined') {
+            ProfileSystem.ensureProfile(user);
+        }
+    });
 }
 
-if (typeof window !== 'undefined') {
-    window.loadGiftsFromFirebase = loadGiftsFromFirebase;
+// Iniciar después de que el DOM cargue
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupProfileTrigger);
+} else {
+    setTimeout(setupProfileTrigger, 500);
 }
-
 
 console.log('📁 firebase-config.js cargado');

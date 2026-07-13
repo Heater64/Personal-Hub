@@ -1,0 +1,27 @@
+﻿{
+  "name": "Personal Hub",
+  "short_name": "Hub",
+  "description": "Tu lanzadera de proyectos personales",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f0f10",
+  "theme_color": "#0c0b0b",
+  "categories": ["lifestyle", "personalization", "utilities"],
+  "lang": "es",
+  "icons": [
+    {
+      "src": "assets/Gemini_Generated_Image_6wkfln6wk.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/Gemini_Generated_Image_6wkfln6wk.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

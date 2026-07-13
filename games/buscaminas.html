@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -388,7 +388,8 @@
             .cell { font-size: 0.65rem; }
         }
     </style>
-</head>
+    <link rel="manifest" href="../manifest.json">
+
 <body>
     <div class="game-container">
         <div class="game-header">
@@ -788,5 +789,20 @@
             window.setDifficulty = setDifficulty;
         })();
     </script>
-</body>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/core/profile.js"></script>
+    <script src="../js/core/authGuard.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js')
+        .then(function(reg) { console.log('SW registered:', reg.scope); })
+        .catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+
 </html>
+
+

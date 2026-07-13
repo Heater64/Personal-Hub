@@ -1,6 +1,8 @@
 {
   "dependencies": {
-    "firebase": "^12.13.0",
+    "firebase": "^12.13.0"
+  },
+  "devDependencies": {
     "playwright": "^1.59.1"
   },
   "name": "personal-hub",

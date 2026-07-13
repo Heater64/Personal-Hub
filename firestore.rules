@@ -1,87 +1,129 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Configuraciones editables - solo admin
-    match /config_razones/data {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+
+    // ==========================================
+    // HELPERS
+    // ==========================================
+    function isAuth() {
+      return request.auth != null;
     }
-    match /config_openwhen/data {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+
+    function isAdmin() {
+      return isAuth() && request.auth.token.email == 'admin@personalhub.com';
     }
-    match /config_maldia_frases/data {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
     }
-    match /config_maldia_mensajes/data {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-    }
-    match /config_gifts/catalog {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-    }
-    match /config_canciones_recuerdan/data {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-    }
-    match /config_canciones_gustan/data {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-    }
-    match /config/sidebar {
-      allow read: if true;
-      allow write: if true;
-    }
-    match /config/podio {
-      allow read: if true;
-      allow write: if true;
-    }
-    
-    // Progreso de usuarios
-    match /users/{userId}/progress/{doc} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Calendario - lectura pública, escritura solo admin
-    match /calendario/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-    }
-    match /calendario/giftProgress/items/{giftId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-    }
-    
-    // Estadísticas - solo admin puede leer
-    match /stats_visits/{doc} {
-      allow read: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-      allow write: if true;
-    }
-    match /stats_sessions/{doc} {
-      allow read: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-      allow write: if true;
-    }
-    match /stats_admin_actions/{doc} {
-      allow read: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
-      allow write: if true;
-    }
-    
-    // Admin general
+
+    // ==========================================
+    // ADMIN — solo admin puede leer/escribir
+    // ==========================================
     match /admin/{document=**} {
-      allow read, write: if request.auth != null && request.auth.token.email == 'admin@personalhub.com';
+      allow read, write: if isAdmin();
     }
-    
-    // Series tracker
-    match /seriesTrackerProgress/{userId}/series/{seriesId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // ==========================================
+    // USUARIOS — cada uno solo sobre su propio UID
+    // ==========================================
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
     }
-    
-    // Series y películas (biblioteca)
+
+    // ==========================================
+    // PROGRESO DE SERIES — por usuario
+    // ==========================================
+    match /seriesTrackerProgress/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ==========================================
+    // CONFIGURACIONES — admin escribe, auth lee
+    // ==========================================
+    match /config_razones/data {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config_openwhen/data {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config_maldia_frases/data {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config_maldia_mensajes/data {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config_gifts/catalog {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config_noticias/data {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config_canciones_recuerdan/data {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config_canciones_gustan/data {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config/sidebar {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /config/podio {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // CALENDARIO — admin escribe, auth lee
+    // ==========================================
+    match /calendario/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // SERIES Y PELÍCULAS (biblioteca)
+    // ==========================================
     match /seriesData/{doc} {
-      allow read: if true;
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // ESTADÍSTICAS — admin lee, cualquiera escribe
+    // ==========================================
+    match /stats_visits/{doc} {
+      allow read: if isAdmin();
       allow write: if true;
     }
+
+    match /stats_sessions/{doc} {
+      allow read: if isAdmin();
+      allow write: if true;
+    }
+
+    match /stats_admin_actions/{doc} {
+      allow read: if isAdmin();
+      allow write: if true;
+    }
+
   }
 }

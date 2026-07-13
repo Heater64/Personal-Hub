@@ -3,7 +3,7 @@ import { initHubGrid } from '../ui/hubGrid.js';
 import { HOME_DATA } from '../data/homeData.js';
 import { escapeHtml } from '../modules/shared/dom.js';
 
-function boot() {
+async function boot() {
     // Cargar grid de secciones
     initHubGrid('#hubGrid');
     
@@ -12,8 +12,8 @@ function boot() {
         initDayCounter('homeDayCounter', '2025-07-03', 'días juntos🤍👑');
     }
 
-    // ========== CARGAR NOTICIAS ==========
-    renderNews();
+    // ========== CARGAR NOTICIAS (desde Firestore si existe) ==========
+    await loadNewsFromFirestore();
 
     // ========== CARGAR DATOS CURIOSOS ==========
     renderCuriosities();
@@ -22,13 +22,28 @@ function boot() {
     setupNewsToggle();
 }
 
-// js/pages/home.js - Función renderNews con separador
+async function loadNewsFromFirestore() {
+    if (!window.db) {
+        renderNews(HOME_DATA.news);
+        return;
+    }
+    try {
+        var snap = await window.db.collection('config_noticias').doc('data').get();
+        if (snap.exists && snap.data().news && snap.data().news.length > 0) {
+            renderNews(snap.data().news);
+            return;
+        }
+    } catch (e) {
+        console.warn('No se pudieron cargar noticias de Firestore, usando locales:', e);
+    }
+    renderNews(HOME_DATA.news);
+}
 
-function renderNews() {
+function renderNews(newsData) {
     const container = document.getElementById('newsContent');
     if (!container) return;
 
-    const news = HOME_DATA.news || [];
+    const news = newsData || HOME_DATA.news || [];
     
     if (news.length === 0) {
         container.innerHTML = `

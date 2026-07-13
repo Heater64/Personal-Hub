@@ -8,12 +8,11 @@ let cachedCatalog = null;
 export async function loadGiftsCatalog(options = {}) {
     if (cachedCatalog && !options.force) return cachedCatalog;
 
-    const fromFirebase = options.preferFirebase && typeof window.loadGiftsFromFirebase === 'function';
-    if (fromFirebase) {
+    if (window.db && options.preferFirebase) {
         try {
-            const remote = await window.loadGiftsFromFirebase();
-            if (remote?.gifts?.length) {
-                cachedCatalog = normalizeCatalog(remote);
+            var doc = await window.db.collection('config_gifts').doc('catalog').get();
+            if (doc.exists && doc.data().gifts && doc.data().gifts.length) {
+                cachedCatalog = normalizeCatalog(doc.data());
                 return cachedCatalog;
             }
         } catch (err) {

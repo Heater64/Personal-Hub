@@ -57,6 +57,9 @@ const dom = {
 };
 
 const COL = 'seriesData';
+const PROGRESS_COL = 'seriesProgress'; // subcolección en users/{uid}/progress/seriesProgress
+
+let userProgressCache = {};
 
 async function getDB() {
   if (window.db) return window.db;
@@ -71,15 +74,41 @@ async function getDB() {
   throw new Error('Firestore no inicializado');
 }
 
-async function ensureFirebaseAuth() {
-  const auth = window.auth || (typeof firebase !== 'undefined' && firebase.auth ? firebase.auth() : null);
-  if (!auth || auth.currentUser) return true;
+function getUserUid() {
+  var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  return user ? user.uid : null;
+}
+
+// ========== PROGRESO POR USUARIO ==========
+async function loadUserProgress() {
+  var uid = getUserUid();
+  if (!uid || !window.db) return {};
   try {
-    await auth.signInAnonymously();
-    window.auth = auth;
+    var snap = await window.db.collection('users').doc(uid).collection('progress').doc('series').get();
+    if (snap.exists) {
+      userProgressCache = snap.data().items || {};
+      return userProgressCache;
+    }
+  } catch (e) {
+    console.warn('Error cargando progreso de usuario:', e);
+  }
+  userProgressCache = {};
+  return {};
+}
+
+async function saveUserProgress(seriesId, episodeNum) {
+  var uid = getUserUid();
+  if (!uid || !window.db) return false;
+  try {
+    userProgressCache[seriesId] = episodeNum;
+    await window.db.collection('users').doc(uid).collection('progress').doc('series').set({
+      items: userProgressCache,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
     return true;
-  } catch (error) {
-    return true; // write rules allow without auth
+  } catch (e) {
+    console.error('Error guardando progreso de usuario:', e);
+    return false;
   }
 }
 
@@ -104,19 +133,12 @@ function getTotal(item) {
 
 // ========== PROGRESO ==========
 async function saveProgress(seriesId, episodeNum) {
-  try {
-    await ensureFirebaseAuth();
-    await (await getDB()).collection(COL).doc(seriesId).update({
-      progreso: episodeNum,
-      updatedAt: new Date().toISOString()
-    });
+  var ok = await saveUserProgress(seriesId, episodeNum);
+  if (ok) {
     const item = catalog.find(i => i.id === seriesId);
     if (item) item.progreso = episodeNum;
-    return true;
-  } catch (e) {
-    console.error('Error guardando progreso:', e);
-    return false;
   }
+  return ok;
 }
 
 // ========== MARCAR EPISODIO ==========
@@ -449,11 +471,21 @@ function stopPlayer() {
 // ========== CRUD ==========
 async function loadData() {
   try {
-    const snap = await (await getDB()).collection(COL).get();
-    catalog = snap.docs.map(doc => {
-      const data = doc.data();
+    var snap = await (await getDB()).collection(COL).get();
+    var rawCatalog = snap.docs.map(function (doc) {
+      var data = doc.data();
       return { id: doc.id, ...data, progreso: data.progreso || 0 };
     });
+
+    // Cargar progreso del usuario y fusionarlo
+    var userProg = await loadUserProgress();
+    catalog = rawCatalog.map(function (item) {
+      if (userProg[item.id] !== undefined) {
+        item.progreso = userProg[item.id];
+      }
+      return item;
+    });
+
     await loadPodio();
     await renderGrid();
   } catch (e) {
@@ -464,7 +496,6 @@ async function loadData() {
 
 async function deleteContent(id) {
   try {
-    await ensureFirebaseAuth();
     await (await getDB()).collection(COL).doc(id).delete();
     await loadData();
     showToast('Contenido eliminado');
@@ -476,7 +507,6 @@ async function deleteContent(id) {
 
 async function deleteAllContent() {
   try {
-    await ensureFirebaseAuth();
     const snap = await (await getDB()).collection(COL).get();
     const batch = (await getDB()).batch();
     snap.docs.forEach(doc => batch.delete(doc.ref));
@@ -532,7 +562,6 @@ async function saveContent() {
   };
 
   try {
-    await ensureFirebaseAuth();
     if (dom.formDocId.value) {
       await (await getDB()).collection(COL).doc(dom.formDocId.value).update(payload);
       showToast('Actualizado correctamente');
@@ -579,7 +608,6 @@ async function loadPodio() {
 
 async function savePodio() {
   try {
-    await ensureFirebaseAuth();
     await (await getDB()).collection('config').doc('podio').set({
       series: podioData.series, movies: podioData.movies,
       updatedAt: new Date().toISOString()

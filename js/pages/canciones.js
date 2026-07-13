@@ -257,8 +257,25 @@ function switchSongList(listType) {
     });
 }
 
-function initCanciones() {
+async function loadSongsFromFirestore() {
+    if (!window.db) return false;
+    try {
+        var snap = await window.db.collection('config_canciones_recuerdan').doc('data').get();
+        if (snap.exists && snap.data().songs && snap.data().songs.length > 0) {
+            window.songsData = snap.data().songs;
+            return true;
+        }
+    } catch (e) {
+        console.warn('No se pudieron cargar canciones de Firestore:', e);
+    }
+    return false;
+}
+
+async function initCanciones() {
     audioPlayer = document.getElementById('audioPlayer');
+
+    await loadSongsFromFirestore();
+
     if (!audioPlayer || !window.songsData) return;
 
     activeSongList = window.songsData;
