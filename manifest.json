@@ -1,4 +1,4 @@
-﻿{
+{
   "id": "/",
   "name": "Personal Hub",
   "short_name": "Personal Hub",
@@ -43,13 +43,13 @@
       "name": "Razones",
       "short_name": "Razones",
       "url": "/pages/razones.html",
-      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png", "sizes": "192x192" }]
     },
     {
       "name": "Calendario",
       "short_name": "Calendario",
       "url": "/pages/calendario.html",
-      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png", "sizes": "192x192" }]
     }
   ]
 }
