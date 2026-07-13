@@ -38,26 +38,12 @@ function initFirebase() {
     return false;
 }
 
-// Intentar inicializar inmediatamente
+// Intentar inicializar inmediatamente (los scripts de Firebase cargan antes en el HTML)
 if (!initFirebase()) {
-    // Si no está disponible, esperar a que se cargue el script
+    // Fallback: esperar a que la página termine de cargar
     window.addEventListener('load', function() {
-        setTimeout(function() {
-            initFirebase();
-        }, 500);
+        initFirebase();
     });
-    
-    // También intentar cada segundo (por si tarda)
-    let attempts = 0;
-    const interval = setInterval(function() {
-        attempts++;
-        if (initFirebase() || attempts > 10) {
-            clearInterval(interval);
-            if (attempts > 10 && !firebaseReady) {
-                console.error('❌ Firebase no se pudo cargar después de 10 intentos');
-            }
-        }
-    }, 1000);
 }
 
 // Helper para verificar autenticación

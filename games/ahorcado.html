@@ -295,6 +295,8 @@
             color: #c65a3a;
             transform: translateX(-3px);
         }
+        .game-back-nav { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+        .game-back-nav .back-btn { margin-top: 0; }
 
         /* ===== MODAL ===== */
         .game-message {
@@ -477,10 +479,10 @@
         </div>
 
         <br>
-        <a href="/pages/calendario.html" class="back-btn">
-            <i data-lucide="arrow-left"></i>
-            Volver al calendario
-        </a>
+        <div class="game-back-nav">
+            <a href="/pages/juegos.html" class="back-btn">← Juegos</a>
+            <a href="/pages/calendario.html" class="back-btn">← Calendario</a>
+        </div>
     </div>
 
     <!-- ===== MODAL ===== -->

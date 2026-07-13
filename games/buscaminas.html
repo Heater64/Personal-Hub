@@ -279,6 +279,8 @@
             transition: all 0.2s;
         }
         .back-btn:hover { border-color: var(--coral); color: var(--coral); transform: translateX(-3px); }
+        .game-back-nav { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+        .game-back-nav .back-btn { margin-top: 0; }
 
         .game-message {
             position: fixed; inset: 0; background: rgba(6,6,8,0.92);
@@ -420,7 +422,10 @@
             <button class="btn-primary" id="resetBtn">🔄 Nuevo juego</button>
         </div>
 
-        <a href="/pages/calendario.html" class="back-btn">← Volver al calendario</a>
+        <div class="game-back-nav">
+            <a href="/pages/juegos.html" class="back-btn">← Juegos</a>
+            <a href="/pages/calendario.html" class="back-btn">← Calendario</a>
+        </div>
     </div>
 
     <div class="toast" id="toast"></div>

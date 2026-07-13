@@ -202,7 +202,7 @@
 }
 
 .day-card.locked .day-type-badge {
-    display: none !important;
+    display: none;
 }
 
 /* --- ESTADO: DÍA DISPONIBLE SIN ABRIR (available) - VERDE --- */
@@ -333,33 +333,20 @@
 
 /* --- CANDADO GRANDE PARA DÍAS BLOQUEADOS --- */
 .day-card.locked .day-status {
-    font-size: 2rem !important;
-    color: rgba(255, 255, 255, 0.3) !important;
-}
-
-/* ==========================================
-   BADGE DE CATEGORÍA - FORZADO
-   ========================================== */
-.day-type-badge {
-    display: inline-block !important;
-    font-size: 0.7rem !important;
-    padding: 3px 12px !important;
-}
-
-.day-card.locked .day-type-badge {
-    display: none !important;
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.3);
 }
 
 @media (max-width: 480px) {
     .day-type-badge {
-        font-size: 0.55rem !important;
-        padding: 2px 8px !important;
-        margin-top: 2px !important;
+        font-size: 0.55rem;
+        padding: 2px 8px;
+        margin-top: 2px;
     }
-    .day-card { padding: 12px !important; border-radius: 18px; }
+    .day-card { padding: 12px; border-radius: 18px; }
     .day-number { font-size: clamp(1.6rem, 5vw, 2.2rem); }
     .day-status { font-size: 0.8rem; }
-    .day-card.locked .day-status { font-size: 1.4rem !important; }
+    .day-card.locked .day-status { font-size: 1.4rem; }
 }
 
 /* ==========================================
@@ -784,13 +771,6 @@
     .day-card { border-radius: 22px; padding: 14px; }
 }
 
-@media (max-width: 480px) {
-    .day-card { border-radius: 18px; padding: 12px; }
-    .day-number { font-size: clamp(1.6rem, 5vw, 2.2rem); }
-    .day-status { font-size: 0.8rem; }
-    .day-card.locked .day-status { font-size: 1.4rem !important; }
-}
-
 /* Nombre del regalo debajo del número */
 .day-gift-name {
     font-size: 0.55rem;
@@ -807,13 +787,13 @@
 }
 
 .day-card.locked .day-gift-name {
-    opacity: 0.3 !important;
-    color: rgba(255,255,255,0.2) !important;
+    opacity: 0.3;
+    color: rgba(255,255,255,0.2);
 }
 
 @media (max-width: 480px) {
     .day-gift-name {
-        font-size: 0.45rem !important;
+        font-size: 0.45rem;
         margin-top: 1px;
     }
 }

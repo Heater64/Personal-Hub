@@ -22,7 +22,6 @@ body {
   font-weight: 300;
   line-height: 1.6;
   letter-spacing: 0.02em;
-  padding: var(--space-md);
 }
 
 a {
@@ -76,7 +75,7 @@ h3 {
 }
 
 .page {
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
 }
 
@@ -130,8 +129,4 @@ i[data-lucide] {
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-@media (max-width: 768px) {
-  body {
-    padding: var(--space-sm);
-  }
-}
+

@@ -1,6 +1,7 @@
 // js/pages/home.js
 import { initHubGrid } from '../ui/hubGrid.js';
 import { HOME_DATA } from '../data/homeData.js';
+import { escapeHtml } from '../modules/shared/dom.js';
 
 function boot() {
     // Cargar grid de secciones
@@ -102,22 +103,24 @@ function setupNewsToggle() {
     const toggleBtn = document.getElementById('newsToggle');
     if (!toggleBtn) return;
 
+    const news = HOME_DATA.news.filter(item => item.type !== 'separator');
+    const visibleCount = 3;
+
     toggleBtn.addEventListener('click', () => {
         const isExpanded = toggleBtn.dataset.expanded === 'true';
-        const hiddenItems = document.querySelectorAll('.news-item.news-hidden');
-        
-        if (isExpanded) {
-            // Colapsar
-            hiddenItems.forEach(el => el.classList.add('news-hidden'));
-            toggleBtn.innerHTML = '<i data-lucide="chevron-down"></i>';
-            toggleBtn.dataset.expanded = 'false';
-        } else {
-            // Expandir
-            hiddenItems.forEach(el => el.classList.remove('news-hidden'));
-            toggleBtn.innerHTML = '<i data-lucide="chevron-up"></i>';
-            toggleBtn.dataset.expanded = 'true';
-        }
-        
+        const allItems = document.querySelectorAll('.news-item');
+
+        allItems.forEach((el, i) => {
+            if (i >= visibleCount) {
+                el.classList.toggle('news-hidden', isExpanded);
+            }
+        });
+
+        toggleBtn.innerHTML = isExpanded
+            ? '<i data-lucide="chevron-down"></i>'
+            : '<i data-lucide="chevron-up"></i>';
+        toggleBtn.dataset.expanded = isExpanded ? 'false' : 'true';
+
         if (typeof lucide !== 'undefined') {
             lucide.createIcons({ root: toggleBtn });
         }
@@ -144,18 +147,6 @@ function renderCuriosities() {
     if (typeof lucide !== 'undefined') {
         lucide.createIcons({ root: container });
     }
-}
-
-// --- Utilidad ---
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        if (m === '"') return '&quot;';
-        return m;
-    });
 }
 
 // Ejecutar

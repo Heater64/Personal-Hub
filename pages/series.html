@@ -26,38 +26,28 @@
 
     <!-- Header -->
     <header class="cine-header">
-      <h1>Nuestro Cine</h1>
-      <p>Series y películas · Marca tu progreso</p>
+      <div class="cine-header-top">
+        <div class="cine-view-tabs">
+          <button class="cine-view-tab active" data-view="catalog">Catálogo</button>
+          <button class="cine-view-tab" data-view="podium">Podio</button>
+        </div>
+        <button class="btn-danger btn-sm" id="btnEliminarTodo" title="Eliminar todo">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </div>
+
+      <div class="cine-header-bar">
+        <div class="search-wrapper">
+          <i data-lucide="search" class="search-icon"></i>
+          <input type="text" id="searchInput" class="search-input" placeholder="Buscar título...">
+        </div>
+        <div class="filter-chips" id="filterBtns">
+          <button class="filter-chip active" data-filter="todo">Todo</button>
+          <button class="filter-chip" data-filter="serie">Series</button>
+          <button class="filter-chip" data-filter="pelicula">Películas</button>
+        </div>
+      </div>
     </header>
-
-    <!-- Vistas: Catálogo / Podio -->
-    <div class="cine-view-tabs">
-      <button class="cine-view-tab active" data-view="catalog">Catálogo</button>
-      <button class="cine-view-tab" data-view="podium">Podio</button>
-    </div>
-
-    <!-- Barra de acciones -->
-    <div class="cine-actions">
-      <button class="btn-primary" id="btnAnadir">
-        <i data-lucide="plus"></i> Añadir
-      </button>
-      <button class="btn-danger" id="btnEliminarTodo">
-        <i data-lucide="trash-2"></i> Eliminar todo
-      </button>
-    </div>
-
-    <!-- Buscador y filtros -->
-    <div class="filters-bar">
-      <div class="search-wrapper">
-        <i data-lucide="search" class="search-icon"></i>
-        <input type="text" id="searchInput" class="search-input" placeholder="Buscar título...">
-      </div>
-      <div class="filter-chips" id="filterBtns">
-        <button class="filter-chip active" data-filter="todo">Todo</button>
-        <button class="filter-chip" data-filter="serie">Series</button>
-        <button class="filter-chip" data-filter="pelicula">Películas</button>
-      </div>
-    </div>
 
     <!-- Grid de contenido -->
     <div class="catalog-grid" id="contentGrid"></div>
@@ -136,12 +126,9 @@
         <input type="url" id="fWeb" class="form-input" placeholder="https://...">
       </div>
 
-      <div class="episodes-section">
-        <div class="episodes-header">
-          <span>Episodios</span>
-          <button type="button" id="btnAddEpisodio" class="btn-secondary btn-sm">+ Añadir episodio</button>
-        </div>
-        <div id="episodiosList" class="episodes-list"></div>
+      <div class="form-group">
+        <label>Total de episodios (solo series)</label>
+        <input type="number" id="fTotalEpisodios" class="form-input" placeholder="Ej: 24" min="0" value="0">
       </div>
 
       <div class="form-actions">
@@ -196,94 +183,22 @@
   </div>
 </div>
 
-<!-- ========== WIDGET FLOTANTE DE SEGUIMIENTO ========== -->
-<button class="floating-tracker-btn" id="floatingTrackerBtn" title="Mi cuaderno de seguimiento">
-  <i data-lucide="notebook-pen"></i>
-  <span class="floating-tracker-badge" id="trackerBadge">0</span>
-</button>
+<!-- MODAL PROGRESO DE EPISODIOS -->
+<div class="modal-overlay" id="episodeProgressModal" style="display: none;">
+  <div class="modal-content modal-form ep-progress-modal">
+    <button class="close-modal" id="closeEpProgressBtn">✕</button>
+    <h2 id="epProgressTitle">Episodios</h2>
 
-<div class="floating-tracker-panel" id="floatingTrackerPanel" style="display: none;">
-  <div class="tracker-header">
-    <div class="tracker-title">
-      <i data-lucide="notebook-pen"></i>
-      <span>Mi cuaderno de seguimiento</span>
+    <div class="ep-progress-actions">
+      <button id="epMarkAllBtn" class="btn-secondary btn-sm"><i data-lucide="check-square"></i> Marcar todos</button>
+      <button id="epUnmarkAllBtn" class="btn-secondary btn-sm"><i data-lucide="square"></i> Desmarcar todos</button>
     </div>
-    <button class="tracker-close" id="closeTrackerBtn">
-      <i data-lucide="x"></i>
-    </button>
-  </div>
 
-  <div class="tracker-search">
-    <i data-lucide="search"></i>
-    <input type="text" id="trackerSearchInput" placeholder="Buscar serie...">
-  </div>
+    <div id="epProgressList" class="ep-progress-list"></div>
 
-  <div class="tracker-list" id="trackerList">
-    <!-- Series cargadas dinámicamente -->
-  </div>
-
-  <div class="tracker-footer">
-    <button class="tracker-add-btn" id="trackerAddSeriesBtn">
-      <i data-lucide="plus"></i> Añadir serie manual
-    </button>
-  </div>
-</div>
-
-<!-- Modal para añadir serie manual al tracker -->
-<div class="tracker-modal" id="trackerAddModal" style="display: none;">
-  <div class="tracker-modal-content">
-    <div class="tracker-modal-header">
-      <h3><i data-lucide="tv"></i> Añadir serie manual</h3>
-      <button class="tracker-modal-close" id="closeTrackerModalBtn">
-        <i data-lucide="x"></i>
-      </button>
-    </div>
-    <div class="tracker-modal-body">
-      <div class="tracker-form-group">
-        <label>Nombre de la serie</label>
-        <input type="text" id="trackerSerieNombre" placeholder="Ej: Dragon Ball, One Piece..." class="tracker-input">
-      </div>
-      <div class="tracker-form-group">
-        <label>Total de episodios</label>
-        <input type="number" id="trackerSerieTotal" placeholder="Ej: 153" class="tracker-input" min="1" value="1">
-      </div>
-      <div class="tracker-form-group">
-        <label>URL de imagen (opcional)</label>
-        <input type="text" id="trackerSeriePoster" placeholder="https://..." class="tracker-input">
-      </div>
-    </div>
-    <div class="tracker-modal-footer">
-      <button class="tracker-btn-secondary" id="cancelTrackerModalBtn">Cancelar</button>
-      <button class="tracker-btn-primary" id="saveTrackerSerieBtn">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal para ver episodios de una serie -->
-<div class="tracker-modal" id="trackerEpisodiosModal" style="display: none;">
-  <div class="tracker-modal-content tracker-modal-episodios">
-    <div class="tracker-modal-header">
-      <h3 id="trackerEpisodiosTitle"><i data-lucide="list"></i> Episodios</h3>
-      <button class="tracker-modal-close" id="closeTrackerEpisodiosBtn">
-        <i data-lucide="x"></i>
-      </button>
-    </div>
-    <div class="tracker-modal-body">
-      <div class="tracker-episodios-actions">
-        <button id="trackerMarcarTodosBtn" class="tracker-btn-small">
-          <i data-lucide="check-square"></i> Marcar todos
-        </button>
-        <button id="trackerDesmarcarTodosBtn" class="tracker-btn-small">
-          <i data-lucide="square"></i> Desmarcar todos
-        </button>
-      </div>
-      <div class="tracker-episodios-list" id="trackerEpisodiosList">
-        <!-- Episodios cargados dinámicamente -->
-      </div>
-    </div>
-    <div class="tracker-modal-footer">
-      <div class="tracker-progress-summary" id="trackerProgressSummary"></div>
-      <button class="tracker-btn-primary" id="closeTrackerEpisodiosModalBtn">Cerrar</button>
+    <div class="ep-progress-footer">
+      <span id="epProgressSummary">0/0</span>
+      <button class="btn-primary btn-sm" id="closeEpProgressModalBtn">Cerrar</button>
     </div>
   </div>
 </div>

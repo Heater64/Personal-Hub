@@ -38,6 +38,8 @@
             transition: all 0.2s;
         }
         .back-btn:hover { border-color: var(--accent-coral); color: var(--accent-coral); transform: translateX(-3px); }
+        .game-back-nav { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+        .game-back-nav .back-btn { margin-top: 0; }
         .game-message {
             position: fixed; inset: 0; background: rgba(8,8,9,0.92);
             backdrop-filter: blur(16px); display: none; align-items: center;
@@ -86,7 +88,10 @@
             <button onclick="resetGame()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:12px 32px; border-radius:40px; color:var(--umbra-light); cursor:pointer;">🔄 Reiniciar</button>
         </div>
 
-        <a href="/pages/calendario.html" class="back-btn">← Volver al calendario</a>
+        <div class="game-back-nav">
+            <a href="/pages/juegos.html" class="back-btn">← Juegos</a>
+            <a href="/pages/calendario.html" class="back-btn">← Calendario</a>
+        </div>
     </div>
 
     <div class="game-message" id="gameMessage">

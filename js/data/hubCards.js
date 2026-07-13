@@ -56,6 +56,14 @@ export const HUB_CARDS = [
         icon: 'mail'
     },
     {
+        id: 'juegos',
+        title: 'Juegos',
+        description: 'Todos los juegos del calendario en un solo lugar.',
+        href: 'pages/juegos.html',
+        icon: 'gamepad-2',
+        footer: { icon: 'unlock', text: 'Se desbloquean en el calendario' }
+    },
+    {
         id: 'calendario',
         title: 'Calendario',
         description: 'Casillas con sorpresas pequeñas, recuerdos y retos bonitos.',

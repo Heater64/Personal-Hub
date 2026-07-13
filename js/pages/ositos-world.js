@@ -170,7 +170,6 @@ function showOsitosMessage(text) {
 
 function renderHome() {
     const heroChapter = chapters[0];
-    const latestNews = news[0];
     const featuredCharacters = characters.slice(0, 4);
     const totalChapters = chapters.length;
     const totalCharacters = characters.length;
@@ -282,12 +281,12 @@ function openChapterPDF(id) {
     const prev = ch.previous ? chapters.find(c => c.id === ch.previous) : null;
     const next = ch.next ? chapters.find(c => c.id === ch.next) : null;
     
-    const charLinks = (ch.characters || []).map(name => {
+    const charLinks = (ch.characters || []).filter(Boolean).map(name => {
         const char = characters.find(c => c.name === name);
         return char ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openCharacter('${char.id}')">${name}</span>` : `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
     }).join('');
     
-    const placeLinks = (ch.places || []).map(name => {
+    const placeLinks = (ch.places || []).filter(Boolean).map(name => {
         const place = places.find(p => p.name === name);
         return place ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openPlaceModal('${place.id}')">${name}</span>` : `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
     }).join('');
@@ -298,6 +297,7 @@ function openChapterPDF(id) {
         </div>
         <h2 class="ositos-modal-name">Capítulo ${ch.id}: ${ch.title}</h2>
         
+        ${ch.pdfUrl ? `
         <div style="width:100%; margin:12px 0;">
             <iframe src="${ch.pdfUrl}" style="width:100%; height:500px; border:none; border-radius:12px; background:#f5f5f5;"></iframe>
             <div style="text-align:center; margin-top:8px;">
@@ -306,6 +306,7 @@ function openChapterPDF(id) {
                 </a>
             </div>
         </div>
+        ` : ''}
         
         ${charLinks ? `
             <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
@@ -402,13 +403,13 @@ function openCharacter(id) {
     const hasImage = char.image && char.image.length > 0;
     const fav = isFavorite(char.id);
     
-    const friendLinks = (char.friends || []).map(name => {
+    const friendLinks = (char.friends || []).filter(Boolean).map(name => {
         const friend = characters.find(c => c.name === name);
         return friend ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openCharacter('${friend.id}')">${name}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
     }).join('');
     
-    const homeLink = places.find(p => p.name === char.home);
-    const homeHtml = homeLink ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openPlaceModal('${homeLink.id}')">${char.home}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${char.home}</span>`;
+    const homeLink = char.home ? places.find(p => p.name === char.home) : null;
+    const homeHtml = homeLink ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openPlaceModal('${homeLink.id}')">${char.home}</span>` : (char.home ? `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${char.home}</span>` : '');
     
     const html = `
         <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
@@ -423,16 +424,20 @@ function openCharacter(id) {
         <h2 class="ositos-modal-name">${char.name}</h2>
         <span class="ositos-modal-role ${char.role}">${char.role.toUpperCase()}</span>
         
+        ${char.description || char.personality || char.curiosities ? `
         <div style="font-size:14px;color:#4A5268;line-height:1.6;text-align:left;width:100%;margin-top:8px;">
-            <p><strong>Descripción:</strong> ${char.description}</p>
-            <p><strong>Personalidad:</strong> ${char.personality}</p>
+            ${char.description ? `<p><strong>Descripción:</strong> ${char.description}</p>` : ''}
+            ${char.personality ? `<p><strong>Personalidad:</strong> ${char.personality}</p>` : ''}
             ${char.curiosities ? `<p><strong>Curiosidades:</strong> ${char.curiosities}</p>` : ''}
         </div>
+        ` : ''}
         
+        ${homeHtml ? `
         <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
             <h4 style="font-family:'Fredoka','Baloo 2',sans-serif;font-size:16px;color:#1E284B;margin-bottom:8px;">🏠 Lugar donde vive</h4>
             <div>${homeHtml}</div>
         </div>
+        ` : ''}
         
         ${friendLinks ? `
             <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
@@ -452,10 +457,13 @@ function openCharacter(id) {
 function renderWorld() {
     mainContent.innerHTML = `
         <div class="ositos-page-content active">
-            <!-- IMAGEN PRINCIPAL DEL MUNDO -->
+            ${
+                places.length > 0 ? `
             <div style="width:100%; border-radius:20px; overflow:hidden; margin-bottom:32px; box-shadow:0 4px 20px rgba(0,0,0,0.06);">
                 <img src="" alt="El Mundo de Ositos" style="width:100%; height:auto; aspect-ratio:16/6; object-fit:cover; display:block;">
             </div>
+                ` : ''
+            }
 
             <div class="ositos-section-header">
                 <h2 class="ositos-section-title">🏰 Lugares del Mundo</h2>
@@ -485,7 +493,7 @@ function openPlaceModal(id) {
     const place = places.find(p => p.id === id);
     if (!place) return;
     
-    const charLinks = (place.characters || []).map(name => {
+    const charLinks = (place.characters || []).filter(Boolean).map(name => {
         const char = characters.find(c => c.name === name);
         return char ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openCharacter('${char.id}')">${name}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
     }).join('');
@@ -501,7 +509,7 @@ function openPlaceModal(id) {
             ${place.curiosities ? `<p><strong>Curiosidad:</strong> ${place.curiosities}</p>` : ''}
         </div>
         
-        <!-- PDF del lugar -->
+        ${place.pdfUrl ? `
         <div style="width:100%; margin:12px 0;">
             <iframe src="${place.pdfUrl}" style="width:100%; height:450px; border:none; border-radius:12px; background:#f5f5f5;"></iframe>
             <div style="text-align:center; margin-top:8px;">
@@ -510,6 +518,7 @@ function openPlaceModal(id) {
                 </a>
             </div>
         </div>
+        ` : ''}
         
         ${charLinks ? `
             <div style="width:100%;margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,212,74,0.3);">
@@ -624,12 +633,12 @@ function openNews(id) {
     const newsItem = news.find(n => n.id === id);
     if (!newsItem) return;
     
-    const charLinks = (newsItem.relatedCharacters || []).map(name => {
+    const charLinks = (newsItem.relatedCharacters || []).filter(Boolean).map(name => {
         const char = characters.find(c => c.name === name);
         return char ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openCharacter('${char.id}')">${name}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
     }).join('');
     
-    const placeLinks = (newsItem.relatedPlaces || []).map(name => {
+    const placeLinks = (newsItem.relatedPlaces || []).filter(Boolean).map(name => {
         const place = places.find(p => p.name === name);
         return place ? `<span class="chip" style="display:inline-block;padding:4px 14px;border-radius:30px;background:rgba(65,105,255,0.1);color:#4169FF;font-weight:600;font-size:13px;cursor:pointer;margin:4px;" onclick="closeModal();openPlaceModal('${place.id}')">${name}</span>` : `<span style="display:inline-block;padding:4px 14px;border-radius:30px;background:#F0F2F5;color:#5C6475;font-weight:600;font-size:13px;margin:4px;">${name}</span>`;
     }).join('');

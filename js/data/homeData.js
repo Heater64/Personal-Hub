@@ -8,6 +8,33 @@ export const HOME_DATA = {
     news: [
         // ─── NOTICIAS NUEVAS ───
         {
+            id: 10,
+            date: "13 de julio de 2026",
+            title: "Rediseño en la sección 'SERIES'",
+            description: "Nuevas peliculas, series y funciones añadidas",
+        },
+        {
+            id: 9,
+            date: "13 de julio de 2026",
+            title: "-----CORRECCIÓN DE FALLOS-----",
+            description: "Se han corregidos muchos fallos que había en la web",
+        },
+        {
+            id: 8,
+            date: "13 de julio de 2026",
+            title: "Nueva sección 'JUEGOS' añadida",
+            description: "Aquí encontrarás todos los juegos agrupados en cada sección cuando los desbloquees en el calendario",
+        },
+
+        // ─── SEPARADOR ───
+        {
+            type: "separator",
+            label: "Noticias anteriores"
+        },
+
+        // ─── NOTICIAS ANTIGUAS ───
+        
+        {
             id: 7,
             date: "9 de julio de 2026",
             title: "Contenido EXTRA en el juego 'MEMORIA'",
@@ -19,14 +46,6 @@ export const HOME_DATA = {
             title: "Contenido EXTRA en el juego 'AHORCADO'",
             description: "¡Prueba la nueva versión del juego!",
         },
-
-        // ─── SEPARADOR ───
-        {
-            type: "separator",
-            label: "Noticias anteriores"
-        },
-
-        // ─── NOTICIAS ANTIGUAS ───
         {
             id: 5,
             date: "8 de julio de 2026",
