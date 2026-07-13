@@ -716,65 +716,70 @@ function closeModal() {
 // ==========================================
 
 function setupSidebarFilters() {
-    const filterBtns = document.querySelectorAll('.ositos-filter-btn');
-    if (!filterBtns.length) return;
+    const sidebar = document.querySelector('.ositos-sidebar');
+    if (!sidebar) return;
     
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            filterBtns.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
+    if (sidebar.dataset.filterBound) return;
+    sidebar.dataset.filterBound = 'true';
+    
+    sidebar.addEventListener('click', function(e) {
+        const btn = e.target.closest('.ositos-filter-btn');
+        if (!btn) return;
+        
+        const filterBtns = sidebar.querySelectorAll('.ositos-filter-btn');
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const filter = btn.dataset.filter;
+        
+        navigateTo('personajes');
+        
+        setTimeout(() => {
+            const grid = document.querySelector('.ositos-grid');
+            const cards = document.querySelectorAll('.ositos-card');
             
-            const filter = this.dataset.filter;
-            
-            navigateTo('personajes');
-            
-            setTimeout(() => {
-                const grid = document.querySelector('.ositos-grid');
-                const cards = document.querySelectorAll('.ositos-card');
-                
-                if (filter === 'todos') {
-                    cards.forEach(c => c.style.display = 'flex');
-                    if (grid) {
-                        grid.style.display = 'grid';
-                        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
-                    }
-                } else {
-                    let hasVisible = false;
-                    cards.forEach(c => {
-                        const role = c.querySelector('.ositos-card-role');
-                        if (role) {
-                            const roleClass = role.classList.contains(filter);
-                            c.style.display = roleClass ? 'flex' : 'none';
-                            if (roleClass) hasVisible = true;
-                        }
-                    });
-                    
-                    if (!hasVisible && grid) {
-                        let noResults = grid.querySelector('.ositos-no-results');
-                        if (!noResults) {
-                            noResults = document.createElement('div');
-                            noResults.className = 'ositos-no-results';
-                            noResults.style.cssText = `
-                                grid-column: 1 / -1;
-                                text-align: center;
-                                padding: 60px 20px;
-                                color: #5C6475;
-                            `;
-                            noResults.innerHTML = `
-                                <div style="font-size:48px; margin-bottom:16px;">🔍</div>
-                                <h3 style="font-size:22px; font-weight:800; color:#1E284B; font-family:'Lilita One','Baloo 2',sans-serif; margin:0 0 8px;">No hay personajes</h3>
-                                <p style="font-size:15px; color:#5C6475; font-family:'Nunito',sans-serif;">Pronto llegará más gente a este mundo.</p>
-                            `;
-                            grid.appendChild(noResults);
-                        }
-                        noResults.style.display = 'block';
-                    } else {
-                        const noResults = grid?.querySelector('.ositos-no-results');
-                        if (noResults) noResults.style.display = 'none';
-                    }
+            if (filter === 'todos') {
+                cards.forEach(c => c.style.display = 'flex');
+                if (grid) {
+                    grid.style.display = 'grid';
+                    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
                 }
-            }, 300);
-        });
+            } else {
+                let hasVisible = false;
+                cards.forEach(c => {
+                    const role = c.querySelector('.ositos-card-role');
+                    if (role) {
+                        const roleClass = role.classList.contains(filter);
+                        c.style.display = roleClass ? 'flex' : 'none';
+                        if (roleClass) hasVisible = true;
+                    }
+                });
+                
+                if (!hasVisible && grid) {
+                    let noResults = grid.querySelector('.ositos-no-results');
+                    if (!noResults) {
+                        noResults = document.createElement('div');
+                        noResults.className = 'ositos-no-results';
+                        noResults.style.cssText = `
+                            grid-column: 1 / -1;
+                            text-align: center;
+                            padding: 60px 20px;
+                            color: #5C6475;
+                        `;
+                        noResults.innerHTML = `
+                            <div style="font-size:48px; margin-bottom:16px;">🔍</div>
+                            <h3 style="font-size:22px; font-weight:800; color:#1E284B; font-family:'Lilita One','Baloo 2',sans-serif; margin:0 0 8px;">No hay personajes</h3>
+                            <p style="font-size:15px; color:#5C6475; font-family:'Nunito',sans-serif;">Pronto llegará más gente a este mundo.</p>
+                        `;
+                        grid.appendChild(noResults);
+                    }
+                    noResults.style.display = 'block';
+                } else {
+                    const noResults = grid?.querySelector('.ositos-no-results');
+                    if (noResults) noResults.style.display = 'none';
+                }
+            }
+        }, 300);
     });
 }
 

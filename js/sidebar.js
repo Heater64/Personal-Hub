@@ -235,7 +235,7 @@
                 e.stopPropagation();
                 if (typeof logoutUser === 'function') {
                     await logoutUser();
-                    window.location.href = 'login.html';
+                    window.location.href = buildHref(root, 'login.html');
                 }
             });
         }
