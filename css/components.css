@@ -229,3 +229,23 @@
     padding-inline: 14px;
   }
 }
+
+
+/* Botón de instalación PWA */
+.install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.install-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.install-btn:active { transform: scale(0.97); }
+.install-btn[hidden] { display: none; }

@@ -1,7 +1,7 @@
 ﻿// ============================================================
 // Personal Hub - Service Worker
 // ============================================================
-var CACHE_VERSION = 'v3';
+var CACHE_VERSION = 'v4';
 var STATIC_CACHE  = 'personal-hub-static-' + CACHE_VERSION;
 var DYNAMIC_CACHE = 'personal-hub-dynamic-' + CACHE_VERSION;
 
@@ -10,6 +10,7 @@ var PRECACHE_URLS = [
   '/',
   '/index.html',
   '/login.html',
+  '/offline.html',
   '/pages/admin.html',
   '/css/main.css',
   '/css/base.css',
@@ -115,7 +116,7 @@ function networkFirst(request) {
     return caches.match(request).then(function(cached) {
       if (cached) return cached;
       if (request.mode === 'navigate') {
-        return caches.match('/index.html');
+        return caches.match('/offline.html');
       }
       return new Response('Offline', { status: 503 });
     });

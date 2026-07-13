@@ -1,10 +1,15 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Razones Â· por las que te quiero</title>
-    <meta name="description" content="Razones por las que te quiero â€” UI Umbra">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hub">
+    <link rel="apple-touch-icon" href="../assets/icon-180.png">
+    <title>Razones · por las que te quiero</title>
+    <meta name="description" content="Razones por las que te quiero — UI Umbra">
     <meta name="theme-color" content="#0F0F10">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/razones.css">
@@ -18,7 +23,7 @@
 <body data-sidebar-root=".." data-sidebar-page="razones">
 
     <!-- Sidebar -->
-    <button class="sidebar-toggle" type="button" aria-label="Abrir navegaciÃ³n" data-sidebar-toggle>
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
     </button>
     <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -27,14 +32,14 @@
     <main class="page-shell">
         <div class="page">
             <section class="page-section">
-                <!-- BotÃ³n volver -->
+                <!-- Botón volver -->
                 <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
                     <i data-lucide="arrow-left"></i> Volver al Hub
                 </button>
 
                 <div class="razones-header">
                     <h1>Razones por las que te quiero</h1>
-                    <p>Un pequeÃ±o recordatorio de todo lo que te hace especial para mÃ­.</p>
+                    <p>Un pequeño recordatorio de todo lo que te hace especial para mí.</p>
                 </div>
 
                 <!-- Grid de razones -->
@@ -43,19 +48,19 @@
         </div>
     </main>
 
-    <!-- BotÃ³n flotante de razÃ³n aleatoria -->
-    <button class="random-trigger" id="randomBtn" title="RazÃ³n aleatoria">
+    <!-- Botón flotante de razón aleatoria -->
+    <button class="random-trigger" id="randomBtn" title="Razón aleatoria">
         <i data-lucide="shuffle"></i>
     </button>
 
-    <!-- Modal para razÃ³n aleatoria -->
+    <!-- Modal para razón aleatoria -->
     <div class="modal" id="randomModal">
         <div class="modal-content glass">
-            <button class="close-modal" id="closeModal">âœ•</button>
+            <button class="close-modal" id="closeModal">?</button>
             <div class="modal-icon">
                 <i data-lucide="heart"></i>
             </div>
-            <h3>âœ¨ Una razÃ³n especial âœ¨</h3>
+            <h3>? Una razón especial ?</h3>
             <p id="randomText" class="modal-text"></p>
         </div>
     </div>

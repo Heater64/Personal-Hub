@@ -1,9 +1,14 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IA Lab Â· Asistente Inteligente</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hub">
+    <link rel="apple-touch-icon" href="../assets/icon-180.png">
+    <title>IA Lab · Asistente Inteligente</title>
     <meta name="description" content="Asistente de IA con Groq y Mistral">
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="../css/main.css">
@@ -16,7 +21,7 @@
 
 <body data-sidebar-root=".." data-sidebar-page="ialab">
 
-<button class="sidebar-toggle" type="button" aria-label="Abrir navegaciÃ³n" data-sidebar-toggle>
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
     <i data-lucide="menu"></i>
 </button>
 <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -33,11 +38,11 @@
         <div class="model-selector-card">
             <div class="model-buttons">
                 <button class="model-btn active" data-model="groq">
-                    <i data-lucide="zap"></i> Groq âš¡
-                    <span class="model-badge">RÃ¡pido</span>
+                    <i data-lucide="zap"></i> Groq ?
+                    <span class="model-badge">Rápido</span>
                 </button>
                 <button class="model-btn" data-model="mistral">
-                    <i data-lucide="cloud"></i> Mistral ðŸš€
+                    <i data-lucide="cloud"></i> Mistral ??
                     <span class="model-badge">Preciso</span>
                 </button>
             </div>
@@ -52,10 +57,10 @@
             <div class="chat-messages" id="chatMessages"></div>
             
             <div class="quick-suggestions" id="quickSuggestions">
-                <button class="suggestion" data-prompt="Â¿QuÃ© puedes hacer?">âœ¨ Â¿QuÃ© puedes hacer?</button>
-                <button class="suggestion" data-prompt="Dame un consejo para mi dÃ­a">ðŸ’« Un consejo para hoy</button>
-                <button class="suggestion" data-prompt="CuÃ©ntame algo interesante">ðŸ“š Algo interesante</button>
-                <button class="suggestion" data-prompt="Hazme una pregunta divertida">ðŸŽ­ Pregunta divertida</button>
+                <button class="suggestion" data-prompt="¿Qué puedes hacer?">? ¿Qué puedes hacer?</button>
+                <button class="suggestion" data-prompt="Dame un consejo para mi día">?? Un consejo para hoy</button>
+                <button class="suggestion" data-prompt="Cuéntame algo interesante">?? Algo interesante</button>
+                <button class="suggestion" data-prompt="Hazme una pregunta divertida">?? Pregunta divertida</button>
             </div>
             
             <div class="chat-input-area">
@@ -63,7 +68,7 @@
                 <button id="sendBtn" class="send-btn" disabled>
                     <i data-lucide="send"></i>
                 </button>
-                <button id="clearBtn" class="clear-btn" title="Limpiar conversaciÃ³n">
+                <button id="clearBtn" class="clear-btn" title="Limpiar conversación">
                     <i data-lucide="trash-2"></i>
                 </button>
             </div>
@@ -82,7 +87,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h3><i data-lucide="key"></i> Configurar API Keys</h3>
-            <button class="modal-close" id="closeModalBtn">âœ•</button>
+            <button class="modal-close" id="closeModalBtn">?</button>
         </div>
         <div class="modal-body">
             <p>Introduce tus claves (se guardan en tu navegador)</p>

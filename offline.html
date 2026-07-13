@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>Sin conexión ✦</title>
+    <meta name="theme-color" content="#0c0b0b">
+    <link rel="manifest" href="manifest.json">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: #0f0f10;
+            color: #f4f1ec;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            gap: 1rem;
+        }
+        h1 { font-weight: 400; margin: 0; }
+        p { opacity: 0.7; max-width: 32ch; line-height: 1.6; }
+        button {
+            margin-top: 1rem;
+            padding: 0.7rem 1.4rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.05);
+            color: inherit;
+            font: inherit;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div style="font-size:3rem">✦</div>
+    <h1>Sin conexión</h1>
+    <p>No hay internet ahora mismo. Algunas partes guardadas siguen disponibles.</p>
+    <button onclick="location.reload()">Reintentar</button>
+</body>
+</html>

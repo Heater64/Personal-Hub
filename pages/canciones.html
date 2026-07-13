@@ -1,8 +1,13 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hub">
+    <link rel="apple-touch-icon" href="../assets/icon-180.png">
     <title>Canciones</title>
     <meta name="description" content="Tus canciones favoritas con reproductor y letras completas">
     <meta name="theme-color" content="#0c0b0b">
@@ -13,7 +18,7 @@
     <link rel="manifest" href="../manifest.json">
 
 <body data-sidebar-root=".." data-sidebar-page="canciones">
-<button class="sidebar-toggle" type="button" aria-label="Abrir navegaciÃ³n" data-sidebar-toggle>
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
     <i data-lucide="menu"></i>
 </button>
 <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -31,9 +36,9 @@
 <div class="player-panel">
     <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);margin-bottom:4px;">Reproduciendo ahora</div>
     <div class="player-album">
-        <img id="currentCover" src="" alt="Portada del Ã¡lbum">
+        <img id="currentCover" src="" alt="Portada del álbum">
     </div>
-    <div class="player-title" id="currentTitle">Cargandoâ€¦</div>
+    <div class="player-title" id="currentTitle">Cargando…</div>
     <div class="player-subtitle" id="currentSubtitle"></div>
 
     <div class="player-controls">
@@ -43,7 +48,7 @@
         <button class="player-btn" id="prevBtn" title="Anterior"><i data-lucide="skip-back"></i></button>
         <button class="player-btn play" id="playBtn" title="Reproducir"><i data-lucide="play"></i></button>
         <button class="player-btn" id="nextBtn" title="Siguiente"><i data-lucide="skip-forward"></i></button>
-        <button class="player-btn" id="randomBtn" title="CanciÃ³n aleatoria">
+        <button class="player-btn" id="randomBtn" title="Canción aleatoria">
             <i data-lucide="dices"></i>
         </button>
     </div>
@@ -77,9 +82,9 @@
                     <div class="lyrics-panel" id="lyricsPanel"></div>
                 </div>
 
-                <!-- âš¡ NUEVA SECCIÃ“N CON PESTAÃ‘AS -->
+                <!-- ? NUEVA SECCIÓN CON PESTAÑAS -->
                 <div class="section-card">
-                    <!-- PestaÃ±as de navegaciÃ³n -->
+                    <!-- Pestañas de navegación -->
                     <div class="sub-nav" style="margin-bottom: 16px;">
                         <button class="sub-tab active" data-tab="recuerdan">
                             <i data-lucide="heart"></i> Canciones que me recuerdan a ti
@@ -100,14 +105,14 @@
 </main>
 
 <div id="lyricsLightbox" class="lightbox lyrics-lightbox">
-    <button class="lightbox-close" onclick="closeLyricsLightbox()">âœ•</button>
+    <button class="lightbox-close" onclick="closeLyricsLightbox()">?</button>
     <div class="lightbox-content lyrics-lightbox-content" id="lyricsLightboxContent">
         <div class="lyrics-expanded" id="expandedLyricsText"></div>
     </div>
 </div>
 
 <div id="lightbox" class="lightbox">
-    <button class="lightbox-close" id="lightboxCloseBtn" type="button">âœ•</button>
+    <button class="lightbox-close" id="lightboxCloseBtn" type="button">?</button>
     <div class="lightbox-content" id="lightboxContent"></div>
     <div class="lightbox-caption" id="lightboxCaption"></div>
 </div>

@@ -1,10 +1,12 @@
 ﻿{
+  "id": "/",
   "name": "Personal Hub",
-  "short_name": "Hub",
+  "short_name": "Personal Hub",
   "description": "Tu lanzadera de proyectos personales",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "background_color": "#0f0f10",
   "theme_color": "#0c0b0b",
@@ -12,16 +14,42 @@
   "lang": "es",
   "icons": [
     {
-      "src": "assets/Gemini_Generated_Image_6wkfln6wk.png",
+      "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "assets/Gemini_Generated_Image_6wkfln6wk.png",
+      "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958831/imagen_512x512_radslu.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958831/imagen_512x512_radslu.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Razones",
+      "short_name": "Razones",
+      "url": "/pages/razones.html",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Calendario",
+      "short_name": "Calendario",
+      "url": "/pages/calendario.html",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -1,9 +1,14 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Calendario Â· Experiencias</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hub">
+    <link rel="apple-touch-icon" href="../assets/icon-180.png">
+    <title>Calendario · Experiencias</title>
     <meta name="description" content="Calendario de sorpresas interactivas">
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="../css/main.css">
@@ -17,7 +22,7 @@
 
 <body data-sidebar-root=".." data-sidebar-page="calendario">
 
-    <button class="sidebar-toggle" type="button" aria-label="Abrir navegaciÃ³n" data-sidebar-toggle>
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
     </button>
     <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -33,7 +38,7 @@
 
                 <div class="calendario-intro">
                     <h2>Calendario de experiencias</h2>
-                    <p>31 dÃ­as, 31 sorpresas distintas. Toca, escucha, juega y siente.</p>
+                    <p>31 días, 31 sorpresas distintas. Toca, escucha, juega y siente.</p>
                 </div>
 
                 <div id="calendarGrid" class="calendar-grid"></div>
@@ -50,15 +55,15 @@
     <!-- Modal legacy (coexistencia) -->
     <div id="surpriseModal" class="surprise-modal" aria-hidden="true">
         <div class="surprise-modal-content">
-            <button class="surprise-modal-close" id="closeModalBtn" type="button">âœ•</button>
-            <h3 id="modalSurpriseTitle" style="margin-bottom: 20px;">DÃ­a 1</h3>
+            <button class="surprise-modal-close" id="closeModalBtn" type="button">?</button>
+            <h3 id="modalSurpriseTitle" style="margin-bottom: 20px;">Día 1</h3>
             <div id="modalSurpriseContent"></div>
             <button id="modalCloseFooterBtn" type="button" style="margin-top: 20px; padding: 10px 20px; background: #c65a3a; border: none; border-radius: 40px; color: white; cursor: pointer; width: 100%;">Cerrar</button>
         </div>
     </div>
 
     <div id="lightbox" class="lightbox">
-        <button class="lightbox-close" type="button" id="calLightboxClose">âœ•</button>
+        <button class="lightbox-close" type="button" id="calLightboxClose">?</button>
         <div class="lightbox-content" id="lightboxContent"></div>
     </div>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>

@@ -212,3 +212,11 @@ window.closeLightbox = closeLightbox;
 window.initCoreUi = initCoreUi;
 window.launchParticles = launchParticles;
 window.pulseElement = pulseElement;
+
+
+// Feedback haptico ligero en botones/enlaces (sensacion nativa)
+document.addEventListener('click', function (e) {
+  if (!('vibrate' in navigator)) return;
+  var target = e.target.closest('button, a, .nav-btn, [role="button"]');
+  if (target) navigator.vibrate(8);
+}, { passive: true });
