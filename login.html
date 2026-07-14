@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hub">
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
-    <title>Iniciar sesión · Personal Hub</title>
+    <title>Iniciar sesiÃ³n Â· Personal Hub</title>
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/pages/login.css">
@@ -33,32 +33,32 @@
                         <i data-lucide="heart"></i>
                     </div>
                     <h1>Personal Hub</h1>
-                    <p>Inicia sesión para continuar</p>
+                    <p>Inicia sesiÃ³n para continuar</p>
                 </div>
 
                 <div class="login-error" id="loginError">
                     <i data-lucide="alert-circle"></i>
-                    <span id="loginErrorText">Error al iniciar sesión</span>
+                    <span id="loginErrorText">Error al iniciar sesiÃ³n</span>
                 </div>
 
                 <form class="login-form" id="loginForm" autocomplete="on">
                     <div class="form-group">
-                        <label for="loginEmail">Correo electrónico</label>
+                        <label for="loginEmail">Correo electrÃ³nico</label>
                         <input type="email" id="loginEmail" class="form-input" placeholder="tu@correo.com" required autocomplete="email">
                     </div>
 
                     <div class="form-group">
-                        <label for="loginPassword">Contraseña</label>
-                        <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+                        <label for="loginPassword">ContraseÃ±a</label>
+                        <input type="password" id="loginPassword" class="form-input" placeholder="Â•Â•Â•Â•Â•Â•Â•Â•" required autocomplete="current-password">
                     </div>
 
                     <button type="submit" class="login-btn" id="loginBtn">
-                        <span class="btn-text">Iniciar sesión</span>
+                        <span class="btn-text">Iniciar sesiÃ³n</span>
                         <span class="btn-loader"></span>
                     </button>
                 </form>
 
-                <p class="login-footer">Hecho con amor · Solo para nosotros ??</p>
+                <p class="login-footer">Hecho con amor Â· Solo para nosotros ??</p>
             </div>
         </div>
     </main>
@@ -110,7 +110,7 @@
             window.location.href = redirect;
         }
 
-        // Si ya hay sesión iniciada, redirigir
+        // Si ya hay sesiÃ³n iniciada, redirigir
         function checkExistingSession() {
             if (typeof window.auth !== 'undefined' && window.auth) {
                 const user = window.auth.currentUser;
@@ -120,7 +120,7 @@
             }
         }
 
-        // Login con email/contraseña
+        // Login con email/contraseÃ±a
         form.addEventListener('submit', async function (e) {
             e.preventDefault();
             hideError();
@@ -137,18 +137,18 @@
 
             try {
                 if (typeof loginWithEmail !== 'function') {
-                    throw new Error('Firebase no está listo. Espera un momento y recarga.');
+                    throw new Error('Firebase no estÃ¡ listo. Espera un momento y recarga.');
                 }
                 await loginWithEmail(email, password);
                 redirectAfterLogin();
             } catch (err) {
-                let msg = 'Error al iniciar sesión.';
+                let msg = 'Error al iniciar sesiÃ³n.';
                 if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-                    msg = 'Correo o contraseña incorrectos.';
+                    msg = 'Correo o contraseÃ±a incorrectos.';
                 } else if (err.code === 'auth/invalid-email') {
-                    msg = 'El formato del correo no es válido.';
+                    msg = 'El formato del correo no es vÃ¡lido.';
                 } else if (err.code === 'auth/too-many-requests') {
-                    msg = 'Demasiados intentos. Intenta más tarde.';
+                    msg = 'Demasiados intentos. Intenta mÃ¡s tarde.';
                 } else if (err.message) {
                     msg = err.message;
                 }
@@ -162,7 +162,7 @@
         emailInput.addEventListener('input', hideError);
         passwordInput.addEventListener('input', hideError);
 
-        // Verificar sesión existente
+        // Verificar sesiÃ³n existente
         function waitForAuthAndCheck() {
             if (typeof window.auth !== 'undefined' && window.auth) {
                 window.auth.onAuthStateChanged(function (user) {

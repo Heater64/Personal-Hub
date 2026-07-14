@@ -1,4 +1,4 @@
-﻿{
+{
   "firestore": {
     "rules": "firestore.rules"
   },

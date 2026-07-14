@@ -1,4 +1,4 @@
-﻿// canciones.js · reproductor con doble lista de canciones + modo aleatorio
+// canciones.js · reproductor con doble lista de canciones + modo aleatorio
 let currentSong = 0;
 let isPlaying = false;
 let audioPlayer = null;

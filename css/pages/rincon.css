@@ -1,4 +1,4 @@
-﻿.pinterest-grid {
+.pinterest-grid {
   column-count: 3;
   column-gap: var(--space-sm);
 }
