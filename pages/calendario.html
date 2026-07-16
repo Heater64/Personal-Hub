@@ -19,8 +19,9 @@
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
     <script src="../js/sentimientos-nav.js"></script>
     <link rel="manifest" href="../manifest.json">
+</head>
 
-<body data-sidebar-root=".." data-sidebar-page="calendario">
+<body data-sidebar-root=".." data-sidebar-page="calendario" data-bottom-nav="calendario">
 
     <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
@@ -47,15 +48,15 @@
         </div>
     </main>
 
-    <!-- Capa de experiencias (nueva arquitectura) -->
+    <!-- Capa de experiencias -->
     <div id="experience-layer" class="experience-layer" aria-hidden="true">
         <div id="experience-container" class="experience-container"></div>
     </div>
 
-    <!-- Modal legacy (coexistencia) -->
+    <!-- Modal legacy -->
     <div id="surpriseModal" class="surprise-modal" aria-hidden="true">
         <div class="surprise-modal-content">
-            <button class="surprise-modal-close" id="closeModalBtn" type="button">?</button>
+            <button class="surprise-modal-close" id="closeModalBtn" type="button">✕</button>
             <h3 id="modalSurpriseTitle" style="margin-bottom: 20px;">Día 1</h3>
             <div id="modalSurpriseContent"></div>
             <button id="modalCloseFooterBtn" type="button" style="margin-top: 20px; padding: 10px 20px; background: #c65a3a; border: none; border-radius: 40px; color: white; cursor: pointer; width: 100%;">Cerrar</button>
@@ -63,9 +64,13 @@
     </div>
 
     <div id="lightbox" class="lightbox">
-        <button class="lightbox-close" type="button" id="calLightboxClose">?</button>
+        <button class="lightbox-close" type="button" id="calLightboxClose">✕</button>
         <div class="lightbox-content" id="lightboxContent"></div>
     </div>
+
+    <!-- ===== BOTTOM NAV (móvil) ===== -->
+    <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -74,6 +79,15 @@
     <script src="../js/core.js"></script>
     <script src="../js/core/authGuard.js"></script>
     <script src="../js/sidebar.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    window.addEventListener('pageshow', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+    });
+    </script>
     <script>
         document.getElementById('calLightboxClose')?.addEventListener('click', closeLightbox);
         window.USE_GIFT_PLATFORM = true;
@@ -87,6 +101,5 @@
     }
     </script>
 
+</body>
 </html>
-
-

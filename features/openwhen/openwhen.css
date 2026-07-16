@@ -1,0 +1,305 @@
+/* openwhen.css – UI de cartas emocionales con estado abierto/cerrado */
+
+.openwhen-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 0 80px;
+    position: relative;
+}
+
+/* Header */
+.openwhen-header {
+    text-align: center;
+    margin-bottom: 48px;
+}
+.openwhen-header h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 48px;
+    font-weight: 500;
+    color: var(--umbra-light, #EAEAEA);
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+}
+.openwhen-header p {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    color: var(--text-secondary, #9A9A9A);
+    font-style: italic;
+}
+
+/* Grid 3 columnas */
+.letters-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+    margin-bottom: 40px;
+}
+
+/* Tarjeta base (cerrada) */
+.letter-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.4));
+    border-radius: 28px;
+    padding: 28px 24px 32px;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.2,0.9,0.4,1.1);
+    border: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    backdrop-filter: blur(2px);
+}
+.letter-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(198,90,58,0.15);
+    border-color: rgba(198,90,58,0.2);
+}
+
+/* Icono sobre (cerrado) */
+.card-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--accent, #C65A3A);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(198,90,58,0.35);
+}
+.card-icon i {
+    width: 32px;
+    height: 32px;
+    color: white;
+}
+
+/* Título y subtítulo */
+.letter-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--umbra-light);
+}
+.letter-note {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+/* Botón abrir */
+.open-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 40px;
+    padding: 10px 20px;
+    color: white;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.open-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(198,90,58,0.4);
+}
+
+/* ========== ESTADO ABIERTO (misma tarjeta expandida) ========== */
+.letter-card.open {
+    border: 1px solid var(--accent);
+    background: linear-gradient(180deg, rgba(198,90,58,0.08), rgba(0,0,0,0.5));
+    box-shadow: 0 0 0 1px rgba(198,90,58,0.3);
+    transform: translateY(0);
+}
+
+/* Contenido de la carta abierta */
+.letter-content-open {
+    background: rgba(20,20,22,0.96);
+    border-radius: 24px;
+    padding: 24px;
+    margin: 8px 0 16px;
+    position: relative;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Triángulo simulando solapa */
+.letter-content-open::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 10px solid transparent;
+    border-top-color: rgba(20,20,22,0.96);
+    filter: drop-shadow(0 -2px 2px rgba(0,0,0,0.2));
+}
+
+/* Texto de la carta */
+.letter-message {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    text-align: left;
+    white-space: pre-wrap;
+    margin-bottom: 20px;
+}
+
+/* Corazón decorativo */
+.letter-heart {
+    text-align: center;
+    font-size: 1.5rem;
+    margin: 12px 0 8px;
+    color: var(--accent);
+}
+
+/* Firma */
+.letter-signature {
+    color: var(--accent);
+    text-align: center;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    margin-top: 12px;
+    font-size: 0.85rem;
+}
+
+/* Botón cerrar */
+.close-btn {
+    background: rgba(198,90,58,0.15);
+    border: 1px solid var(--accent);
+    border-radius: 40px;
+    padding: 8px 18px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+}
+.close-btn:hover {
+    background: var(--accent);
+    color: white;
+}
+
+/* Ocultar elementos en estado abierto/cerrado */
+.letter-card .open-btn,
+.letter-card .letter-content-open {
+    transition: opacity 0.2s;
+}
+.letter-card:not(.open) .letter-content-open {
+    display: none;
+}
+.letter-card.open .open-btn,
+.letter-card.open .card-icon,
+.letter-card.open h3,
+.letter-card.open .letter-note {
+    display: none;
+}
+.letter-card.open .letter-content-open {
+    display: block;
+}
+
+/* Decoraciones flotantes */
+.floating-ornament {
+    position: absolute;
+    font-size: 2rem;
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(1px);
+}
+.ornament-1 {
+    top: 80px;
+    right: 20px;
+    animation: float 8s ease-in-out infinite;
+}
+.ornament-2 {
+    bottom: 100px;
+    left: 20px;
+    animation: float 6s ease-in-out infinite reverse;
+}
+.ornament-3 {
+    top: 300px;
+    left: 10%;
+    animation: float 10s ease-in-out infinite;
+}
+.ornament-4 {
+    bottom: 40px;
+    right: 15%;
+    animation: float 7s ease-in-out infinite;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .letters-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+}
+@media (max-width: 768px) {
+    .openwhen-header h1 {
+        font-size: 2.5rem;
+    }
+    .letters-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .letter-card {
+        padding: 22px 20px;
+    }
+    .floating-ornament {
+        display: none;
+    }
+}
+
+/* ==========================================
+   Animación suave y lenta para cartas (como en Razones)
+   ========================================== */
+
+/* Animación de entrada tipo fadeInUp */
+
+/* Cada carta aparece con un pequeño retraso progresivo */
+.letter-card {
+    opacity: 0;
+    animation: fadeInUp 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+}
+
+.letter-card:nth-child(1) { animation-delay: 0.05s; }
+.letter-card:nth-child(2) { animation-delay: 0.1s; }
+.letter-card:nth-child(3) { animation-delay: 0.15s; }
+.letter-card:nth-child(4) { animation-delay: 0.2s; }
+.letter-card:nth-child(5) { animation-delay: 0.25s; }
+.letter-card:nth-child(6) { animation-delay: 0.3s; }
+
+/* Animación suave para el contenido al abrir la carta */
+.letter-card.open .letter-content-open {
+    display: block;
+    animation: contentReveal 0.5s cubic-bezier(0.2, 0.9, 0.4, 1) forwards;
+}
+
+@keyframes contentReveal {
+    0% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Transición suave para ocultar elementos al abrir */
+.letter-card.open .card-icon,
+.letter-card.open h3,
+.letter-card.open .letter-note,
+.letter-card.open .open-btn {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* Cierre suave */
+.letter-card:not(.open) .letter-content-open {
+    transition: opacity 0.2s ease;
+}

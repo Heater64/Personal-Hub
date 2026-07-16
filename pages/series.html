@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Hub">
-    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Hub">
+  <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
   <title>Series y Películas</title>
   <meta name="description" content="Tu biblioteca personal de series y películas">
   <meta name="theme-color" content="#0c0b0b">
@@ -15,211 +15,224 @@
   <link rel="stylesheet" href="../css/pages/series.css">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
-    <link rel="manifest" href="../manifest.json">
+  <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
+  <link rel="manifest" href="../manifest.json">
+</head>
 
-<body data-sidebar-root=".." data-sidebar-page="series">
+<body data-sidebar-root=".." data-sidebar-page="series" data-bottom-nav="series">
 
-<!-- Sidebar vertical -->
-<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
-  <i data-lucide="menu"></i>
-</button>
-<div class="sidebar-overlay" data-sidebar-overlay></div>
-<aside class="sidebar" data-sidebar></aside>
+    <!-- Sidebar vertical -->
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+      <i data-lucide="menu"></i>
+    </button>
+    <div class="sidebar-overlay" data-sidebar-overlay></div>
+    <aside class="sidebar" data-sidebar></aside>
 
-<main class="page-shell">
-  <div class="page series-page">
+    <main class="page-shell">
+      <div class="page series-page">
 
-    <!-- Header -->
-    <header class="cine-header">
-      <div class="cine-header-top">
-        <div class="cine-view-tabs">
-          <button class="cine-view-tab active" data-view="catalog">Catálogo</button>
-          <button class="cine-view-tab" data-view="podium">Podio</button>
+        <!-- Header -->
+        <header class="cine-header">
+          <div class="cine-header-top">
+            <div class="cine-view-tabs">
+              <button class="cine-view-tab active" data-view="catalog">Catálogo</button>
+              <button class="cine-view-tab" data-view="podium">Podio</button>
+            </div>
+            <button class="btn-danger btn-sm" id="btnEliminarTodo" title="Eliminar todo">
+              <i data-lucide="trash-2"></i>
+            </button>
+          </div>
+
+          <div class="cine-header-bar">
+            <div class="search-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="searchInput" class="search-input" placeholder="Buscar título...">
+            </div>
+            <div class="filter-chips" id="filterBtns">
+              <button class="filter-chip active" data-filter="todo">Todo</button>
+              <button class="filter-chip" data-filter="serie">Series</button>
+              <button class="filter-chip" data-filter="pelicula">Películas</button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Grid de contenido -->
+        <div class="catalog-grid" id="contentGrid"></div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+          <i data-lucide="clapperboard"></i>
+          <p>No hay contenido. Añade tu primera serie o película.</p>
         </div>
-        <button class="btn-danger btn-sm" id="btnEliminarTodo" title="Eliminar todo">
-          <i data-lucide="trash-2"></i>
-        </button>
-      </div>
 
-      <div class="cine-header-bar">
-        <div class="search-wrapper">
-          <i data-lucide="search" class="search-icon"></i>
-          <input type="text" id="searchInput" class="search-input" placeholder="Buscar título...">
+        <!-- ========== PODIO TOP 5 ========== -->
+        <div class="podium-section" id="podiumSection" style="display: none;">
+          <div class="podium-header">
+            <h2><i data-lucide="trophy"></i> Top 5</h2>
+            <button class="btn-secondary btn-sm" id="editPodiumBtn">
+              <i data-lucide="pencil"></i> Editar podio
+            </button>
+          </div>
+          <div class="podium-tabs">
+            <button class="podium-tab active" data-podium-type="series">Series</button>
+            <button class="podium-tab" data-podium-type="movies">Películas</button>
+          </div>
+          <div id="podiumGrid" class="podium-grid"></div>
+          <div class="podium-empty" id="podiumEmpty">
+            <i data-lucide="trophy"></i>
+            <p>Aún no has elegido tu top 5. ¡Edita el podio para añadir tus favoritas!</p>
+          </div>
         </div>
-        <div class="filter-chips" id="filterBtns">
-          <button class="filter-chip active" data-filter="todo">Todo</button>
-          <button class="filter-chip" data-filter="serie">Series</button>
-          <button class="filter-chip" data-filter="pelicula">Películas</button>
+
+      </div>
+    </main>
+
+    <!-- MODAL GESTIONAR PODIO -->
+    <div class="modal-overlay" id="podiumModal" style="display: none;">
+      <div class="modal-content modal-form podium-modal-content">
+        <button class="close-modal" id="closePodiumModalBtn">✕</button>
+        <h2><i data-lucide="trophy"></i> Gestionar podio</h2>
+        <div class="podium-modal-tabs">
+          <button class="podium-tab active" data-pm-type="series">Series</button>
+          <button class="podium-tab" data-pm-type="movies">Películas</button>
+        </div>
+        <p class="podium-modal-hint">Selecciona hasta 5 y asígnales una posición (1 = mejor).</p>
+        <div id="podiumEditList" class="podium-edit-list"></div>
+        <div class="form-actions">
+          <button class="btn-secondary" id="cancelPodiumBtn">Cancelar</button>
+          <button class="btn-primary" id="savePodiumBtn">Guardar podio</button>
         </div>
       </div>
-    </header>
-
-    <!-- Grid de contenido -->
-    <div class="catalog-grid" id="contentGrid"></div>
-
-    <!-- Empty state -->
-    <div class="empty-state" id="emptyState" style="display: none;">
-      <i data-lucide="clapperboard"></i>
-      <p>No hay contenido. Añade tu primera serie o película.</p>
     </div>
 
-    <!-- ========== PODIO TOP 5 ========== -->
-    <div class="podium-section" id="podiumSection" style="display: none;">
-      <div class="podium-header">
-        <h2><i data-lucide="trophy"></i> Top 5</h2>
-        <button class="btn-secondary btn-sm" id="editPodiumBtn">
-          <i data-lucide="pencil"></i> Editar podio
-        </button>
-      </div>
-      <div class="podium-tabs">
-        <button class="podium-tab active" data-podium-type="series">Series</button>
-        <button class="podium-tab" data-podium-type="movies">Películas</button>
-      </div>
-      <div id="podiumGrid" class="podium-grid"></div>
-      <div class="podium-empty" id="podiumEmpty">
-        <i data-lucide="trophy"></i>
-        <p>Aún no has elegido tu top 5. ¡Edita el podio para añadir tus favoritas!</p>
-      </div>
-    </div>
+    <!-- MODAL AÑADIR/EDITAR -->
+    <div class="modal-overlay" id="overlayForm" style="display: none;">
+      <div class="modal-content modal-form">
+        <button class="close-modal" id="closeFormBtn">✕</button>
+        <h2 id="modalFormTitle">Añadir contenido</h2>
+        <input type="hidden" id="formDocId">
+        
+        <form id="contentForm">
+          <div class="form-group">
+            <label>Título *</label>
+            <input type="text" id="fTitulo" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select id="fTipo" class="form-input">
+              <option value="serie">Serie</option>
+              <option value="pelicula">Película</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>URL de portada</label>
+            <input type="url" id="fPortada" class="form-input" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label>URL web general (JustWatch, oficial, etc.)</label>
+            <input type="url" id="fWeb" class="form-input" placeholder="https://...">
+          </div>
 
-  </div>
-</main>
+          <div class="form-group">
+            <label>Total de episodios (solo series)</label>
+            <input type="number" id="fTotalEpisodios" class="form-input" placeholder="Ej: 24" min="0" value="0">
+          </div>
 
-<!-- MODAL GESTIONAR PODIO -->
-<div class="modal-overlay" id="podiumModal" style="display: none;">
-  <div class="modal-content modal-form podium-modal-content">
-    <button class="close-modal" id="closePodiumModalBtn">?</button>
-    <h2><i data-lucide="trophy"></i> Gestionar podio</h2>
-    <div class="podium-modal-tabs">
-      <button class="podium-tab active" data-pm-type="series">Series</button>
-      <button class="podium-tab" data-pm-type="movies">Películas</button>
-    </div>
-    <p class="podium-modal-hint">Selecciona hasta 5 y asígnales una posición (1 = mejor).</p>
-    <div id="podiumEditList" class="podium-edit-list"></div>
-    <div class="form-actions">
-      <button class="btn-secondary" id="cancelPodiumBtn">Cancelar</button>
-      <button class="btn-primary" id="savePodiumBtn">Guardar podio</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL AÑADIR/EDITAR -->
-<div class="modal-overlay" id="overlayForm" style="display: none;">
-  <div class="modal-content modal-form">
-    <button class="close-modal" id="closeFormBtn">?</button>
-    <h2 id="modalFormTitle">Añadir contenido</h2>
-    <input type="hidden" id="formDocId">
-    
-    <form id="contentForm">
-      <div class="form-group">
-        <label>Título *</label>
-        <input type="text" id="fTitulo" class="form-input" required>
-      </div>
-      <div class="form-group">
-        <label>Tipo *</label>
-        <select id="fTipo" class="form-input">
-          <option value="serie">Serie</option>
-          <option value="pelicula">Película</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>URL de portada</label>
-        <input type="url" id="fPortada" class="form-input" placeholder="https://...">
-      </div>
-      <div class="form-group">
-        <label>URL web general (JustWatch, oficial, etc.)</label>
-        <input type="url" id="fWeb" class="form-input" placeholder="https://...">
-      </div>
-
-      <div class="form-group">
-        <label>Total de episodios (solo series)</label>
-        <input type="number" id="fTotalEpisodios" class="form-input" placeholder="Ej: 24" min="0" value="0">
-      </div>
-
-      <div class="form-actions">
-        <button type="button" id="cancelFormBtn" class="btn-secondary">Cancelar</button>
-        <button type="submit" class="btn-primary">Guardar</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- MODAL VER (vista interna con episodios) -->
-<div class="modal-overlay" id="overlayView" style="display: none;">
-  <div class="modal-content modal-view">
-    <button class="close-modal" id="closeViewBtn">?</button>
-    
-    <div class="view-header">
-      <img id="viewCover" class="view-cover" src="" alt="" style="display: none;">
-      <div class="view-info">
-        <h2 id="viewTitle"></h2>
-        <span class="badge" id="viewTipo">Serie</span>
+          <div class="form-actions">
+            <button type="button" id="cancelFormBtn" class="btn-secondary">Cancelar</button>
+            <button type="submit" class="btn-primary">Guardar</button>
+          </div>
+        </form>
       </div>
     </div>
 
-    <div class="player-wrapper" id="playerWrapper" style="display: none;">
-      <video id="videoPlayer" class="video-player" controls playsinline></video>
+    <!-- MODAL VER (vista interna con episodios) -->
+    <div class="modal-overlay" id="overlayView" style="display: none;">
+      <div class="modal-content modal-view">
+        <button class="close-modal" id="closeViewBtn">✕</button>
+        
+        <div class="view-header">
+          <img id="viewCover" class="view-cover" src="" alt="" style="display: none;">
+          <div class="view-info">
+            <h2 id="viewTitle">—</h2>
+            <span class="badge" id="viewTipo">Serie</span>
+          </div>
+        </div>
+
+        <div class="player-wrapper" id="playerWrapper" style="display: none;">
+          <video id="videoPlayer" class="video-player" controls playsinline></video>
+        </div>
+
+        <!-- Botones de acciones masivas -->
+        <div class="bulk-actions" id="bulkActions" style="display: none;">
+          <button class="bulk-btn" id="markAllWatchedBtn">
+            <i data-lucide="check-circle"></i> Marcar todos vistos
+          </button>
+          <button class="bulk-btn" id="unmarkAllBtn">
+            <i data-lucide="refresh-cw"></i> Desmarcar todos
+          </button>
+        </div>
+
+        <div class="episodes-list" id="viewEpisodiosList"></div>
+      </div>
     </div>
 
-    <!-- Botones de acciones masivas -->
-    <div class="bulk-actions" id="bulkActions" style="display: none;">
-      <button class="bulk-btn" id="markAllWatchedBtn">
-        <i data-lucide="check-circle"></i> Marcar todos vistos
-      </button>
-      <button class="bulk-btn" id="unmarkAllBtn">
-        <i data-lucide="refresh-cw"></i> Desmarcar todos
-      </button>
+    <!-- Modal confirmación eliminar todo -->
+    <div class="modal-overlay" id="deleteConfirmModal" style="display: none;">
+      <div class="modal-content modal-form">
+        <button class="close-modal" id="closeConfirmBtn">✕</button>
+        <h2 style="color: #dc3545;">⚠️ Confirmar eliminación</h2>
+        <p style="margin: 16px 0;">¿Estás seguro de que quieres eliminar TODAS las series y películas?<br>Esta acción no se puede deshacer.</p>
+        <div class="form-actions">
+          <button class="btn-secondary" id="cancelDeleteBtn">Cancelar</button>
+          <button class="btn-danger" id="confirmDeleteBtn">Eliminar todo</button>
+        </div>
+      </div>
     </div>
 
-    <div class="episodes-list" id="viewEpisodiosList"></div>
-  </div>
-</div>
+    <!-- MODAL PROGRESO DE EPISODIOS -->
+    <div class="modal-overlay" id="episodeProgressModal" style="display: none;">
+      <div class="modal-content modal-form ep-progress-modal">
+        <button class="close-modal" id="closeEpProgressBtn">✕</button>
+        <h2 id="epProgressTitle">Episodios</h2>
 
-<!-- Modal confirmación eliminar todo -->
-<div class="modal-overlay" id="deleteConfirmModal" style="display: none;">
-  <div class="modal-content modal-form">
-    <button class="close-modal" id="closeConfirmBtn">?</button>
-    <h2 style="color: #dc3545;">?? Confirmar eliminación</h2>
-    <p style="margin: 16px 0;">¿Estás seguro de que quieres eliminar TODAS las series y películas?<br>Esta acción no se puede deshacer.</p>
-    <div class="form-actions">
-      <button class="btn-secondary" id="cancelDeleteBtn">Cancelar</button>
-      <button class="btn-danger" id="confirmDeleteBtn">Eliminar todo</button>
-    </div>
-  </div>
-</div>
+        <div class="ep-progress-actions">
+          <button id="epMarkAllBtn" class="btn-secondary btn-sm"><i data-lucide="check-square"></i> Marcar todos</button>
+          <button id="epUnmarkAllBtn" class="btn-secondary btn-sm"><i data-lucide="square"></i> Desmarcar todos</button>
+        </div>
 
-<!-- MODAL PROGRESO DE EPISODIOS -->
-<div class="modal-overlay" id="episodeProgressModal" style="display: none;">
-  <div class="modal-content modal-form ep-progress-modal">
-    <button class="close-modal" id="closeEpProgressBtn">?</button>
-    <h2 id="epProgressTitle">Episodios</h2>
+        <div id="epProgressList" class="ep-progress-list"></div>
 
-    <div class="ep-progress-actions">
-      <button id="epMarkAllBtn" class="btn-secondary btn-sm"><i data-lucide="check-square"></i> Marcar todos</button>
-      <button id="epUnmarkAllBtn" class="btn-secondary btn-sm"><i data-lucide="square"></i> Desmarcar todos</button>
+        <div class="ep-progress-footer">
+          <span id="epProgressSummary">0/0</span>
+          <button class="btn-primary btn-sm" id="closeEpProgressModalBtn">Cerrar</button>
+        </div>
+      </div>
     </div>
 
-    <div id="epProgressList" class="ep-progress-list"></div>
+    <!-- Toast -->
+    <div class="toast-message" id="toast" style="display: none;"></div>
 
-    <div class="ep-progress-footer">
-      <span id="epProgressSummary">0/0</span>
-      <button class="btn-primary btn-sm" id="closeEpProgressModalBtn">Cerrar</button>
-    </div>
-  </div>
-</div>
+    <!-- ===== BOTTOM NAV (móvil) ===== -->
+    <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
 
-<!-- Toast -->
-<div class="toast-message" id="toast" style="display: none;"></div>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="../js/firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
     <script src="../js/core/profile.js"></script>
-<script src="../js/core.js"></script>
-<script src="../js/core/authGuard.js"></script>
-<script src="../js/sidebar.js"></script>
+    <script src="../js/core.js"></script>
+    <script src="../js/core/authGuard.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    window.addEventListener('pageshow', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+    });
+    </script>
     <script src="../js/pages/series.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
@@ -229,5 +242,5 @@
     }
     </script>
 
+</body>
 </html>
-

@@ -16,106 +16,108 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
     <link rel="manifest" href="../manifest.json">
+</head>
 
-<body data-sidebar-root=".." data-sidebar-page="canciones">
-<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
-    <i data-lucide="menu"></i>
-</button>
-<div class="sidebar-overlay" data-sidebar-overlay></div>
-<aside class="sidebar" data-sidebar></aside>
+<body data-sidebar-root=".." data-sidebar-page="canciones" data-bottom-nav="canciones">
 
-<main class="page-shell">
-<div class="page">
-    <section id="canciones" class="page-section">
-        <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
-            <i data-lucide="arrow-left"></i> Volver al Hub
-        </button>
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+        <i data-lucide="menu"></i>
+    </button>
+    <div class="sidebar-overlay" data-sidebar-overlay></div>
+    <aside class="sidebar" data-sidebar></aside>
 
-        <div class="player-layout">
-            <!-- Reproductor (sin cambios) -->
-<div class="player-panel">
-    <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);margin-bottom:4px;">Reproduciendo ahora</div>
-    <div class="player-album">
-        <img id="currentCover" src="" alt="Portada del álbum">
-    </div>
-    <div class="player-title" id="currentTitle">Cargando</div>
-    <div class="player-subtitle" id="currentSubtitle"></div>
+    <main class="page-shell">
+        <div class="page">
+            <section id="canciones" class="page-section">
+                <button class="back-btn" onclick="window.location.href='../index.html'" style="margin-bottom:20px;">
+                    <i data-lucide="arrow-left"></i> Volver al Hub
+                </button>
 
-    <div class="player-controls">
-        <button class="player-btn" id="shuffleBtn" title="Modo aleatorio">
-            <i data-lucide="shuffle"></i>
-        </button>
-        <button class="player-btn" id="prevBtn" title="Anterior"><i data-lucide="skip-back"></i></button>
-        <button class="player-btn play" id="playBtn" title="Reproducir"><i data-lucide="play"></i></button>
-        <button class="player-btn" id="nextBtn" title="Siguiente"><i data-lucide="skip-forward"></i></button>
-        <button class="player-btn" id="randomBtn" title="Canción aleatoria">
-            <i data-lucide="dices"></i>
-        </button>
-    </div>
+                <div class="player-layout">
+                    <!-- Reproductor -->
+                    <div class="player-panel">
+                        <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);margin-bottom:4px;">Reproduciendo ahora</div>
+                        <div class="player-album">
+                            <img id="currentCover" src="" alt="Portada del álbum">
+                        </div>
+                        <div class="player-title" id="currentTitle">Cargando…</div>
+                        <div class="player-subtitle" id="currentSubtitle"></div>
 
-    <div class="progress-bar">
-        <div class="progress-time">
-            <span id="currentTime">0:00</span>
-            <span id="totalTime">0:00</span>
-        </div>
-        <div class="progress-track">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
-    </div>
-    <audio id="audioPlayer"></audio>
-</div>
+                        <div class="player-controls">
+                            <button class="player-btn" id="shuffleBtn" title="Modo aleatorio">
+                                <i data-lucide="shuffle"></i>
+                            </button>
+                            <button class="player-btn" id="prevBtn" title="Anterior"><i data-lucide="skip-back"></i></button>
+                            <button class="player-btn play" id="playBtn" title="Reproducir"><i data-lucide="play"></i></button>
+                            <button class="player-btn" id="nextBtn" title="Siguiente"><i data-lucide="skip-forward"></i></button>
+                            <button class="player-btn" id="randomBtn" title="Canción aleatoria">
+                                <i data-lucide="dices"></i>
+                            </button>
+                        </div>
 
-            <!-- Columna derecha: letras + listas -->
-            <div style="display:grid;gap:16px;">
-                <!-- Panel de letras (sin cambios) -->
-                <div class="section-card lyrics-card">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-                        <i data-lucide="file-text"></i>
-                        <h3 style="margin:0; flex:1;">Letra</h3>
-                        <button class="icon-btn" id="toggleLyricsBtn" title="Ocultar/Mostrar letra">
-                            <i data-lucide="eye"></i>
-                        </button>
-                        <button class="icon-btn" id="expandLyricsBtn" title="Ver letra en pantalla completa">
-                            <i data-lucide="maximize-2"></i>
-                        </button>
+                        <div class="progress-bar">
+                            <div class="progress-time">
+                                <span id="currentTime">0:00</span>
+                                <span id="totalTime">0:00</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                        </div>
+                        <audio id="audioPlayer"></audio>
                     </div>
-                    <div class="lyrics-panel" id="lyricsPanel"></div>
+
+                    <!-- Columna derecha -->
+                    <div style="display:grid;gap:16px;">
+                        <div class="section-card lyrics-card">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+                                <i data-lucide="file-text"></i>
+                                <h3 style="margin:0; flex:1;">Letra</h3>
+                                <button class="icon-btn" id="toggleLyricsBtn" title="Ocultar/Mostrar letra">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                                <button class="icon-btn" id="expandLyricsBtn" title="Ver letra en pantalla completa">
+                                    <i data-lucide="maximize-2"></i>
+                                </button>
+                            </div>
+                            <div class="lyrics-panel" id="lyricsPanel"></div>
+                        </div>
+
+                        <div class="section-card">
+                            <div class="sub-nav" style="margin-bottom: 16px;">
+                                <button class="sub-tab active" data-tab="recuerdan">
+                                    <i data-lucide="heart"></i> Canciones que me recuerdan a ti
+                                </button>
+                                <button class="sub-tab" data-tab="todas">
+                                    <i data-lucide="music"></i> Todas las canciones completas
+                                </button>
+                            </div>
+                            <div id="songsListContainer">
+                                <div class="songs-grid" id="songsList"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <!-- ? NUEVA SECCIÓN CON PESTAÑAS -->
-                <div class="section-card">
-                    <!-- Pestañas de navegación -->
-                    <div class="sub-nav" style="margin-bottom: 16px;">
-                        <button class="sub-tab active" data-tab="recuerdan">
-                            <i data-lucide="heart"></i> Canciones que me recuerdan a ti
-                        </button>
-                        <button class="sub-tab" data-tab="todas">
-                            <i data-lucide="music"></i> Todas las canciones completas
-                        </button>
-                    </div>
-                    <!-- Contenedor de la lista activa -->
-                    <div id="songsListContainer">
-                        <div class="songs-grid" id="songsList"></div>
-                    </div>
-                </div>
-            </div>
+            </section>
         </div>
-    </section>
-</div>
-</main>
+    </main>
 
-<div id="lyricsLightbox" class="lightbox lyrics-lightbox">
-    <button class="lightbox-close" onclick="closeLyricsLightbox()">?</button>
-    <div class="lightbox-content lyrics-lightbox-content" id="lyricsLightboxContent">
-        <div class="lyrics-expanded" id="expandedLyricsText"></div>
+    <div id="lyricsLightbox" class="lightbox lyrics-lightbox">
+        <button class="lightbox-close" onclick="closeLyricsLightbox()">✕</button>
+        <div class="lightbox-content lyrics-lightbox-content" id="lyricsLightboxContent">
+            <div class="lyrics-expanded" id="expandedLyricsText"></div>
+        </div>
     </div>
-</div>
 
-<div id="lightbox" class="lightbox">
-    <button class="lightbox-close" id="lightboxCloseBtn" type="button">?</button>
-    <div class="lightbox-content" id="lightboxContent"></div>
-    <div class="lightbox-caption" id="lightboxCaption"></div>
-</div>
+    <div id="lightbox" class="lightbox">
+        <button class="lightbox-close" id="lightboxCloseBtn" type="button">✕</button>
+        <div class="lightbox-content" id="lightboxContent"></div>
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
+    <!-- ===== BOTTOM NAV (móvil) ===== -->
+    <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -124,6 +126,15 @@
     <script src="../js/core.js"></script>
     <script src="../js/core/authGuard.js"></script>
     <script src="../js/sidebar.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    window.addEventListener('pageshow', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+    });
+    </script>
     <script src="../js/data/canciones.js"></script>
     <script src="../js/pages/canciones.js"></script>
     <script>
@@ -134,6 +145,5 @@
     }
     </script>
 
+</body>
 </html>
-
-

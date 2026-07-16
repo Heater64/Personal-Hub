@@ -1,0 +1,744 @@
+/* ==========================================
+   home.css — Hub editorial · CSS Grid dinámico
+   ========================================== */
+
+/* Hero */
+.bento-hero {
+    padding: var(--space-xl) var(--space-lg);
+    margin-bottom: var(--space-lg);
+    background:
+        radial-gradient(circle at top center, rgba(198, 90, 58, 0.12), transparent 42%),
+        rgba(255, 255, 255, 0.03);
+    border: var(--border-subtle);
+    border-radius: var(--radius-xl);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+}
+
+.bento-hero::after {
+    content: '✦';
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    color: rgba(255, 179, 71, 0.28);
+    font-size: 1.4rem;
+    pointer-events: none;
+}
+
+.bento-hero .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-coral);
+    margin-bottom: var(--space-sm);
+}
+
+.bento-hero h2 {
+    font-size: clamp(2.4rem, 6vw, 3.8rem);
+    line-height: 1.15;
+    font-weight: 400;
+}
+
+.bento-hero h2 em {
+    font-style: italic;
+    color: var(--accent-coral);
+}
+
+.bento-hero p {
+    color: var(--umbra-ash);
+    max-width: 620px;
+    margin-top: var(--space-md);
+    line-height: 1.7;
+    font-weight: 300;
+}
+
+/* ==========================================
+   GRID EDITORIAL — 4 columnas, patrón cíclico
+   ========================================== */
+.bento-grid {
+    --bento-cols: 4;
+    --bento-gap: clamp(14px, 2.5vw, 24px);
+    --bento-row: minmax(200px, auto);
+
+    display: grid;
+    grid-template-columns: repeat(var(--bento-cols), 1fr);
+    grid-auto-rows: var(--bento-row);
+    gap: var(--bento-gap);
+    width: 100%;
+    align-items: stretch;
+}
+
+/* Spans generados por JS (data-span) */
+.bento-card[data-span="4"] {
+    grid-column: span 4;
+}
+
+.bento-card[data-span="2"] {
+    grid-column: span 2;
+}
+
+.bento-card[data-span="1"] {
+    grid-column: span 1;
+}
+
+/* Tarjeta protagonista (segmento de 1) */
+.bento-card--featured {
+    --bento-row-local: minmax(260px, 1fr);
+    min-height: 260px;
+}
+
+.bento-grid:has(.bento-card--featured:only-child) {
+    grid-auto-rows: minmax(280px, auto);
+}
+
+/* ==========================================
+   TARJETAS — glass premium
+   ========================================== */
+.bento-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    min-height: 200px;
+    height: 100%;
+    padding: clamp(20px, 3vw, 32px);
+    text-align: left;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xl);
+    background:
+        linear-gradient(155deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 45%, rgba(12, 12, 14, 0.4) 100%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.06) inset,
+        0 12px 40px rgba(0, 0, 0, 0.22);
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0;
+    animation: bentoCardIn 0.55s cubic-bezier(0.2, 0.9, 0.4, 1) forwards;
+    animation-delay: calc(var(--card-index, 0) * 0.06s);
+    transition:
+        transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1),
+        border-color 0.3s ease,
+        box-shadow 0.35s ease,
+        background 0.35s ease;
+}
+
+@keyframes bentoCardIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.bento-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 0%, rgba(198, 90, 58, 0.12), transparent 55%);
+    opacity: 0.6;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+
+.bento-card::after {
+    content: '✦';
+    position: absolute;
+    top: clamp(14px, 2vw, 20px);
+    right: clamp(14px, 2vw, 20px);
+    font-size: 0.85rem;
+    color: rgba(255, 179, 71, 0.35);
+    transition: transform 0.3s ease, color 0.3s ease;
+    pointer-events: none;
+}
+
+.bento-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(198, 90, 58, 0.35);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.08) inset,
+        0 24px 56px rgba(0, 0, 0, 0.32),
+        0 0 0 1px rgba(198, 90, 58, 0.12);
+}
+
+.bento-card:hover::before {
+    opacity: 1;
+}
+
+.bento-card:hover::after {
+    color: rgba(255, 179, 71, 0.7);
+    transform: rotate(12deg) scale(1.15);
+}
+
+.bento-card:active {
+    transform: translateY(-2px) scale(0.995);
+    transition-duration: 0.08s;
+}
+
+.bento-card:focus-visible {
+    outline: 2px solid var(--accent-coral);
+    outline-offset: 3px;
+}
+
+.bento-card .icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-bottom: auto;
+    padding-bottom: var(--space-sm);
+    stroke-width: 1.35;
+    color: var(--accent-coral);
+    flex-shrink: 0;
+}
+
+.bento-card h3 {
+    font-size: clamp(1.25rem, 2.5vw, 1.55rem);
+    font-weight: 500;
+    margin: 0 0 0.35em;
+    font-family: 'Playfair Display', Georgia, serif;
+    color: var(--umbra-light);
+    line-height: 1.2;
+}
+
+.bento-card p {
+    color: var(--umbra-ash);
+    font-size: clamp(0.8rem, 1.8vw, 0.88rem);
+    line-height: 1.55;
+    margin: 0;
+    max-width: 42ch;
+}
+
+.bento-card__footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: clamp(14px, 2vw, 20px);
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    width: 100%;
+}
+
+.bento-card__meta-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.bento-card__meta-icon i {
+    width: 1.15rem;
+    height: 1.15rem;
+    color: var(--accent-coral);
+}
+
+.bento-card__meta-text {
+    font-size: 0.72rem;
+    color: var(--umbra-ash);
+    letter-spacing: 0.05em;
+    line-height: 1.35;
+}
+
+/* IA Lab */
+.bento-card.lab-card::before {
+    background: linear-gradient(90deg, transparent, rgba(198, 90, 58, 0.08), transparent);
+}
+
+.bento-card.lab-card .lab-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(198, 90, 58, 0.2);
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+    font-size: 0.6rem;
+    color: var(--accent-coral);
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    z-index: 1;
+}
+
+.bento-card.lab-card .icon {
+    animation: subtleFloat 3s ease-in-out infinite;
+}
+
+@keyframes subtleFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+.home-footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+}
+
+.home-footer p {
+    font-size: 0.75rem;
+    color: var(--umbra-ash);
+    letter-spacing: 0.06em;
+    font-weight: 300;
+}
+
+/* ==========================================
+   TABLET — 2 columnas, spans adaptados
+   ========================================== */
+@media (max-width: 900px) {
+    .bento-grid {
+        --bento-cols: 2;
+    }
+
+    .bento-card[data-span="4"] {
+        grid-column: span 2;
+    }
+
+    .bento-card[data-span="1"] {
+        grid-column: span 1;
+    }
+
+    .bento-card--featured {
+        min-height: 240px;
+    }
+}
+
+/* ==========================================
+   MÓVIL — 1 columna
+   ========================================== */
+@media (max-width: 640px) {
+    .bento-hero {
+        padding: var(--space-lg) var(--space-md);
+    }
+
+    .bento-hero h2 {
+        font-size: clamp(1.85rem, 8vw, 2.5rem);
+    }
+
+    .bento-grid {
+        --bento-cols: 1;
+        --bento-row: minmax(180px, auto);
+    }
+
+    .bento-card,
+    .bento-card[data-span="4"],
+    .bento-card[data-span="2"],
+    .bento-card[data-span="1"] {
+        grid-column: 1 / -1;
+    }
+
+    .bento-card {
+        min-height: 180px;
+    }
+
+    .bento-card--featured {
+        min-height: 220px;
+    }
+}
+
+@media (max-width: 380px) {
+    .bento-card {
+        padding: var(--space-md);
+    }
+}
+
+/* day-counter, day-counter-number → css/components/day-counter.css */
+
+/* Pantallas grandes */
+@media (min-width: 1400px) {
+    .bento-grid {
+        --bento-row: minmax(220px, auto);
+    }
+
+    .bento-card--featured {
+        min-height: 300px;
+    }
+}
+
+/* ==========================================
+   NOTICIAS / NOVEDADES
+   ========================================== */
+.news-banner {
+    background: linear-gradient(135deg, rgba(198, 90, 58, 0.08), rgba(255, 179, 71, 0.04));
+    border: 1px solid rgba(198, 90, 58, 0.2);
+    border-radius: var(--radius-xl);
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    transition: all 0.3s ease;
+}
+
+.news-banner:hover {
+    border-color: rgba(198, 90, 58, 0.35);
+    box-shadow: 0 8px 30px rgba(198, 90, 58, 0.05);
+}
+
+.news-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.news-icon {
+    font-size: 1.2rem;
+}
+
+.news-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--umbra-light);
+    letter-spacing: 0.05em;
+}
+
+.news-badge {
+    background: var(--accent-coral);
+    color: white;
+    font-size: 0.55rem;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.news-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.news-empty {
+    color: var(--umbra-ash);
+    font-size: 0.85rem;
+    padding: 8px 0;
+    text-align: center;
+}
+
+.news-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-pill);
+    padding: 6px 16px;
+    color: var(--umbra-ash);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.news-toggle:hover {
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
+    background: rgba(198, 90, 58, 0.05);
+}
+
+.news-toggle i {
+    width: 14px;
+    height: 14px;
+}
+
+/* ==========================================
+   DATOS CURIOSOS
+   ========================================== */
+.curiosities-section {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.curiosities-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.curiosities-header .curiosities-icon {
+    font-size: 1.2rem;
+}
+
+.curiosities-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--umbra-light);
+    margin: 0;
+}
+
+.curiosities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.curiosity-card {
+    display: flex;
+    gap: 14px;
+    padding: 16px 18px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: all 0.3s ease;
+    align-items: flex-start;
+}
+
+.curiosity-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(198, 90, 58, 0.15);
+    transform: translateY(-2px);
+}
+
+.curiosity-icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.curiosity-body h4 {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--umbra-light);
+    margin: 0 0 4px;
+}
+
+.curiosity-body p {
+    font-size: 0.75rem;
+    color: var(--umbra-ash);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 640px) {
+    .news-banner {
+        padding: 16px 16px;
+        border-radius: var(--radius-lg);
+    }
+
+    .news-item {
+        padding: 10px 12px;
+    }
+
+    .news-item-title {
+        font-size: 0.8rem;
+    }
+
+    .news-item-desc {
+        font-size: 0.7rem;
+    }
+
+    .curiosities-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .curiosity-card {
+        padding: 14px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .news-badge {
+        font-size: 0.45rem;
+        padding: 1px 8px;
+    }
+
+    .curiosities-header h3 {
+        font-size: 1rem;
+    }
+}
+
+/* ==========================================
+   NOTICIAS / NOVEDADES - ESTILOS MEJORADOS
+   ========================================== */
+.news-item {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    border-left: 3px solid rgba(198, 90, 58, 0.4);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.news-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-left-color: var(--accent-coral);
+    transform: translateX(4px);
+}
+
+/* Top de la noticia (fecha + ubicación) */
+.news-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.news-date {
+    font-size: 0.6rem;
+    color: var(--umbra-ash);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* Ubicación - estilo tipo "tag" */
+.news-location {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(198, 90, 58, 0.1);
+    border: 1px solid rgba(198, 90, 58, 0.15);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.6rem;
+    color: var(--accent-coral);
+    font-weight: 400;
+}
+
+.news-location-icon {
+    font-size: 0.7rem;
+}
+
+.news-location-text {
+    letter-spacing: 0.03em;
+}
+
+/* Título */
+.news-item-title {
+    font-weight: 500;
+    color: var(--umbra-light);
+    font-size: 0.9rem;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Descripción */
+.news-item-desc {
+    color: var(--umbra-ash);
+    font-size: 0.8rem;
+    margin-top: 2px;
+    line-height: 1.5;
+}
+
+/* Botón "Ir a la sección" */
+.news-go-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 4px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-pill);
+    color: var(--umbra-ash);
+    font-size: 0.7rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.news-go-btn:hover {
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
+    background: rgba(198, 90, 58, 0.05);
+    transform: translateX(2px);
+}
+
+.news-go-btn i {
+    width: 14px;
+    height: 14px;
+}
+
+.news-item.news-hidden {
+    display: none;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 640px) {
+    .news-item {
+        padding: 12px 14px;
+    }
+
+    .news-item-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .news-location {
+        font-size: 0.55rem;
+        padding: 1px 8px;
+    }
+
+    .news-item-title {
+        font-size: 0.85rem;
+    }
+
+    .news-item-desc {
+        font-size: 0.75rem;
+    }
+
+    .news-go-btn {
+        font-size: 0.65rem;
+        padding: 3px 12px;
+    }
+}
+
+/* ==========================================
+   SEPARADOR DE NOTICIAS
+   ========================================== */
+.news-separator {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0 12px;
+    margin: 4px 0;
+}
+
+.news-separator-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+.news-separator-label {
+    font-size: 0.65rem;
+    color: var(--umbra-ash);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.5;
+    white-space: nowrap;
+    font-weight: 400;
+}
+
+/* Las noticias antiguas tienen un estilo más tenue */
+.news-item.old-news {
+    opacity: 0.7;
+}
+
+.news-item.old-news:hover {
+    opacity: 1;
+}
+

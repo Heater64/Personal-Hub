@@ -1,0 +1,277 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hub">
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
+    <title>Sentimientos</title>
+    <meta name="description" content="Razones, cartas, calendario y emergencia emocional">
+    <link rel="stylesheet" href="../../css/main.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/png" href="../../assets/images/Gemini_Generated_Image_6wkfln6wk.png">
+    <style>
+        .sentiment-hub {
+            max-width: 1000px;
+            margin: 20px auto 40px;
+            padding: 0 20px;
+        }
+        
+        .sentiment-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .sentiment-header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 500;
+            color: var(--umbra-light);
+            margin-bottom: 12px;
+        }
+        
+        .sentiment-header p {
+            color: var(--umbra-ash);
+            font-size: 0.95rem;
+        }
+        
+        .cards-sentiment {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        
+        .card-sentiment {
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            padding: 28px 24px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .card-sentiment:hover {
+            transform: translateY(-3px);
+            border-color: rgba(198, 90, 58, 0.3);
+            background: rgba(198, 90, 58, 0.03);
+        }
+        
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(198, 90, 58, 0.1);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .card-icon i {
+            width: 24px;
+            height: 24px;
+            color: var(--accent-coral);
+        }
+        
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: var(--umbra-light);
+            margin-bottom: 8px;
+        }
+        
+        .card-description {
+            color: var(--umbra-ash);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        
+        .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.7rem;
+            color: var(--umbra-ash);
+        }
+        
+        .card-meta i {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .card-meta .meta-divider {
+            width: 3px;
+            height: 3px;
+            background: var(--umbra-ash);
+            border-radius: 50%;
+            opacity: 0.4;
+        }
+        
+        .card-badge {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: rgba(198, 90, 58, 0.12);
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 0.6rem;
+            color: var(--accent-coral);
+            letter-spacing: 0.05em;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            padding: 8px 20px;
+            color: var(--umbra-light);
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        
+        .back-btn:hover {
+            border-color: var(--accent-coral);
+            color: var(--accent-coral);
+        }
+        
+        @media (max-width: 700px) {
+            .cards-sentiment {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .sentiment-header h1 {
+                font-size: 2rem;
+            }
+            
+            .card-sentiment {
+                padding: 22px 20px;
+            }
+            
+            .card-title {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+    <link rel="manifest" href="../../manifest.json">
+
+<body data-sidebar-root="../.." data-sidebar-page="sentimientos">
+
+    <button class="sidebar-toggle" type="button" data-sidebar-toggle>
+        <i data-lucide="menu"></i>
+    </button>
+    <div class="sidebar-overlay" data-sidebar-overlay></div>
+    <aside class="sidebar" data-sidebar></aside>
+
+    <main class="page-shell">
+        <div class="page">
+
+            <div class="sentiment-hub">
+                <div class="sentiment-header">
+                    <h1>Sentimientos</h1>
+                    <p>Un espacio solo para ti, donde guardo las cosas más bonitas que siento.</p>
+                </div>
+                
+                <div class="cards-sentiment">
+                    <a href="../../razones/razones.html" class="card-sentiment">
+                        <div class="card-badge"></div>
+                        <div class="card-icon">
+                            <i data-lucide="sparkles"></i>
+                        </div>
+                        <h3 class="card-title">Razones</h3>
+                        <p class="card-description">Algunas razones por las que te quiero, con favoritos y sorpresas.</p>
+                        <div class="card-meta">
+                            <i data-lucide="heart"></i>
+                            <span>10 razones</span>
+                            <div class="meta-divider"></div>
+                            <i data-lucide="star"></i>
+                            <span>Favoritos</span>
+                        </div>
+                    </a>
+                    
+                    <a href="../../openwhen/openwhen.html" class="card-sentiment">
+                        <div class="card-badge"></div>
+                        <div class="card-icon">
+                            <i data-lucide="mail"></i>
+                        </div>
+                        <h3 class="card-title">Open When</h3>
+                        <p class="card-description">Cartas para abrir según el momento que estés viviendo.</p>
+                        <div class="card-meta">
+                            <i data-lucide="mail-open"></i>
+                            <span>6 cartas</span>
+                            <div class="meta-divider"></div>
+                            <i data-lucide="clock"></i>
+                            <span>Cada ocasión</span>
+                        </div>
+                    </a>
+                    
+                    <a href="../../calendario/calendario.html" class="card-sentiment">
+                        <div class="card-badge"></div>
+                        <div class="card-icon">
+                            <i data-lucide="calendar-days"></i>
+                        </div>
+                        <h3 class="card-title">Calendario</h3>
+                        <p class="card-description">31 días, 31 sorpresas. Toca, escucha y siente cada experiencia.</p>
+                        <div class="card-meta">
+                            <i data-lucide="gift"></i>
+                            <span>31 sorpresas</span>
+                            <div class="meta-divider"></div>
+                            <i data-lucide="lock"></i>
+                            <span>Desbloqueo</span>
+                        </div>
+                    </a>
+                    
+                    <a href="../../maldia/maldia.html" class="card-sentiment">
+                        <div class="card-badge"></div>
+                        <div class="card-icon">
+                            <i data-lucide="sun-medium"></i>
+                        </div>
+                        <h3 class="card-title">Mal Día</h3>
+                        <p class="card-description">Frases con cariño, musica y mas...</p>
+                        <div class="card-meta">
+                            <i data-lucide="heart-handshake"></i>
+                            <span>Emergencia</span>
+                            <div class="meta-divider"></div>
+                            <i data-lucide="music"></i>
+                            <span>Música</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="../../services/firebase/firebase-config.js"></script>
+    <script src="../../services/auth/encryption.js"></script>
+    <script src="../../services/auth/session-manager.js"></script>
+    <script src="../../services/auth/auth.service.js"></script>
+    <script src="../../shared/utils/profile.js"></script>
+    <script src="../../shared/utils/core.js"></script>
+    <script src="../../shared/utils/authGuard.js"></script>
+    <script src="../../js/sidebar.js"></script>
+    <script src="sentimientos.js"></script>
+    <script>
+if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../../sw.js')
+        .then(function(reg) { console.log('SW registered:', reg.scope); })
+        .catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+
+</html>
+

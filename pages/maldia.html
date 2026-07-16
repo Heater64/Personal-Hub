@@ -18,10 +18,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
     <link rel="manifest" href="../manifest.json">
+</head>
 
-<body data-sidebar-root=".." data-sidebar-page="maldia">
+<body data-sidebar-root=".." data-sidebar-page="maldia" data-bottom-nav="maldia">
 
-    <!-- Sidebar -->
     <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
     </button>
@@ -30,20 +30,16 @@
 
     <main class="page-shell">
         <div class="page">
-            <!-- Botón volver -->
             <button class="back-btn" onclick="window.location.href='/'">
                 <i data-lucide="arrow-left"></i> Volver al Hub
             </button>
 
-            <!-- Barra de navegación interna -->
             <div class="maldia-nav-bar">
                 <div class="maldia-nav-links">
-
                     <a href="sentimientos.html" class="maldia-nav-link">
                         <i data-lucide="grid"></i>
                         <span>Hub</span>
                     </a>
-
                     <a href="razones.html" class="maldia-nav-link">
                         <i data-lucide="sparkles"></i>
                         <span>Razones</span>
@@ -64,14 +60,12 @@
             </div>
 
             <div class="maldia-container">
-                <!-- Cabecera -->
                 <div class="maldia-header">
                     <div class="maldia-header-icon"></div>
                     <h1>¿Día gris?</h1>
                     <p>No estás sola. Respira, tómate un momento y recuerda que te amo.</p>
                 </div>
 
-                <!-- Tarjeta principal -->
                 <div class="hero-card">
                     <div class="hero-glow"></div>
                     
@@ -103,7 +97,6 @@
                         </button>
                     </div>
 
-                    <!-- Reproductor de música -->
                     <div class="music-player">
                         <div class="music-wave" id="musicWave">
                             <div class="wave-bar"></div>
@@ -113,7 +106,7 @@
                             <div class="wave-bar"></div>
                             <div class="wave-bar"></div>
                         </div>
-                        <span class="music-label" id="musicLabel">?? Música feliz</span>
+                        <span class="music-label" id="musicLabel">🎵 Música feliz</span>
                         <button class="music-toggle-btn" id="musicBtn">
                             <i data-lucide="volume-2"></i>
                         </button>
@@ -124,7 +117,6 @@
                     </audio>
                 </div>
 
-                <!-- Tarjeta de mensaje con recuerdos -->
                 <div class="glass-card message-card">
                     <div class="card-icon small">
                         <i data-lucide="message-circle"></i>
@@ -134,14 +126,13 @@
                         "Eres más fuerte de lo que crees, más bonita de lo que piensas y más querida de lo que imaginas."
                     </div>
                     
-                    <!-- Recuerdo visual -->
                     <div class="memory-section">
                         <div class="memory-frame">
                             <img id="memoryImage" class="memory-image" 
                                  src="https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777747760/5199564237372592635_eqj9v5.jpg" 
                                  alt="Recuerdo especial">
                         </div>
-                        <p class="memory-caption" id="memoryCaption">Siempre tan linda ?</p>
+                        <p class="memory-caption" id="memoryCaption">Siempre tan linda ✨</p>
                         <button class="mini-btn" id="changeMemoryBtn">
                             <i data-lucide="refresh-cw"></i>
                             <span>Cambiar recuerdo</span>
@@ -149,7 +140,6 @@
                     </div>
                 </div>
 
-                <!-- Botón de respiración guiada -->
                 <div class="breathing-section">
                     <button class="breathing-btn" id="breathingBtn">
                         <i data-lucide="wind"></i>
@@ -157,16 +147,14 @@
                     </button>
                 </div>
 
-                <!-- Decoraciones flotantes -->
-                <div class="floating-heart heart-1">??</div>
-                <div class="floating-heart heart-2">??</div>
-                <div class="floating-star star-1">?</div>
-                <div class="floating-star star-2">?</div>
+                <div class="floating-heart heart-1">❤️</div>
+                <div class="floating-heart heart-2">❤️</div>
+                <div class="floating-star star-1">✦</div>
+                <div class="floating-star star-2">✦</div>
             </div>
         </div>
     </main>
 
-    <!-- Modal de respiración guiada -->
     <div id="breathingModal" class="breathing-modal">
         <div class="breathing-modal-content">
             <button class="breathing-modal-close" id="closeBreathingModal">&times;</button>
@@ -178,7 +166,6 @@
         </div>
     </div>
 
-    <!-- Modal de "Me siento mejor" con video de gatito -->
     <div id="betterModal" class="better-modal">
         <div class="better-modal-content">
             <button class="better-modal-close" id="closeBetterModal">&times;</button>
@@ -190,10 +177,14 @@
             <div class="better-message">
                 <i data-lucide="heart"></i>
                 <h2>¡Te quiero!</h2>
-                <p>Siempre estaré aquí para ti mi reina ????</p>
+                <p>Siempre estaré aquí para ti mi reina ❤️❤️❤️</p>
             </div>
         </div>
     </div>
+
+    <!-- ===== BOTTOM NAV (móvil) ===== -->
+    <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -202,6 +193,15 @@
     <script src="../js/core.js"></script>
     <script src="../js/core/authGuard.js"></script>
     <script src="../js/sidebar.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    window.addEventListener('pageshow', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+    });
+    </script>
     <script src="../js/pages/maldia.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
@@ -211,5 +211,5 @@
     }
     </script>
 
+</body>
 </html>
-

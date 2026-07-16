@@ -1,0 +1,73 @@
+/* Welcome Screen */
+.welcome-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--umbra-black);
+  padding: 20px;
+}
+
+.welcome-screen__bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.welcome-screen__bg-gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(198, 90, 58, 0.15), transparent 70%);
+}
+
+.welcome-screen__content {
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.welcome-screen__title {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.welcome-screen__moods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 2rem 0;
+}
+
+.mood-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 15px;
+  color: white;
+  transition: all 0.2s;
+}
+
+.mood-btn:hover, .mood-btn.selected {
+  background: var(--accent-coral);
+  border-color: var(--accent-coral);
+}
+
+.welcome-btn {
+  background: var(--accent-coral);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 40px;
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+.welcome-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hidden {
+  display: none !important;
+}

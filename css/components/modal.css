@@ -1,0 +1,214 @@
+/* ==========================================
+   Modal / Lightbox — Sistema unificado
+   ========================================== */
+
+/* --- Overlay --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--theme-bg-overlay);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  z-index: var(--z-modal);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 32px);
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity var(--dur-mid) ease;
+}
+
+.modal-overlay.is-open {
+  display: flex;
+  opacity: 1;
+}
+
+.modal-overlay.is-closing {
+  opacity: 0;
+}
+
+/* --- Contenido --- */
+.modal-content {
+  position: relative;
+  background: var(--theme-bg-secondary);
+  border: var(--theme-border-visible);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--theme-shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+  transform: scale(0.92) translateY(12px);
+  transition: transform var(--dur-spring) ease;
+}
+
+.modal-overlay.is-open .modal-content {
+  transform: scale(1) translateY(0);
+}
+
+/* --- Tamaños --- */
+.modal-sm {
+  max-width: 400px;
+  padding: var(--space-md);
+}
+
+.modal-md {
+  max-width: 560px;
+  padding: var(--space-lg);
+}
+
+.modal-lg {
+  max-width: 720px;
+  padding: var(--space-lg);
+}
+
+.modal-xl {
+  max-width: 960px;
+  padding: var(--space-xl);
+}
+
+.modal-full {
+  max-width: 100vw;
+  max-height: 100vh;
+  border-radius: 0;
+  padding: var(--space-md);
+}
+
+/* --- Header --- */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: var(--theme-border-subtle);
+}
+
+.modal-header h3 {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 500;
+  margin: 0;
+}
+
+.modal-header .modal-close {
+  position: static;
+  margin: 0;
+}
+
+/* --- Body --- */
+.modal-body {
+  color: var(--theme-text-secondary);
+  line-height: 1.6;
+}
+
+/* --- Footer --- */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: var(--theme-border-subtle);
+}
+
+/* --- Scrollbar --- */
+.modal-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: var(--theme-scrollbar-thumb);
+  border-radius: 10px;
+}
+
+/* ==========================================
+   Lightbox (imagen) — legacy
+   ========================================== */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  display: none;
+  place-items: center;
+  background: rgba(15, 15, 16, 0.95);
+  z-index: var(--z-modal);
+}
+
+.lightbox.open {
+  display: grid;
+}
+
+.lightbox-content {
+  max-width: 90vw;
+  max-height: 80vh;
+  border: var(--theme-border-visible);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.lightbox-content img {
+  max-height: 80vh;
+  width: auto;
+  border-radius: var(--radius-xl);
+}
+
+.lightbox-caption {
+  position: absolute;
+  bottom: var(--space-md);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--theme-bg-overlay);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  border: var(--theme-border-subtle);
+  border-radius: var(--radius-pill);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  background: transparent;
+  border: var(--theme-border-subtle);
+  border-radius: var(--radius-pill);
+  width: 44px;
+  height: 44px;
+  font-size: var(--fs-xl);
+  color: var(--theme-text-primary);
+  cursor: pointer;
+  transition: opacity var(--dur-fast) ease;
+}
+
+.lightbox-close:hover {
+  opacity: 0.7;
+}
+
+/* ==========================================
+   Responsive
+   ========================================== */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 0;
+  }
+
+  .modal-content {
+    border-radius: 0;
+    max-height: 100vh;
+    min-height: 100vh;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .modal-sm,
+  .modal-md,
+  .modal-lg,
+  .modal-xl {
+    padding: var(--space-md);
+  }
+}

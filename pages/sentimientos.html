@@ -166,10 +166,11 @@
         }
     </style>
     <link rel="manifest" href="../manifest.json">
+</head>
 
-<body data-sidebar-root=".." data-sidebar-page="sentimientos">
+<body data-sidebar-root=".." data-sidebar-page="sentimientos" data-bottom-nav="sentimientos">
 
-    <button class="sidebar-toggle" type="button" data-sidebar-toggle>
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
     </button>
     <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -253,6 +254,10 @@
 
         </div>
     </main>
+
+    <!-- ===== BOTTOM NAV (móvil) ===== -->
+    <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -261,6 +266,15 @@
     <script src="../js/core.js"></script>
     <script src="../js/core/authGuard.js"></script>
     <script src="../js/sidebar.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    window.addEventListener('pageshow', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+    });
+    </script>
     <script src="../js/pages/sentimientos.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
@@ -270,5 +284,5 @@
     }
     </script>
 
+</body>
 </html>
-

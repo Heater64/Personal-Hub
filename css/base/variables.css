@@ -1,0 +1,427 @@
+/* ==========================================
+   Design Tokens — Fuente única de verdad
+   ========================================== */
+
+:root {
+  /* ==========================================
+     COLORES — Tema Umbra (oscuro por defecto)
+     ========================================== */
+  
+  /* Escala de grises / base */
+  --umbra-black:       #0f0f10;
+  --umbra-dark:        #1a1a1c;
+  --umbra-stone:       #2a2a2e;
+  --umbra-ash:         #6e6a67;
+  --umbra-light:       #e8e6e3;
+  --umbra-white-soft:  #f5f3f0;
+
+  /* Acentos principales */
+  --accent-coral:      #c65a3a;
+  --accent-rust:       #8f3e2e;
+  --accent-dim:        rgba(198, 90, 58, 0.15);
+  --accent-border:     rgba(198, 90, 58, 0.35);
+  
+  /* Acentos secundarios */
+  --warm-amber:        #ffb347;
+  --warm-pink:         #ff8aa1;
+  --warm-gold-dim:     rgba(255, 179, 71, 0.18);
+  
+  /* Estados */
+  --green:             #4caf50;
+  --green-dim:         rgba(76, 175, 80, 0.15);
+  --red:               #dc3545;
+  --red-dim:           rgba(220, 53, 69, 0.15);
+  --blue:              #2196f3;
+  --blue-dim:          rgba(33, 150, 243, 0.15);
+  --yellow:            #ffb347;
+  --yellow-dim:        rgba(255, 179, 71, 0.15);
+
+  /* Superficies */
+  --bg-card:           rgba(255, 255, 255, 0.02);
+  --bg-card-hover:     rgba(255, 255, 255, 0.06);
+  --bg-overlay:        rgba(15, 15, 16, 0.95);
+  --bg-input:          rgba(255, 255, 255, 0.04);
+
+  /* Bordes */
+  --border-subtle:     1px solid rgba(255, 255, 255, 0.05);
+  --border-visible:    1px solid rgba(255, 255, 255, 0.12);
+  --border-focus:      2px solid var(--accent-coral);
+
+  /* Sombras */
+  --shadow-sm:         0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md:         0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg:         0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-glow:       0 0 20px rgba(198, 90, 58, 0.15);
+
+  /* ==========================================
+     ESPACIADO
+     ========================================== */
+  --space-xs:   8px;
+  --space-sm:   16px;
+  --space-md:   32px;
+  --space-lg:   64px;
+  --space-xl:   120px;
+  --space-xxl:  200px;
+
+  /* ==========================================
+     BORDES REDONDEADOS
+     ========================================== */
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   20px;
+  --radius-xl:   28px;
+  --radius-pill: 40px;
+
+  /* ==========================================
+     TIPOGRAFÍA
+     ========================================== */
+  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  
+  --fs-xs:   0.72rem;
+  --fs-sm:   0.85rem;
+  --fs-md:   1rem;
+  --fs-lg:   1.25rem;
+  --fs-xl:   1.5rem;
+  --fs-2xl:  2rem;
+  --fs-3xl:  2.8rem;
+
+  /* ==========================================
+     DURACIONES
+     ========================================== */
+  --dur-instant: 0.08s ease;
+  --dur-fast:    0.15s ease;
+  --dur-mid:     0.25s ease;
+  --dur-slow:    0.4s ease;
+  --dur-slower:  0.6s ease;
+  --dur-spring:  0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ==========================================
+     BLUR
+     ========================================== */
+  --blur-sm:  8px;
+  --blur-md:  16px;
+  --blur-lg:  24px;
+
+  /* ==========================================
+     Z-INDEX (escala unificada)
+     ========================================== */
+  --z-base:      1;
+  --z-dropdown:  100;
+  --z-sticky:    200;
+  --z-overlay:   500;
+  --z-modal:     1000;
+  --z-toast:     1100;
+  --z-tooltip:   1200;
+  --z-decor:     2000;
+
+  /* ==========================================
+     SIDEBAR
+     ========================================== */
+  --sidebar-width:        260px;
+  --sidebar-width-mobile: 72px;
+
+  /* ==========================================
+     THEME SYSTEM — Tokens semánticos (dark por defecto)
+     ========================================== */
+  
+  /* Fondos */
+  --theme-bg-primary:       var(--umbra-black);
+  --theme-bg-secondary:     var(--umbra-dark);
+  --theme-bg-tertiary:      var(--umbra-stone);
+  --theme-bg-card:          var(--bg-card);
+  --theme-bg-card-hover:    var(--bg-card-hover);
+  --theme-bg-overlay:       var(--bg-overlay);
+  --theme-bg-input:         var(--bg-input);
+  --theme-bg-glass:         rgba(255, 255, 255, 0.04);
+  --theme-bg-glass-hover:   rgba(255, 255, 255, 0.08);
+
+  /* Texto */
+  --theme-text-primary:     var(--umbra-light);
+  --theme-text-secondary:   #a8a4a0;
+  --theme-text-muted:       var(--umbra-ash);
+  --theme-text-inverse:     var(--umbra-black);
+
+  /* Bordes */
+  --theme-border-subtle:    var(--border-subtle);
+  --theme-border-visible:   var(--border-visible);
+  --theme-border-focus:     var(--border-focus);
+  --theme-border-accent:    var(--accent-border);
+
+  /* Acentos */
+  --theme-accent-primary:   var(--accent-coral);
+  --theme-accent-secondary: var(--accent-rust);
+  --theme-accent-dim:       var(--accent-dim);
+  --theme-accent-border:    var(--accent-border);
+  --theme-accent-glow:      var(--shadow-glow);
+
+  /* Estados */
+  --theme-success:          var(--green);
+  --theme-success-dim:      var(--green-dim);
+  --theme-error:            var(--red);
+  --theme-error-dim:        var(--red-dim);
+  --theme-info:             var(--blue);
+  --theme-info-dim:         var(--blue-dim);
+  --theme-warning:          var(--yellow);
+  --theme-warning-dim:      var(--yellow-dim);
+
+  /* Sombras */
+  --theme-shadow-sm:        var(--shadow-sm);
+  --theme-shadow-md:        var(--shadow-md);
+  --theme-shadow-lg:        var(--shadow-lg);
+  --theme-shadow-glow:      var(--shadow-glow);
+
+  /* Scrollbar */
+  --theme-scrollbar-track:  transparent;
+  --theme-scrollbar-thumb:  rgba(255, 255, 255, 0.1);
+  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+
+  /* Sidebar */
+  --theme-sidebar-bg:       linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  --theme-sidebar-border:   rgba(255, 255, 255, 0.03);
+}
+
+/* ==========================================
+   LIGHT THEME (override semánticos)
+   ========================================== */
+[data-theme="light"] {
+  /* Fondos */
+  --theme-bg-primary:       #f5f3f0;
+  --theme-bg-secondary:     #ebe9e6;
+  --theme-bg-tertiary:      #dfddd8;
+  --theme-bg-card:          rgba(255, 255, 255, 0.8);
+  --theme-bg-card-hover:    rgba(255, 255, 255, 1);
+  --theme-bg-overlay:       rgba(245, 243, 240, 0.95);
+  --theme-bg-input:         rgba(0, 0, 0, 0.04);
+  --theme-bg-glass:         rgba(255, 255, 255, 0.7);
+  --theme-bg-glass-hover:   rgba(255, 255, 255, 0.9);
+
+  /* Texto */
+  --theme-text-primary:     #1a1a1c;
+  --theme-text-secondary:   #3d3d40;
+  --theme-text-muted:       #6e6a67;
+  --theme-text-inverse:     #f5f3f0;
+
+  /* Bordes */
+  --theme-border-subtle:    1px solid rgba(0, 0, 0, 0.05);
+  --theme-border-visible:   1px solid rgba(0, 0, 0, 0.1);
+  --theme-border-focus:     2px solid var(--accent-coral);
+  --theme-border-accent:    1px solid rgba(198, 90, 58, 0.5);
+
+  /* Acentos */
+  --theme-accent-primary:   var(--accent-coral);
+  --theme-accent-secondary: #a84a2f;
+  --theme-accent-dim:       rgba(198, 90, 58, 0.1);
+  --theme-accent-border:    rgba(198, 90, 58, 0.3);
+  --theme-accent-glow:      0 0 20px rgba(198, 90, 58, 0.1);
+
+  /* Sombras */
+  --theme-shadow-sm:        0 2px 8px rgba(0, 0, 0, 0.06);
+  --theme-shadow-md:        0 4px 20px rgba(0, 0, 0, 0.08);
+  --theme-shadow-lg:        0 8px 40px rgba(0, 0, 0, 0.1);
+  --theme-shadow-glow:      0 0 20px rgba(198, 90, 58, 0.1);
+
+  /* Scrollbar */
+  --theme-scrollbar-track:  transparent;
+  --theme-scrollbar-thumb:  rgba(0, 0, 0, 0.15);
+  --theme-scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+
+  /* Sidebar */
+  --theme-sidebar-bg:       linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0));
+  --theme-sidebar-border:   rgba(0, 0, 0, 0.03);
+}
+
+/* ==========================================
+   AUTO THEME (sigue al sistema)
+   ========================================== */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --theme-bg-primary:       #f5f3f0;
+    --theme-bg-secondary:     #ebe9e6;
+    --theme-bg-tertiary:      #dfddd8;
+    --theme-bg-card:          rgba(255, 255, 255, 0.8);
+    --theme-bg-card-hover:    rgba(255, 255, 255, 1);
+    --theme-bg-overlay:       rgba(245, 243, 240, 0.95);
+    --theme-bg-input:         rgba(0, 0, 0, 0.04);
+    --theme-bg-glass:         rgba(255, 255, 255, 0.7);
+    --theme-bg-glass-hover:   rgba(255, 255, 255, 0.9);
+    
+    --theme-text-primary:     #1a1a1c;
+    --theme-text-secondary:   #3d3d40;
+    --theme-text-muted:       #6e6a67;
+    --theme-text-inverse:     #f5f3f0;
+    
+    --theme-border-subtle:    1px solid rgba(0, 0, 0, 0.05);
+    --theme-border-visible:   1px solid rgba(0, 0, 0, 0.1);
+    --theme-border-focus:     2px solid var(--accent-coral);
+    --theme-border-accent:    1px solid rgba(198, 90, 58, 0.5);
+    
+    --theme-accent-primary:   var(--accent-coral);
+    --theme-accent-secondary: #a84a2f;
+    --theme-accent-dim:       rgba(198, 90, 58, 0.1);
+    --theme-accent-border:    rgba(198, 90, 58, 0.3);
+    --theme-accent-glow:      0 0 20px rgba(198, 90, 58, 0.1);
+    
+    --theme-shadow-sm:        0 2px 8px rgba(0, 0, 0, 0.06);
+    --theme-shadow-md:        0 4px 20px rgba(0, 0, 0, 0.08);
+    --theme-shadow-lg:        0 8px 40px rgba(0, 0, 0, 0.1);
+    --theme-shadow-glow:      0 0 20px rgba(198, 90, 58, 0.1);
+    
+    --theme-scrollbar-track:  transparent;
+    --theme-scrollbar-thumb:  rgba(0, 0, 0, 0.15);
+    --theme-scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+    
+    --theme-sidebar-bg:       linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0));
+    --theme-sidebar-border:   rgba(0, 0, 0, 0.03);
+  }
+}
+
+/* ==========================================
+   COLOR THEME VARIANTS
+   ========================================== */
+
+/* Coral (default) */
+[data-color-theme="coral"] {
+  --theme-accent-primary:   #c65a3a;
+  --theme-accent-secondary: #8f3e2e;
+  --theme-accent-dim:       rgba(198, 90, 58, 0.15);
+  --theme-accent-border:    rgba(198, 90, 58, 0.35);
+  --theme-accent-glow:      0 0 20px rgba(198, 90, 58, 0.15);
+}
+
+/* Ocean */
+[data-color-theme="ocean"] {
+  --theme-accent-primary:   #0077b6;
+  --theme-accent-secondary: #005f8a;
+  --theme-accent-dim:       rgba(0, 119, 182, 0.15);
+  --theme-accent-border:    rgba(0, 119, 182, 0.35);
+  --theme-accent-glow:      0 0 20px rgba(0, 119, 182, 0.15);
+}
+
+/* Forest */
+[data-color-theme="forest"] {
+  --theme-accent-primary:   #2d6a4f;
+  --theme-accent-secondary: #1b4332;
+  --theme-accent-dim:       rgba(45, 106, 79, 0.15);
+  --theme-accent-border:    rgba(45, 106, 79, 0.35);
+  --theme-accent-glow:      0 0 20px rgba(45, 106, 79, 0.15);
+}
+
+/* Violet */
+[data-color-theme="violet"] {
+  --theme-accent-primary:   #7209b7;
+  --theme-accent-secondary: #560bad;
+  --theme-accent-dim:       rgba(114, 9, 183, 0.15);
+  --theme-accent-border:    rgba(114, 9, 183, 0.35);
+  --theme-accent-glow:      0 0 20px rgba(114, 9, 183, 0.15);
+}
+
+/* Rose */
+[data-color-theme="rose"] {
+  --theme-accent-primary:   #e53e3e;
+  --theme-accent-secondary: #c53030;
+  --theme-accent-dim:       rgba(229, 62, 62, 0.15);
+  --theme-accent-border:    rgba(229, 62, 62, 0.35);
+  --theme-accent-glow:      0 0 20px rgba(229, 62, 62, 0.15);
+}
+
+/* Amber */
+[data-color-theme="amber"] {
+  --theme-accent-primary:   #d69e2e;
+  --theme-accent-secondary: #b7791f;
+  --theme-accent-dim:       rgba(214, 158, 46, 0.15);
+  --theme-accent-border:    rgba(214, 158, 46, 0.35);
+  --theme-accent-glow:      0 0 20px rgba(214, 158, 46, 0.15);
+}
+
+/* Monochrome */
+[data-color-theme="mono"] {
+  --theme-accent-primary:   #3d3d3d;
+  --theme-accent-secondary: #1a1a1a;
+  --theme-accent-dim:       rgba(61, 61, 61, 0.15);
+  --theme-accent-border:    rgba(61, 61, 61, 0.35);
+  --theme-accent-glow:      0 0 20px rgba(61, 61, 61, 0.15);
+}
+
+/* ==========================================
+   HIGH CONTRAST MODE
+   ========================================== */
+[data-high-contrast="true"] {
+  --theme-border-subtle:    1px solid currentColor;
+  --theme-border-visible:   2px solid currentColor;
+  --theme-shadow-sm:        0 2px 8px currentColor;
+  --theme-shadow-md:        0 4px 16px currentColor;
+  --theme-shadow-lg:        0 8px 32px currentColor;
+}
+
+[data-high-contrast="true"]:not([data-theme="light"]) {
+  --theme-bg-primary:       #000000;
+  --theme-bg-secondary:     #0a0a0a;
+  --theme-bg-tertiary:      #141414;
+  --theme-bg-card:          rgba(255, 255, 255, 0.05);
+  --theme-text-primary:     #ffffff;
+  --theme-text-secondary:   #e0e0e0;
+  --theme-text-muted:       #b0b0b0;
+}
+
+[data-high-contrast="true"][data-theme="light"] {
+  --theme-bg-primary:       #ffffff;
+  --theme-bg-secondary:     #f5f5f5;
+  --theme-bg-tertiary:      #eaeaea;
+  --theme-bg-card:          #ffffff;
+  --theme-text-primary:     #000000;
+  --theme-text-secondary:   #1a1a1a;
+  --theme-text-muted:       #404040;
+}
+
+/* ==========================================
+   LARGE TEXT (Accesibilidad)
+   ========================================== */
+[data-large-text="true"] {
+  --fs-xs:   0.85rem;
+  --fs-sm:   1rem;
+  --fs-md:   1.15rem;
+  --fs-lg:   1.4rem;
+  --fs-xl:   1.75rem;
+  --fs-2xl:  2.25rem;
+  --fs-3xl:  3.2rem;
+  
+  --space-xs: 10px;
+  --space-sm: 18px;
+  --space-md: 36px;
+  --space-lg: 72px;
+  --space-xl: 130px;
+  --space-xxl: 220px;
+}
+
+/* ==========================================
+   EXTRA SPACING (Accesibilidad)
+   ========================================== */
+[data-extra-spacing="true"] {
+  --space-xs: 12px;
+  --space-sm: 20px;
+  --space-md: 40px;
+  --space-lg: 80px;
+  --space-xl: 140px;
+  --space-xxl: 240px;
+  
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 48px;
+}
+
+/* ==========================================
+   REDUCED MOTION
+   ========================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0.001s;
+    --dur-fast:    0.001s;
+    --dur-mid:     0.001s;
+    --dur-slow:    0.001s;
+    --dur-slower:  0.001s;
+    --dur-spring:  0.001s;
+  }
+}

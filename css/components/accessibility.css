@@ -1,0 +1,343 @@
+/* ==========================================
+   Accessibility System
+   ========================================== */
+
+/* Focus visible - enhanced */
+:focus-visible {
+  outline: 3px solid var(--theme-accent-primary);
+  outline-offset: 3px;
+}
+
+/* Skip to main content link */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--theme-accent-primary);
+  color: white;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  z-index: var(--z-tooltip);
+  transition: top var(--dur-fast) var(--ease-out);
+}
+
+.skip-link:focus {
+  top: var(--space-md);
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Live region for announcements */
+.live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Large text mode */
+html[data-large-text="true"] {
+  --fs-xs: 0.85rem;
+  --fs-sm: 1rem;
+  --fs-md: 1.15rem;
+  --fs-lg: 1.4rem;
+  --fs-xl: 1.75rem;
+  --fs-2xl: 2.25rem;
+  
+  --space-xs: 10px;
+  --space-sm: 18px;
+  --space-md: 36px;
+  --space-lg: 72px;
+  --space-xl: 130px;
+}
+
+html[data-large-text="true"] .sidebar__link span {
+  font-size: 1.05rem;
+}
+
+html[data-large-text="true"] .bento-card h3 {
+  font-size: clamp(1.4rem, 3vw, 1.75rem);
+}
+
+html[data-large-text="true"] .bento-card p {
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+/* Extra spacing mode */
+html[data-extra-spacing="true"] {
+  --space-xs: 12px;
+  --space-sm: 20px;
+  --space-md: 40px;
+  --space-lg: 80px;
+  --space-xl: 140px;
+  
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 48px;
+}
+
+html[data-extra-spacing="true"] .bento-grid {
+  --bento-gap: clamp(20px, 3vw, 32px);
+}
+
+html[data-extra-spacing="true"] .bento-card {
+  padding: clamp(24px, 4vw, 40px);
+}
+
+/* Reduced motion mode - also handled in animations.css */
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* High contrast mode - also handled in theme.css */
+html[data-high-contrast="true"] {
+  --theme-border-subtle: 1px solid currentColor;
+  --theme-border-visible: 2px solid currentColor;
+  --theme-shadow-sm: 0 2px 8px currentColor;
+  --theme-shadow-md: 0 4px 16px currentColor;
+  --theme-shadow-lg: 0 8px 32px currentColor;
+}
+
+html[data-high-contrast="true"] .btn-primary,
+html[data-high-contrast="true"] .welcome-btn,
+html[data-high-contrast="true"] .install-btn {
+  border: 2px solid currentColor;
+}
+
+html[data-high-contrast="true"] .card,
+html[data-high-contrast="true"] .bento-card,
+html[data-high-contrast="true"] .section-card {
+  border-width: 2px;
+}
+
+/* Keyboard navigation enhancements */
+.keyboard-nav *:focus-visible {
+  outline: 3px solid var(--theme-accent-primary);
+  outline-offset: 3px;
+}
+
+/* Touch target minimum size */
+@media (pointer: coarse) {
+  button,
+  a[role="button"],
+  .btn,
+  .icon-btn,
+  .bottom-nav__item,
+  .mood-btn,
+  .toggle-switch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .form-input,
+  .form-select,
+  .form-textarea {
+    min-height: 48px;
+  }
+}
+
+/* Color blind safe - ensure information isn't conveyed by color alone */
+.color-blind-safe {
+  /* Patterns or icons accompany color coding */
+}
+
+.color-blind-safe .notification-item.unread::before {
+  content: '● ';
+  margin-right: 4px;
+}
+
+/* Reduced transparency */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .bento-card,
+  .section-card,
+  .sidebar,
+  .modal {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--theme-bg-card) !important;
+  }
+  
+  body::before,
+  body::after {
+    display: none;
+  }
+}
+
+/* Forced colors mode (Windows High Contrast) */
+@media (forced-colors: active) {
+  :root {
+    forced-color-adjust: none;
+  }
+  
+  .bento-card,
+  .section-card,
+  .card,
+  .btn,
+  .form-input,
+  .modal {
+    border: 2px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+  
+  .btn-primary {
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  
+  .accent-coral {
+    color: Highlight;
+  }
+  
+  .icon-btn,
+  .sidebar__link {
+    color: CanvasText;
+  }
+  
+  .icon-btn:hover,
+  .sidebar__link:hover,
+  .sidebar__link.is-active {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+/* Dark mode prefers-color-scheme */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    color-scheme: light;
+  }
+}
+
+/* Print styles */
+@media print {
+  .skip-link,
+  .sidebar,
+  .sidebar-toggle,
+  .sidebar-overlay,
+  .bottom-nav,
+  .notifications-toggle,
+  .theme-toggle,
+  .offline-indicator,
+  .pending-changes,
+  .decor-layer,
+  .fab,
+  .modal-overlay {
+    display: none !important;
+  }
+  
+  .page-shell {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .bento-grid {
+    display: block !important;
+  }
+  
+  .bento-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    background: white !important;
+    color: black !important;
+  }
+  
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+}
+
+/* Motion safe media query for future compatibility */
+@media (prefers-reduced-motion: no-preference) {
+  /* Normal animations enabled */
+}
+
+/* Pointer media query */
+@media (pointer: fine) {
+  /* Mouse/trackpad - can use hover effects */
+  .hover-lift:hover { transform: translateY(-4px); }
+  .hover-scale:hover { transform: scale(1.02); }
+}
+
+@media (pointer: coarse) {
+  /* Touch - disable hover effects, ensure touch targets */
+  .hover-lift:hover { transform: none; }
+  .hover-scale:hover { transform: none; }
+}
+
+/* Inverted colors detection */
+@media (inverted-colors: inverted) {
+  img,
+  video,
+  .logo,
+  [style*="background-image"] {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
+
+/* Touch manipulation */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Text spacing override for dyslexia */
+html[data-dyslexia="true"] {
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.16em !important;
+  line-height: 1.7 !important;
+}
+
+html[data-dyslexia="true"] * {
+  font-family: 'OpenDyslexic', var(--font-body) !important;
+}
+
+/* Cognitive load reduction */
+html[data-reduced-cognitive="true"] {
+  --dur-fast: 0.001s;
+  --dur-mid: 0.001s;
+  --dur-slow: 0.001s;
+}
+
+html[data-reduced-cognitive="true"] .decor-layer,
+html[data-reduced-cognitive="true"] .decor-particle,
+html[data-reduced-cognitive="true"] body::before,
+html[data-reduced-cognitive="true"] body::after {
+  display: none !important;
+}

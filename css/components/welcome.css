@@ -1,0 +1,107 @@
+/* ==========================================
+   Welcome Screen
+   ========================================== */
+
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--theme-bg-primary);
+  backdrop-filter: blur(var(--blur-lg));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-decor);
+  padding: var(--space-lg);
+  animation: fade-in var(--dur-slower) ease forwards;
+}
+
+.welcome-overlay.is-closing {
+  animation: fade-out var(--dur-slow) ease forwards;
+  pointer-events: none;
+}
+
+.welcome-content {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  padding: var(--space-xl) var(--space-lg);
+  background: var(--theme-bg-card);
+  border: var(--theme-border-visible);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--theme-shadow-lg);
+  animation: pop-in var(--dur-slower) cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.welcome-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-md);
+  animation: pulse-strong 2s ease-in-out infinite;
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  font-weight: 400;
+  color: var(--theme-text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.welcome-text {
+  font-size: var(--fs-lg);
+  color: var(--theme-text-secondary);
+  line-height: 1.7;
+  margin-bottom: var(--space-xl);
+}
+
+.welcome-btn {
+  padding: var(--space-md) var(--space-xl);
+  background: var(--theme-accent-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.welcome-btn:hover {
+  background: var(--theme-accent-secondary);
+  transform: translateY(-2px);
+  box-shadow: var(--theme-shadow-glow);
+}
+
+.welcome-btn:active {
+  transform: scale(0.97);
+}
+
+.welcome-credit {
+  margin-top: var(--space-lg);
+  font-size: var(--fs-xs);
+  color: var(--theme-text-muted);
+  opacity: 0.5;
+}
+
+/* --- Responsive --- */
+@media (max-width: 480px) {
+  .welcome-overlay {
+    padding: var(--space-md);
+    align-items: flex-start;
+    padding-top: 20vh;
+  }
+
+  .welcome-content {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .welcome-title {
+    font-size: var(--fs-2xl);
+  }
+
+  .welcome-text {
+    font-size: var(--fs-md);
+  }
+}

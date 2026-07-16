@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hub">
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
+    <title>Ositos World</title>
+    <meta name="description" content="Bienvenido a Ositos World, un pequeño lugar lleno de aventuras, personajes curiosos y muchas historias por descubrir.">
+    <meta name="theme-color" content="#09142E">
+    
+    <link rel="stylesheet" href="ositos-world.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="icon" type="image/png" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
+    <link rel="manifest" href="../../manifest.json">
+</head>
+<body data-sidebar-root="../.." data-sidebar-page="ositos-world">
+
+    <main class="ositos-world-main">
+
+        <!-- ===== NAVBAR SUPERIOR ===== -->
+        <header class="ositos-navbar">
+            <!-- BOTÓN VOLVER -->
+            <a href="../../index.html" class="ositos-nav-back" id="navBack" aria-label="Volver">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                <span>Volver</span>
+            </a>
+
+            <a href="#" class="ositos-logo-link" id="logoLink">
+                <div class="ositos-logo">
+                    <div class="ositos-logo-text">
+                        <span class="ositos-logo-title">OSITOSWORLD</span>
+                        <span class="ositos-logo-heart">❤️❤️</span>
+                    </div>
+                    <div class="ositos-logo-sub">Donde toda tu creatividad no tiene límites.</div>
+                </div>
+            </a>
+
+            <nav class="ositos-nav-menu">
+                <a href="#" class="ositos-nav-link active" data-section="home">
+                    <i data-lucide="home"></i>
+                    <span>INICIO</span>
+                </a>
+                <a href="#" class="ositos-nav-link" data-section="historia">
+                    <i data-lucide="book-open"></i>
+                    <span>HISTORIA</span>
+                </a>
+                <a href="#" class="ositos-nav-link" data-section="personajes">
+                    <i data-lucide="users"></i>
+                    <span>PERSONAJES</span>
+                </a>
+                <a href="#" class="ositos-nav-link" data-section="mundo">
+                    <i data-lucide="map"></i>
+                    <span>MUNDO</span>
+                </a>
+                <a href="#" class="ositos-nav-link" data-section="noticias">
+                    <i data-lucide="newspaper"></i>
+                    <span>NOTICIAS</span>
+                </a>
+            </nav>
+
+            <button class="ositos-hamburger" id="ositosHamburger" aria-label="Menú">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <div class="ositos-nav-spacer"></div>
+        </header>
+
+        <!-- ===== MENÚ MÓVIL ===== -->
+        <div class="ositos-mobile-menu" id="ositosMobileMenu">
+            <nav class="ositos-mobile-nav">
+                <a href="#" class="ositos-mobile-nav-link active" data-section="home">
+                    <i data-lucide="home"></i>
+                    <span>INICIO</span>
+                </a>
+                <a href="#" class="ositos-mobile-nav-link" data-section="historia">
+                    <i data-lucide="book-open"></i>
+                    <span>HISTORIA</span>
+                </a>
+                <a href="#" class="ositos-mobile-nav-link" data-section="personajes">
+                    <i data-lucide="users"></i>
+                    <span>PERSONAJES</span>
+                </a>
+                <a href="#" class="ositos-mobile-nav-link" data-section="mundo">
+                    <i data-lucide="map"></i>
+                    <span>MUNDO</span>
+                </a>
+                <a href="#" class="ositos-mobile-nav-link" data-section="noticias">
+                    <i data-lucide="newspaper"></i>
+                    <span>NOTICIAS</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- ===== CUERPO PRINCIPAL ===== -->
+        <div class="ositos-body">
+
+            <!-- ===== SIDEBAR IZQUIERDA ===== -->
+            <aside class="ositos-sidebar">
+                <h2 class="ositos-sidebar-title">🤍Reina🤍</h2>
+                <div class="ositos-sidebar-underline">~~~~~~</div>
+                <p class="ositos-sidebar-desc">
+                    Imagina tu mundo,<br>
+                    diseña a los personajes<br>
+                    y diviertete con su historia.
+                </p>
+                <p class="ositos-sidebar-desc">
+                    El límite es tu imaginación.
+                </p>
+
+                <nav class="ositos-sidebar-filters">
+                    <button class="ositos-filter-btn active" data-filter="todos">
+                        <i data-lucide="list"></i>
+                        <span>TODOS</span>
+                        <span class="ositos-filter-count" id="countTodos">0</span>
+                    </button>
+                    <button class="ositos-filter-btn" data-filter="heroe">
+                        <i data-lucide="sword"></i>
+                        <span>HÉROES</span>
+                        <span class="ositos-filter-count" id="countHeroes">0</span>
+                    </button>
+                    <button class="ositos-filter-btn" data-filter="villano">
+                        <i data-lucide="skull"></i>
+                        <span>VILLANOS</span>
+                        <span class="ositos-filter-count" id="countVillanos">0</span>
+                    </button>
+                    <button class="ositos-filter-btn" data-filter="aliado">
+                        <i data-lucide="heart-handshake"></i>
+                        <span>ALIADOS</span>
+                        <span class="ositos-filter-count" id="countAliados">0</span>
+                    </button>
+                </nav>
+
+                <div class="ositos-sidebar-favorites">
+                    <div class="ositos-fav-header">
+                        <i data-lucide="heart" class="ositos-fav-icon"></i>
+                        <span>FAVORITO</span>
+                    </div>
+                    <p class="ositos-fav-desc">
+                        Marca tus personajes favoritos<br>
+                        para verlos rápido siempre.
+                    </p>
+                    <button class="ositos-fav-btn" id="showFavoritesBtn">
+                        <i data-lucide="heart"></i> ENTENDIDO
+                    </button>
+                </div>
+
+                <div class="ositos-sidebar-mascot">
+                    <span class="ositos-mascot-emoji">🧸</span>
+                </div>
+            </aside>
+
+            <!-- ===== ZONA PRINCIPAL ===== -->
+            <section class="ositos-content" id="ositosContent">
+                <!-- El contenido se renderiza desde JavaScript -->
+            </section>
+
+        </div>
+
+        <!-- ===== FOOTER ===== -->
+        <footer class="ositos-footer">
+            <span class="ositos-footer-text">Hecho con amor para mi princesa.</span>
+            <div class="ositos-footer-social">
+                <span class="ositos-footer-text">TE AMO</span>
+            </div>
+            <span class="ositos-footer-heart">🤍</span>
+        </footer>
+
+    </main>
+<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
+
+    <!-- ===== MODAL ===== -->
+    <div class="ositos-modal" id="ositosModal">
+        <div class="ositos-modal-content">
+            <button class="ositos-modal-close" id="ositosModalClose">🤍</button>
+            <div class="ositos-modal-body" id="ositosModalBody"></div>
+        </div>
+    </div>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="../../services/firebase/firebase-config.js"></script>
+    <script src="../../services/auth/encryption.js"></script>
+    <script src="../../services/auth/session-manager.js"></script>
+    <script src="../../services/auth/auth.service.js"></script>
+    <script src="../../shared/utils/profile.js"></script>
+    <script src="../../shared/utils/authGuard.js"></script>
+    <script src="data.js"></script>
+    <script src="ositos-world.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../../sw.js')
+        .then(function(reg) { console.log('SW registered:', reg.scope); })
+        .catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+
+</html>
+

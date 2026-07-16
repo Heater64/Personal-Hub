@@ -20,13 +20,11 @@
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
     <link rel="manifest" href="../manifest.json">
 </head>
-<body data-sidebar-page="ositos-world">
+<body data-sidebar-page="ositos-world" data-sidebar-root="..">
 
     <main class="ositos-world-main">
 
-        <!-- ===== NAVBAR SUPERIOR ===== -->
         <header class="ositos-navbar">
-            <!-- BOTÓN VOLVER -->
             <a href="../index.html" class="ositos-nav-back" id="navBack" aria-label="Volver">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -76,7 +74,6 @@
             <div class="ositos-nav-spacer"></div>
         </header>
 
-        <!-- ===== MENÚ MÓVIL ===== -->
         <div class="ositos-mobile-menu" id="ositosMobileMenu">
             <nav class="ositos-mobile-nav">
                 <a href="#" class="ositos-mobile-nav-link active" data-section="home">
@@ -102,10 +99,8 @@
             </nav>
         </div>
 
-        <!-- ===== CUERPO PRINCIPAL ===== -->
         <div class="ositos-body">
 
-            <!-- ===== SIDEBAR IZQUIERDA ===== -->
             <aside class="ositos-sidebar">
                 <h2 class="ositos-sidebar-title">🤍Reina🤍</h2>
                 <div class="ositos-sidebar-underline">~~~~~~</div>
@@ -160,14 +155,10 @@
                 </div>
             </aside>
 
-            <!-- ===== ZONA PRINCIPAL ===== -->
-            <section class="ositos-content" id="ositosContent">
-                <!-- El contenido se renderiza desde JavaScript -->
-            </section>
+            <section class="ositos-content" id="ositosContent"></section>
 
         </div>
 
-        <!-- ===== FOOTER ===== -->
         <footer class="ositos-footer">
             <span class="ositos-footer-text">Hecho con amor para mi princesa.</span>
             <div class="ositos-footer-social">
@@ -178,7 +169,6 @@
 
     </main>
 
-    <!-- ===== MODAL ===== -->
     <div class="ositos-modal" id="ositosModal">
         <div class="ositos-modal-content">
             <button class="ositos-modal-close" id="ositosModalClose">🤍</button>
@@ -186,7 +176,9 @@
         </div>
     </div>
 
-    <!-- ===== SCRIPTS ===== -->
+    <!-- ===== BOTTOM NAV (móvil) ===== -->
+    <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
+
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -194,6 +186,16 @@
     <script src="../js/firebase-config.js"></script>
     <script src="../js/core/profile.js"></script>
     <script src="../js/core/authGuard.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    window.addEventListener('pageshow', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+    });
+    </script>
     <script src="../js/data/ositos-characters.js"></script>
     <script src="../js/pages/ositos-world.js"></script>
     <script>
@@ -204,5 +206,5 @@
     }
     </script>
 
+</body>
 </html>
-

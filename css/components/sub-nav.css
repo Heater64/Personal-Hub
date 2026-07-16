@@ -1,0 +1,72 @@
+/* ==========================================
+   Sub-Navigation — Tabs de sub-sección
+   ========================================== */
+
+/* Barra de tabs */
+.sub-nav {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-lg);
+}
+
+/* Tab individual */
+.sub-tab {
+  padding: var(--space-xs) var(--space-md);
+  background: transparent;
+  border: var(--border-subtle);
+  border-radius: var(--radius-pill);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: var(--umbra-ash);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast);
+}
+
+.sub-tab:hover {
+  opacity: 0.7;
+}
+
+.sub-tab.active {
+  border-color: var(--accent-coral);
+  color: var(--accent-coral);
+}
+
+.sub-tab i {
+  width: 16px;
+  height: 16px;
+}
+
+/* Vista asociada a un tab */
+.sub-view {
+  display: none;
+}
+
+.sub-view.active {
+  display: block;
+  animation: fadeIn var(--dur-mid);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sub-tab {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 550px) {
+  .sub-tab span {
+    display: none;
+  }
+  .sub-tab {
+    padding: 8px 10px;
+  }
+  .sub-tab i {
+    width: 18px;
+    height: 18px;
+  }
+}

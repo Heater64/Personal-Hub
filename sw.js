@@ -1,7 +1,7 @@
 // ============================================================
 // Personal Hub - Service Worker
 // ============================================================
-var CACHE_VERSION = 'v5';
+var CACHE_VERSION = 'v6';
 var STATIC_CACHE  = 'personal-hub-static-' + CACHE_VERSION;
 var DYNAMIC_CACHE = 'personal-hub-dynamic-' + CACHE_VERSION;
 
@@ -185,9 +185,18 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // Stale-while-revalidate for static assets
+  // Cache-first for static assets for maximum speed
   if (url.pathname.match(/\.(css|js|png|svg|ico|woff2?|ttf|otf|eot|mp3|wav|ogg|jpg|jpeg|webp)$/)) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(
+      caches.match(request).then(function(cachedResponse) {
+        return cachedResponse || fetch(request).then(function(response) {
+            if (response.ok) {
+                caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, response.clone()));
+            }
+            return response;
+        });
+      })
+    );
     return;
   }
 
@@ -212,7 +221,7 @@ function networkFirst(request) {
       }
       return response;
     }),
-    timeout(4000)
+    timeout(2000) // Cambiado de 4000 a 2000
   ]).catch(function() {
     return caches.match(request).then(function(cached) {
       if (cached) return cached;
@@ -225,6 +234,9 @@ function networkFirst(request) {
 }
 
 function staleWhileRevalidate(request) {
+  // Ignorar peticiones que no sean http/https (como chrome-extension://)
+  if (!request.url.startsWith('http')) return fetch(request);
+
   var cachePromise = caches.open(DYNAMIC_CACHE);
   return cachePromise.then(function(cache) {
     return caches.match(request).then(function(cached) {

@@ -5,16 +5,25 @@
     let authReadyChecked = false;
 
     const NAV_ITEMS = [
-    { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
-    { key: 'canciones', label: 'Canciones', icon: 'music', href: 'pages/canciones.html' },
-    { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: 'pages/rincon.html' },
-    { key: 'thoseeyes', label: 'Those Eyes', icon: 'eye', href: 'pages/thoseeyes.html' },
-    { key: 'series', label: 'Series', icon: 'tv', href: 'pages/series.html' },
-    { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
-    { key: 'juegos', label: 'Juegos', icon: 'gamepad-2', href: 'pages/juegos.html' },
-    { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: 'pages/ositos-world.html' },
-    { key: '4eso', label: 'Apuntes 4ESO', icon: 'book-open', href: 'https://web-4eso.vercel.app/dashboard.html' },
-];
+        { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
+        { key: 'canciones', label: 'Canciones', icon: 'music', href: 'pages/canciones.html' },
+        { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: 'pages/rincon.html' },
+        { key: 'thoseeyes', label: 'Those Eyes', icon: 'eye', href: 'pages/thoseeyes.html' },
+        { key: 'series', label: 'Series', icon: 'tv', href: 'pages/series.html' },
+        { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
+        { key: 'juegos', label: 'Juegos', icon: 'gamepad-2', href: 'pages/juegos.html' },
+        { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: 'pages/ositos-world.html' },
+        { key: '4eso', label: 'Apuntes 4ESO', icon: 'book-open', href: 'https://web-4eso.vercel.app/dashboard.html' },
+    ];
+
+    const PROFILE_ITEMS = [
+        { key: 'calendario', label: 'Calendario', icon: 'calendar-days', href: 'pages/calendario.html' },
+        { key: 'razones', label: 'Razones', icon: 'sparkles', href: 'pages/razones.html' },
+        { key: 'openwhen', label: 'Open When', icon: 'mail', href: 'pages/openwhen.html' },
+        { key: 'maldia', label: 'Mal Día', icon: 'sun-medium', href: 'pages/maldia.html' },
+        { key: 'admin', label: 'Admin', icon: 'settings', href: 'pages/admin.html', isAdmin: true },
+        { key: 'logout', label: 'Cerrar sesión', icon: 'log-out', href: '#', isLogout: true },
+    ];
 
     function getDB() {
         if (window.db) return window.db;
@@ -32,6 +41,30 @@
         return user ? user.uid : null;
     }
 
+    function getUserName() {
+        var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+        if (!user) return '';
+        return user.displayName || user.email || '';
+    }
+
+    function getUserInitial() {
+        var name = getUserName();
+        return name.charAt(0).toUpperCase() || '?';
+    }
+
+    function getIsAdmin() {
+        try {
+            var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+            if (!user) return false;
+            if (typeof window.isAdminUser === 'function') {
+                return window.isAdminUser(user);
+            }
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
     async function toggleHidden(key) {
         if (hiddenSections.includes(key)) {
             hiddenSections = hiddenSections.filter(k => k !== key);
@@ -39,8 +72,8 @@
             hiddenSections.push(key);
         }
         renderSidebar();
+        renderBottomNav();
 
-        // Guardar en preferencias del usuario (ProfileSystem)
         var uid = getCurrentUid();
         if (uid && typeof ProfileSystem !== 'undefined') {
             await ProfileSystem.savePreferences(uid, { hiddenSections: hiddenSections });
@@ -50,24 +83,22 @@
     async function loadConfig() {
         var uid = getCurrentUid();
 
-        // 1. Intentar cargar desde preferencias del usuario
         if (uid && typeof ProfileSystem !== 'undefined') {
             var prefs = await ProfileSystem.loadPreferences(uid);
             if (prefs && Array.isArray(prefs.hiddenSections)) {
                 hiddenSections = prefs.hiddenSections;
                 renderSidebar();
+                renderBottomNav();
                 return;
             }
         }
 
-        // 2. Fallback: cargar desde config compartida (migración)
         const fb = getDB();
         if (fb) {
             try {
                 const doc = await fb.collection('config').doc('sidebar').get();
                 if (doc.exists && Array.isArray(doc.data().hiddenSections)) {
                     hiddenSections = doc.data().hiddenSections;
-                    // Migrar a perfil del usuario si es posible
                     if (uid && typeof ProfileSystem !== 'undefined') {
                         await ProfileSystem.savePreferences(uid, { hiddenSections: hiddenSections });
                     }
@@ -79,34 +110,33 @@
             }
         }
         renderSidebar();
+        renderBottomNav();
     }
 
-    // ==========================================
-    // MODO EDICIÓN CONTROLADO POR AUTH
-    // ==========================================
     function checkAuthForEditing() {
         const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-        if (user && typeof isAdminUser === 'function' && isAdminUser(user)) {
+        if (user && getIsAdmin()) {
             editing = true;
             renderSidebar();
+            renderBottomNav();
         }
     }
 
     function startListeningAuth() {
         if (typeof window.auth === 'undefined' || !window.auth) {
-            // Si auth no está listo, reintentar
             setTimeout(startListeningAuth, 500);
             return;
         }
         window.auth.onAuthStateChanged(function (user) {
             const wasEditing = editing;
-            if (user && typeof isAdminUser === 'function' && isAdminUser(user)) {
+            if (user && getIsAdmin()) {
                 editing = true;
             } else {
                 editing = false;
             }
             if (wasEditing !== editing) {
                 renderSidebar();
+                renderBottomNav();
             }
             authReadyChecked = true;
         });
@@ -115,6 +145,10 @@
     function buildHref(root, href) {
         if (!root || root === '.') return href;
         if (href.startsWith('http://') || href.startsWith('https://')) return href;
+        // Si href ya tiene 'pages/' y root es '..', no duplicar
+        if (href.startsWith('pages/') && root === '..') {
+            return href;
+        }
         return `${root}/${href}`;
     }
 
@@ -132,6 +166,10 @@
         prefetchedPages.add(url.href);
     }
 
+    // ==========================================
+    // SIDEBAR (escritorio)
+    // ==========================================
+
     function renderSidebar() {
         const sidebar = document.querySelector('[data-sidebar]');
         const body = document.body;
@@ -141,7 +179,7 @@
         const currentPage = body.dataset.sidebarPage || 'home';
         const year = new Date().getFullYear();
         const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-        const isAdmin = user && typeof isAdminUser === 'function' && isAdminUser(user);
+        const isAdmin = user && getIsAdmin();
 
         const visibleItems = NAV_ITEMS.filter(item => !isHidden(item.key));
         const hiddenItems = NAV_ITEMS.filter(item => isHidden(item.key));
@@ -214,7 +252,7 @@
                         </div>
                         <div class="sidebar__user-info">
                             <span class="sidebar__user-name">${userName}</span>
-                            <span class="sidebar__user-role">${typeof isAdminUser === 'function' && isAdminUser(user) ? '✨ Admin' : '🤍 Princesa'}</span>
+                            <span class="sidebar__user-role">${isAdmin ? '✨ Admin' : '🤍 Princesa'}</span>
                         </div>
                         <button class="sidebar__logout-btn" id="sidebarLogoutBtn" title="Cerrar sesión">
                             <i data-lucide="log-out"></i>
@@ -228,7 +266,6 @@
             </div>
         `;
 
-        // Logout handler
         const logoutBtn = document.getElementById('sidebarLogoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async function (e) {
@@ -264,6 +301,219 @@
         });
     }
 
+    // ==========================================
+    // BOTTOM NAV (móvil) - SIEMPRE VISIBLE
+    // ==========================================
+
+    function renderBottomNav() {
+        const nav = document.getElementById('bottomNav');
+        if (!nav) {
+            setTimeout(function() {
+                const navAgain = document.getElementById('bottomNav');
+                if (navAgain) {
+                    renderBottomNav();
+                }
+            }, 100);
+            return;
+        }
+
+        const body = document.body;
+        const currentPage = body.dataset.sidebarPage || 'home';
+        const root = body.dataset.sidebarRoot || '.';
+        const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+        const isLoggedIn = !!user;
+
+        // Items de la barra inferior
+        const bottomItems = [
+            { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
+            { key: 'canciones', label: 'Música', icon: 'music', href: 'pages/canciones.html' },
+            { key: 'rincon', label: 'Rincón', icon: 'heart', href: 'pages/rincon.html' },
+            { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
+            { key: 'perfil', label: isLoggedIn ? 'Perfil' : 'Login', icon: isLoggedIn ? 'user' : 'log-in', href: isLoggedIn ? '#' : 'login.html', isProfile: true },
+        ];
+
+        const visibleItems = bottomItems.filter(item => {
+            if (item.isProfile) return true;
+            return !isHidden(item.key);
+        });
+
+        nav.innerHTML = visibleItems.map((item, index) => {
+            const href = item.isProfile ? (isLoggedIn ? '#' : 'login.html') : buildHref(root, item.href);
+            const isActive = item.key === currentPage || (item.key === 'perfil' && currentPage === 'login');
+            const isCenter = index === Math.floor(visibleItems.length / 2);
+            const isProfile = item.isProfile || false;
+            
+            const classes = [
+                'bottom-nav-item',
+                isActive ? 'active' : '',
+                isCenter ? 'center' : '',
+                isProfile ? 'profile-btn' : ''
+            ].filter(Boolean).join(' ');
+
+            let iconHtml = '';
+            if (isProfile && isLoggedIn) {
+                const initial = getUserInitial();
+                iconHtml = `
+                    <div class="bottom-avatar">${initial}</div>
+                `;
+            } else if (isProfile && !isLoggedIn) {
+                iconHtml = `<i data-lucide="log-in"></i>`;
+            } else {
+                iconHtml = `<i data-lucide="${item.icon}"></i>`;
+            }
+
+            return `
+                <a class="${classes}" 
+                   href="${href}" 
+                   data-section="${item.key}"
+                   ${isProfile && isLoggedIn ? 'id="bottomProfileBtn"' : ''}
+                   aria-current="${isActive ? 'page' : 'false'}">
+                    ${iconHtml}
+                    <span class="label">${item.label}</span>
+                </a>
+            `;
+        }).join('');
+
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons({ root: nav });
+        }
+
+        const profileBtn = document.getElementById('bottomProfileBtn');
+        if (profileBtn) {
+            profileBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (isLoggedIn) {
+                    openProfileModal();
+                }
+            });
+        }
+    }
+
+    // ==========================================
+    // MODAL DE PERFIL
+    // ==========================================
+
+    function openProfileModal() {
+        const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+        if (!user) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Eliminar modal existente si lo hay
+        const existingModal = document.getElementById('profileModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'profileModal';
+        modal.className = 'profile-modal-overlay';
+        modal.innerHTML = `
+            <div class="profile-modal">
+                <div class="profile-modal-header">
+                    <div class="profile-user">
+                        <div class="profile-avatar" id="profileAvatar">${getUserInitial()}</div>
+                        <div>
+                            <div class="profile-name" id="profileName">${user.displayName || user.email || 'Usuario'}</div>
+                            <div class="profile-email" id="profileEmail">${user.email || ''}</div>
+                        </div>
+                    </div>
+                    <button class="profile-modal-close" id="profileModalClose">✕</button>
+                </div>
+                <div class="profile-modal-body" id="profileModalBody"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        const root = document.body.dataset.sidebarRoot || '.';
+        const currentPage = document.body.dataset.sidebarPage || 'home';
+        const isAdmin = getIsAdmin();
+
+        let profileItems = PROFILE_ITEMS.filter(item => {
+            if (item.isAdmin && !isAdmin) return false;
+            return true;
+        });
+
+        const body = document.getElementById('profileModalBody');
+        body.innerHTML = profileItems.map(item => {
+            const href = item.isLogout ? '#' : buildHref(root, item.href);
+            const isActive = item.key === currentPage;
+            const classes = [
+                'profile-item',
+                item.isLogout ? 'danger' : '',
+                isActive ? 'active' : ''
+            ].filter(Boolean).join(' ');
+
+            const badge = item.isAdmin ? '<span class="item-badge">Admin</span>' : '';
+
+            if (item.isLogout) {
+                return `
+                    <button class="${classes}" data-action="logout">
+                        <i data-lucide="${item.icon}"></i>
+                        <span class="item-label">${item.label}</span>
+                    </button>
+                `;
+            }
+
+            return `
+                <a class="${classes}" href="${href}" data-section="${item.key}">
+                    <i data-lucide="${item.icon}"></i>
+                    <span class="item-label">${item.label}</span>
+                    ${badge}
+                </a>
+            `;
+        }).join('');
+
+        body.querySelector('[data-action="logout"]')?.addEventListener('click', async function() {
+            if (typeof logoutUser === 'function') {
+                await logoutUser();
+                closeProfileModal();
+                window.location.href = buildHref(root, 'login.html');
+            }
+        });
+
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons({ root: body });
+        }
+
+        // Eventos de cierre
+        const closeBtn = document.getElementById('profileModalClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeProfileModal);
+        }
+
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeProfileModal();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('profileModal')) {
+                closeProfileModal();
+            }
+        });
+
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeProfileModal() {
+        const modal = document.getElementById('profileModal');
+        if (modal) {
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+            setTimeout(() => {
+                if (modal.parentNode) modal.remove();
+            }, 300);
+        }
+    }
+
+    // ==========================================
+    // SIDEBAR TOGGLE
+    // ==========================================
+
     function closeSidebar() { document.body.classList.remove('sidebar-open'); }
     function openSidebar() { document.body.classList.add('sidebar-open'); }
     function toggleSidebar() { document.body.classList.toggle('sidebar-open'); }
@@ -288,17 +538,57 @@
         }
     });
 
+    // ==========================================
+    // FORZAR RENDERIZADO
+    // ==========================================
+
+    function forceRender() {
+        console.log('🔄 Forzando renderizado de barra inferior');
+        if (typeof renderBottomNav === 'function') {
+            renderBottomNav();
+        }
+        if (typeof renderSidebar === 'function') {
+            renderSidebar();
+        }
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted || document.readyState === 'complete') {
+            setTimeout(forceRender, 100);
+        }
+    });
+
+    if (window.MutationObserver) {
+        const observer = new MutationObserver(function() {
+            const nav = document.getElementById('bottomNav');
+            if (nav && nav.children.length === 0) {
+                forceRender();
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(forceRender, 150);
+    });
+
+    window.forceRenderNav = forceRender;
+
+    // ==========================================
+    // INICIALIZACIÓN
+    // ==========================================
+
     document.addEventListener('DOMContentLoaded', async () => {
         bindToggle();
         if (typeof waitForFirebase === 'function') await waitForFirebase();
         await loadConfig();
-        // Escuchar cambios de auth
         startListeningAuth();
 
-        // Recargar configuración cuando el usuario cambie (login/logout)
         if (typeof window.auth !== 'undefined' && window.auth) {
             window.auth.onAuthStateChanged(function (user) {
-                // Pequeño delay para que ProfileSystem se actualice
                 setTimeout(function () {
                     loadConfig();
                 }, 300);
@@ -307,7 +597,10 @@
     });
 
     window.renderSidebar = renderSidebar;
+    window.renderBottomNav = renderBottomNav;
     window.openSidebar = openSidebar;
     window.closeSidebar = closeSidebar;
     window.toggleSidebar = toggleSidebar;
+    window.openProfileModal = openProfileModal;
+    window.closeProfileModal = closeProfileModal;
 })();

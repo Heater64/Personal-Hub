@@ -1,0 +1,292 @@
+/* ==========================================
+   Tipografía — Sistema unificado
+   ========================================== */
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: var(--theme-text-primary);
+  background: var(--theme-bg-primary);
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+/* ==========================================
+   Títulos — Playfair Display
+   ========================================== */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.brand h1,
+.player-title,
+.bento-hero h2,
+.section-card h2,
+.section-card h3,
+.hero-title,
+.welcome-title,
+.modal-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--theme-text-primary);
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: var(--fs-3xl);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-sm);
+}
+
+h2 {
+  font-size: var(--fs-2xl);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-sm);
+}
+
+h3 {
+  font-size: var(--fs-xl);
+  margin-bottom: var(--space-xs);
+}
+
+h4 {
+  font-size: var(--fs-lg);
+  margin-bottom: var(--space-xs);
+}
+
+h5 {
+  font-size: var(--fs-md);
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+}
+
+h6 {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-xs);
+}
+
+/* ==========================================
+   Párrafos y texto
+   ========================================== */
+p {
+  font-size: var(--fs-md);
+  line-height: 1.7;
+  margin-bottom: var(--space-sm);
+  color: var(--theme-text-secondary);
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
+
+/* ==========================================
+   Texto pequeño / meta
+   ========================================== */
+small,
+.text-small {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
+  color: var(--theme-text-muted);
+}
+
+.text-sm {
+  font-size: var(--fs-sm);
+}
+
+.text-lg {
+  font-size: var(--fs-lg);
+}
+
+.text-xl {
+  font-size: var(--fs-xl);
+}
+
+/* ==========================================
+   Colores de texto
+   ========================================== */
+.text-primary {
+  color: var(--theme-text-primary);
+}
+
+.text-secondary {
+  color: var(--theme-text-secondary);
+}
+
+.text-muted {
+  color: var(--theme-text-muted);
+}
+
+.text-accent {
+  color: var(--theme-accent-primary);
+}
+
+.text-success {
+  color: var(--theme-success);
+}
+
+.text-error {
+  color: var(--theme-error);
+}
+
+.text-warning {
+  color: var(--theme-warning);
+}
+
+.text-info {
+  color: var(--theme-info);
+}
+
+.text-inverse {
+  color: var(--theme-text-inverse);
+}
+
+/* ==========================================
+   Alineación
+   ========================================== */
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* ==========================================
+   Decoración
+   ========================================== */
+.text-italic {
+  font-style: italic;
+}
+
+.text-uppercase {
+  text-transform: uppercase;
+}
+
+.text-capitalize {
+  text-transform: capitalize;
+}
+
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================
+   Pesos
+   ========================================== */
+.font-light {
+  font-weight: 300;
+}
+
+.font-regular {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* ==========================================
+   Monospace
+   ========================================== */
+.font-mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  letter-spacing: 0.04em;
+}
+
+/* ==========================================
+   Iconos Lucide
+   ========================================== */
+i[data-lucide] {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  stroke-width: 1.5;
+  stroke: currentColor;
+  fill: none;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* ==========================================
+   Enlaces
+   ========================================== */
+a:not(.no-underline) {
+  color: var(--theme-accent-primary);
+  text-decoration: none;
+  transition: color var(--dur-fast) ease;
+}
+
+a:not(.no-underline):hover {
+  color: var(--theme-accent-secondary);
+}
+
+a:not(.no-underline):focus-visible {
+  outline: 2px solid var(--theme-accent-primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================
+   Código
+   ========================================== */
+code,
+pre {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+  background: var(--theme-bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+}
+
+pre {
+  padding: var(--space-sm);
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+pre code {
+  padding: 0;
+  background: transparent;
+}
+
+/* ==========================================
+   Separadores
+   ========================================== */
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--theme-border-visible), transparent);
+  margin: var(--space-md) 0;
+}
+
+hr.divider-dotted {
+  border-top: 2px dotted var(--theme-border-subtle);
+}
+
+hr.divider-dashed {
+  border-top: 2px dashed var(--theme-border-subtle);
+}
