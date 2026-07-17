@@ -56,7 +56,7 @@
 .search-input {
   width: 100%;
   background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
   border-radius: 40px;
   padding: 8px 14px 8px 36px;
   color: white;
@@ -77,10 +77,10 @@
 
 .filter-chip {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.1));
   padding: 6px 16px;
   border-radius: 30px;
-  color: #999;
+  color: var(--theme-text-muted, #999);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.75rem;
@@ -93,8 +93,8 @@
 }
 
 .filter-chip:hover:not(.active) {
-  border-color: rgba(255,255,255,0.25);
-  color: #ccc;
+  border-color: var(--glass-border-hover, rgba(255,255,255,0.25));
+  color: var(--theme-text-secondary, #ccc);
 }
 
 .catalog-grid {
@@ -153,13 +153,13 @@
   aspect-ratio: 2 / 3;
   border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  box-shadow: var(--theme-shadow-sm, 0 2px 12px rgba(0,0,0,0.3));
   transition: box-shadow 0.2s ease;
-  background: rgba(20,20,24,1);
+  background: var(--umbra-dark, rgba(20,20,24,1));
 }
 
 .movie-card:hover .card-cover {
-  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  box-shadow: var(--theme-shadow-lg, 0 8px 30px rgba(0,0,0,0.6));
 }
 
 .card-img {
@@ -178,7 +178,7 @@
   font-size: 2.5rem;
   font-weight: 600;
   color: var(--umbra-ash);
-  background: linear-gradient(135deg, rgba(20,20,24,1), rgba(10,10,12,1));
+  background: linear-gradient(135deg, var(--umbra-dark, rgba(20,20,24,1)), var(--umbra-black, rgba(10,10,12,1)));
 }
 
 /* Badges on cover */
@@ -194,7 +194,7 @@
   justify-content: center;
   font-size: 0.6rem;
   z-index: 2;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  box-shadow: var(--theme-shadow-sm, 0 2px 8px rgba(0,0,0,0.5));
 }
 
 .card-badge.completed {
@@ -220,7 +220,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #ccc;
+  color: var(--theme-text-secondary, #ccc);
   transition: color 0.2s;
 }
 
@@ -237,7 +237,7 @@
 .card-progress {
   margin-top: 4px;
   height: 3px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--glass-bg-active, rgba(255, 255, 255, 0.06));
   border-radius: 2px;
   overflow: hidden;
 }
@@ -277,12 +277,12 @@
 
 .ch-btn i { width: 15px; height: 15px; }
 
-.ch-btn:hover { border-color: white; background: rgba(255,255,255,0.15); }
+.ch-btn:hover { border-color: white; background: var(--glass-bg-active, rgba(255,255,255,0.15)); }
 
 .ch-play {
   background: white;
   border-color: white;
-  color: #000;
+  color: var(--umbra-black, #000);
   width: 38px;
   height: 38px;
 }
@@ -315,9 +315,9 @@
   position: absolute;
   bottom: calc(100% + 8px);
   right: 0;
-  background: rgba(20, 20, 24, 0.98);
+  background: var(--umbra-dark, rgba(20, 20, 24, 0.98));
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: var(--glass-border, 1px solid rgba(255,255,255,0.1));
   border-radius: 12px;
   padding: 6px;
   min-width: 180px;
@@ -325,7 +325,7 @@
   transform: translateY(6px) scale(0.95);
   pointer-events: none;
   transition: opacity 0.15s ease, transform 0.15s ease;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  box-shadow: var(--theme-shadow-md, 0 12px 40px rgba(0,0,0,0.5));
 }
 
 .ch-dropdown.open {
@@ -342,7 +342,7 @@
   padding: 10px 14px;
   border: none;
   background: transparent;
-  color: #ccc;
+  color: var(--theme-text-secondary, #ccc);
   font-size: 0.8rem;
   cursor: pointer;
   border-radius: 8px;
@@ -353,7 +353,7 @@
 .ch-dropdown button i { width: 16px; height: 16px; }
 
 .ch-dropdown button:hover {
-  background: rgba(255,255,255,0.06);
+  background: var(--glass-bg-active, rgba(255,255,255,0.06));
   color: white;
 }
 
@@ -373,14 +373,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
   border: 1px dashed rgba(255, 255, 255, 0.12);
   transition: all 0.2s;
 }
 
 .card-add:hover .card-cover {
   border-color: var(--accent-coral);
-  background: rgba(198, 90, 58, 0.05);
+  background: var(--accent-soft, rgba(198, 90, 58, 0.05));
 }
 
 .card-add-icon {
@@ -414,7 +414,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(5, 5, 6, 0.95);
+  background: var(--umbra-black, rgba(5, 5, 6, 0.95));
   backdrop-filter: blur(20px);
   z-index: 1000;
   display: flex;
@@ -423,9 +423,9 @@
 }
 
 .modal-content {
-  background: rgba(15, 15, 18, 0.96);
+  background: var(--umbra-dark, rgba(15, 15, 18, 0.96));
   border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
   position: relative;
   max-height: 90vh;
   overflow-y: auto;
@@ -470,7 +470,7 @@
   height: 150px;
   object-fit: cover;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.1));
 }
 
 .view-info h2 {
@@ -513,7 +513,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
   border-radius: 14px;
   margin-bottom: 8px;
   flex-wrap: wrap;
@@ -550,7 +550,7 @@
 
 /* Estilos para el progreso y marcadores */
 .progress-track-serie {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 16px;
@@ -585,8 +585,8 @@
 }
 
 .mark-ep-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--glass-bg-active, rgba(255, 255, 255, 0.08));
+  border: var(--glass-border-hover, 1px solid rgba(255, 255, 255, 0.15));
   border-radius: 20px;
   padding: 4px 12px;
   font-size: 0.7rem;
@@ -609,7 +609,7 @@
 }
 
 .episode-row.next-episode {
-  background: linear-gradient(90deg, rgba(198, 90, 58, 0.15), rgba(255, 215, 0, 0.05));
+  background: linear-gradient(90deg, var(--accent-dim, rgba(198, 90, 58, 0.15)), rgba(255, 215, 0, 0.05));
   border-left: 3px solid var(--accent-coral);
 }
 
@@ -622,8 +622,8 @@
 }
 
 .bulk-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--glass-bg-hover, rgba(255, 255, 255, 0.05));
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.1));
   border-radius: 20px;
   padding: 6px 14px;
   font-size: 0.7rem;
@@ -636,7 +636,7 @@
 }
 
 .bulk-btn:hover {
-  background: rgba(198, 90, 58, 0.2);
+  background: var(--accent-glow, rgba(198, 90, 58, 0.2));
   border-color: var(--accent-coral);
 }
 
@@ -658,7 +658,7 @@
 .modal-form::-webkit-scrollbar-thumb,
 .modal-view::-webkit-scrollbar-thumb,
 .ep-progress-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--glass-bg-active, rgba(255, 255, 255, 0.15));
   border-radius: 10px;
 }
 
@@ -687,7 +687,7 @@
 
 .catalog-section-count {
   font-size: 0.65rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg-active, rgba(255, 255, 255, 0.08));
   padding: 2px 10px;
   border-radius: 20px;
   color: var(--umbra-ash);
@@ -723,14 +723,14 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--glass-shield, rgba(255, 255, 255, 0.02));
   border-radius: 12px;
   transition: all 0.2s;
   border: 1px solid transparent;
 }
 
 .ep-progress-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass-bg-hover, rgba(255, 255, 255, 0.05));
 }
 
 .ep-progress-item.watched {
@@ -742,8 +742,8 @@
 }
 
 .ep-progress-item.next {
-  border-color: rgba(198, 90, 58, 0.3);
-  background: rgba(198, 90, 58, 0.06);
+  border-color: var(--accent-line, rgba(198, 90, 58, 0.3));
+  background: var(--accent-soft, rgba(198, 90, 58, 0.06));
 }
 
 .ep-progress-check {
@@ -781,7 +781,7 @@
   align-items: center;
   margin-top: 18px;
   padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
 }
 
 #epProgressSummary {
@@ -807,10 +807,10 @@
 
 .cine-view-tab {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: var(--glass-border-hover, 1px solid rgba(255, 255, 255, 0.12));
   padding: 8px 24px;
   border-radius: 40px;
-  color: #ccc;
+  color: var(--theme-text-secondary, #ccc);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.8rem;
@@ -823,7 +823,7 @@
 }
 
 .cine-view-tab:hover:not(.active) {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: var(--glass-border-hover, rgba(255, 255, 255, 0.25));
 }
 
 .podium-section {
@@ -860,23 +860,23 @@
 
 .podium-tab {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.1));
   padding: 6px 18px;
   border-radius: 30px;
-  color: #aaa;
+  color: var(--theme-text-muted, #aaa);
   cursor: pointer;
   font-size: 0.8rem;
   transition: all 0.2s;
 }
 
 .podium-tab.active {
-  background: rgba(198, 90, 58, 0.2);
+  background: var(--accent-glow, rgba(198, 90, 58, 0.2));
   border-color: var(--accent-coral);
   color: var(--accent-coral);
 }
 
 .podium-tab:hover:not(.active) {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: var(--glass-border-hover, rgba(255, 255, 255, 0.25));
 }
 
 .podium-grid {
@@ -890,14 +890,14 @@
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
   transition: all 0.2s;
 }
 
 .podium-card:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--glass-bg-active, rgba(255, 255, 255, 0.06));
   border-color: rgba(255, 255, 255, 0.12);
 }
 
@@ -916,13 +916,13 @@
 
 .podium-rank-1 {
   background: linear-gradient(135deg, #ffd700, #ffaa00);
-  color: #1a1a1a;
+  color: var(--umbra-dark, #1a1a1a);
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
 }
 
 .podium-rank-2 {
   background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
-  color: #1a1a1a;
+  color: var(--umbra-dark, #1a1a1a);
 }
 
 .podium-rank-3 {
@@ -931,9 +931,9 @@
 }
 
 .podium-rank-4, .podium-rank-5 {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg-active, rgba(255, 255, 255, 0.08));
   color: var(--umbra-light);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: var(--glass-border-hover, 1px solid rgba(255, 255, 255, 0.15));
 }
 
 .podium-card-cover {
@@ -943,7 +943,7 @@
   background-size: cover;
   background-position: center;
   flex-shrink: 0;
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--glass-bg, rgba(255, 255, 255, 0.03));
 }
 
 .podium-card-info {
@@ -1014,14 +1014,14 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
   transition: all 0.2s;
 }
 
 .podium-edit-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--glass-bg-active, rgba(255, 255, 255, 0.06));
 }
 
 .podium-edit-cover {
@@ -1031,7 +1031,7 @@
   background-size: cover;
   background-position: center;
   flex-shrink: 0;
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--glass-bg, rgba(255, 255, 255, 0.03));
 }
 
 .podium-edit-title {
@@ -1046,8 +1046,8 @@
 .podium-edit-select {
   width: 60px;
   padding: 4px 6px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--glass-shield, rgba(0, 0, 0, 0.5));
+  border: var(--glass-border-hover, 1px solid rgba(255, 255, 255, 0.15));
   border-radius: 8px;
   color: white;
   font-size: 0.8rem;
@@ -1056,7 +1056,7 @@
 }
 
 .podium-edit-select option {
-  background: #1a1a1c;
+  background: var(--umbra-dark, #1a1a1c);
 }
 
 .podium-edit-select option[value=""] {

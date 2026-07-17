@@ -1,5 +1,5 @@
 // features/profile/profile.js
-// Página de perfil con configuración completa
+// Página de perfil estilo FormsBiblicos (tarjetas). Solo claro/oscuro/auto.
 
 (function () {
     'use strict';
@@ -9,17 +9,26 @@
         initialized: false
     };
 
-    var elements = {};
+    // Usuario de sesión: mismo sistema que index/login (Firebase),
+    // con fallback a SessionManager (localStorage).
+    function getAuthUser() {
+        if (typeof getCurrentUser === 'function') {
+            var u = getCurrentUser();
+            if (u) return u;
+        }
+        if (window.SessionManager && window.SessionManager.getUserObject) {
+            var s = window.SessionManager.getUserObject();
+            if (s) return s;
+        }
+        if (window.auth && window.auth.currentUser) return window.auth.currentUser;
+        return null;
+    }
 
-    var COLOR_THEMES = {
-        coral: { name: 'Coral', primary: '#c65a3a', warm: '#ffb347' },
-        ocean: { name: 'Océano', primary: '#0077b6', warm: '#90e0ef' },
-        forest: { name: 'Bosque', primary: '#2d6a4f', warm: '#95d5b2' },
-        violet: { name: 'Violeta', primary: '#7209b7', warm: '#c77dff' },
-        rose: { name: 'Rosa', primary: '#e53e3e', warm: '#fc8181' },
-        amber: { name: 'Ámbar', primary: '#d69e2e', warm: '#faf089' },
-        mono: { name: 'Monocromo', primary: '#3d3d3d', warm: '#718096' }
-    };
+    function isAuthLoggedIn() {
+        return !!getAuthUser();
+    }
+
+    var elements = {};
 
     function init() {
         if (document.readyState === 'loading') {
@@ -33,23 +42,24 @@
         cacheElements();
         bindEvents();
         loadUserData();
-        renderThemeOptions();
-        renderAccessibilityOptions();
+        renderThemeMode();
+        renderAccessibility();
         state.initialized = true;
 
-        // Listen for theme changes
         if (window.ThemeService) {
-            window.ThemeService.subscribe(updateUIFromTheme);
+            window.ThemeService.subscribe(updateThemeUI);
         }
 
-        // Listen for auth changes
-        if (window.SessionManager) {
-            window.SessionManager.onAuthStateChanged(function (user) {
-                if (user) {
-                    loadUserData();
-                } else {
+        // Auth changes (mismo sistema que index/login)
+        var authSource = window.auth || (window.SessionManager && window.SessionManager.onAuthStateChanged ? window.SessionManager : null);
+        if (authSource && typeof authSource.onAuthStateChanged === 'function') {
+            authSource.onAuthStateChanged(function (user) {
+                if (user) { loadUserData(); return; }
+                setTimeout(function () {
+                    if (isAuthLoggedIn()) return;
+                    if (window.location.pathname.indexOf('login.html') !== -1) return;
                     window.location.href = '../../login.html';
-                }
+                }, 600);
             });
         }
 
@@ -58,82 +68,119 @@
 
     function cacheElements() {
         elements = {
-            avatar: document.getElementById('profileAvatar'),
-            avatarPlaceholder: document.getElementById('profileAvatarPlaceholder'),
-            initial: document.getElementById('profileInitial'),
+            avatarWrap: document.getElementById('profileAvatarWrap'),
+            avatarImg: document.getElementById('profileAvatar'),
+            avatarLetra: document.getElementById('profileInitial'),
+            inputFoto: document.getElementById('inputFotoPerfil'),
+            btnEditarNombre: document.getElementById('btnEditarNombre'),
             name: document.getElementById('profileName'),
             email: document.getElementById('profileEmail'),
             role: document.getElementById('profileRole'),
             memberSince: document.getElementById('profileMemberSince'),
-            colorThemeOptions: document.getElementById('colorThemeOptions'),
+            cuentaUsername: document.getElementById('cuentaUsername'),
+            cuentaEmail: document.getElementById('cuentaEmail'),
+            cuentaRol: document.getElementById('cuentaRol'),
+            cuentaCreado: document.getElementById('cuentaCreado'),
+            btnAdmin: document.getElementById('btnAdmin'),
+            ultimaSync: document.getElementById('ultimaSync'),
             themeModeOptions: document.getElementById('themeModeOptions'),
-            accessibilityOptions: document.getElementById('accessibilityOptions'),
-            pushNotificationsToggle: document.getElementById('pushNotificationsToggle'),
-            emailNotificationsToggle: document.getElementById('emailNotificationsToggle'),
+            toggleAltoContraste: document.getElementById('toggleAltoContraste'),
+            toggleTextoGrande: document.getElementById('toggleTextoGrande'),
+            toggleReducirMovimiento: document.getElementById('toggleReducirMovimiento'),
             appVersion: document.getElementById('appVersion'),
             storageUsed: document.getElementById('storageUsed'),
-            clearCacheBtn: document.getElementById('clearCacheBtn'),
-            logoutBtn: document.getElementById('logoutBtn'),
-            deleteAccountBtn: document.getElementById('deleteAccountBtn'),
-            deleteAccountModal: document.getElementById('deleteAccountModal'),
-            deleteCancelBtn: document.getElementById('deleteCancelBtn'),
-            deleteConfirmBtn: document.getElementById('deleteConfirmBtn'),
-            deleteModalClose: document.querySelector('#deleteAccountModal .modal-close'),
-            accordions: document.querySelectorAll('.settings-accordion')
+            clearCacheBtn: document.getElementById('clearCacheBtn')
         };
     }
 
     function bindEvents() {
-        // Accordions
-        elements.accordions.forEach(function (acc) {
-            var trigger = acc.querySelector('.settings-accordion__trigger');
-            if (trigger) {
-                trigger.addEventListener('click', function () {
-                    acc.open = !acc.open;
-                });
-            }
-        });
-
-        // Clear cache
         if (elements.clearCacheBtn) {
             elements.clearCacheBtn.addEventListener('click', clearCache);
         }
 
-        // Logout
-        if (elements.logoutBtn) {
-            elements.logoutBtn.addEventListener('click', handleLogout);
+        // Avatar editable
+        if (elements.avatarWrap && elements.inputFoto) {
+            var abrirInput = function () { elements.inputFoto.click(); };
+            elements.avatarWrap.addEventListener('click', abrirInput);
+            elements.avatarWrap.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirInput(); }
+            });
+            elements.inputFoto.addEventListener('change', onFotoChange);
         }
 
-        // Delete account modal
-        if (elements.deleteAccountBtn) {
-            elements.deleteAccountBtn.addEventListener('click', openDeleteModal);
+        if (elements.btnEditarNombre) {
+            elements.btnEditarNombre.addEventListener('click', editarNombre);
         }
-        if (elements.deleteCancelBtn) {
-            elements.deleteCancelBtn.addEventListener('click', closeDeleteModal);
-        }
-        if (elements.deleteModalClose) {
-            elements.deleteModalClose.addEventListener('click', closeDeleteModal);
-        }
-        if (elements.deleteConfirmBtn) {
-            elements.deleteConfirmBtn.addEventListener('click', confirmDeleteAccount);
-        }
-        if (elements.deleteAccountModal) {
-            elements.deleteAccountModal.addEventListener('click', function (e) {
-                if (e.target === elements.deleteAccountModal) closeDeleteModal();
+
+        // Accesos Admin
+        var rootDir = document.body.dataset.sidebarRoot || '../..';
+        var role = state.user && (state.user.role || (state.user.profile && state.user.profile.role));
+        if (elements.btnAdmin) {
+            elements.btnAdmin.hidden = role !== 'admin';
+            if (role === 'admin') elements.btnAdmin.addEventListener('click', function () {
+                window.location.href = rootDir + '/pages/admin.html';
             });
         }
 
-        // ESC to close modal
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && elements.deleteAccountModal && !elements.deleteAccountModal.hidden) {
-                closeDeleteModal();
+        // Última sincronización
+        if (elements.ultimaSync) {
+            try {
+                var raw = localStorage.getItem('personalHub.syncLast');
+                if (raw) {
+                    var t = new Date(raw);
+                    elements.ultimaSync.textContent = 'Sincronizado ' + t.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+                }
+            } catch (e) {}
+        }
+
+        // Tema (segmented)
+        if (elements.themeModeOptions) {
+            elements.themeModeOptions.querySelectorAll('.perfil-segmented__btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    if (!window.ThemeService) return;
+                    var tema = this.dataset.tema;
+
+                    if (tema === 'light' && window.BetaModal && !window.BetaModal.hasAcceptedLightBeta()) {
+                        window.BetaModal.showLightBetaModal({
+                            onAccept: function () {
+                                window.ThemeService.setTheme('light');
+                            },
+                            onCancel: function () {}
+                        });
+                        return;
+                    }
+
+                    window.ThemeService.setTheme(tema);
+                });
+            });
+        }
+
+        // Accesibilidad (checkboxes)
+        bindToggle(elements.toggleAltoContraste, 'highContrast');
+        bindToggle(elements.toggleTextoGrande, 'largeText');
+        bindToggle(elements.toggleReducirMovimiento, 'reducedMotion');
+    }
+
+    function bindToggle(input, key) {
+        if (!input) return;
+        if (window.ThemeService) {
+            var estado = window.ThemeService.getThemeState ? window.ThemeService.getThemeState() : null;
+            if (estado && typeof estado[key] !== 'undefined') input.checked = !!estado[key];
+        }
+        input.addEventListener('change', function () {
+            if (window.ThemeService && window.ThemeService.setAccessibility) {
+                window.ThemeService.setAccessibility(key, input.checked);
+            } else if (window.ThemeService) {
+                var method = 'set' + key.charAt(0).toUpperCase() + key.slice(1);
+                if (window.ThemeService[method]) window.ThemeService[method](input.checked);
             }
+            if (window.lucide) window.lucide.createIcons({ root: document.body });
         });
     }
 
     function loadUserData() {
-        if (window.SessionManager && window.SessionManager.isLoggedIn()) {
-            var user = window.SessionManager.getUserObject();
+        var user = getAuthUser();
+        if (user) {
             state.user = user;
             renderUserProfile(user);
         }
@@ -142,284 +189,181 @@
     function renderUserProfile(user) {
         if (!user) return;
 
-        // Name
-        if (elements.name) {
-            elements.name.textContent = user.name || user.username || 'Usuario';
-        }
+        var nombre = user.name || user.username || user.displayName || 'Usuario';
+        if (elements.name) elements.name.textContent = nombre;
 
-        // Avatar
-        var initial = (user.name || user.username || '?').charAt(0).toUpperCase();
-        if (elements.initial) elements.initial.textContent = initial;
+        var initial = (nombre || '?').charAt(0).toUpperCase();
+        if (elements.avatarLetra) elements.avatarLetra.textContent = initial;
 
-        if (user.photo) {
-            if (elements.avatar) {
-                elements.avatar.src = user.photo;
-                elements.avatar.style.display = 'block';
+        if (user.photoURL || user.photo) {
+            if (elements.avatarImg) {
+                elements.avatarImg.src = user.photoURL || user.photo;
+                elements.avatarImg.style.display = 'block';
             }
-            if (elements.avatarPlaceholder) elements.avatarPlaceholder.style.display = 'none';
-        } else {
-            if (elements.avatar) elements.avatar.style.display = 'none';
-            if (elements.avatarPlaceholder) elements.avatarPlaceholder.style.display = 'flex';
+            if (elements.avatarLetra) elements.avatarLetra.style.display = 'none';
         }
 
-        // Email
+        var email = user.username || user.email || '';
         if (elements.email) {
-            var emailSpan = elements.email.querySelector('span');
-            if (emailSpan) emailSpan.textContent = user.username || user.email || '—';
+            var e = elements.email.querySelector('span');
+            if (e) e.textContent = email || '—';
         }
 
-        // Role
+        var role = user.role || (user.profile && user.profile.role) || 'user';
         if (elements.role) {
-            var roleSpan = elements.role.querySelector('span');
-            if (roleSpan) roleSpan.textContent = user.role === 'admin' ? 'Administrador' : 'Usuario';
+            var r = elements.role.querySelector('span');
+            if (r) r.textContent = role === 'admin' ? 'Administrador' : 'Usuario';
         }
 
-        // Member since
-        if (elements.memberSince) {
-            var sinceSpan = elements.memberSince.querySelector('span');
-            var created = user.profile?.createdAt || user.createdAt || user.loginTime;
-            if (sinceSpan && created) {
-                var date = new Date(created);
-                sinceSpan.textContent = 'Miembro desde ' + date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
-            }
-        }
-    }
-
-    function renderThemeOptions() {
-        // Color themes
-        if (elements.colorThemeOptions) {
-            elements.colorThemeOptions.innerHTML = Object.entries(COLOR_THEMES).map(function (_ref) {
-                var key = _ref[0];
-                var theme = _ref[1];
-                return '<label class="color-theme-option" role="radio" aria-checked="false" data-color-theme="' + key + '">' +
-                    '<input type="radio" name="color-theme" value="' + key + '" hidden>' +
-                    '<div class="color-theme-option__swatch" style="background: linear-gradient(135deg, ' + theme.primary + ', ' + theme.warm + ');" title="' + theme.name + '"></div>' +
-                '</label>';
-            }).join('');
-
-            // Bind events
-            elements.colorThemeOptions.querySelectorAll('.color-theme-option').forEach(function (option) {
-                option.addEventListener('click', function () {
-                    if (window.ThemeService) {
-                        window.ThemeService.setColorTheme(this.dataset.colorTheme);
-                    }
-                });
-            });
+        var created = user.profile && user.profile.createdAt || user.createdAt || user.loginTime;
+        if (elements.memberSince && created) {
+            var d = new Date(created);
+            elements.memberSince.textContent = 'Miembro desde ' + d.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
         }
 
-        // Theme modes
-        if (elements.themeModeOptions) {
-            var modes = [
-                { value: 'auto', label: 'Auto', icon: 'monitor' },
-                { value: 'dark', label: 'Oscuro', icon: 'moon' },
-                { value: 'light', label: 'Claro', icon: 'sun' }
-            ];
-
-            elements.themeModeOptions.innerHTML = modes.map(function (mode) {
-                return '<label class="theme-option" role="radio" aria-checked="false" data-theme-value="' + mode.value + '">' +
-                    '<input type="radio" name="theme-mode" value="' + mode.value + '" hidden>' +
-                    '<div class="theme-option__card">' +
-                        '<i data-lucide="' + mode.icon + '" style="width:20px;height:20px;color:var(--theme-text-muted);"></i>' +
-                        '<span class="theme-option__name">' + mode.label + '</span>' +
-                    '</div>' +
-                '</label>';
-            }).join('');
-
-            // Bind events
-            elements.themeModeOptions.querySelectorAll('.theme-option').forEach(function (option) {
-                option.addEventListener('click', function () {
-                    if (window.ThemeService) {
-                        window.ThemeService.setTheme(this.dataset.themeValue);
-                    }
-                });
-            });
+        // Sección Cuenta
+        if (elements.cuentaUsername) elements.cuentaUsername.textContent = user.username || user.displayName || '—';
+        if (elements.cuentaEmail) elements.cuentaEmail.textContent = email || '—';
+        if (elements.cuentaRol) elements.cuentaRol.textContent = role === 'admin' ? 'Administrador' : 'Usuario';
+        if (elements.cuentaCreado && created) {
+            elements.cuentaCreado.textContent = d.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
         }
 
-        if (window.lucide) window.lucide.createIcons({ root: document.body });
-    }
-
-    function renderAccessibilityOptions() {
-        if (!elements.accessibilityOptions) return;
-
-        var options = [
-            { key: 'highContrast', label: 'Alto contraste', desc: 'Aumenta el contraste de colores para mejor legibilidad' },
-            { key: 'largeText', label: 'Texto grande', desc: 'Aumenta el tamaño de fuente en toda la aplicación' },
-            { key: 'extraSpacing', label: 'Espaciado extra', desc: 'Añade más espacio entre elementos' },
-            { key: 'reducedMotion', label: 'Reducir movimiento', desc: 'Desactiva animaciones y transiciones' }
-        ];
-
-        elements.accessibilityOptions.innerHTML = options.map(function (opt) {
-            return '<label class="accessibility-option">' +
-                '<div class="accessibility-option__info">' +
-                    '<span class="accessibility-option__label">' + opt.label + '</span>' +
-                    '<span class="accessibility-option__desc">' + opt.desc + '</span>' +
-                '</div>' +
-                '<button class="toggle-switch accessibility-option__toggle" type="button" role="switch" aria-checked="false" data-a11y="' + opt.key + '">' +
-                    '<input type="checkbox" hidden>' +
-                    '<span class="toggle-switch__slider"></span>' +
-                '</button>' +
-            '</label>';
-        }).join('');
-
-        // Bind toggle events
-        elements.accessibilityOptions.querySelectorAll('[data-a11y]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var key = this.dataset.a11y;
-                var enabled = this.getAttribute('aria-checked') === 'true';
-                if (window.ThemeService) {
-                    var method = 'set' + key.charAt(0).toUpperCase() + key.slice(1);
-                    if (window.ThemeService[method]) {
-                        window.ThemeService[method](!enabled);
-                    } else if (window.ThemeService['toggle' + key.charAt(0).toUpperCase() + key.slice(1)]) {
-                        window.ThemeService['toggle' + key.charAt(0).toUpperCase() + key.slice(1)]();
-                    }
+        // Versión y almacenamiento
+        if (elements.appVersion) elements.appVersion.textContent = window.APP_VERSION || '1.0.0';
+        if (elements.storageUsed) {
+            try {
+                var total = 0;
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i);
+                    total += (localStorage.getItem(k) || '').length;
                 }
-            });
+                elements.storageUsed.textContent = (total / 1024).toFixed(1) + ' KB';
+            } catch (e) { elements.storageUsed.textContent = '—'; }
+        }
+    }
+
+    function renderThemeMode() {
+        if (!elements.themeModeOptions || !window.ThemeService) return;
+        var actual = window.ThemeService.getCurrentTheme ? window.ThemeService.getCurrentTheme() : 'dark';
+        var current = (typeof actual === 'string') ? actual.toLowerCase() : 'dark';
+        elements.themeModeOptions.querySelectorAll('.perfil-segmented__btn').forEach(function (btn) {
+            btn.classList.toggle('perfil-segmented__btn--activo', btn.dataset.tema === current);
         });
     }
 
-    function updateUIFromTheme(themeState) {
-        // Update color theme options
-        if (elements.colorThemeOptions) {
-            elements.colorThemeOptions.querySelectorAll('.color-theme-option').forEach(function (option) {
-                var value = option.dataset.colorTheme;
-                var isActive = value === themeState.colorTheme;
-                option.setAttribute('aria-checked', isActive);
-                option.querySelector('input').checked = isActive;
-            });
-        }
+    function renderAccessibility() {
+        if (!window.ThemeService || !window.ThemeService.getThemeState) return;
+        var s = window.ThemeService.getThemeState();
+        if (elements.toggleAltoContraste) elements.toggleAltoContraste.checked = !!s.highContrast;
+        if (elements.toggleTextoGrande) elements.toggleTextoGrande.checked = !!s.largeText;
+        if (elements.toggleReducirMovimiento) elements.toggleReducirMovimiento.checked = !!s.reducedMotion;
+    }
 
-        // Update theme mode options
+    function updateThemeUI(themeState) {
         if (elements.themeModeOptions) {
-            elements.themeModeOptions.querySelectorAll('.theme-option').forEach(function (option) {
-                var value = option.dataset.themeValue;
-                var isActive = value === themeState.theme;
-                option.setAttribute('aria-checked', isActive);
-                option.querySelector('input').checked = isActive;
+            var current = (themeState && themeState.theme ? themeState.theme : 'dark').toLowerCase();
+            elements.themeModeOptions.querySelectorAll('.perfil-segmented__btn').forEach(function (btn) {
+                btn.classList.toggle('perfil-segmented__btn--activo', btn.dataset.tema === current);
             });
         }
-
-        // Update accessibility toggles
-        if (elements.accessibilityOptions) {
-            elements.accessibilityOptions.querySelectorAll('[data-a11y]').forEach(function (btn) {
-                var key = btn.dataset.a11y;
-                var enabled = themeState[key];
-                btn.setAttribute('aria-checked', enabled);
-                btn.querySelector('input').checked = enabled;
-            });
-        }
+        renderAccessibility();
     }
 
     function clearCache() {
         if (!elements.clearCacheBtn) return;
-        
         var btn = elements.clearCacheBtn;
-        var originalText = btn.innerHTML;
+        var originalText = btn.textContent;
         btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader" style="width:16px;height:16px;animation:spin 1s linear infinite;"></i> Limpiando...';
+        btn.textContent = 'Limpiando...';
 
-        // Clear localStorage (except auth)
-        var authKeys = ['personalHub.session'];
-        var keysToKeep = {};
-        authKeys.forEach(function (key) {
-            keysToKeep[key] = localStorage.getItem(key);
-        });
-
-        localStorage.clear();
-
-        Object.keys(keysToKeep).forEach(function (key) {
-            if (keysToKeep[key]) localStorage.setItem(key, keysToKeep[key]);
-        });
-
-        // Clear cache storage
         if ('caches' in window) {
             caches.keys().then(function (names) {
-                names.forEach(function (name) {
-                    caches.delete(name);
-                });
+                names.forEach(function (name) { caches.delete(name); });
             });
         }
-
-        if (window.showToast) {
-            window.showToast('Caché limpiado correctamente');
-        }
+        if (window.showToast) window.showToast('Caché limpiado correctamente');
 
         setTimeout(function () {
             btn.disabled = false;
-            btn.innerHTML = originalText;
+            btn.textContent = originalText;
             if (window.lucide) window.lucide.createIcons({ root: btn });
         }, 1000);
     }
 
-    function handleLogout() {
-        if (window.AuthService) {
-            window.AuthService.logout().then(function () {
-                window.location.href = '../../login.html';
+    // ==========================================
+    // EDITAR FOTO (recorte circular)
+    // ==========================================
+    function recortarCircular(file, cb) {
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+            var base64 = ev.target.result;
+            var img = new Image();
+            img.onload = function () {
+                var size = Math.min(img.width, img.height, 420);
+                var canvas = document.createElement('canvas');
+                canvas.width = size; canvas.height = size;
+                var ctx = canvas.getContext('2d');
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                var sx = (img.width - size) / 2, sy = (img.height - size) / 2;
+                ctx.drawImage(img, sx, sy, size, size, 0, 0, size, size);
+                ctx.restore();
+                cb(canvas.toDataURL('image/jpeg', 0.86));
+            };
+            img.onerror = function () { cb(base64); };
+            img.src = base64;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function onFotoChange(e) {
+        var file = e.target.files[0];
+        e.target.value = '';
+        if (!file) return;
+        recortarCircular(file, function (base64) {
+            if (elements.avatarImg) { elements.avatarImg.src = base64; elements.avatarImg.style.display = 'block'; }
+            if (elements.avatarLetra) elements.avatarLetra.style.display = 'none';
+            var uid = (typeof getCurrentUser === 'function' && getCurrentUser()) ? getCurrentUser().uid : null;
+            if (!uid && window.AuthService && window.AuthService.getCurrentUser) uid = window.AuthService.getCurrentUser().uid;
+            if (uid && window.ProfileSystem && window.ProfileSystem.actualizarFoto) {
+                window.ProfileSystem.actualizarFoto(uid, base64).then(function (ok) {
+                    if (window.showToast) window.showToast(ok ? 'Foto de perfil actualizada.' : 'No se pudo guardar la foto.', !ok);
+                });
+            }
+        });
+    }
+
+    function editarNombre() {
+        var user = state.user;
+        if (!user) return;
+        var actual = user.name || user.username || '';
+        var nuevo = window.prompt('Editar nombre', actual);
+        if (nuevo === null) return;
+        nuevo = nuevo.trim();
+        if (!nuevo || nuevo === actual) return;
+        var uid = (typeof getCurrentUser === 'function' && getCurrentUser()) ? getCurrentUser().uid : null;
+        if (!uid && window.AuthService && window.AuthService.getCurrentUser) uid = window.AuthService.getCurrentUser().uid;
+        if (uid && window.ProfileSystem && window.ProfileSystem.actualizarNombre) {
+            window.ProfileSystem.actualizarNombre(uid, nuevo).then(function (ok) {
+                if (ok) {
+                    if (elements.name) elements.name.textContent = nuevo;
+                    user.name = nuevo;
+                    if (window.showToast) window.showToast('Nombre actualizado.');
+                } else if (window.showToast) {
+                    window.showToast('No se pudo guardar el nombre.', true);
+                }
             });
         }
     }
 
-    function openDeleteModal() {
-        if (elements.deleteAccountModal) {
-            elements.deleteAccountModal.hidden = false;
-            setTimeout(function () {
-                elements.deleteAccountModal.classList.add('is-open');
-                elements.deleteCancelBtn.focus();
-            }, 10);
-        }
+    // Esperar a que el bridge (módulo) exponga ThemeService
+    if (window.ThemeService) {
+        init();
+    } else {
+        window.addEventListener('profile:bridge-ready', init);
     }
-
-    function closeDeleteModal() {
-        if (elements.deleteAccountModal) {
-            elements.deleteAccountModal.classList.remove('is-open');
-            setTimeout(function () {
-                elements.deleteAccountModal.hidden = true;
-            }, 300);
-        }
-    }
-
-    function confirmDeleteAccount() {
-        var btn = elements.deleteConfirmBtn;
-        btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader" style="width:16px;height:16px;animation:spin 1s linear infinite;"></i> Eliminando...';
-        if (window.lucide) window.lucide.createIcons({ root: btn });
-
-        if (window.AuthService && window.AuthService.getCurrentUser) {
-            var user = window.AuthService.getCurrentUser();
-            if (user && window.db) {
-                // Delete user data from Firestore
-                var batch = window.db.batch();
-                var userRef = window.db.collection('users').doc(user.uid);
-                batch.delete(userRef);
-
-                // Delete subcollections
-                ['preferences', 'progress', 'moods'].forEach(function (col) {
-                    var colRef = userRef.collection(col);
-                    colRef.get().then(function (snap) {
-                        snap.docs.forEach(function (doc) {
-                            batch.delete(doc.ref);
-                        });
-                    });
-                });
-
-                batch.commit().then(function () {
-                    return window.AuthService.deleteAccount ? window.AuthService.deleteAccount() : window.AuthService.logout();
-                }).then(function () {
-                    closeDeleteModal();
-                    window.location.href = '../../login.html?deleted=1';
-                }).catch(function (err) {
-                    console.error('Error deleting account:', err);
-                    btn.disabled = false;
-                    btn.innerHTML = '<i data-lucide="user-x" style="width:16px;height:16px;"></i> Eliminar cuenta';
-                    if (window.lucide) window.lucide.createIcons({ root: btn });
-                    if (window.showToast) window.showToast('Error al eliminar la cuenta', true);
-                });
-            }
-        }
-    }
-
-    // Initialize
-    init();
 })();
-
-console.log('👤 profile.js cargado');

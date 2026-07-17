@@ -4,6 +4,16 @@
 export const HOME_DATA = {
     news: [
         {
+            id: 11,
+            date: "17 de julio de 2026",
+            title: "Rediseño de la app movil",
+            description: "Rediseño en la estructura de la web, nuevo formato movil, nuevas funciones añadidas, perfil añadido con carácteristcas BETA. Como el cambio en el tema (claro/oscuro), y proximamente ampliacion de características como: 'Botones funcionales de cambio de tamaño', 'alto contraste', 'arreglo del css (cosas visuales de la web)' e implementaciones de 'animaciones y funciones de rendimiento'."
+        },
+        {
+            type: "separator",
+            label: "Noticias anteriores"
+        },
+        {
             id: 10,
             date: "13 de julio de 2026",
             title: "Rediseño en la sección 'SERIES'",
@@ -20,10 +30,6 @@ export const HOME_DATA = {
             date: "13 de julio de 2026",
             title: "Nueva sección 'JUEGOS' añadida",
             description: "Aquí encontrarás todos los juegos agrupados en cada sección cuando los desbloquees en el calendario"
-        },
-        {
-            type: "separator",
-            label: "Noticias anteriores"
         },
         {
             id: 7,

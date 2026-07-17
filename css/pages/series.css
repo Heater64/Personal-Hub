@@ -426,7 +426,7 @@
 
 .card-add:hover .card-cover {
   border-color: var(--accent-coral);
-  background: rgba(198, 90, 58, 0.05);
+  background: rgb(var(--accent-rgb) / 0.05);
 }
 
 .card-add-icon {
@@ -694,7 +694,7 @@
 }
 
 .episode-row.next-episode {
-  background: linear-gradient(90deg, rgba(198, 90, 58, 0.15), rgba(255, 215, 0, 0.05));
+  background: linear-gradient(90deg, rgb(var(--accent-rgb) / 0.15), rgba(255, 215, 0, 0.05));
   border-left: 3px solid var(--accent-coral);
 }
 
@@ -721,7 +721,7 @@
 }
 
 .bulk-btn:hover {
-  background: rgba(198, 90, 58, 0.2);
+  background: rgb(var(--accent-rgb) / 0.2);
   border-color: var(--accent-coral);
 }
 
@@ -846,8 +846,8 @@
 }
 
 .ep-progress-item.next {
-  border-color: rgba(198, 90, 58, 0.3);
-  background: rgba(198, 90, 58, 0.06);
+  border-color: rgb(var(--accent-rgb) / 0.3);
+  background: rgb(var(--accent-rgb) / 0.06);
 }
 
 .ep-progress-check {
@@ -979,7 +979,7 @@
 }
 
 .podium-tab.active {
-  background: rgba(198, 90, 58, 0.2);
+  background: rgb(var(--accent-rgb) / 0.2);
   border-color: var(--accent-coral);
   color: var(--accent-coral);
 }

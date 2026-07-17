@@ -1,0 +1,20 @@
+:root[data-theme="dark"] {
+  --bg: #0f0f10;
+  --text: #e8e6e3;
+  --accent: #c65a3a;
+  --surface: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme="light-pink"] {
+  --bg: #fff0f5;
+  --text: #4a3a3a;
+  --accent: #ff8aa1;
+  --surface: rgba(255, 182, 193, 0.2);
+}
+
+:root[data-theme="high-contrast"] {
+  --bg: #000000;
+  --text: #ffffff;
+  --accent: #ffff00;
+  --surface: #333333;
+}

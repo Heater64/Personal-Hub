@@ -65,13 +65,13 @@
 }
 
 .model-btn:hover {
-    background: rgba(198, 90, 58, 0.1);
-    border-color: #c65a3a;
+    background: rgb(var(--accent-rgb) / 0.1);
+    border-color: var(--accent-coral);
 }
 
 .model-btn.active {
-    background: #c65a3a;
-    border-color: #c65a3a;
+    background: var(--accent-coral);
+    border-color: var(--accent-coral);
     color: white;
 }
 
@@ -140,7 +140,7 @@
 .message-avatar {
     width: 36px;
     height: 36px;
-    background: rgba(198, 90, 58, 0.15);
+    background: rgb(var(--accent-rgb) / 0.15);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -155,7 +155,7 @@
 .message-avatar i {
     width: 20px;
     height: 20px;
-    color: #c65a3a;
+    color: var(--accent-coral);
 }
 
 .message.user .message-avatar i {
@@ -181,12 +181,12 @@
 }
 
 .message.ia .message-text {
-    background: rgba(198, 90, 58, 0.1);
-    border-left: 2px solid #c65a3a;
+    background: rgb(var(--accent-rgb) / 0.1);
+    border-left: 2px solid var(--accent-coral);
 }
 
 .message.user .message-text {
-    background: #c65a3a;
+    background: var(--accent-coral);
     color: white;
 }
 
@@ -206,7 +206,7 @@
 .thinking-dots span {
     width: 4px;
     height: 4px;
-    background: #c65a3a;
+    background: var(--accent-coral);
     border-radius: 50%;
     animation: bounce 1.4s infinite ease-in-out;
 }
@@ -239,9 +239,9 @@
 }
 
 .suggestion:hover {
-    background: rgba(198, 90, 58, 0.1);
-    border-color: #c65a3a;
-    color: #c65a3a;
+    background: rgb(var(--accent-rgb) / 0.1);
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
 }
 
 .chat-input-area {
@@ -266,7 +266,7 @@
 
 .chat-input:focus {
     outline: none;
-    border-color: #c65a3a;
+    border-color: var(--accent-coral);
     background: rgba(255, 255, 255, 0.08);
 }
 
@@ -285,9 +285,9 @@
 }
 
 .send-btn:not(:disabled):hover, .clear-btn:hover {
-    background: rgba(198, 90, 58, 0.2);
-    border-color: #c65a3a;
-    color: #c65a3a;
+    background: rgb(var(--accent-rgb) / 0.2);
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
 }
 
 .send-btn:disabled {
@@ -316,8 +316,8 @@
 }
 
 .config-btn:hover {
-    color: #c65a3a;
-    border-color: #c65a3a;
+    color: var(--accent-coral);
+    border-color: var(--accent-coral);
 }
 
 .modal {
@@ -396,7 +396,7 @@
 
 .api-input:focus {
     outline: none;
-    border-color: #c65a3a;
+    border-color: var(--accent-coral);
 }
 
 .api-input-group small {
@@ -407,7 +407,7 @@
 }
 
 .api-input-group small a {
-    color: #c65a3a;
+    color: var(--accent-coral);
     text-decoration: none;
 }
 
@@ -420,7 +420,7 @@
 }
 
 .btn-primary {
-    background: #c65a3a;
+    background: var(--accent-coral);
     border: none;
     border-radius: 40px;
     padding: 10px 24px;
@@ -468,12 +468,12 @@
 .toast.success { border-left: 3px solid #4caf50; }
 .toast.error { border-left: 3px solid #f44336; }
 .toast.warning { border-left: 3px solid #ff9800; }
-.toast.info { border-left: 3px solid #c65a3a; }
+.toast.info { border-left: 3px solid var(--accent-coral); }
 
 .toast.success i { color: #4caf50; }
 .toast.error i { color: #f44336; }
 .toast.warning i { color: #ff9800; }
-.toast.info i { color: #c65a3a; }
+.toast.info i { color: var(--accent-coral); }
 
 @keyframes slideInRight {
     from {

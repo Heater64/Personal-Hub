@@ -30,8 +30,16 @@ class ThemeService {
             this.currentColorTheme = savedColor;
         }
 
+        // Cargar accesibilidad
+        this.accessibility = {
+            highContrast: localStorage.getItem('personalHub.a11y.hc') === '1',
+            largeText: localStorage.getItem('personalHub.a11y.lg') === '1',
+            reducedMotion: localStorage.getItem('personalHub.a11y.rm') === '1'
+        };
+
         this.applyTheme(this.currentTheme);
         this.applyColorTheme(this.currentColorTheme);
+        this.applyAccessibility();
 
         // Escuchar cambios del sistema
         if (window.matchMedia) {
@@ -97,10 +105,36 @@ class ThemeService {
         };
     }
 
+    subscribe(callback) {
+        return this.onThemeChange(callback);
+    }
+
     notifyListeners() {
         this.listeners.forEach(cb => {
             try { cb({ theme: this.currentTheme, color: this.currentColorTheme }); } catch (e) {}
         });
+    }
+
+    /* Accesibilidad */
+    setAccessibility(key, value) {
+        this.accessibility[key] = value;
+        var keyMap = { highContrast: 'hc', largeText: 'lg', reducedMotion: 'rm' };
+        localStorage.setItem('personalHub.a11y.' + keyMap[key], value ? '1' : '0');
+        this.applyAccessibility();
+    }
+
+    getThemeState() {
+        return Object.assign({}, this.accessibility, { theme: this.currentTheme, color: this.currentColorTheme });
+    }
+
+    applyAccessibility() {
+        if (typeof document === 'undefined') return;
+        var hc = this.accessibility.highContrast || false;
+        var lg = this.accessibility.largeText || false;
+        var rm = this.accessibility.reducedMotion || false;
+        document.documentElement.setAttribute('data-hc', hc ? 'true' : 'false');
+        document.documentElement.setAttribute('data-lg', lg ? 'true' : 'false');
+        document.documentElement.setAttribute('data-rm', rm ? 'true' : 'false');
     }
 
     getCurrentTheme() {

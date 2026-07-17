@@ -1,14 +1,15 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('personalHub.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hub">
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
-    <title>Panel Admin Â· Personal Hub</title>
+    <title>Panel Admin · Personal Hub</title>
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="../../css/main.css">
     <link rel="stylesheet" href="admin.css">
@@ -18,7 +19,7 @@
 
 <body data-sidebar-root="../.." data-sidebar-page="admin">
 
-    <button class="sidebar-toggle" type="button" aria-label="Abrir navegaciÃ³n" data-sidebar-toggle>
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
     </button>
     <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -30,7 +31,7 @@
             <!-- Header -->
             <div class="admin-header">
                 <div>
-                    <h1><i data-lucide="settings"></i> Panel de AdministraciÃ³n</h1>
+                    <h1><i data-lucide="settings"></i> Panel de Administración</h1>
                     <p>Gestiona todo el contenido de la web</p>
                 </div>
                 <div class="admin-header-status" id="adminStatus">
@@ -39,7 +40,7 @@
                 </div>
             </div>
 
-            <!-- Tabs de navegaciÃ³n -->
+            <!-- Tabs de navegación -->
             <nav class="admin-tabs" id="adminTabs">
                 <button class="admin-tab active" data-section="dashboard">
                     <i data-lucide="layout-dashboard"></i> Dashboard
@@ -57,7 +58,7 @@
                     <i data-lucide="newspaper"></i> Noticias
                 </button>
                 <button class="admin-tab" data-section="maldia">
-                    <i data-lucide="sun-medium"></i> Mal DÃ­a
+                    <i data-lucide="sun-medium"></i> Mal Día
                 </button>
                 <button class="admin-tab" data-section="series">
                     <i data-lucide="tv"></i> Series
@@ -73,16 +74,16 @@
                 </button>
             </nav>
 
-            <!-- Contenido de cada secciÃ³n -->
+            <!-- Contenido de cada sección -->
             <div class="admin-content">
 
                 <!-- ========== DASHBOARD ========== -->
                 <section class="admin-section active" id="sec-dashboard">
                     <div class="admin-dashboard-grid" id="dashboardGrid">
-                        <div class="stat-card"><div class="stat-value" id="statUsers">Â—</div><div class="stat-label">Usuarios</div></div>
-                        <div class="stat-card"><div class="stat-value" id="statReasons">Â—</div><div class="stat-label">Razones</div></div>
-                        <div class="stat-card"><div class="stat-value" id="statSongs">Â—</div><div class="stat-label">Canciones</div></div>
-                        <div class="stat-card"><div class="stat-value" id="statGifts">Â—</div><div class="stat-label">Regalos</div></div>
+                        <div class="stat-card"><div class="stat-value" id="statUsers">?</div><div class="stat-label">Usuarios</div></div>
+                        <div class="stat-card"><div class="stat-value" id="statReasons">?</div><div class="stat-label">Razones</div></div>
+                        <div class="stat-card"><div class="stat-value" id="statSongs">?</div><div class="stat-label">Canciones</div></div>
+                        <div class="stat-card"><div class="stat-value" id="statGifts">?</div><div class="stat-label">Regalos</div></div>
                     </div>
                 </section>
 
@@ -91,7 +92,7 @@
                     <div class="admin-section-header">
                         <h2><i data-lucide="heart"></i> Razones</h2>
                         <button class="admin-btn admin-btn-primary" id="razonesAddBtn">
-                            <i data-lucide="plus"></i> AÃ±adir razÃ³n
+                            <i data-lucide="plus"></i> Añadir razón
                         </button>
                     </div>
                     <div class="admin-list" id="razonesList"></div>
@@ -102,7 +103,7 @@
                     <div class="admin-section-header">
                         <h2><i data-lucide="music"></i> Canciones</h2>
                         <button class="admin-btn admin-btn-primary" id="cancionesAddBtn">
-                            <i data-lucide="plus"></i> AÃ±adir canciÃ³n
+                            <i data-lucide="plus"></i> Añadir canción
                         </button>
                     </div>
                     <div class="admin-list" id="cancionesList"></div>
@@ -113,7 +114,7 @@
                     <div class="admin-section-header">
                         <h2><i data-lucide="gift"></i> Regalos del Calendario</h2>
                         <button class="admin-btn admin-btn-primary" id="regalosAddBtn">
-                            <i data-lucide="plus"></i> AÃ±adir regalo
+                            <i data-lucide="plus"></i> Añadir regalo
                         </button>
                     </div>
                     <div class="admin-list" id="regalosList"></div>
@@ -124,28 +125,28 @@
                     <div class="admin-section-header">
                         <h2><i data-lucide="newspaper"></i> Noticias del Home</h2>
                         <button class="admin-btn admin-btn-primary" id="noticiasAddBtn">
-                            <i data-lucide="plus"></i> AÃ±adir noticia
+                            <i data-lucide="plus"></i> Añadir noticia
                         </button>
                     </div>
                     <div class="admin-list" id="noticiasList"></div>
                 </section>
 
-                <!-- ========== MAL DÃA ========== -->
+                <!-- ========== MAL DÍA ========== -->
                 <section class="admin-section" id="sec-maldia">
                     <div class="admin-section-header">
-                        <h2><i data-lucide="sun-medium"></i> Mal DÃ­a</h2>
+                        <h2><i data-lucide="sun-medium"></i> Mal Día</h2>
                     </div>
                     <div class="admin-subsection">
                         <h3>Frases</h3>
                         <button class="admin-btn admin-btn-primary admin-btn-sm" id="maldiaFrasesAddBtn">
-                            <i data-lucide="plus"></i> AÃ±adir frase
+                            <i data-lucide="plus"></i> Añadir frase
                         </button>
                         <div class="admin-list" id="maldiaFrasesList"></div>
                     </div>
                     <div class="admin-subsection">
                         <h3>Mensajes diarios</h3>
                         <button class="admin-btn admin-btn-primary admin-btn-sm" id="maldiaMensajesAddBtn">
-                            <i data-lucide="plus"></i> AÃ±adir mensaje
+                            <i data-lucide="plus"></i> Añadir mensaje
                         </button>
                         <div class="admin-list" id="maldiaMensajesList"></div>
                     </div>
@@ -154,9 +155,9 @@
                 <!-- ========== SERIES ========== -->
                 <section class="admin-section" id="sec-series">
                     <div class="admin-section-header">
-                        <h2><i data-lucide="tv"></i> Series y PelÃ­culas</h2>
+                        <h2><i data-lucide="tv"></i> Series y Películas</h2>
                         <button class="admin-btn admin-btn-primary" id="seriesAddBtn">
-                            <i data-lucide="plus"></i> AÃ±adir contenido
+                            <i data-lucide="plus"></i> Añadir contenido
                         </button>
                     </div>
                     <div class="admin-list" id="seriesList"></div>
@@ -170,30 +171,30 @@
                     <div class="analytics-dashboard">
                         <div class="analytics-grid">
                             <div class="stat-card">
-                                <div class="stat-value" id="analyticsPageviews">Â—</div>
+                                <div class="stat-value" id="analyticsPageviews">?</div>
                                 <div class="stat-label">Visitas totales</div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-value" id="analyticsUsers">Â—</div>
+                                <div class="stat-value" id="analyticsUsers">?</div>
                                 <div class="stat-label">Usuarios activos</div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-value" id="analyticsToday">Â—</div>
+                                <div class="stat-value" id="analyticsToday">?</div>
                                 <div class="stat-label">Visitas hoy</div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-value" id="analyticsMessages">Â—</div>
+                                <div class="stat-value" id="analyticsMessages">?</div>
                                 <div class="stat-label">Mensajes totales</div>
                             </div>
                         </div>
                         <div class="analytics-section">
-                            <h3>Ãšltimas visitas</h3>
+                            <h3>Últimas visitas</h3>
                             <div class="admin-list" id="analyticsVisitsList">
                                 <div class="admin-empty">Cargando...</div>
                             </div>
                         </div>
                         <div class="analytics-section">
-                            <h3>PÃ¡ginas mÃ¡s visitadas</h3>
+                            <h3>Páginas más visitadas</h3>
                             <div class="admin-list" id="analyticsPagesList">
                                 <div class="admin-empty">Cargando...</div>
                             </div>
@@ -228,9 +229,9 @@
             </div>
         </div>
     </main>
-<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="NavegaciÃ³n principal"></nav>
+<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
 
-    <!-- MODAL GENÃ‰RICO para formularios -->
+    <!-- MODAL GENÉRICO para formularios -->
     <div class="admin-modal-overlay" id="adminModal" style="display:none;">
         <div class="admin-modal">
             <div class="admin-modal-header">

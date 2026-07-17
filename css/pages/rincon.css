@@ -147,7 +147,7 @@
 }
 .location-card:hover {
     transform: translateY(-5px) scale(1.02);
-    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(198,90,58,0.08));
+    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgb(var(--accent-rgb) / 0.08));
     border-color: #FFD966;
     box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3);
 }
@@ -738,8 +738,8 @@ body.reel-lightbox-open {
 .day-counter {
     margin-top: 20px;
     padding: 12px 20px;
-    background: rgba(198, 90, 58, 0.1);
-    border: 1px solid rgba(198, 90, 58, 0.25);
+    background: rgb(var(--accent-rgb) / 0.1);
+    border: 1px solid rgb(var(--accent-rgb) / 0.25);
     border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;

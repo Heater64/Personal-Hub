@@ -2,6 +2,7 @@
 // Componente Toggle de Tema
 
 import themeService from '../../services/theme/theme.service.js';
+import { hasAcceptedLightBeta, showLightBetaModal } from '../dialogs/betaModal.js';
 
 export function createThemeToggle(container) {
     const wrapper = document.createElement('div');
@@ -17,23 +18,35 @@ export function createThemeToggle(container) {
     icon.dataset.lucide = themeService.isDark() ? 'moon' : 'sun';
     btn.appendChild(icon);
 
-    btn.addEventListener('click', () => {
-        themeService.toggle();
+    function updateIcon() {
         const isDark = themeService.isDark();
         btn.setAttribute('aria-checked', isDark ? 'true' : 'false');
         icon.dataset.lucide = isDark ? 'moon' : 'sun';
         if (typeof lucide !== 'undefined') {
             lucide.createIcons({ root: btn });
         }
+    }
+
+    btn.addEventListener('click', () => {
+        const nextTheme = themeService.isDark() ? 'light' : 'dark';
+
+        if (nextTheme === 'light' && !hasAcceptedLightBeta()) {
+            showLightBetaModal({
+                onAccept: () => {
+                    themeService.setTheme('light');
+                    updateIcon();
+                },
+                onCancel: () => {}
+            });
+            return;
+        }
+
+        themeService.setTheme(nextTheme);
+        updateIcon();
     });
 
-    themeService.onThemeChange(({ theme }) => {
-        const isDark = theme === 'dark';
-        btn.setAttribute('aria-checked', isDark ? 'true' : 'false');
-        icon.dataset.lucide = isDark ? 'moon' : 'sun';
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons({ root: btn });
-        }
+    themeService.onThemeChange(() => {
+        updateIcon();
     });
 
     wrapper.appendChild(btn);

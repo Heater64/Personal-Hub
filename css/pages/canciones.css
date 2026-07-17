@@ -93,7 +93,7 @@
 .player-btn.shuffle-active {
   color: var(--accent-coral);
   border-color: var(--accent-coral);
-  background: rgba(198, 90, 58, 0.1);
+  background: rgb(var(--accent-rgb) / 0.1);
 }
 
 .player-btn i[data-lucide] {
@@ -198,7 +198,7 @@
 
 .song-row.active {
   border-color: var(--accent-coral);
-  background: rgba(198, 90, 58, 0.06);
+  background: rgb(var(--accent-rgb) / 0.06);
 }
 
 .song-row img {

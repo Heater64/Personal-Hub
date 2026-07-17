@@ -1,0 +1,179 @@
+/* css/components/theme-tokens.css
+   Tokens --theme-* usados por la vista de perfil (y páginas de tema).
+   Se mapean al palette Umbra para que la sección quede estilada sin
+   depender de ThemeService. Responden a data-color-theme y data-theme. */
+
+/* Tipografía y radios usados por profile.css (definidos aquí para que la
+   sección de perfil quede estilada sin depender de base/typography.css). */
+:root {
+  --font-display: 'Dancing Script', cursive;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --fs-xs: 0.72rem;
+  --fs-sm: 0.85rem;
+  --fs-md: 0.95rem;
+  --fs-lg: 1.1rem;
+  --fs-xl: 1.4rem;
+  --fs-2xl: 1.9rem;
+  --radius-card: 22px;
+  --radius-btn: 18px;
+  --radius-input: 16px;
+  --radius-pill: 40px;
+  --blur-sm: 8px;
+  --blur-glass: 20px;
+  --z-modal: 99999;
+  --dur-fast: 0.18s ease;
+  --dur-mid: 0.3s ease;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+:root,
+html[data-theme="dark"],
+html:not([data-theme]) {
+  --accent-rgb: 198, 90, 58;
+  --theme-bg-primary: #0f0f10;
+  --theme-bg-secondary: #1a1a1c;
+  --theme-bg-card: #1e1e20;
+  --theme-bg-card-hover: #262628;
+  --theme-bg-input: rgba(255, 255, 255, 0.04);
+  --theme-bg-overlay: rgba(8, 8, 10, 0.85);
+
+  --theme-text-primary: #f0eeeb;
+  --theme-text-secondary: #c5c1bf;
+  --theme-text-muted: #9a9694;
+
+  --theme-border-subtle: 1px solid rgba(255, 255, 255, 0.06);
+  --theme-border-visible: 1px solid rgba(255, 255, 255, 0.12);
+  --theme-border-focus: rgba(198, 90, 58, 0.6);
+
+  --theme-accent-primary: #c65a3a;
+  --theme-accent-secondary: #ffb347;
+  --theme-accent-dim: rgba(198, 90, 58, 0.15);
+  --theme-accent-border: rgba(198, 90, 58, 0.35);
+
+  --theme-glass-bg: rgba(255, 255, 255, 0.04);
+  --theme-glass-border: rgba(255, 255, 255, 0.08);
+  --theme-glass-highlight: rgba(255, 255, 255, 0.05);
+
+  --theme-shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.25);
+  --theme-shadow-md: 0 12px 28px rgba(0, 0, 0, 0.32);
+  --theme-shadow-lg: 0 22px 48px rgba(0, 0, 0, 0.42);
+  --theme-shadow-glow: 0 0 24px rgba(198, 90, 58, 0.25);
+
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-bg-hover: rgba(255, 255, 255, 0.05);
+  --glass-bg-active: rgba(255, 255, 255, 0.06);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-border-hover: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-shield: rgba(255, 255, 255, 0.02);
+
+  --accent-soft: rgba(198, 90, 58, 0.06);
+  --accent-soft-hover: rgba(198, 90, 58, 0.1);
+  --accent-mist: rgba(198, 90, 58, 0.12);
+  --accent-mist-hover: rgba(198, 90, 58, 0.18);
+  --accent-glow: rgba(198, 90, 58, 0.22);
+  --accent-line: rgba(198, 90, 58, 0.35);
+  --accent-line-hover: rgba(198, 90, 58, 0.4);
+
+  --theme-sidebar-bg: rgba(10, 10, 11, 0.96);
+  --theme-sidebar-border: 1px solid rgba(255, 255, 255, 0.05);
+
+  --theme-error: #ff5d5d;
+  --theme-error-dim: rgba(255, 93, 93, 0.14);
+  --theme-success: #60c878;
+  --theme-info: #6aa9ff;
+
+  --theme-scrollbar-track: rgba(255, 255, 255, 0.05);
+  --theme-scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+}
+
+/* Tema claro — Rosa cristal */
+/* Sobrescribe las variables Umbra para que las páginas que usan
+   var(--umbra-*) y var(--accent-*) se adapten automáticamente. */
+html[data-theme="light"] {
+  --umbra-black: #fdf0f4;
+  --umbra-dark: #fce8ee;
+  --umbra-stone: #d4b8c0;
+  --umbra-ash: #4a3a3f;
+  --umbra-light: #1a1215;
+  --umbra-white-soft: #fdf0f4;
+  --accent-rgb: 255, 92, 138;
+  --accent-coral: #FF5C8A;
+  --accent-rust: #d44a72;
+  --accent-dim: rgba(255, 92, 138, 0.15);
+  --accent-border: rgba(255, 92, 138, 0.3);
+  --bg-card: #fceaef;
+  --border-subtle: 1px solid rgba(212, 74, 114, 0.3);
+  --border-visible: 1px solid rgba(212, 74, 114, 0.5);
+
+  --theme-bg-primary: #fdf0f4;
+  --theme-bg-secondary: #fce8ee;
+  --theme-bg-card: #fceaef;
+  --theme-bg-card-hover: #f5e0e6;
+  --theme-bg-input: rgba(255, 92, 138, 0.08);
+  --theme-bg-overlay: rgba(43, 43, 43, 0.55);
+
+  --theme-text-primary: #000000;
+  --theme-text-secondary: #0d080a;
+  --theme-text-muted: #1a1215;
+
+  --theme-border-subtle: 1px solid #d44a72;
+  --theme-border-visible: 1px solid #d44a72;
+  --theme-border-focus: rgba(255, 92, 138, 0.7);
+
+  --theme-accent-primary: #FF5C8A;
+  --theme-accent-secondary: #FFB6C9;
+  --theme-accent-dim: rgba(255, 92, 138, 0.13);
+  --theme-accent-border: rgba(255, 92, 138, 0.35);
+
+  --theme-glass-bg: rgba(255, 255, 255, 0.8);
+  --theme-glass-border: 1px solid #d44a72;
+  --theme-glass-highlight: rgba(255, 255, 255, 0.7);
+
+  --theme-shadow-sm: 0 4px 14px rgba(42, 18, 24, 0.12);
+  --theme-shadow-md: 0 12px 35px rgba(42, 18, 24, 0.18);
+  --theme-shadow-lg: 0 22px 50px rgba(42, 18, 24, 0.22);
+  --theme-shadow-glow: 0 0 30px rgba(255, 92, 138, 0.25);
+
+  --glass-bg: #fceaef;
+  --glass-bg-hover: #f5e0e6;
+  --glass-bg-active: #f0d8df;
+  --glass-border: 1px solid #d44a72;
+  --glass-border-hover: 1px solid #c63d63;
+  --glass-shield: #fce8ee;
+
+  --accent-soft: rgba(255, 92, 138, 0.06);
+  --accent-soft-hover: rgba(255, 92, 138, 0.1);
+  --accent-mist: rgba(255, 92, 138, 0.12);
+  --accent-mist-hover: rgba(255, 92, 138, 0.18);
+  --accent-glow: rgba(255, 92, 138, 0.22);
+  --accent-line: rgba(255, 92, 138, 0.35);
+  --accent-line-hover: rgba(255, 92, 138, 0.4);
+
+  --theme-sidebar-bg: #2a1218;
+  --theme-sidebar-border: 1px solid rgba(255, 92, 138, 0.15);
+
+  --theme-scrollbar-track: rgba(255, 92, 138, 0.06);
+  --theme-scrollbar-thumb: rgba(255, 92, 138, 0.2);
+  --theme-scrollbar-thumb-hover: rgba(255, 92, 138, 0.35);
+
+  --theme-bg-gradient: radial-gradient(circle at top, #ffe8ef 0%, transparent 50%), linear-gradient(180deg, #fdf0f4, #fce8ee);
+}
+
+html[data-theme="light"] body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html[data-theme="light"] body::before,
+html[data-theme="light"] body::after {
+  display: none;
+}
+
+/* Temas de color (data-color-theme) */
+html[data-color-theme="ocean"]   { --theme-accent-primary: #0077b6; --theme-accent-secondary: #90e0ef; --theme-accent-dim: rgba(0,119,182,0.15); --theme-accent-border: rgba(0,119,182,0.35); --theme-shadow-glow: 0 0 24px rgba(0,119,182,0.25); }
+html[data-color-theme="forest"]  { --theme-accent-primary: #2d6a4f; --theme-accent-secondary: #95d5b2; --theme-accent-dim: rgba(45,106,79,0.15); --theme-accent-border: rgba(45,106,79,0.35); --theme-shadow-glow: 0 0 24px rgba(45,106,79,0.25); }
+html[data-color-theme="violet"]  { --theme-accent-primary: #7209b7; --theme-accent-secondary: #c77dff; --theme-accent-dim: rgba(114,9,183,0.15); --theme-accent-border: rgba(114,9,183,0.35); --theme-shadow-glow: 0 0 24px rgba(114,9,183,0.25); }
+html[data-color-theme="rose"]    { --theme-accent-primary: #e53e3e; --theme-accent-secondary: #fc8181; --theme-accent-dim: rgba(229,62,62,0.15); --theme-accent-border: rgba(229,62,62,0.35); --theme-shadow-glow: 0 0 24px rgba(229,62,62,0.25); }
+html[data-color-theme="amber"]   { --theme-accent-primary: #d69e2e; --theme-accent-secondary: #faf089; --theme-accent-dim: rgba(214,158,46,0.15); --theme-accent-border: rgba(214,158,46,0.35); --theme-shadow-glow: 0 0 24px rgba(214,158,46,0.25); }
+html[data-color-theme="mono"]    { --theme-accent-primary: #3d3d3d; --theme-accent-secondary: #718096; --theme-accent-dim: rgba(61,61,61,0.15); --theme-accent-border: rgba(61,61,61,0.35); --theme-shadow-glow: 0 0 24px rgba(61,61,61,0.25); }

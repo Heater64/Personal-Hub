@@ -13,7 +13,7 @@
   margin-bottom: var(--space-sm);
   border: var(--border-subtle);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--glass-bg-subtle, rgba(255, 255, 255, 0.01));
   overflow: hidden;
   cursor: pointer;
   transition: opacity var(--dur-fast);
@@ -44,7 +44,7 @@
 }
 .planner-step {
   padding: var(--space-md);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--glass-bg-subtle, rgba(255, 255, 255, 0.02));
   border: var(--border-subtle);
   border-radius: var(--radius-lg);
 }
@@ -62,7 +62,7 @@
   width: 100%;
   margin-top: var(--space-sm);
   padding: var(--space-sm);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg-subtle, rgba(255, 255, 255, 0.03));
   border: var(--border-subtle);
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
@@ -155,7 +155,7 @@
 }
 .spb-quick-card {
     text-align: center;
-    background: rgba(198,90,58,0.1);
+    background: var(--accent-dim, rgba(198,90,58,0.1));
     backdrop-filter: blur(4px);
 }
 .spb-quick-card-sub {
@@ -204,11 +204,11 @@
 
 /* --- Testimonios --- */
 .spb-testimonials {
-    background: rgba(255,255,255,0.02);
+    background: var(--glass-bg-subtle, rgba(255,255,255,0.02));
     border-radius: 28px;
     margin: 0 20px 40px;
     padding: 24px;
-    border: 1px solid rgba(198,90,58,0.3);
+    border: 1px solid var(--accent-border, rgba(198,90,58,0.3));
 }
 .spb-testimonials h3 {
     text-align: center;
@@ -263,7 +263,7 @@
 .spb-footer {
     text-align: center;
     padding: 20px;
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid var(--glass-bg-subtle, rgba(255,255,255,0.05));
     margin-top: 10px;
 }
 .spb-footer p {
@@ -304,12 +304,12 @@
 /* Tarjetas de Ubicacion y Perfil (sin iconos, con animacion de fondo) */
 .location-card {
     transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-    background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,215,0,0.02));
+    background: linear-gradient(135deg, var(--glass-bg-subtle, rgba(255,255,255,0.02)), rgba(255,215,0,0.02));
     border: 1px solid rgba(255,215,0,0.1);
 }
 .location-card:hover {
     transform: translateY(-5px) scale(1.02);
-    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(198,90,58,0.08));
+    background: linear-gradient(135deg, rgba(255,215,0,0.12), var(--accent-dim, rgba(198,90,58,0.08)));
     border-color: #FFD966;
     box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3);
 }
@@ -318,7 +318,7 @@
 .monument-card {
     position: relative;
     transition: all 0.3s ease;
-    background: rgba(255,255,255,0.02);
+    background: var(--glass-bg-subtle, rgba(255,255,255,0.02));
     overflow: hidden;
 }
 .monument-card::before {
@@ -357,7 +357,7 @@
 
 /* Tarjetas de Tradiciones (solo texto, sin imagenes ni emojis) */
 .tradition-card {
-    background: rgba(255,255,255,0.02);
+    background: var(--glass-bg-subtle, rgba(255,255,255,0.02));
     padding: 16px 20px;
     border-radius: var(--radius-lg);
     text-align: center;
@@ -427,7 +427,7 @@
   display: block;
 }
 .insta-item img {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg-subtle, rgba(255, 255, 255, 0.03));
 }
 .insta-overlay {
   position: absolute;
@@ -567,7 +567,7 @@ body.reel-lightbox-open {
   border-radius: clamp(10px, 1.7vw, 20px);
   background: rgba(12, 11, 11, 0.92);
   box-shadow: 0 18px 58px rgba(0, 0, 0, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-bg, rgba(255, 255, 255, 0.08));
 }
 .lightbox-reel video.reel-media {
   display: block;
@@ -578,7 +578,7 @@ body.reel-lightbox-open {
   width: 52px;
   height: 52px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--glass-bg, rgba(255, 255, 255, 0.12));
   background: rgba(16, 16, 18, 0.62);
   color: var(--umbra-light);
   display: inline-flex;
@@ -592,7 +592,7 @@ body.reel-lightbox-open {
 .reel-ui-btn:hover {
   transform: translateY(-1px);
   background: rgba(36, 36, 38, 0.82);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--glass-bg-visible, rgba(255, 255, 255, 0.2));
 }
 .reel-ui-btn:disabled {
   opacity: 0.45;
@@ -629,7 +629,7 @@ body.reel-lightbox-open {
 .reel-lightbox-caption,
 .reel-lightbox-counter {
   background: rgba(17, 17, 18, 0.54);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-bg, rgba(255, 255, 255, 0.08));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: var(--umbra-light);
@@ -756,7 +756,7 @@ body.reel-lightbox-open {
   -webkit-backdrop-filter: blur(10px);
   padding: 10px 16px;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-bg, rgba(255, 255, 255, 0.1));
   opacity: 0;
   transition: opacity 0.25s ease;
   pointer-events: none;
@@ -800,7 +800,7 @@ body.reel-lightbox-open {
 
 .control-btn:hover {
   color: var(--accent-coral);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.1));
   transform: scale(1.05);
 }
 
@@ -821,7 +821,7 @@ body.reel-lightbox-open {
 .progress-track-video {
   flex: 1;
   height: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--glass-bg-visible, rgba(255, 255, 255, 0.2));
   border-radius: var(--radius-pill);
   cursor: pointer;
   position: relative;

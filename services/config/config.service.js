@@ -64,6 +64,22 @@ var ConfigService = (function () {
     }
 
     // ==========================================
+    // CHANGELOG / NOVEDADES (sistema de actualizaciones)
+    // ==========================================
+    async function loadChangelog() {
+        var data = await loadConfig('config_changelog', 'data');
+        return data && data.items ? data.items : [];
+    }
+
+    // ==========================================
+    // NOTIFICACIONES (in-app, desde Firestore)
+    // ==========================================
+    async function loadNotifications() {
+        var data = await loadConfig('config_notificaciones', 'data');
+        return data && data.items ? data.items : [];
+    }
+
+    // ==========================================
     // WRITE CONFIG (admin)
     // ==========================================
 
@@ -103,6 +119,18 @@ var ConfigService = (function () {
         return ok;
     }
 
+    async function saveChangelog(items) {
+        var ok = await FirestoreService.setDoc('config_changelog', 'data', { items: items });
+        if (ok) clearCache('config_changelog/data');
+        return ok;
+    }
+
+    async function saveNotifications(items) {
+        var ok = await FirestoreService.setDoc('config_notificaciones', 'data', { items: items });
+        if (ok) clearCache('config_notificaciones/data');
+        return ok;
+    }
+
     // ==========================================
     // API PÚBLICA
     // ==========================================
@@ -116,12 +144,16 @@ var ConfigService = (function () {
         loadMaldiaMessages: loadMaldiaMessages,
         loadPodio: loadPodio,
         loadSeriesData: loadSeriesData,
+        loadChangelog: loadChangelog,
+        loadNotifications: loadNotifications,
         saveReasons: saveReasons,
         saveSongs: saveSongs,
         saveNews: saveNews,
         saveMaldiaPhrases: saveMaldiaPhrases,
         saveMaldiaMessages: saveMaldiaMessages,
         savePodio: savePodio,
+        saveChangelog: saveChangelog,
+        saveNotifications: saveNotifications,
         clearCache: clearCache
     };
 

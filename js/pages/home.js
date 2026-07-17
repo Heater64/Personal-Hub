@@ -6,20 +6,44 @@ import { escapeHtml } from '../modules/shared/dom.js';
 async function boot() {
     // Cargar grid de secciones
     initHubGrid('#hubGrid');
-    
+
     // Contador de días
     if (typeof initDayCounter === 'function') {
         initDayCounter('homeDayCounter', '2025-07-03', 'días juntos🤍👑');
+    }
+
+    // ========== SKELETON mientras cargan noticias ==========
+    var newsContainer = document.getElementById('newsContent');
+    if (window.Skeleton && newsContainer) {
+        Skeleton.mostrar(newsContainer, Skeleton.lista(2, { lineas: 2 }));
     }
 
     // ========== CARGAR NOTICIAS (desde Firestore si existe) ==========
     await loadNewsFromFirestore();
 
     // ========== CARGAR DATOS CURIOSOS ==========
+    if (window.Skeleton) {
+        var curContainer = document.getElementById('curiositiesGrid');
+        if (curContainer) Skeleton.mostrar(curContainer, Skeleton.lista(3, { lineas: 2 }));
+    }
     renderCuriosities();
 
     // ========== TOGGLE DE NOTICIAS ==========
     setupNewsToggle();
+
+    // ========== PULL TO REFRESH ==========
+    var page = document.querySelector('.page');
+    if (window.PullToRefresh && page) {
+        PullToRefresh.init(page, async function () {
+            await loadNewsFromFirestore();
+            renderCuriosities();
+        });
+    }
+
+    // ========== NOTIFICACIÓN DIARIA ==========
+    if (window.Notifications) {
+        window.Notifications.diaria('home.bienvenida', '✨ Hola de nuevo, mi princesa. ¿Vemos qué hay nuevo hoy?', 'exito');
+    }
 }
 
 async function loadNewsFromFirestore() {

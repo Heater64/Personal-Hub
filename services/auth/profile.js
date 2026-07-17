@@ -160,12 +160,40 @@ ProfileSystem.loadPreferences = async function(uid) {
 
 ProfileSystem.savePreferences = async function(uid, prefs) {
     if (!uid || !window.db) return;
-
+ 
     try {
         const ref = window.db.collection('users').doc(uid).collection('preferences').doc('sidebar');
         await ref.set(prefs, { merge: true });
     } catch (err) {
         console.warn('⚠️ Error guardando preferencias:', err);
+    }
+};
+
+// ==========================================
+// ACTUALIZAR FOTO / NOMBRE DEL PERFIL
+// ==========================================
+
+ProfileSystem.actualizarFoto = async function(uid, base64) {
+    if (!uid || !window.db) return false;
+    try {
+        await window.db.collection('users').doc(uid).update({ 'profile.photoURL': base64 });
+        if (typeof window.Haptica !== 'undefined') window.Haptica.exito();
+        return true;
+    } catch (err) {
+        console.warn('⚠️ Error actualizando foto:', err);
+        return false;
+    }
+};
+
+ProfileSystem.actualizarNombre = async function(uid, nombre) {
+    if (!uid || !window.db) return false;
+    try {
+        await window.db.collection('users').doc(uid).update({ 'profile.name': nombre });
+        if (typeof window.Haptica !== 'undefined') window.Haptica.exito();
+        return true;
+    } catch (err) {
+        console.warn('⚠️ Error actualizando nombre:', err);
+        return false;
     }
 };
 

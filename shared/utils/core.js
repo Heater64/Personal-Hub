@@ -1,12 +1,7 @@
 // shared/utils/core.js
-// Utilidades centrales del sistema
+// Utilidades centrales del sistema (script clásico, compatible con <script> sin type="module")
 
-/**
- * Calcula días desde una fecha
- * @param {string} dateStr - Fecha en formato YYYY-MM-DD
- * @returns {number}
- */
-export function daysSince(dateStr) {
+function daysSince(dateStr) {
     const target = new Date(dateStr);
     const today = new Date();
     target.setHours(0, 0, 0, 0);
@@ -14,37 +9,21 @@ export function daysSince(dateStr) {
     return Math.floor((today - target) / (1000 * 60 * 60 * 24));
 }
 
-/**
- * Inicializa un contador de días
- * @param {string} containerId - ID del contenedor
- * @param {string} dateStr - Fecha de inicio
- * @param {string} label - Etiqueta
- */
-export function initDayCounter(containerId, dateStr, label) {
+function initDayCounter(containerId, dateStr, label) {
     const el = document.getElementById(containerId);
     if (!el) return;
     const days = daysSince(dateStr);
     el.innerHTML = `<span class="day-counter-number">${days}</span> ${label}`;
 }
 
-/**
- * Escape HTML (versión independiente)
- * @param {string} str - Texto a escapar
- * @returns {string}
- */
-export function escapeHtml(str) {
+function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
 
-/**
- * Muestra un toast
- * @param {string} text - Mensaje
- * @param {boolean} isError - Si es error
- */
-export function showToast(text, isError = false) {
+function showToast(text, isError = false) {
     let existingToast = document.querySelector('.toast-message');
     if (existingToast) existingToast.remove();
 
@@ -57,13 +36,7 @@ export function showToast(text, isError = false) {
     setTimeout(() => toast.remove(), 2600);
 }
 
-/**
- * Abre una URL de forma segura
- * @param {string} url - URL a abrir
- * @param {string} errorMessage - Mensaje de error
- * @returns {boolean}
- */
-export function openSafeUrl(url, errorMessage = 'Enlace no válido') {
+function openSafeUrl(url, errorMessage = 'Enlace no válido') {
     if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
         showToast(errorMessage, true);
         return false;
@@ -72,12 +45,7 @@ export function openSafeUrl(url, errorMessage = 'Enlace no válido') {
     return true;
 }
 
-/**
- * Abre un lightbox con una imagen
- * @param {string} src - URL de la imagen
- * @param {string} caption - Pie de foto
- */
-export function openLightbox(src, caption = '') {
+function openLightbox(src, caption = '') {
     const content = document.getElementById('lightboxContent');
     const captionEl = document.getElementById('lightboxCaption');
     const box = document.getElementById('lightbox');
@@ -94,21 +62,14 @@ export function openLightbox(src, caption = '') {
     box.classList.add('open');
 }
 
-/**
- * Cierra el lightbox
- */
-export function closeLightbox() {
+function closeLightbox() {
     const box = document.getElementById('lightbox');
     const content = document.getElementById('lightboxContent');
     if (content) content.innerHTML = '';
     if (box) box.classList.remove('open');
 }
 
-/**
- * Asegura que existe la capa de decoración
- * @returns {HTMLElement}
- */
-export function ensureDecorLayer() {
+function ensureDecorLayer() {
     let layer = document.getElementById('globalDecorLayer');
     if (layer) return layer;
 
@@ -119,12 +80,7 @@ export function ensureDecorLayer() {
     return layer;
 }
 
-/**
- * Resuelve el origen de una partícula
- * @param {any} source - Fuente (elemento o coordenadas)
- * @returns {Object} - { x, y }
- */
-export function resolveParticleOrigin(source) {
+function resolveParticleOrigin(source) {
     if (!source) {
         return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     }
@@ -144,11 +100,7 @@ export function resolveParticleOrigin(source) {
     return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 }
 
-/**
- * Lanza partículas decorativas
- * @param {Object} options - Configuración
- */
-export function launchParticles(options = {}) {
+function launchParticles(options = {}) {
     const {
         amount = 12,
         symbols = ['❤', '✦', '✧'],
@@ -192,11 +144,7 @@ export function launchParticles(options = {}) {
     }
 }
 
-/**
- * Efecto pulse en un elemento
- * @param {HTMLElement} element - Elemento
- */
-export function pulseElement(element) {
+function pulseElement(element) {
     if (!element) return;
     element.classList.remove('pulse-pop');
     void element.offsetWidth;
@@ -204,25 +152,14 @@ export function pulseElement(element) {
     setTimeout(() => element.classList.remove('pulse-pop'), 420);
 }
 
-/**
- * Formatea tiempo (mm:ss)
- * @param {number} seconds - Segundos
- * @returns {string}
- */
-export function formatTime(seconds) {
+function formatTime(seconds) {
     if (!isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
     return `${mins}:${secs}`;
 }
 
-/**
- * Debounce
- * @param {Function} fn - Función
- * @param {number} delay - Delay en ms
- * @returns {Function}
- */
-export function debounce(fn, delay = 300) {
+function debounce(fn, delay = 300) {
     let timer = null;
     return function(...args) {
         clearTimeout(timer);
@@ -230,13 +167,7 @@ export function debounce(fn, delay = 300) {
     };
 }
 
-/**
- * Throttle
- * @param {Function} fn - Función
- * @param {number} limit - Límite en ms
- * @returns {Function}
- */
-export function throttle(fn, limit = 300) {
+function throttle(fn, limit = 300) {
     let inThrottle = false;
     return function(...args) {
         if (!inThrottle) {
@@ -247,22 +178,42 @@ export function throttle(fn, limit = 300) {
     };
 }
 
-/**
- * Obtiene el nombre de la página actual
- * @returns {string}
- */
-export function getCurrentPage() {
+function getCurrentPage() {
     const path = window.location.pathname;
     const page = path.split('/').pop() || 'index';
     return page.replace('.html', '');
 }
 
-/**
- * Obtiene parámetros de la URL
- * @param {string} key - Clave del parámetro
- * @returns {string|null}
- */
-export function getUrlParam(key) {
+function getUrlParam(key) {
     const params = new URLSearchParams(window.location.search);
     return params.get(key);
 }
+
+// Exposición global para uso clásico
+window.Core = {
+    daysSince: daysSince,
+    initDayCounter: initDayCounter,
+    escapeHtml: escapeHtml,
+    showToast: showToast,
+    openSafeUrl: openSafeUrl,
+    openLightbox: openLightbox,
+    closeLightbox: closeLightbox,
+    ensureDecorLayer: ensureDecorLayer,
+    resolveParticleOrigin: resolveParticleOrigin,
+    launchParticles: launchParticles,
+    pulseElement: pulseElement,
+    formatTime: formatTime,
+    debounce: debounce,
+    throttle: throttle,
+    getCurrentPage: getCurrentPage,
+    getUrlParam: getUrlParam
+};
+window.daysSince = daysSince;
+window.initDayCounter = initDayCounter;
+window.escapeHtml = escapeHtml;
+window.showToast = showToast;
+window.openSafeUrl = openSafeUrl;
+window.openLightbox = openLightbox;
+window.closeLightbox = closeLightbox;
+window.getCurrentPage = getCurrentPage;
+window.getUrlParam = getUrlParam;

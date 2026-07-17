@@ -27,8 +27,8 @@
 }
 
 .maldia-nav-bar:hover {
-    border-color: rgba(198, 90, 58, 0.3);
-    box-shadow: 0 4px 20px rgba(198, 90, 58, 0.1);
+    border-color: rgb(var(--accent-rgb) / 0.3);
+    box-shadow: 0 4px 20px rgb(var(--accent-rgb) / 0.1);
 }
 
 .maldia-nav-links {
@@ -60,7 +60,7 @@
 }
 
 .maldia-nav-link:hover {
-    background: rgba(198, 90, 58, 0.12);
+    background: rgb(var(--accent-rgb) / 0.12);
     color: var(--accent-coral);
     transform: translateY(-1px);
 }
@@ -70,10 +70,10 @@
 }
 
 .maldia-nav-link.active {
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.25), rgba(198, 90, 58, 0.1));
-    border: 1px solid rgba(198, 90, 58, 0.4);
+    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.25), rgb(var(--accent-rgb) / 0.1));
+    border: 1px solid rgb(var(--accent-rgb) / 0.4);
     color: var(--accent-coral);
-    box-shadow: 0 2px 8px rgba(198, 90, 58, 0.15);
+    box-shadow: 0 2px 8px rgb(var(--accent-rgb) / 0.15);
 }
 
 @media (max-width: 640px) {
@@ -129,7 +129,7 @@
    ========================================== */
 .hero-card {
     position: relative;
-    background: linear-gradient(180deg, rgba(198, 90, 58, 0.08), rgba(0, 0, 0, 0.85));
+    background: linear-gradient(180deg, rgb(var(--accent-rgb) / 0.08), rgba(0, 0, 0, 0.85));
     border-radius: 40px;
     padding: 48px 32px;
     margin-bottom: 32px;
@@ -166,13 +166,13 @@
 .hero-card .card-icon {
     width: 70px;
     height: 70px;
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.25), rgba(198, 90, 58, 0.1));
+    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.25), rgb(var(--accent-rgb) / 0.1));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 24px;
-    border: 1px solid rgba(198, 90, 58, 0.3);
+    border: 1px solid rgb(var(--accent-rgb) / 0.3);
     backdrop-filter: blur(4px);
 }
 
@@ -230,8 +230,8 @@
 }
 
 .action-btn {
-    background: rgba(198, 90, 58, 0.12);
-    border: 1px solid rgba(198, 90, 58, 0.3);
+    background: rgb(var(--accent-rgb) / 0.12);
+    border: 1px solid rgb(var(--accent-rgb) / 0.3);
     border-radius: 60px;
     padding: 12px 24px;
     color: var(--accent-coral);
@@ -255,7 +255,7 @@
     background: var(--accent-coral);
     color: white;
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(198, 90, 58, 0.3);
+    box-shadow: 0 8px 20px rgb(var(--accent-rgb) / 0.3);
 }
 
 .action-btn:hover i {
@@ -269,12 +269,12 @@
 .action-btn.primary {
     background: var(--accent-coral);
     color: white;
-    box-shadow: 0 4px 12px rgba(198, 90, 58, 0.3);
+    box-shadow: 0 4px 12px rgb(var(--accent-rgb) / 0.3);
 }
 
 .action-btn.primary:hover {
     background: #b34a2e;
-    box-shadow: 0 6px 18px rgba(198, 90, 58, 0.4);
+    box-shadow: 0 6px 18px rgb(var(--accent-rgb) / 0.4);
 }
 
 /* Reproductor música mejorado */
@@ -296,7 +296,7 @@
 .wave-bar {
     width: 3px;
     height: 18px;
-    background: linear-gradient(180deg, var(--accent-coral), rgba(198, 90, 58, 0.3));
+    background: linear-gradient(180deg, var(--accent-coral), rgb(var(--accent-rgb) / 0.3));
     border-radius: 3px;
     transition: height 0.1s ease;
 }
@@ -343,7 +343,7 @@
 }
 
 .music-toggle-btn:hover {
-    background: rgba(198, 90, 58, 0.2);
+    background: rgb(var(--accent-rgb) / 0.2);
     border-color: var(--accent-coral);
     color: var(--accent-coral);
     transform: scale(1.05);
@@ -364,20 +364,20 @@
 
 .glass-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(198, 90, 58, 0.25);
+    border-color: rgb(var(--accent-rgb) / 0.25);
     box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.3);
 }
 
 .card-icon.small {
     width: 56px;
     height: 56px;
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.2), rgba(198, 90, 58, 0.08));
+    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.2), rgb(var(--accent-rgb) / 0.08));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 24px;
-    border: 1px solid rgba(198, 90, 58, 0.2);
+    border: 1px solid rgb(var(--accent-rgb) / 0.2);
 }
 
 .card-icon.small i {
@@ -476,7 +476,7 @@
 .mini-btn:hover {
     border-color: var(--accent-coral);
     color: var(--accent-coral);
-    background: rgba(198, 90, 58, 0.08);
+    background: rgb(var(--accent-rgb) / 0.08);
     transform: translateY(-2px);
 }
 
@@ -514,10 +514,10 @@
 }
 
 .breathing-btn:hover {
-    background: rgba(198, 90, 58, 0.12);
+    background: rgb(var(--accent-rgb) / 0.12);
     border-color: var(--accent-coral);
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(198, 90, 58, 0.2);
+    box-shadow: 0 8px 20px rgb(var(--accent-rgb) / 0.2);
 }
 
 .breathing-btn:hover i {
@@ -558,14 +558,14 @@
     width: 240px;
     height: 240px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(198, 90, 58, 0.15), rgba(198, 90, 58, 0.05));
+    background: radial-gradient(circle, rgb(var(--accent-rgb) / 0.15), rgb(var(--accent-rgb) / 0.05));
     border: 2px solid var(--accent-coral);
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 28px;
     transition: transform 0.1s linear;
-    box-shadow: 0 0 40px rgba(198, 90, 58, 0.2);
+    box-shadow: 0 0 40px rgb(var(--accent-rgb) / 0.2);
 }
 
 .breathing-text {
@@ -582,7 +582,7 @@
 }
 
 .breathing-stop-btn {
-    background: rgba(198, 90, 58, 0.2);
+    background: rgb(var(--accent-rgb) / 0.2);
     border: 1px solid var(--accent-coral);
     border-radius: 60px;
     padding: 12px 32px;
@@ -614,7 +614,7 @@
 }
 
 .breathing-modal-close:hover {
-    background: rgba(198, 90, 58, 0.2);
+    background: rgb(var(--accent-rgb) / 0.2);
     color: var(--accent-coral);
     transform: rotate(90deg);
 }
@@ -683,7 +683,7 @@
 }
 
 .better-modal-close:hover {
-    background: rgba(198, 90, 58, 0.2);
+    background: rgb(var(--accent-rgb) / 0.2);
     color: var(--accent-coral);
     transform: rotate(90deg);
 }

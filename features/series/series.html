@@ -1,15 +1,16 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('personalHub.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hub">
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
-  <title>Series y PelÃ­culas</title>
-  <meta name="description" content="Tu biblioteca personal de series y pelÃ­culas">
+  <title>Series y Películas</title>
+  <meta name="description" content="Tu biblioteca personal de series y películas">
   <meta name="theme-color" content="#0c0b0b">
   <link rel="stylesheet" href="../../css/main.css">
   <link rel="stylesheet" href="series.css">
@@ -21,7 +22,7 @@
 <body data-sidebar-root="../.." data-sidebar-page="series">
 
 <!-- Sidebar vertical -->
-<button class="sidebar-toggle" type="button" aria-label="Abrir navegaciÃ³n" data-sidebar-toggle>
+<button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
   <i data-lucide="menu"></i>
 </button>
 <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -34,7 +35,7 @@
     <header class="cine-header">
       <div class="cine-header-top">
         <div class="cine-view-tabs">
-          <button class="cine-view-tab active" data-view="catalog">CatÃ¡logo</button>
+          <button class="cine-view-tab active" data-view="catalog">Catálogo</button>
           <button class="cine-view-tab" data-view="podium">Podio</button>
         </div>
         <button class="btn-danger btn-sm" id="btnEliminarTodo" title="Eliminar todo">
@@ -45,12 +46,12 @@
       <div class="cine-header-bar">
         <div class="search-wrapper">
           <i data-lucide="search" class="search-icon"></i>
-          <input type="text" id="searchInput" class="search-input" placeholder="Buscar tÃ­tulo...">
+          <input type="text" id="searchInput" class="search-input" placeholder="Buscar título...">
         </div>
         <div class="filter-chips" id="filterBtns">
           <button class="filter-chip active" data-filter="todo">Todo</button>
           <button class="filter-chip" data-filter="serie">Series</button>
-          <button class="filter-chip" data-filter="pelicula">PelÃ­culas</button>
+          <button class="filter-chip" data-filter="pelicula">Películas</button>
         </div>
       </div>
     </header>
@@ -61,7 +62,7 @@
     <!-- Empty state -->
     <div class="empty-state" id="emptyState" style="display: none;">
       <i data-lucide="clapperboard"></i>
-      <p>No hay contenido. AÃ±ade tu primera serie o pelÃ­cula.</p>
+      <p>No hay contenido. Añade tu primera serie o película.</p>
     </div>
 
     <!-- ========== PODIO TOP 5 ========== -->
@@ -74,12 +75,12 @@
       </div>
       <div class="podium-tabs">
         <button class="podium-tab active" data-podium-type="series">Series</button>
-        <button class="podium-tab" data-podium-type="movies">PelÃ­culas</button>
+        <button class="podium-tab" data-podium-type="movies">Películas</button>
       </div>
       <div id="podiumGrid" class="podium-grid"></div>
       <div class="podium-empty" id="podiumEmpty">
         <i data-lucide="trophy"></i>
-        <p>AÃºn no has elegido tu top 5. Â¡Edita el podio para aÃ±adir tus favoritas!</p>
+        <p>Aún no has elegido tu top 5. ¡Edita el podio para añadir tus favoritas!</p>
       </div>
     </div>
 
@@ -93,9 +94,9 @@
     <h2><i data-lucide="trophy"></i> Gestionar podio</h2>
     <div class="podium-modal-tabs">
       <button class="podium-tab active" data-pm-type="series">Series</button>
-      <button class="podium-tab" data-pm-type="movies">PelÃ­culas</button>
+      <button class="podium-tab" data-pm-type="movies">Películas</button>
     </div>
-    <p class="podium-modal-hint">Selecciona hasta 5 y asÃ­gnales una posiciÃ³n (1 = mejor).</p>
+    <p class="podium-modal-hint">Selecciona hasta 5 y asígnales una posición (1 = mejor).</p>
     <div id="podiumEditList" class="podium-edit-list"></div>
     <div class="form-actions">
       <button class="btn-secondary" id="cancelPodiumBtn">Cancelar</button>
@@ -104,23 +105,23 @@
   </div>
 </div>
 
-<!-- MODAL AÃ‘ADIR/EDITAR -->
+<!-- MODAL AÑADIR/EDITAR -->
 <div class="modal-overlay" id="overlayForm" style="display: none;">
   <div class="modal-content modal-form">
     <button class="close-modal" id="closeFormBtn">?</button>
-    <h2 id="modalFormTitle">AÃ±adir contenido</h2>
+    <h2 id="modalFormTitle">Añadir contenido</h2>
     <input type="hidden" id="formDocId">
     
     <form id="contentForm">
       <div class="form-group">
-        <label>TÃ­tulo *</label>
+        <label>Título *</label>
         <input type="text" id="fTitulo" class="form-input" required>
       </div>
       <div class="form-group">
         <label>Tipo *</label>
         <select id="fTipo" class="form-input">
           <option value="serie">Serie</option>
-          <option value="pelicula">PelÃ­cula</option>
+          <option value="pelicula">Película</option>
         </select>
       </div>
       <div class="form-group">
@@ -153,7 +154,7 @@
     <div class="view-header">
       <img id="viewCover" class="view-cover" src="" alt="" style="display: none;">
       <div class="view-info">
-        <h2 id="viewTitle">Â—</h2>
+        <h2 id="viewTitle">?</h2>
         <span class="badge" id="viewTipo">Serie</span>
       </div>
     </div>
@@ -176,12 +177,12 @@
   </div>
 </div>
 
-<!-- Modal confirmaciÃ³n eliminar todo -->
+<!-- Modal confirmación eliminar todo -->
 <div class="modal-overlay" id="deleteConfirmModal" style="display: none;">
   <div class="modal-content modal-form">
     <button class="close-modal" id="closeConfirmBtn">?</button>
-    <h2 style="color: #dc3545;">?? Confirmar eliminaciÃ³n</h2>
-    <p style="margin: 16px 0;">Â¿EstÃ¡s seguro de que quieres eliminar TODAS las series y pelÃ­culas?<br>Esta acciÃ³n no se puede deshacer.</p>
+    <h2 style="color: #dc3545;">?? Confirmar eliminación</h2>
+    <p style="margin: 16px 0;">¿Estás seguro de que quieres eliminar TODAS las series y películas?<br>Esta acción no se puede deshacer.</p>
     <div class="form-actions">
       <button class="btn-secondary" id="cancelDeleteBtn">Cancelar</button>
       <button class="btn-danger" id="confirmDeleteBtn">Eliminar todo</button>
@@ -212,8 +213,8 @@
 <!-- Toast -->
 <div class="toast-message" id="toast" style="display: none;"></div>
 
-<!-- Barra inferior mÃ³vil -->
-<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="NavegaciÃ³n principal"></nav>
+<!-- Barra inferior móvil -->
+<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>

@@ -1,9 +1,10 @@
 // ============================================================
 // Personal Hub - Service Worker
 // ============================================================
-var CACHE_VERSION = 'v6';
+var CACHE_VERSION = 'v12';
 var STATIC_CACHE  = 'personal-hub-static-' + CACHE_VERSION;
 var DYNAMIC_CACHE = 'personal-hub-dynamic-' + CACHE_VERSION;
+var APP_VERSION   = null; // se rellena al instalar/activar vía version.json
 
 // -- Resources to precache on install --
 var PRECACHE_URLS = [
@@ -12,6 +13,7 @@ var PRECACHE_URLS = [
   '/index.html',
   '/login.html',
   '/offline.html',
+  '/version.json',
   '/pages/admin.html',
   '/pages/calendario.html',
   '/pages/canciones.html',
@@ -38,9 +40,10 @@ var PRECACHE_URLS = [
   '/games/ahorcado.html',
   '/games/agujero-negro.html',
   // CSS
-  '/css/main.css',
-  '/css/base.css',
-  '/css/components.css',
+    '/css/main.css',
+    '/css/base.css',
+    '/css/components.css',
+    '/css/components/pwa-system.css',
   '/css/pages/admin.css',
   '/css/pages/calendario.css',
   '/css/pages/canciones.css',
@@ -58,18 +61,26 @@ var PRECACHE_URLS = [
   '/css/pages/thoseeyes.css',
   // Core JS
   '/js/firebase-config.js',
-  '/js/core.js',
-  '/js/core/authGuard.js',
-  '/js/core/profile.js',
-  '/js/core/sync.js',
-  '/js/core/analytics.js',
-  '/js/core/renderer.js',
-  '/js/core/modalSystem.js',
-  '/js/core/unlockEngine.js',
-  '/js/core/gameSession.js',
-  '/js/sidebar.js',
-  '/js/swipe-nav.js',
-  '/js/sentimientos-nav.js',
+    '/js/core.js',
+    '/js/core/authGuard.js',
+    '/js/core/profile.js',
+    '/js/core/sync.js',
+    '/js/core/analytics.js',
+    '/js/core/renderer.js',
+    '/js/core/modalSystem.js',
+    '/js/core/unlockEngine.js',
+    '/js/core/gameSession.js',
+    '/js/core/haptica.js',
+    '/js/core/memoria.js',
+    '/js/core/connection-indicator.js',
+    '/js/core/notifications.js',
+    '/js/core/update-manager.js',
+    '/js/core/install.js',
+    '/js/sidebar.js',
+    '/js/swipe-nav.js',
+    '/js/sentimientos-nav.js',
+    '/js/ui/pull-to-refresh.js',
+    '/js/ui/skeleton.js',
   // Page JS
   '/js/pages/home.js',
   '/js/pages/admin.js',
@@ -145,6 +156,7 @@ self.addEventListener('install', function(event) {
           })
         );
       })
+      .then(cargarVersionApp)
       .then(function() { return self.skipWaiting(); })
   );
 });
@@ -171,6 +183,9 @@ self.addEventListener('fetch', function(event) {
   var request = event.request;
   var url = new URL(request.url);
 
+  // Only handle http(s) requests (skip chrome-extension://, file://, etc.)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
   // Only GET requests
   if (request.method !== 'GET') return;
 
@@ -190,9 +205,7 @@ self.addEventListener('fetch', function(event) {
     event.respondWith(
       caches.match(request).then(function(cachedResponse) {
         return cachedResponse || fetch(request).then(function(response) {
-            if (response.ok) {
-                caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, response.clone()));
-            }
+            safeCachePut(DYNAMIC_CACHE, request, response);
             return response;
         });
       })
@@ -212,13 +225,26 @@ self.addEventListener('fetch', function(event) {
 
 // -- Strategies --
 
+// Guarda una respuesta en caché de forma segura (evita el error
+// "Response body is already used" con respuestas opacas/cross-origin)
+function safeCachePut(cacheName, request, response) {
+  try {
+    if (!response || !response.ok || response.type === 'opaque' || response.type === 'error') {
+      return Promise.resolve();
+    }
+    var clone = response.clone();
+    return caches.open(cacheName).then(function(cache) {
+      return cache.put(request, clone).catch(function() {});
+    }).catch(function() {});
+  } catch (e) {
+    return Promise.resolve();
+  }
+}
+
 function networkFirst(request) {
   return Promise.race([
     fetch(request).then(function(response) {
-      if (response.ok) {
-        var clone = response.clone();
-        caches.open(DYNAMIC_CACHE).then(function(cache) { cache.put(request, clone); });
-      }
+      safeCachePut(DYNAMIC_CACHE, request, response);
       return response;
     }),
     timeout(2000) // Cambiado de 4000 a 2000
@@ -241,10 +267,47 @@ function staleWhileRevalidate(request) {
   return cachePromise.then(function(cache) {
     return caches.match(request).then(function(cached) {
       var fetchPromise = fetch(request).then(function(response) {
-        if (response.ok) cache.put(request, response.clone());
+        safeCachePut(DYNAMIC_CACHE, request, response);
         return response;
       }).catch(function() { return cached; });
       return cached || fetchPromise;
     });
   });
+}
+
+// -- Mensajes desde la página --
+self.addEventListener('message', function(event) {
+  var data = event.data || {};
+  if (data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  } else if (data.type === 'PRECACHE_UPDATE') {
+    // Descarga en background los recursos nuevos para una actualización silenciosa
+    event.waitUntil(precacheUpdate());
+  } else if (data.type === 'GET_VERSION') {
+    event.ports[0].postMessage({ version: APP_VERSION, cache: CACHE_VERSION });
+  }
+});
+
+// -- Actualización silenciosa: re-precachea todo en segundo plano --
+async function precacheUpdate() {
+  try {
+    const cache = await caches.open(STATIC_CACHE);
+    await Promise.all(PRECACHE_URLS.map(function(url) {
+      return cache.add(url).catch(function() {});
+    }));
+    console.log('[SW] Precaché de actualización completado');
+  } catch (e) {
+    console.warn('[SW] Precaché de actualización falló:', e);
+  }
+}
+
+// -- Leer versión de la app desde version.json --
+async function cargarVersionApp() {
+  try {
+    const res = await fetch('version.json', { cache: 'no-cache' });
+    if (res.ok) {
+      const json = await res.json();
+      APP_VERSION = json.version || null;
+    }
+  } catch (e) {}
 }

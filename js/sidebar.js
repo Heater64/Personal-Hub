@@ -7,13 +7,13 @@
     const NAV_ITEMS = [
         { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
         { key: 'canciones', label: 'Canciones', icon: 'music', href: 'pages/canciones.html' },
-        { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: 'pages/rincon.html' },
+        { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: 'features/rincon/rincon.html' },
         { key: 'thoseeyes', label: 'Those Eyes', icon: 'eye', href: 'pages/thoseeyes.html' },
         { key: 'series', label: 'Series', icon: 'tv', href: 'pages/series.html' },
         { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
         { key: 'juegos', label: 'Juegos', icon: 'gamepad-2', href: 'pages/juegos.html' },
         { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: 'pages/ositos-world.html' },
-        { key: '4eso', label: 'Apuntes 4ESO', icon: 'book-open', href: 'https://web-4eso.vercel.app/dashboard.html' },
+        { key: '4eso', label: 'Secret', icon: 'book-open', href: '' },
     ];
 
     const PROFILE_ITEMS = [
@@ -145,11 +145,7 @@
     function buildHref(root, href) {
         if (!root || root === '.') return href;
         if (href.startsWith('http://') || href.startsWith('https://')) return href;
-        // Si href ya tiene 'pages/' y root es '..', no duplicar
-        if (href.startsWith('pages/') && root === '..') {
-            return href;
-        }
-        return `${root}/${href}`;
+        return root + '/' + href;
     }
 
     function prefetchPage(href) {
@@ -246,7 +242,7 @@
             </nav>
             <div class="sidebar__footer">
                 ${user ? `
-                    <div class="sidebar__user">
+                    <div class="sidebar__user" id="sidebarUserRow" role="button" tabindex="0" title="Ver perfil" style="cursor:pointer">
                         <div class="sidebar__user-avatar">
                             ${userName.charAt(0).toUpperCase() || '?'}
                         </div>
@@ -274,6 +270,20 @@
                     await logoutUser();
                     window.location.href = buildHref(root, 'login.html');
                 }
+            });
+        }
+
+        // Abrir perfil al pulsar la fila de usuario (accesible en PC y móvil)
+        const userRow = document.getElementById('sidebarUserRow');
+        if (userRow) {
+            const irPerfil = function (e) {
+                if (e.target.closest('#sidebarLogoutBtn')) return;
+                const href = buildHref(root, 'features/profile/profile.html');
+                window.location.href = href;
+            };
+            userRow.addEventListener('click', irPerfil);
+            userRow.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); irPerfil(e); }
             });
         }
 
@@ -327,7 +337,7 @@
         const bottomItems = [
             { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
             { key: 'canciones', label: 'Música', icon: 'music', href: 'pages/canciones.html' },
-            { key: 'rincon', label: 'Rincón', icon: 'heart', href: 'pages/rincon.html' },
+            { key: 'rincon', label: 'Rincón', icon: 'heart', href: 'features/rincon/rincon.html' },
             { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
             { key: 'perfil', label: isLoggedIn ? 'Perfil' : 'Login', icon: isLoggedIn ? 'user' : 'log-in', href: isLoggedIn ? '#' : 'login.html', isProfile: true },
         ];
@@ -338,8 +348,9 @@
         });
 
         nav.innerHTML = visibleItems.map((item, index) => {
-            const href = item.isProfile ? (isLoggedIn ? '#' : 'login.html') : buildHref(root, item.href);
-            const isActive = item.key === currentPage || (item.key === 'perfil' && currentPage === 'login');
+            const href = item.isProfile ? (isLoggedIn ? '#' : buildHref(root, 'login.html')) : buildHref(root, item.href);
+            const isActive = item.key === currentPage ||
+                             (item.key === 'perfil' && (currentPage === 'login' || currentPage === 'profile'));
             const isCenter = index === Math.floor(visibleItems.length / 2);
             const isProfile = item.isProfile || false;
             
@@ -382,9 +393,9 @@
         if (profileBtn) {
             profileBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                if (isLoggedIn) {
-                    openProfileModal();
-                }
+                if (!isLoggedIn) { window.location.href = buildHref(root, 'login.html'); return; }
+                // Navegar a la vista de perfil completa (estilo FormsBiblicos)
+                window.location.href = buildHref(root, 'features/profile/profile.html');
             });
         }
     }

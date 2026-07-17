@@ -79,7 +79,7 @@
 }
 
 .month-btn.active {
-    background: rgba(198, 90, 58, 0.15);
+    background: rgb(var(--accent-rgb) / 0.15);
     border-color: var(--accent-coral);
     color: var(--accent-coral);
 }
@@ -227,10 +227,10 @@
 
 /* --- ESTADO: DÍA ABIERTO (opened) - NARANJA --- */
 .day-card.opened {
-    background: radial-gradient(circle at top right, rgba(198, 90, 58, 0.18), transparent 40%),
+    background: radial-gradient(circle at top right, rgb(var(--accent-rgb) / 0.18), transparent 40%),
                 rgba(255, 255, 255, 0.04);
     border: 2px solid var(--accent-coral);
-    box-shadow: inset 0 0 0 1px rgba(198, 90, 58, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .day-card.opened::after {
@@ -251,7 +251,7 @@
 .day-card.opened:hover {
     transform: translateY(-4px) scale(1.02);
     border-color: var(--accent-coral);
-    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(198, 90, 58, 0.15);
+    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgb(var(--accent-rgb) / 0.15);
 }
 
 /* --- Decoración esquina superior derecha --- */
@@ -318,7 +318,7 @@
 
 /* Badge en días abiertos (naranja) */
 .day-card.opened .day-type-badge {
-    background: rgba(198, 90, 58, 0.2);
+    background: rgb(var(--accent-rgb) / 0.2);
     border-color: var(--accent-coral);
     color: var(--accent-coral);
 }
@@ -422,7 +422,7 @@
     width: 5px;
 }
 #experience-layer .experience-modal-body::-webkit-scrollbar-thumb {
-    background: rgba(198, 90, 58, 0.35);
+    background: rgb(var(--accent-rgb) / 0.35);
     border-radius: 10px;
 }
 
@@ -446,7 +446,7 @@
 }
 
 #experience-layer .experience-modal-close:hover {
-    background: rgba(198, 90, 58, 0.25);
+    background: rgb(var(--accent-rgb) / 0.25);
     border-color: var(--accent-coral);
     color: var(--accent-coral);
     transform: rotate(90deg);
@@ -472,7 +472,7 @@
 }
 
 #experience-layer .experience-modal-footer-btn:hover {
-    background: rgba(198, 90, 58, 0.15);
+    background: rgb(var(--accent-rgb) / 0.15);
     border-color: var(--accent-coral);
     transform: translateY(-1px);
 }
@@ -606,7 +606,7 @@
     transition: all 0.2s;
 }
 
-.lightbox-close:hover { background: rgba(198, 90, 58, 0.5); }
+.lightbox-close:hover { background: rgb(var(--accent-rgb) / 0.5); }
 
 .lightbox-caption {
     position: absolute;
@@ -757,7 +757,7 @@
 }
 
 .surprise-modal-close:hover {
-    background: rgba(198, 90, 58, 0.2);
+    background: rgb(var(--accent-rgb) / 0.2);
     color: var(--accent-coral);
     transform: rotate(90deg);
 }

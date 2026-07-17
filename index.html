@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('personalHub.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <title>Home</title>
     <meta name="description" content="Tu lanzadera de proyectos personales">
@@ -91,6 +92,14 @@
     <script src="js/core.js"></script>
     <script src="js/core/authGuard.js"></script>
     <script src="js/sidebar.js"></script>
+    <script src="js/core/haptica.js"></script>
+    <script src="js/core/memoria.js"></script>
+    <script src="js/core/connection-indicator.js"></script>
+    <script src="js/core/notifications.js"></script>
+    <script src="js/core/update-manager.js"></script>
+    <script src="js/core/install.js"></script>
+    <script src="js/ui/pull-to-refresh.js"></script>
+    <script src="js/ui/skeleton.js"></script>
     <script src="features/welcome/welcome.screen.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -115,25 +124,12 @@
         .catch(function(err) { console.warn('SW error:', err); });
     }
 
-    var deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', function(e) {
-      e.preventDefault();
-      deferredPrompt = e;
-      var btn = document.getElementById('installBtn');
-      if (btn) btn.hidden = false;
-    });
-    document.addEventListener('click', function(e) {
-      var btn = e.target.closest('#installBtn');
-      if (!btn || !deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.finally(function() {
-        deferredPrompt = null;
-        btn.hidden = true;
-      });
-    });
-    window.addEventListener('appinstalled', function() {
-      var btn = document.getElementById('installBtn');
-      if (btn) btn.hidden = true;
+    // Sistema PWA: conexión, actualizaciones, instalación
+    window.addEventListener('load', function () {
+      if (window.ConnectionIndicator) window.ConnectionIndicator.init();
+      if (window.UpdateManager) { window.UpdateManager.init(); window.UpdateManager.mostrarPendiente(); }
+      if (window.InstallManager) window.InstallManager.init();
+      if (window.Notifications) window.Notifications.reiniciarDiarias();
     });
     </script>
 

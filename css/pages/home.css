@@ -7,7 +7,7 @@
     padding: var(--space-xl) var(--space-lg);
     margin-bottom: var(--space-lg);
     background:
-        radial-gradient(circle at top center, rgba(198, 90, 58, 0.12), transparent 42%),
+        radial-gradient(circle at top center, rgb(var(--accent-rgb) / 0.12), transparent 42%),
         rgba(255, 255, 255, 0.03);
     border: var(--border-subtle);
     border-radius: var(--radius-xl);
@@ -141,7 +141,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 20% 0%, rgba(198, 90, 58, 0.12), transparent 55%);
+    background: radial-gradient(circle at 20% 0%, rgb(var(--accent-rgb) / 0.12), transparent 55%);
     opacity: 0.6;
     pointer-events: none;
     transition: opacity 0.35s ease;
@@ -160,11 +160,11 @@
 
 .bento-card:hover {
     transform: translateY(-6px);
-    border-color: rgba(198, 90, 58, 0.35);
+    border-color: rgb(var(--accent-rgb) / 0.35);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.08) inset,
         0 24px 56px rgba(0, 0, 0, 0.32),
-        0 0 0 1px rgba(198, 90, 58, 0.12);
+        0 0 0 1px rgb(var(--accent-rgb) / 0.12);
 }
 
 .bento-card:hover::before {
@@ -250,14 +250,14 @@
 
 /* IA Lab */
 .bento-card.lab-card::before {
-    background: linear-gradient(90deg, transparent, rgba(198, 90, 58, 0.08), transparent);
+    background: linear-gradient(90deg, transparent, rgb(var(--accent-rgb) / 0.08), transparent);
 }
 
 .bento-card.lab-card .lab-badge {
     position: absolute;
     top: 14px;
     left: 14px;
-    background: rgba(198, 90, 58, 0.2);
+    background: rgb(var(--accent-rgb) / 0.2);
     border: 1px solid var(--accent-border);
     border-radius: var(--radius-pill);
     padding: 3px 10px;
@@ -354,8 +354,8 @@
 .day-counter {
     margin-top: 20px;
     padding: 12px 20px;
-    background: rgba(198, 90, 58, 0.1);
-    border: 1px solid rgba(198, 90, 58, 0.25);
+    background: rgb(var(--accent-rgb) / 0.1);
+    border: 1px solid rgb(var(--accent-rgb) / 0.25);
     border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
@@ -385,8 +385,8 @@
    NOTICIAS / NOVEDADES
    ========================================== */
 .news-banner {
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.08), rgba(255, 179, 71, 0.04));
-    border: 1px solid rgba(198, 90, 58, 0.2);
+    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.08), rgba(255, 179, 71, 0.04));
+    border: 1px solid rgb(var(--accent-rgb) / 0.2);
     border-radius: var(--radius-xl);
     padding: 20px 24px;
     margin-bottom: 32px;
@@ -394,8 +394,8 @@
 }
 
 .news-banner:hover {
-    border-color: rgba(198, 90, 58, 0.35);
-    box-shadow: 0 8px 30px rgba(198, 90, 58, 0.05);
+    border-color: rgb(var(--accent-rgb) / 0.35);
+    box-shadow: 0 8px 30px rgb(var(--accent-rgb) / 0.05);
 }
 
 .news-header {
@@ -462,7 +462,7 @@
 .news-toggle:hover {
     border-color: var(--accent-coral);
     color: var(--accent-coral);
-    background: rgba(198, 90, 58, 0.05);
+    background: rgb(var(--accent-rgb) / 0.05);
 }
 
 .news-toggle i {
@@ -517,7 +517,7 @@
 
 .curiosity-card:hover {
     background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(198, 90, 58, 0.15);
+    border-color: rgb(var(--accent-rgb) / 0.15);
     transform: translateY(-2px);
 }
 
@@ -591,7 +591,7 @@
     background: rgba(255, 255, 255, 0.02);
     border-radius: var(--radius-md);
     padding: 14px 18px;
-    border-left: 3px solid rgba(198, 90, 58, 0.4);
+    border-left: 3px solid rgb(var(--accent-rgb) / 0.4);
     transition: all 0.3s ease;
     position: relative;
 }
@@ -624,8 +624,8 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: rgba(198, 90, 58, 0.1);
-    border: 1px solid rgba(198, 90, 58, 0.15);
+    background: rgb(var(--accent-rgb) / 0.1);
+    border: 1px solid rgb(var(--accent-rgb) / 0.15);
     border-radius: 20px;
     padding: 2px 10px;
     font-size: 0.6rem;
@@ -678,7 +678,7 @@
 .news-go-btn:hover {
     border-color: var(--accent-coral);
     color: var(--accent-coral);
-    background: rgba(198, 90, 58, 0.05);
+    background: rgb(var(--accent-rgb) / 0.05);
     transform: translateX(2px);
 }
 

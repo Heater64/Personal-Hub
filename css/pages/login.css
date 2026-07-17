@@ -17,7 +17,7 @@
     position: fixed;
     inset: 0;
     background:
-        radial-gradient(circle at 20% 30%, rgba(198, 90, 58, 0.15), transparent 40%),
+        radial-gradient(circle at 20% 30%, rgb(var(--accent-rgb) / 0.15), transparent 40%),
         radial-gradient(circle at 80% 70%, rgba(255, 179, 71, 0.1), transparent 35%),
         radial-gradient(circle at 50% 50%, rgba(255, 138, 161, 0.05), transparent 50%);
     pointer-events: none;
@@ -61,7 +61,7 @@
 .login-header .brand-icon {
     width: 56px;
     height: 56px;
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.2), rgba(198, 90, 58, 0.08));
+    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.2), rgb(var(--accent-rgb) / 0.08));
     border-radius: 18px;
     display: flex;
     align-items: center;
@@ -123,7 +123,7 @@
 
 .form-input:focus {
     border-color: var(--accent-coral);
-    box-shadow: 0 0 0 3px rgba(198, 90, 58, 0.1);
+    box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.1);
 }
 
 .form-input::placeholder {

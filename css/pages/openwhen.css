@@ -48,21 +48,21 @@
 }
 .letter-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 20px 40px rgba(198,90,58,0.15);
-    border-color: rgba(198,90,58,0.2);
+    box-shadow: 0 20px 40px rgb(var(--accent-rgb) / 0.15);
+    border-color: rgb(var(--accent-rgb) / 0.2);
 }
 
 /* Icono sobre (cerrado) */
 .card-icon {
     width: 64px;
     height: 64px;
-    background: var(--accent, #C65A3A);
+    background: var(--accent, var(--accent-coral));
     border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 24px;
-    box-shadow: 0 10px 30px rgba(198,90,58,0.35);
+    box-shadow: 0 10px 30px rgb(var(--accent-rgb) / 0.35);
 }
 .card-icon i {
     width: 32px;
@@ -101,14 +101,14 @@
 }
 .open-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 18px rgba(198,90,58,0.4);
+    box-shadow: 0 8px 18px rgb(var(--accent-rgb) / 0.4);
 }
 
 /* ========== ESTADO ABIERTO (misma tarjeta expandida) ========== */
 .letter-card.open {
     border: 1px solid var(--accent);
-    background: linear-gradient(180deg, rgba(198,90,58,0.08), rgba(0,0,0,0.5));
-    box-shadow: 0 0 0 1px rgba(198,90,58,0.3);
+    background: linear-gradient(180deg, rgb(var(--accent-rgb) / 0.08), rgba(0,0,0,0.5));
+    box-shadow: 0 0 0 1px rgb(var(--accent-rgb) / 0.3);
     transform: translateY(0);
 }
 
@@ -166,7 +166,7 @@
 
 /* Botón cerrar */
 .close-btn {
-    background: rgba(198,90,58,0.15);
+    background: rgb(var(--accent-rgb) / 0.15);
     border: 1px solid var(--accent);
     border-radius: 40px;
     padding: 8px 18px;

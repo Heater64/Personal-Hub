@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('personalHub.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Personal Hub V2</title>
+    <link rel="stylesheet" href="styles/variables.css">
+    <style>
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; }
+        .app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+        .page-content { flex: 1; padding: 20px; }
+        .bottom-nav { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            height: 60px; background: var(--surface);
+            display: flex; justify-content: space-around; align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <main class="page-content" id="view">
+            <h1>Bienvenida de nuevo</h1>
+        </main>
+        <nav class="bottom-nav">
+            <button onclick="router.navigate('home')">Inicio</button>
+            <button onclick="router.navigate('sentimientos')">Sentimientos</button>
+            <button onclick="router.navigate('perfil')">Perfil</button>
+        </nav>
+    </div>
+    <script src="core/router.js"></script>
+</body>
+</html>

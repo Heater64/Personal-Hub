@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('personalHub.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -17,215 +18,179 @@
 </head>
 
 <body data-sidebar-root="../.." data-sidebar-page="profile">
-    <!-- Skip link for accessibility -->
     <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
 
-    <!-- Sidebar toggle (mobile) -->
     <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
     </button>
     <div class="sidebar-overlay" data-sidebar-overlay></div>
     <aside class="sidebar" data-sidebar></aside>
 
-    <!-- Offline indicator -->
     <div class="offline-indicator" id="offlineIndicator" aria-live="polite" hidden></div>
 
-    <!-- Pending changes indicator -->
     <div class="pending-changes" id="pendingChanges" hidden>
         <i data-lucide="sync" class="pending-changes__icon"></i>
         <span class="pending-changes__text">Cambios pendientes: <span class="pending-changes__count">0</span></span>
         <button class="pending-changes__btn" id="syncNowBtn">Sincronizar</button>
     </div>
 
+    <!-- Partículas flotantes (solo tema claro) -->
+    <div id="particles-container"></div>
+
     <main class="page-shell" id="main-content">
         <div class="page">
-            <div class="profile-page">
-                <!-- Profile Header -->
-                <header class="profile-page__header">
-                    <img class="profile-page__avatar" id="profileAvatar" src="" alt="Foto de perfil" style="display:none;">
-                    <div class="profile-page__avatar-placeholder" id="profileAvatarPlaceholder" style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,var(--accent-coral),var(--accent-rust));display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-md);box-shadow:var(--theme-shadow-lg),0 0 0 4px var(--theme-bg-secondary);">
-                        <span id="profileInitial" style="font-size:2.5rem;font-weight:600;color:white;"></span>
+            <div class="o-contenedor o-pila o-pila--lg">
+
+                <!-- CABECERA -->
+                <header class="perfil-cabecera">
+                    <div class="perfil-avatar" id="profileAvatarWrap" title="Cambiar foto de perfil" role="button" tabindex="0" aria-label="Cambiar foto de perfil">
+                        <img class="perfil-avatar__img" id="profileAvatar" src="" alt="Foto de perfil" style="display:none;">
+                        <span class="perfil-avatar__letra" id="profileInitial"></span>
+                        <span class="perfil-avatar__edit"><i data-lucide="camera"></i></span>
+                        <input type="file" id="inputFotoPerfil" accept="image/*" hidden aria-label="Subir foto de perfil">
                     </div>
-                    <h1 class="profile-page__name" id="profileName">Cargando...</h1>
-                    <div class="profile-page__meta">
-                        <div class="profile-page__meta-item" id="profileEmail">
-                            <i data-lucide="mail"></i>
-                            <span></span>
-                        </div>
-                        <div class="profile-page__meta-item profile-page__role" id="profileRole">
-                            <i data-lucide="shield"></i>
-                            <span></span>
-                        </div>
-                        <div class="profile-page__meta-item" id="profileMemberSince">
-                            <i data-lucide="calendar"></i>
-                            <span></span>
-                        </div>
+                    <div class="perfil-nombre-fila">
+                        <h3 id="profileName">Cargando...</h3>
+                        <button class="perfil-btn-editar" id="btnEditarNombre" type="button" title="Editar nombre" aria-label="Editar nombre"><i data-lucide="edit-3"></i></button>
                     </div>
+                    <div class="perfil-meta" id="profileRole"><span></span></div>
+                    <div class="perfil-email" id="profileEmail"><span></span></div>
+                    <div class="perfil-miembro" id="profileMemberSince"></div>
                 </header>
 
-                <!-- Settings Sections -->
-                <section class="profile-page__section">
-                    <h2 class="profile-page__section-title">
-                        <i data-lucide="palette"></i> Apariencia
-                    </h2>
-                    <div class="settings-accordion" open>
-                        <button class="settings-accordion__trigger" type="button">
-                            Tema de color
-                            <i data-lucide="chevron-down"></i>
-                        </button>
-                        <div class="settings-accordion__content">
-                            <div class="color-theme-options" id="colorThemeOptions" role="radiogroup" aria-label="Tema de color"></div>
-                        </div>
-                    </div>
+                <div class="o-pila o-pila--md">
 
-                    <div class="settings-accordion">
-                        <button class="settings-accordion__trigger" type="button">
-                            Modo de color
-                            <i data-lucide="chevron-down"></i>
-                        </button>
-                        <div class="settings-accordion__content">
-                            <div class="theme-options" id="themeModeOptions" role="radiogroup" aria-label="Modo de color"></div>
+                    <!-- CUENTA -->
+                    <section class="perfil-seccion">
+                        <div class="perfil-seccion__cabecera">
+                            <span class="perfil-seccion__icono"><i data-lucide="user"></i></span>
+                            <div>
+                                <h4 class="perfil-seccion__titulo">Cuenta</h4>
+                                <p class="perfil-seccion__desc">Tu información personal</p>
+                            </div>
                         </div>
-                    </div>
-                </section>
+                        <div class="perfil-fila">
+                            <span class="perfil-fila__label">Usuario</span>
+                            <span class="perfil-fila__valor" id="cuentaUsername">—</span>
+                        </div>
+                        <div class="perfil-fila">
+                            <span class="perfil-fila__label">Email</span>
+                            <span class="perfil-fila__valor" id="cuentaEmail">—</span>
+                        </div>
+                        <div class="perfil-fila">
+                            <span class="perfil-fila__label">Rol</span>
+                            <span class="perfil-fila__valor" id="cuentaRol">—</span>
+                        </div>
+                        <div class="perfil-fila">
+                            <span class="perfil-fila__label">Miembro desde</span>
+                            <span class="perfil-fila__valor" id="cuentaCreado">—</span>
+                        </div>
+                    </section>
 
-                <section class="profile-page__section">
-                    <h2 class="profile-page__section-title">
-                        <i data-lucide="accessibility"></i> Accesibilidad
-                    </h2>
-                    <div class="settings-accordion" open>
-                        <button class="settings-accordion__trigger" type="button">
-                            Opciones de accesibilidad
-                            <i data-lucide="chevron-down"></i>
-                        </button>
-                        <div class="settings-accordion__content">
-                            <div class="accessibility-options" id="accessibilityOptions"></div>
+                    <!-- APARIENCIA (solo claro/oscuro/auto) -->
+                    <section class="perfil-seccion">
+                        <div class="perfil-seccion__cabecera">
+                            <span class="perfil-seccion__icono"><i data-lucide="palette"></i></span>
+                            <div>
+                                <h4 class="perfil-seccion__titulo">Apariencia</h4>
+                                <p class="perfil-seccion__desc">Modo de color</p>
+                            </div>
                         </div>
-                    </div>
-                </section>
+                        <div class="perfil-opcion">
+                            <div class="perfil-opcion__info">
+                                <p class="perfil-opcion__label">Tema</p>
+                                <p class="perfil-opcion__desc">Claro, oscuro o automático</p>
+                            </div>
+                        </div>
+                        <div class="perfil-segmented" id="themeModeOptions" role="radiogroup" aria-label="Modo de color">
+                            <button type="button" class="perfil-segmented__btn" data-tema="light"><i data-lucide="sun"></i> Claro</button>
+                            <button type="button" class="perfil-segmented__btn" data-tema="auto"><i data-lucide="monitor"></i> Auto</button>
+                            <button type="button" class="perfil-segmented__btn" data-tema="dark"><i data-lucide="moon"></i> Oscuro</button>
+                        </div>
 
-                <section class="profile-page__section">
-                    <h2 class="profile-page__section-title">
-                        <i data-lucide="bell"></i> Notificaciones
-                    </h2>
-                    <div class="profile-page__setting">
-                        <div class="profile-page__setting-info">
-                            <span class="profile-page__setting-label">Notificaciones push</span>
-                            <span class="profile-page__setting-desc">Recibir alertas en el dispositivo</span>
+                        <div class="perfil-opcion">
+                            <div class="perfil-opcion__info">
+                                <p class="perfil-opcion__label">Alto contraste</p>
+                                <p class="perfil-opcion__desc">Mayor diferencia de color</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleAltoContraste">
+                                <span class="switch__slider"></span>
+                            </label>
                         </div>
-                        <button class="toggle-switch" type="button" role="switch" aria-checked="false" id="pushNotificationsToggle">
-                            <input type="checkbox" hidden>
-                            <span class="toggle-switch__slider"></span>
-                        </button>
-                    </div>
-                    <div class="profile-page__setting">
-                        <div class="profile-page__setting-info">
-                            <span class="profile-page__setting-label">Notificaciones por email</span>
-                            <span class="profile-page__setting-desc">Resumen semanal de actividad</span>
+                        <div class="perfil-opcion">
+                            <div class="perfil-opcion__info">
+                                <p class="perfil-opcion__label">Texto grande</p>
+                                <p class="perfil-opcion__desc">Aumenta el tamaño del texto</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleTextoGrande">
+                                <span class="switch__slider"></span>
+                            </label>
                         </div>
-                        <button class="toggle-switch" type="button" role="switch" aria-checked="false" id="emailNotificationsToggle">
-                            <input type="checkbox" hidden>
-                            <span class="toggle-switch__slider"></span>
-                        </button>
-                    </div>
-                </section>
+                        <div class="perfil-opcion">
+                            <div class="perfil-opcion__info">
+                                <p class="perfil-opcion__label">Reducir movimiento</p>
+                                <p class="perfil-opcion__desc">Menos animaciones</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleReducirMovimiento">
+                                <span class="switch__slider"></span>
+                            </label>
+                        </div>
+                    </section>
 
-                <section class="profile-page__section">
-                    <h2 class="profile-page__section-title">
-                        <i data-lucide="info"></i> Información de la app
-                    </h2>
-                    <div class="profile-page__setting">
-                        <div class="profile-page__setting-info">
-                            <span class="profile-page__setting-label">Versión</span>
-                            <span class="profile-page__setting-desc">Versión actual de la aplicación</span>
+                    <!-- INFORMACIÓN -->
+                    <section class="perfil-seccion">
+                        <div class="perfil-seccion__cabecera">
+                            <span class="perfil-seccion__icono"><i data-lucide="info"></i></span>
+                            <div>
+                                <h4 class="perfil-seccion__titulo">Información de la app</h4>
+                                <p class="perfil-seccion__desc">Datos y almacenamiento</p>
+                            </div>
                         </div>
-                        <span id="appVersion" style="font-family:monospace;font-size:var(--fs-sm);color:var(--theme-text-secondary);">1.0.0</span>
-                    </div>
-                    <div class="profile-page__setting">
-                        <div class="profile-page__setting-info">
-                            <span class="profile-page__setting-label">Almacenamiento usado</span>
-                            <span class="profile-page__setting-desc">Datos locales y caché</span>
+                        <div class="perfil-info-card">
+                            <div class="perfil-info-card__texto">
+                                <p class="perfil-info-card__nombre">Personal Hub</p>
+                                <p class="perfil-info-card__version" id="appVersion">1.0.0</p>
+                                <p class="perfil-info-card__sync" id="ultimaSync">Sin sincronizar aún</p>
+                            </div>
+                            <div style="text-align:right;">
+                                <p class="perfil-info-card__storage" id="storageUsed" style="font-size:var(--fs-sm);color:var(--theme-text-secondary);margin:0 0 8px;">Calculando...</p>
+                                <button class="btn-secundario" type="button" id="clearCacheBtn">Limpiar caché</button>
+                            </div>
                         </div>
-                        <span id="storageUsed" style="font-family:monospace;font-size:var(--fs-sm);color:var(--theme-text-secondary);">Calculando...</span>
-                    </div>
-                    <div class="profile-page__setting">
-                        <div class="profile-page__setting-info">
-                            <span class="profile-page__setting-label">Limpiar caché</span>
-                            <span class="profile-page__setting-desc">Eliminar archivos temporales</span>
-                        </div>
-                        <button class="btn btn-secondary" type="button" id="clearCacheBtn">
-                            <i data-lucide="trash-2" style="width:16px;height:16px;"></i> Limpiar
-                        </button>
-                    </div>
-                </section>
+                    </section>
 
-                <!-- Danger Zone -->
-                <section class="profile-page__section profile-page__danger-zone">
-                    <h2 class="profile-page__section-title">
-                        <i data-lucide="alert-triangle"></i> Zona de peligro
-                    </h2>
-                    <div class="profile-page__setting">
-                        <div class="profile-page__setting-info">
-                            <span class="profile-page__setting-label">Cerrar sesión</span>
-                            <span class="profile-page__setting-desc">Finalizar sesión actual en este dispositivo</span>
-                        </div>
-                        <button class="btn btn-secondary" type="button" id="logoutBtn">
-                            <i data-lucide="log-out" style="width:16px;height:16px;"></i> Cerrar sesión
-                        </button>
-                    </div>
-                    <div class="profile-page__setting">
-                        <div class="profile-page__setting-info">
-                            <span class="profile-page__setting-label">Eliminar cuenta</span>
-                            <span class="profile-page__setting-desc">Eliminar permanentemente tu cuenta y todos los datos</span>
-                        </div>
-                        <button class="btn btn-danger" type="button" id="deleteAccountBtn">
-                            <i data-lucide="user-x" style="width:16px;height:16px;"></i> Eliminar cuenta
-                        </button>
-                    </div>
-                </section>
+                    <!-- ACCESOS (Admin) -->
+                    <button class="perfil-boton-seccion" id="btnAdmin" type="button" hidden>
+                        <span class="perfil-boton-seccion__icono"><i data-lucide="settings"></i></span>
+                        <span class="perfil-boton-seccion__texto">
+                            <strong>Panel de Administración</strong>
+                            <small>Gestionar usuarios, grupos y secciones</small>
+                        </span>
+                        <span class="perfil-boton-seccion__flecha"><i data-lucide="chevron-right"></i></span>
+                    </button>
+
+                </div>
             </div>
         </div>
     </main>
-<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
-
-    <!-- Delete Account Modal -->
-    <div class="modal-overlay" id="deleteAccountModal" hidden>
-        <div class="modal">
-            <div class="modal-header">
-                <h3><i data-lucide="alert-triangle" style="width:22px;height:22px;color:var(--theme-error);"></i> Eliminar cuenta</h3>
-                <button class="modal-close" type="button" aria-label="Cerrar"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <p style="margin:0 0 var(--space-md);color:var(--theme-text-secondary);">Esta acción es <strong>irreversible</strong>. Se eliminarán permanentemente:</p>
-                <ul style="margin:0 0 var(--space-lg);padding-left:var(--space-lg);color:var(--theme-text-secondary);line-height:2;">
-                    <li>Tu perfil y preferencias</li>
-                    <li>Tu historial de estados de ánimo</li>
-                    <li>Tus favoritos y progreso en todas las secciones</li>
-                    <li>Todos los datos sincronizados en la nube</li>
-                </ul>
-                <p style="margin:0;color:var(--theme-error);font-size:var(--fs-sm);">Esta acción no se puede deshacer.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" type="button" id="deleteCancelBtn">Cancelar</button>
-                <button class="btn btn-danger" type="button" id="deleteConfirmBtn">Eliminar mi cuenta</button>
-            </div>
-        </div>
-    </div>
+    <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
 
     <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="../../services/firebase/firebase-config.js"></script>
     <script src="../../services/auth/encryption.js"></script>
     <script src="../../services/auth/session-manager.js"></script>
     <script src="../../services/auth/auth.service.js"></script>
-    <script src="../../services/theme/theme.service.js"></script>
     <script src="../../shared/utils/profile.js"></script>
     <script src="../../shared/utils/core.js"></script>
-    <script src="../../shared/utils/authGuard.js"></script>
     <script src="../../js/sidebar.js"></script>
-    <script src="../../shared/navigation/bottom-nav.js"></script>
-    <script src="../../shared/components/ThemeToggle.js"></script>
+    <!-- Puente de módulos ES -->
+    <script type="module" src="../../features/profile/profile-bridge.js"></script>
     <script src="../profile/profile.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
@@ -233,6 +198,30 @@
         .then(function(reg) { console.log('SW registered:', reg.scope); })
         .catch(function(err) { console.warn('SW error:', err); });
     }
+    </script>
+
+    <!-- Partículas flotantes -->
+    <script>
+    (function() {
+      var container = document.getElementById('particles-container');
+      if (!container) return;
+      var particles = ['\u2661', '\u2728', '\u2738', '\u2665', '\u2740'];
+      var count = 14;
+      for (var i = 0; i < count; i++) {
+        var el = document.createElement('span');
+        el.className = 'particle';
+        el.textContent = particles[i % particles.length];
+        var size = 10 + Math.random() * 14;
+        el.style.setProperty('--p-size', size + 'px');
+        el.style.setProperty('--p-dur', (12 + Math.random() * 18) + 's');
+        el.style.setProperty('--p-delay', (Math.random() * 20) + 's');
+        el.style.setProperty('--p-opacity', (0.1 + Math.random() * 0.2).toFixed(2));
+        el.style.setProperty('--p-blur', (0.3 + Math.random() * 0.8).toFixed(1) + 'px');
+        el.style.setProperty('--p-drift', (-30 + Math.random() * 60) + 'px');
+        el.style.left = (Math.random() * 100) + '%';
+        container.appendChild(el);
+      }
+    })();
     </script>
 </body>
 </html>

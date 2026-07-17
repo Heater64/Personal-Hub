@@ -22,8 +22,8 @@
                 "16": "juego_breakout",
                 "17": "sorpresa_confeti",
                 "18": "video_mensaje",
-                "19": "pregunta_dia",
-                "20": "lista_deseos",
+                "19": "lista_deseos",
+                "20": "video_dibujo",
                 "21": "",
                 "22": "",
                 "23": "",
@@ -99,7 +99,7 @@
         },
         {
             "id": "dia_flores",
-            "title": "Tu si fueses una gatita",
+            "title": "🌸 Tú si fueses una gatita",
             "type": "giftBox",
             "unlock": { "mode": "date", "value": "2026-07-03" },
             "redirect": false,
@@ -236,7 +236,7 @@
             "unlock": { "mode": "date", "value": "2026-07-17" },
             "redirect": false,
             "data": {
-                "message": "¡Felicidades! Has llegado al día 17. Esto es solo el comienzo de muchas sorpresas más.",
+                "message": "ERES HERMOSA. Aunque no sea una sorpresa en verdad. Jsjsjs",
                 "effect": "confetti"
             }
         },
@@ -247,42 +247,36 @@
             "unlock": { "mode": "date", "value": "2026-07-18" },
             "redirect": false,
             "data": {
-                "videoUrl": "",
-                "caption": "Próximamente... un mensaje especial para ti. 💕"
-            }
-        },
-        {
-            "id": "pregunta_dia",
-            "title": "🤔 Pregunta del día",
-            "type": "quiz",
-            "unlock": { "mode": "date", "value": "2026-07-19" },
-            "redirect": false,
-            "data": {
-                "question": "¿Cuál es tu recuerdo favorito conmigo?",
-                "options": [
-                    "El primer día que nos vimos",
-                    "Nuestra primera cita",
-                    "Cuando me dijiste 'te quiero' por primera vez",
-                    "Ese día random que fue perfecto"
-                ]
+                "videoUrl": "https://res.cloudinary.com/dcsent4fs/video/upload/v1784299721/video5960527339619097496_qfw8ne.mp4",
+                "caption": "El video esta disponible en tu rincón favorito!"
             }
         },
         {
             "id": "lista_deseos",
             "title": "📝 Lista de deseos",
             "type": "wishlist",
-            "unlock": { "mode": "date", "value": "2026-07-20" },
+            "unlock": { "mode": "date", "value": "2026-07-19" },
             "redirect": false,
             "data": {
                 "items": [
-                    "Viajar juntos a la playa",
+                    "Viajar juntos",
                     "Ver el atardecer en la montaña",
                     "Cocinar juntos una cena especial",
                     "Ver una película bajo las estrellas",
-                    "Hacer un viaje sorpresa",
                     "Bailar bajo la lluvia",
-                    "Despertar juntos y ver el amanecer"
+                    "Despertar juntos y cocinar un desayuno juntos"
                 ]
+            }
+        },
+        {
+            "id": "video_dibujo",
+            "title": "🎬 Video dibujo",
+            "type": "video",
+            "unlock": { "mode": "date", "value": "2026-07-20" },
+            "redirect": false,
+            "data": {
+                "videoUrl": "https://res.cloudinary.com/dcsent4fs/video/upload/v1784300673/video5967786976810638627_tilj4s.mp4",
+                "caption": "El video esta disponible en tu rincón favorito!"
             }
         },
         {

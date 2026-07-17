@@ -51,7 +51,7 @@
 .razon-card:hover {
     transform: translateY(-4px);
     border-color: var(--accent-border);
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.05), rgba(255, 255, 255, 0.02));
+    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.05), rgba(255, 255, 255, 0.02));
     box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.3);
 }
 
@@ -63,14 +63,14 @@
     font-size: 4rem;
     font-weight: 700;
     font-family: 'Playfair Display', serif;
-    color: rgba(198, 90, 58, 0.08);
+    color: rgb(var(--accent-rgb) / 0.08);
     transition: all 0.3s ease;
     pointer-events: none;
     line-height: 1;
 }
 
 .razon-card:hover .razon-number {
-    color: rgba(198, 90, 58, 0.15);
+    color: rgb(var(--accent-rgb) / 0.15);
     transform: scale(1.05);
 }
 
@@ -107,7 +107,7 @@
 }
 
 .fav-btn:hover {
-    background: rgba(198, 90, 58, 0.1);
+    background: rgb(var(--accent-rgb) / 0.1);
     border-color: var(--accent-coral);
     color: var(--accent-coral);
 }
@@ -115,7 +115,7 @@
 .fav-btn.active {
     color: var(--accent-coral);
     border-color: var(--accent-coral);
-    background: rgba(198, 90, 58, 0.15);
+    background: rgb(var(--accent-rgb) / 0.15);
 }
 
 .fav-btn i {
@@ -138,14 +138,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 20px rgba(198, 90, 58, 0.4);
+    box-shadow: 0 8px 20px rgb(var(--accent-rgb) / 0.4);
     transition: all 0.3s ease;
     z-index: 100;
 }
 
 .random-trigger:hover {
     transform: scale(1.08) rotate(15deg);
-    box-shadow: 0 12px 28px rgba(198, 90, 58, 0.5);
+    box-shadow: 0 12px 28px rgb(var(--accent-rgb) / 0.5);
 }
 
 .random-trigger i {

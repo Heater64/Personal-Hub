@@ -1,0 +1,279 @@
+/* css/components/pwa-system.css
+   Componentes del sistema PWA: indicador conexión, banner novedades,
+   banner instalación, skeleton, pull-to-refresh.
+   Tema coherente con Personal Hub (Umbra). */
+
+/* ==========================================
+   INDICADOR ONLINE / OFFLINE
+   ========================================== */
+.conn-indicator {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-140%);
+  z-index: 9000;
+  padding: 8px 18px;
+  border-radius: 40px;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  font-weight: 500;
+  color: var(--umbra-light);
+  background: rgba(15, 15, 16, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+
+.conn-indicator--visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.conn-indicator--online { border-color: rgba(96, 200, 120, 0.4); }
+.conn-indicator--offline { border-color: rgba(255, 93, 93, 0.45); color: #ffb4b4; }
+.conn-indicator--sync { border-color: var(--accent-border); color: var(--warm-amber); }
+
+/* ==========================================
+   BANNER NOVEDADES (update manager)
+   ========================================== */
+.whatsnew-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(160%);
+  width: min(420px, calc(100vw - 32px));
+  z-index: 9500;
+  background: linear-gradient(180deg, rgba(30, 28, 30, 0.98), rgba(18, 17, 19, 0.98));
+  border: 1px solid var(--accent-border);
+  border-radius: 20px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: transform 0.32s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.32s ease;
+}
+
+.whatsnew-banner--visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.wn-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.wn-icon { font-size: 1.1rem; }
+.wn-title { font-weight: 600; font-size: 0.95rem; flex: 1; color: var(--umbra-light); }
+.wn-version {
+  font-size: 0.68rem;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--accent-dim);
+  color: var(--accent-coral);
+  letter-spacing: 0.04em;
+}
+
+.wn-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wn-list li {
+  font-size: 0.84rem;
+  color: rgba(232, 230, 227, 0.86);
+  line-height: 1.5;
+  display: flex;
+  gap: 8px;
+}
+
+.wn-check { color: var(--accent-coral); flex: 0 0 auto; }
+
+.wn-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.wn-btn {
+  padding: 9px 16px;
+  border-radius: 40px;
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s ease;
+}
+
+.wn-btn--ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--umbra-ash);
+}
+
+.wn-btn--ghost:hover { color: var(--umbra-light); border-color: rgba(255, 255, 255, 0.25); }
+
+.wn-btn--primary {
+  background: var(--accent-coral);
+  color: white;
+}
+
+.wn-btn--primary:hover { background: #b04e30; transform: translateY(-1px); }
+
+/* ==========================================
+   BANNER INSTALACIÓN
+   ========================================== */
+.install-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(160%);
+  width: min(440px, calc(100vw - 32px));
+  z-index: 9400;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(180deg, rgba(30, 28, 30, 0.98), rgba(18, 17, 19, 0.98));
+  border: 1px solid var(--accent-border);
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: transform 0.32s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.32s ease;
+}
+
+.install-banner--visible,
+.install-banner:not(.install-banner--hide) {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.install-banner--hide {
+  transform: translateX(-50%) translateY(160%);
+  opacity: 0;
+}
+
+.install-banner__icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-dim);
+  color: var(--accent-coral);
+}
+.install-banner__icon i { width: 20px; height: 20px; }
+
+.install-banner__body { flex: 1; min-width: 0; }
+.install-banner__title { font-weight: 600; font-size: 0.9rem; color: var(--umbra-light); }
+.install-banner__text { font-size: 0.74rem; color: var(--umbra-ash); line-height: 1.45; margin-top: 2px; }
+
+.install-banner__actions { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+
+.install-banner__btn {
+  padding: 7px 14px;
+  border-radius: 40px;
+  border: 1px solid transparent;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+.install-banner__btn--ghost { background: transparent; border-color: rgba(255,255,255,0.12); color: var(--umbra-ash); }
+.install-banner__btn--ghost:hover { color: var(--umbra-light); }
+.install-banner__btn--primary { background: var(--accent-coral); color: white; }
+.install-banner__btn--primary:hover { background: #b04e30; }
+
+/* ==========================================
+   SKELETON LOADING
+   ========================================== */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  animation: skeleton-shimmer 1.4s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 12px;
+}
+
+/* ==========================================
+   PULL TO REFRESH
+   ========================================== */
+.ptr-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--umbra-ash);
+  font-size: 0.78rem;
+  opacity: 0;
+  transform: translateY(0);
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 5;
+}
+
+.ptr-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent-coral);
+  border-radius: 50%;
+}
+
+.ptr-refreshing .ptr-spinner {
+  animation: ptr-spin 0.7s linear infinite;
+}
+
+@keyframes ptr-spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 480px) {
+  .whatsnew-banner, .install-banner { bottom: 84px; width: calc(100vw - 24px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+  .ptr-refreshing .ptr-spinner { animation: none; }
+  .conn-indicator, .whatsnew-banner, .install-banner { transition: opacity 0.15s ease; }
+}

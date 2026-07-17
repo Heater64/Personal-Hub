@@ -7,9 +7,9 @@
     padding: var(--space-xl) var(--space-lg);
     margin-bottom: var(--space-lg);
     background:
-        radial-gradient(circle at top center, rgba(198, 90, 58, 0.12), transparent 42%),
-        rgba(255, 255, 255, 0.03);
-    border: var(--border-subtle);
+        radial-gradient(circle at top center, var(--accent-mist, rgba(198, 90, 58, 0.12)), transparent 42%),
+        var(--glass-shield, rgba(255, 255, 255, 0.03));
+    border: var(--theme-border-subtle, var(--border-subtle));
     border-radius: var(--radius-xl);
     position: relative;
     overflow: hidden;
@@ -21,7 +21,7 @@
     position: absolute;
     top: 24px;
     right: 28px;
-    color: rgba(255, 179, 71, 0.28);
+    color: var(--accent-line, rgba(255, 179, 71, 0.28));
     font-size: 1.4rem;
     pointer-events: none;
 }
@@ -105,15 +105,14 @@
     height: 100%;
     padding: clamp(20px, 3vw, 32px);
     text-align: left;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
     border-radius: var(--radius-xl);
-    background:
-        linear-gradient(155deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 45%, rgba(12, 12, 14, 0.4) 100%);
+    background: var(--theme-bg-card, #1e1e20);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.06) inset,
-        0 12px 40px rgba(0, 0, 0, 0.22);
+        0 1px 0 var(--glass-shield, rgba(255, 255, 255, 0.06)) inset,
+        var(--theme-shadow-md, 0 12px 40px rgba(0, 0, 0, 0.22));
     overflow: hidden;
     cursor: pointer;
     opacity: 0;
@@ -141,7 +140,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 20% 0%, rgba(198, 90, 58, 0.12), transparent 55%);
+    background: radial-gradient(circle at 20% 0%, var(--accent-mist, rgba(198, 90, 58, 0.12)), transparent 55%);
     opacity: 0.6;
     pointer-events: none;
     transition: opacity 0.35s ease;
@@ -153,18 +152,18 @@
     top: clamp(14px, 2vw, 20px);
     right: clamp(14px, 2vw, 20px);
     font-size: 0.85rem;
-    color: rgba(255, 179, 71, 0.35);
+    color: var(--accent-line, rgba(255, 179, 71, 0.35));
     transition: transform 0.3s ease, color 0.3s ease;
     pointer-events: none;
 }
 
 .bento-card:hover {
     transform: translateY(-6px);
-    border-color: rgba(198, 90, 58, 0.35);
+    border-color: var(--accent-border, rgba(198, 90, 58, 0.35));
     box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.08) inset,
-        0 24px 56px rgba(0, 0, 0, 0.32),
-        0 0 0 1px rgba(198, 90, 58, 0.12);
+        0 1px 0 var(--glass-border-hover, rgba(255, 255, 255, 0.08)) inset,
+        var(--theme-shadow-lg, 0 24px 56px rgba(0, 0, 0, 0.32)),
+        0 0 0 1px var(--accent-soft-hover, rgba(198, 90, 58, 0.12));
 }
 
 .bento-card:hover::before {
@@ -172,7 +171,7 @@
 }
 
 .bento-card:hover::after {
-    color: rgba(255, 179, 71, 0.7);
+    color: var(--accent-line-hover, rgba(255, 179, 71, 0.7));
     transform: rotate(12deg) scale(1.15);
 }
 
@@ -219,7 +218,7 @@
     gap: 10px;
     margin-top: clamp(14px, 2vw, 20px);
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
     width: 100%;
 }
 
@@ -250,14 +249,14 @@
 
 /* IA Lab */
 .bento-card.lab-card::before {
-    background: linear-gradient(90deg, transparent, rgba(198, 90, 58, 0.08), transparent);
+    background: linear-gradient(90deg, transparent, var(--accent-soft, rgba(198, 90, 58, 0.08)), transparent);
 }
 
 .bento-card.lab-card .lab-badge {
     position: absolute;
     top: 14px;
     left: 14px;
-    background: rgba(198, 90, 58, 0.2);
+    background: var(--accent-glow, rgba(198, 90, 58, 0.2));
     border: 1px solid var(--accent-border);
     border-radius: var(--radius-pill);
     padding: 3px 10px;
@@ -367,8 +366,8 @@
    NOTICIAS / NOVEDADES
    ========================================== */
 .news-banner {
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.08), rgba(255, 179, 71, 0.04));
-    border: 1px solid rgba(198, 90, 58, 0.2);
+    background: linear-gradient(135deg, var(--accent-soft, rgba(198, 90, 58, 0.08)), var(--accent-soft-hover, rgba(255, 179, 71, 0.04)));
+    border: 1px solid var(--accent-mist, rgba(198, 90, 58, 0.2));
     border-radius: var(--radius-xl);
     padding: 20px 24px;
     margin-bottom: 32px;
@@ -376,8 +375,8 @@
 }
 
 .news-banner:hover {
-    border-color: rgba(198, 90, 58, 0.35);
-    box-shadow: 0 8px 30px rgba(198, 90, 58, 0.05);
+    border-color: var(--accent-line, rgba(198, 90, 58, 0.35));
+    box-shadow: 0 8px 30px var(--accent-soft-hover, rgba(198, 90, 58, 0.05));
 }
 
 .news-header {
@@ -429,7 +428,7 @@
     gap: 6px;
     margin-top: 12px;
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
     border-radius: var(--radius-pill);
     padding: 6px 16px;
     color: var(--umbra-ash);
@@ -444,7 +443,7 @@
 .news-toggle:hover {
     border-color: var(--accent-coral);
     color: var(--accent-coral);
-    background: rgba(198, 90, 58, 0.05);
+    background: var(--accent-soft, rgba(198, 90, 58, 0.05));
 }
 
 .news-toggle i {
@@ -458,7 +457,7 @@
 .curiosities-section {
     margin-top: 40px;
     padding-top: 32px;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    border-top: var(--glass-border, 1px solid rgba(255, 255, 255, 0.04));
 }
 
 .curiosities-header {
@@ -490,16 +489,16 @@
     display: flex;
     gap: 14px;
     padding: 16px 18px;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--glass-shield, rgba(255, 255, 255, 0.02));
     border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.04));
     transition: all 0.3s ease;
     align-items: flex-start;
 }
 
 .curiosity-card:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(198, 90, 58, 0.15);
+    background: var(--glass-bg, rgba(255, 255, 255, 0.04));
+    border-color: var(--accent-mist, rgba(198, 90, 58, 0.15));
     transform: translateY(-2px);
 }
 
@@ -570,16 +569,16 @@
    NOTICIAS / NOVEDADES - ESTILOS MEJORADOS
    ========================================== */
 .news-item {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--glass-shield, rgba(255, 255, 255, 0.02));
     border-radius: var(--radius-md);
     padding: 14px 18px;
-    border-left: 3px solid rgba(198, 90, 58, 0.4);
+    border-left: 3px solid var(--accent-line-hover, rgba(198, 90, 58, 0.4));
     transition: all 0.3s ease;
     position: relative;
 }
 
 .news-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--glass-bg-hover, rgba(255, 255, 255, 0.05));
     border-left-color: var(--accent-coral);
     transform: translateX(4px);
 }
@@ -606,8 +605,8 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: rgba(198, 90, 58, 0.1);
-    border: 1px solid rgba(198, 90, 58, 0.15);
+    background: var(--accent-mist, rgba(198, 90, 58, 0.1));
+    border: 1px solid var(--accent-mist-hover, rgba(198, 90, 58, 0.15));
     border-radius: 20px;
     padding: 2px 10px;
     font-size: 0.6rem;
@@ -647,8 +646,8 @@
     gap: 6px;
     margin-top: 10px;
     padding: 4px 14px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--glass-bg, rgba(255, 255, 255, 0.04));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
     border-radius: var(--radius-pill);
     color: var(--umbra-ash);
     font-size: 0.7rem;
@@ -660,7 +659,7 @@
 .news-go-btn:hover {
     border-color: var(--accent-coral);
     color: var(--accent-coral);
-    background: rgba(198, 90, 58, 0.05);
+    background: var(--accent-soft, rgba(198, 90, 58, 0.05));
     transform: translateX(2px);
 }
 
@@ -720,7 +719,7 @@
 .news-separator-line {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    background: linear-gradient(90deg, transparent, var(--glass-border-hover, rgba(255, 255, 255, 0.08)), transparent);
 }
 
 .news-separator-label {

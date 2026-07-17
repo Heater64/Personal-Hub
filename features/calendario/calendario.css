@@ -57,8 +57,8 @@
 }
 
 .month-btn {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--glass-bg-hover, rgba(255, 255, 255, 0.04));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
     border-radius: 40px;
     padding: 8px 20px;
     color: var(--umbra-ash);
@@ -69,12 +69,12 @@
 }
 
 .month-btn:hover {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--glass-bg-active, rgba(255, 255, 255, 0.2));
     color: var(--umbra-light);
 }
 
 .month-btn.active {
-    background: rgba(198, 90, 58, 0.15);
+    background: var(--accent-dim, rgba(198, 90, 58, 0.15));
     border-color: var(--accent-coral);
     color: var(--accent-coral);
 }
@@ -140,8 +140,8 @@
     opacity: 0;
     animation: cardAppear 0.5s ease forwards;
     gap: 2px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
 }
 
 @keyframes cardAppear {
@@ -186,13 +186,13 @@
     opacity: 0.45;
     cursor: not-allowed;
     filter: grayscale(0.3);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
 }
 
 .day-card.locked:hover {
     transform: none;
-    border-color: rgba(255, 255, 255, 0.04);
+    border-color: var(--glass-bg-hover, rgba(255, 255, 255, 0.04));
     box-shadow: none;
 }
 
@@ -203,7 +203,7 @@
 /* --- ESTADO: DÍA DISPONIBLE SIN ABRIR (available) - VERDE --- */
 .day-card.available {
     background: radial-gradient(circle at top right, rgba(76, 175, 80, 0.15), transparent 50%),
-                rgba(255, 255, 255, 0.08);
+                var(--glass-bg-active, rgba(255, 255, 255, 0.08));
     border: 2px solid #4caf50;
     box-shadow: 0 0 30px rgba(76, 175, 80, 0.12);
     animation: gentlePulseGreen 2.5s infinite;
@@ -222,10 +222,10 @@
 
 /* --- ESTADO: DÍA ABIERTO (opened) - NARANJA --- */
 .day-card.opened {
-    background: radial-gradient(circle at top right, rgba(198, 90, 58, 0.18), transparent 40%),
-                rgba(255, 255, 255, 0.04);
+    background: radial-gradient(circle at top right, var(--accent-mist-hover, rgba(198, 90, 58, 0.18)), transparent 40%),
+                var(--glass-bg-hover, rgba(255, 255, 255, 0.04));
     border: 2px solid var(--accent-coral);
-    box-shadow: inset 0 0 0 1px rgba(198, 90, 58, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: inset 0 0 0 1px var(--accent-soft-hover, rgba(198, 90, 58, 0.1)), 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .day-card.opened::after {
@@ -246,7 +246,7 @@
 .day-card.opened:hover {
     transform: translateY(-4px) scale(1.02);
     border-color: var(--accent-coral);
-    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(198, 90, 58, 0.15);
+    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--accent-dim, rgba(198, 90, 58, 0.15));
 }
 
 /* --- Decoración esquina superior derecha --- */
@@ -255,7 +255,7 @@
     position: absolute;
     top: 14px;
     right: 16px;
-    color: rgba(255, 179, 71, 0.15);
+    color: var(--accent-glow, rgba(255, 179, 71, 0.15));
     font-size: 0.8rem;
     transition: all 0.3s ease;
     pointer-events: none;
@@ -263,7 +263,7 @@
 
 .day-card:not(.opened):not(.locked):not(.available):hover::before {
     transform: rotate(15deg) scale(1.2);
-    color: rgba(255, 179, 71, 0.4);
+    color: var(--accent-glow, rgba(255, 179, 71, 0.4));
 }
 
 .day-card.available::before {
@@ -289,8 +289,8 @@
 .day-type-badge {
     display: inline-block;
     font-size: 0.7rem;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--glass-bg-active, rgba(255, 255, 255, 0.08));
+    border: var(--glass-border-hover, 1px solid rgba(255, 255, 255, 0.12));
     border-radius: 20px;
     padding: 3px 12px;
     color: var(--umbra-light);
@@ -313,7 +313,7 @@
 
 /* Badge en días abiertos (naranja) */
 .day-card.opened .day-type-badge {
-    background: rgba(198, 90, 58, 0.2);
+    background: var(--accent-glow, rgba(198, 90, 58, 0.2));
     border-color: var(--accent-coral);
     color: var(--accent-coral);
 }
@@ -329,7 +329,7 @@
 /* --- CANDADO GRANDE PARA DÍAS BLOQUEADOS --- */
 .day-card.locked .day-status {
     font-size: 2rem;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--glass-bg-active, rgba(255, 255, 255, 0.3));
 }
 
 @media (max-width: 480px) {
@@ -350,7 +350,7 @@
 #experience-layer {
     position: fixed;
     inset: 0;
-    background: rgba(8, 8, 10, 0.96);
+    background: var(--umbra-black, rgba(8, 8, 10, 0.96));
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     display: none;
@@ -378,10 +378,10 @@
     flex-direction: column;
     padding: var(--experience-padding);
     padding-top: clamp(48px, 6vw, 56px);
-    background: linear-gradient(180deg, rgba(28, 28, 34, 0.99), rgba(12, 12, 15, 0.99));
+    background: linear-gradient(180deg, var(--umbra-dark, rgba(28, 28, 34, 0.99)), var(--umbra-black, rgba(12, 12, 15, 0.99)));
     border: 1px solid var(--accent-border);
     border-radius: var(--radius-xl);
-    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--glass-bg-hover, rgba(255, 255, 255, 0.04)) inset;
     overflow: hidden;
     transform: scale(0.94);
     opacity: 0;
@@ -417,7 +417,7 @@
     width: 5px;
 }
 #experience-layer .experience-modal-body::-webkit-scrollbar-thumb {
-    background: rgba(198, 90, 58, 0.35);
+    background: var(--accent-line, rgba(198, 90, 58, 0.35));
     border-radius: 10px;
 }
 
@@ -427,8 +427,8 @@
     right: clamp(12px, 2vw, 20px);
     width: 44px;
     height: 44px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--glass-bg-active, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--glass-bg-active, rgba(255, 255, 255, 0.1));
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -441,7 +441,7 @@
 }
 
 #experience-layer .experience-modal-close:hover {
-    background: rgba(198, 90, 58, 0.25);
+    background: var(--accent-glow, rgba(198, 90, 58, 0.25));
     border-color: var(--accent-coral);
     color: var(--accent-coral);
     transform: rotate(90deg);
@@ -451,7 +451,7 @@
     flex-shrink: 0;
     margin-top: clamp(20px, 3vw, 32px);
     padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: var(--glass-border, 1px solid rgba(255, 255, 255, 0.06));
     text-align: center;
 }
 
@@ -467,7 +467,7 @@
 }
 
 #experience-layer .experience-modal-footer-btn:hover {
-    background: rgba(198, 90, 58, 0.15);
+    background: var(--accent-dim, rgba(198, 90, 58, 0.15));
     border-color: var(--accent-coral);
     transform: translateY(-1px);
 }
@@ -529,7 +529,7 @@
 .lightbox {
     position: fixed;
     inset: 0;
-    background: rgba(8, 8, 9, 0.95);
+    background: var(--umbra-black, rgba(8, 8, 9, 0.95));
     backdrop-filter: blur(12px);
     display: none;
     align-items: center;
@@ -556,18 +556,18 @@
     position: absolute;
     top: 20px;
     right: 20px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--glass-bg-active, rgba(255, 255, 255, 0.1));
     border: none;
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    color: white;
+    color: var(--umbra-light, white);
     font-size: 1.2rem;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.lightbox-close:hover { background: rgba(198, 90, 58, 0.5); }
+.lightbox-close:hover { background: var(--accent-line-hover, rgba(198, 90, 58, 0.5)); }
 
 .lightbox-caption {
     position: absolute;
@@ -575,7 +575,7 @@
     left: 20px;
     color: var(--umbra-ash);
     font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--umbra-black, rgba(0, 0, 0, 0.5));
     padding: 6px 12px;
     border-radius: 20px;
 }
@@ -586,25 +586,25 @@
 .letter-envelope {
     max-width: 400px;
     margin: 0 auto;
-    background: #f9e5c0;
+    background: var(--umbra-white-soft, #f9e5c0);
     padding: 24px;
     border-radius: 12px;
-    color: #2c2c2c;
+    color: var(--umbra-stone, #2c2c2c);
 }
 
 .letter-body p {
     white-space: pre-wrap;
     line-height: 1.8;
-    color: #2c2c2c !important;
+    color: var(--umbra-stone, #2c2c2c) !important;
 }
 
 .cassette-player {
-    background: linear-gradient(145deg, #2a2a2e, #1a1a1c);
+    background: linear-gradient(145deg, var(--umbra-stone, #2a2a2e), var(--umbra-dark, #1a1a1c));
     padding: 20px;
     border-radius: 24px;
     max-width: 400px;
     margin: 0 auto;
-    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05), 0 8px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 1px 2px var(--glass-bg-hover, rgba(255, 255, 255, 0.05)), 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .cassette-player audio {
@@ -622,7 +622,7 @@
 .gift-box img {
     max-width: 100%;
     border-radius: 16px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 24px var(--umbra-black, rgba(0, 0, 0, 0.3));
 }
 
 .polaroid-stack {
@@ -634,10 +634,10 @@
 }
 
 .polaroid-stack > div {
-    background: #f5f0e8;
+    background: var(--umbra-white-soft, #f5f0e8);
     padding: 12px 12px 18px;
     border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 24px var(--umbra-black, rgba(0, 0, 0, 0.2));
     width: 100%;
 }
 
@@ -651,7 +651,7 @@
 .polaroid-stack p {
     text-align: center;
     margin-top: 8px;
-    color: #333;
+    color: var(--umbra-ash, #333);
     font-size: 0.85rem;
 }
 
@@ -664,7 +664,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(8, 8, 9, 0.85);
+    background: var(--umbra-black, rgba(8, 8, 9, 0.85));
     backdrop-filter: blur(16px);
     display: none;
     align-items: center;
@@ -679,7 +679,7 @@
     max-width: 550px;
     width: 90%;
     max-height: 85vh;
-    background: linear-gradient(180deg, rgba(25, 25, 30, 0.98), rgba(15, 15, 18, 0.98));
+    background: linear-gradient(180deg, var(--umbra-dark, rgba(25, 25, 30, 0.98)), var(--umbra-black, rgba(15, 15, 18, 0.98)));
     border: 1px solid var(--accent-border);
     border-radius: 32px;
     padding: 32px 28px;
@@ -699,7 +699,7 @@
     position: absolute;
     top: 16px;
     right: 20px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--glass-bg-hover, rgba(255, 255, 255, 0.05));
     border: none;
     width: 36px;
     height: 36px;
@@ -713,7 +713,7 @@
 }
 
 .surprise-modal-close:hover {
-    background: rgba(198, 90, 58, 0.2);
+    background: var(--accent-glow, rgba(198, 90, 58, 0.2));
     color: var(--accent-coral);
     transform: rotate(90deg);
 }
@@ -744,7 +744,7 @@
 
 .day-card.locked .day-gift-name {
     opacity: 0.3;
-    color: rgba(255,255,255,0.2);
+    color: var(--glass-bg-active, rgba(255,255,255,0.2));
 }
 
 @media (max-width: 480px) {

@@ -140,6 +140,34 @@ ProfileSystem.savePreferences = async function (uid, prefs) {
     }
 };
 
+// ==========================================
+// ACTUALIZAR FOTO / NOMBRE DEL PERFIL
+// ==========================================
+
+ProfileSystem.actualizarFoto = async function (uid, base64) {
+    if (!uid || !window.db) return false;
+    try {
+        await window.db.collection('users').doc(uid).update({ 'profile.photoURL': base64 });
+        if (typeof window.Haptica !== 'undefined') window.Haptica.exito();
+        return true;
+    } catch (err) {
+        console.warn('Error actualizando foto:', err);
+        return false;
+    }
+};
+
+ProfileSystem.actualizarNombre = async function (uid, nombre) {
+    if (!uid || !window.db) return false;
+    try {
+        await window.db.collection('users').doc(uid).update({ 'profile.name': nombre });
+        if (typeof window.Haptica !== 'undefined') window.Haptica.exito();
+        return true;
+    } catch (err) {
+        console.warn('Error actualizando nombre:', err);
+        return false;
+    }
+};
+
 if (typeof window !== 'undefined') {
     window.ProfileSystem = ProfileSystem;
 }
