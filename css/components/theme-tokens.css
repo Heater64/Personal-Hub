@@ -31,6 +31,8 @@
 html[data-theme="dark"],
 html:not([data-theme]) {
   --accent-rgb: 198, 90, 58;
+  --accent-coral: #c65a3a;
+  --accent-rust: #8f3e2e;
   --theme-bg-primary: #0f0f10;
   --theme-bg-secondary: #1a1a1c;
   --theme-bg-card: #1e1e20;
@@ -88,81 +90,102 @@ html:not([data-theme]) {
   --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
 }
 
-/* Tema claro — Rosa cristal */
-/* Sobrescribe las variables Umbra para que las páginas que usan
-   var(--umbra-*) y var(--accent-*) se adapten automáticamente. */
+/* ==========================================
+   TEMA CLARO — Estética limpia estilo perfil
+   Fondos blancos, acentos sutiles,
+   sombras con profundidad real.
+   ========================================== */
 html[data-theme="light"] {
-  --umbra-black: #fdf0f4;
-  --umbra-dark: #fce8ee;
-  --umbra-stone: #d4b8c0;
-  --umbra-ash: #4a3a3f;
-  --umbra-light: #1a1215;
-  --umbra-white-soft: #fdf0f4;
-  --accent-rgb: 255, 92, 138;
-  --accent-coral: #FF5C8A;
-  --accent-rust: #d44a72;
-  --accent-dim: rgba(255, 92, 138, 0.15);
-  --accent-border: rgba(255, 92, 138, 0.3);
-  --bg-card: #fceaef;
-  --border-subtle: 1px solid rgba(212, 74, 114, 0.3);
-  --border-visible: 1px solid rgba(212, 74, 114, 0.5);
+  /* === PALETA BASE — Blancos con tinte rosa mínimo === */
+  --umbra-black: #fafafa;
+  --umbra-dark: #f5f2f3;
+  --umbra-stone: #e8e0e3;
+  --umbra-ash: #8a7a80;
+  --umbra-light: #1f1a1c;
+  --umbra-white-soft: #fefdfd;
 
-  --theme-bg-primary: #fdf0f4;
-  --theme-bg-secondary: #fce8ee;
-  --theme-bg-card: #fceaef;
-  --theme-bg-card-hover: #f5e0e6;
-  --theme-bg-input: rgba(255, 92, 138, 0.08);
-  --theme-bg-overlay: rgba(43, 43, 43, 0.55);
+  /* === ACENTO — Rosa refinado === */
+  --accent-rgb: 220, 80, 120;
+  --accent-coral: #dc5078;
+  --accent-rust: #c04068;
+  --accent-dim: rgba(220, 80, 120, 0.08);
+  --accent-border: rgba(220, 80, 120, 0.22);
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --border-subtle: 1px solid rgba(0, 0, 0, 0.06);
+  --border-visible: 1px solid rgba(0, 0, 0, 0.1);
 
-  --theme-text-primary: #000000;
-  --theme-text-secondary: #0d080a;
-  --theme-text-muted: #1a1215;
+  /* === FONDOS — Limpios === */
+  --theme-bg-primary: #fafafa;
+  --theme-bg-secondary: #f5f2f3;
+  --theme-bg-card: rgba(255, 255, 255, 0.8);
+  --theme-bg-card-hover: rgba(255, 255, 255, 0.95);
+  --theme-bg-input: rgba(0, 0, 0, 0.03);
+  --theme-bg-overlay: rgba(20, 16, 18, 0.5);
 
-  --theme-border-subtle: 1px solid #d44a72;
-  --theme-border-visible: 1px solid #d44a72;
-  --theme-border-focus: rgba(255, 92, 138, 0.7);
+  /* === TEXTO — Contraste limpio === */
+  --theme-text-primary: #1f1a1c;
+  --theme-text-secondary: #5c5256;
+  --theme-text-muted: #8a7a80;
 
-  --theme-accent-primary: #FF5C8A;
-  --theme-accent-secondary: #FFB6C9;
-  --theme-accent-dim: rgba(255, 92, 138, 0.13);
-  --theme-accent-border: rgba(255, 92, 138, 0.35);
+  /* === BORDES — Sutiles === */
+  --theme-border-subtle: 1px solid rgba(0, 0, 0, 0.06);
+  --theme-border-visible: 1px solid rgba(0, 0, 0, 0.1);
+  --theme-border-focus: rgba(220, 80, 120, 0.55);
 
-  --theme-glass-bg: rgba(255, 255, 255, 0.8);
-  --theme-glass-border: 1px solid #d44a72;
-  --theme-glass-highlight: rgba(255, 255, 255, 0.7);
+  /* === ACENTOS TEMA === */
+  --theme-accent-primary: #dc5078;
+  --theme-accent-secondary: #f0a0b8;
+  --theme-accent-dim: rgba(220, 80, 120, 0.08);
+  --theme-accent-border: rgba(220, 80, 120, 0.22);
 
-  --theme-shadow-sm: 0 4px 14px rgba(42, 18, 24, 0.12);
-  --theme-shadow-md: 0 12px 35px rgba(42, 18, 24, 0.18);
-  --theme-shadow-lg: 0 22px 50px rgba(42, 18, 24, 0.22);
-  --theme-shadow-glow: 0 0 30px rgba(255, 92, 138, 0.25);
+  /* === GLASS — Translúcido sutil === */
+  --theme-glass-bg: rgba(255, 255, 255, 0.65);
+  --theme-glass-border: 1px solid rgba(0, 0, 0, 0.08);
+  --theme-glass-highlight: rgba(255, 255, 255, 0.9);
 
-  --glass-bg: #fceaef;
-  --glass-bg-hover: #f5e0e6;
-  --glass-bg-active: #f0d8df;
-  --glass-border: 1px solid #d44a72;
-  --glass-border-hover: 1px solid #c63d63;
-  --glass-shield: #fce8ee;
+  /* === SOMBRAS — Profundidad real === */
+  --theme-shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --theme-shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --theme-shadow-lg: 0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+  --theme-shadow-glow: 0 0 24px rgba(220, 80, 120, 0.15);
 
-  --accent-soft: rgba(255, 92, 138, 0.06);
-  --accent-soft-hover: rgba(255, 92, 138, 0.1);
-  --accent-mist: rgba(255, 92, 138, 0.12);
-  --accent-mist-hover: rgba(255, 92, 138, 0.18);
-  --accent-glow: rgba(255, 92, 138, 0.22);
-  --accent-line: rgba(255, 92, 138, 0.35);
-  --accent-line-hover: rgba(255, 92, 138, 0.4);
+  /* === GLASS — Capas === */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-hover: rgba(255, 255, 255, 0.8);
+  --glass-bg-active: rgba(255, 255, 255, 0.9);
+  --glass-border: 1px solid rgba(0, 0, 0, 0.06);
+  --glass-border-hover: 1px solid rgba(220, 80, 120, 0.2);
+  --glass-shield: rgba(255, 255, 255, 0.5);
 
-  --theme-sidebar-bg: #2a1218;
-  --theme-sidebar-border: 1px solid rgba(255, 92, 138, 0.15);
+  /* === ACENTO GRADOS === */
+  --accent-soft: rgba(220, 80, 120, 0.05);
+  --accent-soft-hover: rgba(220, 80, 120, 0.08);
+  --accent-mist: rgba(220, 80, 120, 0.1);
+  --accent-mist-hover: rgba(220, 80, 120, 0.15);
+  --accent-glow: rgba(220, 80, 120, 0.18);
+  --accent-line: rgba(220, 80, 120, 0.25);
+  --accent-line-hover: rgba(220, 80, 120, 0.35);
 
-  --theme-scrollbar-track: rgba(255, 92, 138, 0.06);
-  --theme-scrollbar-thumb: rgba(255, 92, 138, 0.2);
-  --theme-scrollbar-thumb-hover: rgba(255, 92, 138, 0.35);
+  /* === SIDEBAR — Oscuro elegante === */
+  --theme-sidebar-bg: linear-gradient(180deg, #1f1a1c 0%, #2a2226 100%);
+  --theme-sidebar-border: 1px solid rgba(255, 255, 255, 0.06);
 
-  --theme-bg-gradient: radial-gradient(circle at top, #ffe8ef 0%, transparent 50%), linear-gradient(180deg, #fdf0f4, #fce8ee);
+  /* === SCROLLBAR === */
+  --theme-scrollbar-track: rgba(0, 0, 0, 0.03);
+  --theme-scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --theme-scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+
+  /* === FONDO GRADIENTE — Limpio === */
+  --theme-bg-gradient:
+    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(220, 80, 120, 0.04), transparent 50%),
+    linear-gradient(180deg, #fefdfd 0%, #fafafa 30%, #f5f2f3 100%);
 }
 
+/* === BODY — Fondo limpio sin partículas === */
 html[data-theme="light"] body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--theme-bg-gradient);
+  min-height: 100vh;
 }
 
 html[data-theme="light"] body::before,
@@ -170,10 +193,105 @@ html[data-theme="light"] body::after {
   display: none;
 }
 
-/* Temas de color (data-color-theme) */
-html[data-color-theme="ocean"]   { --theme-accent-primary: #0077b6; --theme-accent-secondary: #90e0ef; --theme-accent-dim: rgba(0,119,182,0.15); --theme-accent-border: rgba(0,119,182,0.35); --theme-shadow-glow: 0 0 24px rgba(0,119,182,0.25); }
-html[data-color-theme="forest"]  { --theme-accent-primary: #2d6a4f; --theme-accent-secondary: #95d5b2; --theme-accent-dim: rgba(45,106,79,0.15); --theme-accent-border: rgba(45,106,79,0.35); --theme-shadow-glow: 0 0 24px rgba(45,106,79,0.25); }
-html[data-color-theme="violet"]  { --theme-accent-primary: #7209b7; --theme-accent-secondary: #c77dff; --theme-accent-dim: rgba(114,9,183,0.15); --theme-accent-border: rgba(114,9,183,0.35); --theme-shadow-glow: 0 0 24px rgba(114,9,183,0.25); }
-html[data-color-theme="rose"]    { --theme-accent-primary: #e53e3e; --theme-accent-secondary: #fc8181; --theme-accent-dim: rgba(229,62,62,0.15); --theme-accent-border: rgba(229,62,62,0.35); --theme-shadow-glow: 0 0 24px rgba(229,62,62,0.25); }
-html[data-color-theme="amber"]   { --theme-accent-primary: #d69e2e; --theme-accent-secondary: #faf089; --theme-accent-dim: rgba(214,158,46,0.15); --theme-accent-border: rgba(214,158,46,0.35); --theme-shadow-glow: 0 0 24px rgba(214,158,46,0.25); }
-html[data-color-theme="mono"]    { --theme-accent-primary: #3d3d3d; --theme-accent-secondary: #718096; --theme-accent-dim: rgba(61,61,61,0.15); --theme-accent-border: rgba(61,61,61,0.35); --theme-shadow-glow: 0 0 24px rgba(61,61,61,0.25); }
+/* ==========================================
+   COLOR THEME VARIANTS (data-color-theme)
+   Cada variante sobreescribe --accent-* y --theme-*
+   para que var(--accent-coral) funcione en todas
+   las páginas sin necesidad de migrar cada archivo.
+   ========================================== */
+html[data-color-theme="ocean"] {
+  --accent-rgb: 0,119,182;
+  --accent-coral: #0077b6;
+  --accent-rust: #005f8a;
+  --accent-dim: rgba(0,119,182,0.15);
+  --accent-border: rgba(0,119,182,0.35);
+  --warm-amber: #90e0ef;
+  --warm-pink: #00b4d8;
+  --warm-gold-dim: rgba(144,224,239,0.18);
+  --shadow-glow: 0 0 20px rgba(0,119,182,0.15);
+  --theme-accent-primary: #0077b6;
+  --theme-accent-secondary: #90e0ef;
+  --theme-accent-dim: rgba(0,119,182,0.15);
+  --theme-accent-border: rgba(0,119,182,0.35);
+  --theme-shadow-glow: 0 0 24px rgba(0,119,182,0.25);
+}
+html[data-color-theme="forest"] {
+  --accent-rgb: 45,106,79;
+  --accent-coral: #2d6a4f;
+  --accent-rust: #1b4332;
+  --accent-dim: rgba(45,106,79,0.15);
+  --accent-border: rgba(45,106,79,0.35);
+  --warm-amber: #95d5b2;
+  --warm-pink: #52b788;
+  --warm-gold-dim: rgba(149,213,178,0.18);
+  --shadow-glow: 0 0 20px rgba(45,106,79,0.15);
+  --theme-accent-primary: #2d6a4f;
+  --theme-accent-secondary: #95d5b2;
+  --theme-accent-dim: rgba(45,106,79,0.15);
+  --theme-accent-border: rgba(45,106,79,0.35);
+  --theme-shadow-glow: 0 0 24px rgba(45,106,79,0.25);
+}
+html[data-color-theme="violet"] {
+  --accent-rgb: 114,9,183;
+  --accent-coral: #7209b7;
+  --accent-rust: #560bad;
+  --accent-dim: rgba(114,9,183,0.15);
+  --accent-border: rgba(114,9,183,0.35);
+  --warm-amber: #c77dff;
+  --warm-pink: #b5179e;
+  --warm-gold-dim: rgba(199,125,255,0.18);
+  --shadow-glow: 0 0 20px rgba(114,9,183,0.15);
+  --theme-accent-primary: #7209b7;
+  --theme-accent-secondary: #c77dff;
+  --theme-accent-dim: rgba(114,9,183,0.15);
+  --theme-accent-border: rgba(114,9,183,0.35);
+  --theme-shadow-glow: 0 0 24px rgba(114,9,183,0.25);
+}
+html[data-color-theme="rose"] {
+  --accent-rgb: 229,62,62;
+  --accent-coral: #e53e3e;
+  --accent-rust: #c53030;
+  --accent-dim: rgba(229,62,62,0.15);
+  --accent-border: rgba(229,62,62,0.35);
+  --warm-amber: #fc8181;
+  --warm-pink: #feb2b2;
+  --warm-gold-dim: rgba(252,129,129,0.18);
+  --shadow-glow: 0 0 20px rgba(229,62,62,0.15);
+  --theme-accent-primary: #e53e3e;
+  --theme-accent-secondary: #fc8181;
+  --theme-accent-dim: rgba(229,62,62,0.15);
+  --theme-accent-border: rgba(229,62,62,0.35);
+  --theme-shadow-glow: 0 0 24px rgba(229,62,62,0.25);
+}
+html[data-color-theme="amber"] {
+  --accent-rgb: 214,158,46;
+  --accent-coral: #d69e2e;
+  --accent-rust: #b7791f;
+  --accent-dim: rgba(214,158,46,0.15);
+  --accent-border: rgba(214,158,46,0.35);
+  --warm-amber: #faf089;
+  --warm-pink: #ecc94b;
+  --warm-gold-dim: rgba(250,240,137,0.18);
+  --shadow-glow: 0 0 20px rgba(214,158,46,0.15);
+  --theme-accent-primary: #d69e2e;
+  --theme-accent-secondary: #faf089;
+  --theme-accent-dim: rgba(214,158,46,0.15);
+  --theme-accent-border: rgba(214,158,46,0.35);
+  --theme-shadow-glow: 0 0 24px rgba(214,158,46,0.25);
+}
+html[data-color-theme="mono"] {
+  --accent-rgb: 61,61,61;
+  --accent-coral: #3d3d3d;
+  --accent-rust: #1a1a1a;
+  --accent-dim: rgba(61,61,61,0.15);
+  --accent-border: rgba(61,61,61,0.35);
+  --warm-amber: #718096;
+  --warm-pink: #4a5568;
+  --warm-gold-dim: rgba(113,128,150,0.18);
+  --shadow-glow: 0 0 20px rgba(61,61,61,0.15);
+  --theme-accent-primary: #3d3d3d;
+  --theme-accent-secondary: #718096;
+  --theme-accent-dim: rgba(61,61,61,0.15);
+  --theme-accent-border: rgba(61,61,61,0.35);
+  --theme-shadow-glow: 0 0 24px rgba(61,61,61,0.25);
+}

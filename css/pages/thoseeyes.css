@@ -1,28 +1,7 @@
 /* ==========================================
-     UMBRA · Those Eyes (solo estilos especificos de la cancion)
-     ========================================== */
-  :root {
-    --umbra-black: #0F0F10;
-    --umbra-dark: #1A1A1C;
-    --umbra-stone: #2A2A2E;
-    --umbra-ash: #6E6A67;
-    --umbra-light: #E8E6E3;
-    --accent-coral: var(--accent-coral);
-    --accent-dim: rgb(var(--accent-rgb) / 0.15);
-    --accent-border: rgb(var(--accent-rgb) / 0.35);
-    --border-subtle: 1px solid rgba(255, 255, 255, 0.05);
-    --border-visible: 1px solid rgba(255, 255, 255, 0.12);
-    --space-xs: 8px;
-    --space-sm: 16px;
-    --space-md: 32px;
-    --space-lg: 64px;
-    --radius-sm: 6px;
-    --radius-md: 12px;
-    --radius-lg: 20px;
-    --radius-pill: 40px;
-  }
-
-  /* No redefinimos .header, .nav-btn, .brand aqui para que herede del sistema base */
+   UMBRA · Those Eyes (solo estilos especificos de la cancion)
+   Las variables globales se heredan de main.css / theme-tokens.css
+   ========================================== */
 
   /* Estrellas (canvas) */
   #stars {

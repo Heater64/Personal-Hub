@@ -1,4 +1,50 @@
-/* Welcome Screen */
+/* ==========================================
+   WELCOME SCREEN — Mood Check-in
+   Tema unificado: Inter, cards limpias,
+   theme variables.
+   ========================================== */
+
+/* ==========================================
+   TEMA CLARO
+   ========================================== */
+html[data-theme="light"] .welcome-screen {
+  background: #efe3e8;
+}
+
+html[data-theme="light"] .welcome-screen__bg-gradient {
+  background: radial-gradient(circle at 50% 50%, var(--theme-accent-dim, rgba(198,90,58,0.12)), transparent 70%);
+}
+
+html[data-theme="light"] .mood-btn {
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(0,0,0,0.08);
+  color: #2d1822;
+}
+
+html[data-theme="light"] .mood-btn:hover,
+html[data-theme="light"] .mood-btn.selected {
+  background: var(--theme-accent-primary, #c65a3a);
+  border-color: var(--theme-accent-primary, #c65a3a);
+  color: white;
+}
+
+html[data-theme="light"] .welcome-screen__title {
+  color: #2d1822;
+}
+
+html[data-theme="light"] .welcome-screen__subtitle,
+html[data-theme="light"] .welcome-screen__question-hint,
+html[data-theme="light"] .welcome-screen__note {
+  color: #7a5d6b;
+}
+
+html[data-theme="light"] .welcome-screen__stats-link {
+  color: var(--theme-accent-primary, #c65a3a);
+}
+
+/* ==========================================
+   OVERLAY
+   ========================================== */
 .welcome-screen {
   position: fixed;
   inset: 0;
@@ -6,8 +52,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--umbra-black);
+  background: var(--theme-bg-primary, #0f0f10);
   padding: 20px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: opacity 0.35s ease;
 }
 
 .welcome-screen__bg {
@@ -20,54 +69,306 @@
 .welcome-screen__bg-gradient {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(198, 90, 58, 0.15), transparent 70%);
+  background: radial-gradient(circle at 50% 50%, var(--theme-accent-dim, rgba(198,90,58,0.15)), transparent 70%);
 }
 
+/* ==========================================
+   PARTICLES
+   ========================================== */
+.welcome-screen__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.welcome-screen__particle {
+  position: absolute;
+  font-size: 1.2rem;
+  opacity: 0.15;
+  color: var(--theme-accent-primary, #c65a3a);
+  animation: welcomeParticleFloat 8s ease-in-out infinite;
+}
+
+.welcome-screen__particle:nth-child(1) { top: 10%; left: 15%; animation-delay: 0s; }
+.welcome-screen__particle:nth-child(2) { top: 20%; right: 20%; animation-delay: -2s; }
+.welcome-screen__particle:nth-child(3) { top: 60%; left: 10%; animation-delay: -4s; }
+.welcome-screen__particle:nth-child(4) { top: 70%; right: 15%; animation-delay: -6s; }
+.welcome-screen__particle:nth-child(5) { top: 35%; left: 25%; animation-delay: -1s; }
+.welcome-screen__particle:nth-child(6) { top: 50%; right: 25%; animation-delay: -3s; }
+
+@keyframes welcomeParticleFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.12; }
+  50% { transform: translateY(-30px) rotate(15deg); opacity: 0.25; }
+}
+
+/* ==========================================
+   CONTENT
+   ========================================== */
 .welcome-screen__content {
   text-align: center;
-  max-width: 400px;
+  max-width: 420px;
   width: 100%;
 }
 
-.welcome-screen__title {
-  font-size: 2rem;
-  margin-bottom: 1rem;
+.welcome-screen__greeting {
+  margin-bottom: 24px;
 }
 
+.welcome-screen__time-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--theme-accent-dim, rgba(198,90,58,0.12));
+  border: 1px solid var(--theme-accent-border, rgba(198,90,58,0.2));
+  color: var(--theme-accent-primary, #c65a3a);
+  margin-bottom: 12px;
+}
+
+.welcome-screen__time-icon i {
+  width: 22px;
+  height: 22px;
+}
+
+.welcome-screen__title {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--theme-text-primary, #e8e6e3);
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.welcome-screen__name {
+  color: var(--theme-accent-primary, #c65a3a);
+}
+
+.welcome-screen__subtitle {
+  font-size: 0.9rem;
+  color: var(--theme-text-secondary, #b0b0b0);
+  margin-top: 4px;
+}
+
+/* ==========================================
+   QUESTION
+   ========================================== */
+.welcome-screen__question {
+  margin-bottom: 18px;
+}
+
+.welcome-screen__question-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--theme-text-primary, #e8e6e3);
+  margin-bottom: 2px;
+}
+
+.welcome-screen__question-hint {
+  font-size: 0.78rem;
+  color: var(--theme-text-muted, #8a8a8a);
+}
+
+/* ==========================================
+   MOOD BUTTONS
+   ========================================== */
 .welcome-screen__moods {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  margin: 2rem 0;
+  margin: 20px 0;
 }
 
 .mood-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--theme-bg-card, rgba(255,255,255,0.05));
+  border: 1px solid var(--theme-border-visible, rgba(255,255,255,0.08));
   border-radius: 16px;
-  padding: 15px;
-  color: white;
-  transition: all 0.2s;
+  padding: 14px 12px;
+  color: var(--theme-text-primary, #e8e6e3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  position: relative;
+  overflow: hidden;
 }
 
-.mood-btn:hover, .mood-btn.selected {
-  background: var(--accent-coral);
-  border-color: var(--accent-coral);
+.mood-btn:hover {
+  background: var(--theme-accent-dim, rgba(198,90,58,0.12));
+  border-color: var(--theme-accent-border, rgba(198,90,58,0.2));
+  transform: translateY(-2px);
+  box-shadow: var(--theme-shadow-sm, 0 4px 12px rgba(0,0,0,0.1));
 }
 
-.welcome-btn {
-  background: var(--accent-coral);
+.mood-btn.selected {
+  background: var(--theme-accent-primary, #c65a3a);
+  border-color: var(--theme-accent-primary, #c65a3a);
   color: white;
-  padding: 12px 24px;
-  border-radius: 40px;
-  font-size: 1rem;
-  margin-top: 1rem;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(198,90,58,0.3);
 }
+
+.mood-btn__emoji {
+  font-size: 1.5rem;
+}
+
+.mood-btn__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mood-btn__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.mood-btn__desc {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.mood-btn__check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s ease;
+}
+
+.mood-btn.selected .mood-btn__check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.mood-btn__check i {
+  width: 16px;
+  height: 16px;
+}
+
+/* ==========================================
+   CTA + BUTTONS
+   ========================================== */
+.welcome-screen__cta {
+  margin-top: 16px;
+}
+
+.welcome-screen__cta .welcome-btn {
+  /* scoped to mood check-in screen only */
+}
+
+.welcome-screen .welcome-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 28px;
+  background: var(--theme-accent-primary, #c65a3a);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.welcome-btn:hover:not(:disabled) {
+  background: var(--theme-accent-secondary, #a0482e);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--theme-accent-dim, rgba(198,90,58,0.3));
+}
+
 .welcome-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
-.hidden {
-  display: none !important;
+/* ==========================================
+   FOOTER
+   ========================================== */
+.welcome-screen__footer {
+  margin-top: 20px;
+}
+
+.welcome-screen__note {
+  font-size: 0.7rem;
+  color: var(--theme-text-muted, #8a8a8a);
+  margin-bottom: 8px;
+}
+
+.welcome-screen__stats-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--theme-text-secondary, #b0b0b0);
+  background: var(--theme-bg-card, rgba(255,255,255,0.05));
+  border: 1px solid var(--theme-border-visible, rgba(255,255,255,0.08));
+  border-radius: 14px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.welcome-screen__stats-link:hover {
+  background: var(--theme-accent-dim, rgba(198,90,58,0.12));
+  border-color: var(--theme-accent-border, rgba(198,90,58,0.2));
+  color: var(--theme-accent-primary, #c65a3a);
+}
+
+/* ==========================================
+   HIDDEN
+   ========================================== */
+.welcome-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==========================================
+   TEXTO GRANDE
+   ========================================== */
+html[data-large-text="true"] .welcome-screen__title { font-size: 2.1rem; }
+html[data-large-text="true"] .welcome-screen__subtitle { font-size: 1rem; }
+html[data-large-text="true"] .welcome-screen__question-text { font-size: 1.15rem; }
+html[data-large-text="true"] .mood-btn__label { font-size: 0.95rem; }
+html[data-large-text="true"] .mood-btn__desc { font-size: 0.82rem; }
+html[data-large-text="true"] .welcome-btn { font-size: 1.05rem; }
+html[data-large-text="true"] .welcome-screen__stats-link { font-size: 0.88rem; }
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 480px) {
+  .welcome-screen {
+    padding: 16px;
+  }
+
+  .welcome-screen__title {
+    font-size: 1.5rem;
+  }
+
+  .welcome-screen__moods {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .mood-btn {
+    flex-direction: row;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .mood-btn__text {
+    text-align: left;
+  }
 }

@@ -1,157 +1,380 @@
-/* sentimientos.css - Estilo idéntico a TuRincónFav */
+/* ==========================================
+   SENTIMIENTOS — Hub de emociones
+   Estética perfil: tarjetas limpias, icon-box,
+   sombras suaves, tipografía Inter.
+   ========================================== */
 
-/* Contenedor de iframes */
+/* ==============================
+   OVERRIDES LOCALES — Tema claro
+   ============================== */
+html[data-theme="light"] body[data-sidebar-page="sentimientos"] {
+  --sent-bg: #efe3e8;
+  --sent-card-bg: rgba(255,255,255,0.94);
+  --sent-input-bg: rgba(0,0,0,0.04);
+  --sent-border: 1px solid rgba(0,0,0,0.08);
+  background: linear-gradient(180deg, var(--sent-bg) 0%, #e8d9e0 40%, #e4d4db 100%);
+  min-height: 100vh;
+}
+
+/* ==============================
+   CONTENEDOR
+   ============================== */
+.sentiment-hub {
+  max-width: 780px;
+  margin: 20px auto 100px;
+  padding: 0 20px;
+}
+
+/* ==============================
+   HEADER
+   ============================== */
+.sentiment-header {
+  text-align: center;
+  margin-bottom: 28px;
+  padding: 28px 24px 24px;
+  background: var(--sent-card-bg, rgba(255, 255, 255, 0.03));
+  border: var(--sent-border, 1px solid rgba(255, 255, 255, 0.06));
+  border-radius: 22px;
+  box-shadow: var(--theme-shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sentiment-header:hover {
+  border-color: var(--theme-accent-border);
+  box-shadow: var(--theme-shadow-md), 0 6px 20px rgba(0,0,0,0.06);
+}
+
+.sentiment-header h1 {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--theme-text-primary);
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.sentiment-header p {
+  color: var(--theme-text-secondary);
+  font-size: 0.88rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ==============================
+   CARDS GRID
+   ============================== */
+.cards-sentiment {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.card-sentiment {
+  position: relative;
+  background: var(--sent-card-bg, rgba(255, 255, 255, 0.03));
+  border: var(--sent-border, 1px solid rgba(255, 255, 255, 0.06));
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: var(--theme-shadow-sm);
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+
+.card-sentiment:hover {
+  transform: translateY(-3px);
+  border-color: var(--theme-accent-border, rgba(198, 90, 58, 0.35));
+  box-shadow: var(--theme-shadow-md), 0 6px 20px rgba(0,0,0,0.06);
+  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.04));
+}
+
+/* Icon box */
+.card-icon {
+  width: 42px;
+  height: 42px;
+  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.08));
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--theme-accent-primary, #c65a3a);
+  transition: transform 0.2s ease;
+}
+
+.card-sentiment:hover .card-icon {
+  transform: scale(1.08);
+}
+
+.card-icon i,
+.card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.card-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  margin: 0 0 6px;
+  letter-spacing: -0.01em;
+}
+
+.card-description {
+  color: var(--theme-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: var(--theme-text-muted);
+}
+
+.card-meta i,
+.card-meta svg {
+  width: 14px;
+  height: 14px;
+}
+
+.card-meta .meta-divider {
+  width: 3px;
+  height: 3px;
+  background: var(--theme-text-muted);
+  border-radius: 50%;
+  opacity: 0.35;
+}
+
+.card-badge {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.12));
+  border: 1px solid var(--theme-accent-border, rgba(198, 90, 58, 0.15));
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.6rem;
+  color: var(--theme-accent-primary);
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ==============================
+   BACK BUTTON
+   ============================== */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: var(--sent-border, 1px solid rgba(255, 255, 255, 0.08));
+  border-radius: 40px;
+  padding: 9px 20px;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  margin-bottom: 20px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.back-btn:hover {
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  background: var(--theme-accent-dim);
+}
+
+.back-btn i,
+.back-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ==============================
+   TEXTO GRANDE
+   ============================== */
+html[data-large-text="true"] body[data-sidebar-page="sentimientos"] .sentiment-header h1 { font-size: 1.75rem; }
+html[data-large-text="true"] body[data-sidebar-page="sentimientos"] .sentiment-header p { font-size: 1rem; }
+html[data-large-text="true"] body[data-sidebar-page="sentimientos"] .card-title { font-size: 1.3rem; }
+html[data-large-text="true"] body[data-sidebar-page="sentimientos"] .card-description { font-size: 0.95rem; }
+html[data-large-text="true"] body[data-sidebar-page="sentimientos"] .card-meta { font-size: 0.82rem; }
+html[data-large-text="true"] body[data-sidebar-page="sentimientos"] .back-btn { font-size: 0.95rem; }
+
+/* ==============================
+   RESPONSIVE
+   ============================== */
+@media (max-width: 700px) {
+  .cards-sentiment {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .sentiment-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .card-sentiment {
+    padding: 20px 18px;
+    border-radius: 18px;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+  }
+
+  .card-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+
+  .card-icon i,
+  .card-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sentiment-hub {
+    padding: 0 12px;
+  }
+
+  .sentiment-header {
+    padding: 22px 16px 20px;
+    border-radius: 18px;
+  }
+}
+
+/* ==========================================
+   ESTILOS EXISTENTES — iframes, tabs, hero
+   (Actualizados con theme variables)
+   ========================================== */
+
 .iframe-container {
-    width: 100%;
-    min-height: 600px;
-    border-radius: 20px;
-    overflow: hidden;
-    background: transparent;
+  width: 100%;
+  min-height: 600px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: transparent;
 }
 
 .sentiment-iframe {
-    width: 100%;
-    min-height: 70vh;
-    border: none;
-    background: transparent;
-    border-radius: 20px;
+  width: 100%;
+  min-height: 70vh;
+  border: none;
+  background: transparent;
+  border-radius: 20px;
 }
 
-/* Ajustar el iframe para que herede los estilos */
-.sentiment-iframe body {
-    background: transparent !important;
-}
-
-/* Pestañas igual que en TuRincónFav */
 .sentiment-tabs {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 30px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+  border-bottom: var(--sent-border, 1px solid rgba(255,255,255,0.08));
 }
 
 .sentiment-tabs .sub-tab {
-    padding: 10px 24px;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 40px;
-    font-size: 0.85rem;
-    letter-spacing: 0.08em;
-    color: var(--umbra-ash);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s ease;
+  padding: 10px 24px;
+  background: transparent;
+  border: var(--sent-border, 1px solid rgba(255,255,255,0.08));
+  border-radius: 20px;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .sentiment-tabs .sub-tab:hover {
-    border-color: var(--accent-coral);
-    color: var(--accent-coral);
+  border-color: var(--theme-accent-border);
+  color: var(--theme-accent-primary);
 }
 
 .sentiment-tabs .sub-tab.active {
-    border-color: var(--accent-coral);
-    color: var(--accent-coral);
-    background: rgba(198, 90, 58, 0.1);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  background: var(--theme-accent-dim);
 }
 
-.sentiment-tabs .sub-tab i {
-    width: 18px;
-    height: 18px;
-}
+.sentiment-tabs .sub-tab i { width: 18px; height: 18px; }
 
-/* Hero de inicio */
 .sentiment-hero {
-    text-align: center;
-    padding: 60px 20px;
-    background: linear-gradient(135deg, rgba(198, 90, 58, 0.08), rgba(255, 179, 71, 0.03));
-    border-radius: 32px;
-    margin-top: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--sent-card-bg, rgba(255,255,255,0.04));
+  border-radius: 22px;
+  margin-top: 20px;
+  border: var(--sent-border, 1px solid rgba(255,255,255,0.05));
+  box-shadow: var(--theme-shadow-sm);
 }
 
-.hero-icon {
-    font-size: 4rem;
-    margin-bottom: 20px;
-}
+.hero-icon { font-size: 4rem; margin-bottom: 20px; }
 
 .sentiment-hero h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.2rem;
-    margin-bottom: 16px;
-    color: var(--umbra-light);
+  font-family: 'Inter', sans-serif;
+  font-size: 2rem;
+  margin-bottom: 16px;
+  color: var(--theme-text-primary);
+  font-weight: 600;
 }
 
 .sentiment-hero p {
-    color: var(--umbra-ash);
-    max-width: 500px;
-    margin: 0 auto;
+  color: var(--theme-text-secondary);
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .hero-stats {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    margin-top: 40px;
-    flex-wrap: wrap;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-top: 40px;
+  flex-wrap: wrap;
 }
 
 .stat-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 20px;
-    padding: 16px 24px;
-    text-align: center;
-    min-width: 100px;
+  background: var(--sent-input-bg, rgba(255,255,255,0.03));
+  border: var(--sent-border, 1px solid rgba(255,255,255,0.05));
+  border-radius: 18px;
+  padding: 16px 24px;
+  text-align: center;
+  min-width: 100px;
 }
 
 .stat-number {
-    font-size: 2rem;
-    font-weight: bold;
-    color: var(--accent-coral);
-    font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--theme-accent-primary);
+  font-family: 'Inter', sans-serif;
 }
 
 .stat-label {
-    font-size: 0.7rem;
-    color: var(--umbra-ash);
-    letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  color: var(--theme-text-muted);
+  letter-spacing: 0.05em;
 }
 
-/* sub-view → css/components/sub-nav.css */
-
-/* Responsive */
 @media (max-width: 768px) {
-    .sentiment-tabs .sub-tab {
-        padding: 8px 16px;
-        font-size: 0.75rem;
-    }
-    
-    .sentiment-hero {
-        padding: 40px 16px;
-    }
-    
-    .sentiment-hero h2 {
-        font-size: 1.6rem;
-    }
-    
-    .hero-stats {
-        gap: 15px;
-    }
-    
-    .stat-card {
-        padding: 10px 16px;
-        min-width: 70px;
-    }
-    
-    .stat-number {
-        font-size: 1.3rem;
-    }
-    
-    .iframe-container {
-        min-height: 500px;
-    }
+  .sentiment-tabs .sub-tab { padding: 8px 16px; font-size: 0.75rem; }
+  .sentiment-hero { padding: 40px 16px; }
+  .sentiment-hero h2 { font-size: 1.6rem; }
+  .hero-stats { gap: 15px; }
+  .stat-card { padding: 10px 16px; min-width: 70px; }
+  .stat-number { font-size: 1.3rem; }
+  .iframe-container { min-height: 500px; }
 }

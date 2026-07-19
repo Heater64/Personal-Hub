@@ -9,14 +9,9 @@
 
     const NAV_ITEMS = [
         { key: 'home', label: 'Inicio', icon: 'home', href: '/index.html' },
-        { key: 'canciones', label: 'Canciones', icon: 'music', href: '/features/canciones/canciones.html' },
-        { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: '/features/rincon/rincon.html' },
-        { key: 'thoseeyes', label: 'Those Eyes', icon: 'eye', href: '/features/thoseeyes/thoseeyes.html' },
-        { key: 'series', label: 'Series', icon: 'tv', href: '/features/series/series.html' },
-        { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: '/features/sentimientos/sentimientos.html' },
-        { key: 'juegos', label: 'Juegos', icon: 'gamepad-2', href: '/features/juegos/juegos.html' },
-        { key: 'ositos', label: 'OsitosWorld', icon: 'star', href: '/features/ositos/ositos-world.html' },
-        { key: 'admin', label: 'Admin', icon: 'settings', href: '/features/admin/admin.html', admin: true },
+        { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: '/pages/rincon.html' },
+        { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: '/pages/sentimientos.html' },
+        { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: '/pages/ositos-world.html' },
     ];
 
     function getDB() {

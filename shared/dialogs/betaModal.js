@@ -18,9 +18,10 @@ export function acceptLightBeta() {
  */
 export function showLightBetaModal({ onAccept, onCancel }) {
     const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay is-open';
+    overlay.className = 'modal-overlay beta-modal is-open';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'betaModalTitle');
 
     const modal = document.createElement('div');
     modal.className = 'modal-content modal-sm';
@@ -29,7 +30,8 @@ export function showLightBetaModal({ onAccept, onCancel }) {
     const header = document.createElement('div');
     header.className = 'modal-header';
     const title = document.createElement('h3');
-    title.textContent = 'Modo Claro — Fase Beta';
+    title.id = 'betaModalTitle';
+    title.innerHTML = '<span class="beta-modal__badge">BETA</span> Modo Claro';
     header.appendChild(title);
 
     const closeBtn = document.createElement('button');
@@ -45,8 +47,15 @@ export function showLightBetaModal({ onAccept, onCancel }) {
 
     // Body
     const body = document.createElement('div');
-    body.className = 'modal-body';
+    body.className = 'modal-body beta-modal__body';
+    
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'beta-modal__icon-wrap';
+    iconWrap.innerHTML = '<i data-lucide="alert-triangle"></i>';
+    body.appendChild(iconWrap);
+    
     const msg = document.createElement('p');
+    msg.className = 'beta-modal__message';
     msg.textContent = 'El modo claro se encuentra actualmente en fase beta. Puede contener elementos visuales aún en desarrollo.';
     body.appendChild(msg);
     modal.appendChild(body);
@@ -65,8 +74,8 @@ export function showLightBetaModal({ onAccept, onCancel }) {
     footer.appendChild(cancelBtn);
 
     const acceptBtn = document.createElement('button');
-    acceptBtn.className = 'btn btn-primary';
-    acceptBtn.textContent = 'Aceptar';
+    acceptBtn.className = 'btn btn-primary beta-modal__accept-btn';
+    acceptBtn.innerHTML = '<i data-lucide="sun"></i> Activar modo claro';
     acceptBtn.addEventListener('click', () => {
         acceptLightBeta();
         closeModal(overlay);
@@ -95,6 +104,11 @@ export function showLightBetaModal({ onAccept, onCancel }) {
             if (typeof onCancel === 'function') onCancel();
         }
     });
+
+    // Inicializar iconos Lucide
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons({ root: modal });
+    }
 }
 
 function closeModal(overlay) {

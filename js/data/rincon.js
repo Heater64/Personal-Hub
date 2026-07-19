@@ -125,38 +125,38 @@ const spbData = {
 intro: "San Juan Pueblo es una vibrante aldea del municipio de La Masica, en el departamento de Atlántida, Honduras. Situada entre Tela y La Ceiba, esta comunidad de aproximadamente 10,000–15,000 habitantes se fundó alrededor de 1881 y originalmente se llamaba 'San Juan Caite'. Hoy es un próspero centro comercial y agroindustrial, famoso por las aguas cristalinas del río San Juan, su espíritu resiliente y sus tradiciones hondureñas.",
 curiosidades: [
 {
-icon: "🏞️",
+icon: "droplets",
 titulo: "Río San Juan: el corazón del pueblo",
 texto: "Las aguas frescas y cristalinas del río San Juan atraviesan la comunidad y sirven como centro de recreación y diversión para pobladores y visitantes. Es el atractivo natural más querido del pueblo."
 },
 {
-icon: "📅",
+icon: "scroll-text",
 titulo: "Fundación y nombre original",
 texto: "San Juan Pueblo fue fundado alrededor de 1881. Originalmente se llamaba 'San Juan Caite' (de 'caite', sandalia) porque estaba alejado de San Juan Benque, una aldea próspera en la época bananera."
 },
 {
-icon: "🌪️",
+icon: "wind",
 titulo: "Resiliencia tras el Huracán Fifí",
 texto: "En 1974, el Huracán Fifí devastó la región, pero provocó un repoblamiento masivo, especialmente de personas del occidente de Honduras. El pueblo se reconstruyó y salió adelante."
 },
 {
-icon: "🌋",
+icon: "activity",
 titulo: "Enjambre sísmico de 2013",
 texto: "En 2013, San Juan Pueblo sufrió un 'enjambre sísmico' con 36 sismos de magnitud entre 3.1 y 5.6. Se destruyeron 140 casas y 66 resultaron dañadas, pero afortunadamente no hubo víctimas mortales."
 },
 {
-icon: "🏛️",
+icon: "building-2",
 titulo: "Tres intentos fallidos de ser municipio",
 texto: "Desde 1996, los habitantes han buscado convertir San Juan Pueblo en el noveno municipio de Atlántida. Los intentos han fracasado porque la ley exige al menos 30,000 habitantes y 40 km² de extensión; actualmente tienen unos 15,000 hab. y 5 km²."
 },
 {
-icon: "⚽",
+icon: "trophy",
 titulo: "Estadio 'Carlos Calderón'",
 texto: "El fútbol es la pasión local. El estadio municipal lleva el nombre de 'Carlos Calderón' y es el escenario de los encuentros más importantes de la comunidad."
 },
 {
-icon: "🗣️",
-titulo: "Significado de 'San Juan' en lengua tolupán",
+icon: "languages",
+titulo: "Significado en lengua tolupán",
 texto: "El nombre 'San Juan' proviene de la lengua xicaque (tolupán): 'xantun' o 'xan' significa 'río entre montañas', una descripción perfecta del paisaje que rodea al pueblo."
 }
 ],
@@ -185,6 +185,148 @@ phrases: [
 ]
 };
 
+const sanPetersburgoData = {
+curiosidades: [
+{
+icon: "palette",
+titulo: "Noches Blancas",
+texto: "De mayo a mediados de julio, el sol apenas se oculta, creando un crepúsculo continuo. La ciudad se llena de paseos nocturnos, conciertos al aire libre y espectáculos culturales."
+},
+{
+icon: "bread",
+titulo: "Pan y sal",
+texto: "Cuando se reciben invitados importantes, se les ofrece pan y sal sobre un rushnik bordado, como símbolo de hospitalidad y respeto."
+},
+{
+icon: "sailboat",
+titulo: "Festival de las Velas Escarlatas",
+texto: "A finales de junio, miles de personas celebran la graduación escolar con un desfile de barcos de velas rojas, fuegos artificiales y conciertos a orillas del Neva."
+},
+{
+icon: "music",
+titulo: "Ópera y ballet bajo las estrellas",
+texto: "Durante el verano, teatros como el Mariinsky y el Hermitage ofrecen espectáculos al aire libre, en un ambiente mágico bajo el cielo claro de San Petersburgo."
+}
+],
+foods: [
+{ nombre: "Borsch", desc: "Sopa de remolacha, el plato más icónico de Rusia", img: "https://assets.elgourmet.com/wp-content/uploads/2023/03/cover_xqm3gckj18_shutterstock-489714061.jpg" },
+{ nombre: "Pelmeni", desc: "Raviolis rusos rellenos de carne, servidos con crema agria", img: "https://static.vecteezy.com/system/resources/previews/015/590/084/large_2x/traditional-russian-pelmeni-or-ravioli-dumplings-with-meat-on-wood-black-background-russian-food-and-russian-kitchen-concept-photo.JPG" },
+{ nombre: "Blini", desc: "Crepes dulces o salados, tradición centenaria", img: "https://letthebakingbegin.com/wp-content/uploads/2020/02/Russian-Blini-Recipe-2.jpg" }
+],
+phrases: [
+"Привет! (Privet) — ¡Hola!",
+"Спасибо (Spasibo) — Gracias",
+"Пожалуйста (Pozhaluysta) — De nada / Por favor",
+"До свидания (Do svidaniya) — Adiós",
+"Я тебя люблю (Ya tebya lyublyu) — Te amo ❤️"
+]
+};
+
+const gatitosData = {
+curiosidades: [
+{
+icon: "bed",
+titulo: "Duermen mucho",
+texto: "Los gatos duermen entre 12 y 16 horas al día. Son los campeones del descanso en el reino animal."
+},
+{
+icon: "ear",
+titulo: "Orejas superdotadas",
+texto: "Pueden girar sus orejas hasta 180 grados, independently una de la otra, para localizar sonidos con precisión."
+},
+{
+icon: "message-circle",
+titulo: "Maullan solo para humanos",
+texto: "Los gatos se comunican con los humanos a través del maullido, ¡no entre ellos! Es un lenguaje que desarrollaron solo para nosotros."
+},
+{
+icon: "fingerprint",
+titulo: "Nariz única",
+texto: "Su nariz es única, como una huella dactilar. Cada gato tiene una marca nasal diferente."
+},
+{
+icon: "bone",
+titulo: "230 huesos",
+texto: "El esqueleto de los gatos tiene alrededor de 230 huesos, más que los humanos (206). Esto les da una gran agilidad."
+},
+{
+icon: "zap",
+titulo: "Saltos increíbles",
+texto: "Pueden saltar hasta 5 veces la longitud de su cuerpo y correr a grandes velocidades. Su columna vertebral está diseñada para la agilidad."
+},
+{
+icon: "eye",
+titulo: "Visión nocturna",
+texto: "Sus ojos tienen una capa llamada tapetum lucidum que les permite ver en la oscuridad. Las pupilas se dilatan para captar más luz."
+},
+{
+icon: "hand",
+titulo: "Bigotes sensoriales",
+texto: "Los bigotes les permiten medir espacios y detectar movimientos cercanos. Son herramientas de navegación esenciales."
+},
+{
+icon: "scissors",
+titulo: "Garras retráctiles",
+texto: "Las garras se protegen cuando no las usan, manteniéndolas afiladas para cazar y trepar. Sus patas son acolchonadas para caminar en silencio."
+},
+{
+icon: "heart",
+titulo: "Tercer párpado",
+texto: "Los gatos tienen un tercer párpado llamado membrana nictitante que protege sus ojos y los mantiene húmedos."
+}
+],
+anatomia: [
+{ titulo: "Esqueleto", texto: "230 huesos, más flexibles que los humanos. Les permite encogerse y estirarse para pasar por espacios estrechos." },
+{ titulo: "Músculos", texto: "Músculos fuertes y flexibles que les permiten saltar 5x su longitud y correr a gran velocidad." },
+{ titulo: "Corazón", texto: "Frecuencia cardíaca alta que les permite esfuerzos cortos e intensos. Pulmones optimizados para el oxígeno." },
+{ titulo: "Ojos", texto: "Pupilas que se dilatan para captar más luz. Ven mejor de noche que de día gracias al tapetum lucidum." }
+],
+cuidados: [
+"Dales alimento nutritivo y agua limpia.",
+"Juega con ellos cada día.",
+"Visita al veterinario con regularidad.",
+"Respeta sus espacios y sus tiempos.",
+"Proporciona juguetes y rascadores.",
+"Mantenlos estimulados mentalmente."
+]
+};
+
+const curiosidadesGenerales = [
+"Los pulpos tienen tres corazones y sangre azul.",
+"Las abejas pueden reconocer rostros humanos.",
+"El corazón de una ballena azul es tan grande que una persona podría nadar dentro de sus arterias.",
+"La Gran Muralla China no es visible desde el espacio a simple vista.",
+"El récord mundial de apnea sin equipo es superior a los 11 minutos.",
+"Los árboles más antiguos del mundo tienen más de 9,500 años y están en Suecia.",
+"Las jirafas tienen el mismo número de vértebras que los humanos, pero mucho más largas.",
+"Los escorpiones pueden sobrevivir hasta un año sin comer.",
+"En Japón existen más mascotas que niños menores de 15 años.",
+"El cuerpo humano tiene suficiente hierro para fabricar un clavo de 7,5 cm.",
+"Las medusas han existido por más de 500 millones de años.",
+"Los flamencos no nacen con plumaje rosa, su color proviene de su dieta.",
+"El tiburón de Groenlandia puede vivir hasta 400 años.",
+"Las estrellas de mar no tienen cerebro ni sangre.",
+"Los gatos tienen un tercer párpado que protege sus ojos.",
+"La velocidad máxima del guepardo puede alcanzar 120 km/h.",
+"El cuerpo humano produce 1 a 1.5 litros de saliva al día.",
+"La Tierra no es una esfera perfecta, es un esferoide achatado por los polos.",
+"La luz tarda 8 minutos y 20 segundos en llegar del Sol a la Tierra.",
+"Los caracoles pueden dormir hasta tres años seguidos.",
+"La miel nunca se echa a perder; se han encontrado tarros comestibles en tumbas egipcias.",
+"Los canguros no pueden caminar hacia atrás.",
+"Las huellas de un koala son casi idénticas a las humanas.",
+"La velocidad del estornudo puede superar los 160 km/h.",
+"Los humanos comparten alrededor del 60% de su ADN con los plátanos.",
+"El ojo de un avestruz es más grande que su cerebro.",
+"Los tiburones pueden detectar una gota de sangre en 25 litros de agua.",
+"Los elefantes son los únicos animales que no pueden saltar.",
+"Los delfines tienen nombres propios y reconocen a cada uno por sonidos específicos.",
+"El tardígrado puede sobrevivir en el espacio exterior sin protección."
+];
+
 window.galleryFoldersData = fotosatardecer;
 window.memeImagesData = memeImages;
 window.spbData = spbData;
+window.sanPetersburgoData = sanPetersburgoData;
+window.gatitosData = gatitosData;
+window.curiosidadesGenerales = curiosidadesGenerales;

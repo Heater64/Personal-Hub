@@ -12,10 +12,13 @@
   <title>Series y Películas</title>
   <meta name="description" content="Tu biblioteca personal de series y películas">
   <meta name="theme-color" content="#0c0b0b">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Dancing+Script:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="../css/main.css">
   <link rel="stylesheet" href="../css/pages/series.css">
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script defer src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
   <link rel="manifest" href="../manifest.json">
 </head>
@@ -217,14 +220,14 @@
     <!-- ===== BOTTOM NAV (móvil) ===== -->
     <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="../js/core/profile.js"></script>
-    <script src="../js/core.js"></script>
-    <script src="../js/core/authGuard.js"></script>
-    <script src="../js/sidebar.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script defer src="../js/firebase-config.js"></script>
+    <script defer src="../js/core/profile.js"></script>
+    <script defer src="../js/core.js"></script>
+    <script defer src="../js/core/authGuard.js"></script>
+    <script defer src="../js/sidebar.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
@@ -234,7 +237,7 @@
         if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
     });
     </script>
-    <script src="../js/pages/series.js"></script>
+    <script defer src="../js/pages/series.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('../sw.js')

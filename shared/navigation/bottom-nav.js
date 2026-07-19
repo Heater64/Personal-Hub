@@ -3,10 +3,10 @@
 
 const BOTTOM_NAV_ITEMS = [
     { key: 'home', label: 'Inicio', icon: 'home', href: '/index.html' },
-    { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: '/features/sentimientos/sentimientos.html' },
-    { key: 'calendario', label: 'Calendario', icon: 'calendar-days', href: '/features/calendario/calendario.html' },
-    { key: 'juegos', label: 'Juegos', icon: 'gamepad-2', href: '/features/juegos/juegos.html' },
-    { key: 'perfil', label: 'Perfil', icon: 'user', href: '/features/profile/profile.html' },
+    { key: 'rincon', label: 'Rincón', icon: 'heart', href: '/pages/rincon.html' },
+    { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: '/pages/sentimientos.html' },
+    { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: '/pages/ositos-world.html' },
+    { key: 'perfil', label: 'Perfil', icon: 'user', href: '#' },
 ];
 
 export function initBottomNav() {

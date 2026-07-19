@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('personalHub.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hub">
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
+    <title>Memes - TuRincónFav</title>
+    <meta name="description" content="Memes y videos favoritos">
+    <meta name="theme-color" content="#0c0b0b">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Dancing+Script:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/pages/rincon.css">
+    <script defer src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
+    <link rel="manifest" href="../manifest.json">
+</head>
+
+<body data-sidebar-root=".." data-sidebar-page="rincon" data-bottom-nav="rincon">
+
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
+        <i data-lucide="menu"></i>
+    </button>
+    <div class="sidebar-overlay" data-sidebar-overlay></div>
+    <aside class="sidebar" data-sidebar></aside>
+
+    <main class="page-shell">
+        <div class="page">
+            <section id="rincon" class="page-section rincon-sub-page">
+
+                <button class="back-btn" onclick="window.location.href='rincon.html'">
+                    <i data-lucide="arrow-left"></i> Volver a TuRincónFav
+                </button>
+
+                <div class="rincon-section">
+                    <div class="rincon-section-header">
+                        <span class="rincon-section-icon"><i data-lucide="smile"></i></span>
+                        <div>
+                            <h3 class="rincon-section-title">Memes</h3>
+                            <p class="rincon-section-subtitle">Primero elige una carpeta, luego los memes</p>
+                        </div>
+                    </div>
+                    <div class="rincon-section-body">
+                        <div id="memesFoldersNav" class="rincon-folder-nav"></div>
+                        <div id="memesGrid"></div>
+                    </div>
+                </div>
+
+                <div id="reelLightbox" class="lightbox-reel" aria-hidden="true">
+                    <div class="lightbox-reel-backdrop"></div>
+                    <div class="lightbox-reel-shell">
+                        <button id="reelCloseBtn" class="reel-ui-btn reel-close-btn" type="button" aria-label="Cerrar visor">
+                            <i data-lucide="x"></i>
+                        </button>
+                        <button id="reelPrevBtn" class="reel-ui-btn reel-nav-btn reel-prev-btn" type="button" aria-label="Anterior">
+                            <i data-lucide="chevron-left"></i>
+                        </button>
+                        <div class="lightbox-reel-stage">
+                            <div id="reelLightboxContent" class="reel-lightbox-content"></div>
+                        </div>
+                        <button id="reelNextBtn" class="reel-ui-btn reel-nav-btn reel-next-btn" type="button" aria-label="Siguiente">
+                            <i data-lucide="chevron-right"></i>
+                        </button>
+                        <div class="reel-meta">
+                            <div id="reelLightboxCaption" class="reel-lightbox-caption"></div>
+                            <div id="reelLightboxCounter" class="reel-lightbox-counter"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div id="lightbox" class="lightbox">
+        <button class="lightbox-close" id="lightboxCloseBtn" type="button">✕</button>
+        <div class="lightbox-content" id="lightboxContent"></div>
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
+    <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
+
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script defer src="../js/firebase-config.js"></script>
+    <script defer src="../js/core/profile.js"></script>
+    <script defer src="../js/core.js"></script>
+    <script defer src="../js/core/authGuard.js"></script>
+    <script defer src="../js/sidebar.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    window.addEventListener('pageshow', function() {
+        if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
+    });
+    </script>
+    <script defer src="../js/data/rincon.js"></script>
+    <script defer src="../js/pages/rincon.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js')
+        .then(function(reg) { console.log('SW registered:', reg.scope); })
+        .catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+
+</body>
+</html>

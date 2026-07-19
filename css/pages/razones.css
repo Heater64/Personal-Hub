@@ -1,319 +1,315 @@
-/* razones.css · UI Umbra + Estilo moderno */
+/* ==========================================
+   RAZONES — Grid de tarjetas con favoritos
+   ========================================== */
+
+html[data-theme="light"] body[data-sidebar-page="razones"] {
+  --raz-bg: #efe3e8;
+  --raz-card-bg: rgba(255,255,255,0.94);
+  --raz-input-bg: rgba(0,0,0,0.04);
+  --raz-border: 1px solid rgba(0,0,0,0.08);
+  background: linear-gradient(180deg, var(--raz-bg) 0%, #e8d9e0 40%, #e4d4db 100%);
+  min-height: 100vh;
+}
+
+/* ==============================
+   HEADER
+   ============================== */
 .razones-header {
-    text-align: center;
-    margin-bottom: 48px;
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 0.6s forwards;
+  text-align: center;
+  margin-bottom: 28px;
+  padding: 28px 24px;
+  background: var(--raz-card-bg, rgba(255,255,255,0.03));
+  border: var(--raz-border, 1px solid rgba(255,255,255,0.06));
+  border-radius: 22px;
+  box-shadow: var(--theme-shadow-sm);
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.6s forwards;
 }
 
 .razones-header h1 {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: clamp(2rem, 5vw, 3.2rem);
-    font-weight: 500;
-    color: var(--umbra-light);
-    margin-bottom: 12px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--theme-text-primary);
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
 }
 
 .razones-header h1::after {
-    content: ' ✧';
-    color: var(--accent-coral);
-    font-size: 0.7em;
+  content: ' ✧';
+  color: var(--theme-accent-primary);
+  font-size: 0.7em;
 }
 
 .razones-header p {
-    color: var(--umbra-ash);
-    font-size: 1rem;
-    font-style: italic;
+  color: var(--theme-text-secondary);
+  font-size: 0.9rem;
+  font-style: italic;
+  margin: 0;
 }
 
-/* Grid de razones */
+/* ==============================
+   GRID
+   ============================== */
 .razones-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px;
-    margin: 40px 0 60px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+  margin: 0 0 100px;
 }
 
-/* Tarjetas de razón */
 .razon-card {
-    position: relative;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 24px;
-    padding: 28px 24px;
-    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-    cursor: pointer;
-    overflow: hidden;
-    backdrop-filter: blur(2px);
+  position: relative;
+  background: var(--raz-card-bg, rgba(255,255,255,0.03));
+  border: var(--raz-border, 1px solid rgba(255,255,255,0.06));
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--theme-shadow-sm);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  overflow: hidden;
 }
 
 .razon-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--accent-border);
-    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.05), rgba(255, 255, 255, 0.02));
-    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-3px);
+  border-color: var(--theme-accent-border);
+  box-shadow: var(--theme-shadow-md), 0 8px 24px rgba(0,0,0,0.08);
 }
 
-/* Número decorativo */
 .razon-number {
-    position: absolute;
-    bottom: 10px;
-    right: 16px;
-    font-size: 4rem;
-    font-weight: 700;
-    font-family: 'Playfair Display', serif;
-    color: rgb(var(--accent-rgb) / 0.08);
-    transition: all 0.3s ease;
-    pointer-events: none;
-    line-height: 1;
+  position: absolute;
+  bottom: 10px;
+  right: 16px;
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--theme-accent-dim, rgba(198,90,58,0.08));
+  pointer-events: none;
+  line-height: 1;
+  transition: all 0.3s ease;
 }
 
 .razon-card:hover .razon-number {
-    color: rgb(var(--accent-rgb) / 0.15);
-    transform: scale(1.05);
+  color: var(--theme-accent-dim, rgba(198,90,58,0.18));
+  transform: scale(1.05);
 }
 
-/* Contenido */
 .razon-content {
-    position: relative;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--umbra-light);
-    margin-bottom: 20px;
-    padding-right: 20px;
-    font-weight: 400;
+  position: relative;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--theme-text-primary);
+  margin-bottom: 20px;
+  padding-right: 20px;
 }
 
-/* Footer con botón favorito */
 .razon-footer {
-    display: flex;
-    justify-content: flex-end;
-    position: relative;
+  display: flex;
+  justify-content: flex-end;
+  position: relative;
 }
 
 .fav-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 40px;
-    padding: 6px 14px;
-    font-size: 0.75rem;
-    color: var(--umbra-ash);
-    cursor: pointer;
-    transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: var(--raz-border, 1px solid rgba(255,255,255,0.08));
+  border-radius: 20px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .fav-btn:hover {
-    background: rgb(var(--accent-rgb) / 0.1);
-    border-color: var(--accent-coral);
-    color: var(--accent-coral);
+  background: var(--theme-accent-dim);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
 }
 
 .fav-btn.active {
-    color: var(--accent-coral);
-    border-color: var(--accent-coral);
-    background: rgb(var(--accent-rgb) / 0.15);
+  color: #fff;
+  border-color: var(--theme-accent-primary);
+  background: var(--theme-accent-primary);
 }
 
-.fav-btn i {
-    width: 16px;
-    height: 16px;
-    transition: fill 0.2s;
+.fav-btn i, .fav-btn svg {
+  width: 15px;
+  height: 15px;
+  transition: fill 0.2s;
 }
 
-/* Botón aleatorio flotante */
+/* ==============================
+   RANDOM BUTTON
+   ============================== */
 .random-trigger {
-    position: fixed;
-    bottom: 32px;
-    right: 32px;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-coral), #b34a2e);
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 20px rgb(var(--accent-rgb) / 0.4);
-    transition: all 0.3s ease;
-    z-index: 100;
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--theme-accent-primary, #c65a3a);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(198,90,58,0.35);
+  transition: all 0.2s ease;
+  z-index: 100;
 }
 
 .random-trigger:hover {
-    transform: scale(1.08) rotate(15deg);
-    box-shadow: 0 12px 28px rgb(var(--accent-rgb) / 0.5);
+  transform: scale(1.06);
+  box-shadow: 0 12px 32px rgba(198,90,58,0.45);
 }
 
-.random-trigger i {
-    width: 26px;
-    height: 26px;
-    color: white;
+.random-trigger i, .random-trigger svg {
+  width: 24px;
+  height: 24px;
+  color: #fff;
 }
 
-.random-tooltip {
-    position: absolute;
-    right: 70px;
-    background: rgba(0, 0, 0, 0.8);
-    color: var(--umbra-light);
-    padding: 6px 12px;
-    border-radius: 40px;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.random-trigger:hover .random-tooltip {
-    opacity: 1;
-}
-
-/* Modal mejorado */
+/* ==============================
+   MODAL
+   ============================== */
 .modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 8, 9, 0.85);
-    backdrop-filter: blur(12px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
+  position: fixed;
+  inset: 0;
+  background: rgba(8,8,9,0.88);
+  backdrop-filter: blur(14px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
 
 .modal-content {
-    position: relative;
-    background: linear-gradient(180deg, rgba(25, 25, 28, 0.98), rgba(15, 15, 18, 0.98));
-    border: 1px solid var(--accent-border);
-    border-radius: 32px;
-    padding: 40px 48px;
-    max-width: 500px;
-    width: 90%;
-    text-align: center;
-    animation: modalPop 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+  position: relative;
+  background: rgba(22,22,26,0.97);
+  border: var(--raz-border, 1px solid rgba(255,255,255,0.06));
+  border-radius: 24px;
+  padding: 40px 44px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: var(--theme-shadow-lg);
+  animation: modalPop 0.35s cubic-bezier(0.34,1.2,0.64,1);
 }
 
 .modal-icon {
-    width: 56px;
-    height: 56px;
-    background: var(--accent-dim);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
+  width: 52px;
+  height: 52px;
+  background: var(--theme-accent-dim);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  color: var(--theme-accent-primary);
 }
 
-.modal-icon i {
-    width: 28px;
-    height: 28px;
-    color: var(--accent-coral);
-}
+.modal-icon i, .modal-icon svg { width: 26px; height: 26px; }
 
 .modal-content h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
-    margin-bottom: 20px;
-    color: var(--umbra-light);
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: var(--theme-text-primary);
 }
 
 .modal-text {
-    font-size: 1.2rem;
-    line-height: 1.6;
-    color: var(--umbra-light);
-    margin-bottom: 24px;
-}
-
-.modal-decoration {
-    font-size: 1.2rem;
-    color: var(--accent-coral);
-    opacity: 0.6;
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--theme-text-primary);
+  margin: 0 0 20px;
 }
 
 .close-modal {
-    position: absolute;
-    top: 16px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.05);
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--umbra-ash);
-    transition: all 0.2s;
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: var(--raz-input-bg, rgba(255,255,255,0.04));
+  border: var(--raz-border, 1px solid rgba(255,255,255,0.06));
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--theme-text-muted);
+  transition: all 0.2s;
 }
 
 .close-modal:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--umbra-light);
+  background: var(--theme-accent-dim);
+  color: var(--theme-accent-primary);
 }
 
-.close-modal i {
-    width: 16px;
-    height: 16px;
-}
-
+/* ==============================
+   ANIMATIONS
+   ============================== */
 @keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes modalPop {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-/* Responsive */
+/* ==============================
+   TEXTO GRANDE
+   ============================== */
+html[data-large-text="true"] body[data-sidebar-page="razones"] .razones-header h1 { font-size: 1.75rem; }
+html[data-large-text="true"] body[data-sidebar-page="razones"] .razones-header p { font-size: 1.05rem; }
+html[data-large-text="true"] body[data-sidebar-page="razones"] .razon-content { font-size: 1.1rem; }
+html[data-large-text="true"] body[data-sidebar-page="razones"] .fav-btn { font-size: 0.85rem; }
+html[data-large-text="true"] body[data-sidebar-page="razones"] .modal-text { font-size: 1.3rem; }
+
+/* ==============================
+   RESPONSIVE
+   ============================== */
 @media (max-width: 640px) {
-    .razones-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-    
-    .razon-card {
-        padding: 20px 18px;
-    }
-    
-    .razon-content {
-        font-size: 0.9rem;
-    }
-    
-    .random-trigger {
-        bottom: 20px;
-        right: 20px;
-        width: 48px;
-        height: 48px;
-    }
-    
-    .modal-content {
-        padding: 32px 24px;
-    }
-    
-    .modal-text {
-        font-size: 1rem;
-    }
-    
-    .random-tooltip {
-        display: none;
-    }
+  .razones-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .razon-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+
+  .razon-content {
+    font-size: 0.88rem;
+  }
+
+  .random-trigger {
+    bottom: 20px;
+    right: 20px;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+  }
+
+  .modal-content {
+    padding: 28px 22px;
+    border-radius: 20px;
+  }
+
+  .modal-text { font-size: 1rem; }
+
+  .razones-header {
+    padding: 22px 16px;
+    border-radius: 18px;
+  }
+
+  .razones-header h1 { font-size: 1.25rem; }
 }

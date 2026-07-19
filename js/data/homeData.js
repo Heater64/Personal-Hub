@@ -7,6 +7,52 @@ export const HOME_DATA = {
     // ==========================================
     news: [
         // ─── NOTICIAS NUEVAS ───
+        
+        {
+            id: 16,
+            date: "19 de julio de 2026",
+            title: "Sidebar rediseñada — tema granate",
+            description: "Nuevo diseño de la barra lateral con fondo granate oscuro en tema claro para mejor contraste. Más bonita y elegante.",
+        },
+        {
+            id: 15,
+            date: "19 de julio de 2026",
+            title: "Hub de Sentimientos rediseñado",
+            description: "La página principal de sentimientos ahora tiene un diseño más limpio y bonito, con mejor responsive en móvil.",
+        },
+        {
+            id: 14,
+            date: "19 de julio de 2026",
+            title: "Sección de Canciones restaurada",
+            description: "Se ha corregido la página de canciones que estaba rota. ¡Ya puedes disfrutar de tu música favorita!",
+        },
+        {
+            id: 13,
+            date: "19 de julio de 2026",
+            title: "Mejoras en la PWA y notificaciones",
+            description: "El sistema de actualizaciones y novedades ahora funciona mejor. Banners más bonitos con el nuevo tema.",
+        },
+        {
+            id: 12,
+            date: "19 de julio de 2026",
+            title: "Login mejorado",
+            description: "Ahora puedes ver la contraseña al escribir y marcar 'Recuérdame' para no tener que poner el correo cada vez.",
+        },
+        {
+            id: 11,
+            date: "19 de julio de 2026",
+            title: "Mal Día rediseñado",
+            description: "La sección de emergencia emocional tiene un diseño nuevo más acogedor y bonito para esos días difíciles.",
+        },
+
+        // ─── SEPARADOR ───
+        {
+            type: "separator",
+            label: "Noticias anteriores"
+        },
+
+        // ─── NOTICIAS ANTIGUAS ───
+
         {
             id: 10,
             date: "13 de julio de 2026",
@@ -25,15 +71,6 @@ export const HOME_DATA = {
             title: "Nueva sección 'JUEGOS' añadida",
             description: "Aquí encontrarás todos los juegos agrupados en cada sección cuando los desbloquees en el calendario",
         },
-
-        // ─── SEPARADOR ───
-        {
-            type: "separator",
-            label: "Noticias anteriores"
-        },
-
-        // ─── NOTICIAS ANTIGUAS ───
-        
         {
             id: 7,
             date: "9 de julio de 2026",
@@ -61,25 +98,25 @@ export const HOME_DATA = {
         {
             id: 3,
             date: "5 de julio de 2026",
-            title: "🎬 Nuevo video en la sección Memes",
+            title: "Nuevo video en la sección Memes",
             description: "Se ha añadido un video especial en la carpeta 'Te amo👑' dentro de la sección de Memes. ¡No te lo pierdas! 🤍",
         },
         {
             id: 2,
             date: "5 de julio de 2026",
-            title: "📅 Calendario de experiencias activado",
+            title: "Calendario de experiencias activado",
             description: "El calendario ya está disponible. 31 días con sorpresas, juegos y momentos especiales.",
         },
         {
             id: 1,
             date: "5 de julio de 2026",
-            title: "🎵 Música para ti",
+            title: "Música para ti",
             description: "Se ha añadido una canción en la sección de música. ¡Escúchala! 🎧",
         },
         {
             id: 0,
             date: "5 de julio de 2026",
-            title: "☀️ Mal día",
+            title: "Mal día",
             description: "Se ha añadido una foto nueva en la sección 'Mal día' para alegrarte el día. 🌸",
         },
 

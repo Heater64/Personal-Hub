@@ -84,12 +84,11 @@
             btnAdmin: document.getElementById('btnAdmin'),
             ultimaSync: document.getElementById('ultimaSync'),
             themeModeOptions: document.getElementById('themeModeOptions'),
-            toggleAltoContraste: document.getElementById('toggleAltoContraste'),
             toggleTextoGrande: document.getElementById('toggleTextoGrande'),
-            toggleReducirMovimiento: document.getElementById('toggleReducirMovimiento'),
             appVersion: document.getElementById('appVersion'),
             storageUsed: document.getElementById('storageUsed'),
-            clearCacheBtn: document.getElementById('clearCacheBtn')
+            clearCacheBtn: document.getElementById('clearCacheBtn'),
+            btnLogout: document.getElementById('btnLogout')
         };
     }
 
@@ -155,10 +154,20 @@
             });
         }
 
+        // Logout
+        if (elements.btnLogout) {
+            elements.btnLogout.addEventListener('click', function () {
+                var goToLogin = function () { window.location.href = '../../login.html'; };
+                if (typeof logoutUser === 'function') {
+                    logoutUser().then(goToLogin).catch(goToLogin);
+                } else if (window.auth && window.auth.signOut) {
+                    window.auth.signOut().then(goToLogin).catch(goToLogin);
+                }
+            });
+        }
+
         // Accesibilidad (checkboxes)
-        bindToggle(elements.toggleAltoContraste, 'highContrast');
         bindToggle(elements.toggleTextoGrande, 'largeText');
-        bindToggle(elements.toggleReducirMovimiento, 'reducedMotion');
     }
 
     function bindToggle(input, key) {
@@ -195,9 +204,10 @@
         var initial = (nombre || '?').charAt(0).toUpperCase();
         if (elements.avatarLetra) elements.avatarLetra.textContent = initial;
 
-        if (user.photoURL || user.photo) {
+        var photoUrl = user.photoURL || user.photo || (user.profile && user.profile.photoURL);
+        if (photoUrl) {
             if (elements.avatarImg) {
-                elements.avatarImg.src = user.photoURL || user.photo;
+                elements.avatarImg.src = photoUrl;
                 elements.avatarImg.style.display = 'block';
             }
             if (elements.avatarLetra) elements.avatarLetra.style.display = 'none';
@@ -255,9 +265,7 @@
     function renderAccessibility() {
         if (!window.ThemeService || !window.ThemeService.getThemeState) return;
         var s = window.ThemeService.getThemeState();
-        if (elements.toggleAltoContraste) elements.toggleAltoContraste.checked = !!s.highContrast;
         if (elements.toggleTextoGrande) elements.toggleTextoGrande.checked = !!s.largeText;
-        if (elements.toggleReducirMovimiento) elements.toggleReducirMovimiento.checked = !!s.reducedMotion;
     }
 
     function updateThemeUI(themeState) {
@@ -331,8 +339,18 @@
             if (!uid && window.AuthService && window.AuthService.getCurrentUser) uid = window.AuthService.getCurrentUser().uid;
             if (uid && window.ProfileSystem && window.ProfileSystem.actualizarFoto) {
                 window.ProfileSystem.actualizarFoto(uid, base64).then(function (ok) {
+                    // Sincronizar sesión para que persista al recargar
+                    if (ok && window.SessionManager && window.SessionManager.updateSession) {
+                        window.SessionManager.updateSession({ photo: base64 });
+                    }
                     if (window.showToast) window.showToast(ok ? 'Foto de perfil actualizada.' : 'No se pudo guardar la foto.', !ok);
                 });
+            } else {
+                // Sin backend: guardar local
+                if (window.SessionManager && window.SessionManager.updateSession) {
+                    window.SessionManager.updateSession({ photo: base64 });
+                }
+                if (window.showToast) window.showToast('Foto actualizada (local)');
             }
         });
     }
@@ -340,30 +358,99 @@
     function editarNombre() {
         var user = state.user;
         if (!user) return;
+        if (document.querySelector('.perfil-nombre-input')) return; // ya en edicion
         var actual = user.name || user.username || '';
-        var nuevo = window.prompt('Editar nombre', actual);
-        if (nuevo === null) return;
-        nuevo = nuevo.trim();
-        if (!nuevo || nuevo === actual) return;
-        var uid = (typeof getCurrentUser === 'function' && getCurrentUser()) ? getCurrentUser().uid : null;
-        if (!uid && window.AuthService && window.AuthService.getCurrentUser) uid = window.AuthService.getCurrentUser().uid;
-        if (uid && window.ProfileSystem && window.ProfileSystem.actualizarNombre) {
-            window.ProfileSystem.actualizarNombre(uid, nuevo).then(function (ok) {
-                if (ok) {
-                    if (elements.name) elements.name.textContent = nuevo;
-                    user.name = nuevo;
-                    if (window.showToast) window.showToast('Nombre actualizado.');
-                } else if (window.showToast) {
-                    window.showToast('No se pudo guardar el nombre.', true);
+
+        // Guardar referencia al h3 y ocultarlo
+        var h3 = elements.name;
+        var wrapper = h3.parentNode;
+        var editBtn = elements.btnEditarNombre;
+
+        // Crear input
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.value = actual;
+        input.className = 'perfil-nombre-input';
+        input.setAttribute('aria-label', 'Editar nombre');
+
+        // Crear botones
+        var actions = document.createElement('span');
+        actions.className = 'perfil-nombre-actions';
+        actions.innerHTML = '<button type="button" class="perfil-nombre-save" aria-label="Guardar"><i data-lucide="check"></i></button><button type="button" class="perfil-nombre-cancel" aria-label="Cancelar"><i data-lucide="x"></i></button>';
+
+        // Reemplazar
+        h3.style.display = 'none';
+        editBtn.style.display = 'none';
+        wrapper.appendChild(input);
+        wrapper.appendChild(actions);
+        input.focus();
+        input.select();
+        if (window.lucide) window.lucide.createIcons({ root: actions });
+
+        var guardar = function () {
+            var nuevo = input.value.trim();
+            if (!nuevo || nuevo === actual) { cancelar(); return; }
+
+            // Feedback visual
+            var saveBtn = actions.querySelector('.perfil-nombre-save');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i data-lucide="loader"></i>';
+            if (window.lucide) window.lucide.createIcons({ root: saveBtn });
+
+            var uid = (typeof getCurrentUser === 'function' && getCurrentUser()) ? getCurrentUser().uid : null;
+            if (!uid && window.AuthService && window.AuthService.getCurrentUser) uid = window.AuthService.getCurrentUser().uid;
+            if (uid && window.ProfileSystem && window.ProfileSystem.actualizarNombre) {
+                window.ProfileSystem.actualizarNombre(uid, nuevo).then(function (ok) {
+                    if (ok) {
+                        h3.textContent = nuevo;
+                        user.name = nuevo;
+                        if (elements.cuentaUsername) elements.cuentaUsername.textContent = nuevo;
+                        // Sincronizar sesión para que persista al recargar
+                        if (window.SessionManager && window.SessionManager.updateSession) {
+                            window.SessionManager.updateSession({ name: nuevo });
+                        }
+                        if (window.showToast) window.showToast('Nombre actualizado');
+                    } else if (window.showToast) {
+                        window.showToast('No se pudo guardar', true);
+                    }
+                    cancelar();
+                });
+            } else {
+                // Sin backend: guardar local
+                h3.textContent = nuevo;
+                user.name = nuevo;
+                // Sincronizar sesión
+                if (window.SessionManager && window.SessionManager.updateSession) {
+                    window.SessionManager.updateSession({ name: nuevo });
                 }
-            });
-        }
+                if (window.showToast) window.showToast('Nombre actualizado (local)');
+                cancelar();
+            }
+        };
+
+        var cancelar = function () {
+            input.remove();
+            actions.remove();
+            h3.style.display = '';
+            editBtn.style.display = '';
+        };
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); guardar(); }
+            if (e.key === 'Escape') { e.preventDefault(); cancelar(); }
+        });
+
+        actions.querySelector('.perfil-nombre-save').addEventListener('click', guardar);
+        actions.querySelector('.perfil-nombre-cancel').addEventListener('click', cancelar);
     }
 
-    // Esperar a que el bridge (módulo) exponga ThemeService
-    if (window.ThemeService) {
-        init();
-    } else {
-        window.addEventListener('profile:bridge-ready', init);
+    // Iniciar siempre. Si ThemeService llega tarde, se actualiza después.
+    init();
+    if (!window.ThemeService) {
+        window.addEventListener('profile:bridge-ready', function () {
+            renderThemeMode();
+            renderAccessibility();
+            if (window.ThemeService) window.ThemeService.subscribe(updateThemeUI);
+        });
     }
 })();

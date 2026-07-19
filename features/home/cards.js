@@ -14,7 +14,7 @@ export const HUB_CARDS = [
         id: 'rincon',
         title: 'TuRincónFav',
         description: 'Galería, gatos, memes y tu rincón especial.',
-        href: '/features/rincon/rincon.html',
+        href: '/pages/rincon.html',
         icon: 'heart'
     },
     {

@@ -1,45 +1,78 @@
-.juegos-page {
-    padding-top: 18px;
+/* ==========================================
+   JUEGOS — Grid de minijuegos
+   Estética perfil: cards limpias, sombras
+   suaves, tipografía Inter.
+   ========================================== */
+
+html[data-theme="light"] body[data-sidebar-page="juegos"] {
+  --jue-bg: #efe3e8;
+  --jue-card-bg: rgba(255,255,255,0.94);
+  --jue-input-bg: rgba(0,0,0,0.04);
+  --jue-border: 1px solid rgba(0,0,0,0.08);
+  background: linear-gradient(180deg, var(--jue-bg) 0%, #e8d9e0 40%, #e4d4db 100%);
+  min-height: 100vh;
 }
 
+.juegos-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 18px 0 100px;
+  width: 100%;
+}
+
+/* ==============================
+   INTRO
+   ============================== */
 .juegos-intro {
-    text-align: center;
-    margin-bottom: 32px;
+  text-align: center;
+  margin-bottom: 28px;
+  padding: 24px;
+  background: var(--jue-card-bg, rgba(255,255,255,0.03));
+  border: var(--jue-border, 1px solid rgba(255,255,255,0.06));
+  border-radius: 22px;
+  box-shadow: var(--theme-shadow-sm);
 }
 
 .juegos-intro h2 {
-    font-size: clamp(2rem, 5vw, 3.2rem);
-    margin-bottom: 8px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--theme-text-primary);
+  letter-spacing: -0.02em;
 }
 
 .juegos-intro p {
-    color: var(--umbra-ash);
-    font-size: 0.9rem;
-    max-width: 480px;
-    margin: 0 auto;
+  color: var(--theme-text-secondary);
+  font-size: 0.88rem;
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.5;
 }
 
+/* ==============================
+   GRID
+   ============================== */
 .juegos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
 }
 
 .juego-card {
-    position: relative;
-    border-radius: var(--radius-xl);
-    overflow: hidden;
-    cursor: pointer;
-    aspect-ratio: 4/3;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
-    color: inherit;
-    opacity: 0;
-    animation: juegoCardIn 0.5s ease forwards;
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--jue-card-bg, rgba(255,255,255,0.03));
+  border: var(--jue-border, 1px solid rgba(255,255,255,0.06));
+  box-shadow: var(--theme-shadow-sm);
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0;
+  animation: juegoCardIn 0.5s ease forwards;
 }
 
 .juego-card:nth-child(1) { animation-delay: 0.03s; }
@@ -55,122 +88,159 @@
 .juego-card:nth-child(11) { animation-delay: 0.33s; }
 
 @keyframes juegoCardIn {
-    from { opacity: 0; transform: translateY(16px) scale(0.97); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .juego-card:hover {
-    transform: translateY(-6px);
-    border-color: rgb(var(--accent-rgb) / 0.35);
-    box-shadow: 0 24px 56px rgba(0, 0, 0, 0.32),
-                0 0 0 1px rgb(var(--accent-rgb) / 0.12);
+  transform: translateY(-4px);
+  border-color: var(--theme-accent-border);
+  box-shadow: var(--theme-shadow-md), 0 8px 24px rgba(0,0,0,0.1);
 }
 
 .juego-card:active {
-    transform: translateY(-2px) scale(0.995);
+  transform: translateY(-1px) scale(0.995);
 }
 
+/* ==============================
+   CARD COVER
+   ============================== */
 .juego-card__cover {
-    flex: 1;
-    background-size: cover;
-    background-position: center;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 140px;
+  flex: 1;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  aspect-ratio: 4/3;
 }
 
 .juego-card__cover-placeholder {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 3rem;
-    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.15), rgba(255, 179, 71, 0.08));
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  background: var(--theme-accent-dim, rgba(198,90,58,0.08));
 }
 
 .juego-card__cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    position: absolute;
-    inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
 }
 
+/* ==============================
+   CARD BODY
+   ============================== */
 .juego-card__body {
-    padding: 14px 18px;
-    background: rgba(15, 15, 16, 0.92);
-    backdrop-filter: blur(8px);
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 14px 18px;
+  background: var(--jue-card-bg, rgba(20,20,24,0.92));
+  backdrop-filter: blur(8px);
+  border-top: var(--jue-border, 1px solid rgba(255,255,255,0.04));
 }
 
 .juego-card__title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    font-weight: 500;
-    margin: 0 0 2px;
-    color: var(--umbra-light);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 3px;
+  color: var(--theme-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .juego-card__desc {
-    font-size: 0.72rem;
-    color: var(--umbra-ash);
-    margin: 0;
-    line-height: 1.4;
+  font-size: 0.72rem;
+  color: var(--theme-text-muted);
+  margin: 0;
+  line-height: 1.4;
 }
 
+/* ==============================
+   DAY BADGE
+   ============================== */
 .juego-card__day {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    background: rgb(var(--accent-rgb) / 0.15);
-    backdrop-filter: blur(4px);
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.6rem;
-    color: var(--accent-coral);
-    z-index: 2;
-    border: 1px solid rgb(var(--accent-rgb) / 0.25);
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: var(--jue-card-bg, rgba(0,0,0,0.4));
+  backdrop-filter: blur(6px);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.62rem;
+  color: var(--theme-accent-primary);
+  z-index: 2;
+  border: 1px solid var(--theme-accent-border, rgba(198,90,58,0.25));
+  font-weight: 600;
 }
 
+/* ==============================
+   EMPTY
+   ============================== */
 .juegos-empty {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--umbra-ash);
-    grid-column: 1 / -1;
-    font-size: 0.95rem;
-    line-height: 1.6;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--theme-text-muted);
+  grid-column: 1 / -1;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 .juegos-empty a {
-    color: var(--accent-coral);
-    text-decoration: underline;
-    text-underline-offset: 3px;
+  color: var(--theme-accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
+/* ==============================
+   TEXTO GRANDE
+   ============================== */
+html[data-large-text="true"] body[data-sidebar-page="juegos"] .juegos-intro h2 { font-size: 1.85rem; }
+html[data-large-text="true"] body[data-sidebar-page="juegos"] .juegos-intro p { font-size: 1rem; }
+html[data-large-text="true"] body[data-sidebar-page="juegos"] .juego-card__title { font-size: 1.15rem; }
+html[data-large-text="true"] body[data-sidebar-page="juegos"] .juego-card__desc { font-size: 0.85rem; }
+
+/* ==============================
+   RESPONSIVE
+   ============================== */
 @media (max-width: 640px) {
-    .juegos-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 14px;
-    }
+  .juegos-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
 
-    .juego-card__body {
-        padding: 10px 14px;
-    }
+  .juego-card {
+    border-radius: 16px;
+  }
 
-    .juego-card__title {
-        font-size: 0.85rem;
-    }
+  .juego-card__body {
+    padding: 10px 14px;
+  }
 
-    .juego-card__desc {
-        font-size: 0.65rem;
-    }
+  .juego-card__title {
+    font-size: 0.85rem;
+  }
+
+  .juego-card__desc {
+    font-size: 0.65rem;
+  }
+
+  .juegos-intro {
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+
+  .juegos-intro h2 {
+    font-size: 1.3rem;
+  }
 }
 
 @media (max-width: 400px) {
-    .juegos-grid {
-        grid-template-columns: 1fr;
-    }
+  .juegos-grid {
+    grid-template-columns: 1fr;
+  }
 }

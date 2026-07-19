@@ -132,9 +132,9 @@ class ThemeService {
         var hc = this.accessibility.highContrast || false;
         var lg = this.accessibility.largeText || false;
         var rm = this.accessibility.reducedMotion || false;
-        document.documentElement.setAttribute('data-hc', hc ? 'true' : 'false');
-        document.documentElement.setAttribute('data-lg', lg ? 'true' : 'false');
-        document.documentElement.setAttribute('data-rm', rm ? 'true' : 'false');
+        document.documentElement.setAttribute('data-high-contrast', hc ? 'true' : 'false');
+        document.documentElement.setAttribute('data-large-text', lg ? 'true' : 'false');
+        document.documentElement.setAttribute('data-reduced-motion', rm ? 'true' : 'false');
     }
 
     getCurrentTheme() {

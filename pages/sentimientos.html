@@ -11,161 +11,15 @@
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
     <title>Sentimientos</title>
     <meta name="description" content="Razones, cartas, calendario y emergencia emocional">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Dancing+Script:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap">
     <link rel="stylesheet" href="../css/main.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="../css/pages/sentimientos.css">
+    <script defer src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
-    <style>
-        .sentiment-hub {
-            max-width: 1000px;
-            margin: 20px auto 40px;
-            padding: 0 20px;
-        }
-        
-        .sentiment-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        
-        .sentiment-header h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 2.5rem;
-            font-weight: 500;
-            color: var(--umbra-light);
-            margin-bottom: 12px;
-        }
-        
-        .sentiment-header p {
-            color: var(--umbra-ash);
-            font-size: 0.95rem;
-        }
-        
-        .cards-sentiment {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
-        
-        .card-sentiment {
-            position: relative;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 24px;
-            padding: 28px 24px;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            display: block;
-        }
-        
-        .card-sentiment:hover {
-            transform: translateY(-3px);
-            border-color: rgba(198, 90, 58, 0.3);
-            background: rgba(198, 90, 58, 0.03);
-        }
-        
-        .card-icon {
-            width: 48px;
-            height: 48px;
-            background: rgba(198, 90, 58, 0.1);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-        
-        .card-icon i {
-            width: 24px;
-            height: 24px;
-            color: var(--accent-coral);
-        }
-        
-        .card-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.4rem;
-            font-weight: 500;
-            color: var(--umbra-light);
-            margin-bottom: 8px;
-        }
-        
-        .card-description {
-            color: var(--umbra-ash);
-            font-size: 0.85rem;
-            line-height: 1.5;
-            margin-bottom: 16px;
-        }
-        
-        .card-meta {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.7rem;
-            color: var(--umbra-ash);
-        }
-        
-        .card-meta i {
-            width: 14px;
-            height: 14px;
-        }
-        
-        .card-meta .meta-divider {
-            width: 3px;
-            height: 3px;
-            background: var(--umbra-ash);
-            border-radius: 50%;
-            opacity: 0.4;
-        }
-        
-        .card-badge {
-            position: absolute;
-            top: 16px;
-            right: 20px;
-            background: rgba(198, 90, 58, 0.12);
-            border-radius: 20px;
-            padding: 4px 10px;
-            font-size: 0.6rem;
-            color: var(--accent-coral);
-            letter-spacing: 0.05em;
-        }
-        
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 40px;
-            padding: 8px 20px;
-            color: var(--umbra-light);
-            cursor: pointer;
-            margin-bottom: 20px;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-        
-        .back-btn:hover {
-            border-color: var(--accent-coral);
-            color: var(--accent-coral);
-        }
-        
-        @media (max-width: 700px) {
-            .cards-sentiment {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-            
-            .sentiment-header h1 {
-                font-size: 2rem;
-            }
-            
-            .card-sentiment {
-                padding: 22px 20px;
-            }
-            
-            .card-title {
-                font-size: 1.3rem;
-            }
-        }
-    </style>
+
+    <script defer src="../js/pages/sentimientos.js"></script>
     <link rel="manifest" href="../manifest.json">
 </head>
 
@@ -259,14 +113,14 @@
     <!-- ===== BOTTOM NAV (móvil) ===== -->
     <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="../js/core/profile.js"></script>
-    <script src="../js/core.js"></script>
-    <script src="../js/core/authGuard.js"></script>
-    <script src="../js/sidebar.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script defer src="../js/firebase-config.js"></script>
+    <script defer src="../js/core/profile.js"></script>
+    <script defer src="../js/core.js"></script>
+    <script defer src="../js/core/authGuard.js"></script>
+    <script defer src="../js/sidebar.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
@@ -276,7 +130,6 @@
         if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
     });
     </script>
-    <script src="../js/pages/sentimientos.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('../sw.js')

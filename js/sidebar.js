@@ -6,24 +6,15 @@
 
     const NAV_ITEMS = [
         { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
-        { key: 'canciones', label: 'Canciones', icon: 'music', href: 'pages/canciones.html' },
-        { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: 'features/rincon/rincon.html' },
-        { key: 'thoseeyes', label: 'Those Eyes', icon: 'eye', href: 'pages/thoseeyes.html' },
-        { key: 'series', label: 'Series', icon: 'tv', href: 'pages/series.html' },
+        { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: 'pages/rincon.html' },
         { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
-        { key: 'juegos', label: 'Juegos', icon: 'gamepad-2', href: 'pages/juegos.html' },
         { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: 'pages/ositos-world.html' },
-        { key: '4eso', label: 'Secret', icon: 'book-open', href: '' },
     ];
 
-    const PROFILE_ITEMS = [
-        { key: 'calendario', label: 'Calendario', icon: 'calendar-days', href: 'pages/calendario.html' },
-        { key: 'razones', label: 'Razones', icon: 'sparkles', href: 'pages/razones.html' },
-        { key: 'openwhen', label: 'Open When', icon: 'mail', href: 'pages/openwhen.html' },
-        { key: 'maldia', label: 'Mal Día', icon: 'sun-medium', href: 'pages/maldia.html' },
-        { key: 'admin', label: 'Admin', icon: 'settings', href: 'pages/admin.html', isAdmin: true },
-        { key: 'logout', label: 'Cerrar sesión', icon: 'log-out', href: '#', isLogout: true },
-    ];
+    // El perfil ahora es una sección completa (features/profile/profile.html),
+    // accesible desde la fila de usuario del sidebar y el botón del bottom-nav.
+    // Los items de navegación rápida (calendario, razones, openwhen, maldia)
+    // están dentro de la propia página de perfil.
 
     function getDB() {
         if (window.db) return window.db;
@@ -238,7 +229,6 @@
             <nav class="sidebar__nav" aria-label="Navegación principal">
                 ${navHtml}
                 ${hiddenNavHtml}
-                ${adminNavHtml}
             </nav>
             <div class="sidebar__footer">
                 ${user ? `
@@ -273,13 +263,12 @@
             });
         }
 
-        // Abrir perfil al pulsar la fila de usuario (accesible en PC y móvil)
+        // Abrir perfil al pulsar la fila de usuario → navega a la seccion
         const userRow = document.getElementById('sidebarUserRow');
         if (userRow) {
             const irPerfil = function (e) {
                 if (e.target.closest('#sidebarLogoutBtn')) return;
-                const href = buildHref(root, 'features/profile/profile.html');
-                window.location.href = href;
+                window.location.href = buildHref(root, 'features/profile/profile.html');
             };
             userRow.addEventListener('click', irPerfil);
             userRow.addEventListener('keydown', function (e) {
@@ -336,10 +325,10 @@
         // Items de la barra inferior
         const bottomItems = [
             { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
-            { key: 'canciones', label: 'Música', icon: 'music', href: 'pages/canciones.html' },
-            { key: 'rincon', label: 'Rincón', icon: 'heart', href: 'features/rincon/rincon.html' },
+            { key: 'rincon', label: 'Rincón', icon: 'heart', href: 'pages/rincon.html' },
             { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
-            { key: 'perfil', label: isLoggedIn ? 'Perfil' : 'Login', icon: isLoggedIn ? 'user' : 'log-in', href: isLoggedIn ? '#' : 'login.html', isProfile: true },
+            { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: 'pages/ositos-world.html' },
+            { key: 'perfil', label: isLoggedIn ? 'Perfil' : 'Login', icon: isLoggedIn ? 'user' : 'log-in', href: isLoggedIn ? 'features/profile/profile.html' : 'login.html', isProfile: true },
         ];
 
         const visibleItems = bottomItems.filter(item => {
@@ -394,130 +383,8 @@
             profileBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 if (!isLoggedIn) { window.location.href = buildHref(root, 'login.html'); return; }
-                // Navegar a la vista de perfil completa (estilo FormsBiblicos)
                 window.location.href = buildHref(root, 'features/profile/profile.html');
             });
-        }
-    }
-
-    // ==========================================
-    // MODAL DE PERFIL
-    // ==========================================
-
-    function openProfileModal() {
-        const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-        if (!user) {
-            window.location.href = 'login.html';
-            return;
-        }
-
-        // Eliminar modal existente si lo hay
-        const existingModal = document.getElementById('profileModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-
-        const modal = document.createElement('div');
-        modal.id = 'profileModal';
-        modal.className = 'profile-modal-overlay';
-        modal.innerHTML = `
-            <div class="profile-modal">
-                <div class="profile-modal-header">
-                    <div class="profile-user">
-                        <div class="profile-avatar" id="profileAvatar">${getUserInitial()}</div>
-                        <div>
-                            <div class="profile-name" id="profileName">${user.displayName || user.email || 'Usuario'}</div>
-                            <div class="profile-email" id="profileEmail">${user.email || ''}</div>
-                        </div>
-                    </div>
-                    <button class="profile-modal-close" id="profileModalClose">✕</button>
-                </div>
-                <div class="profile-modal-body" id="profileModalBody"></div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-
-        const root = document.body.dataset.sidebarRoot || '.';
-        const currentPage = document.body.dataset.sidebarPage || 'home';
-        const isAdmin = getIsAdmin();
-
-        let profileItems = PROFILE_ITEMS.filter(item => {
-            if (item.isAdmin && !isAdmin) return false;
-            return true;
-        });
-
-        const body = document.getElementById('profileModalBody');
-        body.innerHTML = profileItems.map(item => {
-            const href = item.isLogout ? '#' : buildHref(root, item.href);
-            const isActive = item.key === currentPage;
-            const classes = [
-                'profile-item',
-                item.isLogout ? 'danger' : '',
-                isActive ? 'active' : ''
-            ].filter(Boolean).join(' ');
-
-            const badge = item.isAdmin ? '<span class="item-badge">Admin</span>' : '';
-
-            if (item.isLogout) {
-                return `
-                    <button class="${classes}" data-action="logout">
-                        <i data-lucide="${item.icon}"></i>
-                        <span class="item-label">${item.label}</span>
-                    </button>
-                `;
-            }
-
-            return `
-                <a class="${classes}" href="${href}" data-section="${item.key}">
-                    <i data-lucide="${item.icon}"></i>
-                    <span class="item-label">${item.label}</span>
-                    ${badge}
-                </a>
-            `;
-        }).join('');
-
-        body.querySelector('[data-action="logout"]')?.addEventListener('click', async function() {
-            if (typeof logoutUser === 'function') {
-                await logoutUser();
-                closeProfileModal();
-                window.location.href = buildHref(root, 'login.html');
-            }
-        });
-
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons({ root: body });
-        }
-
-        // Eventos de cierre
-        const closeBtn = document.getElementById('profileModalClose');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', closeProfileModal);
-        }
-
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                closeProfileModal();
-            }
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && document.getElementById('profileModal')) {
-                closeProfileModal();
-            }
-        });
-
-        modal.classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeProfileModal() {
-        const modal = document.getElementById('profileModal');
-        if (modal) {
-            modal.classList.remove('open');
-            document.body.style.overflow = '';
-            setTimeout(() => {
-                if (modal.parentNode) modal.remove();
-            }, 300);
         }
     }
 
@@ -612,6 +479,4 @@
     window.openSidebar = openSidebar;
     window.closeSidebar = closeSidebar;
     window.toggleSidebar = toggleSidebar;
-    window.openProfileModal = openProfileModal;
-    window.closeProfileModal = closeProfileModal;
 })();

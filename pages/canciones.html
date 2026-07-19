@@ -12,9 +12,12 @@
     <title>Canciones</title>
     <meta name="description" content="Tus canciones favoritas con reproductor y letras completas">
     <meta name="theme-color" content="#0c0b0b">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Dancing+Script:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/pages/canciones.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script defer src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
     <link rel="manifest" href="../manifest.json">
 </head>
@@ -37,7 +40,7 @@
                 <div class="player-layout">
                     <!-- Reproductor -->
                     <div class="player-panel">
-                        <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-coral);margin-bottom:4px;">Reproduciendo ahora</div>
+                        <div class="player-label">Reproduciendo ahora</div>
                         <div class="player-album">
                             <img id="currentCover" src="" alt="Portada del álbum">
                         </div>
@@ -69,11 +72,11 @@
                     </div>
 
                     <!-- Columna derecha -->
-                    <div style="display:grid;gap:16px;">
-                        <div class="section-card lyrics-card">
-                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-                                <i data-lucide="file-text"></i>
-                                <h3 style="margin:0; flex:1;">Letra</h3>
+                    <div class="canc-right-col">
+                        <div class="canc-section">
+                            <div class="canc-section-header">
+                                <div class="canc-section-icon"><i data-lucide="file-text"></i></div>
+                                <h3 class="canc-section-title">Letra</h3>
                                 <button class="icon-btn" id="toggleLyricsBtn" title="Ocultar/Mostrar letra">
                                     <i data-lucide="eye"></i>
                                 </button>
@@ -84,8 +87,8 @@
                             <div class="lyrics-panel" id="lyricsPanel"></div>
                         </div>
 
-                        <div class="section-card">
-                            <div class="sub-nav" style="margin-bottom: 16px;">
+                        <div class="canc-section">
+                            <div class="sub-nav">
                                 <button class="sub-tab active" data-tab="recuerdan">
                                     <i data-lucide="heart"></i> Canciones que me recuerdan a ti
                                 </button>
@@ -119,14 +122,14 @@
     <!-- ===== BOTTOM NAV (móvil) ===== -->
     <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="../js/core/profile.js"></script>
-    <script src="../js/core.js"></script>
-    <script src="../js/core/authGuard.js"></script>
-    <script src="../js/sidebar.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script defer src="../js/firebase-config.js"></script>
+    <script defer src="../js/core/profile.js"></script>
+    <script defer src="../js/core.js"></script>
+    <script defer src="../js/core/authGuard.js"></script>
+    <script defer src="../js/sidebar.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
@@ -136,8 +139,8 @@
         if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
     });
     </script>
-    <script src="../js/data/canciones.js"></script>
-    <script src="../js/pages/canciones.js"></script>
+    <script defer src="../js/data/canciones.js"></script>
+    <script defer src="../js/pages/canciones.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('../sw.js')

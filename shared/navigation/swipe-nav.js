@@ -14,7 +14,7 @@
     const pages = [
         '/index.html',
         '/features/canciones/canciones.html',
-        '/features/rincon/rincon.html',
+        '/pages/rincon.html',
         '/features/thoseeyes/thoseeyes.html',
         '/features/series/series.html',
         '/features/razones/razones.html',

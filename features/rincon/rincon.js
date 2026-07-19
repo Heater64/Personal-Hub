@@ -479,11 +479,6 @@ function renderGallery() {
     renderGalleryFolders();
 }
 
-// showFolderContents ya no se usa, la dejamos vacía para no romper nada
-function showFolderContents(folderName) {
-    // vacío
-}
-
 function showFolderContents(folderName) {
     currentFolder = folderName;
     const images = window.galleryFoldersData?.[folderName] || [];

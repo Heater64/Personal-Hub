@@ -110,31 +110,11 @@
 
                         <div class="perfil-opcion">
                             <div class="perfil-opcion__info">
-                                <p class="perfil-opcion__label">Alto contraste</p>
-                                <p class="perfil-opcion__desc">Mayor diferencia de color</p>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="toggleAltoContraste">
-                                <span class="switch__slider"></span>
-                            </label>
-                        </div>
-                        <div class="perfil-opcion">
-                            <div class="perfil-opcion__info">
                                 <p class="perfil-opcion__label">Texto grande</p>
                                 <p class="perfil-opcion__desc">Aumenta el tamaño del texto</p>
                             </div>
                             <label class="switch">
                                 <input type="checkbox" id="toggleTextoGrande">
-                                <span class="switch__slider"></span>
-                            </label>
-                        </div>
-                        <div class="perfil-opcion">
-                            <div class="perfil-opcion__info">
-                                <p class="perfil-opcion__label">Reducir movimiento</p>
-                                <p class="perfil-opcion__desc">Menos animaciones</p>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="toggleReducirMovimiento">
                                 <span class="switch__slider"></span>
                             </label>
                         </div>
@@ -155,10 +135,39 @@
                                 <p class="perfil-info-card__version" id="appVersion">1.0.0</p>
                                 <p class="perfil-info-card__sync" id="ultimaSync">Sin sincronizar aún</p>
                             </div>
-                            <div style="text-align:right;">
-                                <p class="perfil-info-card__storage" id="storageUsed" style="font-size:var(--fs-sm);color:var(--theme-text-secondary);margin:0 0 8px;">Calculando...</p>
-                                <button class="btn-secundario" type="button" id="clearCacheBtn">Limpiar caché</button>
+                            <div>
+                                <p class="perfil-info-card__storage" id="storageUsed">Calculando...</p>
+                                <button class="btn-secundario" type="button" id="clearCacheBtn"><i data-lucide="trash-2"></i> Limpiar caché</button>
                             </div>
+                        </div>
+                    </section>
+
+                    <!-- SEGURIDAD -->
+                    <section class="perfil-seccion">
+                        <div class="perfil-seccion__cabecera">
+                            <span class="perfil-seccion__icono" style="background:var(--theme-error-dim, rgba(255,93,93,0.14));color:var(--theme-error, #ff5d5d)"><i data-lucide="lock"></i></span>
+                            <div>
+                                <h4 class="perfil-seccion__titulo">Seguridad</h4>
+                                <p class="perfil-seccion__desc">Gestión de sesión</p>
+                            </div>
+                        </div>
+                        <button class="perfil-btn-cerrar" id="btnLogout" type="button"><i data-lucide="log-out"></i> Cerrar sesión</button>
+                    </section>
+
+                    <!-- NAVEGACIÓN RÁPIDA -->
+                    <section class="perfil-seccion">
+                        <div class="perfil-seccion__cabecera">
+                            <span class="perfil-seccion__icono"><i data-lucide="compass"></i></span>
+                            <div>
+                                <h4 class="perfil-seccion__titulo">Navegación rápida</h4>
+                                <p class="perfil-seccion__desc">Tus secciones favoritas</p>
+                            </div>
+                        </div>
+                        <div class="perfil-nav-grid" id="perfilNavGrid">
+                            <a class="perfil-nav-item" href="../../pages/calendario.html"><i data-lucide="calendar-days"></i><span>Calendario</span></a>
+                            <a class="perfil-nav-item" href="../../pages/razones.html"><i data-lucide="sparkles"></i><span>Razones</span></a>
+                            <a class="perfil-nav-item" href="../../pages/openwhen.html"><i data-lucide="mail"></i><span>Open When</span></a>
+                            <a class="perfil-nav-item" href="../../pages/maldia.html"><i data-lucide="sun-medium"></i><span>Mal Día</span></a>
                         </div>
                     </section>
 

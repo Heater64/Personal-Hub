@@ -18,13 +18,15 @@ ProfileSystem.ensureProfile = async function (user) {
             return doc.data();
         }
 
+        var isAdmin = typeof isAdminUser === 'function' && isAdminUser(user);
         var profile = {
             profile: {
                 name: user.name || user.displayName || user.username || '',
-                role: user.role || 'user',
+                email: user.email || '',
+                role: isAdmin ? 'admin' : (user.role || 'user'),
                 createdAt: new Date().toISOString(),
                 lastLogin: new Date().toISOString(),
-                photo: user.photo || user.photoURL || ''
+                photoURL: user.photoURL || user.photo || ''
             },
             preferences: {
                 sidebar: { hiddenSections: [] }

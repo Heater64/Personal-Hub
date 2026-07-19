@@ -1,7 +1,7 @@
 /* css/components/pwa-system.css
    Componentes del sistema PWA: indicador conexión, banner novedades,
    banner instalación, skeleton, pull-to-refresh.
-   Tema coherente con Personal Hub (Umbra). */
+   Tema coherente con Personal Hub. */
 
 /* ==========================================
    INDICADOR ONLINE / OFFLINE
@@ -13,14 +13,14 @@
   transform: translateX(-50%) translateY(-140%);
   z-index: 9000;
   padding: 8px 18px;
-  border-radius: 40px;
+  border-radius: 20px;
   font-size: 0.78rem;
   letter-spacing: 0.03em;
   font-weight: 500;
-  color: var(--umbra-light);
-  background: rgba(15, 15, 16, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  color: var(--theme-text-primary, #e8e6e3);
+  background: var(--theme-bg-card, rgba(15, 15, 16, 0.92));
+  border: 1px solid var(--theme-border-visible, rgba(255, 255, 255, 0.08));
+  box-shadow: var(--theme-shadow-lg, 0 14px 30px rgba(0, 0, 0, 0.4));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   opacity: 0;
@@ -35,7 +35,7 @@
 
 .conn-indicator--online { border-color: rgba(96, 200, 120, 0.4); }
 .conn-indicator--offline { border-color: rgba(255, 93, 93, 0.45); color: #ffb4b4; }
-.conn-indicator--sync { border-color: var(--accent-border); color: var(--warm-amber); }
+.conn-indicator--sync { border-color: var(--theme-accent-border, rgba(198,90,58,0.2)); color: var(--theme-warm-amber, #ffb347); }
 
 /* ==========================================
    BANNER NOVEDADES (update manager)
@@ -47,11 +47,13 @@
   transform: translateX(-50%) translateY(160%);
   width: min(420px, calc(100vw - 32px));
   z-index: 9500;
-  background: linear-gradient(180deg, rgba(30, 28, 30, 0.98), rgba(18, 17, 19, 0.98));
-  border: 1px solid var(--accent-border);
-  border-radius: 20px;
+  background: var(--theme-bg-card, linear-gradient(180deg, rgba(30, 28, 30, 0.98), rgba(18, 17, 19, 0.98)));
+  border: 1px solid var(--theme-accent-border, rgba(198,90,58,0.2));
+  border-radius: 22px;
   padding: 18px 18px 16px;
-  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--theme-shadow-lg, 0 24px 50px rgba(0, 0, 0, 0.5));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   opacity: 0;
   transition: transform 0.32s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.32s ease;
 }
@@ -69,14 +71,15 @@
 }
 
 .wn-icon { font-size: 1.1rem; }
-.wn-title { font-weight: 600; font-size: 0.95rem; flex: 1; color: var(--umbra-light); }
+.wn-title { font-weight: 600; font-size: 0.95rem; flex: 1; color: var(--theme-text-primary, #e8e6e3); }
 .wn-version {
   font-size: 0.68rem;
   padding: 3px 10px;
-  border-radius: 20px;
-  background: var(--accent-dim);
-  color: var(--accent-coral);
+  border-radius: 14px;
+  background: var(--theme-accent-dim, rgba(198,90,58,0.12));
+  color: var(--theme-accent-primary, #c65a3a);
   letter-spacing: 0.04em;
+  font-weight: 500;
 }
 
 .wn-list {
@@ -90,13 +93,13 @@
 
 .wn-list li {
   font-size: 0.84rem;
-  color: rgba(232, 230, 227, 0.86);
+  color: var(--theme-text-secondary, rgba(232, 230, 227, 0.86));
   line-height: 1.5;
   display: flex;
   gap: 8px;
 }
 
-.wn-check { color: var(--accent-coral); flex: 0 0 auto; }
+.wn-check { color: var(--theme-accent-primary, #c65a3a); flex: 0 0 auto; }
 
 .wn-actions {
   display: flex;
@@ -106,28 +109,28 @@
 
 .wn-btn {
   padding: 9px 16px;
-  border-radius: 40px;
+  border-radius: 14px;
   border: 1px solid transparent;
   font-size: 0.82rem;
   cursor: pointer;
-  font-family: inherit;
+  font-family: 'Inter', sans-serif;
   transition: all 0.18s ease;
 }
 
 .wn-btn--ghost {
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.12);
-  color: var(--umbra-ash);
+  border-color: var(--theme-border-visible, rgba(255, 255, 255, 0.12));
+  color: var(--theme-text-muted, #8a8a8a);
 }
 
-.wn-btn--ghost:hover { color: var(--umbra-light); border-color: rgba(255, 255, 255, 0.25); }
+.wn-btn--ghost:hover { color: var(--theme-text-primary, #e8e6e3); border-color: var(--theme-border-visible, rgba(255, 255, 255, 0.25)); }
 
 .wn-btn--primary {
-  background: var(--accent-coral);
+  background: var(--theme-accent-primary, #c65a3a);
   color: white;
 }
 
-.wn-btn--primary:hover { background: #b04e30; transform: translateY(-1px); }
+.wn-btn--primary:hover { background: var(--theme-accent-secondary, #a0482e); transform: translateY(-1px); box-shadow: 0 4px 16px var(--theme-accent-dim, rgba(198,90,58,0.3)); }
 
 /* ==========================================
    BANNER INSTALACIÓN
@@ -142,11 +145,13 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: linear-gradient(180deg, rgba(30, 28, 30, 0.98), rgba(18, 17, 19, 0.98));
-  border: 1px solid var(--accent-border);
-  border-radius: 18px;
+  background: var(--theme-bg-card, linear-gradient(180deg, rgba(30, 28, 30, 0.98), rgba(18, 17, 19, 0.98)));
+  border: 1px solid var(--theme-accent-border, rgba(198,90,58,0.2));
+  border-radius: 22px;
   padding: 14px 16px;
-  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--theme-shadow-lg, 0 22px 46px rgba(0, 0, 0, 0.45));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   opacity: 0;
   transition: transform 0.32s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.32s ease;
 }
@@ -166,35 +171,35 @@
   width: 42px;
   height: 42px;
   flex: 0 0 auto;
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-dim);
-  color: var(--accent-coral);
+  background: var(--theme-accent-dim, rgba(198,90,58,0.12));
+  color: var(--theme-accent-primary, #c65a3a);
 }
 .install-banner__icon i { width: 20px; height: 20px; }
 
 .install-banner__body { flex: 1; min-width: 0; }
-.install-banner__title { font-weight: 600; font-size: 0.9rem; color: var(--umbra-light); }
-.install-banner__text { font-size: 0.74rem; color: var(--umbra-ash); line-height: 1.45; margin-top: 2px; }
+.install-banner__title { font-weight: 600; font-size: 0.9rem; color: var(--theme-text-primary, #e8e6e3); }
+.install-banner__text { font-size: 0.74rem; color: var(--theme-text-secondary, #8a8a8a); line-height: 1.45; margin-top: 2px; }
 
 .install-banner__actions { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
 
 .install-banner__btn {
   padding: 7px 14px;
-  border-radius: 40px;
+  border-radius: 14px;
   border: 1px solid transparent;
   font-size: 0.78rem;
   cursor: pointer;
-  font-family: inherit;
+  font-family: 'Inter', sans-serif;
   white-space: nowrap;
   transition: all 0.18s ease;
 }
-.install-banner__btn--ghost { background: transparent; border-color: rgba(255,255,255,0.12); color: var(--umbra-ash); }
-.install-banner__btn--ghost:hover { color: var(--umbra-light); }
-.install-banner__btn--primary { background: var(--accent-coral); color: white; }
-.install-banner__btn--primary:hover { background: #b04e30; }
+.install-banner__btn--ghost { background: transparent; border-color: var(--theme-border-visible, rgba(255,255,255,0.12)); color: var(--theme-text-muted, #8a8a8a); }
+.install-banner__btn--ghost:hover { color: var(--theme-text-primary, #e8e6e3); }
+.install-banner__btn--primary { background: var(--theme-accent-primary, #c65a3a); color: white; }
+.install-banner__btn--primary:hover { background: var(--theme-accent-secondary, #a0482e); }
 
 /* ==========================================
    SKELETON LOADING
@@ -266,10 +271,68 @@
 }
 
 /* ==========================================
+   TEMA CLARO — Banners y indicadores
+   ========================================== */
+html[data-theme="light"] .conn-indicator {
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.1);
+  color: #2d1822;
+}
+
+html[data-theme="light"] .whatsnew-banner,
+html[data-theme="light"] .install-banner {
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 24px 50px rgba(0,0,0,0.12);
+}
+
+html[data-theme="light"] .wn-list li {
+  color: #4a3a42;
+}
+
+html[data-theme="light"] .wn-btn--ghost,
+html[data-theme="light"] .install-banner__btn--ghost {
+  border-color: rgba(0,0,0,0.1);
+  color: #7a5d6b;
+}
+
+html[data-theme="light"] .wn-btn--ghost:hover,
+html[data-theme="light"] .install-banner__btn--ghost:hover {
+  color: #2d1822;
+  border-color: rgba(0,0,0,0.18);
+}
+
+/* ==============================
+   TEXTO GRANDE
+   ============================== */
+html[data-large-text="true"] .conn-indicator { font-size: 0.9rem; }
+html[data-large-text="true"] .wn-title { font-size: 1.08rem; }
+html[data-large-text="true"] .wn-list li { font-size: 0.95rem; }
+html[data-large-text="true"] .wn-btn { font-size: 0.92rem; }
+html[data-large-text="true"] .install-banner__title { font-size: 1rem; }
+html[data-large-text="true"] .install-banner__text { font-size: 0.84rem; }
+html[data-large-text="true"] .install-banner__btn { font-size: 0.88rem; }
+
+/* ==========================================
    RESPONSIVE
    ========================================== */
 @media (max-width: 480px) {
   .whatsnew-banner, .install-banner { bottom: 84px; width: calc(100vw - 24px); }
+}
+
+/* ==============================
+   SKELETON — Tema claro
+   ============================== */
+html[data-theme="light"] .skeleton {
+  background: rgba(0,0,0,0.04);
+}
+html[data-theme="light"] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent);
+}
+html[data-theme="light"] .skeleton-card {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(0,0,0,0.06);
 }
 
 @media (prefers-reduced-motion: reduce) {

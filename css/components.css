@@ -1,6 +1,9 @@
 /* ==========================================
    Componentes compartidos
    ========================================== */
+@import url('./components/sidebar.css');
+@import url('./components/bottom-nav.css');
+
 .glass {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);

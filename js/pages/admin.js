@@ -875,14 +875,8 @@ var AdminApp = (function () {
     function checkAdminAccess() {
         var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
         if (!user || !(typeof isAdminUser === 'function' && isAdminUser(user))) {
-            document.querySelector('.admin-content').innerHTML =
-                '<div style="text-align:center;padding:60px 20px;color:var(--umbra-ash);">' +
-                '<div style="font-size:3rem;margin-bottom:16px;">🔒</div>' +
-                '<h2 style="font-family:Playfair Display,serif;color:var(--umbra-light);">Acceso restringido</h2>' +
-                '<p>Solo el administrador puede acceder a esta página.</p></div>';
-            document.getElementById('adminTabs').style.display = 'none';
-            document.getElementById('adminStatus').querySelector('span:last-child').textContent = 'Sin acceso';
-            document.querySelector('.status-dot').classList.add('offline');
+            // Solo el admin puede ver esta página — redirigir al inicio
+            window.location.replace('../index.html');
             return false;
         }
         document.getElementById('adminStatus').querySelector('span:last-child').textContent = 'Conectado como ' + user.email;

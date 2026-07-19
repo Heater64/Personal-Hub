@@ -380,7 +380,7 @@ function ensureGalleryGridInteractions() {
     grid.dataset.bound = 'true';
 
     grid.addEventListener('click', (event) => {
-        const item = event.target.closest('.insta-item');
+        const item = event.target.closest('.gallery-masonry-item');
         if (!item) return;
 
         event.stopPropagation();
@@ -389,7 +389,7 @@ function ensureGalleryGridInteractions() {
     });
 
     grid.addEventListener('keydown', (event) => {
-        const item = event.target.closest('.insta-item');
+        const item = event.target.closest('.gallery-masonry-item');
         if (!item) return;
 
         if (event.key === 'Enter' || event.key === ' ') {
@@ -427,13 +427,16 @@ function renderGalleryGrid() {
     if (!grid || !window.galleryFoldersData) return;
 
     ensureGalleryGridInteractions();
-    grid.className = 'insta-grid';
+    grid.className = 'gallery-masonry';
     const items = window.galleryFoldersData[currentGalleryFolder];
     if (!items || items.length === 0) {
         grid.className = '';
         grid.innerHTML = '<div class="empty-state">No hay fotos en esta carpeta</div>';
         return;
     }
+
+    const countEl = document.getElementById('galleryCountText');
+    if (countEl) countEl.textContent = items.length + ' foto' + (items.length !== 1 ? 's' : '');
 
     const renderToken = ++galleryRenderToken;
     grid.innerHTML = '';
@@ -444,15 +447,19 @@ function renderGalleryGrid() {
         const batch = items.slice(startIndex, startIndex + GALLERY_BATCH_SIZE);
         if (!batch.length) {
             if (typeof lucide !== 'undefined') lucide.createIcons({ root: grid });
+            observeGalleryImages(grid);
             return;
         }
 
         grid.insertAdjacentHTML('beforeend', batch.map((src, offset) => {
             const index = startIndex + offset;
             return `
-                <article class="insta-item" tabindex="0" role="button" aria-label="Abrir foto ${index + 1}" data-index="${index}">
-                    <img src="${escapeHtml(src)}" alt="Atardecer ${index + 1}" loading="lazy" decoding="async">
-                    <div class="insta-overlay"><i data-lucide="eye"></i></div>
+                <article class="gallery-masonry-item loading" tabindex="0" role="button" aria-label="Abrir foto ${index + 1}" data-index="${index}">
+                    <img data-src="${escapeHtml(src)}" alt="Foto ${index + 1}" loading="lazy" decoding="async">
+                    <div class="gallery-overlay">
+                        <div class="gallery-overlay-icon"><i data-lucide="eye"></i></div>
+                        <span class="gallery-overlay-label">${escapeHtml(currentGalleryFolder)}</span>
+                    </div>
                 </article>
             `;
         }).join(''));
@@ -461,11 +468,43 @@ function renderGalleryGrid() {
 
         if (startIndex + GALLERY_BATCH_SIZE < items.length) {
             setTimeout(() => appendBatch(startIndex + GALLERY_BATCH_SIZE), 60);
+        } else {
+            observeGalleryImages(grid);
         }
     }
 
     appendBatch(0);
     hasGalleryRendered = true;
+}
+
+function observeGalleryImages(grid) {
+    if (!grid || !('IntersectionObserver' in window)) {
+        grid.querySelectorAll('.gallery-masonry-item.loading').forEach(item => {
+            const img = item.querySelector('img[data-src]');
+            if (img) { img.src = img.dataset.src; img.removeAttribute('data-src'); }
+            item.classList.remove('loading');
+        });
+        return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const item = entry.target;
+            const img = item.querySelector('img[data-src]');
+            if (img) {
+                img.src = img.dataset.src;
+                img.removeAttribute('data-src');
+                img.onload = () => item.classList.remove('loading');
+                img.onerror = () => item.classList.remove('loading');
+            } else {
+                item.classList.remove('loading');
+            }
+            observer.unobserve(item);
+        });
+    }, { rootMargin: '200px' });
+
+    grid.querySelectorAll('.gallery-masonry-item.loading').forEach(item => observer.observe(item));
 }
 
 function showGalleryFolder(folder) {
@@ -477,11 +516,6 @@ function showGalleryFolder(folder) {
 // Esta función es llamada por initRincon al cargar la página
 function renderGallery() {
     renderGalleryFolders();
-}
-
-// showFolderContents ya no se usa, la dejamos vacía para no romper nada
-function showFolderContents(folderName) {
-    // vacío
 }
 
 function showFolderContents(folderName) {
@@ -639,76 +673,204 @@ function showSubview(viewId) {
     }
 }
 
-function initSPBSection() {
-    const accordions = document.querySelectorAll('#rincon-spb .accordion-item');
-    accordions.forEach((item) => {
-        const header = item.querySelector('.accordion-header');
-        if (!header) return;
-        header.addEventListener('click', () => {
-            item.classList.toggle('open');
-        });
-    });
+function initCuriosidades() {
+    const container = document.getElementById('rincon-curiosidades');
+    if (!container) return;
 
-    const curiosidades = window.spbData?.curiosidades || [
-        { icon: 'droplets', titulo: 'Río San Juan', texto: 'Aguas frescas y cristalinas que atraviesan la comunidad. Centro de recreación y diversión para todos.' },
-        { icon: 'scroll-text', titulo: 'Nombre original', texto: 'Se llamaba "San Juan Caite" (caite = sandalia) por estar alejado de San Juan Benque.' },
-        { icon: 'wind', titulo: 'Huracán Fifí', texto: 'En 1974 devastó la región pero provocó un repoblamiento masivo, especialmente de personas del occidente de Honduras.' },
-        { icon: 'activity', titulo: 'Enjambre sísmico 2013', texto: '36 sismos entre 3.1 y 5.6. 140 casas destruidas, 66 dañadas, cero víctimas mortales.' },
-        { icon: 'building-2', titulo: 'Tres intentos fallidos', texto: 'Desde 1996 quieren ser municipio, pero necesitan 30,000 hab. y 40 km².' },
-        { icon: 'languages', titulo: 'Significado tolupán', texto: '"Xantun" o "Xan" = "río entre montañas".' }
-    ];
-
-    const curiosidadesContainer = document.getElementById('spbCuriosidades');
-    if (curiosidadesContainer) {
-        curiosidadesContainer.innerHTML = curiosidades.map((item) => `
-            <div class="planner-step curiosity-card" style="background: rgba(255,215,0,0.05); transition: all 0.2s ease; text-align: center;">
-                <i data-lucide="${item.icon}" style="width: 40px; height: 40px; display: block; margin-bottom: 12px; color: #FFD966;"></i>
-                <strong style="font-size: 1.1rem;">${escapeHtml(item.titulo)}</strong>
-                <p style="margin-top: 8px; font-size: 0.85rem; line-height: 1.6;">${escapeHtml(item.texto)}</p>
-            </div>
-        `).join('');
+    // Dato del día
+    const datoEl = document.getElementById('curiosidadDelDia');
+    if (datoEl && window.curiosidadesGenerales) {
+        const dayIndex = new Date().getDate() % window.curiosidadesGenerales.length;
+        const dato = window.curiosidadesGenerales[dayIndex];
+        datoEl.innerHTML = `
+            <i data-lucide="sparkles" style="width:36px; height:36px; display:block; margin:0 auto 14px; color: var(--warm-amber);"></i>
+            <p style="font-size:1.05rem; line-height:1.6; font-style:italic;">"${escapeHtml(dato)}"</p>
+        `;
     }
 
-    const galeriaFotos = [
-        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777139714/RioSanjuan_hby0wz.jpg', caption: 'Río San Juan' },
-        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777139715/SanJuan_hbfrrb.jpg', caption: 'Paisaje del pueblo' },
-        { src: 'https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777139823/2jnguoiwhtlinyh_ncbyju.jpg', caption: 'Vistas de la comunidad' }
+    // Tabs
+    const tabsData = [
+        { key: 'san-juan', label: 'San Juan Pueblo', icon: 'map-pin' },
+        { key: 'san-petersburgo', label: 'San Petersburgo', icon: 'landmark' },
+        { key: 'gatos', label: 'Gatos 🐱', icon: 'cat' }
     ];
 
-    const galleryContainer = document.getElementById('spbGallery');
-    if (galleryContainer) {
-        galleryContainer.innerHTML = galeriaFotos.map((item, index) => `
-            <div class="pinterest-item" data-index="${index}" style="cursor:pointer;">
-                <img src="${item.src}" alt="${escapeHtml(item.caption)}" loading="lazy">
-                <div class="overlay"><span><i data-lucide="eye"></i> ${escapeHtml(item.caption)}</span></div>
-            </div>
+    const tabsNav = document.getElementById('curiosidadesTabsNav');
+    const tabsContent = document.getElementById('curiosidadesTabContent');
+    if (!tabsNav || !tabsContent) return;
+
+    let activeTab = 'san-juan';
+
+    function renderTabs() {
+        tabsNav.innerHTML = tabsData.map(tab => `
+            <button class="memes-folder-btn ${tab.key === activeTab ? 'active' : ''}" data-tab="${tab.key}" type="button">
+                <i data-lucide="${tab.icon}"></i> ${tab.label}
+            </button>
         `).join('');
 
-        const items = galeriaFotos.map((item) => ({ type: 'image', src: item.src, caption: item.caption }));
-        galleryContainer.querySelectorAll('.pinterest-item').forEach((item) => {
-            item.addEventListener('click', () => {
-                openMediaLightbox(items, Number(item.dataset.index), 'spb-gallery');
+        tabsNav.querySelectorAll('.memes-folder-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeTab = btn.dataset.tab;
+                renderTabs();
+                renderTabContent();
             });
         });
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
-    const counterEl = document.getElementById('habitantesCounter');
-    if (counterEl) {
-        let start = 0;
-        const end = 15000;
-        const duration = 2000;
-        const step = Math.ceil(end / (duration / 30));
-        const timer = setInterval(() => {
-            start += step;
-            if (start >= end) {
-                counterEl.innerText = end.toLocaleString();
-                clearInterval(timer);
-            } else {
-                counterEl.innerText = start.toLocaleString();
-            }
-        }, 30);
+    function renderTabContent() {
+        if (activeTab === 'san-juan') renderSanJuanTab();
+        else if (activeTab === 'san-petersburgo') renderSanPetersburgoTab();
+        else if (activeTab === 'gatos') renderGatosTab();
     }
 
+    function renderSanJuanTab() {
+        const data = window.spbData || {};
+        let html = '';
+
+        // Curiosidades
+        if (data.curiosidades && data.curiosidades.length) {
+            html += `<div style="padding:0 0 20px;"><h3><i data-lucide="sparkles"></i> Datos curiosos</h3>
+            <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); margin-top:14px;">
+            ${data.curiosidades.map(c => `
+                <div class="curiosity-card" style="background:rgba(255,215,0,0.05); padding:20px; border-radius:14px; text-align:center; border:1px solid rgba(255,215,0,0.1);">
+                    <i data-lucide="${c.icon}" style="width:36px; height:36px; display:block; margin:0 auto 10px; color:#FFD966;"></i>
+                    <strong style="font-size:1rem;">${escapeHtml(c.titulo)}</strong>
+                    <p style="margin-top:8px; font-size:0.85rem; line-height:1.5; color:var(--umbra-ash);">${escapeHtml(c.texto)}</p>
+                </div>
+            `).join('')}
+            </div></div>`;
+        }
+
+        // Comida típica
+        html += `<div style="padding:0 0 20px;"><h3><i data-lucide="utensils"></i> Comida típica hondureña</h3>
+        <div style="display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); margin-top:14px;">
+            <div class="food-card">Baleada</div>
+            <div class="food-card">Casamiento</div>
+            <div class="food-card">Taco hondureño</div>
+            <div class="food-card">Frijol con pico</div>
+            <div class="food-card">Sopa de Caracol</div>
+            <div class="food-card">Yuca con Chicharrón</div>
+            <div class="food-card">Tapado</div>
+            <div class="food-card">Riguas</div>
+        </div></div>`;
+
+        // Frases
+        if (data.phrases && data.phrases.length) {
+            html += `<div style="padding:0 0 20px;"><h3><i data-lucide="message-circle"></i> Frases hondureñas</h3>
+            <div style="display:grid; gap:10px; margin-top:14px;">
+            ${data.phrases.map(p => `
+                <div style="padding:12px 16px; background:rgba(255,215,0,0.06); border-radius:12px; border-left:3px solid var(--warm-amber); font-size:0.9rem;">
+                    ${escapeHtml(p)}
+                </div>
+            `).join('')}
+            </div></div>`;
+        }
+
+        tabsContent.innerHTML = `<div class="section-card" style="padding:20px 16px;">${html}</div>`;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function renderSanPetersburgoTab() {
+        const data = window.sanPetersburgoData || {};
+        let html = '';
+
+        // Curiosidades culturales
+        if (data.curiosidades && data.curiosidades.length) {
+            html += `<div style="padding:0 0 20px;"><h3><i data-lucide="sparkles"></i> Tradiciones y eventos</h3>
+            <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); margin-top:14px;">
+            ${data.curiosidades.map(c => `
+                <div class="curiosity-card" style="background:rgba(33,150,243,0.06); padding:20px; border-radius:14px; text-align:center; border:1px solid rgba(33,150,243,0.12);">
+                    <i data-lucide="${c.icon}" style="width:36px; height:36px; display:block; margin:0 auto 10px; color:#4fc3f7;"></i>
+                    <strong style="font-size:1rem;">${escapeHtml(c.titulo)}</strong>
+                    <p style="margin-top:8px; font-size:0.85rem; line-height:1.5; color:var(--umbra-ash);">${escapeHtml(c.texto)}</p>
+                </div>
+            `).join('')}
+            </div></div>`;
+        }
+
+        // Comida rusa
+        if (data.foods && data.foods.length) {
+            html += `<div style="padding:0 0 20px;"><h3><i data-lucide="utensils"></i> Comida típica rusa</h3>
+            <div style="display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); margin-top:14px;">
+            ${data.foods.map(f => `
+                <div style="background:rgba(255,255,255,0.03); border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.06);">
+                    <img src="${f.img}" alt="${escapeHtml(f.nombre)}" loading="lazy" style="width:100%; height:140px; object-fit:cover;">
+                    <div style="padding:14px;">
+                        <strong>${escapeHtml(f.nombre)}</strong>
+                        <p style="margin-top:4px; font-size:0.8rem; color:var(--umbra-ash);">${escapeHtml(f.desc)}</p>
+                    </div>
+                </div>
+            `).join('')}
+            </div></div>`;
+        }
+
+        // Frases rusas
+        if (data.phrases && data.phrases.length) {
+            html += `<div style="padding:0 0 20px;"><h3><i data-lucide="languages"></i> Frases rusas</h3>
+            <div style="display:grid; gap:10px; margin-top:14px;">
+            ${data.phrases.map(p => `
+                <div style="padding:12px 16px; background:rgba(33,150,243,0.06); border-radius:12px; border-left:3px solid #4fc3f7; font-size:0.9rem;">
+                    ${escapeHtml(p)}
+                </div>
+            `).join('')}
+            </div></div>`;
+        }
+
+        tabsContent.innerHTML = `<div class="section-card" style="padding:20px 16px;">${html}</div>`;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function renderGatosTab() {
+        const data = window.gatitosData || {};
+        let html = '';
+
+        // Curiosidades felinas
+        if (data.curiosidades && data.curiosidades.length) {
+            html += `<div style="padding:0 0 20px;"><h3><i data-lucide="sparkles"></i> Curiosidades felinas</h3>
+            <div style="display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); margin-top:14px;">
+            ${data.curiosidades.map(c => `
+                <div class="curiosity-card" style="background:rgba(255,138,161,0.06); padding:18px; border-radius:14px; text-align:center; border:1px solid rgba(255,138,161,0.12);">
+                    <i data-lucide="${c.icon}" style="width:32px; height:32px; display:block; margin:0 auto 8px; color:var(--warm-pink);"></i>
+                    <strong style="font-size:0.95rem;">${escapeHtml(c.titulo)}</strong>
+                    <p style="margin-top:6px; font-size:0.82rem; line-height:1.5; color:var(--umbra-ash);">${escapeHtml(c.texto)}</p>
+                </div>
+            `).join('')}
+            </div></div>`;
+        }
+
+        // Anatomía
+        if (data.anatomia && data.anatomia.length) {
+            html += `<div style="padding:0 0 20px;"><h3><i data-lucide="bone"></i> Anatomía felina</h3>
+            <div style="display:grid; gap:12px; margin-top:14px;">
+            ${data.anatomia.map(a => `
+                <div style="padding:16px; background:rgba(255,138,161,0.04); border-radius:12px; border:1px solid rgba(255,138,161,0.08);">
+                    <strong style="color:var(--warm-pink);">${escapeHtml(a.titulo)}</strong>
+                    <p style="margin-top:6px; font-size:0.85rem; line-height:1.5; color:var(--umbra-ash);">${escapeHtml(a.texto)}</p>
+                </div>
+            `).join('')}
+            </div></div>`;
+        }
+
+        // Cuidados
+        if (data.cuidados && data.cuidados.length) {
+            html += `<div style="padding:0 0 10px;"><h3><i data-lucide="heart"></i> Cómo cuidarlos</h3>
+            <div style="display:grid; gap:8px; margin-top:14px;">
+            ${data.cuidados.map(c => `
+                <div style="padding:12px 16px; background:rgba(255,138,161,0.06); border-radius:12px; border-left:3px solid var(--warm-pink); font-size:0.9rem;">
+                    ${escapeHtml(c)}
+                </div>
+            `).join('')}
+            </div></div>`;
+        }
+
+        tabsContent.innerHTML = `<div class="section-card" style="padding:20px 16px;">${html}</div>`;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    renderTabs();
+    renderTabContent();
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -755,10 +917,24 @@ function initReelLightbox() {
 function initRincon() {
     if (!document.getElementById('rincon')) return;
 
-    renderGallery();
-    renderMemes();
-    warmGalleryCache();
-    initSPBSection();
+    const isGalleryPage = !!document.getElementById('galleryImagesGrid');
+    const isMemePage = !!document.getElementById('memesGrid');
+    const isCuriosidadesPage = !!document.getElementById('rincon-curiosidades');
+
+    if (isGalleryPage) {
+        renderGalleryFolders();
+        renderGalleryGrid();
+        warmGalleryCache();
+    }
+
+    if (isMemePage) {
+        renderMemes();
+    }
+
+    if (isCuriosidadesPage) {
+        initCuriosidades();
+    }
+
     initReelLightbox();
 
     document.querySelectorAll('.sub-tab[data-subview]').forEach((tab) => {
@@ -797,3 +973,4 @@ window.openMediaLightbox = openMediaLightbox;
 window.closeMediaLightbox = closeMediaLightbox;
 window.nextMedia = nextMedia;
 window.prevMedia = prevMedia;
+window.initCuriosidades = initCuriosidades;

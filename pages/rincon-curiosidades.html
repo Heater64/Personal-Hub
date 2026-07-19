@@ -9,19 +9,20 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hub">
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
-    <title>Juegos</title>
-    <meta name="description" content="Todos los juegos desbloqueados del calendario">
+    <title>Curiosidades - TuRincónFav</title>
+    <meta name="description" content="Curiosidades, datos curiosos y cosas fascinantes del mundo">
     <meta name="theme-color" content="#0c0b0b">
-    <link rel="stylesheet" href="../css/main.css">
-    <link rel="stylesheet" href="../css/pages/juegos.css">
-    <script defer src="https://unpkg.com/lucide@latest"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&family=Dancing+Script:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/pages/rincon.css">
+    <script defer src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/png" href="../assets/Gemini_Generated_Image_6wkfln6wk.png">
     <link rel="manifest" href="../manifest.json">
 </head>
 
-<body data-sidebar-root=".." data-sidebar-page="juegos" data-bottom-nav="juegos">
+<body data-sidebar-root=".." data-sidebar-page="rincon" data-bottom-nav="rincon">
 
     <button class="sidebar-toggle" type="button" aria-label="Abrir navegación" data-sidebar-toggle>
         <i data-lucide="menu"></i>
@@ -30,25 +31,47 @@
     <aside class="sidebar" data-sidebar></aside>
 
     <main class="page-shell">
-        <div class="page juegos-page">
+        <div class="page">
+            <section id="rincon" class="page-section rincon-sub-page">
 
-            <button class="back-btn" onclick="window.location.href='../index.html'">
-                <i data-lucide="arrow-left"></i> Volver al Hub
-            </button>
+                <button class="back-btn" onclick="window.location.href='rincon.html'">
+                    <i data-lucide="arrow-left"></i> Volver a TuRincónFav
+                </button>
 
-            <div class="juegos-intro">
-                <h2>🎮✨ Tus Juegos ✨🎮</h2>
-                <p>Los juegos se desbloquean al abrirlos en el calendario.<br>¡Cada día una sorpresa nueva!</p>
-            </div>
+                <div id="rincon-curiosidades">
 
-            <div id="juegosGrid" class="juegos-grid">
-                <!-- Se renderiza desde JS -->
-            </div>
+                    <div class="rincon-section">
+                        <div class="rincon-section-header">
+                            <span class="rincon-section-icon"><i data-lucide="sparkles"></i></span>
+                            <div>
+                                <h3 class="rincon-section-title">Curiosidades</h3>
+                                <p class="rincon-section-subtitle">Datos fascinantes del mundo que te rodea</p>
+                            </div>
+                        </div>
+                        <div class="rincon-section-body">
+                            <h4 style="margin-bottom:12px; font-weight:600; color: var(--theme-text-primary);">
+                                <i data-lucide="lightbulb" style="width:16px; height:16px; vertical-align:-2px; margin-right:6px;"></i> Dato del día
+                            </h4>
+                            <div id="curiosidadDelDia" class="rincon-curiosity-highlight"></div>
+                        </div>
+                    </div>
 
+                    <div id="curiosidadesMainContent" style="margin-bottom:24px;"></div>
+
+                    <div id="curiosidadesTabsNav" class="rincon-folder-nav"></div>
+
+                    <div id="curiosidadesTabContent"></div>
+                </div>
+            </section>
         </div>
     </main>
 
-    <!-- ===== BOTTOM NAV (móvil) ===== -->
+    <div id="lightbox" class="lightbox">
+        <button class="lightbox-close" id="lightboxCloseBtn" type="button">✕</button>
+        <div class="lightbox-content" id="lightboxContent"></div>
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
     <nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="Navegación principal"></nav>
 
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -68,7 +91,8 @@
         if (typeof renderBottomNav === 'function') setTimeout(renderBottomNav, 100);
     });
     </script>
-    <script defer src="../js/pages/juegos.js"></script>
+    <script defer src="../js/data/rincon.js"></script>
+    <script defer src="../js/pages/rincon.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('../sw.js')

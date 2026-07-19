@@ -1,11 +1,12 @@
 {
-  "version": "1.1.1",
-  "releaseDate": "2026-07-17",
+  "version": "1.2.0",
+  "releaseDate": "2026-07-19",
   "changelog": [
-    "Sistema de actualizaciones con aviso de novedades",
-    "Indicador de conexión online/offline",
-    "Banner de instalación mejorado",
-    "Skeletons de carga y pull-to-refresh",
-    "Vibración estructurada (háptica)"
+    "Rendimiento: scripts ahora cargan en paralelo (defer)",
+    "Rendimiento: caché instantánea con stale-while-revalidate",
+    "Rendimiento: carga de fuentes optimizada sin bloqueo",
+    "Rendimiento: content-visibility en secciones secundarias",
+    "Curiosidades: nueva página con 3 categorías",
+    "Galería: diseño masonry con lazy loading nativo"
   ]
 }

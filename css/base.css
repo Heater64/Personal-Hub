@@ -17,8 +17,8 @@ html {
 }
 
 body {
-  background: var(--umbra-black);
-  color: var(--umbra-light);
+  background: var(--theme-bg-primary, linear-gradient(180deg, #0f0f10 0%, #0a0a0c 100%));
+  color: var(--theme-text-primary, #e8e6e3);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 16px;
   font-weight: 300;
@@ -152,6 +152,12 @@ i[data-lucide] {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Skip rendering of below-fold sections until needed */
+.page-section ~ .page-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 600px;
 }
 
 
