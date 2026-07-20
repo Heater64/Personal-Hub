@@ -8,7 +8,7 @@
         { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
         { key: 'rincon', label: 'TuRincónFav', icon: 'heart', href: 'pages/rincon.html' },
         { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
-        { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: 'pages/ositos-world.html' },
+        { key: 'puffy', label: 'OsitosWorld', icon: 'paw-print', href: 'pages/ositos-world.html' },
     ];
 
     // El perfil ahora es una sección completa (features/profile/profile.html),
@@ -30,6 +30,34 @@
     function getCurrentUid() {
         var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
         return user ? user.uid : null;
+    }
+
+    // Sincronizar Firebase Auth → SessionManager si es necesario
+    async function ensureSessionFromFirebase() {
+        if (typeof SessionManager === 'undefined' || !SessionManager) return false;
+        if (SessionManager.isLoggedIn()) return true;
+        if (!window.auth || !window.auth.currentUser) return false;
+
+        var firebaseUser = window.auth.currentUser;
+        var email = firebaseUser.email || '';
+        if (!email) return false;
+
+        try {
+            var snap = await window.db.collection('users')
+                .where('username', '==', email).limit(1).get();
+            if (!snap.empty) {
+                var doc = snap.docs[0];
+                var data = doc.data();
+                SessionManager.createSession({
+                    id: doc.id, username: data.username, name: data.name || data.username,
+                    photo: data.photo || '', role: data.role || 'user',
+                    enabled: data.enabled !== false, preferences: data.preferences || {},
+                    profile: data.profile || {}
+                });
+                return true;
+            }
+        } catch (e) {}
+        return false;
     }
 
     function getUserName() {
@@ -327,7 +355,7 @@
             { key: 'home', label: 'Inicio', icon: 'home', href: 'index.html' },
             { key: 'rincon', label: 'Rincón', icon: 'heart', href: 'pages/rincon.html' },
             { key: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: 'pages/sentimientos.html' },
-            { key: 'puffy', label: 'OsitosWorld', icon: 'star', href: 'pages/ositos-world.html' },
+            { key: 'puffy', label: 'OsitosWorld', icon: 'paw-print', href: 'pages/ositos-world.html' },
             { key: 'perfil', label: isLoggedIn ? 'Perfil' : 'Login', icon: isLoggedIn ? 'user' : 'log-in', href: isLoggedIn ? 'features/profile/profile.html' : 'login.html', isProfile: true },
         ];
 
@@ -462,13 +490,18 @@
     document.addEventListener('DOMContentLoaded', async () => {
         bindToggle();
         if (typeof waitForFirebase === 'function') await waitForFirebase();
+        await ensureSessionFromFirebase();
         await loadConfig();
         startListeningAuth();
 
         if (typeof window.auth !== 'undefined' && window.auth) {
             window.auth.onAuthStateChanged(function (user) {
                 setTimeout(function () {
-                    loadConfig();
+                    if (user && typeof SessionManager !== 'undefined' && !SessionManager.isLoggedIn()) {
+                        ensureSessionFromFirebase().then(function () { loadConfig(); });
+                    } else {
+                        loadConfig();
+                    }
                 }, 300);
             });
         }

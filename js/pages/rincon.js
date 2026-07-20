@@ -18,6 +18,28 @@ function formatMediaTime(seconds) {
     return `${mins}:${secs}`;
 }
 
+function getGridThumbSrc(src) {
+    if (typeof src !== 'string' || !src.includes('res.cloudinary.com')) return src;
+    return src.replace(/\/upload\/(?:[^/]*\/)?(v\d+\/)/, '/upload/q_auto,f_auto,w_400/$1');
+}
+
+function getFolderItems(folderName, data) {
+    const entry = data?.[folderName];
+    if (!entry) return [];
+    return Array.isArray(entry) ? entry : (entry.items || []);
+}
+
+function getFolderCover(folderName, data) {
+    const entry = data?.[folderName];
+    if (!entry) return '';
+    if (Array.isArray(entry)) return entry[0] || '';
+    return entry.cover || entry.items?.[0] || '';
+}
+
+function getFolderNames(data) {
+    return Object.keys(data || {});
+}
+
 function detectVideoMime(src) {
     if (/\.webm(\?.*)?$/i.test(src)) return 'video/webm';
     if (/\.mov(\?.*)?$/i.test(src)) return 'video/quicktime';
@@ -330,7 +352,7 @@ window.addEventListener('resize', () => {
 });
 
 function buildFolderGalleryItems(folderName) {
-    const images = window.galleryFoldersData?.[folderName] || [];
+    const images = getFolderItems(folderName, window.galleryFoldersData);
     return images.map((src, index) => ({
         type: 'image',
         src,
@@ -343,11 +365,11 @@ function buildFolderGalleryItems(folderName) {
 let currentGalleryFolder = 'Atardeceres'; // carpeta por defecto
 let hasGalleryRendered = false;
 let galleryRenderToken = 0;
-const GALLERY_BATCH_SIZE = 12;
+const GALLERY_BATCH_SIZE = 24;
 const GALLERY_PRELOAD_LIMIT = 18;
 
 function buildGalleryItems(folderName) {
-    const images = window.galleryFoldersData?.[folderName] || [];
+    const images = getFolderItems(folderName, window.galleryFoldersData);
     return images.map((src, index) => ({
         type: 'image',
         src: src,
@@ -359,18 +381,26 @@ function renderGalleryFolders() {
     const nav = document.getElementById('galleryFoldersNav');
     if (!nav || !window.galleryFoldersData) return;
 
-    nav.innerHTML = Object.keys(window.galleryFoldersData).map((folder) => `
-        <button class="memes-folder-btn ${folder === currentGalleryFolder ? 'active' : ''}" data-folder="${escapeHtml(folder)}" type="button">
-            <i data-lucide="folder"></i> ${escapeHtml(folder)}
-            <span class="folder-count">${window.galleryFoldersData[folder].length}</span>
-        </button>
-    `).join('');
+    const folders = getFolderNames(window.galleryFoldersData);
+    nav.className = 'rincon-cover-scroll';
 
-    nav.querySelectorAll('.memes-folder-btn').forEach((btn) => {
+    nav.innerHTML = folders.map((folder) => {
+        const items = getFolderItems(folder, window.galleryFoldersData);
+        const coverUrl = getFolderCover(folder, window.galleryFoldersData);
+        const thumbUrl = coverUrl ? getGridThumbSrc(coverUrl) : '';
+        return `
+            <button class="rincon-cover-card ${folder === currentGalleryFolder ? 'active' : ''}" data-folder="${escapeHtml(folder)}" type="button" style="background-image: url('${escapeHtml(thumbUrl)}')">
+                <span class="rincon-cover-info">
+                    <span class="rincon-cover-name">${escapeHtml(folder)}</span>
+                    <span class="rincon-cover-count">${items.length}</span>
+                </span>
+            </button>
+        `;
+    }).join('');
+
+    nav.querySelectorAll('.rincon-cover-card').forEach((btn) => {
         btn.addEventListener('click', () => showGalleryFolder(btn.dataset.folder));
     });
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function ensureGalleryGridInteractions() {
@@ -401,24 +431,24 @@ function ensureGalleryGridInteractions() {
 }
 
 function warmGalleryCache() {
-    const images = (window.galleryFoldersData?.[currentGalleryFolder] || []).slice(0, GALLERY_PRELOAD_LIMIT);
+    const images = getFolderItems(currentGalleryFolder, window.galleryFoldersData).slice(0, GALLERY_PRELOAD_LIMIT);
     let index = 0;
 
     function preloadBatch() {
-        for (let step = 0; step < 3 && index < images.length; step += 1, index += 1) {
+        for (let step = 0; step < 5 && index < images.length; step += 1, index += 1) {
             const image = new Image();
             image.loading = 'eager';
             image.decoding = 'async';
-            image.src = images[index];
+            image.src = getGridThumbSrc(images[index]);
         }
 
         if (index < images.length) {
-            setTimeout(preloadBatch, 180);
+            setTimeout(preloadBatch, 80);
         }
     }
 
     if (images.length) {
-        setTimeout(preloadBatch, 500);
+        setTimeout(preloadBatch, 100);
     }
 }
 
@@ -428,7 +458,7 @@ function renderGalleryGrid() {
 
     ensureGalleryGridInteractions();
     grid.className = 'gallery-masonry';
-    const items = window.galleryFoldersData[currentGalleryFolder];
+    const items = getFolderItems(currentGalleryFolder, window.galleryFoldersData);
     if (!items || items.length === 0) {
         grid.className = '';
         grid.innerHTML = '<div class="empty-state">No hay fotos en esta carpeta</div>';
@@ -453,9 +483,10 @@ function renderGalleryGrid() {
 
         grid.insertAdjacentHTML('beforeend', batch.map((src, offset) => {
             const index = startIndex + offset;
+            const thumbSrc = getGridThumbSrc(src);
             return `
                 <article class="gallery-masonry-item loading" tabindex="0" role="button" aria-label="Abrir foto ${index + 1}" data-index="${index}">
-                    <img data-src="${escapeHtml(src)}" alt="Foto ${index + 1}" loading="lazy" decoding="async">
+                    <img data-src="${escapeHtml(thumbSrc)}" data-fullsrc="${escapeHtml(src)}" alt="Foto ${index + 1}" loading="lazy" decoding="async">
                     <div class="gallery-overlay">
                         <div class="gallery-overlay-icon"><i data-lucide="eye"></i></div>
                         <span class="gallery-overlay-label">${escapeHtml(currentGalleryFolder)}</span>
@@ -467,7 +498,7 @@ function renderGalleryGrid() {
         if (typeof lucide !== 'undefined') lucide.createIcons({ root: grid });
 
         if (startIndex + GALLERY_BATCH_SIZE < items.length) {
-            setTimeout(() => appendBatch(startIndex + GALLERY_BATCH_SIZE), 60);
+            setTimeout(() => appendBatch(startIndex + GALLERY_BATCH_SIZE), 20);
         } else {
             observeGalleryImages(grid);
         }
@@ -502,7 +533,7 @@ function observeGalleryImages(grid) {
             }
             observer.unobserve(item);
         });
-    }, { rootMargin: '200px' });
+    }, { rootMargin: '400px' });
 
     grid.querySelectorAll('.gallery-masonry-item.loading').forEach(item => observer.observe(item));
 }
@@ -520,7 +551,7 @@ function renderGallery() {
 
 function showFolderContents(folderName) {
     currentFolder = folderName;
-    const images = window.galleryFoldersData?.[folderName] || [];
+    const images = getFolderItems(folderName, window.galleryFoldersData);
     const grid = document.getElementById('galleryGrid');
     if (!grid) return;
 
@@ -587,14 +618,25 @@ function renderMemes() {
     }
 
     if (nav) {
-        nav.innerHTML = memeFolders.map((folder) => `
-            <button class="memes-folder-btn ${folder === currentMemeFolder ? 'active' : ''}" data-folder="${escapeHtml(folder)}" type="button">
-                <i data-lucide="folder"></i> ${escapeHtml(folder)}
-                <span class="folder-count">${window.memeImagesData[folder].length}</span>
-            </button>
-        `).join('');
+        nav.className = 'rincon-cover-scroll';
+        nav.innerHTML = memeFolders.map((folder) => {
+            const items = window.memeImagesData[folder];
+            let coverUrl = '';
+            if (items?.[0]) {
+                coverUrl = isVideoMeme(items[0]) ? getVideoPosterUrl(items[0]) : getGridThumbSrc(items[0]);
+            }
+            if (!coverUrl) coverUrl = items?.[0] || '';
+            return `
+                <button class="rincon-cover-card ${folder === currentMemeFolder ? 'active' : ''}" data-folder="${escapeHtml(folder)}" type="button" style="background-image: url('${escapeHtml(coverUrl)}')">
+                    <span class="rincon-cover-info">
+                        <span class="rincon-cover-name">${escapeHtml(folder)}</span>
+                        <span class="rincon-cover-count">${items?.length || 0}</span>
+                    </span>
+                </button>
+            `;
+        }).join('');
 
-        nav.querySelectorAll('.memes-folder-btn').forEach((btn) => {
+        nav.querySelectorAll('.rincon-cover-card').forEach((btn) => {
             btn.addEventListener('click', () => showMemeFolder(btn.dataset.folder));
         });
     }
@@ -914,20 +956,47 @@ function initReelLightbox() {
     }, { passive: true });
 }
 
+function setupMediaTabs() {
+    const tabs = document.querySelectorAll('.rincon-tab');
+    const contents = document.querySelectorAll('.rincon-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            const tabName = this.dataset.mediatab;
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            contents.forEach(c => {
+                c.style.display = c.dataset.mediatabContent === tabName ? '' : 'none';
+            });
+            if (tabName === 'galeria') {
+                renderGalleryFolders();
+                renderGalleryGrid();
+                warmGalleryCache();
+            } else if (tabName === 'memes') {
+                renderMemes();
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    });
+}
+
 function initRincon() {
     if (!document.getElementById('rincon')) return;
 
-    const isGalleryPage = !!document.getElementById('galleryImagesGrid');
-    const isMemePage = !!document.getElementById('memesGrid');
+    const hasGallery = !!document.getElementById('galleryImagesGrid');
+    const hasMemes = !!document.getElementById('memesGrid');
     const isCuriosidadesPage = !!document.getElementById('rincon-curiosidades');
 
-    if (isGalleryPage) {
+    if (hasGallery && hasMemes) {
+        setupMediaTabs();
         renderGalleryFolders();
         renderGalleryGrid();
         warmGalleryCache();
-    }
-
-    if (isMemePage) {
+    } else if (hasGallery) {
+        renderGalleryFolders();
+        renderGalleryGrid();
+        warmGalleryCache();
+    } else if (hasMemes) {
         renderMemes();
     }
 

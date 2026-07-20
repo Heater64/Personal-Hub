@@ -569,3 +569,213 @@
     color: var(--umbra-ash);
     margin: 4px 0 0;
 }
+
+/* ==========================================
+   MOODS SECTION
+   ========================================== */
+
+.moods-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 600px) {
+    .moods-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.moods-chart-section {
+    background: var(--glass-shield);
+    border: var(--theme-border-subtle);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.moods-chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.moods-chart-header h3 {
+    font-size: 0.9rem;
+    color: var(--umbra-light);
+    margin: 0;
+    font-weight: 500;
+}
+
+.moods-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.moods-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: var(--theme-border-subtle);
+    background: var(--glass-bg);
+    color: var(--umbra-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.moods-nav-btn:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--accent-border);
+}
+
+.moods-nav-btn i {
+    width: 16px;
+    height: 16px;
+}
+
+#moodMonthLabel {
+    font-size: 0.85rem;
+    color: var(--umbra-light);
+    min-width: 120px;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* Calendar grid */
+.moods-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 20px;
+}
+
+.moods-cal-header {
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--umbra-ash);
+    padding: 6px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.moods-cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    color: var(--umbra-ash);
+    background: var(--glass-bg);
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    min-height: 44px;
+}
+
+.moods-cal-day.empty {
+    background: transparent;
+    border-color: transparent;
+}
+
+.moods-cal-day.today {
+    border-color: var(--accent-coral);
+    background: var(--accent-dim);
+}
+
+.moods-cal-day.has-mood {
+    background: var(--glass-bg-hover);
+}
+
+.moods-cal-num {
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+
+.moods-cal-emoji {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+/* Stats row */
+.moods-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 480px) {
+    .moods-stats-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.moods-stat {
+    text-align: center;
+    padding: 12px;
+    background: var(--glass-bg);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: var(--umbra-ash);
+}
+
+.moods-stat-num {
+    display: block;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    color: var(--accent-coral);
+    margin-bottom: 4px;
+}
+
+/* Breakdown bars */
+.moods-breakdown-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.moods-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.moods-bar-label {
+    min-width: 120px;
+    font-size: 0.78rem;
+    color: var(--umbra-light);
+    text-align: right;
+}
+
+.moods-bar-track {
+    flex: 1;
+    height: 20px;
+    background: var(--glass-bg);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.moods-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+}
+
+.mood-bar-great { background: linear-gradient(90deg, #ffd700, #fff4b0); }
+.mood-bar-good { background: linear-gradient(90deg, #4caf50, #81c784); }
+.mood-bar-meh { background: linear-gradient(90deg, #ff9800, #ffb74d); }
+.mood-bar-bad { background: linear-gradient(90deg, #f44336, #e57373); }
+.mood-bar-love { background: linear-gradient(90deg, #e91e63, #f48fb1); }
+
+.moods-bar-pct {
+    min-width: 36px;
+    font-size: 0.72rem;
+    color: var(--umbra-ash);
+    text-align: right;
+}

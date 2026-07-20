@@ -114,6 +114,9 @@
         // Accesos Admin
         var rootDir = document.body.dataset.sidebarRoot || '../..';
         var role = state.user && (state.user.role || (state.user.profile && state.user.profile.role));
+        if (role !== 'admin' && state.user && state.user.email === 'admin@personalhub.com') {
+            role = 'admin';
+        }
         if (elements.btnAdmin) {
             elements.btnAdmin.hidden = role !== 'admin';
             if (role === 'admin') elements.btnAdmin.addEventListener('click', function () {

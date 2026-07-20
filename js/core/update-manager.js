@@ -70,15 +70,13 @@
     guardarVersion(version);
     var vistosSet = vistos();
     if (vistosSet.indexOf(version) !== -1) {
-      // Ya se mostró; solo precachear silenciosamente
       precachearSilencioso();
       return;
     }
-    // Intentar enriquecer con el changelog de Firestore si existe
+    marcarVisto(version);
+    try { localStorage.removeItem(PENDING_FLAG); } catch (e) {}
     obtenerChangelogFirestore().then(function (remoto) {
       var lista = (remoto && remoto.length) ? remoto : (changelog || []);
-      // Marcar pendiente para mostrar al abrir/cargar
-      try { localStorage.setItem(PENDING_FLAG, JSON.stringify({ version: version, changelog: lista })); } catch (e) {}
       mostrarBannerNovedades(version, lista);
     });
     precachearSilencioso();

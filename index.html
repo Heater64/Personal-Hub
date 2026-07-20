@@ -98,6 +98,9 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script defer src="js/firebase-config.js"></script>
+    <script defer src="services/auth/encryption.js"></script>
+    <script defer src="services/auth/session-manager.js"></script>
+    <script defer src="services/auth/auth.service.js"></script>
     <script defer src="js/core/profile.js"></script>
     <script defer src="js/core.js"></script>
     <script defer src="js/core/authGuard.js"></script>
@@ -134,13 +137,88 @@
         .catch(function(err) { console.warn('SW error:', err); });
     }
 
+    // Scroll a la sección de novedades si viene con #news
+    (function () {
+      if (window.location.hash === '#news') {
+        var checkNews = setInterval(function () {
+          var newsEl = document.getElementById('newsBanner');
+          if (newsEl) {
+            clearInterval(checkNews);
+            newsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Expandir automáticamente
+            var toggle = document.getElementById('newsToggle');
+            if (toggle && toggle.dataset.expanded === 'false') toggle.click();
+          }
+        }, 300);
+      }
+    })();
+
+    // Abrir welcome screen si viene con ?showMood=true
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('showMood') === 'true') {
+        var checkMood = setInterval(function () {
+          if (window.WelcomeScreen) {
+            clearInterval(checkMood);
+            // Forzar mostrar aunque ya se haya visto hoy
+            localStorage.removeItem('personalHub.welcomeDate');
+            window.WelcomeScreen.show();
+          }
+        }, 300);
+      }
+    })();
+
     // Sistema PWA: conexión, actualizaciones, instalación
     window.addEventListener('load', function () {
       if (window.ConnectionIndicator) window.ConnectionIndicator.init();
       if (window.UpdateManager) { window.UpdateManager.init(); window.UpdateManager.mostrarPendiente(); }
       if (window.InstallManager) window.InstallManager.init();
       if (window.Notifications) window.Notifications.reiniciarDiarias();
+      checkTodaySurprise();
     });
+
+    // ===== DETECTOR DE SORPRESA DEL DÍA =====
+    // Busca si hay un regalo disponible hoy en el calendario
+    async function checkTodaySurprise() {
+      try {
+        var today = new Date();
+        var monthKey = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+        var dayStr = String(today.getDate());
+
+        // Intentar cargar desde el JSON local
+        var res = await fetch('data/gifts.json?' + Date.now(), { cache: 'no-cache' });
+        if (!res.ok) return;
+        var data = await res.json();
+        if (!data || !data.months) return;
+
+        var month = data.months[monthKey];
+        if (!month || !month.calendarMapping) return;
+
+        var giftId = month.calendarMapping[dayStr];
+        if (!giftId) return; // No hay sorpresa hoy
+
+        // Buscar el gift en el catálogo (dentro de data si existe)
+        var hasGift = data.gifts && data.gifts.some(function (g) { return g.id === giftId; });
+        if (!hasGift && !giftId.startsWith('dia_') && !giftId.startsWith('juego_') && !giftId.startsWith('sorpresa_')) return;
+
+        // Mostrar badge en el hero o notificación
+        var newsToggle = document.getElementById('newsToggle');
+        if (newsToggle) {
+          var badge = document.createElement('span');
+          badge.className = 'surprise-badge';
+          badge.textContent = '🎁';
+          badge.title = '¡Hay sorpresa hoy!';
+          newsToggle.parentNode.insertBefore(badge, newsToggle);
+        }
+
+        // Notificación in-app
+        if (window.Notifications) {
+          window.Notifications.diaria('surprise.today', '🎁 ¡Hoy hay sorpresa! Mira el calendario 💫', 'exito');
+        }
+      } catch (e) {
+        console.warn('Error checking surprise:', e);
+      }
+    }
     </script>
 
 </body>

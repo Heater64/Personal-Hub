@@ -31,8 +31,8 @@ const fotosatardecer = {
 
 const memeImages = {
     "Gatos": [
-        "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777135720/CurriculumGatos_tixrwq.jpg",
         "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777123664/Gatosencama_m3esg5.jpg",
+        "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777135720/CurriculumGatos_tixrwq.jpg",
         "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777136105/524724027_18073028165474541_832400577264050365_n_ja2eg2.jpg",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134958/gatitos_tm31wg.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777134958/Estos_son_los_gatos_carpinteros_z4i9jw.mp4",
@@ -97,6 +97,8 @@ const memeImages = {
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995503/video5821142400889790153_1_auvfsc.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1779995259/video5821142400889790148_pqiwwn.mp4",
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1783252994/video5931306366412005204_fr36uy.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1784299721/video5960527339619097496_qfw8ne.mp4",
+        "https://res.cloudinary.com/dcsent4fs/video/upload/v1784300673/video5967786976810638627_tilj4s.mp4",
 
         //Extra//
         "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123651/Memes_favoritos_-1_guzqtm.mp4",

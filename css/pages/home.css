@@ -813,3 +813,27 @@ html[data-large-text="true"] body[data-sidebar-page="home"] .news-go-btn { font-
   .bento-grid { --bento-row: minmax(220px, auto); }
   .bento-card--featured { min-height: 300px; }
 }
+
+/* ==========================================
+   SURPRISE BADGE
+   ========================================== */
+.surprise-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--accent-coral);
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  animation: surprisePulse 2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(198, 90, 58, 0.3);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@keyframes surprisePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 12px rgba(198, 90, 58, 0.3); }
+  50% { transform: scale(1.12); box-shadow: 0 0 20px rgba(198, 90, 58, 0.5); }
+}

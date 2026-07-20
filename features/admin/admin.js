@@ -126,6 +126,7 @@ var AdminApp = (function () {
     function loadSection(section) {
         switch (section) {
             case 'dashboard': loadDashboard(); break;
+            case 'moods': loadMoods(); break;
             case 'razones': loadRazones(); break;
             case 'canciones': loadCanciones(); break;
             case 'regalos': loadRegalos(); break;
@@ -249,6 +250,244 @@ var AdminApp = (function () {
                 if (el) el.textContent = 'Error';
             });
         }
+    }
+
+    // ==========================================
+    // ESTADO DE ÁNIMO (MOODS)
+    // ==========================================
+
+    var moodCurrentDate = new Date(); // track current viewed month
+
+    var MOOD_EMOJIS = {
+        great: '🤍🤍🤍',
+        good: '😊',
+        meh: '😕',
+        bad: '😔',
+        love: '❤️'
+    };
+
+    var MOOD_LABELS = {
+        great: 'Muy bieeeen',
+        good: 'Bien',
+        meh: 'Un poquito mal',
+        bad: 'Mal',
+        love: 'Necesito cariño'
+    };
+
+    var MOOD_SCORES = {
+        great: 4,
+        good: 3,
+        meh: 2,
+        bad: 1,
+        love: 0
+    };
+
+    async function loadMoods() {
+        if (!window.db) return;
+        loadMoodSummary();
+        renderMoodMonth(moodCurrentDate);
+        bindMoodNav();
+    }
+
+    async function loadMoodSummary() {
+        var uid = getCurrentSessionUid();
+        if (!uid) return;
+
+        var today = new Date().toISOString().split('T')[0];
+        var weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+        var monthStart = new Date().toISOString().slice(0, 7) + '-01';
+        var yearStart = new Date().getFullYear() + '-01-01';
+
+        try {
+            var allMoods = await window.db.collection('users').doc(uid).collection('moods').get();
+            var moods = [];
+            allMoods.forEach(function (doc) {
+                var d = doc.data();
+                moods.push({ date: doc.id, mood: d.mood, label: d.label, emoji: d.emoji, timestamp: d.timestamp });
+            });
+
+            moods.sort(function (a, b) { return a.date.localeCompare(b.date); });
+
+            // Today
+            var todayMood = moods.filter(function (m) { return m.date === today; });
+            document.getElementById('moodToday').textContent = todayMood.length > 0
+                ? (todayMood[0].emoji || MOOD_EMOJIS[todayMood[0].mood] || '—')
+                : '—';
+
+            // This week
+            var weekMoods = moods.filter(function (m) { return m.date >= weekAgo && m.date <= today; });
+            document.getElementById('moodWeek').textContent = weekMoods.length > 0
+                ? calcMoodAverage(weekMoods)
+                : '—';
+
+            // This month
+            var monthMoods = moods.filter(function (m) { return m.date >= monthStart && m.date <= today; });
+            document.getElementById('moodMonth').textContent = monthMoods.length > 0
+                ? calcMoodAverage(monthMoods)
+                : '—';
+
+            // This year
+            var yearMoods = moods.filter(function (m) { return m.date >= yearStart && m.date <= today; });
+            document.getElementById('moodYear').textContent = yearMoods.length > 0
+                ? calcMoodAverage(yearMoods)
+                : '—';
+        } catch (err) {
+            console.warn('Error loading mood summary:', err);
+        }
+    }
+
+    function calcMoodAverage(moods) {
+        var total = 0;
+        moods.forEach(function (m) {
+            var score = MOOD_SCORES[m.mood] !== undefined ? MOOD_SCORES[m.mood] : 1;
+            total += score;
+        });
+        var avg = total / moods.length;
+        if (avg >= 3.5) return '🤍🤍🤍';
+        if (avg >= 2.5) return '😊';
+        if (avg >= 1.5) return '😕';
+        if (avg >= 0.5) return '😔';
+        return '❤️';
+    }
+
+    async function renderMoodMonth(date) {
+        var container = document.getElementById('moodsCalendar');
+        var statsEl = document.getElementById('moodsStats');
+        var breakdownEl = document.getElementById('moodsBreakdown');
+        var labelEl = document.getElementById('moodMonthLabel');
+        if (!container || !statsEl || !breakdownEl) return;
+
+        var uid = getCurrentSessionUid();
+        if (!uid) {
+            container.innerHTML = '<div class="admin-empty">Inicia sesión para ver estadísticas</div>';
+            return;
+        }
+
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0');
+        labelEl.textContent = getMonthName(date.getMonth(), year);
+
+        // Fetch all moods for this month
+        var monthPrefix = year + '-' + month;
+        try {
+            var snap = await window.db.collection('users').doc(uid).collection('moods').get();
+            var monthMoods = [];
+            snap.forEach(function (doc) {
+                if (doc.id.startsWith(monthPrefix)) {
+                    monthMoods.push({ date: doc.id, ...doc.data() });
+                }
+            });
+
+            // Calendar grid
+            var daysInMonth = new Date(year, date.getMonth() + 1, 0).getDate();
+            var firstDay = new Date(year, date.getMonth(), 1).getDay(); // 0=Sun
+            var moodMap = {};
+            monthMoods.forEach(function (m) { moodMap[m.date] = m; });
+
+            var html = '<div class="moods-calendar-grid">';
+            // Day headers
+            ['D', 'L', 'M', 'X', 'J', 'V', 'S'].forEach(function (d) {
+                html += '<div class="moods-cal-header">' + d + '</div>';
+            });
+            // Empty cells before first day
+            for (var i = 0; i < firstDay; i++) {
+                html += '<div class="moods-cal-day empty"></div>';
+            }
+            // Day cells
+            var todayStr = new Date().toISOString().split('T')[0];
+            for (var day = 1; day <= daysInMonth; day++) {
+                var dateStr = year + '-' + month + '-' + String(day).padStart(2, '0');
+                var mood = moodMap[dateStr];
+                var isToday = dateStr === todayStr;
+                var cls = 'moods-cal-day' + (isToday ? ' today' : '') + (mood ? ' has-mood' : '');
+                var emoji = mood ? (mood.emoji || MOOD_EMOJIS[mood.mood] || '—') : '';
+                html += '<div class="' + cls + '" title="' + dateStr + ': ' + (mood ? mood.label : 'Sin registro') + '">' +
+                    '<span class="moods-cal-num">' + day + '</span>' +
+                    (emoji ? '<span class="moods-cal-emoji">' + emoji + '</span>' : '') +
+                    '</div>';
+            }
+            html += '</div>';
+            container.innerHTML = html;
+
+            // Stats
+            if (monthMoods.length === 0) {
+                statsEl.innerHTML = '<div class="admin-empty">No hay datos de ánimo para este mes</div>';
+                breakdownEl.innerHTML = '';
+                return;
+            }
+
+            // Count breakdown
+            var counts = {};
+            monthMoods.forEach(function (m) {
+                var key = m.mood || 'unknown';
+                counts[key] = (counts[key] || 0) + 1;
+            });
+
+            var bestMood = '';
+            var bestCount = 0;
+            Object.keys(counts).forEach(function (key) {
+                if (counts[key] > bestCount) { bestCount = counts[key]; bestMood = key; }
+            });
+
+            statsEl.innerHTML = '<div class="moods-stats-row">' +
+                '<div class="moods-stat"><span class="moods-stat-num">' + monthMoods.length + '</span> días registrados</div>' +
+                '<div class="moods-stat"><span class="moods-stat-num">' + (MOOD_EMOJIS[bestMood] || '—') + '</span> más frecuente</div>' +
+                '<div class="moods-stat"><span class="moods-stat-num">' + calcMoodAverage(monthMoods) + '</span> media del mes</div>' +
+                '</div>';
+
+            // Breakdown bars
+            var breakdownHtml = '<div class="moods-breakdown-bars">';
+            var moodOrder = ['great', 'good', 'meh', 'bad', 'love'];
+            moodOrder.forEach(function (key) {
+                var count = counts[key] || 0;
+                var pct = monthMoods.length > 0 ? Math.round(count / monthMoods.length * 100) : 0;
+                breakdownHtml += '<div class="moods-bar-row">' +
+                    '<span class="moods-bar-label">' + (MOOD_EMOJIS[key] || key) + ' ' + (MOOD_LABELS[key] || key) + '</span>' +
+                    '<div class="moods-bar-track">' +
+                    '<div class="moods-bar-fill mood-bar-' + key + '" style="width:' + pct + '%"></div>' +
+                    '</div>' +
+                    '<span class="moods-bar-pct">' + pct + '%</span>' +
+                    '</div>';
+            });
+            breakdownHtml += '</div>';
+            breakdownEl.innerHTML = breakdownHtml;
+
+        } catch (err) {
+            container.innerHTML = '<div class="admin-empty">Error cargando datos</div>';
+            console.warn('Error loading month moods:', err);
+        }
+    }
+
+    function bindMoodNav() {
+        var prevBtn = document.getElementById('moodPrevMonth');
+        var nextBtn = document.getElementById('moodNextMonth');
+        if (prevBtn) {
+            prevBtn.onclick = function () {
+                moodCurrentDate.setMonth(moodCurrentDate.getMonth() - 1);
+                renderMoodMonth(moodCurrentDate);
+            };
+        }
+        if (nextBtn) {
+            nextBtn.onclick = function () {
+                moodCurrentDate.setMonth(moodCurrentDate.getMonth() + 1);
+                renderMoodMonth(moodCurrentDate);
+            };
+        }
+    }
+
+    function getMonthName(monthIndex, year) {
+        var names = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        return names[monthIndex] + ' ' + year;
+    }
+
+    function getCurrentSessionUid() {
+        if (window.SessionManager && window.SessionManager.isLoggedIn()) {
+            return window.SessionManager.getUid();
+        }
+        if (window.auth && window.auth.currentUser) {
+            return window.auth.currentUser.uid;
+        }
+        return null;
     }
 
     // ==========================================

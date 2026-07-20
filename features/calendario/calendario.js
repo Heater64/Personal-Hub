@@ -519,6 +519,31 @@ async function initGiftPlatform() {
 
 async function init() {
     await initGiftPlatform();
+
+    // Si viene con ?open=today, abrir el regalo de hoy automáticamente
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('open') === 'today') {
+        setTimeout(function () {
+            var today = new Date();
+            var dayNum = today.getDate();
+            // Buscar el día de hoy en el grid y hacer clic
+            var todayCard = document.querySelector('.day-card[data-day="' + dayNum + '"]:not(.locked)');
+            if (todayCard) {
+                todayCard.click();
+            } else {
+                // Intentar encontrar cualquier card con data-day
+                var cards = document.querySelectorAll('.day-card');
+                for (var i = 0; i < cards.length; i++) {
+                    if (parseInt(cards[i].getAttribute('data-day')) === dayNum) {
+                        if (!cards[i].classList.contains('locked')) {
+                            cards[i].click();
+                        }
+                        break;
+                    }
+                }
+            }
+        }, 1000);
+    }
 }
 
 if (document.readyState === 'loading') {

@@ -1,8 +1,9 @@
 // shared/utils/authGuard.js
-// Protege páginas: si no hay sesión, redirige al login
+// Protege páginas: si no hay sesión (SessionManager o Firebase Auth), redirige al login
 
 (function() {
     let guardReady = false;
+    var isAuthenticated = false;
 
     function getLoginPath() {
         const path = window.location.pathname;
@@ -32,23 +33,40 @@
         window.location.href = `${loginPath}?redirect=${redirectParam}`;
     }
 
+    function isLoggedInViaSessionManager() {
+        return typeof SessionManager !== 'undefined' && SessionManager.isLoggedIn();
+    }
+
     function checkAuth() {
-        if (typeof window.auth === 'undefined' || !window.auth) {
-            setTimeout(checkAuth, 200);
+        if (isAuthenticated) return;
+        if (guardReady) return;
+
+        // 1. Comprobar SessionManager primero
+        if (isLoggedInViaSessionManager()) {
+            isAuthenticated = true;
+            guardReady = true;
             return;
         }
 
-        if (guardReady) return;
-        guardReady = true;
-
-        window.auth.onAuthStateChanged(function(user) {
-            if (!user) {
-                redirectToLogin();
-            }
-        });
+        // 2. Comprobar Firebase Auth
+        if (typeof window.auth !== 'undefined' && window.auth) {
+            guardReady = true;
+            window.auth.onAuthStateChanged(function(user) {
+                if (!user) {
+                    if (!isLoggedInViaSessionManager()) {
+                        redirectToLogin();
+                    } else {
+                        isAuthenticated = true;
+                    }
+                } else {
+                    isAuthenticated = true;
+                }
+            });
+        } else {
+            setTimeout(checkAuth, 200);
+        }
     }
 
-    // Si la página es login, no hacer nada
     const isLoginPage = window.location.pathname.includes('login.html');
     if (isLoginPage) return;
 

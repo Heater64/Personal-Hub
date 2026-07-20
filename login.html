@@ -78,6 +78,10 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script defer src="js/firebase-config.js"></script>
+    <script defer src="services/auth/encryption.js"></script>
+    <script defer src="services/auth/session-manager.js"></script>
+    <script defer src="services/auth/auth.service.js"></script>
+    <script defer src="services/auth/user.service.js"></script>
     <script defer src="js/core.js"></script>
     <script>
     (function () {
@@ -137,6 +141,94 @@
             }
         } catch(e) {}
 
+        // Esperar a que los servicios estén listos
+        async function waitForServices() {
+            for (var i = 0; i < 50; i++) {
+                if (window.db && window.AuthService && window.SessionManager) return true;
+                await new Promise(function (r) { setTimeout(r, 200); });
+            }
+            return false;
+        }
+
+        // Login principal - prueba Custom Auth primero, luego Firebase Auth
+        async function doLogin(username, password) {
+            // 1. Intentar Custom Auth (AuthService busca en Firestore users collection)
+            try {
+                var session = await window.AuthService.login(username, password);
+                console.log('✅ Custom Auth login exitoso:', session.username);
+                return;
+            } catch (err) {
+                if (err.message === 'USER_NOT_FOUND' || err.message === 'WRONG_PASSWORD') {
+                    // Intentar con Firebase Auth como fallback
+                } else {
+                    throw err;
+                }
+            }
+
+            // 2. Fallback: Firebase Auth directo (signInWithEmailAndPassword)
+            if (!window.auth || typeof window.auth.signInWithEmailAndPassword !== 'function') {
+                throw new Error('Firebase no esta listo. Espera un momento y recarga.');
+            }
+
+            var result = await window.auth.signInWithEmailAndPassword(username, password);
+            var user = result.user;
+
+            // 3. Sincronizar con SessionManager (crear usuario en Firestore si no existe)
+            await syncFirebaseUserToSession(user);
+        }
+
+        // Sincronizar un usuario de Firebase Auth al sistema SessionManager
+        async function syncFirebaseUserToSession(firebaseUser) {
+            if (!window.db) throw new Error('Firestore no disponible');
+
+            var email = firebaseUser.email || '';
+            var usersSnap = await window.db.collection('users')
+                .where('username', '==', email)
+                .limit(1)
+                .get();
+
+            var userData;
+            if (usersSnap.empty) {
+                // Crear nuevo usuario en Firestore
+                var isAdmin = email === 'admin@personalhub.com';
+                var name = firebaseUser.displayName || email.split('@')[0] || 'Usuario';
+                var newUser = {
+                    username: email,
+                    name: name,
+                    photo: firebaseUser.photoURL || '',
+                    role: isAdmin ? 'admin' : 'user',
+                    enabled: true,
+                    password: '',
+                    createdAt: new Date().toISOString(),
+                    lastLogin: new Date().toISOString(),
+                    preferences: { theme: 'dark', accessibility: {} },
+                    profile: {}
+                };
+                var ref = await window.db.collection('users').add(newUser);
+                userData = { id: ref.id, ...newUser };
+                console.log('✅ Usuario creado en Firestore desde Firebase Auth:', email);
+            } else {
+                var doc = usersSnap.docs[0];
+                userData = { id: doc.id, ...doc.data() };
+                // Actualizar último acceso
+                await window.db.collection('users').doc(doc.id).update({
+                    lastLogin: new Date().toISOString()
+                });
+            }
+
+            // Crear sesión en SessionManager
+            window.SessionManager.createSession({
+                id: userData.id,
+                username: userData.username,
+                name: userData.name || userData.username,
+                photo: userData.photo || '',
+                role: userData.role || 'user',
+                enabled: userData.enabled !== false,
+                preferences: userData.preferences || {},
+                profile: userData.profile || {}
+            });
+        }
+
         // Login
         form.addEventListener('submit', async function (e) {
             e.preventDefault();
@@ -160,10 +252,10 @@
                     try { localStorage.removeItem('personalHub.rememberEmail'); } catch(e) {}
                 }
 
-                if (typeof loginWithEmail !== 'function') {
-                    throw new Error('Firebase no esta listo. Espera un momento y recarga.');
-                }
-                await loginWithEmail(email, password);
+                var ready = await waitForServices();
+                if (!ready) throw new Error('Los servicios no estan listos. Recarga la pagina.');
+
+                await doLogin(email, password);
                 redirectAfterLogin();
             } catch (err) {
                 var msg = 'Error al iniciar sesion.';
@@ -173,6 +265,8 @@
                     msg = 'El formato del correo no es valido.';
                 } else if (err.code === 'auth/too-many-requests') {
                     msg = 'Demasiados intentos. Intenta mas tarde.';
+                } else if (err.message === 'USER_NOT_FOUND' || err.message === 'WRONG_PASSWORD') {
+                    msg = 'Usuario o contrasena incorrectos.';
                 } else if (err.message) {
                     msg = err.message;
                 }
@@ -185,7 +279,14 @@
         emailInput.addEventListener('input', hideError);
         passwordInput.addEventListener('input', hideError);
 
+        // Al cargar, comprobar si ya hay sesión (Firebase Auth o SessionManager)
         function waitForAuthAndCheck() {
+            // Comprobar SessionManager primero
+            if (typeof SessionManager !== 'undefined' && SessionManager.isLoggedIn()) {
+                redirectAfterLogin();
+                return;
+            }
+            // Luego Firebase Auth
             if (typeof window.auth !== 'undefined' && window.auth) {
                 window.auth.onAuthStateChanged(function (user) {
                     if (user) redirectAfterLogin();

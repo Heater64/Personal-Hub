@@ -182,6 +182,72 @@ html[data-theme="light"] .welcome-screen__stats-link {
   margin: 20px 0;
 }
 
+/* ==========================================
+   ANIMACIONES DE ENTRADA
+   ========================================== */
+
+/* Greeting reveal */
+.welcome-screen__greeting {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.welcome-screen__greeting.animate-reveal {
+  animation: welcomeGreetIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes welcomeGreetIn {
+  0% { opacity: 0; transform: translateY(18px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Mood button entrance */
+.animate-mood-in {
+  opacity: 0;
+  transform: translateY(16px) scale(0.95);
+  animation: moodSlideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes moodSlideIn {
+  0% { opacity: 0; transform: translateY(20px) scale(0.93); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Continue button entrance */
+.animate-btn-in {
+  animation: btnFadeIn 0.5s ease 0.3s forwards;
+}
+
+.welcome-btn.animate-btn-in {
+  animation: btnFadeIn 0.5s ease forwards;
+}
+
+@keyframes btnFadeIn {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Sun emoji floating */
+.welcome-screen__sun {
+  display: inline-block;
+  animation: sunFloat 3s ease-in-out infinite;
+}
+
+@keyframes sunFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(8deg); }
+}
+
+/* Ready pulse for button */
+.welcome-btn.ready {
+  animation: readyPulse 2s ease-in-out infinite;
+}
+
+@keyframes readyPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(198, 90, 58, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(198, 90, 58, 0); }
+}
+
 .mood-btn {
   background: var(--theme-bg-card, rgba(255,255,255,0.05));
   border: 1px solid var(--theme-border-visible, rgba(255,255,255,0.08));
@@ -260,8 +326,10 @@ html[data-theme="light"] .welcome-screen__stats-link {
   margin-top: 16px;
 }
 
-.welcome-screen__cta .welcome-btn {
-  /* scoped to mood check-in screen only */
+.welcome-screen__cta .welcome-btn:not(.animate-btn-in) {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateY(8px);
 }
 
 .welcome-screen .welcome-btn {
@@ -327,11 +395,21 @@ html[data-theme="light"] .welcome-screen__stats-link {
 }
 
 /* ==========================================
-   HIDDEN
+   HIDDEN / CLOSING
    ========================================== */
 .welcome-screen.hidden {
   opacity: 0;
   pointer-events: none;
+}
+
+.welcome-screen.is-closing {
+  animation: welcomeClose 0.5s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+  pointer-events: none;
+}
+
+@keyframes welcomeClose {
+  0% { opacity: 1; transform: scale(1); backdrop-filter: blur(12px); }
+  100% { opacity: 0; transform: scale(1.04); backdrop-filter: blur(0px); }
 }
 
 /* ==========================================

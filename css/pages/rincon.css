@@ -413,6 +413,97 @@ html[data-large-text="true"] body[data-sidebar-page="rincon"] .rincon-day-counte
   opacity: 0.6;
 }
 
+/* Cover cards for folder navigation */
+.rincon-cover-scroll {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.rincon-cover-card {
+  aspect-ratio: 3 / 2;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--rincon-input-bg, rgba(128,128,128,0.12)), var(--rincon-card-bg, rgba(64,64,64,0.08)));
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  display: flex;
+  align-items: flex-end;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rincon-cover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.rincon-cover-card:active {
+  transform: scale(0.97);
+}
+
+.rincon-cover-card.active {
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 1px var(--theme-accent-primary);
+}
+
+.rincon-cover-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, rgba(0, 0, 0, 0.7) 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.rincon-cover-info {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.rincon-cover-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rincon-cover-count {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .rincon-cover-scroll {
+    gap: 8px;
+  }
+  .rincon-cover-card {
+    border-radius: 10px;
+  }
+  .rincon-cover-info {
+    padding: 8px 10px;
+  }
+}
+
 /* ==============================
    CURIOSITY CARD — Dato del día
    ============================== */
@@ -829,21 +920,22 @@ html[data-large-text="true"] body[data-sidebar-page="rincon"] .rincon-curiosity-
    =========================================== */
 
 .gallery-masonry {
-  column-count: 3;
-  column-gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
   width: 100%;
   margin: 0;
   padding: 0;
 }
 .gallery-masonry-item {
-  break-inside: avoid;
-  margin-bottom: 10px;
   position: relative;
   overflow: hidden;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   cursor: pointer;
+  aspect-ratio: 4 / 3;
+  will-change: transform;
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
               box-shadow 0.3s ease,
               border-color 0.3s ease;
@@ -857,9 +949,16 @@ html[data-large-text="true"] body[data-sidebar-page="rincon"] .rincon-curiosity-
 }
 .gallery-masonry-item img {
   width: 100%;
+  height: 100%;
   display: block;
-  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s ease,
+              transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
               filter 0.3s ease;
+}
+.gallery-masonry-item:not(.loading) img {
+  opacity: 1;
 }
 .gallery-masonry-item:hover img {
   transform: scale(1.05);
@@ -926,7 +1025,6 @@ html[data-large-text="true"] body[data-sidebar-page="rincon"] .rincon-curiosity-
 
 /* Skeleton loading */
 .gallery-masonry-item.loading {
-  min-height: 160px;
   background: linear-gradient(110deg, rgba(255,255,255,0.03) 30%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 70%);
   background-size: 200% 100%;
   animation: galleryShimmer 1.5s ease-in-out infinite;
@@ -938,11 +1036,11 @@ html[data-large-text="true"] body[data-sidebar-page="rincon"] .rincon-curiosity-
 
 /* Responsive */
 @media (max-width: 900px) {
-  .gallery-masonry { column-count: 2; }
+  .gallery-masonry { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 480px) {
-  .gallery-masonry { column-count: 2; column-gap: 6px; }
-  .gallery-masonry-item { margin-bottom: 6px; border-radius: 8px; }
+  .gallery-masonry { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .gallery-masonry-item { border-radius: 8px; }
   .gallery-overlay .gallery-overlay-icon { width: 36px; height: 36px; }
   .gallery-overlay-icon i { width: 16px; height: 16px; }
 }
@@ -1537,5 +1635,50 @@ body.reel-lightbox-open {
     bottom: 8px;
     padding: 7px 12px;
   }
+}
+
+/* ==============================
+   MEDIA TABS (galería + memes)
+   ============================== */
+.rincon-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.rincon-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: var(--rincon-border, 1px solid rgba(255, 255, 255, 0.06));
+  border-radius: 20px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rincon-tab:hover {
+  border-color: var(--theme-accent-border);
+  color: var(--theme-accent-primary);
+  background: var(--theme-accent-dim);
+}
+
+.rincon-tab.active {
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.08));
+  font-weight: 600;
+}
+
+.rincon-tab i {
+  width: 18px;
+  height: 18px;
 }
 

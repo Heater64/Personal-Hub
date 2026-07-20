@@ -873,13 +873,40 @@ var AdminApp = (function () {
     // ==========================================
 
     function checkAdminAccess() {
-        var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-        if (!user || !(typeof isAdminUser === 'function' && isAdminUser(user))) {
-            // Solo el admin puede ver esta página — redirigir al inicio
+        var isAdmin = false;
+        var email = '';
+
+        if (typeof PermissionService !== 'undefined' && PermissionService.canAccessAdmin()) {
+            isAdmin = true;
+            var session = typeof SessionManager !== 'undefined' ? SessionManager.getSession() : null;
+            email = session ? session.email : 'admin';
+        } else {
+            var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+            if (user) {
+                if (typeof isAdminUser === 'function' && isAdminUser(user)) {
+                    isAdmin = true;
+                    email = user.email || 'admin';
+                } else if (user.email === 'admin@personalhub.com') {
+                    isAdmin = true;
+                    email = user.email;
+                }
+            }
+        }
+
+        if (!isAdmin && window.auth && window.auth.currentUser) {
+            var fbUser = window.auth.currentUser;
+            if (fbUser.email === 'admin@personalhub.com') {
+                isAdmin = true;
+                email = fbUser.email;
+            }
+        }
+
+        if (!isAdmin) {
             window.location.replace('../index.html');
             return false;
         }
-        document.getElementById('adminStatus').querySelector('span:last-child').textContent = 'Conectado como ' + user.email;
+
+        document.getElementById('adminStatus').querySelector('span:last-child').textContent = 'Conectado como ' + email;
         return true;
     }
 

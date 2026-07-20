@@ -1,8 +1,8 @@
 {
   "id": "/",
   "name": "Personal Hub",
-  "short_name": "Personal Hub",
-  "description": "Tu lanzadera de proyectos personales",
+  "short_name": "Hub ❤️",
+  "description": "Tu rincón personal con calendario de sorpresas, canciones, razones y mucho más",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
@@ -40,15 +40,38 @@
   ],
   "shortcuts": [
     {
-      "name": "Razones",
+      "name": "📅 Calendario - ¿Sorpresa hoy?",
+      "short_name": "Calendario",
+      "description": "Descubre la sorpresa del día en el calendario",
+      "url": "/pages/calendario.html?open=today",
+      "icons": [{ "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "✨ Novedades",
+      "short_name": "Novedades",
+      "description": "Últimas actualizaciones y novedades",
+      "url": "/index.html#news",
+      "icons": [{ "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "❤️ Razones",
       "short_name": "Razones",
+      "description": "Todas las razones por las que te quiero",
       "url": "/pages/razones.html",
       "icons": [{ "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png", "sizes": "192x192" }]
     },
     {
-      "name": "Calendario",
-      "short_name": "Calendario",
-      "url": "/pages/calendario.html",
+      "name": "🎵 Canciones",
+      "short_name": "Canciones",
+      "description": "Canciones que me recuerdan a ti",
+      "url": "/pages/canciones.html",
+      "icons": [{ "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "😊 ¿Cómo te sientes?",
+      "short_name": "Ánimo",
+      "description": "Registra cómo te sientes hoy",
+      "url": "/index.html?showMood=true",
       "icons": [{ "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png", "sizes": "192x192" }]
     }
   ]

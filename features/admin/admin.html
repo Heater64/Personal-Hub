@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hub">
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
-    <title>Panel Admin ∑ Personal Hub</title>
+    <title>Panel Admin ÔøΩ Personal Hub</title>
     <meta name="theme-color" content="#0c0b0b">
     <link rel="stylesheet" href="../../css/main.css">
     <link rel="stylesheet" href="admin.css">
@@ -19,7 +19,7 @@
 
 <body data-sidebar-root="../.." data-sidebar-page="admin">
 
-    <button class="sidebar-toggle" type="button" aria-label="Abrir navegaciÛn" data-sidebar-toggle>
+    <button class="sidebar-toggle" type="button" aria-label="Abrir navegaciÔøΩn" data-sidebar-toggle>
         <i data-lucide="menu"></i>
     </button>
     <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -31,7 +31,7 @@
             <!-- Header -->
             <div class="admin-header">
                 <div>
-                    <h1><i data-lucide="settings"></i> Panel de AdministraciÛn</h1>
+                    <h1><i data-lucide="settings"></i> Panel de AdministraciÔøΩn</h1>
                     <p>Gestiona todo el contenido de la web</p>
                 </div>
                 <div class="admin-header-status" id="adminStatus">
@@ -40,7 +40,7 @@
                 </div>
             </div>
 
-            <!-- Tabs de navegaciÛn -->
+            <!-- Tabs de navegaciÔøΩn -->
             <nav class="admin-tabs" id="adminTabs">
                 <button class="admin-tab active" data-section="dashboard">
                     <i data-lucide="layout-dashboard"></i> Dashboard
@@ -58,10 +58,13 @@
                     <i data-lucide="newspaper"></i> Noticias
                 </button>
                 <button class="admin-tab" data-section="maldia">
-                    <i data-lucide="sun-medium"></i> Mal DÌa
+                    <i data-lucide="sun-medium"></i> Mal DÔøΩa
                 </button>
                 <button class="admin-tab" data-section="series">
                     <i data-lucide="tv"></i> Series
+                </button>
+                <button class="admin-tab" data-section="moods">
+                    <i data-lucide="heart-handshake"></i> Estado de √°nimo
                 </button>
                 <button class="admin-tab" data-section="analytics">
                     <i data-lucide="bar-chart-3"></i> Analytics
@@ -74,7 +77,7 @@
                 </button>
             </nav>
 
-            <!-- Contenido de cada secciÛn -->
+            <!-- Contenido de cada secciÔøΩn -->
             <div class="admin-content">
 
                 <!-- ========== DASHBOARD ========== -->
@@ -87,12 +90,38 @@
                     </div>
                 </section>
 
+                <!-- ========== ESTADO DE √ÅNIMO ========== -->
+                <section class="admin-section" id="sec-moods">
+                    <div class="admin-section-header">
+                        <h2><i data-lucide="heart-handshake"></i> Estado de √Ånimo</h2>
+                    </div>
+                    <div class="moods-summary" id="moodsSummary">
+                        <div class="stat-card"><div class="stat-value" id="moodToday">‚Äî</div><div class="stat-label">Hoy</div></div>
+                        <div class="stat-card"><div class="stat-value" id="moodWeek">‚Äî</div><div class="stat-label">Esta semana</div></div>
+                        <div class="stat-card"><div class="stat-value" id="moodMonth">‚Äî</div><div class="stat-label">Este mes</div></div>
+                        <div class="stat-card"><div class="stat-value" id="moodYear">‚Äî</div><div class="stat-label">Este a√±o</div></div>
+                    </div>
+                    <div class="moods-chart-section">
+                        <div class="moods-chart-header">
+                            <h3>Historial mensual</h3>
+                            <div class="moods-nav">
+                                <button class="moods-nav-btn" id="moodPrevMonth" type="button"><i data-lucide="chevron-left"></i></button>
+                                <span id="moodMonthLabel">‚Äî</span>
+                                <button class="moods-nav-btn" id="moodNextMonth" type="button"><i data-lucide="chevron-right"></i></button>
+                            </div>
+                        </div>
+                        <div class="moods-calendar" id="moodsCalendar"></div>
+                        <div class="moods-stats" id="moodsStats"></div>
+                        <div class="moods-breakdown" id="moodsBreakdown"></div>
+                    </div>
+                </section>
+
                 <!-- ========== RAZONES ========== -->
                 <section class="admin-section" id="sec-razones">
                     <div class="admin-section-header">
                         <h2><i data-lucide="heart"></i> Razones</h2>
                         <button class="admin-btn admin-btn-primary" id="razonesAddBtn">
-                            <i data-lucide="plus"></i> AÒadir razÛn
+                            <i data-lucide="plus"></i> AÔøΩadir razÔøΩn
                         </button>
                     </div>
                     <div class="admin-list" id="razonesList"></div>
@@ -103,7 +132,7 @@
                     <div class="admin-section-header">
                         <h2><i data-lucide="music"></i> Canciones</h2>
                         <button class="admin-btn admin-btn-primary" id="cancionesAddBtn">
-                            <i data-lucide="plus"></i> AÒadir canciÛn
+                            <i data-lucide="plus"></i> AÔøΩadir canciÔøΩn
                         </button>
                     </div>
                     <div class="admin-list" id="cancionesList"></div>
@@ -114,7 +143,7 @@
                     <div class="admin-section-header">
                         <h2><i data-lucide="gift"></i> Regalos del Calendario</h2>
                         <button class="admin-btn admin-btn-primary" id="regalosAddBtn">
-                            <i data-lucide="plus"></i> AÒadir regalo
+                            <i data-lucide="plus"></i> AÔøΩadir regalo
                         </button>
                     </div>
                     <div class="admin-list" id="regalosList"></div>
@@ -125,28 +154,28 @@
                     <div class="admin-section-header">
                         <h2><i data-lucide="newspaper"></i> Noticias del Home</h2>
                         <button class="admin-btn admin-btn-primary" id="noticiasAddBtn">
-                            <i data-lucide="plus"></i> AÒadir noticia
+                            <i data-lucide="plus"></i> AÔøΩadir noticia
                         </button>
                     </div>
                     <div class="admin-list" id="noticiasList"></div>
                 </section>
 
-                <!-- ========== MAL DÕA ========== -->
+                <!-- ========== MAL DÔøΩA ========== -->
                 <section class="admin-section" id="sec-maldia">
                     <div class="admin-section-header">
-                        <h2><i data-lucide="sun-medium"></i> Mal DÌa</h2>
+                        <h2><i data-lucide="sun-medium"></i> Mal DÔøΩa</h2>
                     </div>
                     <div class="admin-subsection">
                         <h3>Frases</h3>
                         <button class="admin-btn admin-btn-primary admin-btn-sm" id="maldiaFrasesAddBtn">
-                            <i data-lucide="plus"></i> AÒadir frase
+                            <i data-lucide="plus"></i> AÔøΩadir frase
                         </button>
                         <div class="admin-list" id="maldiaFrasesList"></div>
                     </div>
                     <div class="admin-subsection">
                         <h3>Mensajes diarios</h3>
                         <button class="admin-btn admin-btn-primary admin-btn-sm" id="maldiaMensajesAddBtn">
-                            <i data-lucide="plus"></i> AÒadir mensaje
+                            <i data-lucide="plus"></i> AÔøΩadir mensaje
                         </button>
                         <div class="admin-list" id="maldiaMensajesList"></div>
                     </div>
@@ -155,9 +184,9 @@
                 <!-- ========== SERIES ========== -->
                 <section class="admin-section" id="sec-series">
                     <div class="admin-section-header">
-                        <h2><i data-lucide="tv"></i> Series y PelÌculas</h2>
+                        <h2><i data-lucide="tv"></i> Series y PelÔøΩculas</h2>
                         <button class="admin-btn admin-btn-primary" id="seriesAddBtn">
-                            <i data-lucide="plus"></i> AÒadir contenido
+                            <i data-lucide="plus"></i> AÔøΩadir contenido
                         </button>
                     </div>
                     <div class="admin-list" id="seriesList"></div>
@@ -188,13 +217,13 @@
                             </div>
                         </div>
                         <div class="analytics-section">
-                            <h3>⁄ltimas visitas</h3>
+                            <h3>ÔøΩltimas visitas</h3>
                             <div class="admin-list" id="analyticsVisitsList">
                                 <div class="admin-empty">Cargando...</div>
                             </div>
                         </div>
                         <div class="analytics-section">
-                            <h3>P·ginas m·s visitadas</h3>
+                            <h3>PÔøΩginas mÔøΩs visitadas</h3>
                             <div class="admin-list" id="analyticsPagesList">
                                 <div class="admin-empty">Cargando...</div>
                             </div>
@@ -229,9 +258,9 @@
             </div>
         </div>
     </main>
-<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="NavegaciÛn principal"></nav>
+<nav class="bottom-nav" id="bottomNav" role="navigation" aria-label="NavegaciÔøΩn principal"></nav>
 
-    <!-- MODAL GEN…RICO para formularios -->
+    <!-- MODAL GENÔøΩRICO para formularios -->
     <div class="admin-modal-overlay" id="adminModal" style="display:none;">
         <div class="admin-modal">
             <div class="admin-modal-header">
