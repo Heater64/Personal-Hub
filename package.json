@@ -1,16 +1,19 @@
 {
   "dependencies": {
-    "firebase": "^12.13.0"
+    "@supabase/supabase-js": "^2.111.0"
   },
   "devDependencies": {
-    "playwright": "^1.59.1"
+    "playwright": "^1.59.1",
+    "vite": "^8.1.5"
   },
-  "name": "personal-hub",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "Hub🧸🤍",
+  "version": "2.0.0",
+  "description": "Tu lugar especial con sorpresas, juegos y fotos nuestras.",
+  "main": "personal-hub/index.html",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite --root personal-hub",
+    "build": "vite build --root personal-hub",
+    "preview": "vite preview --root personal-hub"
   },
   "repository": {
     "type": "git",
@@ -19,7 +22,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/Heater64/Personal-Hub/issues"
   },

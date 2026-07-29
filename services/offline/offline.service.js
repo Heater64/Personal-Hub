@@ -1,5 +1,5 @@
 // services/offline/offline.service.js
-// Servicio de gestión offline y sincronización
+// Servicio de gestión offline y sincronización con Supabase
 
 var OfflineService = (function () {
     'use strict';
@@ -12,7 +12,6 @@ var OfflineService = (function () {
         listeners: []
     };
 
-    var db = null;
     var syncInterval = null;
     var onlineCheckInterval = null;
 
@@ -40,23 +39,12 @@ var OfflineService = (function () {
     }
 
     function init() {
-        db = window.db || (typeof firebase !== 'undefined' && firebase.firestore ? firebase.firestore() : null);
-        
-        // Listen for online/offline events
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
-        
-        // Initial state
         state.isOnline = navigator.onLine;
         updateUI();
-
-        // Load pending changes from IndexedDB
         loadPendingChanges();
-
-        // Periodic sync attempt
         startSyncInterval();
-
-        // Periodic online check (for cases where online event doesn't fire)
         startOnlineCheck();
     }
 
@@ -64,38 +52,21 @@ var OfflineService = (function () {
         if (!state.isOnline) {
             state.wasOffline = true;
             state.isOnline = true;
-            console.log('[OfflineService] Back online');
             updateUI();
             notify();
-            
-            // Attempt sync
-            if (state.pendingChanges.length > 0) {
-                syncPendingChanges();
-            }
+            if (state.pendingChanges.length > 0) syncPendingChanges();
         }
     }
 
     function handleOffline() {
-        if (state.isOnline) {
-            state.isOnline = false;
-            console.log('[OfflineService] Gone offline');
-            updateUI();
-            notify();
-        }
+        if (state.isOnline) { state.isOnline = false; updateUI(); notify(); }
     }
 
     function addPendingChange(change) {
-        var pendingChange = {
-            id: generateId(),
-            type: change.type,
-            collection: change.collection,
-            docId: change.docId,
-            data: change.data,
-            timestamp: Date.now(),
-            retries: 0
-        };
-        
-        state.pendingChanges.push(pendingChange);
+        state.pendingChanges.push({
+            id: generateId(), type: change.type, table: change.table,
+            data: change.data, timestamp: Date.now(), retries: 0
+        });
         savePendingChanges();
         updateUI();
         notify();
@@ -104,118 +75,68 @@ var OfflineService = (function () {
     function loadPendingChanges() {
         try {
             var stored = localStorage.getItem('offline_pending_changes');
-            if (stored) {
-                state.pendingChanges = JSON.parse(stored);
-                console.log('[OfflineService] Loaded', state.pendingChanges.length, 'pending changes');
-            }
-        } catch (e) {
-            console.warn('[OfflineService] Failed to load pending changes:', e);
-            state.pendingChanges = [];
-        }
+            if (stored) state.pendingChanges = JSON.parse(stored);
+        } catch (e) { state.pendingChanges = []; }
     }
 
     function savePendingChanges() {
-        try {
-            localStorage.setItem('offline_pending_changes', JSON.stringify(state.pendingChanges));
-        } catch (e) {
-            console.warn('[OfflineService] Failed to save pending changes:', e);
-        }
+        try { localStorage.setItem('offline_pending_changes', JSON.stringify(state.pendingChanges)); } catch (e) {}
     }
 
     function syncPendingChanges() {
-        if (!state.isOnline || state.syncInProgress || state.pendingChanges.length === 0 || !db) {
-            return Promise.resolve();
-        }
-
+        if (!state.isOnline || state.syncInProgress || state.pendingChanges.length === 0) return Promise.resolve();
         state.syncInProgress = true;
         updateUI();
         notify();
 
-        console.log('[OfflineService] Syncing', state.pendingChanges.length, 'changes');
+        var promises = state.pendingChanges.map(function (change) { return syncSingleChange(change); });
 
-        var promises = state.pendingChanges.map(function (change) {
-            return syncSingleChange(change);
-        });
-
-        return Promise.all(promises)
-            .then(function (results) {
-                // Remove successful changes
-                var successCount = 0;
-                results.forEach(function (result, index) {
-                    if (result.success) {
-                        state.pendingChanges[index] = null;
-                        successCount++;
-                    }
-                });
-                
-                // Filter out nulls
-                state.pendingChanges = state.pendingChanges.filter(function (c) { return c !== null; });
-                savePendingChanges();
-                
-                state.syncInProgress = false;
-                updateUI();
-                notify();
-                
-                console.log('[OfflineService] Sync complete:', successCount, 'successful,', state.pendingChanges.length, 'remaining');
-                
-                if (state.pendingChanges.length === 0 && state.wasOffline) {
-                    state.wasOffline = false;
-                    if (window.showToast) {
-                        window.showToast('Todo sincronizado ✓');
-                    }
-                }
-            })
-            .catch(function (err) {
-                console.error('[OfflineService] Sync failed:', err);
-                state.syncInProgress = false;
-                updateUI();
-                notify();
-            });
+        return Promise.all(promises).then(function (results) {
+            results.forEach(function (result, index) { if (result.success) state.pendingChanges[index] = null; });
+            state.pendingChanges = state.pendingChanges.filter(function (c) { return c !== null; });
+            savePendingChanges();
+            state.syncInProgress = false;
+            updateUI();
+            notify();
+            if (state.pendingChanges.length === 0 && state.wasOffline) {
+                state.wasOffline = false;
+                if (typeof window.showToast === 'function') window.showToast('Todo sincronizado ✓');
+            }
+        }).catch(function () {});
     }
 
     function syncSingleChange(change) {
-        if (!db) return Promise.resolve({ success: false, error: 'No DB' });
-
-        var collectionRef = db.collection(change.collection);
-        var docRef = change.docId ? collectionRef.doc(change.docId) : null;
+        if (typeof SupabaseClient === 'undefined') return Promise.resolve({ success: false, error: 'No SupabaseClient' });
 
         var operation;
         switch (change.type) {
-            case 'set':
-                operation = docRef ? docRef.set(change.data, { merge: true }) : collectionRef.add(change.data);
+            case 'upsert':
+                operation = SupabaseClient.upsert(change.table, change.data, change.onConflict);
+                break;
+            case 'insert':
+                operation = SupabaseClient.insert(change.table, change.data);
                 break;
             case 'update':
-                operation = docRef ? docRef.update(change.data) : Promise.reject(new Error('No docId for update'));
+                operation = SupabaseClient.update(change.table, change.data, change.match || {});
                 break;
             case 'delete':
-                operation = docRef ? docRef.delete() : Promise.reject(new Error('No docId for delete'));
+                operation = SupabaseClient.delete(change.table, change.match || {});
                 break;
             default:
                 return Promise.resolve({ success: false, error: 'Unknown type' });
         }
 
-        return operation
-            .then(function () {
-                return { success: true };
-            })
-            .catch(function (err) {
-                console.warn('[OfflineService] Failed to sync change:', change.id, err);
-                change.retries++;
-                if (change.retries > 5) {
-                    // Max retries reached, keep in queue but mark as failed
-                    console.error('[OfflineService] Max retries for change:', change.id);
-                }
-                return { success: false, error: err.message };
-            });
+        return operation.then(function () { return { success: true }; }).catch(function (err) {
+            change.retries++;
+            return { success: false, error: err.message };
+        });
     }
 
     function startSyncInterval() {
         if (syncInterval) clearInterval(syncInterval);
         syncInterval = setInterval(function () {
-            if (state.isOnline && state.pendingChanges.length > 0 && !state.syncInProgress) {
-                syncPendingChanges();
-            }
-        }, 30000); // Every 30 seconds
+            if (state.isOnline && state.pendingChanges.length > 0 && !state.syncInProgress) syncPendingChanges();
+        }, 30000);
     }
 
     function startOnlineCheck() {
@@ -223,58 +144,35 @@ var OfflineService = (function () {
         onlineCheckInterval = setInterval(function () {
             var wasOnline = state.isOnline;
             state.isOnline = navigator.onLine;
-            if (!wasOnline && state.isOnline) {
-                handleOnline();
-            } else if (wasOnline && !state.isOnline) {
-                handleOffline();
-            }
-        }, 5000); // Every 5 seconds
+            if (!wasOnline && state.isOnline) handleOnline();
+            else if (wasOnline && !state.isOnline) handleOffline();
+        }, 5000);
     }
 
     function updateUI() {
-        // Update offline indicator
         var indicator = document.getElementById('offlineIndicator');
         if (indicator) {
             if (!state.isOnline) {
                 indicator.hidden = false;
-                indicator.innerHTML = 
-                    '<i data-lucide="wifi-off" class="offline-indicator__icon"></i>' +
-                    '<span class="offline-indicator__text">Sin conexión</span>' +
-                    '<span class="offline-indicator__subtext">Los cambios se guardarán localmente</span>';
+                indicator.innerHTML = '<i data-lucide="wifi-off" class="offline-indicator__icon"></i><span class="offline-indicator__text">Sin conexión</span><span class="offline-indicator__subtext">Los cambios se guardarán localmente</span>';
             } else if (state.wasOffline && state.pendingChanges.length > 0) {
                 indicator.hidden = false;
-                indicator.innerHTML = 
-                    '<i data-lucide="sync" class="offline-indicator__icon syncing"></i>' +
-                    '<span class="offline-indicator__text">Sincronizando...</span>' +
-                    '<span class="offline-indicator__subtext">' + state.pendingChanges.length + ' cambios pendientes</span>';
+                indicator.innerHTML = '<i data-lucide="sync" class="offline-indicator__icon syncing"></i><span class="offline-indicator__text">Sincronizando...</span><span class="offline-indicator__subtext">' + state.pendingChanges.length + ' cambios pendientes</span>';
             } else if (state.wasOffline && state.pendingChanges.length === 0) {
                 indicator.hidden = false;
-                indicator.innerHTML = 
-                    '<i data-lucide="wifi" class="offline-indicator__icon online"></i>' +
-                    '<span class="offline-indicator__text">Conexión restaurada</span>' +
-                    '<span class="offline-indicator__subtext">Todo sincronizado ✓</span>';
-                setTimeout(function () {
-                    indicator.hidden = true;
-                }, 3000);
-            } else {
-                indicator.hidden = true;
-            }
+                indicator.innerHTML = '<i data-lucide="wifi" class="offline-indicator__icon online"></i><span class="offline-indicator__text">Conexión restaurada</span><span class="offline-indicator__subtext">Todo sincronizado ✓</span>';
+                setTimeout(function () { indicator.hidden = true; }, 3000);
+            } else { indicator.hidden = true; }
             if (window.lucide) window.lucide.createIcons({ root: indicator });
         }
 
-        // Update pending changes indicator
         var pendingEl = document.getElementById('pendingChanges');
         var pendingCount = document.querySelector('.pending-changes__count');
         if (pendingEl && pendingCount) {
-            if (state.pendingChanges.length > 0) {
-                pendingEl.hidden = false;
-                pendingCount.textContent = state.pendingChanges.length;
-            } else {
-                pendingEl.hidden = true;
-            }
+            pendingEl.hidden = state.pendingChanges.length === 0;
+            pendingCount.textContent = state.pendingChanges.length;
         }
 
-        // Update sync status in header if exists
         var syncStatus = document.querySelector('.sync-status');
         if (syncStatus) {
             if (!state.isOnline) {
@@ -291,14 +189,6 @@ var OfflineService = (function () {
                 syncStatus.innerHTML = '<span class="sync-status__dot"></span> Sincronizado';
             }
         }
-
-        // Update connection status dot in sidebar
-        var sidebarStatus = document.querySelector('.sidebar__network-status');
-        if (sidebarStatus) {
-            sidebarStatus.className = 'sidebar__network-status ' + (state.isOnline ? 'sidebar__network-status--online' : 'sidebar__network-status--offline');
-            sidebarStatus.innerHTML = '<i data-lucide="' + (state.isOnline ? 'wifi' : 'wifi-off') + '"></i> ' + (state.isOnline ? 'En línea' : 'Sin conexión');
-            if (window.lucide) window.lucide.createIcons({ root: sidebarStatus });
-        }
     }
 
     function generateId() {
@@ -312,29 +202,9 @@ var OfflineService = (function () {
         window.removeEventListener('offline', handleOffline);
     }
 
-    // Public API
-    var service = {
-        init: init,
-        getState: getState,
-        subscribe: subscribe,
-        addPendingChange: addPendingChange,
-        syncPendingChanges: syncPendingChanges,
-        forceSync: syncPendingChanges,
-        destroy: destroy
-    };
+    var service = { init: init, getState: getState, subscribe: subscribe, addPendingChange: addPendingChange, syncPendingChanges: syncPendingChanges, forceSync: syncPendingChanges, destroy: destroy };
 
-    // Auto-init
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-
-    if (typeof window !== 'undefined') {
-        window.OfflineService = service;
-    }
-
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+    if (typeof window !== 'undefined') { window.OfflineService = service; }
     return service;
 })();
-
-console.log('📴 offline.service.js cargado');

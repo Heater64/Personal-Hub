@@ -1,0 +1,675 @@
+/* ==========================================
+   MAL DÍA PAGE — Apoyo emocional
+   ========================================== */
+
+.maldia-page {
+  max-width: 600px;
+  margin: 0 auto;
+  animation: fade-in var(--dur-main) ease;
+}
+
+.maldia-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ==========================================
+   HEADER
+   ========================================== */
+.maldia-header {
+  text-align: center;
+  padding: 28px 0 8px;
+  animation: slide-up 0.6s ease forwards;
+}
+
+.maldia-header-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--theme-bg-glass);
+  border: var(--theme-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: var(--theme-accent-primary);
+  animation: maldiaFloat 3s ease-in-out infinite;
+}
+
+@keyframes maldiaFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.maldia-header h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 2rem;
+  font-weight: 400;
+  margin: 0 0 8px;
+  color: var(--theme-text-primary);
+}
+
+.maldia-header p {
+  color: var(--theme-text-muted);
+  font-size: 0.88rem;
+  max-width: 380px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* ==========================================
+   HERO CARD — Frases y acciones
+   ========================================== */
+.maldia-hero-card {
+  position: relative;
+  padding: 36px 24px 28px;
+  text-align: center;
+  overflow: hidden;
+  transition: all var(--dur-smooth);
+  animation: slide-up 0.5s ease 0.1s backwards;
+}
+
+.maldia-hero-card:hover {
+  border-color: var(--theme-border-accent);
+  box-shadow: var(--theme-shadow-md), 0 0 24px var(--theme-accent-dim);
+}
+
+.maldia-hero-glow {
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(198, 90, 58, 0.12), transparent 70%);
+  pointer-events: none;
+  animation: maldiaGlowPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes maldiaGlowPulse {
+  0% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1.2); }
+}
+
+.maldia-heart-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(198, 90, 58, 0.1);
+  border: 1px solid rgba(198, 90, 58, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: var(--theme-accent-primary);
+  transition: all var(--dur-spring);
+}
+
+.maldia-hero-card:hover .maldia-heart-icon {
+  transform: scale(1.1);
+  background: rgba(198, 90, 58, 0.15);
+}
+
+.maldia-hero-card h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  margin: 0 0 16px;
+  color: var(--theme-text-primary);
+}
+
+.maldia-message-wrapper {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.maldia-message {
+  font-size: 0.95rem;
+  color: var(--theme-text-secondary);
+  line-height: 1.65;
+  max-width: 420px;
+  transition: opacity 0.3s;
+}
+
+/* ==========================================
+   ACTION BUTTONS
+   ========================================== */
+.maldia-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.maldia-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 40px;
+  border: var(--theme-border-subtle);
+  background: var(--theme-bg-glass);
+  color: var(--theme-text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  font-family: inherit;
+}
+
+.maldia-action-btn:hover {
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-text-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.maldia-action-btn:active {
+  transform: translateY(0);
+}
+
+.maldia-action-btn.primary {
+  background: rgba(198, 90, 58, 0.12);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+}
+
+.maldia-action-btn.primary:hover {
+  background: rgba(198, 90, 58, 0.2);
+  box-shadow: 0 0 20px var(--theme-accent-dim);
+  transform: translateY(-2px);
+}
+
+/* ==========================================
+   MUSIC PLAYER
+   ========================================== */
+.maldia-music-player {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: var(--theme-border-subtle);
+  background: var(--theme-bg-glass);
+  transition: all var(--dur-smooth);
+}
+
+.maldia-hero-card:hover .maldia-music-player {
+  border-color: var(--theme-border-visible);
+}
+
+.maldia-music-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.maldia-wave-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--theme-accent-primary);
+  opacity: 0.3;
+  height: 12px;
+  transition: opacity var(--dur-fast);
+}
+
+.maldia-wave-bar:nth-child(1) { height: 6px; }
+.maldia-wave-bar:nth-child(2) { height: 12px; }
+.maldia-wave-bar:nth-child(3) { height: 18px; }
+.maldia-wave-bar:nth-child(4) { height: 10px; }
+.maldia-wave-bar:nth-child(5) { height: 14px; }
+.maldia-wave-bar:nth-child(6) { height: 8px; }
+
+.maldia-music-wave.playing .maldia-wave-bar {
+  opacity: 0.8;
+  animation: maldiaBeat 1s ease-in-out infinite;
+}
+
+.maldia-music-wave.playing .maldia-wave-bar:nth-child(1) { animation-delay: 0s; }
+.maldia-music-wave.playing .maldia-wave-bar:nth-child(2) { animation-delay: 0.1s; }
+.maldia-music-wave.playing .maldia-wave-bar:nth-child(3) { animation-delay: 0.2s; }
+.maldia-music-wave.playing .maldia-wave-bar:nth-child(4) { animation-delay: 0.3s; }
+.maldia-music-wave.playing .maldia-wave-bar:nth-child(5) { animation-delay: 0.4s; }
+.maldia-music-wave.playing .maldia-wave-bar:nth-child(6) { animation-delay: 0.5s; }
+
+@keyframes maldiaBeat {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+.maldia-music-label {
+  font-size: 0.75rem;
+  color: var(--theme-text-muted);
+  min-width: 50px;
+}
+
+.maldia-music-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: var(--theme-border-subtle);
+  background: var(--theme-bg-glass);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-text-secondary);
+  transition: all var(--dur-spring);
+}
+
+.maldia-music-toggle:hover {
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  transform: scale(1.1);
+  box-shadow: 0 0 16px var(--theme-accent-dim);
+}
+
+/* ==========================================
+   MEMORIES CARD
+   ========================================== */
+.maldia-memories-card {
+  padding: 24px;
+  transition: all var(--dur-smooth);
+  animation: slide-up 0.5s ease 0.2s backwards;
+}
+
+.maldia-memories-card:hover {
+  border-color: var(--theme-border-accent);
+  box-shadow: var(--theme-shadow-sm);
+}
+
+.maldia-memories-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--theme-accent-primary);
+}
+
+.maldia-memories-header h3 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+  color: var(--theme-text-primary);
+}
+
+.maldia-daily-message {
+  font-style: italic;
+  font-size: 0.88rem;
+  color: var(--theme-text-secondary);
+  padding: 16px;
+  border-left: 2px solid var(--theme-accent-primary);
+  margin-bottom: 16px;
+  background: var(--theme-bg-card);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.maldia-memory-section {
+  text-align: center;
+}
+
+.maldia-memory-frame {
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  max-width: 360px;
+  margin: 0 auto 8px;
+  box-shadow: var(--theme-shadow-sm);
+  transition: box-shadow var(--dur-smooth);
+}
+
+.maldia-memory-frame:hover {
+  box-shadow: var(--theme-shadow-md);
+}
+
+.maldia-memory-image {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: cover;
+  transition: opacity 0.3s;
+  border-radius: 12px;
+  display: block;
+}
+
+.maldia-memory-caption {
+  font-size: 0.8rem;
+  color: var(--theme-text-muted);
+  margin: 8px 0 12px;
+  font-style: italic;
+}
+
+.maldia-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 40px;
+  border: var(--theme-border-subtle);
+  background: var(--theme-bg-glass);
+  color: var(--theme-text-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  font-family: inherit;
+}
+
+.maldia-mini-btn:hover {
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  background: var(--theme-accent-dim);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+}
+
+.maldia-mini-btn:active {
+  transform: translateY(0);
+}
+
+/* ==========================================
+   BREATHING SECTION
+   ========================================== */
+.maldia-breathing-section {
+  text-align: center;
+  animation: slide-up 0.5s ease 0.3s backwards;
+}
+
+.maldia-breathing-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 40px;
+  border: var(--theme-border-accent);
+  background: var(--theme-bg-glass);
+  color: var(--theme-text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--dur-smooth);
+  font-family: inherit;
+}
+
+.maldia-breathing-btn:hover {
+  background: var(--theme-accent-dim);
+  border-color: var(--theme-accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 0 24px var(--theme-accent-dim);
+}
+
+.maldia-breathing-btn:active {
+  transform: translateY(0);
+}
+
+/* ==========================================
+   MODAL GENERAL
+   ========================================== */
+.maldia-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 8, 10, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+  padding: 20px;
+}
+
+.maldia-modal-content {
+  position: relative;
+  width: min(400px, 92vw);
+  padding: 44px 24px 28px;
+  border-radius: 24px;
+  border: var(--theme-border-accent);
+  text-align: center;
+  animation: maldiaModalIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  background: var(--theme-bg-primary);
+}
+
+@keyframes maldiaModalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.maldia-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: var(--theme-border-subtle);
+  background: var(--theme-bg-glass);
+  cursor: pointer;
+  color: var(--theme-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--dur-spring);
+}
+
+.maldia-modal-close:hover {
+  background: var(--theme-accent-dim);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  transform: rotate(90deg);
+}
+
+/* ==========================================
+   BREATHING CIRCLE
+   ========================================== */
+.maldia-breathing-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid var(--theme-accent-primary);
+  margin: 24px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s linear;
+  position: relative;
+}
+
+/* Glow ring */
+.maldia-breathing-circle::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid rgba(198, 90, 58, 0.15);
+  animation: maldiaRingPulse 4s ease-in-out infinite;
+}
+
+@keyframes maldiaRingPulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+.maldia-breathing-text {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.1rem;
+  color: var(--theme-accent-primary);
+  font-weight: 500;
+}
+
+.maldia-breathing-instruction {
+  font-size: 0.8rem;
+  color: var(--theme-text-muted);
+  margin-bottom: 16px;
+}
+
+.maldia-stop-btn {
+  padding: 10px 24px;
+  border-radius: 40px;
+  border: var(--theme-border-subtle);
+  background: var(--theme-bg-glass);
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  font-family: inherit;
+}
+
+.maldia-stop-btn:hover {
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  background: var(--theme-accent-dim);
+}
+
+/* ==========================================
+   BETTER MODAL (Cat video)
+   ========================================== */
+.better-content {
+  max-width: 480px;
+}
+
+.maldia-better-video {
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: var(--theme-shadow-md);
+}
+
+.maldia-better-video video {
+  width: 100%;
+  border-radius: 12px;
+  display: block;
+}
+
+.maldia-better-message h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  color: var(--theme-accent-primary);
+  margin: 0 0 8px;
+}
+
+.maldia-better-message p {
+  font-size: 0.9rem;
+  color: var(--theme-text-secondary);
+  margin: 0;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+/* Desktop */
+@media (min-width: 1025px) {
+  .maldia-page {
+    max-width: 720px;
+  }
+
+  .maldia-header {
+    padding: 36px 0 12px;
+  }
+
+  .maldia-header h1 {
+    font-size: 2.4rem;
+  }
+
+  .maldia-header p {
+    font-size: 0.92rem;
+    max-width: 440px;
+  }
+
+  .maldia-hero-card {
+    padding: 44px 32px 32px;
+  }
+
+  .maldia-hero-card h2 {
+    font-size: 1.3rem;
+  }
+
+  .maldia-message {
+    font-size: 1rem;
+    max-width: 480px;
+  }
+
+  .maldia-actions {
+    gap: 14px;
+  }
+
+  .maldia-action-btn {
+    padding: 12px 24px;
+    font-size: 0.85rem;
+  }
+
+  .maldia-memories-card {
+    padding: 28px;
+  }
+
+  .maldia-breathing-btn {
+    padding: 16px 36px;
+    font-size: 1rem;
+  }
+
+  .maldia-modal-content {
+    padding: 52px 32px 32px;
+    width: min(440px, 92vw);
+  }
+
+  .maldia-breathing-circle {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+@media (max-width: 768px) {
+  .maldia-header h1 {
+    font-size: 1.7rem;
+  }
+
+  .maldia-hero-card {
+    padding: 28px 20px 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .maldia-header {
+    padding: 20px 0 4px;
+  }
+
+  .maldia-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .maldia-hero-card {
+    padding: 24px 16px 20px;
+  }
+
+  .maldia-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .maldia-action-btn {
+    justify-content: center;
+  }
+
+  .maldia-memories-card {
+    padding: 16px;
+  }
+
+  .maldia-memory-frame {
+    max-width: 100%;
+  }
+
+  .maldia-breathing-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .maldia-modal-content {
+    padding: 36px 16px 24px;
+  }
+
+  .maldia-breathing-circle {
+    width: 100px;
+    height: 100px;
+  }
+}

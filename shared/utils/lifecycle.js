@@ -16,9 +16,7 @@ var Lifecycle = (function () {
         for (var i = handlers.length - 1; i >= 0; i--) {
             try {
                 handlers[i]();
-            } catch (err) {
-                console.warn('[Lifecycle] Error en cleanup:', err);
-            }
+            } catch (err) {}            
         }
         handlers = [];
     }
@@ -40,4 +38,4 @@ if (typeof window !== 'undefined') {
     window.Lifecycle = Lifecycle;
 }
 
-console.log('📁 lifecycle.js cargado');
+/* lifecycle.js cargado */

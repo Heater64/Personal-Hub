@@ -1,0 +1,528 @@
+/* ==========================================
+   RAZONES — Grid de tarjetas con favoritos
+   ========================================== */
+
+.razones-page {
+  padding: 0;
+  max-width: 900px;
+  margin: 0 auto;
+  animation: fade-in var(--dur-main) ease;
+}
+
+/* ==========================================
+   HEADER
+   ========================================== */
+.razones-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 32px;
+  padding: 36px 28px 32px;
+  background: var(--theme-bg-glass);
+  border: var(--theme-border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--theme-shadow-sm);
+  animation: slide-up 0.6s ease forwards;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.razones-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, var(--theme-accent-dim, rgba(198, 90, 58, 0.1)), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.razones-header h1 {
+  position: relative;
+  font-family: 'Playfair Display', serif;
+  font-size: var(--fs-xl);
+  font-weight: 500;
+  color: var(--theme-text-primary);
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+  z-index: 1;
+}
+
+.razones-header h1::after {
+  content: ' ✧';
+  color: var(--theme-accent-primary);
+  font-size: 0.7em;
+}
+
+.razones-header p {
+  position: relative;
+  color: var(--theme-text-muted);
+  font-size: var(--fs-sm);
+  font-style: italic;
+  margin: 0;
+  z-index: 1;
+}
+
+/* ==========================================
+   GRID
+   ========================================== */
+.razones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 100px;
+}
+
+@media (max-width: 640px) {
+  .razones-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+/* ==========================================
+   CARD
+   ========================================== */
+.razon-card {
+  position: relative;
+  background: var(--theme-bg-glass);
+  border: var(--theme-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--theme-shadow-sm), var(--theme-shadow-glass);
+  transition: all var(--dur-smooth);
+  overflow: hidden;
+  animation: slide-up 0.5s ease backwards;
+}
+
+.razon-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--theme-border-accent);
+  box-shadow: var(--theme-shadow-md), 0 0 24px var(--theme-accent-dim), var(--theme-shadow-glass);
+}
+
+/* Línea decorativa izquierda en hover */
+.razon-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 3px;
+  height: 60%;
+  background: var(--theme-accent-primary);
+  border-radius: 0 3px 3px 0;
+  transition: transform var(--dur-smooth);
+  opacity: 0.6;
+}
+
+.razon-card:hover::before {
+  transform: translateY(-50%) scaleY(1);
+}
+
+.razon-number {
+  position: absolute;
+  bottom: 8px;
+  right: 14px;
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--theme-accent-dim, rgba(198, 90, 58, 0.08));
+  pointer-events: none;
+  line-height: 1;
+  transition: all var(--dur-smooth);
+  user-select: none;
+}
+
+.razon-card:hover .razon-number {
+  color: var(--theme-accent-dim, rgba(198, 90, 58, 0.2));
+  transform: scale(1.08);
+}
+
+.razon-content {
+  position: relative;
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+  color: var(--theme-text-primary);
+  margin-bottom: 20px;
+  padding-right: 20px;
+}
+
+.razon-footer {
+  display: flex;
+  justify-content: flex-end;
+  position: relative;
+}
+
+/* ==========================================
+   FAV BUTTON
+   ========================================== */
+.fav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: var(--theme-border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  transition: all var(--dur-smooth);
+  font-weight: 500;
+}
+
+.fav-btn:hover {
+  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.08));
+  border-color: var(--theme-accent-border);
+  color: var(--theme-accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+}
+
+.fav-btn.active {
+  color: #fff;
+  border-color: var(--theme-accent-primary);
+  background: var(--theme-accent-primary);
+  box-shadow: 0 4px 12px rgba(198, 90, 58, 0.35);
+}
+
+.fav-btn.active:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(198, 90, 58, 0.45);
+}
+
+.fav-btn svg {
+  transition: transform var(--dur-spring);
+}
+
+.fav-btn:hover svg {
+  transform: scale(1.25);
+}
+
+.fav-btn.active svg {
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.3));
+}
+
+/* ==========================================
+   FAB — Botón de razón aleatoria
+   ========================================== */
+.razones-fab {
+  position: fixed;
+  bottom: 90px;
+  right: 28px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--theme-accent-primary), var(--theme-accent-secondary, #b34a2e));
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(198, 90, 58, 0.35);
+  transition: all var(--dur-spring);
+  z-index: var(--z-fixed, 100);
+  color: #fff;
+  touch-action: manipulation;
+}
+
+.razones-fab:hover {
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 0 12px 32px rgba(198, 90, 58, 0.5);
+}
+
+.razones-fab:active {
+  transform: scale(0.95) rotate(0deg);
+}
+
+/* Tooltip flotante */
+.razones-fab::after {
+  content: 'Razón aleatoria';
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 12px;
+  background: var(--theme-bg-card);
+  border: var(--theme-border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  color: var(--theme-text-secondary);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all var(--dur-fast);
+}
+
+.razones-fab:hover::after {
+  opacity: 1;
+  right: calc(100% + 16px);
+}
+
+@media (max-width: 768px) {
+  .razones-fab {
+    bottom: 90px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .razones-fab::after { display: none; }
+}
+
+/* ==========================================
+   MODAL
+   ========================================== */
+.razones-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal, 1000);
+  padding: 20px;
+}
+
+.razones-modal-content {
+  position: relative;
+  background: var(--theme-bg-primary);
+  border: var(--theme-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 44px 44px 36px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--theme-shadow-lg), 0 0 48px rgba(0,0,0,0.3);
+  animation: razonesModalPop 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes razonesModalPop {
+  0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.razones-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--theme-bg-hover);
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--dur-spring);
+}
+
+.razones-modal-close:hover {
+  background: var(--theme-accent-dim);
+  color: var(--theme-accent-primary);
+  transform: scale(1.1) rotate(90deg);
+}
+
+.razones-modal-icon {
+  width: 56px;
+  height: 56px;
+  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.15));
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  color: var(--theme-accent-primary);
+  animation: razonesHeartBeat 1.5s ease-in-out infinite;
+}
+
+@keyframes razonesHeartBeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.15); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+  60% { transform: scale(1); }
+}
+
+.razones-modal-content h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  margin: 0 0 16px;
+  color: var(--theme-text-primary);
+}
+
+.razones-modal-text {
+  font-size: var(--fs-base);
+  line-height: 1.7;
+  color: var(--theme-text-secondary);
+  margin: 0 0 28px;
+  animation: razonesFadeInUp 0.4s ease forwards;
+}
+
+.razones-modal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: var(--radius-pill);
+  border: var(--theme-border-visible);
+  background: var(--theme-bg-glass);
+  color: var(--theme-text-primary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.razones-modal-btn:hover {
+  border-color: var(--theme-accent-border);
+  background: var(--theme-accent-dim);
+  color: var(--theme-accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.razones-modal-btn:active {
+  transform: translateY(0);
+}
+
+/* ==========================================
+   ANIMATIONS
+   ========================================== */
+@keyframes razonesFadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+/* Desktop */
+@media (min-width: 1025px) {
+  .razones-page {
+    max-width: 1000px;
+  }
+
+  .razones-header {
+    padding: 44px 36px 36px;
+    margin-bottom: 36px;
+  }
+
+  .razones-header h1 {
+    font-size: var(--fs-2xl);
+  }
+
+  .razones-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 120px;
+  }
+
+  .razon-card {
+    padding: 28px;
+  }
+
+  .razon-content {
+    font-size: var(--fs-md);
+  }
+
+  .razon-number {
+    font-size: 4.5rem;
+  }
+
+  .razones-modal-content {
+    padding: 52px 48px 40px;
+    max-width: 520px;
+  }
+
+  .razones-modal-text {
+    font-size: var(--fs-lg);
+  }
+
+  .razones-fab {
+    bottom: 40px;
+    right: 40px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .razones-fab::after {
+    right: calc(100% + 16px);
+  }
+
+  .razones-fab:hover::after {
+    opacity: 1;
+    right: calc(100% + 20px);
+  }
+}
+
+@media (max-width: 768px) {
+  .razones-header {
+    padding: 28px 20px 24px;
+    margin-bottom: 24px;
+  }
+
+  .razones-header h1 {
+    font-size: var(--fs-lg);
+  }
+
+  .razon-card {
+    padding: 20px 18px;
+    border-radius: 16px;
+  }
+
+  .razon-content {
+    font-size: var(--fs-sm);
+  }
+
+  .razones-modal-content {
+    padding: 36px 28px 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .razones-header {
+    padding: 24px 16px 20px;
+    margin-bottom: 20px;
+  }
+
+  .razon-card {
+    padding: 16px 14px;
+  }
+
+  .razon-number {
+    font-size: 3rem;
+  }
+
+  .razon-content {
+    font-size: var(--fs-xs);
+  }
+
+  .razones-modal-content {
+    padding: 32px 20px 28px;
+    border-radius: var(--radius-lg);
+  }
+
+  .razones-modal-text {
+    font-size: var(--fs-sm);
+  }
+
+  .razones-fab {
+    bottom: 80px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+}

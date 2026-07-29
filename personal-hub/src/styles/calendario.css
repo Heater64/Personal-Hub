@@ -1,0 +1,518 @@
+/* ==========================================
+   CALENDARIO PAGE — Experiencias y regalos
+   ========================================== */
+
+.calendario-page {
+  max-width: 900px;
+  margin: 0 auto;
+  animation: fade-in var(--dur-main) ease;
+}
+
+.calendario-content {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ==========================================
+   HEADER
+   ========================================== */
+.calendario-header {
+  position: relative;
+  text-align: center;
+  padding: 32px 20px 24px;
+  animation: slide-up 0.6s ease forwards;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.calendario-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, var(--theme-accent-dim, rgba(198, 90, 58, 0.1)), transparent 70%);
+  pointer-events: none;
+}
+
+.calendario-header h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 2rem;
+  font-weight: 500;
+  margin: 0 0 8px;
+  color: var(--theme-text-primary);
+}
+
+.calendario-header h2::after {
+  content: ' ✧';
+  color: var(--theme-accent-primary);
+  font-size: 0.6em;
+}
+
+.calendario-header p {
+  color: var(--theme-text-muted);
+  font-size: 0.88rem;
+  margin: 0 auto;
+  max-width: 400px;
+}
+
+/* ==========================================
+   MONTH SELECTOR
+   ========================================== */
+.month-selector {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 20px 0 8px;
+}
+
+.month-btn {
+  padding: 8px 20px;
+  border-radius: 40px;
+  border: var(--theme-border-subtle);
+  background: var(--theme-bg-glass);
+  color: var(--theme-text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  font-family: inherit;
+}
+
+.month-btn:hover {
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-text-primary);
+  transform: translateY(-1px);
+}
+
+.month-btn:active {
+  transform: translateY(0);
+}
+
+.month-btn.active {
+  background: rgba(198, 90, 58, 0.15);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  box-shadow: 0 0 12px var(--theme-accent-dim);
+}
+
+.month-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--theme-text-primary);
+  margin: 12px 0 4px;
+}
+
+/* ==========================================
+   CALENDAR GRID
+   ========================================== */
+.calendar-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 900px) {
+  .calendar-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .calendar-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 400px) {
+  .calendar-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+/* ==========================================
+   DAY CARD
+   ========================================== */
+.day-card {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 14px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--dur-smooth);
+  gap: 3px;
+  background: var(--theme-bg-glass);
+  border: var(--theme-border-subtle);
+  animation: fade-in 0.3s ease backwards;
+}
+
+.day-card:nth-child(1) { animation-delay: 0.01s; }
+.day-card:nth-child(2) { animation-delay: 0.02s; }
+.day-card:nth-child(3) { animation-delay: 0.03s; }
+.day-card:nth-child(4) { animation-delay: 0.04s; }
+.day-card:nth-child(5) { animation-delay: 0.05s; }
+.day-card:nth-child(6) { animation-delay: 0.06s; }
+.day-card:nth-child(7) { animation-delay: 0.07s; }
+.day-card:nth-child(8) { animation-delay: 0.08s; }
+.day-card:nth-child(9) { animation-delay: 0.09s; }
+.day-card:nth-child(10) { animation-delay: 0.1s; }
+/* Stagger remaining days */
+.day-card:nth-child(n+11) { animation-delay: 0.12s; }
+
+/* Locked state */
+.day-card.locked {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+.day-card.locked:hover {
+  transform: none;
+  border-color: var(--theme-border-subtle);
+  box-shadow: none;
+}
+
+/* Available state (unlocked but not opened) */
+.day-card.available {
+  background: radial-gradient(circle at top right, rgba(76, 175, 80, 0.12), transparent 50%), var(--theme-bg-glass);
+  border-color: rgba(76, 175, 80, 0.5);
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.1);
+}
+
+.day-card.available:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0 30px rgba(76, 175, 80, 0.2), var(--theme-shadow-md);
+  border-color: #4caf50;
+}
+
+/* Opened state */
+.day-card.opened {
+  background: radial-gradient(circle at top right, rgba(198, 90, 58, 0.15), transparent 40%), var(--theme-bg-glass);
+  border-color: var(--theme-accent-primary);
+}
+
+.day-card.opened::after {
+  content: '♥';
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  color: var(--theme-accent-primary);
+  font-size: 0.9rem;
+  animation: calendarioHeartPulse 2s ease-in-out infinite;
+}
+
+@keyframes calendarioHeartPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Day number */
+.day-number {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  line-height: 1;
+  color: var(--theme-text-primary);
+  font-weight: 500;
+}
+
+/* Gift name */
+.day-gift-name {
+  font-size: 0.55rem;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.8;
+  color: var(--theme-text-muted);
+}
+
+/* Type badge */
+.day-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+  color: var(--theme-text-muted);
+}
+
+.day-status {
+  font-size: 0.7rem;
+  margin-top: 1px;
+  opacity: 0.6;
+}
+
+/* ==========================================
+   EXPERIENCE MODAL
+   ========================================== */
+.experience-layer {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 8, 10, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+  padding: 20px;
+}
+
+.experience-modal {
+  position: relative;
+  width: min(540px, 94vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 28px 24px;
+  border-radius: 24px;
+  border: var(--theme-border-accent);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  animation: calendarioModalIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes calendarioModalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.experience-modal-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  text-align: center;
+  margin: 0 0 16px;
+  flex-shrink: 0;
+  color: var(--theme-text-primary);
+}
+
+.experience-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.experience-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: var(--theme-border-subtle);
+  background: var(--theme-bg-glass);
+  cursor: pointer;
+  color: var(--theme-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--dur-spring);
+}
+
+.experience-modal-close:hover {
+  background: rgba(198, 90, 58, 0.25);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-accent-primary);
+  transform: rotate(90deg);
+}
+
+.experience-modal-footer {
+  flex-shrink: 0;
+  text-align: center;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: var(--theme-border-subtle);
+}
+
+/* ==========================================
+   EXPERIENCE CONTENT TYPES
+   ========================================== */
+.exp-letter {
+  max-width: 420px;
+  width: 100%;
+}
+
+.exp-letter-content {
+  background: #f9e5c0;
+  padding: clamp(20px, 5vw, 32px);
+  border-radius: 12px;
+  color: #2c2c2c;
+  font-family: 'Georgia', serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.exp-media-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.exp-media-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--theme-accent-primary), #b34a2e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.exp-audio-wrapper {
+  padding: 16px;
+  border-radius: 16px;
+  border: var(--theme-border-subtle);
+}
+
+.exp-gift-img {
+  max-width: 100%;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--theme-shadow-md);
+}
+
+.exp-surprise {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.2rem;
+  color: var(--theme-text-primary);
+}
+
+.exp-wishlist {
+  max-width: 400px;
+  width: 100%;
+}
+
+.exp-wishlist h4 {
+  text-align: center;
+  margin-bottom: 16px;
+  color: var(--theme-text-primary);
+}
+
+.exp-wishlist ul {
+  list-style: none;
+  padding: 0;
+}
+
+.exp-wishlist li {
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: var(--theme-border-subtle);
+  transition: background var(--dur-fast);
+}
+
+.exp-wishlist li:hover {
+  background: var(--theme-bg-glass);
+}
+
+.wishlist-num {
+  color: var(--theme-accent-primary);
+  font-weight: 600;
+  min-width: 24px;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+/* Desktop amplio */
+@media (min-width: 1025px) {
+  .calendar-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+  }
+
+  .calendario-page {
+    max-width: 1000px;
+  }
+
+  .calendario-header {
+    padding: 44px 32px 32px;
+  }
+
+  .calendario-header h2 {
+    font-size: 2.4rem;
+  }
+
+  .day-card {
+    padding: 20px 16px;
+    border-radius: 22px;
+  }
+
+  .day-number {
+    font-size: 2.6rem;
+  }
+
+  .month-title {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .calendario-header h2 {
+    font-size: 1.6rem;
+  }
+
+  .month-title {
+    font-size: 1.3rem;
+  }
+
+  .day-card {
+    padding: 10px;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendario-header {
+    padding: 24px 16px 16px;
+  }
+
+  .calendario-header h2 {
+    font-size: 1.3rem;
+  }
+
+  .month-title {
+    font-size: 1.1rem;
+  }
+
+  .month-btn {
+    padding: 6px 14px;
+    font-size: 0.75rem;
+  }
+
+  .day-card {
+    border-radius: 14px;
+    padding: 8px;
+  }
+}

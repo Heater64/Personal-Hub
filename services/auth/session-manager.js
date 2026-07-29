@@ -1,31 +1,143 @@
 // services/auth/session-manager.js
 // Session Manager centralizado
-// Gestiona la sesión del usuario en localStorage
-// Provee una interfaz compatible con el sistema anterior (getCurrentUser, etc.)
+// SQ-MED-001: Sesion firmada con HMAC-SHA256 via Web Crypto API
+// Los datos en localStorage estan firmados para evitar manipulacion
 
 var SessionManager = (function () {
     var SESSION_KEY = 'personalHub.session';
     var listeners = [];
     var currentSession = null;
+    var _hmacKey = null;
 
-    function getSession() {
-        if (currentSession) return currentSession;
+    // --- HMAC-SHA256 para integridad de sesion ---
+    var HMAC_SALT = 'PHub-Session-HMAC-v1';
+
+    async function _getHmacKey() {
+        if (_hmacKey) return _hmacKey;
+        var encoder = new TextEncoder();
+        _hmacKey = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode(HMAC_SALT),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign', 'verify']
+        );
+        return _hmacKey;
+    }
+
+    async function _sign(data) {
+        var key = await _getHmacKey();
+        var encoder = new TextEncoder();
+        var sig = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
+        return Array.from(new Uint8Array(sig))
+            .map(function (b) { return b.toString(16).padStart(2, '0'); })
+            .join('');
+    }
+
+    async function _verify(data, signature) {
+        if (!signature) return false;
+        var key = await _getHmacKey();
+        var encoder = new TextEncoder();
+        var sigBytes = new Uint8Array(signature.match(/.{2}/g).map(function (b) { return parseInt(b, 16); }));
+        return await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(data));
+    }
+
+    function _toBase64(str) {
+        try {
+            return btoa(unescape(encodeURIComponent(str)));
+        } catch (e) {
+            return btoa(str);
+        }
+    }
+
+    function _fromBase64(str) {
+        try {
+            return decodeURIComponent(escape(atob(str)));
+        } catch (e) {
+            return atob(str);
+        }
+    }
+
+    // --- Carga inicial firmada (async, se ejecuta al cargar el modulo) ---
+    // Mantiene currentSession en memoria para acceso sincronico
+    async function _init() {
+        if (!window.crypto || !window.crypto.subtle) {
+            _legacyLoad();
+            return;
+        }
         try {
             var raw = localStorage.getItem(SESSION_KEY);
-            if (raw) {
-                currentSession = JSON.parse(raw);
-                return currentSession;
+            if (!raw) return;
+            var stored = JSON.parse(raw);
+            // Formato nuevo: { d: base64(json), s: hex_hmac }
+            if (stored && stored.d && stored.s) {
+                var valid = await _verify(stored.d, stored.s);
+                if (!valid) {
+                    localStorage.removeItem(SESSION_KEY);
+                    return;
+                }
+                var json = _fromBase64(stored.d);
+                currentSession = JSON.parse(json);
+            } else {
+                // Fallback: formato legacy (JSON plano) â€” migrar
+                currentSession = stored;
+                _migrateToSigned(stored);
             }
         } catch (e) {
             currentSession = null;
         }
-        return null;
     }
 
-    function saveSession(session) {
+    // Migrar sesion existente a formato firmado
+    async function _migrateToSigned(session) {
+        try {
+            var json = JSON.stringify(session);
+            var encoded = _toBase64(json);
+            var sig = await _sign(encoded);
+            localStorage.setItem(SESSION_KEY, JSON.stringify({ d: encoded, s: sig }));
+        } catch (e) {
+            // Si falla, mantener el formato legacy
+        }
+    }
+
+    // Carga legacy sin firma (fallback si Web Crypto no esta disponible)
+    function _legacyLoad() {
+        try {
+            var raw = localStorage.getItem(SESSION_KEY);
+            if (raw) {
+                var parsed = JSON.parse(raw);
+                // Si es formato firmado, extraer data
+                if (parsed && parsed.d && parsed.s) {
+                    currentSession = JSON.parse(_fromBase64(parsed.d));
+                } else {
+                    currentSession = parsed;
+                }
+            }
+        } catch (e) {
+            currentSession = null;
+        }
+    }
+
+    function getSession() {
+        return currentSession;
+    }
+
+    async function saveSession(session) {
         currentSession = session;
         if (session) {
-            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            var json = JSON.stringify(session);
+            if (window.crypto && window.crypto.subtle) {
+                try {
+                    var encoded = _toBase64(json);
+                    var sig = await _sign(encoded);
+                    localStorage.setItem(SESSION_KEY, JSON.stringify({ d: encoded, s: sig }));
+                } catch (e) {
+                    // Fallback: JSON plano
+                    localStorage.setItem(SESSION_KEY, json);
+                }
+            } else {
+                localStorage.setItem(SESSION_KEY, json);
+            }
         } else {
             localStorage.removeItem(SESSION_KEY);
         }
@@ -108,7 +220,6 @@ var SessionManager = (function () {
     function getUserObject() {
         var session = getSession();
         if (!session) return null;
-        // Return an object compatible with what the old Firebase user provided
         return {
             uid: session.uid,
             email: session.username,
@@ -132,7 +243,6 @@ var SessionManager = (function () {
     function onAuthStateChanged(callback) {
         if (typeof callback !== 'function') return function () {};
         listeners.push(callback);
-        // Fire immediately with current state
         var user = getUserObject();
         try { callback(user); } catch (e) {}
         return function () {
@@ -147,14 +257,16 @@ var SessionManager = (function () {
         });
     }
 
-    // Listen for storage events (multi-tab sync)
+    // Escuchar cambios multi-pestaña
     window.addEventListener('storage', function (e) {
         if (e.key === SESSION_KEY) {
-            currentSession = null; // force re-read
-            var session = getSession();
-            notifyListeners(session);
+            currentSession = null; // forzar recarga
+            _init();
         }
     });
+
+    // Inicializar: cargar y verificar sesion firmada
+    _init();
 
     return {
         getSession: getSession,

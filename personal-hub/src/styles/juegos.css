@@ -1,0 +1,291 @@
+/* ==========================================
+   JUEGOS — Hub de juegos con tarjetas
+   ========================================== */
+
+.juegos-page {
+  max-width: 900px;
+  margin: 0 auto;
+  animation: fade-in var(--dur-main) ease;
+}
+
+/* ==========================================
+   HEADER
+   ========================================== */
+.juegos-header {
+  padding: 32px 28px;
+  margin-bottom: 24px;
+  border-radius: var(--radius-xl);
+  text-align: center;
+}
+
+.juegos-header h2 {
+  font-size: var(--fs-2xl);
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+}
+
+.juegos-header .text-muted {
+  font-size: var(--fs-sm);
+}
+
+/* ==========================================
+   GAME GRID
+   ========================================== */
+.juegos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ==========================================
+   GAME CARD
+   ========================================== */
+.juego-card {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--dur-mid) cubic-bezier(0.4, 0, 0.2, 1);
+  border: var(--theme-border-subtle);
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.juego-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--juego-color);
+  opacity: 0.6;
+  transition: opacity var(--dur-fast);
+}
+
+.juego-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--theme-shadow-md);
+  border-color: var(--juego-color);
+}
+
+.juego-card:hover::before {
+  opacity: 1;
+}
+
+.juego-card:active {
+  transform: translateY(-2px);
+}
+
+/* Icon */
+.juego-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--theme-accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--juego-color);
+  transition: transform var(--dur-fast);
+  flex-shrink: 0;
+}
+
+.juego-card:hover .juego-card-icon {
+  transform: scale(1.1);
+}
+
+.juego-card-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Body */
+.juego-card-body {
+  flex: 1;
+}
+
+.juego-card-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  margin: 0 0 6px;
+}
+
+.juego-card-desc {
+  font-size: var(--fs-sm);
+  color: var(--theme-text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Play hint — aparece en hover */
+.juego-play-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--theme-text-muted);
+  background: var(--theme-bg-input);
+  border: var(--theme-border-subtle);
+  transition: all var(--dur-smooth);
+  opacity: 0;
+  transform: translateY(-4px);
+  align-self: flex-start;
+}
+
+.juego-card:hover .juego-play-hint {
+  opacity: 1;
+  transform: translateY(0);
+  background: var(--juego-color);
+  border-color: var(--juego-color);
+  color: #fff;
+}
+
+/* ==========================================
+   FOOTER
+   ========================================== */
+.juegos-footer {
+  text-align: center;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.juegos-footer p {
+  font-size: var(--fs-sm);
+  color: var(--theme-text-muted);
+  opacity: 0.6;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+/* Desktop amplio */
+@media (min-width: 1025px) {
+  .juegos-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .juegos-header {
+    padding: 44px 36px;
+  }
+
+  .juegos-header h2 {
+    font-size: var(--fs-3xl);
+  }
+
+  .juego-card {
+    padding: 28px;
+  }
+
+  .juego-card-icon {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 18px;
+  }
+
+  .juego-card-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .juego-card-title {
+    font-size: var(--fs-xl);
+  }
+
+  .juego-card-desc {
+    font-size: var(--fs-md);
+  }
+}
+
+@media (max-width: 768px) {
+  .juegos-header {
+    padding: 28px 20px;
+    margin-bottom: 20px;
+  }
+
+  .juegos-header h2 {
+    font-size: var(--fs-xl);
+  }
+
+  .juegos-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .juego-card {
+    padding: 18px;
+  }
+
+  .juego-card-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+  }
+
+  .juego-card-title {
+    font-size: var(--fs-base);
+  }
+
+  .juego-play-hint {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .juegos-header {
+    padding: 24px 16px;
+    border-radius: var(--radius-lg);
+  }
+
+  .juegos-header h2 {
+    font-size: var(--fs-lg);
+  }
+
+  .juegos-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .juego-card {
+    padding: 16px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .juego-card-icon {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 10px;
+  }
+
+  .juego-card-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .juego-card-title {
+    font-size: var(--fs-sm);
+  }
+
+  .juego-card-desc {
+    font-size: var(--fs-xs);
+  }
+
+  .juego-play-hint {
+    padding: 6px 14px;
+    font-size: 0.65rem;
+  }
+}

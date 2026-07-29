@@ -1,17 +1,20 @@
 // services/config/config.service.js
-// Lectura centralizada de datos de configuración desde Firestore
-// Cada función es un singleton que cachea el resultado
+// Lectura centralizada de datos de configuración desde Supabase
+// Almacenamiento: tabla 'content' con columnas id (text PK) y data (jsonb)
 
 var ConfigService = (function () {
 
     var cache = {};
+    var TABLE = 'content';
 
-    async function loadConfig(collection, docId) {
-        var key = collection + '/' + docId;
-        if (cache[key]) return cache[key];
-        var data = await FirestoreService.getDoc(collection, docId);
-        if (data) cache[key] = data;
-        return data;
+    async function loadConfig(id) {
+        if (cache[id]) return cache[id];
+        var row = await SupabaseClient.getOne(TABLE, { eq: { id: id } });
+        if (row && row.data) {
+            cache[id] = row.data;
+            return row.data;
+        }
+        return null;
     }
 
     function clearCache(key) {
@@ -19,64 +22,79 @@ var ConfigService = (function () {
         else cache = {};
     }
 
+    // Fallback a datos locales si Supabase no responde
+    function lsGet(key, fallback) {
+        try {
+            var raw = localStorage.getItem('ph.config.' + key);
+            return raw ? JSON.parse(raw) : fallback;
+        } catch (e) { return fallback; }
+    }
+
+    function lsSet(key, data) {
+        try { localStorage.setItem('ph.config.' + key, JSON.stringify(data)); } catch (e) {}
+    }
+
+    async function saveConfig(id, data) {
+        var ok = await SupabaseClient.upsert(TABLE, { id: id, data: data, updated_at: new Date().toISOString() }, 'id');
+        if (ok) {
+            cache[id] = data;
+            lsSet(id, data);
+        }
+        return ok;
+    }
+
     // ==========================================
     // CONFIG COLLECTIONS
     // ==========================================
 
     async function loadNews() {
-        var data = await loadConfig('config_noticias', 'data');
-        return data && data.news ? data.news : [];
+        var data = await loadConfig('noticias') || lsGet('noticias', {});
+        return data.news || [];
     }
 
     async function loadSongs() {
-        var data = await loadConfig('config_canciones_recuerdan', 'data');
-        return data && data.songs ? data.songs : [];
+        var data = await loadConfig('canciones') || lsGet('canciones', {});
+        return data.songs || [];
     }
 
     async function loadReasons() {
-        var data = await loadConfig('config_razones', 'data');
-        return data && data.reasons ? data.reasons : [];
+        var data = await loadConfig('razones') || lsGet('razones', {});
+        return data.reasons || [];
     }
 
     async function loadGifts() {
-        var data = await loadConfig('config_gifts', 'catalog');
-        return data && data.gifts ? data.gifts : [];
+        var data = await loadConfig('gifts') || lsGet('gifts', { gifts: [], months: {} });
+        return data.gifts || [];
     }
 
     async function loadMaldiaPhrases() {
-        var data = await loadConfig('config_maldia_frases', 'data');
-        return data && data.phrases ? data.phrases : [];
+        var data = await loadConfig('maldia_frases') || lsGet('maldia_frases', {});
+        return data.phrases || [];
     }
 
     async function loadMaldiaMessages() {
-        var data = await loadConfig('config_maldia_mensajes', 'data');
-        return data && data.messages ? data.messages : [];
+        var data = await loadConfig('maldia_mensajes') || lsGet('maldia_mensajes', {});
+        return data.messages || [];
     }
 
     async function loadPodio() {
-        var data = await loadConfig('config', 'podio');
+        var data = await loadConfig('podio') || lsGet('podio', {});
         return data || { series: [], movies: [] };
     }
 
     async function loadSeriesData() {
-        var data = await loadConfig('seriesData', 'all');
-        return data && data.items ? data.items : [];
+        var data = await loadConfig('series') || lsGet('series', {});
+        return data.items || [];
     }
 
-    // ==========================================
-    // CHANGELOG / NOVEDADES (sistema de actualizaciones)
-    // ==========================================
     async function loadChangelog() {
-        var data = await loadConfig('config_changelog', 'data');
-        return data && data.items ? data.items : [];
+        var data = await loadConfig('changelog') || lsGet('changelog', {});
+        return data.items || [];
     }
 
-    // ==========================================
-    // NOTIFICACIONES (in-app, desde Firestore)
-    // ==========================================
     async function loadNotifications() {
-        var data = await loadConfig('config_notificaciones', 'data');
-        return data && data.items ? data.items : [];
+        var data = await loadConfig('notificaciones') || lsGet('notificaciones', {});
+        return data.items || [];
     }
 
     // ==========================================
@@ -84,51 +102,40 @@ var ConfigService = (function () {
     // ==========================================
 
     async function saveReasons(reasons) {
-        var ok = await FirestoreService.setDoc('config_razones', 'data', { reasons: reasons });
-        if (ok) clearCache('config_razones/data');
-        return ok;
+        return await saveConfig('razones', { reasons: reasons });
     }
 
     async function saveSongs(songs) {
-        var ok = await FirestoreService.setDoc('config_canciones_recuerdan', 'data', { songs: songs });
-        if (ok) clearCache('config_canciones_recuerdan/data');
-        return ok;
+        return await saveConfig('canciones', { songs: songs });
     }
 
     async function saveNews(news) {
-        var ok = await FirestoreService.setDoc('config_noticias', 'data', { news: news });
-        if (ok) clearCache('config_noticias/data');
-        return ok;
+        return await saveConfig('noticias', { news: news });
     }
 
     async function saveMaldiaPhrases(phrases) {
-        var ok = await FirestoreService.setDoc('config_maldia_frases', 'data', { phrases: phrases });
-        if (ok) clearCache('config_maldia_frases/data');
-        return ok;
+        return await saveConfig('maldia_frases', { phrases: phrases });
     }
 
     async function saveMaldiaMessages(messages) {
-        var ok = await FirestoreService.setDoc('config_maldia_mensajes', 'data', { messages: messages });
-        if (ok) clearCache('config_maldia_mensajes/data');
-        return ok;
+        return await saveConfig('maldia_mensajes', { messages: messages });
     }
 
     async function savePodio(podio) {
-        var ok = await FirestoreService.setDoc('config', 'podio', podio);
-        if (ok) clearCache('config/podio');
-        return ok;
+        return await saveConfig('podio', podio);
     }
 
     async function saveChangelog(items) {
-        var ok = await FirestoreService.setDoc('config_changelog', 'data', { items: items });
-        if (ok) clearCache('config_changelog/data');
-        return ok;
+        return await saveConfig('changelog', { items: items });
     }
 
     async function saveNotifications(items) {
-        var ok = await FirestoreService.setDoc('config_notificaciones', 'data', { items: items });
-        if (ok) clearCache('config_notificaciones/data');
-        return ok;
+        return await saveConfig('notificaciones', { items: items });
+    }
+
+    async function saveGifts(data) {
+        // gifts data: { gifts: [...], months: {} }
+        return await saveConfig('gifts', data);
     }
 
     // ==========================================
@@ -154,7 +161,11 @@ var ConfigService = (function () {
         savePodio: savePodio,
         saveChangelog: saveChangelog,
         saveNotifications: saveNotifications,
-        clearCache: clearCache
+        saveGifts: saveGifts,
+        clearCache: clearCache,
+        // Raw access for other services
+        loadConfig: loadConfig,
+        saveConfig: saveConfig
     };
 
 })();
@@ -162,5 +173,3 @@ var ConfigService = (function () {
 if (typeof window !== 'undefined') {
     window.ConfigService = ConfigService;
 }
-
-console.log('📁 config.service.js cargado');

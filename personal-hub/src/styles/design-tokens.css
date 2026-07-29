@@ -1,0 +1,278 @@
+/* ==========================================
+   DESIGN TOKENS — Personal Hub v2
+   Fuente única de verdad para colores, espacios, radios, tipografía
+   ========================================== */
+
+:root {
+  /* ==========================================
+     COLORES BASE — Paleta Umbra (oscuro por defecto)
+     ========================================== */
+  --umbra-black:       #0f0f10;
+  --umbra-dark:        #1a1a1c;
+  --umbra-stone:       #2a2a2e;
+  --umbra-ash:         #6e6a67;
+  --umbra-light:       #e8e6e3;
+  --umbra-white-soft:  #f5f3f0;
+
+  /* Acentos principales */
+  --accent-coral:      #c65a3a;
+  --accent-rust:       #8f3e2e;
+  --accent-dim:        rgba(198, 90, 58, 0.15);
+  --accent-border:     rgba(198, 90, 58, 0.35);
+
+  /* Acentos secundarios */
+  --warm-amber:        #ffb347;
+  --warm-pink:         #ff8aa1;
+  --warm-gold-dim:     rgba(255, 179, 71, 0.18);
+
+  /* Estados */
+  --green:             #4caf50;
+  --green-dim:         rgba(76, 175, 80, 0.15);
+  --red:               #dc3545;
+  --red-dim:           rgba(220, 53, 69, 0.15);
+  --blue:              #2196f3;
+  --blue-dim:          rgba(33, 150, 243, 0.15);
+  --yellow:            #ffb347;
+  --yellow-dim:        rgba(255, 179, 71, 0.15);
+
+  /* Superficies */
+  --bg-card:           rgba(255, 255, 255, 0.02);
+  --bg-card-hover:     rgba(255, 255, 255, 0.06);
+  --bg-overlay:        rgba(15, 15, 16, 0.95);
+  --bg-input:          rgba(255, 255, 255, 0.04);
+
+  /* ==========================================
+     ESPACIADO
+     ========================================== */
+  --space-xs:   8px;
+  --space-sm:   16px;
+  --space-md:   32px;
+  --space-lg:   64px;
+  --space-xl:   120px;
+  --space-xxl:  200px;
+
+  /* ==========================================
+     BORDES REDONDEADOS
+     ========================================== */
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   20px;
+  --radius-xl:   28px;
+  --radius-pill: 40px;
+
+  /* ==========================================
+     TIPOGRAFÍA
+     ========================================== */
+  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+
+  --fs-xs:   0.72rem;
+  --fs-sm:   0.85rem;
+  --fs-md:   1rem;
+  --fs-lg:   1.25rem;
+  --fs-xl:   1.5rem;
+  --fs-2xl:  2rem;
+  --fs-3xl:  2.8rem;
+
+  /* ==========================================
+     DURACIONES
+     ========================================== */
+  --dur-instant: 0.08s ease;
+  --dur-fast:    0.15s ease;
+  --dur-mid:     0.25s ease;
+  --dur-slow:    0.4s ease;
+  --dur-slower:  0.6s ease;
+  --dur-spring:  0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-bounce:  0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-smooth:  0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-smooth-out: 0.35s cubic-bezier(0.83, 0, 0.17, 1);
+
+  /* ==========================================
+     SOMBRAS
+     ========================================== */
+  --shadow-sm:         0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md:         0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg:         0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-xl:         0 16px 64px rgba(0, 0, 0, 0.6);
+  --shadow-glow:       0 0 20px rgba(198, 90, 58, 0.15);
+  --shadow-glow-strong: 0 0 30px rgba(198, 90, 58, 0.25);
+  --shadow-inner-top:  inset 0 1px 0 rgba(255,255,255,0.05);
+  --shadow-inner-bottom: inset 0 -1px 0 rgba(0,0,0,0.2);
+  --shadow-glass:      0 2px 4px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.04);
+
+  /* ==========================================
+     BLUR
+     ========================================== */
+  --blur-sm:  8px;
+  --blur-md:  16px;
+  --blur-lg:  24px;
+
+  /* ==========================================
+     Z-INDEX
+     ========================================== */
+  --z-base:      1;
+  --z-dropdown:  100;
+  --z-sticky:    200;
+  --z-overlay:   500;
+  --z-modal:     1000;
+  --z-toast:     1100;
+  --z-tooltip:   1200;
+  --z-decor:     2000;
+
+  /* ==========================================
+     SIDEBAR
+     ========================================== */
+  --sidebar-width:        260px;
+  --sidebar-width-mobile: 72px;
+
+  /* ==========================================
+     THEME SYSTEM — Tokens semánticos
+     ========================================== */
+
+  /* Fondos */
+  --theme-bg-primary:       var(--umbra-black);
+  --theme-bg-secondary:     var(--umbra-dark);
+  --theme-bg-tertiary:      var(--umbra-stone);
+  --theme-bg-card:          var(--bg-card);
+  --theme-bg-card-hover:    var(--bg-card-hover);
+  --theme-bg-overlay:       var(--bg-overlay);
+  --theme-bg-input:         var(--bg-input);
+  --theme-bg-glass:         rgba(255, 255, 255, 0.04);
+  --theme-bg-glass-hover:   rgba(255, 255, 255, 0.08);
+
+  /* Texto */
+  --theme-text-primary:     var(--umbra-light);
+  --theme-text-secondary:   #a8a4a0;
+  --theme-text-muted:       var(--umbra-ash);
+  --theme-text-inverse:     var(--umbra-black);
+
+  /* Bordes */
+  --theme-border-subtle:    1px solid rgba(255, 255, 255, 0.05);
+  --theme-border-visible:   1px solid rgba(255, 255, 255, 0.12);
+  --theme-border-accent:    1px solid rgba(198, 90, 58, 0.35);
+
+  /* Acentos */
+  --theme-accent-primary:   var(--accent-coral);
+  --theme-accent-secondary: var(--accent-rust);
+  --theme-accent-dim:       var(--accent-dim);
+  --theme-accent-border:    var(--accent-border);
+  --theme-accent-glow:      var(--shadow-glow);
+
+  /* Estados */
+  --theme-success:          var(--green);
+  --theme-success-dim:      var(--green-dim);
+  --theme-error:            var(--red);
+  --theme-error-dim:        var(--red-dim);
+  --theme-info:             var(--blue);
+  --theme-info-dim:         var(--blue-dim);
+  --theme-warning:          var(--yellow);
+  --theme-warning-dim:      var(--yellow-dim);
+
+  /* Sombras */
+  --theme-shadow-sm:        var(--shadow-sm);
+  --theme-shadow-md:        var(--shadow-md);
+  --theme-shadow-lg:        var(--shadow-lg);
+  --theme-shadow-xl:        var(--shadow-xl);
+  --theme-shadow-glow:      var(--shadow-glow);
+  --theme-shadow-glow-strong: var(--shadow-glow-strong);
+  --theme-shadow-inner-top: var(--shadow-inner-top);
+  --theme-shadow-glass:     var(--shadow-glass);
+
+  /* Scrollbar */
+  --theme-scrollbar-track:  transparent;
+  --theme-scrollbar-thumb:  rgba(255, 255, 255, 0.1);
+  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+
+  /* Sidebar */
+  --theme-sidebar-bg:       linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  --theme-sidebar-border:   rgba(255, 255, 255, 0.03);
+
+  /* Bottom nav */
+  --bottom-nav-height: 72px;
+}
+
+/* ==========================================
+   LIGHT THEME — Paleta Rose / Pink intenso
+   Fondo rosáceo cálido con acentos fucsia y contraste profundo
+   ========================================== */
+[data-theme="light"] {
+  /* Fondos — rosa visible de fondo, tarjetas con sutil rosa, cristal blanco */
+  --theme-bg-primary:       #f0e4ea;
+  --theme-bg-secondary:     #e8d8e0;
+  --theme-bg-tertiary:      #ddcad4;
+  --theme-bg-card:          rgba(245, 235, 240, 0.88);
+  --theme-bg-card-hover:    rgba(250, 243, 247, 0.95);
+  --theme-bg-overlay:       rgba(50, 35, 40, 0.55);
+  --theme-bg-input:         rgba(160, 60, 85, 0.08);
+  --theme-bg-glass:         rgba(255, 255, 255, 0.92);
+  --theme-bg-glass-hover:   rgba(255, 255, 255, 1);
+
+  /* Texto — tonos oscuros cálidos con buen contraste */
+  --theme-text-primary:     #1f1519;
+  --theme-text-secondary:   #634a53;
+  --theme-text-muted:       #9a7a85;
+  --theme-text-inverse:     #fefcfd;
+
+  /* Bordes — sutiles rosáceos */
+  --theme-border-subtle:    1px solid rgba(160, 60, 85, 0.1);
+  --theme-border-visible:   1px solid rgba(160, 60, 85, 0.18);
+  --theme-border-accent:    1px solid rgba(207, 64, 98, 0.3);
+
+  /* Acentos — fucsia intenso / coral */
+  --theme-accent-primary:   #cf4062;
+  --theme-accent-secondary: #b83553;
+  --theme-accent-dim:       rgba(207, 64, 98, 0.1);
+  --theme-accent-border:    rgba(207, 64, 98, 0.28);
+  --theme-accent-glow:      0 0 20px rgba(207, 64, 98, 0.12);
+
+  /* Sombras — con tinte rosado en vez de gris neutro */
+  --theme-shadow-sm:        0 1px 4px rgba(140, 50, 70, 0.08);
+  --theme-shadow-md:        0 4px 16px rgba(140, 50, 70, 0.1);
+  --theme-shadow-lg:        0 12px 32px rgba(140, 50, 70, 0.12);
+  --theme-shadow-xl:        0 20px 48px rgba(140, 50, 70, 0.15);
+  --theme-shadow-glow:      0 0 24px rgba(207, 64, 98, 0.14);
+  --theme-shadow-glow-strong: 0 0 30px rgba(207, 64, 98, 0.2);
+  --theme-shadow-glass:     0 2px 6px rgba(140,50,70,0.04), 0 8px 24px rgba(140,50,70,0.06), inset 0 1px 0 rgba(255,248,250,0.7);
+
+  /* Scrollbar — rosado sutil */
+  --theme-scrollbar-track:  rgba(160, 60, 85, 0.04);
+  --theme-scrollbar-thumb:  rgba(160, 60, 85, 0.2);
+  --theme-scrollbar-thumb-hover: rgba(160, 60, 85, 0.35);
+
+  /* Sidebar — granate oscuro (se mantiene, más contraste con fondo rosa) */
+  --theme-sidebar-bg:       linear-gradient(180deg, #2a1e23 0%, #382b30 100%);
+  --theme-sidebar-border:   1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ==========================================
+   LARGE TEXT (Accesibilidad)
+   ========================================== */
+[data-large-text="true"] {
+  --fs-xs:   0.85rem;
+  --fs-sm:   1rem;
+  --fs-md:   1.15rem;
+  --fs-lg:   1.4rem;
+  --fs-xl:   1.75rem;
+  --fs-2xl:  2.25rem;
+  --fs-3xl:  3.2rem;
+  --space-xs: 10px;
+  --space-sm: 18px;
+  --space-md: 36px;
+  --space-lg: 72px;
+  --space-xl: 130px;
+  --space-xxl: 220px;
+}
+
+/* ==========================================
+   REDUCED MOTION
+   ========================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0.001s;
+    --dur-fast:    0.001s;
+    --dur-mid:     0.001s;
+    --dur-slow:    0.001s;
+    --dur-slower:  0.001s;
+    --dur-spring:  0.001s;
+  }
+}

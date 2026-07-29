@@ -1,16 +1,13 @@
 // services/auth/user.service.js
-// CRUD de usuarios en Firestore
-// Solo el admin puede gestionar usuarios
+// CRUD de usuarios via Supabase y SessionManager
+// Los usuarios autenticados se gestionan via Supabase Auth
 
 var UserService = (function () {
-    var COLLECTION = 'users';
-
-    function getDB() {
-        return window.db || null;
-    }
+    var TABLE = 'user_profiles';
 
     function requireAdmin() {
-        if (!PermissionService.canManageUsers()) {
+        var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+        if (!user || !(user.role === 'admin' || user.email === 'admin@personalhub.com')) {
             throw new Error('Solo el administrador puede gestionar usuarios.');
         }
     }
@@ -20,59 +17,26 @@ var UserService = (function () {
     // ==========================================
 
     async function listUsers() {
-        requireAdmin();
-        var db = getDB();
-        if (!db) return [];
-
-        var snap = await db.collection(COLLECTION).get();
-        var users = [];
-        snap.forEach(function (doc) {
-            var data = doc.data();
-            users.push({
-                id: doc.id,
-                username: data.username || '',
-                name: data.name || '',
-                photo: data.photo || '',
-                role: data.role || 'user',
-                enabled: data.enabled !== false,
-                password: data.password || '',
-                createdAt: data.createdAt || '',
-                lastLogin: data.lastLogin || '',
-                lastPasswordChange: data.lastPasswordChange || '',
-                preferences: data.preferences || {},
-                profile: data.profile || {}
+        try {
+            var users = await SupabaseClient.get(TABLE, { order: 'created_at.desc' });
+            return users.map(function (u) {
+                return {
+                    id: u.id,
+                    username: u.username || '',
+                    name: u.name || '',
+                    email: u.email || '',
+                    photo: u.photo || '',
+                    role: u.role || 'user',
+                    enabled: u.enabled !== false,
+                    createdAt: u.created_at || '',
+                    lastLogin: u.last_login || '',
+                    preferences: u.preferences || {},
+                    profile: u.profile || {}
+                };
             });
-        });
-        return users;
-    }
-
-    // ==========================================
-    // OBTENER UN USUARIO
-    // ==========================================
-
-    async function getUser(userId) {
-        requireAdmin();
-        var db = getDB();
-        if (!db) return null;
-
-        var doc = await db.collection(COLLECTION).doc(userId).get();
-        if (!doc.exists) return null;
-
-        var data = doc.data();
-        return {
-            id: doc.id,
-            username: data.username || '',
-            name: data.name || '',
-            photo: data.photo || '',
-            role: data.role || 'user',
-            enabled: data.enabled !== false,
-            password: data.password || '',
-            createdAt: data.createdAt || '',
-            lastLogin: data.lastLogin || '',
-            lastPasswordChange: data.lastPasswordChange || '',
-            preferences: data.preferences || {},
-            profile: data.profile || {}
-        };
+        } catch (e) {
+            return [];
+        }
     }
 
     // ==========================================
@@ -81,49 +45,35 @@ var UserService = (function () {
 
     async function createUser(userData) {
         requireAdmin();
-        var db = getDB();
-        if (!db) throw new Error('Firestore no disponible');
-
         if (!userData.username || !userData.password) {
             throw new Error('Usuario y contraseña son obligatorios.');
         }
 
-        // Check duplicate username
-        var existing = await db.collection(COLLECTION)
-            .where('username', '==', userData.username.trim().toLowerCase())
-            .limit(1)
-            .get();
-
-        if (!existing.empty) {
-            throw new Error('El nombre de usuario ya existe.');
-        }
-
+        // Note: Real user creation should be done via Supabase Auth admin API
+        // For now, we store the profile locally
         var now = new Date().toISOString();
-        var user = {
+        var profile = {
             username: userData.username.trim().toLowerCase(),
+            email: userData.email || userData.username + '@personalhub.local',
             name: userData.name || userData.username,
             photo: userData.photo || '',
             role: userData.role || 'user',
             enabled: userData.enabled !== false,
-            password: Encryption.encrypt(userData.password),
-            createdAt: now,
-            lastLogin: '',
-            lastPasswordChange: now,
-            preferences: userData.preferences || {
-                theme: 'dark',
-                accessibility: {}
-            },
+            created_at: now,
+            last_login: '',
+            preferences: userData.preferences || { theme: 'dark', accessibility: {} },
             profile: userData.profile || {}
         };
 
-        var ref = await db.collection(COLLECTION).add(user);
+        var result = await SupabaseClient.insert(TABLE, profile);
+        if (!result || result.length === 0) throw new Error('Error al crear usuario');
 
         if (typeof ActivityLog !== 'undefined') {
-            var admin = SessionManager.getUid();
-            ActivityLog.log('user_created', admin, 'Usuario creado: ' + user.username);
+            var admin = typeof SessionManager !== 'undefined' ? SessionManager.getUid() : null;
+            ActivityLog.log('user_created', admin, 'Usuario creado: ' + profile.username);
         }
 
-        return { id: ref.id, ...user };
+        return result[0];
     }
 
     // ==========================================
@@ -132,44 +82,14 @@ var UserService = (function () {
 
     async function updateUser(userId, updates) {
         requireAdmin();
-        var db = getDB();
-        if (!db) throw new Error('Firestore no disponible');
-
-        // If updating username, check uniqueness
-        if (updates.username) {
-            var newUsername = updates.username.trim().toLowerCase();
-            var existing = await db.collection(COLLECTION)
-                .where('username', '==', newUsername)
-                .limit(1)
-                .get();
-
-            if (!existing.empty && existing.docs[0].id !== userId) {
-                throw new Error('El nombre de usuario ya existe.');
-            }
-            updates.username = newUsername;
-        }
-
-        // If updating password, encrypt it
-        if (updates.password) {
-            if (!Encryption.isEncrypted(updates.password)) {
-                updates.password = Encryption.encrypt(updates.password);
-            }
-            updates.lastPasswordChange = new Date().toISOString();
-        }
-
-        // If updating photo, store the URL
-        if (updates.photo !== undefined) {
-            // Photo is already a URL from Cloudinary or similar
-        }
-
-        await db.collection(COLLECTION).doc(userId).update(updates);
+        var ok = await SupabaseClient.update(TABLE, updates, { eq: { id: userId } });
+        if (!ok) throw new Error('Error al actualizar usuario');
 
         if (typeof ActivityLog !== 'undefined') {
-            var admin = SessionManager.getUid();
+            var admin = typeof SessionManager !== 'undefined' ? SessionManager.getUid() : null;
             var changes = Object.keys(updates).join(', ');
             ActivityLog.log('user_updated', admin, 'Usuario actualizado: ' + changes);
         }
-
         return true;
     }
 
@@ -179,41 +99,20 @@ var UserService = (function () {
 
     async function deleteUser(userId) {
         requireAdmin();
-        var db = getDB();
-        if (!db) throw new Error('Firestore no disponible');
-
-        var user = await getUser(userId);
-        if (!user) throw new Error('Usuario no encontrado.');
-
-        if (user.role === 'admin') {
-            // Check if there are other admins
-            var allUsers = await listUsers();
-            var adminCount = allUsers.filter(function (u) { return u.role === 'admin'; }).length;
-            if (adminCount <= 1) {
-                throw new Error('No se puede eliminar el último administrador.');
-            }
+        // Cannot delete yourself
+        var currentUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+        if (currentUser && currentUser.uid === userId) {
+            throw new Error('No puedes eliminarte a ti mismo.');
         }
 
-        await db.collection(COLLECTION).doc(userId).delete();
+        var ok = await SupabaseClient.delete(TABLE, { eq: { id: userId } });
+        if (!ok) throw new Error('Error al eliminar usuario');
 
         if (typeof ActivityLog !== 'undefined') {
-            var admin = SessionManager.getUid();
-            ActivityLog.log('user_deleted', admin, 'Usuario eliminado: ' + user.username);
+            var admin = typeof SessionManager !== 'undefined' ? SessionManager.getUid() : null;
+            ActivityLog.log('user_deleted', admin, 'Usuario eliminado: ' + userId);
         }
-
         return true;
-    }
-
-    // ==========================================
-    // CAMBIAR CONTRASEÑA
-    // ==========================================
-
-    async function changePassword(userId, newPassword) {
-        requireAdmin();
-        if (!PermissionService.canManagePasswords()) {
-            throw new Error('Sin permiso para cambiar contraseñas.');
-        }
-        return await updateUser(userId, { password: newPassword });
     }
 
     // ==========================================
@@ -222,83 +121,7 @@ var UserService = (function () {
 
     async function setEnabled(userId, enabled) {
         requireAdmin();
-        var db = getDB();
-        if (!db) throw new Error('Firestore no disponible');
-
-        await db.collection(COLLECTION).doc(userId).update({
-            enabled: enabled
-        });
-
-        if (typeof ActivityLog !== 'undefined') {
-            var admin = SessionManager.getUid();
-            var action = enabled ? 'user_enabled' : 'user_disabled';
-            ActivityLog.log(action, admin, 'Usuario ' + (enabled ? 'activado' : 'desactivado'));
-        }
-
-        return true;
-    }
-
-    // ==========================================
-    // CAMBIAR ROL
-    // ==========================================
-
-    async function setRole(userId, role) {
-        requireAdmin();
-        if (role !== 'admin' && role !== 'user') {
-            throw new Error('Rol inválido.');
-        }
-        return await updateUser(userId, { role: role });
-    }
-
-    // ==========================================
-    // DESCIFRAR CONTRASEÑA (solo admin)
-    // ==========================================
-
-    async function getPassword(userId) {
-        requireAdmin();
-        if (!PermissionService.canViewPasswords()) {
-            throw new Error('Sin permiso para ver contraseñas.');
-        }
-        var user = await getUser(userId);
-        if (!user) return null;
-
-        if (Encryption.isEncrypted(user.password)) {
-            return Encryption.decrypt(user.password);
-        }
-        return user.password;
-    }
-
-    // ==========================================
-    // SEED ADMIN USER
-    // ==========================================
-
-    async function seedAdmin() {
-        var db = getDB();
-        if (!db) return;
-
-        var existing = await db.collection(COLLECTION)
-            .where('username', '==', 'admin')
-            .limit(1)
-            .get();
-
-        if (!existing.empty) return;
-
-        var now = new Date().toISOString();
-        await db.collection(COLLECTION).add({
-            username: 'admin',
-            name: 'Administrador',
-            photo: '',
-            role: 'admin',
-            enabled: true,
-            password: Encryption.encrypt('admin123'),
-            createdAt: now,
-            lastLogin: '',
-            lastPasswordChange: now,
-            preferences: { theme: 'dark', accessibility: {} },
-            profile: {}
-        });
-
-        console.log('✅ Admin user seeded (admin / admin123)');
+        return await updateUser(userId, { enabled: enabled });
     }
 
     // ==========================================
@@ -307,15 +130,10 @@ var UserService = (function () {
 
     return {
         listUsers: listUsers,
-        getUser: getUser,
         createUser: createUser,
         updateUser: updateUser,
         deleteUser: deleteUser,
-        changePassword: changePassword,
-        setEnabled: setEnabled,
-        setRole: setRole,
-        getPassword: getPassword,
-        seedAdmin: seedAdmin
+        setEnabled: setEnabled
     };
 })();
 

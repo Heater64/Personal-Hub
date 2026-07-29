@@ -1,5 +1,5 @@
 // shared/utils/core.js
-// Utilidades centrales del sistema (script clásico, compatible con <script> sin type="module")
+// Utilidades centrales del sistema
 
 function daysSince(dateStr) {
     const target = new Date(dateStr);
@@ -189,7 +189,57 @@ function getUrlParam(key) {
     return params.get(key);
 }
 
-// Exposición global para uso clásico
+function triggerAmbientDecor() {
+    const page = document.body?.dataset?.sidebarPage;
+    if (page === 'home') {
+        setTimeout(() => {
+            launchParticles({
+                amount: 10,
+                symbols: ['❤', '✦', '✧'],
+                colors: ['#c65a3a', '#ffb347', '#ff8aa1'],
+                spread: 120,
+                source: { x: Math.min(window.innerWidth - 140, 420), y: 140 }
+            });
+        }, 320);
+    }
+}
+
+function initCoreUi() {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+    ensureDecorLayer();
+
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox && !lightbox.dataset.bound) {
+        lightbox.dataset.bound = 'true';
+        lightbox.addEventListener('click', function (event) {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+        const closeBtn = document.getElementById('lightboxCloseBtn');
+        if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+    }
+
+    triggerAmbientDecor();
+}
+
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+        closeLightbox();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', initCoreUi);
+
+document.addEventListener('click', function (e) {
+  if (!('vibrate' in navigator)) return;
+  var target = e.target.closest('button, a, .nav-btn, [role="button"]');
+  if (target) navigator.vibrate(8);
+}, { passive: true });
+
 window.Core = {
     daysSince: daysSince,
     initDayCounter: initDayCounter,
@@ -206,14 +256,20 @@ window.Core = {
     debounce: debounce,
     throttle: throttle,
     getCurrentPage: getCurrentPage,
-    getUrlParam: getUrlParam
+    getUrlParam: getUrlParam,
+    triggerAmbientDecor: triggerAmbientDecor,
+    initCoreUi: initCoreUi
 };
 window.daysSince = daysSince;
 window.initDayCounter = initDayCounter;
 window.escapeHtml = escapeHtml;
 window.showToast = showToast;
+window.showMessage = showToast;
 window.openSafeUrl = openSafeUrl;
 window.openLightbox = openLightbox;
 window.closeLightbox = closeLightbox;
 window.getCurrentPage = getCurrentPage;
 window.getUrlParam = getUrlParam;
+window.launchParticles = launchParticles;
+window.pulseElement = pulseElement;
+window.initCoreUi = initCoreUi;

@@ -1,3 +1,6 @@
+// services/analytics/analytics.js
+// Analíticas de página via Supabase
+
 var Analytics = (function () {
     var SESSION_KEY = 'personalHub.sessionId';
     var VISIT_COOLDOWN = 30000;
@@ -18,28 +21,33 @@ var Analytics = (function () {
         return page.replace('.html', '');
     }
 
+    function getUserId() {
+        var user = (typeof SessionManager !== 'undefined') ? SessionManager.getUserObject() : null;
+        return user ? user.uid : null;
+    }
+
     async function trackVisit() {
         var now = Date.now();
         if (now - lastVisit < VISIT_COOLDOWN) return;
         lastVisit = now;
 
-        var uid = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-        if (!uid || !window.db) return;
+        var uid = getUserId();
+        if (!uid || typeof SupabaseClient === 'undefined') return;
 
         try {
-            var sessionId = getSessionId();
-            var page = getPageName();
-            await window.db.collection('users').doc(uid.uid).collection('analytics').add({
-                type: 'pageview',
-                page: page,
-                sessionId: sessionId,
+            await SupabaseClient.insert('analytics_visits', {
+                user_id: uid,
+                page: getPageName(),
+                session_id: getSessionId(),
                 timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent.slice(0, 200)
+                user_agent: navigator.userAgent.slice(0, 200)
             });
         } catch (e) {
             if (window.SyncQueue) {
-                window.SyncQueue.enqueue('add', 'stats_visits', Date.now().toString(), {
+                window.SyncQueue.enqueue('insert', 'analytics_visits', {
+                    user_id: uid,
                     page: getPageName(),
+                    session_id: getSessionId(),
                     timestamp: new Date().toISOString()
                 });
             }
@@ -47,12 +55,11 @@ var Analytics = (function () {
     }
 
     async function trackEvent(category, action, label) {
-        var uid = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-        if (!uid || !window.db) return;
-
+        var uid = getUserId();
+        if (!uid || typeof SupabaseClient === 'undefined') return;
         try {
-            await window.db.collection('stats_sessions').add({
-                uid: uid.uid,
+            await SupabaseClient.insert('analytics_events', {
+                user_id: uid,
                 category: category,
                 action: action,
                 label: label || '',
@@ -63,12 +70,11 @@ var Analytics = (function () {
     }
 
     async function trackAction(action, details) {
-        var uid = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-        if (!uid || !window.db) return;
-
+        var uid = getUserId();
+        if (!uid || typeof SupabaseClient === 'undefined') return;
         try {
-            await window.db.collection('stats_admin_actions').add({
-                uid: uid.uid,
+            await SupabaseClient.insert('admin_actions', {
+                user_id: uid,
                 action: action,
                 details: details || '',
                 timestamp: new Date().toISOString()
@@ -77,22 +83,13 @@ var Analytics = (function () {
     }
 
     function initAutoTracking() {
-        if (document.readyState === 'complete') {
-            trackVisit();
-        } else {
-            window.addEventListener('load', trackVisit);
-        }
+        if (document.readyState === 'complete') { trackVisit(); }
+        else { window.addEventListener('load', trackVisit); }
     }
 
     initAutoTracking();
 
-    return {
-        trackVisit: trackVisit,
-        trackEvent: trackEvent,
-        trackAction: trackAction
-    };
+    return { trackVisit: trackVisit, trackEvent: trackEvent, trackAction: trackAction };
 })();
 
-if (typeof window !== 'undefined') {
-    window.Analytics = Analytics;
-}
+if (typeof window !== 'undefined') { window.Analytics = Analytics; }

@@ -1,0 +1,69 @@
+/* ==========================================
+   ANIMATIONS
+   ========================================== */
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slide-down { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slide-up-sm { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes pop-in { 0% { opacity: 0; transform: scale(0.8); } 50% { transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes pulse-subtle { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes glow-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--theme-accent-primary); } 50% { box-shadow: 0 0 30px 6px var(--theme-accent-dim); } }
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.02); opacity: 1; }
+}
+@keyframes ripple {
+  0% { box-shadow: 0 0 0 0 var(--theme-accent-dim); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+
+/* ==========================================
+   PAGE TRANSITIONS
+   ========================================== */
+.app-content {
+  animation: page-enter var(--dur-smooth) ease forwards;
+}
+
+@keyframes page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================
+   UTILITY CLASSES
+   ========================================== */
+.animate-fade-in { animation: fade-in var(--dur-mid) ease forwards; }
+.animate-slide-up { animation: slide-up var(--dur-mid) ease forwards; }
+.animate-slide-up-sm { animation: slide-up-sm var(--dur-mid) var(--dur-smooth) forwards; }
+.animate-scale-in { animation: scale-in var(--dur-mid) ease forwards; }
+.animate-pop-in { animation: pop-in var(--dur-bounce) forwards; }
+.animate-pulse-subtle { animation: pulse-subtle 2s ease-in-out infinite; }
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
+.animate-breathe { animation: breathe 3s ease-in-out infinite; }
+.animate-shimmer { background: linear-gradient(90deg, var(--theme-bg-glass) 25%, var(--theme-bg-glass-hover) 50%, var(--theme-bg-glass) 75%); background-size: 200% 100%; animation: skeleton-shimmer 1.5s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

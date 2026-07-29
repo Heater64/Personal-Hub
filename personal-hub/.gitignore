@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary copies for dev (games and legacy dependencies)
+public/games/
+public/css/
+public/services/
+public/shared/
+
+# Logs
+*.log
+npm-debug.log*

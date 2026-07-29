@@ -1,51 +1,34 @@
 // services/auth/activity-log.js
-// Registro de actividad (solo visible para admin)
+// Registro de actividad (solo visible para admin) via Supabase
 
 var ActivityLog = (function () {
-    var COLLECTION = 'activityLog';
+    var TABLE = 'activity_log';
 
-    function getDB() {
-        return window.db || null;
+    function getUid() {
+        var user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+        return user ? user.uid || user.id : null;
     }
 
     async function log(action, userId, details) {
-        var db = getDB();
-        if (!db) return;
-
         try {
-            await db.collection(COLLECTION).add({
+            await SupabaseClient.insert(TABLE, {
                 action: action,
-                userId: userId || '',
+                user_id: userId || getUid() || '',
                 details: details || '',
                 timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent.slice(0, 200)
+                user_agent: navigator.userAgent.slice(0, 200)
             });
-        } catch (e) {
-            console.warn('[ActivityLog] Error:', e);
-        }
+        } catch (e) {}
     }
 
     async function getRecent(limit) {
-        if (!PermissionService.canViewActivityLog()) {
-            return [];
-        }
-
-        var db = getDB();
-        if (!db) return [];
-
+        limit = limit || 50;
         try {
-            var snap = await db.collection(COLLECTION)
-                .orderBy('timestamp', 'desc')
-                .limit(limit || 50)
-                .get();
-
-            var entries = [];
-            snap.forEach(function (doc) {
-                entries.push({ id: doc.id, ...doc.data() });
+            return await SupabaseClient.get(TABLE, {
+                order: 'timestamp.desc',
+                limit: limit
             });
-            return entries;
         } catch (e) {
-            console.warn('[ActivityLog] Error:', e);
             return [];
         }
     }

@@ -213,15 +213,76 @@ html[data-theme="light"] .login-page::before {
   display: none;
   text-align: center;
   margin-bottom: 16px;
+  opacity: 1;
+  transition: opacity 0.2s ease;
 }
 
 .login-error.visible { display: block; }
+.login-error.fade-out { opacity: 0; }
 
 .login-error i {
   width: 16px;
   height: 16px;
   margin-right: 8px;
   vertical-align: middle;
+}
+
+/* ==============================
+   SERVICES LOADING INDICATOR
+   ============================== */
+.loading-status {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(198,90,58,0.08);
+  border: 1px solid rgba(198,90,58,0.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--theme-accent-primary, #c65a3a);
+  font-size: 0.82rem;
+  margin-bottom: 16px;
+}
+
+.loading-status.visible { display: flex; }
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(198,90,58,0.25);
+  border-top-color: var(--theme-accent-primary, #c65a3a);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ==============================
+   BACK LINK
+   ============================== */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  font-size: 0.82rem;
+  color: var(--theme-text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.back-link:hover {
+  color: var(--theme-accent-primary, #c65a3a);
+}
+
+/* ==============================
+   LOADING TEXT IN BUTTON
+   ============================== */
+.login-btn .btn-loading-text { display: none; }
+
+.login-btn.loading .btn-text { visibility: hidden; }
+.login-btn.loading .btn-loading-text {
+  display: inline;
+  visibility: visible;
 }
 
 .login-decor {
@@ -316,4 +377,13 @@ html[data-large-text="true"] .form-group label { font-size: 0.82rem; }
 @media (max-width: 480px) {
   .login-card { padding: 28px 20px; border-radius: 18px; }
   .login-header h1 { font-size: 1.4rem; }
+}
+
+@media (max-width: 360px) {
+  .login-page { padding: 12px; }
+  .login-card { padding: 24px 16px; border-radius: 16px; }
+  .login-header { margin-bottom: 24px; }
+  .login-header h1 { font-size: 1.25rem; }
+  .login-btn { font-size: 0.85rem; min-height: 46px; }
+  .form-input { padding: 11px 14px; font-size: 0.85rem; }
 }

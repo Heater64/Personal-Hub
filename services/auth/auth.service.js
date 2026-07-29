@@ -1,108 +1,152 @@
 // services/auth/auth.service.js
-// Servicio de autenticación propio (sin Firebase Auth)
-// Login con usuario + contraseña, gestionado por admin
+// Servicio de autenticación via Supabase Auth REST API
+// Las llamadas auth se hacen mediante fetch a la API de Supabase Auth
 
 var AuthService = (function () {
 
-    async function login(username, password) {
-        if (!username || !password) {
-            throw new Error('Usuario y contraseña son obligatorios.');
-        }
+    var SUPABASE_URL = 'https://ydkyvfifadtwgmwgrslo.supabase.co';
+    var AUTH_URL = SUPABASE_URL + '/auth/v1';
 
-        var db = window.db;
-        if (!db) {
-            throw new Error('Firestore no está disponible.');
-        }
-
-        // Buscar usuario por username
-        var snapshot = await db.collection('users')
-            .where('username', '==', username.trim().toLowerCase())
-            .limit(1)
-            .get();
-
-        if (snapshot.empty) {
-            throw new Error('USER_NOT_FOUND');
-        }
-
-        var doc = snapshot.docs[0];
-        var userData = doc.data();
-
-        // Verificar si está activo
-        if (userData.enabled === false) {
-            throw new Error('USER_DISABLED');
-        }
-
-        // Descifrar y comparar contraseña
-        var storedPassword = userData.password;
-        if (Encryption.isEncrypted(storedPassword)) {
-            storedPassword = Encryption.decrypt(storedPassword);
-        }
-
-        if (storedPassword !== password) {
-            throw new Error('WRONG_PASSWORD');
-        }
-
-        // Actualizar último acceso
-        await db.collection('users').doc(doc.id).update({
-            lastLogin: new Date().toISOString()
-        });
-
-        // Crear sesión
-        var session = SessionManager.createSession({
-            id: doc.id,
-            username: userData.username,
-            name: userData.name || userData.username,
-            photo: userData.photo || '',
-            role: userData.role || 'user',
-            enabled: userData.enabled !== false,
-            preferences: userData.preferences || {},
-            profile: userData.profile || {}
-        });
-
-        // Registrar actividad
-        if (typeof ActivityLog !== 'undefined') {
-            ActivityLog.log('login', doc.id, 'Inicio de sesión');
-        }
-
-        return session;
+    function getAnonHeaders() {
+        var key = (typeof SupabaseClient !== 'undefined')
+            ? SupabaseClient.getAnonKey()
+            : 'sb_publishable_CymwHz4Lp2ieYb2_PPubNw_MmRIlYeI';
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'apikey': key,
+            'Authorization': 'Bearer ' + key
+        };
     }
 
-    async function logout() {
-        var session = SessionManager.getSession();
-        if (session && typeof ActivityLog !== 'undefined') {
-            ActivityLog.log('logout', session.uid, 'Cierre de sesión');
+    async function signInWithPassword(email, password) {
+        var res = await fetch(AUTH_URL + '/token?grant_type=password', {
+            method: 'POST',
+            headers: getAnonHeaders(),
+            body: JSON.stringify({ email: email, password: password })
+        });
+
+        if (!res.ok) {
+            var err = await res.json();
+            throw new Error(err.error_description || err.msg || 'Error al iniciar sesión');
         }
-        SessionManager.destroySession();
+
+        var data = await res.json();
+        // Guardar sesión en SessionManager
+        if (typeof SessionManager !== 'undefined') {
+            var user = data.user || {};
+            SessionManager.createSession({
+                id: user.id,
+                username: user.email,
+                name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuario',
+                photo: user.user_metadata?.avatar_url || '',
+                role: user.email === 'admin@personalhub.com' ? 'admin' : 'user',
+                enabled: true,
+                preferences: {},
+                profile: user.user_metadata || {}
+            });
+        }
+        return data;
+    }
+
+    async function signUp(email, password) {
+        var res = await fetch(AUTH_URL + '/signup', {
+            method: 'POST',
+            headers: getAnonHeaders(),
+            body: JSON.stringify({ email: email, password: password })
+        });
+
+        if (!res.ok) {
+            var err = await res.json();
+            throw new Error(err.msg || 'Error al registrarse');
+        }
+        return await res.json();
+    }
+
+    async function signOut() {
+        var session = typeof SessionManager !== 'undefined' ? SessionManager.getSession() : null;
+        var token = session?.access_token || '';
+
+        if (token) {
+            try {
+                await fetch(AUTH_URL + '/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': getAnonHeaders()['apikey'],
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+            } catch (e) {}
+        }
+
+        if (typeof SessionManager !== 'undefined') {
+            SessionManager.destroySession();
+        }
         return true;
     }
 
+    async function getSession() {
+        var session = typeof SessionManager !== 'undefined' ? SessionManager.getSession() : null;
+        if (!session) return null;
+
+        // Verificar si el token sigue siendo válido
+        try {
+            var res = await fetch(AUTH_URL + '/user', {
+                headers: {
+                    'apikey': getAnonHeaders()['apikey'],
+                    'Authorization': 'Bearer ' + (session.access_token || '')
+                }
+            });
+            if (!res.ok) {
+                SessionManager.destroySession();
+                return null;
+            }
+            return session;
+        } catch (e) {
+            return session; // Si no hay conexión, confiar en la sesión local
+        }
+    }
+
+    var currentUser = null;
+
     function getCurrentUser() {
-        return SessionManager.getUserObject();
+        if (currentUser) return currentUser;
+        var session = typeof SessionManager !== 'undefined' ? SessionManager.getUserObject() : null;
+        if (session) {
+            currentUser = {
+                uid: session.uid,
+                email: session.username,
+                displayName: session.name,
+                photoURL: session.photo,
+                role: session.role,
+                enabled: session.enabled !== false
+            };
+            return currentUser;
+        }
+        return null;
     }
 
     function isAdminUser(user) {
-        if (!user) {
-            user = SessionManager.getUserObject();
-        }
+        if (!user) user = getCurrentUser();
         if (!user) return false;
-        return user.role === 'admin';
+        return user.role === 'admin' || user.email === 'admin@personalhub.com';
     }
 
     async function requireAuth() {
-        if (SessionManager.isLoggedIn()) {
-            return SessionManager.getUserObject();
-        }
+        var user = getCurrentUser();
+        if (user) return user;
         throw new Error('No autenticado');
     }
 
     function waitForAuth() {
         return new Promise(function (resolve) {
-            if (SessionManager.isLoggedIn()) {
+            if (getCurrentUser()) {
                 resolve(true);
                 return;
             }
             var checkInterval = setInterval(function () {
-                if (SessionManager.isLoggedIn()) {
+                if (getCurrentUser()) {
                     clearInterval(checkInterval);
                     resolve(true);
                 }
@@ -116,31 +160,33 @@ var AuthService = (function () {
 
     // ==========================================
     // EXPORTAR FUNCIONES GLOBALES
-    // (compatibles con el sistema anterior)
     // ==========================================
 
     function install() {
         window.getCurrentUser = getCurrentUser;
         window.isAdminUser = isAdminUser;
-        window.logoutUser = logout;
+        window.logoutUser = signOut;
         window.requireAuth = requireAuth;
         window.waitForAuth = waitForAuth;
-        window.loginWithEmail = function () {
-            throw new Error('Usar AuthService.login(username, password)');
+        window.loginWithEmail = function (email, password) {
+            return signInWithPassword(email, password);
         };
-        // Alias for backward compat
-        window.onAuthStateChanged = SessionManager.onAuthStateChanged;
+        window.onAuthStateChanged = (typeof SessionManager !== 'undefined')
+            ? SessionManager.onAuthStateChanged
+            : function () {};
     }
 
     install();
 
     return {
-        login: login,
-        logout: logout,
+        login: signInWithPassword,
+        signUp: signUp,
+        logout: signOut,
         getCurrentUser: getCurrentUser,
         isAdminUser: isAdminUser,
         requireAuth: requireAuth,
         waitForAuth: waitForAuth,
+        getSession: getSession,
         install: install
     };
 })();

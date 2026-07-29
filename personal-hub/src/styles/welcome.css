@@ -1,0 +1,336 @@
+/* ==========================================
+   WELCOME SCREEN (Mood Check-in)
+   ========================================== */
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in var(--dur-slow) ease forwards;
+  background: var(--theme-bg-overlay);
+  backdrop-filter: blur(var(--blur-md));
+}
+
+.welcome-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 40px 28px 32px;
+  background: var(--theme-bg-primary);
+  border-radius: var(--radius-xl);
+  border: var(--theme-border-visible);
+  box-shadow: var(--theme-shadow-lg);
+  animation: slide-up var(--dur-slow) ease forwards;
+}
+
+.welcome-content {
+  position: relative;
+  z-index: 1;
+}
+
+.welcome-greeting {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.welcome-time-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.welcome-icon-inner {
+  font-size: 2.5rem;
+  animation: float 4s ease-in-out infinite;
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.welcome-name {
+  color: var(--theme-accent-primary);
+}
+
+.welcome-subtitle {
+  font-size: var(--fs-md);
+  color: var(--theme-text-muted);
+}
+
+/* Mood buttons */
+.welcome-moods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.mood-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  background: var(--theme-bg-card);
+  color: var(--theme-text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--dur-fast);
+  animation: slide-up var(--dur-mid) ease forwards;
+  opacity: 0;
+}
+
+.mood-btn:hover {
+  background: var(--theme-bg-card-hover);
+  border-color: var(--theme-border-visible);
+}
+
+.mood-btn.selected {
+  background: var(--theme-accent-dim);
+  border-color: var(--theme-border-accent);
+  transform: scale(1.01);
+}
+
+.mood-btn__emoji {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.mood-btn__text {
+  flex: 1;
+}
+
+.mood-btn__label {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.mood-btn__check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--theme-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+  transition: all var(--dur-fast);
+  opacity: 0;
+}
+
+.mood-btn.selected .mood-btn__check {
+  background: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+  color: #fff;
+  opacity: 1;
+}
+
+/* CTA */
+.welcome-cta {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.welcome-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 36px;
+  border-radius: var(--radius-pill);
+  background: var(--theme-accent-dim);
+  border: 1px solid var(--theme-border-accent);
+  color: var(--theme-accent-primary);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  min-width: 180px;
+  justify-content: center;
+}
+
+.welcome-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.welcome-btn:not(:disabled):hover {
+  background: var(--theme-accent-primary);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.welcome-btn.ready {
+  animation: pulse-glow 2s infinite;
+}
+
+.welcome-btn-arrow {
+  font-size: 1.2rem;
+  transition: transform var(--dur-fast);
+}
+
+.welcome-btn:not(:disabled):hover .welcome-btn-arrow {
+  transform: translateX(3px);
+}
+
+.welcome-skip {
+  display: block;
+  margin: 0 auto;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  color: var(--theme-text-muted);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+
+.welcome-skip:hover {
+  color: var(--theme-text-secondary);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--theme-accent-dim); }
+  50% { box-shadow: 0 0 20px 4px var(--theme-accent-dim); }
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 768px) {
+  .welcome-modal {
+    max-width: 380px;
+    padding: 32px 24px 28px;
+    border-radius: var(--radius-lg);
+  }
+
+  .welcome-title {
+    font-size: var(--fs-xl);
+  }
+
+  .mood-btn {
+    padding: 12px 14px;
+  }
+
+  .mood-btn__emoji {
+    font-size: 1.3rem;
+    width: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-modal {
+    max-width: 100%;
+    margin: 0 12px;
+    padding: 28px 18px 24px;
+    border-radius: var(--radius-lg);
+  }
+
+  .welcome-title {
+    font-size: var(--fs-lg);
+  }
+
+  .welcome-icon-inner {
+    font-size: 2rem;
+  }
+
+  .welcome-subtitle {
+    font-size: var(--fs-sm);
+  }
+
+  .welcome-moods {
+    gap: 8px;
+  }
+
+  .mood-btn {
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .mood-btn__emoji {
+    font-size: 1.1rem;
+    width: 28px;
+  }
+
+  .mood-btn__label {
+    font-size: var(--fs-xs);
+  }
+
+  .mood-btn__check {
+    width: 18px;
+    height: 18px;
+    font-size: 0.6rem;
+  }
+
+  .welcome-btn {
+    padding: 10px 24px;
+    font-size: var(--fs-sm);
+    min-width: 140px;
+  }
+
+  .welcome-skip {
+    font-size: var(--fs-xs);
+  }
+}
+
+@media (max-width: 360px) {
+  .welcome-modal {
+    padding: 24px 14px 20px;
+  }
+
+  .welcome-title {
+    font-size: var(--fs-base);
+  }
+
+  .mood-btn {
+    padding: 8px 10px;
+  }
+
+  .welcome-btn {
+    padding: 8px 18px;
+    font-size: var(--fs-xs);
+    min-width: 120px;
+  }
+}
+
+@media (min-width: 1025px) {
+  .welcome-modal {
+    max-width: 480px;
+    padding: 48px 36px 36px;
+    border-radius: var(--radius-xl);
+  }
+
+  .welcome-title {
+    font-size: var(--fs-3xl);
+  }
+
+  .welcome-icon-inner {
+    font-size: 3rem;
+  }
+
+  .mood-btn {
+    padding: 16px 20px;
+  }
+
+  .mood-btn__emoji {
+    font-size: 1.7rem;
+    width: 40px;
+  }
+
+  .welcome-btn {
+    padding: 14px 44px;
+    font-size: var(--fs-lg);
+    min-width: 200px;
+  }
+}

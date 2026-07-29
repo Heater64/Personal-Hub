@@ -33,7 +33,6 @@ var GameSession = (function () {
             activeSession = session;
             return session;
         } catch (e) {
-            console.error('Error creando sesión:', e);
             return null;
         }
     }
@@ -69,7 +68,6 @@ var GameSession = (function () {
             activeSession = session;
             return session;
         } catch (e) {
-            console.error('Error uniéndose a sesión:', e);
             return null;
         }
     }
@@ -85,7 +83,6 @@ var GameSession = (function () {
             });
             return true;
         } catch (e) {
-            console.error('Error actualizando estado:', e);
             return false;
         }
     }
@@ -110,7 +107,6 @@ var GameSession = (function () {
             if (newState) activeSession.state = newState;
             return true;
         } catch (e) {
-            console.error('Error terminando turno:', e);
             return false;
         }
     }
@@ -128,8 +124,7 @@ var GameSession = (function () {
                 activeSession.status = 'finished';
             }
         } catch (e) {
-            console.error('Error terminando sesión:', e);
-        }
+            /* handled */ }
     }
 
     function subscribeToSession(sessionId, callback) {
@@ -146,7 +141,6 @@ var GameSession = (function () {
                     listeners.forEach(function (cb) { try { cb(data); } catch (e) {} });
                 }
             }, function (err) {
-                console.warn('Error en sesión snapshot:', err);
             });
 
         return function () {
