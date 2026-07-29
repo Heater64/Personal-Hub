@@ -11,9 +11,10 @@
   "description": "Tu lugar especial con sorpresas, juegos y fotos nuestras.",
   "main": "personal-hub/index.html",
   "scripts": {
-    "dev": "vite --root personal-hub",
-    "build": "vite build --root personal-hub",
-    "preview": "vite preview --root personal-hub"
+    "dev": "npx vite personal-hub",
+    "build": "npx vite build personal-hub",
+    "preview": "npx vite preview personal-hub",
+    "postinstall": "node -e \"try{require('fs').chmodSync('node_modules/.bin/vite',0o755)}catch(e){}\""
   },
   "repository": {
     "type": "git",
