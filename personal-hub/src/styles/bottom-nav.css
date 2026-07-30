@@ -48,21 +48,6 @@
   color: var(--theme-accent-primary);
 }
 
-/* Active indicator: subtle bubble background */
-.bottom-nav__item.is-active::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%) scale(0.8);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--theme-accent-dim);
-  animation: pop-in var(--dur-bounce) forwards;
-  z-index: 0;
-}
-
 .bottom-nav__item svg {
   position: relative;
   z-index: 1;
@@ -108,6 +93,42 @@
   transition: transform var(--dur-spring);
 }
 
+.bottom-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-avatar-wrap .bottom-avatar {
+  display: flex;
+}
+
+.bottom-avatar-wrap .bottom-avatar.fallback {
+  display: none;
+}
+
+.bottom-avatar-wrap img:has(~ .bottom-avatar) + .bottom-avatar {
+  display: none;
+}
+
+.bottom-avatar-wrap img[style*='display: none'] + .bottom-avatar {
+  display: flex;
+}
+
+.bottom-nav__status {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--theme-bg-secondary);
+  z-index: 2;
+  pointer-events: none;
+  transition: background var(--dur-fast);
+}
+
 .bottom-nav__item.is-active .bottom-avatar {
   transform: scale(1.15);
   border-color: var(--theme-accent-primary);
@@ -126,6 +147,14 @@
 }
 
 /* ==========================================
+   LIGHT THEME — Match pink background
+   ========================================== */
+[data-theme="light"] .bottom-nav {
+  background: var(--theme-bg-primary);
+  border-top-color: rgba(100, 60, 70, 0.1);
+}
+
+/* ==========================================
    MÓVIL MUY PEQUEÑO (≤ 360px)
    ========================================== */
 @media (max-width: 360px) {
@@ -139,12 +168,6 @@
   .bottom-nav__item {
     padding: 4px 2px;
     gap: 2px;
-  }
-
-  .bottom-nav__item.is-active::before {
-    width: 26px;
-    height: 26px;
-    top: 4px;
   }
 
   .bottom-nav__item svg {

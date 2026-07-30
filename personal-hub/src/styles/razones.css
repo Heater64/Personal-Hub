@@ -97,12 +97,6 @@
   animation: slide-up 0.5s ease backwards;
 }
 
-.razon-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--theme-border-accent);
-  box-shadow: var(--theme-shadow-md), 0 0 24px var(--theme-accent-dim), var(--theme-shadow-glass);
-}
-
 /* Línea decorativa izquierda en hover */
 .razon-card::before {
   content: '';

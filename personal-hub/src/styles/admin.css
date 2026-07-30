@@ -18,8 +18,8 @@
   gap: 16px;
   margin-bottom: 24px;
   flex-wrap: wrap;
-  padding: 24px;
-  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  border-radius: var(--radius-xl);
   background: var(--theme-bg-glass);
   border: var(--theme-border-subtle);
   animation: slide-up 0.5s ease forwards;
@@ -43,7 +43,7 @@
 .admin-header h1 {
   position: relative;
   z-index: 1;
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-display);
   font-size: var(--fs-2xl);
   font-weight: 500;
   margin: 0 0 4px;
@@ -125,7 +125,7 @@
   background: var(--theme-accent-dim);
   color: var(--theme-accent-primary);
   font-weight: 500;
-  box-shadow: 0 2px 8px rgba(198, 90, 58, 0.15);
+  box-shadow: var(--theme-shadow-glow);
 }
 
 .admin-tab svg {
@@ -213,13 +213,6 @@
   transition: all var(--dur-smooth);
 }
 
-.stat-card:hover {
-  border-color: var(--theme-border-accent);
-  background: var(--theme-bg-glass-hover);
-  transform: translateY(-4px);
-  box-shadow: var(--theme-shadow-md), 0 0 20px var(--theme-accent-dim);
-}
-
 .stat-card:hover::before {
   width: 120px;
   background: var(--theme-accent-primary);
@@ -268,13 +261,6 @@
 .admin-list-item:nth-child(3) { animation-delay: 0.06s; }
 .admin-list-item:nth-child(4) { animation-delay: 0.08s; }
 .admin-list-item:nth-child(n+5) { animation-delay: 0.1s; }
-
-.admin-list-item:hover {
-  border-color: var(--theme-border-accent);
-  background: var(--theme-bg-glass-hover);
-  transform: translateX(4px);
-  box-shadow: var(--theme-shadow-sm);
-}
 
 .item-content {
   flex: 1;
@@ -441,7 +427,7 @@
   background: var(--theme-accent-primary);
   color: #fff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(198, 90, 58, 0.3);
+  box-shadow: var(--theme-shadow-glow);
 }
 
 .admin-btn-primary:active {

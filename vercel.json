@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "personal-hub/dist",
+  "devCommand": "npx vite personal-hub --port $PORT",
   "framework": "vite",
   "installCommand": "npm install"
 }

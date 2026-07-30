@@ -54,7 +54,7 @@ export function OpenWhenPage(router) {
         </div>
         <div class="openwhen-grid" id="lettersGrid">
           ${LETTERS.map((l, i) => `
-            <div class="openwhen-card" data-id="${i}">
+            <div class="card openwhen-card" data-id="${i}">
               <div class="openwhen-card-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
               </div>

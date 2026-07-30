@@ -115,6 +115,19 @@ self.addEventListener('fetch', event => {
   event.respondWith(networkFirstWithFallback(request, '/offline.html'));
 });
 
+// ─── NOTIFICATIONS ─────────────────────────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/');
+    })
+  );
+});
+
 // ─── STRATEGIES ────────────────────────────────
 
 async function networkFirstWithFallback(request, fallbackUrl = '/offline.html') {

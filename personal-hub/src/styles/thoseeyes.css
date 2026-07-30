@@ -41,7 +41,7 @@
 @keyframes teBeat { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
 
 .thoseeyes-time { font-size: 0.65rem; font-family: monospace; color: var(--theme-text-muted); }
-.thoseeyes-progress-track { height: 3px; background: rgba(255,255,255,0.08); border-radius: 3px; margin-top: 12px; max-width: 380px; cursor: pointer; transition: height var(--dur-fast); }
+.thoseeyes-progress-track { height: 3px; background: var(--theme-bg-card-hover); border-radius: 3px; margin-top: 12px; max-width: 380px; cursor: pointer; transition: height var(--dur-fast); }
 .thoseeyes-progress-track:hover { height: 5px; }
 .thoseeyes-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--theme-accent-primary), var(--theme-accent-secondary)); border-radius: 3px; transition: width 0.1s linear; }
 
@@ -53,7 +53,7 @@
 .lyric-line.big { font-size: clamp(1.8rem, 6vw, 3.4rem); font-weight: 500; }
 .lyric-line.active { color: var(--theme-text-primary); transform: translateX(8px) scale(1.02); text-shadow: 0 0 20px var(--theme-accent-dim); }
 .lyric-line.accent.active { opacity: 1; }
-.lyric-line.past { color: #2a2a2e; }
+.lyric-line.past { color: var(--theme-text-muted); opacity: 0.4; }
 .lyric-line.accent.past { opacity: 0.3; }
 
 .lyric-divider { display: flex; align-items: center; gap: 16px; margin: 2rem 0 2.5rem; opacity: 0.4; }

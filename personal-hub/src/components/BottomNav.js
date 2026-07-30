@@ -33,9 +33,16 @@ export function BottomNav(router) {
       const isCenter = i === Math.floor(NAV_ITEMS.length / 2);
 
       let iconHtml;
+      let statusDot = '';
       if (item.id === 'perfil' && user) {
         const initial = (user.name || 'U').charAt(0).toUpperCase();
-        iconHtml = `<span class="bottom-avatar">${initial}</span>`;
+        const avatarImg = user.avatar
+          ? `<img src="${user.avatar}" alt="" class="bottom-avatar" style="object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`
+          : '';
+        iconHtml = `<span class="bottom-avatar-wrap">${avatarImg}<span class="bottom-avatar${user.avatar ? ' fallback' : ''}">${initial}</span></span>`;
+        // Online status dot on the profile tab
+        const online = navigator.onLine;
+        statusDot = `<span class="bottom-nav__status" style="background:${online ? 'var(--green, #4caf50)' : 'var(--red, #dc3545)'};"></span>`;
       } else {
         iconHtml = getNavIcon(item.icon);
       }
@@ -44,6 +51,7 @@ export function BottomNav(router) {
         <button type="button" class="bottom-nav__item ${isActive ? 'is-active' : ''} ${isCenter ? 'is-center' : ''}"
                 data-nav="${item.id}" aria-current="${isActive ? 'page' : 'false'}">
           ${iconHtml}
+          ${statusDot}
           <span class="bottom-nav__label">${item.label}</span>
         </button>
       `;
@@ -83,6 +91,10 @@ export function BottomNav(router) {
     currentPath = router.getCurrentPath();
     render();
   });
+
+  // Re-render connection indicator when going online/offline
+  window.addEventListener('online', render);
+  window.addEventListener('offline', render);
 
   return nav;
 }

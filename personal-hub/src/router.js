@@ -89,8 +89,8 @@ export class Router {
       return;
     }
 
-    // Run before hooks (can cancel navigation)
-    const route = this.matchRoute(path);
+    // Run before hooks (can cancel navigation or redirect)
+    let route = this.matchRoute(path);
     for (const hook of this._beforeHooks) {
       const result = await hook(path, route);
       if (result === false) return;
@@ -111,12 +111,12 @@ export class Router {
     document.title = finalRoute.title || 'Personal Hub';
 
     // Render the component
-    if (this._container && route.component) {
+    if (this._container && finalRoute.component) {
       this._container.innerHTML = '';
       try {
-        const component = typeof route.component === 'function'
-          ? route.component()
-          : route.component;
+        const component = typeof finalRoute.component === 'function'
+          ? finalRoute.component()
+          : finalRoute.component;
 
         if (component instanceof HTMLElement) {
           this._container.appendChild(component);
@@ -124,7 +124,7 @@ export class Router {
           this._container.innerHTML = component;
         }
       } catch (err) {
-        console.error('Error rendering route:', path, err);
+        console.error('Error rendering route:', finalPath, err);
         this._container.innerHTML = `<div class="error-state">
           <p>Error al cargar esta página</p>
           <small>${err.message}</small>
@@ -134,12 +134,12 @@ export class Router {
 
     // Run after hooks
     for (const hook of this._afterHooks) {
-      hook(path, route);
+      hook(finalPath, finalRoute);
     }
 
     // Callback
     if (this._onRouteChange) {
-      this._onRouteChange(path, route);
+      this._onRouteChange(finalPath, finalRoute);
     }
   }
 }

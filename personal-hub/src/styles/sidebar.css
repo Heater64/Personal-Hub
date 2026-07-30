@@ -11,9 +11,9 @@
   left: 0;
   bottom: 0;
   width: 260px;
-  background: var(--theme-bg-glass);
+  background: var(--theme-sidebar-bg);
   backdrop-filter: blur(var(--blur-lg));
-  border-right: var(--theme-border-subtle);
+  border-right: var(--theme-sidebar-border);
   z-index: var(--z-sidebar);
   padding: 0;
   flex-direction: column;
@@ -137,7 +137,7 @@
 }
 
 .sidebar__link:hover {
-  background: var(--theme-bg-glass-hover);
+  background: var(--theme-bg-card-hover);
   color: var(--theme-text-primary);
   border-left-color: var(--theme-border-subtle);
 }
@@ -214,12 +214,14 @@
   padding: 10px;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background var(--dur-fast);
+  transition: all var(--dur-fast);
   margin-bottom: 10px;
+  border: 1px solid transparent;
 }
 
 .sidebar__user:hover {
-  background: var(--theme-bg-glass-hover);
+  background: var(--theme-bg-card-hover);
+  border-color: var(--theme-border-accent);
 }
 
 .sidebar__user-avatar {
@@ -332,6 +334,9 @@
   display: none !important;
 }
 
+/* ==========================================
+   NO NAV STATE (login, ositos)
+   ========================================== */
 .app-shell.no-nav .app-content {
   margin-left: 0 !important;
   margin-right: 0 !important;

@@ -20,7 +20,10 @@
 .openwhen-header {
   position: relative;
   text-align: center;
-  padding: 36px 28px 24px;
+  padding: 32px 28px;
+  border-radius: var(--radius-xl);
+  background: var(--theme-bg-glass);
+  border: var(--theme-border-subtle);
   animation: slide-up 0.6s ease forwards;
   overflow: hidden;
   isolation: isolate;
@@ -34,13 +37,13 @@
   transform: translateX(-50%);
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, var(--theme-accent-dim, rgba(198, 90, 58, 0.1)), transparent 70%);
+  background: radial-gradient(circle, var(--theme-accent-dim), transparent 70%);
   pointer-events: none;
 }
 
 .openwhen-header h1 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 2.4rem;
+  font-size: var(--fs-2xl);
   font-weight: 400;
   margin: 0 0 10px;
   color: var(--theme-text-primary);
@@ -72,11 +75,11 @@
 /* Desktop amplio */
 @media (min-width: 1025px) {
   .openwhen-header {
-    padding: 48px 36px 28px;
+    padding: 44px 36px;
   }
 
   .openwhen-header h1 {
-    font-size: 3rem;
+    font-size: var(--fs-3xl);
   }
 
   .openwhen-grid {
@@ -126,15 +129,9 @@
 .openwhen-card:nth-child(5) { animation-delay: 0.15s; }
 .openwhen-card:nth-child(6) { animation-delay: 0.18s; }
 
-.openwhen-card:hover {
-  border-color: var(--theme-border-accent);
-  transform: translateY(-3px);
-  box-shadow: var(--theme-shadow-md), 0 0 20px var(--theme-accent-dim);
-}
-
 .openwhen-card.open {
   border-color: var(--theme-accent-primary);
-  background: var(--theme-bg-glass-hover);
+  background: var(--theme-bg-card-hover);
   transform: translateY(-1px);
   box-shadow: var(--theme-shadow-sm), 0 0 16px var(--theme-accent-dim);
   cursor: default;
@@ -147,8 +144,8 @@
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: rgba(198, 90, 58, 0.1);
-  border: 1px solid rgba(198, 90, 58, 0.15);
+  background: var(--theme-accent-dim);
+  border: 1px solid var(--theme-accent-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,8 +156,8 @@
 
 .openwhen-card:hover .openwhen-card-icon {
   transform: scale(1.1) rotate(-5deg);
-  background: rgba(198, 90, 58, 0.15);
-  border-color: rgba(198, 90, 58, 0.25);
+  background: var(--theme-accent-dim);
+  border-color: var(--theme-accent-border);
 }
 
 .openwhen-card.open .openwhen-card-icon {
@@ -287,11 +284,11 @@
    ========================================== */
 @media (max-width: 768px) {
   .openwhen-header {
-    padding: 28px 20px 20px;
+    padding: 28px 20px;
   }
 
   .openwhen-header h1 {
-    font-size: 2rem;
+    font-size: var(--fs-xl);
   }
 
   .openwhen-card {
@@ -308,11 +305,12 @@
 
 @media (max-width: 480px) {
   .openwhen-header {
-    padding: 24px 16px 16px;
+    padding: 24px 16px;
+    border-radius: var(--radius-lg);
   }
 
   .openwhen-header h1 {
-    font-size: 1.6rem;
+    font-size: var(--fs-lg);
   }
 
   .openwhen-card {

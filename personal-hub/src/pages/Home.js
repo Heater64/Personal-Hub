@@ -29,7 +29,7 @@ export function HomePage(router) {
 
   const CURIOSITY_ICONS = {
     palette: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.82.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.5-4.5-10-10-10z"/></svg>',
-    sparkles: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3a6 6 0 0 0 9 9 6 6 0 1 0-9-9Z"/><path d="M20 12v6"/><path d="M17 15h-3"/><path d="M14 3v6"/><path d="M6.5 17.5 3 21"/><path d="M5 12H2"/><path d="M8 8V5"/></svg>',
+    sparkles: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles-icon lucide-sparkles"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>',
     heart: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
     'calendar-days': '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>'
   };
@@ -43,7 +43,7 @@ export function HomePage(router) {
     <!-- Hero -->
     <div class="bento-hero glass-card">
       <p class="eyebrow">
-        <span class="eyebrow-icon"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3a6 6 0 0 0 9 9 6 6 0 1 0-9-9Z"/><path d="M20 12v6"/><path d="M17 15h-3"/><path d="M14 3v6"/><path d="M6.5 17.5 3 21"/><path d="M5 12H2"/><path d="M8 8V5"/></svg></span>
+        <span class="eyebrow-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkle-icon lucide-sparkle"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg></span>
         centro de webs
       </p>
       <h2>Bienvenida<br> mi <em> princesa</em></h2>
@@ -62,7 +62,7 @@ export function HomePage(router) {
     <!-- Novedades -->
     <div class="news-banner glass-card" id="newsBanner">
       <div class="news-header">
-        <span class="news-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3a6 6 0 0 0 9 9 6 6 0 1 0-9-9Z"/><path d="M20 12v6"/><path d="M17 15h-3"/><path d="M14 3v6"/><path d="M6.5 17.5 3 21"/><path d="M5 12H2"/><path d="M8 8V5"/></svg></span>
+        <span class="news-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles-icon lucide-sparkles"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></span>
         <span class="news-title">Novedades</span>
         <span class="news-badge" id="newsBadge">Nuevo</span>
         <button type="button" class="news-hide-btn" id="newsHideBtn" aria-label="Ocultar novedades" title="Ocultar novedades">
@@ -77,12 +77,12 @@ export function HomePage(router) {
     <!-- Datos Curiosos -->
     <div class="curiosities-section">
       <div class="curiosities-header">
-        <span class="curiosities-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
+        <span class="curiosities-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles-icon lucide-sparkles"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></span>
         <h3>Datos curiosos</h3>
       </div>
       <div class="curiosities-grid">
         ${CURIOSITIES.map((c, i) => `
-          <div class="curiosity-card glass-card" style="animation-delay: ${i * 0.1}s">
+          <div class="card curiosity-card glass-card" style="animation-delay: ${i * 0.1}s">
             <span class="curiosity-icon">${getCuriosityIcon(c.icon)}</span>
             <h4>${escapeHtml(c.title)}</h4>
             <p>${escapeHtml(c.description)}</p>
@@ -172,7 +172,7 @@ export function HomePage(router) {
           </div>`;
       } else {
         html += `
-          <div class="news-item ${hidden ? 'news-hidden' : ''}" data-index="${item.id || i}">
+          <div class="card news-item ${hidden ? 'news-hidden' : ''}" data-index="${item.id || i}">
             <div class="news-item-top">
               <span class="news-date">${escapeHtml(item.date || '')}</span>
             </div>

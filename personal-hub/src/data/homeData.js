@@ -10,6 +10,12 @@ export const HOME_DATA = {
   news: [
     // ─── NOTICIAS NUEVAS ───
     {
+      id: 17,
+      date: "30 de julio de 2026",
+      title: "Sincronización de estado de ánimo y preferencias por usuario",
+      description: "El estado de ánimo ahora se guarda en el servidor y se sincroniza entre dispositivos. Las preferencias (notificaciones, texto grande) y el control del WelcomeScreen son ahora independientes por usuario.",
+    },
+    {
       id: 16,
       date: "19 de julio de 2026",
       title: "Sidebar rediseñada — tema granate",

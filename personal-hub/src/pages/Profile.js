@@ -8,6 +8,13 @@ import { auth } from '../services/auth.service.js';
 import { theme } from '../services/theme.service.js';
 import { moodStore } from '../stores/mood.store.js';
 import { showToast } from '../components/Toast.js';
+import { db } from '../services/db.service.js';
+import { getUserPref, setUserPref } from '../utils/userStorage.js';
+
+// Small helper to safely render dynamic URLs in templates
+function esc(s) {
+  return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
 
 // ==========================================
 // SVG ICONS
@@ -43,16 +50,18 @@ export function ProfilePage(router) {
 
   // Theme icon mapping
   const themeIcons = { dark: UI.moon, light: UI.sun, auto: UI.monitor };
-  const themeLabels = { dark: 'Oscuro', light: 'Claro', auto: 'Auto' };
-
-  page.innerHTML = `
+  const themeLabels = { dark: 'Oscuro', light: 'Claro', auto: 'Auto' };    page.innerHTML = `
     <!-- Header -->
     <div class="profile-header glass-card">
       <div class="profile-avatar-wrap" id="profileAvatarWrap">
         <div class="profile-avatar" id="profileAvatar">
-          <span class="profile-initial" id="profileInitial">${(user?.name || 'U').charAt(0).toUpperCase()}</span>
+          ${user?.avatar
+            ? `<img src="${esc(user.avatar)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="profile-initial fallback" id="profileInitial" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">${(user?.name || 'U').charAt(0).toUpperCase()}</span>`
+            : `<span class="profile-initial" id="profileInitial">${(user?.name || 'U').charAt(0).toUpperCase()}</span>`
+          }
         </div>
         <span class="profile-avatar-edit" id="profileAvatarEdit">${UI.camera}</span>
+        <input type="file" id="profileAvatarInput" accept="image/*" style="display:none">
       </div>
       <h3 class="profile-name" id="profileName">${user?.name || 'Usuario'}</h3>
       <p class="profile-role" id="profileRole">${userStore.isAdmin ? UI.adminShield + ' Admin' : UI.heart + ' Princesa'}</p>
@@ -100,6 +109,27 @@ export function ProfilePage(router) {
       </div>
       <div class="profile-info-row"><span class="profile-info-label">Email</span><span class="profile-info-value">${user?.email || '—'}</span></div>
       <div class="profile-info-row"><span class="profile-info-label">Rol</span><span class="profile-info-value">${userStore.isAdmin ? 'Administrador' : 'Usuario'}</span></div>
+    </section>
+
+    <!-- Notifications -->
+    <section class="profile-section glass-card">
+      <div class="profile-section__header">
+        <span class="profile-section__icon">🔔</span>
+        <div>
+          <h4>Notificaciones</h4>
+          <p class="text-muted text-sm">Recordatorio diario a las 8:00 AM</p>
+        </div>
+      </div>
+      <div class="profile-setting">
+        <div class="profile-setting__info">
+          <p class="profile-setting__label">Recordatorio de ánimo</p>
+          <p class="profile-setting__desc">Recibe una notificación cada mañana para contestar cómo te sientes</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleNotifications">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </section>
 
     <!-- Today's Mood -->
@@ -170,13 +200,15 @@ export function ProfilePage(router) {
     });
   });
 
-  // Large text toggle
+  // Large text toggle (user-scoped)
   const largeTextToggle = page.querySelector('#toggleLargeText');
-  const isLargeText = document.documentElement.getAttribute('data-large-text') === 'true';
+  const isLargeText = getUserPref('largeText', '0') === '1';
   largeTextToggle.checked = isLargeText;
+  document.documentElement.setAttribute('data-large-text', isLargeText ? 'true' : 'false');
   largeTextToggle.addEventListener('change', () => {
+    const enabled = largeTextToggle.checked ? '1' : '0';
+    setUserPref('largeText', enabled);
     document.documentElement.setAttribute('data-large-text', largeTextToggle.checked ? 'true' : 'false');
-    localStorage.setItem('ph.largeText', largeTextToggle.checked ? '1' : '0');
   });
 
   // ===== MOOD SECTION =====
@@ -239,7 +271,9 @@ export function ProfilePage(router) {
     changeMoodBtn.style.display = 'none';
   }
 
+  // Render local mood immediately, then sync with server and re-render
   renderTodayMood();
+  moodStore.fetchTodayMood().then(() => renderTodayMood());
 
   changeMoodBtn.addEventListener('click', () => {
     moodCurrent.style.display = 'none';
@@ -298,6 +332,65 @@ export function ProfilePage(router) {
   page.querySelector('#adminPanelBtn')?.addEventListener('click', () => {
     router.navigate('/admin');
   });
+
+  // Avatar upload
+  const avatarWrap = page.querySelector('#profileAvatarWrap');
+  const avatarInput = page.querySelector('#profileAvatarInput');
+
+  avatarWrap.addEventListener('click', () => avatarInput.click());
+
+  avatarInput.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Selecciona una imagen válida', 'error');
+      return;
+    }
+
+    showToast('Subiendo avatar...', 'info');
+    try {
+      const url = await db.uploadAvatar(file);
+      // Update local user store (do not re-persist to auth; uploadAvatar already did)
+      userStore.updateProfile({ avatar: url }, false);
+      // Update avatar display immediately
+      const avatarContainer = page.querySelector('#profileAvatar');
+      if (url) {
+        avatarContainer.innerHTML = `<img src="${esc(url)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      }
+      showToast('Avatar actualizado', 'success');
+    } catch (err) {
+      console.error('[profile] avatar upload error:', err);
+      showToast(err?.message || 'Error al subir el avatar', 'error');
+    }
+  });
+
+  // Notifications toggle (user-scoped)
+  const notifToggle = page.querySelector('#toggleNotifications');
+  const notifEnabled = getUserPref('notifications', '0') === '1' && 'Notification' in window && Notification.permission === 'granted';
+  if (notifToggle) {
+    notifToggle.checked = notifEnabled;
+    notifToggle.addEventListener('change', async (e) => {
+      if (e.target.checked) {
+        if (!('Notification' in window)) {
+          showToast('Tu navegador no soporta notificaciones', 'error');
+          e.target.checked = false;
+          return;
+        }
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          setUserPref('notifications', '1');
+          showToast('🔔 Recordatorios activados', 'success');
+        } else {
+          e.target.checked = false;
+          setUserPref('notifications', '0');
+          showToast('Permiso de notificaciones denegado', 'error');
+        }
+      } else {
+        setUserPref('notifications', '0');
+      }
+    });
+  }
 
   // Logout
   page.querySelector('#logoutBtn')?.addEventListener('click', async () => {

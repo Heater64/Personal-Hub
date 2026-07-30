@@ -97,7 +97,7 @@ export function SeriesPage(router) {
     const firstLetter = item.titulo ? item.titulo[0] : '?';
 
     return `
-      <div class="series-card" data-id="${escapeHtml(item.id)}" data-tipo="${item.tipo}">
+      <div class="card series-card" data-id="${escapeHtml(item.id)}" data-tipo="${item.tipo}">
         <div class="series-card-cover">
           ${hasCover
             ? `<img src="${escapeHtml(item.portada)}" alt="${escapeHtml(item.titulo)}" class="series-card-img" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
@@ -161,7 +161,7 @@ export function SeriesPage(router) {
       const rank = item.position;
       const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
       return `
-        <div class="series-podium-card">
+        <div class="card series-podium-card">
           <div class="series-podium-rank">${medal}</div>
           <div class="series-podium-info">
             <div class="series-podium-title">${escapeHtml(item.titulo)}</div>

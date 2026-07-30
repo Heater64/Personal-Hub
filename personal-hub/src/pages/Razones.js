@@ -53,7 +53,7 @@ export function RazonesPage(router) {
     grid.innerHTML = RAZONES.map((r, i) => {
       const esFav = favoritos.includes(i);
       return `
-        <div class="razon-card" data-index="${i}" style="animation-delay: ${i * 0.05}s">
+        <div class="card razon-card" data-index="${i}" style="animation-delay: ${i * 0.05}s">
           <div class="razon-number">${String(i + 1).padStart(2, '0')}</div>
           <div class="razon-content">${escapeHtml(r)}</div>
           <div class="razon-footer">

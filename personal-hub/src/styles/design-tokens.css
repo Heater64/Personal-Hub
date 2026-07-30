@@ -134,7 +134,7 @@
   --theme-bg-secondary:     var(--umbra-dark);
   --theme-bg-tertiary:      var(--umbra-stone);
   --theme-bg-card:          var(--bg-card);
-  --theme-bg-card-hover:    var(--bg-card-hover);
+  --theme-bg-card-hover:    var(--bg-card);
   --theme-bg-overlay:       var(--bg-overlay);
   --theme-bg-input:         var(--bg-input);
   --theme-bg-glass:         rgba(255, 255, 255, 0.04);
@@ -192,56 +192,57 @@
 }
 
 /* ==========================================
-   LIGHT THEME — Paleta Rose / Pink intenso
-   Fondo rosáceo cálido con acentos fucsia y contraste profundo
+   LIGHT THEME — Romantic / Cream & Garnet
+   Fondo rosado/crema, tarjetas blancas,
+   sidebar granate oscuro y texto con buen contraste.
    ========================================== */
 [data-theme="light"] {
-  /* Fondos — rosa visible de fondo, tarjetas con sutil rosa, cristal blanco */
-  --theme-bg-primary:       #f0e4ea;
-  --theme-bg-secondary:     #e8d8e0;
-  --theme-bg-tertiary:      #ddcad4;
-  --theme-bg-card:          rgba(245, 235, 240, 0.88);
-  --theme-bg-card-hover:    rgba(250, 243, 247, 0.95);
-  --theme-bg-overlay:       rgba(50, 35, 40, 0.55);
-  --theme-bg-input:         rgba(160, 60, 85, 0.08);
-  --theme-bg-glass:         rgba(255, 255, 255, 0.92);
-  --theme-bg-glass-hover:   rgba(255, 255, 255, 1);
+  /* Fondos — Pink/cream background with white cards */
+  --theme-bg-primary:       #fdf4f6;
+  --theme-bg-secondary:     #ffffff;
+  --theme-bg-tertiary:      #f7e8ec;
+  --theme-bg-card:          rgba(255, 255, 255, 0.95);
+  --theme-bg-card-hover:    rgba(255, 255, 255, 1);
+  --theme-bg-overlay:       rgba(45, 20, 25, 0.5);
+  --theme-bg-input:         rgba(0, 0, 0, 0.03);
+  --theme-bg-glass:         rgba(255, 255, 255, 0.9);
+  --theme-bg-glass-hover:   #ffffff;
 
-  /* Texto — tonos oscuros cálidos con buen contraste */
-  --theme-text-primary:     #1f1519;
-  --theme-text-secondary:   #634a53;
-  --theme-text-muted:       #9a7a85;
-  --theme-text-inverse:     #fefcfd;
+  /* Texto — Dark charcoal/brown for high readability */
+  --theme-text-primary:     #2b1b1e;
+  --theme-text-secondary:   #59494d;
+  --theme-text-muted:       #907e82;
+  --theme-text-inverse:     #ffffff;
 
-  /* Bordes — sutiles rosáceos */
-  --theme-border-subtle:    1px solid rgba(160, 60, 85, 0.1);
-  --theme-border-visible:   1px solid rgba(160, 60, 85, 0.18);
+  /* Bordes — Warm tinted, subtle but defined */
+  --theme-border-subtle:    1px solid rgba(100, 60, 70, 0.15);
+  --theme-border-visible:   1px solid rgba(100, 60, 70, 0.24);
   --theme-border-accent:    1px solid rgba(207, 64, 98, 0.3);
 
-  /* Acentos — fucsia intenso / coral */
+  /* Acentos — Consistent coral/pink from the base theme */
   --theme-accent-primary:   #cf4062;
-  --theme-accent-secondary: #b83553;
-  --theme-accent-dim:       rgba(207, 64, 98, 0.1);
-  --theme-accent-border:    rgba(207, 64, 98, 0.28);
-  --theme-accent-glow:      0 0 20px rgba(207, 64, 98, 0.12);
+  --theme-accent-secondary: #e55b7b;
+  --theme-accent-dim:       rgba(207, 64, 98, 0.15);
+  --theme-accent-border:    rgba(207, 64, 98, 0.3);
+  --theme-accent-glow:      0 0 20px rgba(207, 64, 98, 0.15);
 
-  /* Sombras — con tinte rosado en vez de gris neutro */
-  --theme-shadow-sm:        0 1px 4px rgba(140, 50, 70, 0.08);
-  --theme-shadow-md:        0 4px 16px rgba(140, 50, 70, 0.1);
-  --theme-shadow-lg:        0 12px 32px rgba(140, 50, 70, 0.12);
-  --theme-shadow-xl:        0 20px 48px rgba(140, 50, 70, 0.15);
-  --theme-shadow-glow:      0 0 24px rgba(207, 64, 98, 0.14);
-  --theme-shadow-glow-strong: 0 0 30px rgba(207, 64, 98, 0.2);
-  --theme-shadow-glass:     0 2px 6px rgba(140,50,70,0.04), 0 8px 24px rgba(140,50,70,0.06), inset 0 1px 0 rgba(255,248,250,0.7);
+  /* Sombras — Crisp, with a slight warm tint for depth */
+  --theme-shadow-sm:        0 1px 2px rgba(45, 20, 25, 0.05);
+  --theme-shadow-md:        0 4px 6px -1px rgba(45, 20, 25, 0.08), 0 2px 4px -1px rgba(45, 20, 25, 0.04);
+  --theme-shadow-lg:        0 10px 15px -3px rgba(45, 20, 25, 0.08), 0 4px 6px -2px rgba(45, 20, 25, 0.04);
+  --theme-shadow-xl:        0 20px 25px -5px rgba(45, 20, 25, 0.1), 0 10px 10px -5px rgba(45, 20, 25, 0.04);
+  --theme-shadow-glow:      0 0 24px rgba(207, 64, 98, 0.15);
+  --theme-shadow-glow-strong: 0 0 32px rgba(207, 64, 98, 0.25);
+  --theme-shadow-glass:     0 4px 16px rgba(45, 20, 25, 0.12);
 
-  /* Scrollbar — rosado sutil */
-  --theme-scrollbar-track:  rgba(160, 60, 85, 0.04);
-  --theme-scrollbar-thumb:  rgba(160, 60, 85, 0.2);
-  --theme-scrollbar-thumb-hover: rgba(160, 60, 85, 0.35);
+  /* Scrollbar */
+  --theme-scrollbar-track:  rgba(100, 60, 70, 0.03);
+  --theme-scrollbar-thumb:  rgba(100, 60, 70, 0.15);
+  --theme-scrollbar-thumb-hover: rgba(100, 60, 70, 0.25);
 
-  /* Sidebar — granate oscuro (se mantiene, más contraste con fondo rosa) */
-  --theme-sidebar-bg:       linear-gradient(180deg, #2a1e23 0%, #382b30 100%);
-  --theme-sidebar-border:   1px solid rgba(255, 255, 255, 0.06);
+  /* Sidebar — Soft pink gradient */
+  --theme-sidebar-bg:       linear-gradient(180deg, #fdf4f6 0%, #f7e8ec 100%);
+  --theme-sidebar-border:   1px solid rgba(100, 60, 70, 0.15);
 }
 
 /* ==========================================

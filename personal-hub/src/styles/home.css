@@ -6,18 +6,15 @@
    HERO
    ========================================== */
 .bento-hero {
-  padding: 48px 40px 44px;
+  padding: 32px 28px;
   margin-bottom: var(--space-md);
   border-radius: var(--radius-xl);
+  background: var(--theme-bg-glass);
+  border: var(--theme-border-subtle);
   position: relative;
   overflow: hidden;
   transition: all var(--dur-smooth);
   animation: slide-up 0.6s ease forwards;
-}
-
-.bento-hero:hover {
-  border-color: var(--theme-border-accent);
-  box-shadow: var(--theme-shadow-md), 0 0 36px var(--theme-accent-dim);
 }
 
 /* Glow background effect */
@@ -30,7 +27,7 @@
   width: 65%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(198, 90, 58, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--theme-accent-dim) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
   animation: homeHeroGlow 5s ease-in-out infinite alternate;
@@ -103,7 +100,10 @@
 
 .bento-hero h2 em {
   font-style: italic;
-  color: var(--theme-accent-primary);
+  background: linear-gradient(90deg, var(--theme-accent-primary) 0%, var(--theme-accent-secondary, var(--theme-accent-primary)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   display: inline-block;
   position: relative;
 }
@@ -115,9 +115,9 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--theme-accent-primary);
+  background: linear-gradient(90deg, var(--theme-accent-primary), transparent);
   border-radius: 2px;
-  opacity: 0.3;
+  opacity: 0.4;
 }
 
 /* Hero accent divider */
@@ -132,8 +132,12 @@
 .hero-divider-line {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, var(--theme-accent-primary), transparent);
-  opacity: 0.2;
+  background: linear-gradient(90deg, var(--theme-accent-primary), transparent 90%);
+  opacity: 0.25;
+}
+
+.hero-divider-line:last-child {
+  background: linear-gradient(90deg, transparent 10%, var(--theme-accent-primary));
 }
 
 .hero-divider-icon {
@@ -378,7 +382,7 @@
   padding: 18px 20px;
   border-radius: var(--radius-md);
   border: var(--theme-border-subtle);
-  border-left: 3px solid var(--theme-accent-dim);
+  border-left: 3px solid var(--theme-border-accent);
   background: var(--theme-bg-card);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -388,32 +392,11 @@
   animation: slide-up 0.4s ease backwards;
 }
 
-[data-theme="light"] .news-item {
-  background: rgba(240, 230, 236, 0.85);
-  border-color: rgba(160, 60, 85, 0.12);
-  box-shadow: 0 1px 4px rgba(140, 50, 70, 0.08);
-}
-
-[data-theme="light"] .news-item:hover {
-  background: rgba(245, 238, 242, 0.95);
-  border-color: rgba(207, 64, 98, 0.3);
-  border-left-color: var(--theme-accent-primary);
-  box-shadow: 0 4px 16px rgba(140, 50, 70, 0.1);
-}
-
 .news-item:nth-child(1) { animation-delay: 0.02s; }
 .news-item:nth-child(2) { animation-delay: 0.04s; }
 .news-item:nth-child(3) { animation-delay: 0.06s; }
 .news-item:nth-child(4) { animation-delay: 0.08s; }
 .news-item:nth-child(n+5) { animation-delay: 0.1s; }
-
-.news-item:hover {
-  background: #fefcfd;
-  border-color: var(--theme-border-accent);
-  border-left-color: var(--theme-accent-primary);
-  transform: translateX(4px);
-  box-shadow: var(--theme-shadow-md);
-}
 
 .news-item.news-hidden {
   display: none;
@@ -567,19 +550,14 @@
   transform: scaleX(0.5);
   transition: all var(--dur-smooth);
   pointer-events: none;
+  border-radius: 2px;
 }
 
 .curiosity-card:hover::before {
-  opacity: 0.8;
+  opacity: 1;
   transform: scaleX(1);
   left: 10%;
   right: 10%;
-}
-
-.curiosity-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--theme-border-accent);
-  box-shadow: var(--theme-shadow-md), 0 0 24px var(--theme-accent-dim);
 }
 
 .curiosity-icon {
@@ -603,8 +581,8 @@
 .curiosity-card:hover .curiosity-icon {
   transform: scale(1.1) rotate(-5deg);
   background: var(--theme-accent-primary);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(198,90,58,0.3);
+  color: var(--theme-text-inverse, #fff);
+  box-shadow: var(--theme-shadow-glow);
 }
 
 .curiosity-card h4 {
@@ -631,11 +609,13 @@
 }
 
 .home-footer p {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   color: var(--theme-text-muted);
-  opacity: 0.5;
+  opacity: 0.6;
   margin: 0;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
 }
 
 /* ==========================================
@@ -644,11 +624,11 @@
 /* Desktop */
 @media (min-width: 1025px) {
   .bento-hero {
-    padding: 60px 56px 52px;
+    padding: 44px 36px;
   }
 
   .bento-hero h2 {
-    font-size: 3.2rem;
+    font-size: 3.4rem;
   }
 
   .bento-hero p {
@@ -680,7 +660,7 @@
 
 @media (max-width: 768px) {
   .bento-hero {
-    padding: 32px 24px 28px;
+    padding: 28px 20px;
   }
 
   .bento-hero h2 {

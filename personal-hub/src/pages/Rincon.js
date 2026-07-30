@@ -27,7 +27,7 @@ const SECTIONS = [
     icon: 'image',
     title: 'Galería y Memes',
     desc: 'Atardeceres, gatos, memes y videos graciosos.',
-    color: '#d4a574',
+    color: 'var(--theme-accent-primary)',
     internal: true
   },
   {
@@ -35,7 +35,7 @@ const SECTIONS = [
     icon: 'gamepad-2',
     title: 'Juegos',
     desc: 'Snake, ahorcado, memoria y más.',
-    color: '#7eb8e0',
+    color: 'var(--theme-accent-primary)',
     href: '/juegos'
   },
   {
@@ -43,7 +43,7 @@ const SECTIONS = [
     icon: 'globe',
     title: 'Curiosidades',
     desc: 'San Juan Pueblo, San Petersburgo y datos gatunos.',
-    color: '#6bcb9e',
+    color: 'var(--theme-accent-primary)',
     internal: true
   },
   {
@@ -51,7 +51,7 @@ const SECTIONS = [
     icon: 'music',
     title: 'Canciones',
     desc: 'Las canciones que me recuerdan a ti.',
-    color: '#e8a0c8',
+    color: 'var(--theme-accent-primary)',
     href: '/canciones'
   },
   {
@@ -59,7 +59,7 @@ const SECTIONS = [
     icon: 'eye',
     title: 'Those Eyes',
     desc: 'Esa canción que es simplemente especial.',
-    color: '#a78bfa',
+    color: 'var(--theme-accent-primary)',
     href: '/thoseeyes'
   },
   {
@@ -67,7 +67,7 @@ const SECTIONS = [
     icon: 'tv',
     title: 'Series',
     desc: 'Seguimiento de series y películas.',
-    color: '#f0b060',
+    color: 'var(--theme-accent-primary)',
     href: '/series'
   }
 ];
@@ -75,7 +75,7 @@ const SECTIONS = [
 // Icon SVG map for Lucide icons
 const ICON_SVGS = {
   'image': '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
-  'gamepad-2': '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="6 11 6 8 3 8"/><path d="M15.5 12a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"/><path d="M8.5 12a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/><path d="M12 2a4 4 0 0 1 4 4v1H8V6a4 4 0 0 1 4-4Z"/><path d="M2 17v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-3"/></svg>',
+  'gamepad-2': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gamepad2-icon lucide-gamepad-2"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg>',
   'globe': '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
   'music': '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
   'eye': '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -143,47 +143,53 @@ export function RinconPage(router) {
   }
 
   // ==========================================
-  // 1. LANDING — Bienvenida + Tarjetas
+  // 1. LANDING — Bienvenida romántica
   // ==========================================
   function renderLanding() {
     const daysSince = Math.floor((Date.now() - new Date('2025-07-03').getTime()) / 86400000);
 
     page.innerHTML = `
-      <!-- Hero / Bienvenida -->
-      <div class="rincon-hero glass-card">
-        <div class="rincon-hero-inner">
+      <div class="rincon-romantic-landing">
+        <!-- Hero / Bienvenida -->
+        <header class="romantic-hero glass-card">
+          <div class="romantic-floating-hearts">
+            
+            <span>💖</span>
+            <span>✨</span>
+            <span>🌸</span>
+            <span>🐱</span>
+          
+          </div>
           <div class="rincon-avatar-wrap">
             <span class="rincon-avatar">${ICON_SVGS['crown']}</span>
           </div>
-          <h2>Tu Rincón Favorito</h2>
-          <p class="text-muted">Tu espacio especial con todo lo que te gusta.</p>
-          <div class="rincon-day-counter">
-            <span class="rincon-day-heart">${ICON_SVGS['eye']}</span>
+          <h1 class="romantic-title">Tu rincón favorito 🤍</h1>
+          <p class="romantic-subtitle">Donde cada día eres especial ✨🌸🐱</p>
+          <p class="romantic-text">Hecho con amor, especialmente para ti 🤍</p>
+          <div class="romantic-counter">
             <span class="rincon-day-num">${daysSince}</span>
             <span class="rincon-day-label">días juntos</span>
           </div>
-        </div>
-      </div>
+        </header>
 
-      <!-- Grid de tarjetas -->
-      <div class="rincon-sections-grid">
-        ${SECTIONS.map(section => `
-          <button class="rincon-section-card glass-card" data-section="${section.id}" ${section.href ? `data-href="${section.href}"` : ''} style="--card-accent: ${section.color}">
-            <div class="rsc-icon">${ICON_SVGS[section.icon] || ''}</div>
-            <div class="rsc-body">
-              <h3 class="rsc-title">${section.title}</h3>
-              <p class="rsc-desc">${section.desc}</p>
-            </div>
-            <div class="rsc-arrow">
-              ${ICON_SVGS['chevron-right']}
-            </div>
-          </button>
-        `).join('')}
+        <!-- Menú de momentos favoritos -->
+        <section class="romantic-menu">
+          <h2 class="romantic-menu-title"></h2>
+          <div class="romantic-grid">
+            ${SECTIONS.map(section => `
+              <button class="romantic-btn glass-card card" data-section="${section.id}" ${section.href ? `data-href="${section.href}"` : ''} style="--card-accent: ${section.color}">
+                <span class="romantic-btn-icon">${ICON_SVGS[section.icon] || ''}</span>
+                <span class="romantic-btn-text">${section.title}</span>
+                <span class="romantic-btn-arrow">${ICON_SVGS['chevron-right']}</span>
+              </button>
+            `).join('')}
+          </div>
+        </section>
       </div>
     `;
 
-    // Bind section card clicks
-    page.querySelectorAll('.rincon-section-card').forEach(card => {
+    // Bind romantic button clicks
+    page.querySelectorAll('.romantic-btn').forEach(card => {
       card.addEventListener('click', () => {
         const id = card.dataset.section;
         const section = SECTIONS.find(s => s.id === id);
@@ -471,7 +477,7 @@ export function RinconPage(router) {
         <!-- Quick Stats -->
         <div class="spb-quick-grid">
           ${data.quickStats.map(s => `
-            <div class="spb-quick-card"><span class="spb-qc-icon">${ICON_SVGS[s.icon] || s.icon}</span><strong>${s.label}</strong><small>${s.sub}</small></div>
+            <div class="card spb-quick-card"><span class="spb-qc-icon">${ICON_SVGS[s.icon] || s.icon}</span><strong>${s.label}</strong><small>${s.sub}</small></div>
           `).join('')}
         </div>
 
@@ -520,7 +526,7 @@ export function RinconPage(router) {
     const data = CURIOSIDADES_DATA.sanPetersburgo;
     return `
       <div class="curio-section-inner">
-        <div class="spb-header" style="background:linear-gradient(135deg, rgba(0,60,150,0.15), rgba(0,100,200,0.08));border-color:rgba(0,60,150,0.25);">
+        <div class="spb-header">
           <div class="spb-header-badge">
             <h3><i data-lucide="ship" style="width:20px;height:20px;vertical-align:middle;"></i> ${data.title}</h3>
             <p class="text-muted">${data.subtitle}</p>
@@ -531,7 +537,7 @@ export function RinconPage(router) {
 
         <div class="spb-quick-grid">
           ${data.quickStats.map(s => `
-            <div class="spb-quick-card"><span class="spb-qc-icon">${ICON_SVGS[s.icon] || s.icon}</span><strong>${s.label}</strong><small>${s.sub}</small></div>
+            <div class="card spb-quick-card"><span class="spb-qc-icon">${ICON_SVGS[s.icon] || s.icon}</span><strong>${s.label}</strong><small>${s.sub}</small></div>
           `).join('')}
         </div>
 
@@ -555,7 +561,7 @@ export function RinconPage(router) {
     const data = CURIOSIDADES_DATA.gatos;
     return `
       <div class="curio-section-inner">
-        <div class="spb-header" style="background:linear-gradient(135deg, rgba(200,100,50,0.12), rgba(240,150,80,0.06));border-color:rgba(200,100,50,0.2);">
+        <div class="spb-header">
           <div class="spb-header-badge">
             <h3><i data-lucide="cat" style="width:20px;height:20px;vertical-align:middle;"></i> ${data.title}</h3>
             <p class="text-muted">${data.subtitle}</p>
@@ -566,7 +572,7 @@ export function RinconPage(router) {
 
         <div class="spb-quick-grid">
           ${data.quickStats.map(s => `
-            <div class="spb-quick-card"><span class="spb-qc-icon">${ICON_SVGS[s.icon] || s.icon}</span><strong>${s.label}</strong><small>${s.sub}</small></div>
+            <div class="card spb-quick-card"><span class="spb-qc-icon">${ICON_SVGS[s.icon] || s.icon}</span><strong>${s.label}</strong><small>${s.sub}</small></div>
           `).join('')}
         </div>
 

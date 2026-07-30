@@ -4,17 +4,17 @@
    ========================================== */
 
 const GAMES = [
-  { id: 'memoria', icon: 'brain', title: 'Memoria', desc: 'Encuentra todas las parejas de cartas.', color: '#4caf50', href: '/games/memoria.html' },
-  { id: 'ahorcado', icon: 'skull', title: 'Ahorcado', desc: 'Adivina la palabra antes de que sea demasiado tarde.', color: '#ff9800', href: '/games/ahorcado.html' },
-  { id: 'snake', icon: 'snake', title: 'Snake', desc: 'Clásico juego de la serpiente. ¡No te choques!', color: '#2196f3', href: '/games/snake.html' },
-  { id: 'buscaminas', icon: 'landmine', title: 'Buscaminas', desc: 'Descubre las minas sin explotar.', color: '#f44336', href: '/games/buscaminas.html' },
-  { id: 'breakout', icon: 'rectangle-horizontal', title: 'Breakout', desc: 'Rompe todos los ladrillos con la pelota.', color: '#9c27b0', href: '/games/breakout.html' },
-  { id: 'laberinto', icon: 'git-branch', title: 'Laberinto', desc: 'Encuentra la salida del laberinto.', color: '#795548', href: '/games/laberinto.html' },
-  { id: 'meteoritos', icon: 'asteroid', title: 'Meteoritos', desc: 'Esquiva los meteoritos en el espacio.', color: '#607d8b', href: '/games/meteoritos.html' },
-  { id: 'cuchillos', icon: 'knife', title: 'Cuchillos', desc: 'Lanza cuchillos con precisión.', color: '#e91e63', href: '/games/cuchillos.html' },
-  { id: 'agujero-negro', icon: 'circle', title: 'Agujero Negro', desc: 'No dejes que te trague el agujero negro.', color: '#212121', href: '/games/agujero-negro.html' },
-  { id: 'tiroarco', icon: 'target', title: 'Tiro al Arco', desc: 'Apunta y dispara al centro de la diana.', color: '#ffc107', href: '/games/tiroarco.html' },
-  { id: 'torre', icon: 'building', title: 'Torre', desc: 'Construye la torre más alta posible.', color: '#00bcd4', href: '/games/torre.html' }
+  { id: 'memoria', icon: 'brain', title: 'Memoria', desc: 'Encuentra todas las parejas de cartas.', href: '/games/memoria.html' },
+  { id: 'ahorcado', icon: 'skull', title: 'Ahorcado', desc: 'Adivina la palabra antes de que sea demasiado tarde.', href: '/games/ahorcado.html' },
+  { id: 'snake', icon: 'snake', title: 'Snake', desc: 'Clásico juego de la serpiente. ¡No te choques!', href: '/games/snake.html' },
+  { id: 'buscaminas', icon: 'landmine', title: 'Buscaminas', desc: 'Descubre las minas sin explotar.', href: '/games/buscaminas.html' },
+  { id: 'breakout', icon: 'rectangle-horizontal', title: 'Breakout', desc: 'Rompe todos los ladrillos con la pelota.', href: '/games/breakout.html' },
+  { id: 'laberinto', icon: 'git-branch', title: 'Laberinto', desc: 'Encuentra la salida del laberinto.', href: '/games/laberinto.html' },
+  { id: 'meteoritos', icon: 'asteroid', title: 'Meteoritos', desc: 'Esquiva los meteoritos en el espacio.', href: '/games/meteoritos.html' },
+  { id: 'cuchillos', icon: 'knife', title: 'Cuchillos', desc: 'Lanza cuchillos con precisión.', href: '/games/cuchillos.html' },
+  { id: 'agujero-negro', icon: 'circle', title: 'Agujero Negro', desc: 'No dejes que te trague el agujero negro.', href: '/games/agujero-negro.html' },
+  { id: 'tiroarco', icon: 'target', title: 'Tiro al Arco', desc: 'Apunta y dispara al centro de la diana.', href: '/games/tiroarco.html' },
+  { id: 'torre', icon: 'building', title: 'Torre', desc: 'Construye la torre más alta posible.', href: '/games/torre.html' }
 ];
 
 const ICONS = {
@@ -48,7 +48,7 @@ export function JuegosPage(router) {
     <!-- Game grid -->
     <div class="juegos-grid">
       ${GAMES.map(game => `
-        <button class="juego-card glass-card" data-href="${game.href}" style="--juego-color: ${game.color}">
+        <button class="card juego-card glass-card" data-href="${game.href}">
           <div class="juego-card-icon">${ICONS[game.icon] || ''}</div>
           <div class="juego-card-body">
             <h3 class="juego-card-title">${game.title}</h3>

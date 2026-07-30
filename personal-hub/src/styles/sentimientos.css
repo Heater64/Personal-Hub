@@ -16,9 +16,11 @@
 .sentimientos-header {
   position: relative;
   text-align: center;
-  padding: 40px 28px 36px;
-  margin-bottom: 32px;
-  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  margin-bottom: 24px;
+  border-radius: var(--radius-xl);
+  background: var(--theme-bg-glass);
+  border: var(--theme-border-subtle);
   animation: slide-up 0.6s ease forwards;
   overflow: hidden;
   isolation: isolate;
@@ -33,7 +35,7 @@
   transform: translateX(-50%);
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, var(--theme-accent-dim, rgba(198, 90, 58, 0.12)), transparent 70%);
+  background: radial-gradient(circle, var(--theme-accent-dim), transparent 70%);
   pointer-events: none;
   z-index: 0;
   animation: sentimientosGlow 4s ease-in-out infinite alternate;
@@ -46,8 +48,8 @@
 
 .sentimientos-header h1 {
   position: relative;
-  font-family: 'Playfair Display', serif;
-  font-size: var(--fs-xl);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
   font-weight: 500;
   color: var(--theme-text-primary);
   margin: 0 0 8px;
@@ -116,6 +118,13 @@
   animation: slide-up 0.5s ease backwards;
 }
 
+.sentimientos-card:hover {
+  background: var(--theme-bg-glass-hover);
+  border: var(--theme-border-accent);
+  box-shadow: var(--theme-shadow-glow);
+  transform: translateY(-2px);
+}
+
 .sentimientos-card:nth-child(1) { animation-delay: 0.05s; }
 .sentimientos-card:nth-child(2) { animation-delay: 0.1s; }
 .sentimientos-card:nth-child(3) { animation-delay: 0.15s; }
@@ -129,7 +138,7 @@
   left: 24px;
   right: 24px;
   height: 2px;
-  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.2));
+  background: var(--theme-accent-dim);
   border-radius: 2px;
   transition: all var(--dur-smooth);
 }
@@ -137,13 +146,7 @@
 .sentimientos-card:hover::after {
   left: 0;
   right: 0;
-  background: var(--theme-accent-primary, #c65a3a);
-}
-
-.sentimientos-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--theme-border-accent);
-  box-shadow: var(--theme-shadow-md), 0 0 24px var(--theme-accent-dim);
+  background: var(--theme-accent-primary);
 }
 
 .sentimientos-card:active {
@@ -153,13 +156,13 @@
 .sentimientos-card-icon {
   width: 46px;
   height: 46px;
-  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.1));
+  background: var(--theme-accent-dim);
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 18px;
-  color: var(--theme-accent-primary, #c65a3a);
+  color: var(--theme-accent-primary);
   transition: all var(--dur-spring);
   position: relative;
 }
@@ -169,14 +172,14 @@
   position: absolute;
   inset: -4px;
   border-radius: 18px;
-  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.06));
+  background: var(--theme-accent-dim);
   opacity: 0;
   transition: opacity var(--dur-smooth);
 }
 
 .sentimientos-card:hover .sentimientos-card-icon {
   transform: scale(1.1);
-  background: var(--theme-accent-dim, rgba(198, 90, 58, 0.15));
+  background: var(--theme-accent-border);
 }
 
 .sentimientos-card:hover .sentimientos-card-icon::before {
@@ -243,12 +246,12 @@
   }
 
   .sentimientos-header {
-    padding: 56px 36px 44px;
-    margin-bottom: 40px;
+    padding: 44px 36px;
+    margin-bottom: 32px;
   }
 
   .sentimientos-header h1 {
-    font-size: var(--fs-2xl);
+    font-size: var(--fs-3xl);
   }
 
   .sentimientos-header p {
@@ -259,7 +262,7 @@
   .sentimientos-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 24px;
-    margin-bottom: 60px;
+    margin-bottom: 48px;
   }
 
   .sentimientos-card {
@@ -290,12 +293,12 @@
 
 @media (max-width: 768px) {
   .sentimientos-header {
-    padding: 28px 20px 24px;
+    padding: 28px 20px;
     margin-bottom: 24px;
   }
 
   .sentimientos-header h1 {
-    font-size: var(--fs-lg);
+    font-size: var(--fs-xl);
   }
 
   .sentimientos-card {
@@ -317,12 +320,13 @@
 
 @media (max-width: 480px) {
   .sentimientos-header {
-    padding: 24px 16px 20px;
+    padding: 24px 16px;
     margin-bottom: 20px;
+    border-radius: var(--radius-lg);
   }
 
   .sentimientos-header h1 {
-    font-size: var(--fs-base);
+    font-size: var(--fs-lg);
   }
 
   .sentimientos-header::before {

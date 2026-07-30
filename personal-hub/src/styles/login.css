@@ -11,6 +11,11 @@
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(207, 64, 98, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(207, 64, 98, 0.05) 0%, transparent 50%),
+    var(--theme-bg-primary);
+  background-attachment: fixed;
 }
 
 /* ==========================================

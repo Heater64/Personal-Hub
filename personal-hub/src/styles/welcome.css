@@ -90,7 +90,7 @@
 
 .mood-btn:hover {
   background: var(--theme-bg-card-hover);
-  border-color: var(--theme-border-visible);
+  border-color: var(--theme-border-accent);
 }
 
 .mood-btn.selected {

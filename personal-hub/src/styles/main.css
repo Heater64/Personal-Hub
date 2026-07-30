@@ -101,6 +101,28 @@ body {
 }
 
 /* ==========================================
+   CARD BASE — Shared marker class for card UI elements
+   Apply .card to any element that should behave as a card
+   (tap-highlight suppression, no mouse-click outline, etc.)
+   ========================================== */
+.card {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove the default browser outline on mouse click/active for cards, keep it for keyboard navigation */
+.card:is(:focus:not(:focus-visible), :active) {
+  outline: none;
+}
+
+/* Minimal hover feedback for all card elements */
+.card:hover {
+  border-color: var(--theme-border-accent);
+  background: var(--theme-bg-card-hover);
+  box-shadow: var(--theme-shadow-sm);
+  transform: translateY(-1px);
+}
+
+/* ==========================================
    LAYOUT GLOBAL
    ========================================== */
 .app-shell {
@@ -218,23 +240,6 @@ body {
   overflow: hidden;
 }
 
-/* Inner highlight line */
-.glass-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 10%;
-  right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
-  pointer-events: none;
-  z-index: 1;
-}
-
-[data-theme="light"] .glass-card::before {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-}
-
 /* Subtle bottom shadow for depth */
 .glass-card::after {
   content: '';
@@ -253,13 +258,24 @@ body {
 }
 
 .glass-card:hover {
-  background: var(--theme-bg-glass-hover);
   border-color: var(--theme-border-accent);
+  background: var(--theme-bg-glass-hover);
+  box-shadow: var(--theme-shadow-sm);
+  transform: translateY(-1px);
+}
+
+/* Light theme: stronger definition against the pink background */
+[data-theme="light"] .glass-card {
+  background: linear-gradient(
+    135deg,
+    var(--theme-bg-glass) 0%,
+    rgba(255, 255, 255, 0.95) 50%,
+    var(--theme-bg-glass) 100%
+  );
   box-shadow:
-    var(--theme-shadow-md),
+    var(--theme-shadow-sm),
     var(--theme-shadow-glass),
-    0 0 20px var(--theme-accent-dim);
-  transform: translateY(-2px);
+    0 2px 8px rgba(100, 60, 70, 0.1);
 }
 
 /* ==========================================

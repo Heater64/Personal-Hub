@@ -5,6 +5,7 @@
 
 import { supabase } from '../services/supabase.js';
 import { userStore } from './user.store.js';
+import { userPrefKey } from '../utils/userStorage.js';
 
 const MOODS = [
   { id: 'great',  label: 'Muy bieeeen',         emoji: '🤍🤍🤍', score: 4 },
@@ -14,7 +15,15 @@ const MOODS = [
   { id: 'love',   label: 'Necesito cariño',     emoji: '❤️',      score: 0 }
 ];
 
-const STORAGE_KEY = 'ph.moodDate';
+// Storage keys are scoped per user so different accounts on the same browser
+// do not share mood state.
+function getMoodDateKey() {
+  return userPrefKey('moodDate');
+}
+
+function getMoodKey() {
+  return userPrefKey('mood');
+}
 
 class MoodStore {
   constructor() {
@@ -31,12 +40,12 @@ class MoodStore {
 
   hasSeenToday() {
     const today = new Date().toISOString().split('T')[0];
-    return localStorage.getItem(STORAGE_KEY) === today;
+    return localStorage.getItem(getMoodDateKey()) === today;
   }
 
   markSeen() {
     const today = new Date().toISOString().split('T')[0];
-    localStorage.setItem(STORAGE_KEY, today);
+    localStorage.setItem(getMoodDateKey(), today);
   }
 
   async saveMood(moodId) {
@@ -70,16 +79,57 @@ class MoodStore {
     // Local fallback
     this.todayMood = mood;
     this.markSeen();
-    localStorage.setItem('ph.mood', JSON.stringify(mood));
+    localStorage.setItem(getMoodKey(), JSON.stringify(mood));
 
     return mood;
   }
 
+  /**
+   * Fetches today's mood from Supabase for the current user.
+   * Caches the result in localStorage so subsequent calls are fast.
+   * Returns the mood object, or null if none exists.
+   */
+  async fetchTodayMood() {
+    const user = userStore.getUser();
+    if (!user) return null;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    try {
+      const { data, error } = await supabase
+        .from('moods')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const mood = {
+          id: data.mood,
+          label: data.label,
+          emoji: data.emoji,
+          score: data.score
+        };
+        this.todayMood = mood;
+        this.markSeen();
+        localStorage.setItem(getMoodKey(), JSON.stringify(mood));
+        return mood;
+      }
+    } catch (err) {
+      console.warn('Error fetching today mood from Supabase:', err);
+    }
+
+    // Fall back to locally cached mood
+    return this.getTodayMood();
+  }
+
   getTodayMood() {
     try {
-      const raw = localStorage.getItem('ph.mood');
+      const raw = localStorage.getItem(getMoodKey());
       const today = new Date().toISOString().split('T')[0];
-      const savedDate = localStorage.getItem(STORAGE_KEY);
+      const savedDate = localStorage.getItem(getMoodDateKey());
       if (raw && savedDate === today) {
         return JSON.parse(raw);
       }

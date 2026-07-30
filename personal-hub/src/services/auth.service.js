@@ -11,6 +11,11 @@ class AuthService {
   constructor() {
     this.currentUser = null;
     this._listeners = [];
+    this._readyResolve = null;
+    this.readyPromise = new Promise((resolve) => {
+      this._readyResolve = resolve;
+    });
+    this._ready = false;
     this._init();
   }
 
@@ -34,7 +39,24 @@ class AuthService {
       }
     } catch (err) {
       /* Session restore failed silently */
+    } finally {
+      this._markReady();
     }
+  }
+
+  _markReady() {
+    if (!this._ready) {
+      this._ready = true;
+      if (this._readyResolve) this._readyResolve();
+    }
+  }
+
+  /**
+   * Promise that resolves once the initial session restoration attempt is done.
+   * Use this before making auth-dependent decisions (e.g. route guards).
+   */
+  isReady() {
+    return this.readyPromise;
   }
 
   async signUp(email, password) {

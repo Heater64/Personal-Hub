@@ -10,10 +10,7 @@
 // ==========================================
 
 const CHAPTERS = [
-  { id: 1, saga: 1, title: 'El Despertar del Bosque', summary: 'El Bosque Azul despierta después de un largo invierno. Los habitantes descubren un misterioso brillo en el Lago de los Deseos.', pdfUrl: '', previous: null, next: 2, characters: ['Luna', 'Tito'], places: ['Bosque Azul', 'Lago de los Deseos'] },
-  { id: 2, saga: 1, title: 'La Reunión en el Pueblo', summary: 'Todos los personajes se reúnen en el Pueblo de los Conejos para celebrar el Festival de la Primavera. Pero algo oscuro se acerca.', pdfUrl: '', previous: 1, next: 3, characters: ['Lili y Lolo', 'Vaca Lola', 'Batón Gordito'], places: ['Pueblo de los Conejos'] },
-  { id: 3, saga: 1, title: 'La Sombra del Castillo', summary: 'Una misteriosa sombra aparece sobre el Castillo Oscuro. Los héroes deben descubrir su origen antes de que sea demasiado tarde.', pdfUrl: '', previous: 2, next: 4, characters: ['Luna', 'Rey Esqueleto', 'Tito'], places: ['Castillo Oscuro'] },
-  { id: 4, saga: 2, title: 'El Secreto del Lago', summary: 'El Lago de los Deseos guarda un secreto milenario. Solo los corazones puros pueden descubrir la verdad.', pdfUrl: '', previous: 3, next: null, characters: ['Luna', 'Lili y Lolo', 'Vaca Lola'], places: ['Lago de los Deseos'] },
+  { id: 1, saga: 1, title: '.', summary: '.', pdfUrl: '.', previous: null, next: 2, characters: ['.', '.'], places: ['', '.'] },
 ];
 
 const CHARACTERS = [
@@ -21,54 +18,46 @@ const CHARACTERS = [
     id: 'baton-gordito', name: 'Batón Gordito', role: 'heroe',
     image: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783491042/ChatGPT_Image_6_jul_2026_19_05_44-Photoroom_tsg4yb.png',
     emoji: '🧸',
-    description: 'El osito más tierno y glotón de todo OsitosWorld. Siempre lleva un tarro de miel a donde quiera que va.',
-    personality: 'Dulce, protector, glotón y leal. Aunque parece perezoso, siempre está ahí cuando lo necesitan.',
-    curiosities: 'Le encanta bailar bajo la lluvia y su tarro de miel es en realidad un recuerdo mágico de su abuela.',
-    color: '#e8a0b4', friends: ['Luna', 'Tito'], home: 'Bosque Azul'
+    description: 'Descripción',
+    personality: '.',
+    curiosities: '.',
+    color: '#e8a0b4', friends: ['.', '.'], home: '.'
   },
   {
     id: 'lila-y-lolo', name: 'Lili y Lolo', role: 'aliado',
     image: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783491103/ChatGPT_Image_6_jul_2026_19_05_52-Photoroom_mvhimf.png',
     emoji: '🐰',
-    description: 'Dos hermanos conejitos inseparables. Lili es lista y Lolo es fuerte. Juntos son imparables.',
-    personality: 'Lili es inteligente y curiosa, Lolo es valiente y protector. Se complementan perfectamente.',
-    curiosities: 'Hablan en rimas cuando están nerviosos y construyeron su casa con sus propias patitas.',
-    color: '#a8d8ea', friends: ['Batón Gordito', 'Vaca Lola'], home: 'Pueblo de los Conejos'
+    description: 'Descripción',
+    personality: '.',
+    curiosities: '.',
+    color: '#a8d8ea', friends: ['.', '.'], home: '.'
   },
   {
     id: 'vaca', name: 'Vaca Lola', role: 'aliado',
     image: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783491109/ChatGPT_Image_6_jul_2026_19_06_21-Photoroom_rhv6de.png',
     emoji: '🐿️',
-    description: 'La artista del pueblo. Pinta cuadros que cobran vida y llenan de color cualquier lugar.',
-    personality: 'Creativa, tranquila y sabia. Siempre tiene el consejo perfecto para cada situación.',
-    curiosities: 'Sus cuadros son ventanas a otros mundos. Si miras fijamente, puedes verlos moverse.',
-    color: '#80ced6', friends: ['Lili y Lolo', 'Batón Gordito'], home: 'Pueblo de los Conejos'
+    description: 'Descripción',
+    personality: '.',
+    curiosities: '.',
+    color: '#80ced6', friends: ['.', '.'], home: '.'
   },
   {
     id: 'rey-esqueleto', name: 'Rey Esqueleto', role: 'villano',
     image: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783358108/ChatGPT_Image_6_jul_2026_19_05_29-Photoroom_tnbedt.png',
     emoji: '💀',
-    description: 'El misterioso gobernante del Castillo Oscuro. No es malvado como todos creen, solo está buscando algo.',
-    personality: 'Enigmático, solitario y profundo. Detrás de su apariencia temible late un corazón noble.',
-    curiosities: 'En realidad es un rey bondadoso transformado por una maldición. Busca a alguien que lo libere.',
-    color: '#6b5b95', friends: ['Sombrío'], home: 'Castillo Oscuro'
+    description: 'Descripción',
+    personality: '.',
+    curiosities: '.',
+    color: '#6b5b95', friends: ['.'], home: '.'
   },
 ];
 
 const PLACES = [
-  { id: 1, name: 'Bosque Azul', description: 'Un bosque encantado donde los árboles tienen hojas de color azul brillante. Es el hogar de muchos personajes y el lugar donde ocurren las aventuras más emocionantes.', curiosities: 'Por la noche, los árboles brillan con luz propia, creando un espectáculo mágico.', pdfUrl: '', characters: ['Batón Gordito', 'Tito', 'Luna', 'Pétalo'] },
-  { id: 2, name: 'Pueblo de los Conejos', description: 'Un acogedor pueblo donde viven Lili y Lolo. Las casas están hechas de zanahorias gigantes y madera de bosque.', curiosities: 'Cada año celebran el Festival de la Zanahoria Dorada, donde premian al mejor jardinero.', pdfUrl: '', characters: ['Lili y Lolo', 'Vaca Lola'] },
-  { id: 3, name: 'Castillo Oscuro', description: 'Un imponente castillo de piedra oscura donde reside el Rey Esqueleto. Rodeado de niebla misteriosa.', curiosities: 'A pesar de su aspecto tenebroso, el castillo tiene un jardín secreto lleno de flores de luz.', pdfUrl: '', characters: ['Rey Esqueleto', 'Sombrío'] },
-  { id: 4, name: 'Lago de los Deseos', description: 'Un lago cristalino con aguas que brillan como diamantes. Se dice que si pides un deseo junto a él, se cumplirá.', curiosities: 'Las burbujas de Burbuja a veces flotan sobre el lago al atardecer, creando arcoíris.', pdfUrl: '', characters: ['Burbuja'] },
+  { id: 1, name: '.', description: '.', curiosities: '.', pdfUrl: '', characters: ['.', '.', '.', '.'] },
 ];
 
 const NEWS = [
-  { id: 1, date: '2026-07-28', title: '🎉 ¡Nuevo personaje en camino!', content: 'Pronto llegará un nuevo amigo a OsitosWorld. Los rumores dicen que será un personaje muy especial que traerá consigo un nuevo poder mágico. ¿Quién será? ¡Mantente atento a las novedades!', relatedCharacters: [], relatedPlaces: [] },
-  { id: 2, date: '2026-07-25', title: '🌸 El Jardín de Mariposas floreció', content: 'Pétalo ha anunciado que el jardín está en su máximo esplendor. Las mariposas brillan más que nunca y las flores han empezado a cantar durante la noche. ¡Ven a visitarlo!', relatedCharacters: ['Pétalo'], relatedPlaces: ['Bosque Azul'] },
-  { id: 3, date: '2026-07-20', title: '🏔️ Expedición al Bosque Azul', content: 'Tito organiza una expedición para explorar una nueva cueva descubierta en el Bosque Azul. Se rumorea que contiene cristales mágicos que conceden deseos. ¿Te apuntas a la aventura?', relatedCharacters: ['Tito', 'Batón Gordito'], relatedPlaces: ['Bosque Azul'] },
-  { id: 4, date: '2026-07-15', title: '🎪 Festival de la Amistad', content: 'Se acerca el gran festival anual en el Pueblo de los Conejos. Habrá juegos, dulces, competiciones y muchas sorpresas para todos los habitantes de OsitosWorld.', relatedCharacters: ['Lili y Lolo', 'Vaca Lola'], relatedPlaces: ['Pueblo de los Conejos'] },
-  { id: 5, date: '2026-07-10', title: '🔮 Misterio en el Castillo Oscuro', content: 'El Rey Esqueleto ha convocado a todos los héroes. Una antigua profecía está a punto de cumplirse y necesita ayuda para descifrar sus enigmas.', relatedCharacters: ['Rey Esqueleto', 'Luna'], relatedPlaces: ['Castillo Oscuro'] },
-  { id: 6, date: '2026-07-05', title: '💧 El Lago de los Deseos brilló anoche', content: 'Los habitantes del Bosque Azul presenciaron un fenómeno único: el lago brilló con luz propia durante toda la noche. Burbuja dice que es señal de que un gran deseo está por cumplirse.', relatedCharacters: ['Burbuja'], relatedPlaces: ['Lago de los Deseos'] },
+  { id: 1, date: '.', title: '.', content: '.', relatedCharacters: [], relatedPlaces: [] },
 ];
 
 // ==========================================

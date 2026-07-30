@@ -56,7 +56,7 @@ class ThemeService {
 
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.content = resolved === 'dark' ? '#0c0b0b' : '#f5f3f0';
+      meta.content = resolved === 'dark' ? '#0c0b0b' : '#fdf4f6';
     }
   }
 

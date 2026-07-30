@@ -20,7 +20,10 @@
 .calendario-header {
   position: relative;
   text-align: center;
-  padding: 32px 20px 24px;
+  padding: 32px 28px;
+  border-radius: var(--radius-xl);
+  background: var(--theme-bg-glass);
+  border: var(--theme-border-subtle);
   animation: slide-up 0.6s ease forwards;
   overflow: hidden;
   isolation: isolate;
@@ -34,13 +37,13 @@
   transform: translateX(-50%);
   width: 260px;
   height: 260px;
-  background: radial-gradient(circle, var(--theme-accent-dim, rgba(198, 90, 58, 0.1)), transparent 70%);
+  background: radial-gradient(circle, var(--theme-accent-dim), transparent 70%);
   pointer-events: none;
 }
 
 .calendario-header h2 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 2rem;
+  font-size: var(--fs-2xl);
   font-weight: 500;
   margin: 0 0 8px;
   color: var(--theme-text-primary);
@@ -93,7 +96,7 @@
 }
 
 .month-btn.active {
-  background: rgba(198, 90, 58, 0.15);
+  background: var(--theme-accent-dim);
   border-color: var(--theme-accent-primary);
   color: var(--theme-accent-primary);
   box-shadow: 0 0 12px var(--theme-accent-dim);
@@ -244,7 +247,7 @@
   align-items: center;
   gap: 3px;
   font-size: 0.5rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--theme-bg-card-hover);
   border-radius: 20px;
   padding: 2px 7px;
   white-space: nowrap;
@@ -332,7 +335,7 @@
 }
 
 .experience-modal-close:hover {
-  background: rgba(198, 90, 58, 0.25);
+  background: var(--theme-accent-dim);
   border-color: var(--theme-accent-primary);
   color: var(--theme-accent-primary);
   transform: rotate(90deg);
@@ -457,11 +460,11 @@
   }
 
   .calendario-header {
-    padding: 44px 32px 32px;
+    padding: 44px 36px;
   }
 
   .calendario-header h2 {
-    font-size: 2.4rem;
+    font-size: var(--fs-3xl);
   }
 
   .day-card {
@@ -479,8 +482,12 @@
 }
 
 @media (max-width: 768px) {
+  .calendario-header {
+    padding: 28px 20px;
+  }
+
   .calendario-header h2 {
-    font-size: 1.6rem;
+    font-size: var(--fs-xl);
   }
 
   .month-title {
@@ -495,11 +502,12 @@
 
 @media (max-width: 480px) {
   .calendario-header {
-    padding: 24px 16px 16px;
+    padding: 24px 16px;
+    border-radius: var(--radius-lg);
   }
 
   .calendario-header h2 {
-    font-size: 1.3rem;
+    font-size: var(--fs-lg);
   }
 
   .month-title {

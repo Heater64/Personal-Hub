@@ -53,6 +53,12 @@ function escapeHtml(str) {
 
 const CONTENT_TABLE = 'content';
 
+// Detect if real Supabase credentials are present (not the placeholder values)
+function isSupabaseConfigured() {
+  const url = import.meta.env?.VITE_SUPABASE_URL;
+  return !!url && !url.includes('placeholder');
+}
+
 async function loadContent(id, fallback = null) {
   try {
     const { data, error } = await supabase
@@ -62,7 +68,11 @@ async function loadContent(id, fallback = null) {
       .maybeSingle();
     if (error) throw error;
     return data?.data || fallback;
-  } catch {
+  } catch (err) {
+    if (isSupabaseConfigured()) {
+      console.warn(`[db] Supabase read failed for "${id}":`, err.message);
+      throw new Error(`No se pudo leer de Supabase: ${err.message}`);
+    }
     return lsGet('ph.config.' + id, fallback);
   }
 }
@@ -75,9 +85,26 @@ async function saveContent(id, data) {
     if (error) throw error;
     lsSet('ph.config.' + id, data);
     return true;
-  } catch {
+  } catch (err) {
+    if (isSupabaseConfigured()) {
+      console.warn(`[db] Supabase write failed for "${id}":`, err.message);
+      throw new Error(`No se pudo guardar en Supabase: ${err.message}`);
+    }
     lsSet('ph.config.' + id, data);
     return true;
+  }
+}
+
+async function checkConnection() {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, mode: 'local', message: 'Supabase no configurado. Usando localStorage.' };
+  }
+  try {
+    const { error } = await supabase.from(CONTENT_TABLE).select('id').limit(1);
+    if (error) throw error;
+    return { ok: true, mode: 'supabase', message: 'Conectado a Supabase' };
+  } catch (err) {
+    return { ok: false, mode: 'supabase', message: err.message || 'Error de conexión con Supabase' };
   }
 }
 
@@ -296,105 +323,215 @@ async function trackVisit(page) {
 async function getAnalytics() { return lsGet(KEYS.analytics, { visits: [] }); }
 
 // ==========================================
-// USERS (via Supabase Auth + profiles)
+// USERS & MOOD HISTORY
 // ==========================================
 
-async function listUsers() {
-  const localUsers = lsGet('ph.data.users', []);
-  const existingIds = new Set(localUsers.map(u => u.id));
-  const mergedUsers = [];
+// Cache in-flight listUsers() promise to avoid duplicate parallel requests
+// and prevent race conditions that make the UI flicker.
+let listUsersPromise = null;
 
-  // 1. Get current admin user from Supabase Auth
+// Fetch all moods for a specific user, sorted by date descending.
+async function getUserMoods(userId) {
+  if (!userId) return [];
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const adminUser = {
-        id: user.id, email: user.email,
-        name: user.user_metadata?.name || user.email?.split('@')[0] || '',
-        role: user.email === 'admin@personalhub.com' ? 'admin' : 'user',
-        enabled: true, photo: user.user_metadata?.avatar_url || '',
-        created_at: user.created_at, last_login: user.last_sign_in_at
-      };
-      if (!existingIds.has(adminUser.id)) {
-        mergedUsers.push(adminUser);
-        existingIds.add(adminUser.id);
-      }
-    }
-  } catch { /* */ }
-
-  // 2. Query profiles table (created via Supabase trigger on auth.users)
-  //    If the table doesn't exist yet, supabase returns an error silently
-  try {
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('id, email, name, avatar_url, role, created_at, updated_at')
-      .limit(100);
-
-    if (!error && profiles && profiles.length > 0) {
-      profiles.forEach(p => {
-        if (!existingIds.has(p.id)) {
-          mergedUsers.push({
-            id: p.id, email: p.email || '',
-            name: p.name || p.email?.split('@')[0] || '',
-            role: p.role || 'user',
-            enabled: true, photo: p.avatar_url || '',
-            created_at: p.created_at, last_login: ''
-          });
-          existingIds.add(p.id);
-        }
-      });
-    }
-  } catch { /* profiles table might not exist */ }
-
-  // 3. Derive users from moods table (anyone who submitted a mood is a real user)
-  try {
-    const { data: moodUsers, error } = await supabase
+    const { data, error } = await supabase
       .from('moods')
-      .select('user_id')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
       .limit(1000);
 
-    if (!error && moodUsers && moodUsers.length > 0) {
-      const uniqueIds = [...new Set(moodUsers.map(m => m.user_id))];
-      for (const uid of uniqueIds) {
-        if (!existingIds.has(uid)) {
-          mergedUsers.push({
-            id: uid, email: '', name: uid.slice(0, 8) + '...',
-            role: 'user', enabled: true, photo: '',
-            created_at: '', last_login: ''
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('[db] Could not fetch user moods:', err.message);
+    return [];
+  }
+}
+
+// Upload avatar to Supabase Storage and update user metadata.
+// Requires a public 'avatars' bucket with appropriate RLS policies.
+async function uploadAvatar(file) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('No hay sesión activa');
+
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Solo se permiten imágenes');
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    throw new Error('La imagen no puede superar los 2 MB');
+  }
+
+  const fileExt = file.name.split('.').pop() || 'jpg';
+  const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+  // 1. Upload to Storage
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+  if (uploadError) {
+    console.error('[db] Storage upload error:', uploadError);
+    if (uploadError.message?.includes('row-level security policy') || uploadError.code === '42501') {
+      throw new Error('No tienes permisos para subir la imagen. Verifica que el bucket "avatars" exista y que hayas iniciado sesión.');
+    }
+    throw new Error('Hubo un problema al subir la imagen. Inténtalo de nuevo.');
+  }
+
+  // 2. Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+
+  // 3. Update auth metadata
+  const { error: updateError } = await supabase.auth.updateUser({
+    data: { avatar_url: publicUrl }
+  });
+  if (updateError) throw updateError;
+
+  // 4. Update profiles table (best effort, log only)
+  try {
+    const { error: profileError } = await supabase.from('profiles').upsert(
+      { id: user.id, avatar_url: publicUrl, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    if (profileError) {
+      console.warn('[db] Profile table update skipped/failed:', profileError.message);
+    }
+  } catch (err) {
+    console.warn('[db] Profile upsert error:', err);
+  }
+
+  return publicUrl;
+}
+
+async function listUsers() {
+  if (listUsersPromise) return listUsersPromise;
+
+  listUsersPromise = (async () => {
+    // localUsers is the cached merged list from a previous successful call.
+    // We keep it as a fallback if the API fails, but we don't use it for
+    // deduplication because that would skip real users already in the cache.
+    const localUsers = lsGet('ph.data.users', []);
+    const existingIds = new Set();
+    const mergedUsers = [];
+
+    // 1. Try to fetch all real Supabase Auth users from the admin API.
+    //    This requires SUPABASE_SERVICE_ROLE_KEY on the server/Vercel.
+    try {
+      const sessionRes = await supabase.auth.getSession();
+      const accessToken = sessionRes.data?.session?.access_token;
+
+      if (accessToken) {
+        const res = await fetch('/api/users', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+
+        if (res.ok) {
+          const authUsers = await res.json();
+          authUsers.forEach(u => {
+            if (!existingIds.has(u.id)) {
+              mergedUsers.push(u);
+              existingIds.add(u.id);
+            }
           });
-          existingIds.add(uid);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          console.warn('[db] /api/users failed:', res.status, err.error || res.statusText);
         }
       }
+    } catch (err) {
+      console.warn('[db] Could not fetch users from /api/users:', err.message);
     }
-  } catch { /* */ }
 
-  // 4. Add local (manually created) users
-  localUsers.forEach(u => {
-    if (!existingIds.has(u.id)) {
-      mergedUsers.push(u);
-      existingIds.add(u.id);
-    }
-  });
+    // 2. Query profiles table (created via Supabase trigger on auth.users)
+    //    If the table doesn't exist yet, supabase returns an error silently
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, email, name, avatar_url, role, created_at, updated_at')
+        .limit(100);
 
-  // Cache merged list
-  lsSet('ph.data.users', mergedUsers);
+      if (!error && profiles && profiles.length > 0) {
+        profiles.forEach(p => {
+          if (!existingIds.has(p.id)) {
+            mergedUsers.push({
+              id: p.id, email: p.email || '',
+              name: p.name || p.email?.split('@')[0] || '',
+              role: p.role || 'user',
+              enabled: true, photo: p.avatar_url || '',
+              created_at: p.created_at, last_login: ''
+            });
+            existingIds.add(p.id);
+          }
+        });
+      }
+    } catch { /* profiles table might not exist */ }
 
-  return mergedUsers;
+    // 3. Derive users from moods table (anyone who submitted a mood is a real user)
+    try {
+      const { data: moodUsers, error } = await supabase
+        .from('moods')
+        .select('user_id')
+        .limit(1000);
+
+      if (!error && moodUsers && moodUsers.length > 0) {
+        const uniqueIds = [...new Set(moodUsers.map(m => m.user_id))];
+        for (const uid of uniqueIds) {
+          if (!existingIds.has(uid)) {
+            mergedUsers.push({
+              id: uid, email: '', name: uid.slice(0, 8) + '...',
+              role: 'user', enabled: true, photo: '',
+              created_at: '', last_login: ''
+            });
+            existingIds.add(uid);
+          }
+        }
+      }
+    } catch { /* */ }
+
+    // 4. Add cached/manually created users as fallback (only if not already fetched)
+    localUsers.forEach(u => {
+      if (!existingIds.has(u.id)) {
+        mergedUsers.push(u);
+        existingIds.add(u.id);
+      }
+    });
+
+    // Cache merged list
+    lsSet('ph.data.users', mergedUsers);
+    return mergedUsers;
+  })();
+
+  try {
+    return await listUsersPromise;
+  } finally {
+    listUsersPromise = null;
+  }
 }
 
 async function saveUser(userId, updates) {
   const users = lsGet('ph.data.users', []);
   const idx = users.findIndex(u => u.id === userId);
-  if (idx !== -1) { users[idx] = { ...users[idx], ...updates }; lsSet('ph.data.users', users); }
+  if (idx !== -1) {
+    // Never persist passwords from the admin update form
+    const { password, ...safeUpdates } = updates || {};
+    users[idx] = { ...users[idx], ...safeUpdates };
+    lsSet('ph.data.users', users);
+  }
   return true;
 }
 
 async function createUser(userData) {
   const users = lsGet('ph.data.users', []);
-  const newUser = { id: generateId(), ...userData, enabled: true, created_at: new Date().toISOString(), last_login: '' };
+  // Never persist passwords (even locally) to avoid leaking credentials.
+  const { password, ...safeData } = userData || {};
+  const newUser = { id: generateId(), ...safeData, enabled: true, created_at: new Date().toISOString(), last_login: '' };
   users.push(newUser);
   lsSet('ph.data.users', users);
-  logActivity('user_created', `Usuario creado: ${userData.username}`);
+  logActivity('user_created', `Usuario creado: ${safeData.username}`);
   return newUser;
 }
 
@@ -431,7 +568,7 @@ function formatAction(action) { return ACTION_LABELS[action] || action; }
 // ==========================================
 
 export const db = {
-  getMoods, saveMood, getMoodMonth,
+  getMoods, saveMood, getMoodMonth, getUserMoods,
   getReasons, saveReasons,
   getSongs, saveSongs,
   getGifts, saveGifts,
@@ -441,5 +578,6 @@ export const db = {
   logActivity, getActivity, formatAction,
   trackVisit, getAnalytics,
   listUsers, saveUser, createUser, deleteUser,
-  escapeHtml, generateId
+  uploadAvatar,
+  escapeHtml, generateId, checkConnection, isSupabaseConfigured
 };
