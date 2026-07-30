@@ -134,6 +134,7 @@
   width: 100%;
   font-family: inherit;
   position: relative;
+  touch-action: manipulation;
 }
 
 .sidebar__link:hover {

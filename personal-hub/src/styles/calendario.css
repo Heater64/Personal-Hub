@@ -27,6 +27,7 @@
   animation: slide-up 0.6s ease forwards;
   overflow: hidden;
   isolation: isolate;
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth);
 }
 
 .calendario-header::before {
@@ -522,5 +523,76 @@
   .day-card {
     border-radius: 14px;
     padding: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .calendario-header {
+    padding: 18px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .calendario-header h2 {
+    font-size: var(--fs-base);
+  }
+
+  .calendario-header p {
+    font-size: 0.72rem;
+  }
+
+  .calendar-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .month-title {
+    font-size: 1rem;
+  }
+
+  .month-selector {
+    gap: 4px;
+  }
+
+  .month-btn {
+    padding: 4px 10px;
+    font-size: 0.68rem;
+  }
+
+  .day-card {
+    border-radius: 12px;
+    padding: 6px 4px;
+    gap: 2px;
+  }
+
+  .day-number {
+    font-size: clamp(1rem, 5vw, 1.4rem);
+  }
+
+  .day-gift-name {
+    font-size: 0.45rem;
+  }
+
+  .day-type-badge {
+    font-size: 0.4rem;
+    padding: 1px 4px;
+  }
+
+  .day-status {
+    font-size: 0.5rem;
+  }
+
+  .experience-modal {
+    padding: 28px 14px 20px;
+    width: 98vw;
+    border-radius: 18px;
+  }
+
+  .experience-modal-title {
+    font-size: 1.2rem;
+  }
+
+  .exp-letter-content {
+    font-size: 0.88rem;
+    padding: 16px;
   }
 }

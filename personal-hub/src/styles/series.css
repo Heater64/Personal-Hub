@@ -27,6 +27,7 @@
   box-shadow: var(--theme-shadow-sm);
   position: relative;
   overflow: hidden;
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth), margin-bottom var(--dur-smooth);
 }
 
 .series-header::before {
@@ -1039,5 +1040,107 @@
 
   .ep-progress-footer {
     padding: 12px 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .series-header {
+    padding: 18px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .series-header-top {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .series-header-top h2 {
+    font-size: var(--fs-base);
+  }
+
+  .series-search {
+    max-width: 100%;
+  }
+
+  .series-search-input {
+    padding: 7px 12px 7px 34px;
+    font-size: 0.7rem;
+  }
+
+  .series-filter-chips {
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .series-chip {
+    padding: 5px 10px;
+    font-size: 0.58rem;
+  }
+
+  .series-view-tab {
+    padding: 6px 8px;
+    font-size: 0.65rem;
+  }
+
+  .series-catalog-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .series-card-info {
+    padding: 6px 8px 8px;
+  }
+
+  .series-card-title {
+    font-size: var(--fs-xs);
+  }
+
+  .series-card-status {
+    font-size: 0.55rem;
+  }
+
+  .series-card-progress {
+    height: 3px;
+    margin-top: 6px;
+  }
+
+  .series-card-cover {
+    aspect-ratio: 16/9;
+  }
+
+  .series-podium-header h3 {
+    font-size: var(--fs-base);
+  }
+
+  .series-podium-card {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .series-podium-rank {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+
+  .series-podium-name {
+    font-size: var(--fs-xs);
+  }
+
+  .episodes-list,
+  .ep-progress-list {
+    padding: 10px 12px;
+  }
+
+  .ep-progress-actions {
+    padding: 0 12px 8px;
+  }
+
+  .ep-progress-footer {
+    padding: 10px 12px;
+  }
+
+  .series-empty {
+    padding: 40px 12px;
   }
 }

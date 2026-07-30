@@ -26,6 +26,7 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth), gap var(--dur-smooth);
 }
 
 .admin-header::before {
@@ -821,6 +822,45 @@
 }
 
 /* ==========================================
+   TABLES — Scroll horizontal en móvil
+   ========================================== */
+.admin-table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+}
+
+.admin-table table {
+  min-width: 600px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: var(--theme-border-subtle);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.admin-table th {
+  font-weight: 600;
+  color: var(--theme-text-secondary);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--theme-bg-input);
+}
+
+.admin-table tbody tr:hover {
+  background: var(--theme-bg-card-hover);
+}
+
+/* ==========================================
    SUBSECTIONS
    ========================================== */
 .admin-subsection {
@@ -1006,11 +1046,226 @@
     gap: 8px;
   }
 
+  .admin-toolbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .admin-table {
+    font-size: var(--fs-xs);
+  }
+
+  .admin-table td,
+  .admin-table th {
+    padding: 6px 8px;
+  }
+
+  .admin-content {
+    overflow-x: auto;
+  }
+
+  .admin-section {
+    overflow-x: auto;
+  }
+
   .stat-card {
     padding: 16px 12px;
   }
 
   .stat-value {
     font-size: var(--fs-xl);
+  }
+
+}
+
+@media (max-width: 360px) {
+  .admin-page {
+    padding: 0;
+  }
+
+  .admin-header {
+    padding: 12px;
+    border-radius: var(--radius-sm);
+  }
+
+  .admin-header h1 {
+    font-size: var(--fs-base);
+  }
+
+  .admin-header p {
+    font-size: var(--fs-xs);
+  }
+
+  .admin-status {
+    padding: 5px 10px;
+    font-size: 0.6rem;
+  }
+
+  .admin-tab {
+    font-size: 0.55rem;
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .admin-tab svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .stat-card {
+    padding: 12px 8px;
+  }
+
+  .stat-value {
+    font-size: var(--fs-lg);
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: var(--fs-xs);
+  }
+
+  .admin-list-item {
+    padding: 8px 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .item-actions {
+    opacity: 1;
+    align-self: flex-end;
+  }
+
+  .item-action-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .admin-subsection {
+    padding: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .admin-modal {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+  }
+
+  .admin-modal-body {
+    padding: 12px;
+  }
+
+  .admin-modal-header {
+    padding: 12px 12px 0;
+  }
+
+  .admin-modal-footer {
+    padding: 0 12px 12px;
+    flex-direction: column;
+  }
+
+  .admin-modal-footer button {
+    width: 100%;
+  }
+
+  .moods-cal-grid {
+    gap: 2px;
+    padding: 6px;
+  }
+
+  .moods-cal-hd {
+    font-size: 0.5rem;
+    padding: 4px 2px;
+  }
+
+  .moods-cal-cell {
+    padding: 3px 1px;
+    font-size: 0.6rem;
+    min-height: 30px;
+  }
+
+  .moods-cal-day {
+    font-size: var(--fs-xs);
+  }
+
+  .moods-cal-emoji {
+    font-size: 0.6rem;
+  }
+
+  .moods-stats-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .moods-stat {
+    padding: 8px 6px;
+  }
+
+  .moods-stat-num {
+    font-size: var(--fs-base);
+  }
+
+  .moods-stat-label {
+    font-size: 0.55rem;
+  }
+
+  .moods-breakdown {
+    padding: 6px;
+  }
+
+  .moods-bar-label {
+    min-width: 60px;
+    font-size: 0.6rem;
+  }
+
+  .moods-bar-track {
+    height: 14px;
+  }
+
+  .moods-bar-pct {
+    font-size: 0.6rem;
+    min-width: 30px;
+  }
+
+  .admin-empty {
+    padding: 28px 12px;
+    font-size: var(--fs-xs);
+  }
+
+  .admin-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-section-header h2 {
+    font-size: var(--fs-base);
+  }
+
+  .admin-search-input {
+    padding: 8px 12px;
+    font-size: var(--fs-xs);
+  }
+
+  .user-avatar-sm {
+    width: 28px;
+    height: 28px;
+  }
+
+  .admin-btn {
+    padding: 6px 12px;
+    font-size: var(--fs-xs);
+  }
+
+  .admin-field input,
+  .admin-field textarea,
+  .admin-field select {
+    padding: 8px 10px;
+    font-size: var(--fs-xs);
   }
 }

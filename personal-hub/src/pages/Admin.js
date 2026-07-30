@@ -154,20 +154,25 @@ export function AdminPage(router) {
   // 1. DASHBOARD
   // ==========================================
   async function loadDashboard() {
-    const [reasons, songs, gifts, users, moods] = await Promise.all([
-      db.getReasons(), db.getSongs(), db.getGifts(), db.listUsers(), db.getMoods()
+    const [reasons, songs, gifts, users] = await Promise.all([
+      db.getReasons(), db.getSongs(), db.getGifts(), db.listUsers()
     ]);
-    const moodCount = Object.keys(moods||{}).length;
+
+    // Fetch all server moods for admin stats (last 1000 rows)
+    const today = new Date().toISOString().split('T')[0];
+    const startOfYear = `${new Date().getFullYear()}-01-01`;
+    const allMoods = await db.getAllMoods(startOfYear, today);
+
+    const moodCount = allMoods.length;
 
     // Count unique users in moods
     const moodUserIds = new Set();
-    Object.values(moods).forEach(m => { if (m.user_id) moodUserIds.add(m.user_id); });
+    allMoods.forEach(m => { if (m.user_id) moodUserIds.add(m.user_id); });
     const realUsers = users.filter(u => !u.id.startsWith('local_') && u.id.length > 10);
     const activeMoodUsers = moodUserIds.size;
 
     // Today's mood summary
-    const today = new Date().toISOString().split('T')[0];
-    const todayMoods = Object.entries(moods).filter(([date]) => date === today);
+    const todayMoods = allMoods.filter(m => m.date === today);
     const todayMoodCount = todayMoods.length;
 
     content.innerHTML = `
@@ -236,16 +241,28 @@ export function AdminPage(router) {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const ds = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const mood = monthMoods[ds];
+      const dailyMoods = monthMoods[ds] || [];
       const isToday = ds === todayStr;
-      html += `<div class="moods-cal-cell${isToday?' today':''}${mood?' has-mood':''}" title="${ds}: ${mood?mood.label:'Sin registro'}">
-        <span class="moods-cal-day">${day}</span>${mood?`<span class="moods-cal-emoji">${mood.emoji||MOOD_EMOJIS[mood.mood]||'—'}</span>`:''}
+      const hasMood = dailyMoods.length > 0;
+
+      let emojiHtml = '';
+      let titleText = `${ds}: Sin registro`;
+      if (hasMood) {
+        const emojis = dailyMoods.slice(0, 3).map(m => m.emoji || MOOD_EMOJIS[m.mood] || '—').join('');
+        const extra = dailyMoods.length > 3 ? `<span style="font-size:0.6rem;opacity:0.8">+${dailyMoods.length - 3}</span>` : '';
+        emojiHtml = `<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:1px;font-size:0.8rem;line-height:1">${emojis}${extra}</div>`;
+        const labels = dailyMoods.map(m => esc(m.label || MOOD_LABELS[m.mood] || m.mood)).join(', ');
+        titleText = `${esc(ds)}: ${labels}`;
+      }
+
+      html += `<div class="moods-cal-cell${isToday?' today':''}${hasMood?' has-mood':''}" title="${titleText}">
+        <span class="moods-cal-day">${day}</span>${emojiHtml}
       </div>`;
     }
     html += '</div>';
     calendar.innerHTML = html;
 
-    const entries = Object.entries(monthMoods);
+    const entries = Object.values(monthMoods).flat();
     if (entries.length === 0) {
       stats.innerHTML = '<div class="admin-empty">No hay datos de ánimo para este mes</div>';
       breakdown.innerHTML = '';
@@ -254,7 +271,7 @@ export function AdminPage(router) {
 
     const counts = {};
     let totalScore = 0;
-    entries.forEach(([_, m]) => {
+    entries.forEach((m) => {
       const k = m.mood || 'unknown';
       counts[k] = (counts[k] || 0) + 1;
       totalScore += MOOD_SCORES[m.mood] !== undefined ? MOOD_SCORES[m.mood] : 1;
@@ -266,7 +283,7 @@ export function AdminPage(router) {
     Object.entries(counts).forEach(([k, c]) => { if (c > bestCount) { bestCount = c; bestMood = k; } });
 
     stats.innerHTML = `<div class="moods-stats-row">
-      <div class="moods-stat"><span class="moods-stat-num">${entries.length}</span><span class="moods-stat-label">días registrados</span></div>
+      <div class="moods-stat"><span class="moods-stat-num">${entries.length}</span><span class="moods-stat-label">registros totales</span></div>
       <div class="moods-stat"><span class="moods-stat-num">${MOOD_EMOJIS[bestMood]||'—'}</span><span class="moods-stat-label">más frecuente</span></div>
       <div class="moods-stat"><span class="moods-stat-num">${avgEmoji}</span><span class="moods-stat-label">media del mes</span></div>
     </div>`;
@@ -289,20 +306,20 @@ export function AdminPage(router) {
   async function loadUsuarios() {
     const [users, allMoods] = await Promise.all([
       db.listUsers(),
-      db.getMoods()
+      db.getAllMoods('2024-01-01', new Date().toISOString().split('T')[0])
     ]);
 
-    // Calculate mood stats per user
+    // Calculate mood stats per user from server moods
     const userMoodStats = {};
-    Object.entries(allMoods).forEach(([date, data]) => {
-      const uid = data.user_id || 'local';
+    allMoods.forEach(m => {
+      const uid = m.user_id || 'local';
       if (!userMoodStats[uid]) {
         userMoodStats[uid] = { total: 0, moods: {}, lastDate: '' };
       }
       userMoodStats[uid].total++;
-      const moodId = data.mood || 'unknown';
+      const moodId = m.mood || 'unknown';
       userMoodStats[uid].moods[moodId] = (userMoodStats[uid].moods[moodId] || 0) + 1;
-      if (date > userMoodStats[uid].lastDate) userMoodStats[uid].lastDate = date;
+      if (m.date > userMoodStats[uid].lastDate) userMoodStats[uid].lastDate = m.date;
     });
 
     content.innerHTML = `

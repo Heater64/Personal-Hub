@@ -116,6 +116,28 @@ async function getMoods() {
   return lsGet(KEYS.moods, {});
 }
 
+/**
+ * Fetch all moods from Supabase within a date range (admin use).
+ * Returns an array of mood rows.
+ */
+async function getAllMoods(startDate, endDate) {
+  try {
+    const { data, error } = await supabase
+      .from('moods')
+      .select('*')
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: false })
+      .limit(1000);
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('[db] Could not fetch all moods:', err.message);
+    return [];
+  }
+}
+
 async function saveMood(date, moodData) {
   const moods = await getMoods();
   moods[date] = { ...moodData, updatedAt: new Date().toISOString() };
@@ -137,15 +159,7 @@ async function getMoodMonth(year, month) {
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
   const result = {};
 
-  // 1. Get moods from localStorage (current user)
-  const localMoods = lsGet(KEYS.moods, {});
-  Object.entries(localMoods).forEach(([date, data]) => {
-    if (date.startsWith(prefix)) {
-      result[date] = { ...data, source: 'local' };
-    }
-  });
-
-  // 2. Get ALL moods from Supabase (all users) — for admin stats
+  // 1. Try Supabase first (all users) — source of truth
   try {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
@@ -157,22 +171,27 @@ async function getMoodMonth(year, month) {
       .lte('date', endDate)
       .limit(1000);
 
-    if (!error && supabaseMoods) {
+    if (!error && supabaseMoods && supabaseMoods.length > 0) {
       supabaseMoods.forEach(m => {
         const dateStr = m.date;
-        if (!result[dateStr]) {
-          result[dateStr] = {
-            mood: m.mood, label: m.label, emoji: m.emoji,
-            score: m.score, user_id: m.user_id,
-            source: 'supabase'
-          };
-        } else if (result[dateStr].source === 'local') {
-          // Keep local as primary, but also store supabase data
-          result[dateStr].supabase_id = m.user_id;
-        }
+        if (!result[dateStr]) result[dateStr] = [];
+        result[dateStr].push({
+          mood: m.mood, label: m.label, emoji: m.emoji,
+          score: m.score, user_id: m.user_id,
+          source: 'supabase'
+        });
       });
+      return result;
     }
   } catch { /* */ }
+
+  // 2. Fallback to localStorage (current user) when Supabase is unavailable
+  const localMoods = lsGet(KEYS.moods, {});
+  Object.entries(localMoods).forEach(([date, data]) => {
+    if (date.startsWith(prefix)) {
+      result[date] = [{ ...data, source: 'local' }];
+    }
+  });
 
   return result;
 }
@@ -568,7 +587,7 @@ function formatAction(action) { return ACTION_LABELS[action] || action; }
 // ==========================================
 
 export const db = {
-  getMoods, saveMood, getMoodMonth, getUserMoods,
+  getMoods, saveMood, getMoodMonth, getAllMoods, getUserMoods,
   getReasons, saveReasons,
   getSongs, saveSongs,
   getGifts, saveGifts,

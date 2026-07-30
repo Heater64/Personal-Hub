@@ -24,6 +24,7 @@
   animation: slide-up 0.6s ease forwards;
   overflow: hidden;
   isolation: isolate;
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth), margin-bottom var(--dur-smooth);
 }
 
 /* Glow decorativo */
@@ -363,5 +364,61 @@
   .sentimientos-card-desc {
     font-size: var(--fs-xs);
     margin-bottom: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .sentimientos-header {
+    padding: 20px 12px;
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+  }
+
+  .sentimientos-header h1 {
+    font-size: var(--fs-base);
+  }
+
+  .sentimientos-header::before {
+    width: 160px;
+    height: 160px;
+  }
+
+  .sentimientos-header p {
+    font-size: 0.68rem;
+  }
+
+  .sentimientos-grid {
+    gap: 10px;
+  }
+
+  .sentimientos-card {
+    padding: 14px 12px;
+    border-radius: var(--radius-sm);
+  }
+
+  .sentimientos-card::after {
+    left: 12px;
+    right: 12px;
+  }
+
+  .sentimientos-card-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+
+  .sentimientos-card-title {
+    font-size: var(--fs-xs);
+    margin-bottom: 4px;
+  }
+
+  .sentimientos-card-desc {
+    font-size: 0.65rem;
+    margin-bottom: 10px;
+  }
+
+  .sentimientos-card-meta {
+    font-size: 0.55rem;
   }
 }

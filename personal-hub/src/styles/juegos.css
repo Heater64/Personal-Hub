@@ -20,6 +20,7 @@
   text-align: center;
   background: linear-gradient(135deg, var(--theme-bg-card), var(--theme-bg-tertiary));
   border: var(--theme-border-subtle);
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth), margin-bottom var(--dur-smooth);
 }
 
 .juegos-header::before {
@@ -283,5 +284,64 @@
   .juego-play-hint {
     padding: 6px 14px;
     font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .juegos-header {
+    padding: 20px 12px;
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+  }
+
+  .juegos-header h2 {
+    font-size: var(--fs-base);
+  }
+
+  .juegos-header .text-muted {
+    font-size: var(--fs-xs);
+  }
+
+  .juegos-grid {
+    gap: 8px;
+  }
+
+  .juego-card {
+    padding: 12px 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .juego-card-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 8px;
+  }
+
+  .juego-card-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .juego-card-title {
+    font-size: var(--fs-xs);
+    margin-bottom: 4px;
+  }
+
+  .juego-card-desc {
+    font-size: 0.65rem;
+  }
+
+  .juego-play-hint {
+    padding: 4px 10px;
+    font-size: 0.55rem;
+    margin-top: 10px;
+  }
+
+  .juegos-footer {
+    padding: 12px;
+  }
+
+  .juegos-footer p {
+    font-size: var(--fs-xs);
   }
 }

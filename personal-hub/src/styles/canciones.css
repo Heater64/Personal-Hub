@@ -15,6 +15,7 @@
   grid-template-columns: 1fr 380px;
   gap: 28px;
   align-items: start;
+  transition: gap var(--dur-smooth);
 }
 
 @media (max-width: 1024px) {
@@ -580,6 +581,58 @@
   opacity: 1;
 }
 
+/* Special badge for immersive experience songs */
+.playlist-item.is-special {
+  border-color: rgba(255, 200, 50, 0.15);
+}
+
+.playlist-item.is-special.is-active {
+  border-color: rgba(255, 200, 50, 0.3);
+  background: linear-gradient(135deg, var(--theme-accent-dim), rgba(255, 200, 50, 0.04));
+}
+
+.special-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 200, 50, 0.15), rgba(255, 150, 50, 0.1));
+  color: #f5c842;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 200, 50, 0.1);
+}
+
+.playlist-exp-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #f5c842;
+  opacity: 0.4;
+  transition: all var(--dur-spring);
+  text-decoration: none;
+  margin-left: auto;
+  touch-action: manipulation;
+}
+
+.playlist-exp-btn:hover {
+  opacity: 1;
+  background: rgba(255, 200, 50, 0.12);
+  transform: scale(1.12);
+  box-shadow: 0 0 16px rgba(255, 200, 50, 0.15);
+}
+
+.playlist-exp-btn:active {
+  transform: scale(0.95);
+}
+
 /* ==========================================
    LYRICS LIGHTBOX — Letra expandida
    ========================================== */
@@ -904,6 +957,16 @@
     height: 34px;
   }
 
+  .playlist-exp-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .playlist-exp-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+
   .playlist-item-info strong {
     font-size: var(--fs-xs);
   }
@@ -915,5 +978,139 @@
   .lyrics-lightbox-content {
     padding: 24px 16px 16px;
     border-radius: var(--radius-md);
+  }
+}
+
+@media (max-width: 360px) {
+  .player-panel {
+    padding: 14px 8px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .player-album {
+    max-width: 160px;
+    margin-bottom: 16px;
+  }
+
+  .player-title {
+    font-size: var(--fs-sm);
+  }
+
+  .player-subtitle {
+    font-size: 0.7rem;
+  }
+
+  .player-controls {
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+
+  .player-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .player-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .play-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .play-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .progress-track {
+    height: 3px;
+  }
+
+  .progress-time {
+    font-size: 0.6rem;
+  }
+
+  .lyrics-card {
+    padding: 10px;
+    max-height: 160px;
+  }
+
+  .lyrics-panel {
+    font-size: 0.65rem;
+    line-height: 1.6;
+  }
+
+  .lyrics-header {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+  }
+
+  .lyrics-header h3 {
+    font-size: var(--fs-xs);
+  }
+
+  .playlist-card {
+    padding: 8px;
+    max-height: 220px;
+  }
+
+  .playlist-header {
+    margin-bottom: 6px;
+  }
+
+  .playlist-tab {
+    padding: 4px 6px;
+    font-size: 0.55rem;
+    gap: 3px;
+  }
+
+  .playlist-item {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .playlist-item img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .playlist-exp-btn {
+    width: 24px;
+    height: 24px;
+  }
+
+  .playlist-exp-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .playlist-item-info strong {
+    font-size: 0.65rem;
+  }
+
+  .playlist-item-info span {
+    font-size: 0.55rem;
+  }
+
+  .playlist-count {
+    font-size: 0.55rem;
+  }
+
+  .lyrics-lightbox {
+    padding: 8px;
+  }
+
+  .lyrics-lightbox-content {
+    padding: 20px 12px 14px;
+    border-radius: var(--radius-md);
+    max-height: 94vh;
+  }
+
+  .lyrics-expanded {
+    font-size: var(--fs-sm);
+    line-height: 1.8;
   }
 }

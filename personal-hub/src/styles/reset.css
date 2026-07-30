@@ -16,6 +16,7 @@ html {
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
   text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
 body {
@@ -32,11 +33,13 @@ body {
   background: var(--theme-bg-primary);
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+  touch-action: manipulation;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+  touch-action: manipulation;
 }
 
 button, input, textarea, select {
@@ -46,6 +49,7 @@ button, input, textarea, select {
   background: none;
   cursor: pointer;
   outline: none;
+  touch-action: manipulation;
 }
 
 img, picture, video, canvas, svg {

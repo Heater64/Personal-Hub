@@ -21,6 +21,7 @@ import { MalDiaPage } from './pages/MalDia.js';
 import { OpenWhenPage } from './pages/OpenWhen.js';
 import { SeriesPage } from './pages/Series.js';
 import { ThoseEyesPage } from './pages/ThoseEyes.js';
+import { JustTheWayYouArePage } from './pages/JustTheWayYouAre.js';
 import { OsitosWorldPage } from './pages/OsitosWorld.js';
 
 function init() {
@@ -110,6 +111,12 @@ function init() {
   // Register Those Eyes page
   router.addRoute('/thoseeyes', () => ThoseEyesPage(router), {
     title: 'Those Eyes · Personal Hub',
+    protected: true
+  });
+
+  // Register Just The Way You Are page (experiencia inmersiva)
+  router.addRoute('/justthewayyouare', () => JustTheWayYouArePage(router), {
+    title: 'Just The Way You Are · Personal Hub',
     protected: true
   });
 

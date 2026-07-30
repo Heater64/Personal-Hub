@@ -10,6 +10,36 @@ GRANT USAGE ON SCHEMA public TO anon;
 GRANT USAGE ON SCHEMA public TO authenticated;
 
 -- ==========================================
+-- MIGRACIÓN: Asegurar UUID en columnas de clave
+-- Si en versiones anteriores estas columnas se crearon como TEXT,
+-- se convierten a UUID de forma segura.
+-- ==========================================
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'id' AND data_type = 'text') THEN
+    ALTER TABLE public.profiles ALTER COLUMN id TYPE UUID USING NULLIF(id, '')::uuid;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'moods' AND column_name = 'user_id' AND data_type = 'text') THEN
+    ALTER TABLE public.moods ALTER COLUMN user_id TYPE UUID USING NULLIF(user_id, '')::uuid;
+  END IF;
+END $$;
+
+-- ==========================================
+-- HELPER: verificar si el usuario actual es administrador
+-- Usa SECURITY DEFINER para evitar recursión en RLS
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id::uuid = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ==========================================
 -- 1. CONTENT — Toda la config (razones, canciones,
 --    noticias, regalos, maldía, series, changelog)
 -- ==========================================
@@ -56,9 +86,22 @@ GRANT ALL ON moods TO authenticated;
 DROP POLICY IF EXISTS "moods_read_all" ON moods;
 DROP POLICY IF EXISTS "moods_insert_all" ON moods;
 DROP POLICY IF EXISTS "moods_update_all" ON moods;
-CREATE POLICY "moods_read_all" ON moods FOR SELECT USING (true);
-CREATE POLICY "moods_insert_all" ON moods FOR INSERT WITH CHECK (true);
-CREATE POLICY "moods_update_all" ON moods FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "moods_select_policy" ON moods;
+DROP POLICY IF EXISTS "moods_insert_policy" ON moods;
+DROP POLICY IF EXISTS "moods_update_policy" ON moods;
+DROP POLICY IF EXISTS "moods_delete_policy" ON moods;
+
+CREATE POLICY "moods_select_policy" ON moods FOR SELECT
+  USING (user_id::uuid = auth.uid() OR public.is_admin());
+
+CREATE POLICY "moods_insert_policy" ON moods FOR INSERT
+  WITH CHECK (user_id::uuid = auth.uid());
+
+CREATE POLICY "moods_update_policy" ON moods FOR UPDATE
+  USING (user_id::uuid = auth.uid());
+
+CREATE POLICY "moods_delete_policy" ON moods FOR DELETE
+  USING (user_id::uuid = auth.uid() OR public.is_admin());
 
 -- ==========================================
 -- 3. ACTIVITY_LOG — Registro de actividad
@@ -104,9 +147,46 @@ GRANT ALL ON profiles TO authenticated;
 DROP POLICY IF EXISTS "profiles_read_all" ON profiles;
 DROP POLICY IF EXISTS "profiles_insert_all" ON profiles;
 DROP POLICY IF EXISTS "profiles_update_all" ON profiles;
-CREATE POLICY "profiles_read_all" ON profiles FOR SELECT USING (true);
-CREATE POLICY "profiles_insert_all" ON profiles FOR INSERT WITH CHECK (true);
-CREATE POLICY "profiles_update_all" ON profiles FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "profiles_select_policy" ON profiles;
+DROP POLICY IF EXISTS "profiles_insert_policy" ON profiles;
+DROP POLICY IF EXISTS "profiles_update_policy" ON profiles;
+
+CREATE POLICY "profiles_select_policy" ON profiles FOR SELECT
+  USING (id::uuid = auth.uid() OR public.is_admin());
+
+CREATE POLICY "profiles_insert_policy" ON profiles FOR INSERT
+  WITH CHECK (id::uuid = auth.uid());
+
+CREATE POLICY "profiles_update_policy" ON profiles FOR UPDATE
+  USING (id::uuid = auth.uid() OR public.is_admin());
+
+-- Trigger para evitar que un usuario no-admin cambie su propio rol a admin,
+-- y para evitar que el último administrador se quite su rol.
+CREATE OR REPLACE FUNCTION public.prevent_role_escalation()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    -- Solo los administradores pueden cambiar roles
+    IF NOT public.is_admin() THEN
+      RAISE EXCEPTION 'Solo los administradores pueden cambiar el rol.';
+    END IF;
+
+    -- Evitar que el último admin se quite su propio rol
+    IF OLD.id::uuid = auth.uid()
+       AND OLD.role = 'admin'
+       AND NEW.role <> 'admin'
+       AND NOT EXISTS (SELECT 1 FROM public.profiles WHERE role = 'admin' AND id::uuid <> OLD.id::uuid) THEN
+      RAISE EXCEPTION 'No puedes eliminar tu propio rol de administrador porque eres el último administrador.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS profiles_prevent_role_change ON public.profiles;
+CREATE TRIGGER profiles_prevent_role_change
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_role_escalation();
 
 -- Trigger para crear perfil automáticamente al registrar un usuario.
 -- Solo se dispara en INSERT para no sobrescribir cambios manuales en UPDATE.

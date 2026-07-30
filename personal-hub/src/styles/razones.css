@@ -24,6 +24,7 @@
   animation: slide-up 0.6s ease forwards;
   overflow: hidden;
   isolation: isolate;
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth), margin-bottom var(--dur-smooth);
 }
 
 .razones-header::before {
@@ -518,5 +519,81 @@
     width: 44px;
     height: 44px;
     border-radius: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .razones-header {
+    padding: 18px 12px 16px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-md);
+  }
+
+  .razones-header h1 {
+    font-size: var(--fs-base);
+  }
+
+  .razones-header p {
+    font-size: var(--fs-xs);
+  }
+
+  .razones-grid {
+    gap: 10px;
+    margin-bottom: 80px;
+  }
+
+  .razon-card {
+    padding: 12px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .razon-number {
+    font-size: 2.4rem;
+    bottom: 4px;
+    right: 8px;
+  }
+
+  .razon-content {
+    font-size: 0.7rem;
+    padding-right: 14px;
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+
+  .fav-btn {
+    padding: 4px 10px;
+    font-size: 0.65rem;
+  }
+
+  .razones-fab {
+    bottom: 76px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .razones-modal-content {
+    padding: 28px 14px 24px;
+    border-radius: var(--radius-md);
+  }
+
+  .razones-modal-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 14px;
+  }
+
+  .razones-modal-content h3 {
+    font-size: var(--fs-base);
+  }
+
+  .razones-modal-text {
+    font-size: var(--fs-xs);
+  }
+
+  .razones-modal-btn {
+    padding: 8px 18px;
+    font-size: var(--fs-xs);
   }
 }

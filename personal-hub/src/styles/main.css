@@ -25,6 +25,7 @@
 @import url('./openwhen.css');
 @import url('./series.css');
 @import url('./thoseeyes.css');
+@import url('./justthewayyouare.css');
 @import url('./ositos.css');
 
 /* ==========================================
@@ -188,31 +189,60 @@ body {
 /* Móvil muy pequeño */
 @media (max-width: 360px) {
   .app-content {
-    padding: 12px 8px 72px;
+    padding: 10px 6px 72px;
   }
 
   .modal-overlay {
-    padding: 12px;
+    padding: 8px;
   }
 
   .modal-content {
     border-radius: var(--radius-lg);
+    max-width: 100%;
   }
 
   .modal-content.modal-form {
-    padding: 20px 14px;
+    padding: 16px 10px;
   }
 
   .btn-primary,
   .btn-secondary,
   .btn-danger {
-    padding: 8px 16px;
+    padding: 6px 12px;
     font-size: var(--fs-xs);
   }
 
   .back-home-btn {
-    padding: 6px 14px;
+    padding: 6px 12px;
     font-size: var(--fs-xs);
+  }
+
+  .glass-card {
+    border-radius: var(--radius-md);
+  }
+
+  .page-header h2 {
+    font-size: var(--fs-lg);
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+
+  .loading-state {
+    min-height: 120px;
+  }
+
+  .error-state {
+    padding: 40px 12px;
   }
 }
 
@@ -294,9 +324,229 @@ body {
   box-shadow: var(--theme-shadow-md);
 }
 
-/* Transición suave para cambio de tema — solo contenedores principales */
+/* ==========================================
+   SMOOTH RESPONSIVE — Transiciones suaves entre breakpoints
+   Hace que los cambios de padding, font-size, border-radius y gap
+   se sientan fluidos al redimensionar la ventana.
+   ========================================== */
+
+/* Layout containers */
 .app-content {
-  transition: background var(--dur-slow), margin-left var(--dur-mid), padding var(--dur-mid);
+  transition: background var(--dur-slow), margin-left var(--dur-mid), padding var(--dur-mid), max-width var(--dur-smooth);
+}
+
+/* Page headers — añaden transición a los que no tienen transition: all */
+.bento-hero,
+.rincon-hero,
+.rincon-section-card,
+.sentimientos-header,
+.calendario-header,
+.openwhen-header,
+.maldia-header,
+.juegos-header,
+.razones-header,
+.series-header,
+.admin-header,
+.profile-header,
+.spb-header,
+.news-banner {
+  transition: padding var(--dur-smooth),
+              border-radius var(--dur-smooth),
+              margin-bottom var(--dur-smooth);
+}
+
+/* Headings inside headers that change font-size at breakpoints */
+.bento-hero h2,
+.bento-hero p,
+.rincon-hero h2,
+.sentimientos-header h1,
+.calendario-header h2,
+.openwhen-header h1,
+.maldia-header h1,
+.juegos-header h2,
+.razones-header h1,
+.series-header-top h2,
+.admin-header h1,
+.profile-name,
+.thoseeyes-title .t1,
+.thoseeyes-title .t2,
+.spb-header-badge h3,
+.month-title {
+  transition: font-size var(--dur-smooth),
+              line-height var(--dur-smooth);
+}
+
+/* Secondary text in headers */
+.eyebrow,
+.bento-hero .hero-divider,
+.rincon-hero .text-muted,
+.sentimientos-header p,
+.calendario-header p,
+.openwhen-header p,
+.maldia-header p,
+.juegos-header .text-muted,
+.razones-header p,
+.series-header .text-muted,
+.admin-header p,
+.profile-role,
+.profile-email,
+.spb-header-badge .text-muted {
+  transition: font-size var(--dur-smooth);
+}
+
+/* Cards and sections that change padding/border-radius at breakpoints */
+.rinco-section,
+.series-card,
+.razon-card,
+.juego-card,
+.openwhen-card,
+.sentimientos-card,
+.curiosity-card,
+.day-card,
+.spb-quick-card,
+.maldia-hero-card,
+.maldia-memories-card,
+.rincon-section-card {
+  transition: padding var(--dur-smooth),
+              border-radius var(--dur-smooth),
+              gap var(--dur-smooth);
+}
+
+/* Dashed on elements that already have transition: all — just add responsive props */
+
+/* Grid container gap changes */
+.razones-grid,
+.juegos-grid,
+.sentimientos-grid,
+.curiosities-grid,
+.calendar-grid,
+.openwhen-grid,
+.rincon-grid,
+.rincon-sections-grid,
+.spb-quick-grid {
+  transition: gap var(--dur-smooth);
+}
+
+/* Sub-components: icon, buttons, counts */
+.curiosity-icon,
+.juego-card-icon,
+.sentimientos-card-icon,
+.openwhen-card-icon,
+.rincon-section-card .rsc-icon,
+.day-number,
+.month-btn,
+.profile-btn,
+.profile-admin-btn,
+.theme-btn,
+.mood-btn,
+.fav-btn,
+.close-modal,
+.experience-modal-close,
+.razones-fab {
+  transition: width var(--dur-smooth),
+              height var(--dur-smooth),
+              font-size var(--dur-smooth),
+              padding var(--dur-smooth);
+}
+
+/* PWA banners responsive */
+.pwa-install-banner,
+.pwa-update-banner {
+  transition: padding var(--dur-smooth),
+              gap var(--dur-smooth),
+              transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1),
+              opacity 0.35s ease;
+}
+
+/* ==========================================
+   TOUCH — Experiencia táctil mejorada en móvil
+   Elimina el retraso de 300ms al tap, evita el
+   zoom no deseado en inputs y double-tap zoom.
+   ========================================== */
+
+/* Todos los botones y controles interactivos */
+button,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-sm,
+.back-home-btn,
+[role="button"],
+.card,
+.glass-card,
+.glass-card-strong,
+.nav a,
+.nav button,
+.bottom-nav__item,
+.sidebar__link,
+.sidebar__user,
+.sidebar__logout,
+.month-btn,
+.news-hide-btn,
+.news-toggle,
+.curio-tab,
+.folder-btn,
+.rincon-subnav__btn,
+.rincon-back-btn,
+.mood-btn,
+.theme-btn,
+.profile-btn,
+.profile-admin-btn,
+.fav-btn,
+.razones-fab,
+.razones-modal-btn,
+.razones-modal-close,
+.maldia-action-btn,
+.maldia-music-toggle,
+.maldia-mini-btn,
+.maldia-breathing-btn,
+.maldia-stop-btn,
+.maldia-modal-close,
+.openwhen-open-btn,
+.openwhen-close-btn,
+.player-btn,
+.play-btn,
+.icon-btn,
+.playlist-item,
+.playlist-tab,
+.series-chip,
+.series-view-tab,
+.series-podium-tab,
+.series-card-action,
+.experience-modal-close,
+.lyrics-lightbox-close,
+.admin-btn,
+.admin-tab,
+.admin-modal-close,
+.item-action-btn,
+.moods-nav-btn {
+  touch-action: manipulation;
+}
+
+/* Inputs y campos de formulario — evita zoom al enfocar */
+input,
+textarea,
+select,
+.admin-field input,
+.admin-field textarea,
+.admin-field select,
+.admin-search-input,
+.series-search-input {
+  touch-action: manipulation;
+  /* font-size mínima de 16px evita zoom automático en iOS */
+  font-size: 16px;
+}
+
+/* Corrección para iOS: inputs pequeños no deben hacer zoom */
+@media (max-width: 480px) {
+  input,
+  textarea,
+  select,
+  .admin-field input,
+  .admin-field textarea,
+  .admin-field select {
+    font-size: 16px !important;
+  }
 }
 
 /* ==========================================

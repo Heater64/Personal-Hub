@@ -41,7 +41,7 @@ const ALL_SONGS = [
   { title: "Pareja del Año", artist: "Sebastián Yatra, Myke Towers", cover: "https://i.scdn.co/image/ab67616d0000b273311aebbc00f1cd4cd16bacbc", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748875/Sebasti%C3%A1n_Yatra_-_Tacones_Rojos_Official_Video_o09dxd.m4a" },
   { title: "COSAS QUE NO TE DIJE", artist: "Saiko", cover: "https://images.genius.com/acb90eccfc4f36d9675d8d2f58c86670.1000x1000x1.png", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748875/Saiko_-_COSAS_QUE_NO_TE_DIJE_Official_Video_dbpazx.m4a" },
   { title: "Quiero Decirte", artist: "Abraham Mateo, Ana Mena", cover: "https://images.genius.com/7e834ed5f2fd7a331d2e8d4f948cda4b.1000x1000x1.jpg", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748876/Abraham_Mateo_Ana_Mena_-_Quiero_Decirte_myiibs.m4a" },
-  { title: "Just the Way You Are", artist: "Bruno Mars", cover: "https://cdn-images.dzcdn.net/images/cover/5b59dc18e109515420f8237719bd2186/1900x1900-000000-80-0-0.jpg", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748879/Bruno_Mars_-_Just_The_Way_You_Are_i8mkhd.m4a" },
+  { title: "Just the Way You Are", artist: "Bruno Mars", cover: "https://cdn-images.dzcdn.net/images/cover/5b59dc18e109515420f8237719bd2186/1900x1900-000000-80-0-0.jpg", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748879/Bruno_Mars_-_Just_The_Way_You_Are_i8mkhd.m4a", experience: 'justthewayyouare' },
   { title: "Ven a la Carrera", artist: "Pocoyó", cover: "https://i.scdn.co/image/ab67616d0000b2730952f5f2ec131e56b3ba7b27", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748881/%EF%B8%8FPOCOY%C3%93_-_Ven_a_la_Carrera_ysppwm.m4a" },
   { title: "Besos en Guerra", artist: "Morat, Juanes", cover: "https://i.scdn.co/image/ab67616d0000b2738fa1c3557fd95f9dd67ec235", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748882/Morat_Juanes_-_Besos_en_Guerra_Letra._vnnvdn.m4a" },
   { title: "Carita de Buena", artist: "Efecto Pasillo", cover: "https://m.media-amazon.com/images/I/61F144gibPL._UXNaN_FMjpg_QL85_.jpg", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748883/Efecto_Pasillo_-_Carita_de_Buena_Letra_ja14lf.m4a" },
@@ -293,11 +293,17 @@ export function CancionesPage(router) {
   function renderPlaylist() {
     const list = document.getElementById('playlist');
     if (!list) return;
-    list.innerHTML = activeList.map((s, i) => `
-      <button type="button" class="playlist-item ${i === currentIdx ? 'is-active' : ''}" data-index="${i}">
+    list.innerHTML = activeList.map((s, i) => {
+      const isSpecial = !!s.experience;
+      const experienceRoute = isSpecial ? `#/${s.experience}` : '';
+      return `
+      <button type="button" class="playlist-item ${i === currentIdx ? 'is-active' : ''}${isSpecial ? ' is-special' : ''}" data-index="${i}">
         <img src="${s.cover}" alt="${escapeHtml(s.title)}" loading="lazy">
         <div class="playlist-item-info">
-          <strong>${escapeHtml(s.title)}</strong>
+          <strong>
+            ${escapeHtml(s.title)}
+            ${isSpecial ? '<span class="special-badge">✨ Experiencia</span>' : ''}
+          </strong>
           <span>${escapeHtml(s.artist)}</span>
         </div>
         <span class="playlist-item-icon">
@@ -306,8 +312,11 @@ export function CancionesPage(router) {
             : '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
           }
         </span>
+        ${isSpecial ? `<a href="${experienceRoute}" class="playlist-exp-btn" title="Experiencia inmersiva" onclick="event.stopPropagation()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </a>` : ''}
       </button>
-    `).join('');
+    `}).join('');
 
     list.querySelectorAll('.playlist-item').forEach(btn => {
       btn.addEventListener('click', () => {

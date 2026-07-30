@@ -13,7 +13,7 @@
   border: var(--theme-border-subtle);
   position: relative;
   overflow: hidden;
-  transition: all var(--dur-smooth);
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth), margin-bottom var(--dur-smooth), all var(--dur-smooth);
   animation: slide-up 0.6s ease forwards;
 }
 
@@ -749,5 +749,131 @@
     width: 40px;
     height: 40px;
     margin-bottom: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .bento-hero {
+    padding: 20px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .bento-hero h2 {
+    font-size: var(--fs-lg);
+  }
+
+  .bento-hero p {
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+  }
+
+  .bento-hero::before {
+    width: 50%;
+  }
+
+  .eyebrow {
+    font-size: 0.6rem;
+    margin-bottom: 12px;
+  }
+
+  .hero-divider {
+    margin: 14px 0;
+  }
+
+  .day-counter {
+    padding: 5px 12px;
+    font-size: 0.65rem;
+    gap: 4px;
+  }
+
+  .news-banner {
+    padding: 12px 10px;
+    margin-bottom: 14px;
+  }
+
+  .news-header {
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+
+  .news-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .news-title {
+    font-size: var(--fs-sm);
+  }
+
+  .news-item {
+    padding: 10px 12px;
+  }
+
+  .news-item-title {
+    font-size: var(--fs-xs);
+  }
+
+  .news-item-desc {
+    font-size: 0.7rem;
+  }
+
+  .news-date {
+    font-size: 0.55rem;
+  }
+
+  .news-toggle {
+    padding: 8px;
+    font-size: 0.7rem;
+  }
+
+  .curiosities-header {
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+
+  .curiosities-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .curiosities-header h3 {
+    font-size: var(--fs-sm);
+  }
+
+  .curiosities-grid {
+    gap: 10px;
+  }
+
+  .curiosity-card {
+    padding: 14px 12px;
+    border-radius: var(--radius-sm);
+  }
+
+  .curiosity-card h4 {
+    font-size: var(--fs-xs);
+    margin-bottom: 4px;
+  }
+
+  .curiosity-card p {
+    font-size: 0.68rem;
+  }
+
+  .curiosity-icon {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 10px;
+  }
+
+  .curiosity-icon-emoji {
+    font-size: 1.2rem;
+  }
+
+  .home-footer {
+    padding: 24px 12px;
+  }
+
+  .home-footer p {
+    font-size: 0.55rem;
   }
 }

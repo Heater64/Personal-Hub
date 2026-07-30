@@ -27,6 +27,7 @@
   animation: slide-up 0.6s ease forwards;
   overflow: hidden;
   isolation: isolate;
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth);
 }
 
 .maldia-header-icon {
@@ -678,5 +679,93 @@
   .maldia-breathing-circle {
     width: 100px;
     height: 100px;
+  }
+}
+
+@media (max-width: 360px) {
+  .maldia-header {
+    padding: 20px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .maldia-header h1 {
+    font-size: var(--fs-base);
+  }
+
+  .maldia-header p {
+    font-size: var(--fs-xs);
+  }
+
+  .maldia-header-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 10px;
+  }
+
+  .maldia-hero-card {
+    padding: 18px 12px 16px;
+  }
+
+  .maldia-hero-card h2 {
+    font-size: 0.88rem;
+    margin-bottom: 12px;
+  }
+
+  .maldia-message {
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .maldia-heart-icon {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 10px;
+  }
+
+  .maldia-actions {
+    gap: 8px;
+  }
+
+  .maldia-action-btn {
+    padding: 8px 14px;
+    font-size: 0.72rem;
+  }
+
+  .maldia-music-player {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .maldia-music-label {
+    font-size: 0.65rem;
+    min-width: 40px;
+  }
+
+  .maldia-memories-card {
+    padding: 14px;
+  }
+
+  .maldia-daily-message {
+    font-size: 0.8rem;
+    padding: 12px;
+  }
+
+  .maldia-modal-content {
+    padding: 28px 12px 20px;
+    width: 96vw;
+  }
+
+  .maldia-breathing-circle {
+    width: 80px;
+    height: 80px;
+  }
+
+  .maldia-breathing-text {
+    font-size: 0.9rem;
+  }
+
+  .maldia-breathing-btn {
+    padding: 10px 20px;
+    font-size: 0.82rem;
   }
 }

@@ -28,6 +28,7 @@
   overflow: hidden;
   isolation: isolate;
   animation: slide-up 0.5s ease forwards;
+  transition: padding var(--dur-smooth), border-radius var(--dur-smooth);
 }
 
 .profile-header::before {
@@ -927,5 +928,124 @@
 
   .toggle-switch input:checked + .toggle-slider::before {
     transform: translateX(18px);
+  }
+}
+
+@media (max-width: 360px) {
+  .profile-header {
+    padding: 20px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .profile-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .profile-initial {
+    font-size: 1.1rem;
+  }
+
+  .profile-avatar-edit {
+    width: 18px;
+    height: 18px;
+    right: -2px;
+    bottom: -2px;
+  }
+
+  .profile-name {
+    font-size: var(--fs-base);
+  }
+
+  .profile-section {
+    padding: 14px 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .profile-section__header {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .profile-section__icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+
+  .profile-section__icon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .profile-section__header h4 {
+    font-size: var(--fs-sm);
+  }
+
+  .theme-options {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .theme-btn {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: var(--fs-xs);
+  }
+
+  .profile-info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 6px 4px;
+  }
+
+  .profile-info-value {
+    text-align: left;
+    font-size: var(--fs-xs);
+  }
+
+  .profile-setting {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .toggle-switch {
+    align-self: flex-start;
+  }
+
+  .profile-btn {
+    padding: 8px 10px;
+    font-size: var(--fs-xs);
+    margin-top: 8px;
+  }
+
+  .profile-admin-btn {
+    padding: 12px 12px;
+    gap: 10px;
+  }
+
+  .profile-admin-btn-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .profile-mood-badge {
+    padding: 8px 14px;
+  }
+
+  .mood-btn {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .mood-btn__emoji {
+    font-size: 1rem;
+    width: 24px;
+  }
+
+  .mood-btn__label {
+    font-size: var(--fs-xs);
   }
 }

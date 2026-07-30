@@ -38,6 +38,7 @@
   transition: all var(--dur-smooth);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  touch-action: manipulation;
 }
 
 .bottom-nav__item:hover {

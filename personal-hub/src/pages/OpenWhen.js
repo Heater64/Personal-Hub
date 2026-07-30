@@ -5,40 +5,74 @@
 
 const LETTERS = [
   {
-    title: "Ábrela cuando sientas que no te amo.",
-    note: "Cosa que no es verdad, yo siempre te amo y te amaré por siempre jamás.",
-    message: "Te amo mucho y quiero que sepas que siempre estaré aquí para ti, apoyándote en cada paso del camino. Porque estamos juntos en esto. Peluche y princesa para siempre."
+    title: "Ábrela cuando sientas que no te amo",
+    note: "Cosa que no es verdad, yo siempre te amo y te amaré por siempre jamás",
+    message: "Te amo mucho y quiero que sepas que siempre estaré aquí para ti, apoyándote en cada paso del camino. Porque estamos juntos en esto. Peluche y princesa para siempre"
   },
   {
-    title: "Ábrela cuando estés triste.",
-    note: "No estás sola, siempre hay alguien que piensa en ti.",
-    message: "Sé que a veces las cosas no salen como queremos, pero quiero que recuerdes que eres increíble. Tu sonrisa ilumina mi mundo y no hay nada que no puedas superar. Estoy aquí para ti, siempre."
+    title: "Ábrela cuando estés triste",
+    note: "No estás sola, siempre hay alguien que piensa en ti",
+    message: "Sé que a veces las cosas no salen como queremos, pero quiero que recuerdes que eres increíble. Tu sonrisa ilumina mi mundo y no hay nada que no puedas superar. Estoy aquí para ti, siempre"
   },
   {
-    title: "Ábrela cuando necesites un abrazo.",
+    title: "Ábrela cuando necesites un abrazo",
     note: "Aunque no pueda darte un abrazo físico, aquí tienes uno virtual.",
-    message: "Imagina que te abrazo muy fuerte, que acaricio tu pelo y te digo al oído todo lo que te quiero. Eres la persona más importante para mí y deseo poder abrazarte ahora mismo."
+    message: "Imagina que te abrazo muy fuerte, que acaricio tu pelo y te digo al oído todo lo que te quiero. Eres la persona más importante para mí y deseo poder abrazarte ahora mismo"
   },
   {
-    title: "Ábrela cuando estés orgullosa de ti.",
-    note: "Porque tienes mucho que celebrar.",
+    title: "Ábrela cuando estés orgullosa de ti",
+    note: "Porque tienes mucho que celebrar",
     message: "¡Mira todo lo que has logrado! Estoy tan orgulloso de ti y de la persona increíble que eres. Cada día me sorprendes más con tu fuerza, tu inteligencia y tu corazón enorme. ¡Te mereces el mundo!"
   },
   {
-    title: "Ábrela cuando tengas dudas.",
-    note: "Sobre nosotros, sobre ti, sobre lo que sea.",
-    message: "Si alguna vez tienes dudas, recuerda esto: te elijo hoy, mañana y siempre. No hay nada que pueda cambiar lo que siento por ti. Eres mi persona favorita en este universo y siempre lo serás."
+    title: "Ábrela cuando tengas dudas",
+    note: "Sobre nosotros, sobre ti, sobre lo que sea",
+    message: "Si alguna vez tienes dudas, recuerda esto: te elijo hoy, mañana y siempre. No hay nada que pueda cambiar lo que siento por ti. Eres mi persona favorita en este universo y siempre lo serás"
   },
   {
-    title: "Ábrela cuando simplemente quieras sentirte querida.",
-    note: "Porque siempre mereces saberlo.",
-    message: "Eres hermosa, inteligente, divertida, fuerte y única. No hay nadie como tú en este mundo y me siento el afortunado de tenerte en mi vida. Te quiero más de lo que las palabras pueden expresar."
-  }
+    title: "Ábrela cuando simplemente quieras sentirte querida",
+    note: "Porque siempre mereces saberlo",
+    message: "Eres hermosa, inteligente, divertida, fuerte y única. No hay nadie como tú en este mundo y me siento el afortunado de tenerte en mi vida. Te quiero más de lo que las palabras pueden expresar"
+  },
+  {
+    title: "Ábrela cuando estés cansada de todo",
+    note: "Cuando no puedas más...",
+    message: "Échale ganas hermosa, sé que estás cansada, con sueño, pero son momentos. Recuerda que puedes con todo, eres muy fuerte, y lista😘. Y solo mía jsjsjsjs. Te amo 🤍"
+  },
+  {
+    title: "Ábrela cuando necesites palabras bonitas",
+    note: "Cuando necesites escuchar algo lindo",
+    message: "Eres una niña muy linda, hermosa, guapa, valiosa, y vales muchísimo. Por si nadie te lo ha dicho hoy, estás hermosa 🤍. Tienes unos ojitos hermosos y siempre siempre serás mi niña preciosa"
+  },
+  {
+    title: "POR SI NADIE TE LO HA DICHO HOY",
+    note: "🤍👑✨",
+    message: "Tú importas, vales la pena, eres suficiente, eres INCREÍBLE, te ves hermosa cuando sonríes, y te mereces todo lo bonito en la vida"
+  },
+  {
+    title: "Las 7 maravillas del mundo🤍",
+    note: "jsjsjsj",
+    message: "1. Tus ojos\n2. Tu sonrisa\n3. Tu forma de ser\n4. Tus abrazos\n5. Tu inteligencia\n6. Tu energía\n7. Simplemente tú"
+  },
+  {
+    title: "Ábrela si no te he dado los buenos días hoy",
+    note: "Te amo mi niña hermosa😘🧸",
+    message: "Buenos días REINA👑, espero que la princesita haya amanecido bien y tenga un día tan hermoso como ella (TÚ). IMPLOSIBLE MI NIÑA ES HERMOSISIMAAAAAAAAAA✨"
+  },
 ];
 
 function escapeHtml(str) {
   if (!str) return '';
-  return String(str).replace(/[&<>"']/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : m === '"' ? '&quot;' : '&#39;');
+  // Manejar objetos convirtiéndolos a string
+  if (typeof str === 'object') {
+    str = JSON.stringify(str);
+  }
+  return String(str).replace(/[&<>"']/g, m => 
+    m === '&' ? '&amp;' : 
+    m === '<' ? '&lt;' : 
+    m === '>' ? '&gt;' : 
+    m === '"' ? '&quot;' : '&#39;'
+  );
 }
 
 export function OpenWhenPage(router) {
