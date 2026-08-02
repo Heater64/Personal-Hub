@@ -4,7 +4,6 @@
    ========================================== */
 
 import { moodStore } from '../stores/mood.store.js';
-import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
 
 export function WelcomeScreen({ onDone, onSkip } = {}) {
@@ -52,10 +51,10 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
   const nameEl = overlay.querySelector('#welcomeName');
   const greetingEl = overlay.querySelector('#welcomeGreeting');
 
-  const user = userStore.getUser();
-  if (user?.name) nameEl.textContent = user.name.split(' ')[0];
+  // La bienvenida siempre se dirige a la usuaria como "princesa" (el nombre de
+  // la cuenta puede ser un email/local por defecto). No sobreescribimos nameEl.
 
-  // Set greeting based on time
+  // Set greeting based on time of day (local)
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 12) greetingEl.textContent = 'Buenos días';
   else if (hour >= 12 && hour < 18) greetingEl.textContent = 'Buenas tardes';

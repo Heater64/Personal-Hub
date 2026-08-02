@@ -1834,41 +1834,58 @@ body.lightbox-open {
 .romantic-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 20px;
 }
 
+/* ==========================================
+   RINCÓN CARDS — alineadas visualmente con
+   las .curiosity-card de Home (Sentimiento)
+   ========================================== */
 .romantic-btn {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px;
+  gap: 18px;
+  padding: 28px 24px;
   border-radius: var(--radius-lg);
   border: var(--theme-border-subtle);
   background: var(--theme-bg-card);
   cursor: pointer;
   text-align: left;
-  transition: all var(--dur-mid) cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--dur-smooth);
   overflow: hidden;
   font-family: inherit;
   width: 100%;
+  /* Sentimiento: lift sutil + sombra glow en hover */
+  transform: translateY(0);
 }
 
 .romantic-btn::before {
+  /* Sentimiento: tira de acento superior centrada */
   content: '';
   position: absolute;
-  left: 0;
   top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--card-accent, var(--theme-accent-primary));
-  border-radius: 0 4px 4px 0;
-  opacity: 0.7;
-  transition: opacity var(--dur-fast);
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--theme-accent-primary), transparent);
+  opacity: 0;
+  transform: scaleX(0.5);
+  transition: all var(--dur-smooth);
+  pointer-events: none;
+  border-radius: 2px;
 }
 
 .romantic-btn:hover::before {
   opacity: 1;
+  transform: scaleX(1);
+  left: 10%;
+  right: 10%;
+}
+
+.romantic-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--theme-shadow-lg);
 }
 
 .romantic-btn:active {
@@ -1876,31 +1893,36 @@ body.lightbox-open {
 }
 
 .romantic-btn-icon {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
   background: var(--theme-accent-dim);
-  color: var(--card-accent, var(--theme-accent-primary));
-  transition: transform var(--dur-fast);
+  color: var(--theme-accent-primary);
+  transition: all var(--dur-spring);
+  margin-bottom: 0;
 }
 
 .romantic-btn:hover .romantic-btn-icon {
-  transform: scale(1.08);
+  /* Sentimiento: icono rota y adquiere bg acento + glow */
+  transform: scale(1.1) rotate(-5deg);
+  background: var(--theme-accent-primary);
+  color: var(--theme-text-inverse, #fff);
+  box-shadow: var(--theme-shadow-glow);
 }
 
 .romantic-btn-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .romantic-btn-text {
   flex: 1;
-  font-size: var(--fs-base);
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--theme-text-primary);
 }
@@ -1909,7 +1931,7 @@ body.lightbox-open {
   flex-shrink: 0;
   color: var(--theme-text-muted);
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateX(8px);
   transition: all var(--dur-fast);
 }
 
@@ -1932,13 +1954,13 @@ body.lightbox-open {
   }
 
   .romantic-btn {
-    gap: 12px;
-    padding: 18px;
+    gap: 14px;
+    padding: 20px 18px;
   }
 
   .romantic-btn-icon {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     font-size: 1.8rem;
   }
 

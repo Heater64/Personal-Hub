@@ -317,8 +317,6 @@ export async function initPWA() {
 
   // Check app version
   checkVersion();
-
-  console.log('📱 PWA Service initialized');
 }
 
 // ==========================================

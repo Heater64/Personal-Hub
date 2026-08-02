@@ -62,9 +62,6 @@ const LEGACY_KEYS = [
  */
 export function cleanupLegacyKeys() {
   LEGACY_KEYS.forEach(key => {
-    if (localStorage.getItem(key) !== null) {
-      localStorage.removeItem(key);
-      console.log('[userStorage] removed legacy key:', key);
-    }
+    localStorage.removeItem(key);
   });
 }

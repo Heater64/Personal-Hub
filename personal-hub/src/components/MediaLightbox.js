@@ -10,13 +10,6 @@ let state = {
   videoEl: null
 };
 
-function formatTime(s) {
-  if (!isFinite(s)) return '0:00';
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60).toString().padStart(2, '0');
-  return `${m}:${sec}`;
-}
-
 function detectMime(src) {
   if (/\.webm(\?.*)?$/i.test(src)) return 'video/webm';
   if (/\.mov(\?.*)?$/i.test(src)) return 'video/quicktime';

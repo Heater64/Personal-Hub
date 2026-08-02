@@ -19,12 +19,6 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Temporary copies for dev (games and legacy dependencies)
-public/games/
-public/css/
-public/services/
-public/shared/
-
 # Logs
 *.log
 npm-debug.log*

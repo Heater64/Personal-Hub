@@ -11,18 +11,14 @@ import { LoginPage } from './pages/Login.js';
 import { HomePage } from './pages/Home.js';
 import { ProfilePage } from './pages/Profile.js';
 import { AdminPage } from './pages/Admin.js';
-import { RinconPage } from './pages/Rincon.js';
-import { CancionesPage } from './pages/Canciones.js';
 import { RazonesPage } from './pages/Razones.js';
-import { SentimientosPage } from './pages/Sentimientos.js';
-import { JuegosPage } from './pages/Juegos.js';
-import { CalendarioPage } from './pages/Calendario.js';
 import { MalDiaPage } from './pages/MalDia.js';
 import { OpenWhenPage } from './pages/OpenWhen.js';
-import { SeriesPage } from './pages/Series.js';
-import { ThoseEyesPage } from './pages/ThoseEyes.js';
-import { JustTheWayYouArePage } from './pages/JustTheWayYouAre.js';
-import { OsitosWorldPage } from './pages/OsitosWorld.js';
+
+// Lazy loader para páginas pesadas → code-splitting
+// Uso: lazy(() => import('./pages/X.js').then(m => m.XPage))
+// El router resuelve el Promise y muestra el skeleton mientras carga
+const lazy = (loader) => async (router) => (await loader())(router);
 
 function init() {
   // Create router
@@ -55,13 +51,13 @@ function init() {
     skipMood: true
   });
 
-  router.addRoute('/rincon', () => RinconPage(router), {
+  router.addRoute('/rincon', lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)), {
     title: 'Rincón · Personal Hub',
     protected: true
   });
 
   // Register Canciones page
-  router.addRoute('/canciones', () => CancionesPage(router), {
+  router.addRoute('/canciones', lazy(() => import('./pages/Canciones.js').then(m => m.CancionesPage)), {
     title: 'Canciones · Personal Hub',
     protected: true
   });
@@ -73,19 +69,19 @@ function init() {
   });
 
   // Register Sentimientos page
-  router.addRoute('/sentimientos', () => SentimientosPage(router), {
+  router.addRoute('/sentimientos', lazy(() => import('./pages/Sentimientos.js').then(m => m.SentimientosPage)), {
     title: 'Sentimientos · Personal Hub',
     protected: true
   });
 
   // Register Juegos page
-  router.addRoute('/juegos', () => JuegosPage(router), {
+  router.addRoute('/juegos', lazy(() => import('./pages/Juegos.js').then(m => m.JuegosPage)), {
     title: 'Juegos · Personal Hub',
     protected: true
   });
 
   // Register Calendario page
-  router.addRoute('/calendario', () => CalendarioPage(router), {
+  router.addRoute('/calendario', lazy(() => import('./pages/Calendario.js').then(m => m.CalendarioPage)), {
     title: 'Calendario · Personal Hub',
     protected: true
   });
@@ -103,25 +99,25 @@ function init() {
   });
 
   // Register Series page
-  router.addRoute('/series', () => SeriesPage(router), {
+  router.addRoute('/series', lazy(() => import('./pages/Series.js').then(m => m.SeriesPage)), {
     title: 'Series · Personal Hub',
     protected: true
   });
 
   // Register Those Eyes page
-  router.addRoute('/thoseeyes', () => ThoseEyesPage(router), {
+  router.addRoute('/thoseeyes', lazy(() => import('./pages/ThoseEyes.js').then(m => m.ThoseEyesPage)), {
     title: 'Those Eyes · Personal Hub',
     protected: true
   });
 
   // Register Just The Way You Are page (experiencia inmersiva)
-  router.addRoute('/justthewayyouare', () => JustTheWayYouArePage(router), {
+  router.addRoute('/justthewayyouare', lazy(() => import('./pages/JustTheWayYouAre.js').then(m => m.JustTheWayYouArePage)), {
     title: 'Just The Way You Are · Personal Hub',
     protected: true
   });
 
   // Register OsitosWorld page (sin navegación principal, página independiente)
-  router.addRoute('/ositos', () => OsitosWorldPage(router), {
+  router.addRoute('/ositos', lazy(() => import('./pages/OsitosWorld.js').then(m => m.OsitosWorldPage)), {
     title: 'OsitosWorld · Personal Hub',
     protected: true
   });

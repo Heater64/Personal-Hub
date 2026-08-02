@@ -6,6 +6,7 @@
 import { db } from '../services/db.service.js';
 import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
+import { escapeHtml } from '../utils/escape.js';
 
 // ==========================================
 // SVG ICONS
@@ -42,6 +43,10 @@ const TABS = [
 export function AdminPage(router) {
   const page = document.createElement('div');
   page.className = 'admin-page';
+
+  // Alias centralizado (definido antes del primer uso en la plantilla)
+  const esc = escapeHtml;
+
   page.innerHTML = `
     <div class="admin-header">
       <div>
@@ -50,7 +55,7 @@ export function AdminPage(router) {
       </div>
       <div class="admin-status">
         <span class="status-dot online"></span>
-        <span>Conectado como <strong>${userStore.getUser()?.name || ''}</strong></span>
+        <span>Conectado como <strong>${esc(userStore.getUser()?.name || '')}</strong></span>
       </div>
     </div>
     <div class="admin-db-status" id="adminDbStatus" style="display:none"></div>
@@ -148,7 +153,6 @@ export function AdminPage(router) {
   }
 
   // ===== HELPERS =====
-  const esc = (s) => db.escapeHtml ? db.escapeHtml(s) : String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
   // ==========================================
   // 1. DASHBOARD
@@ -355,7 +359,7 @@ export function AdminPage(router) {
   function renderUsers(users, moodStats) {
     if (users.length === 0) return '<div class="admin-empty">No hay usuarios</div>';
     return users.map((u, i) => {
-      const initial = (u.name||u.email||'?').charAt(0).toUpperCase();
+      const initial = esc((u.name||u.email||'?').charAt(0).toUpperCase());
       const status = u.enabled !== false ? '🟢' : '🔴';
       const lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString('es') : '—';
       const stats = moodStats[u.id];
@@ -400,7 +404,7 @@ export function AdminPage(router) {
   }
 
   async function showUserDetail(user, stats) {
-    const initial = (user.name||user.email||'?').charAt(0).toUpperCase();
+    const initial = esc((user.name||user.email||'?').charAt(0).toUpperCase());
     const created = user.created_at ? new Date(user.created_at).toLocaleDateString('es') : '—';
     const lastLogin = user.last_login ? new Date(user.last_login).toLocaleDateString('es') : '—';
 
@@ -473,7 +477,7 @@ export function AdminPage(router) {
           </div>
           <div>
             <strong style="font-size:1rem;">${esc(user.name||'Sin nombre')}</strong><br>
-            <span style="font-size:0.82rem;color:var(--umbra-ash);">${user.email || 'ID: ' + user.id}</span>
+            <span style="font-size:0.82rem;color:var(--umbra-ash);">${esc(user.email) || 'ID: ' + user.id}</span>
           </div>
           <span style="margin-left:auto;font-size:0.72rem;padding:3px 12px;border-radius:30px;background:${user.role === 'admin' ? 'rgba(198,90,58,0.15)' : 'rgba(255,255,255,0.05)'};color:${user.role === 'admin' ? 'var(--accent-coral)' : 'var(--umbra-ash)'};">${user.role || 'user'}</span>
         </div>

@@ -1,7 +1,10 @@
 /* ==========================================
    Personal Hub v2 — SPA Router
    Hash-based router for simple navigation
+   Soporta componentes async (lazy) y cleanup por página
    ========================================== */
+
+import { escapeHtml } from './utils/escape.js';
 
 export class Router {
   constructor(options = {}) {
@@ -12,6 +15,8 @@ export class Router {
     this._container = options.container || document.getElementById('app');
     this._onRouteChange = options.onRouteChange || null;
     this._pendingNavigation = null;
+    this._currentComponent = null;
+    this._navToken = 0;
 
     window.addEventListener('hashchange', () => this._handleRoute());
     window.addEventListener('load', () => this._handleRoute());
@@ -89,11 +94,18 @@ export class Router {
       return;
     }
 
+    // Token de navegación: descarta renders obsoletos si el usuario navega
+    // mientras los hooks o un componente lazy (async) están en curso.
+    // Se toma ANTES de los hooks porque son async y pueden intercalarse.
+    const navToken = ++this._navToken;
+
     // Run before hooks (can cancel navigation or redirect)
     let route = this.matchRoute(path);
     for (const hook of this._beforeHooks) {
       const result = await hook(path, route);
       if (result === false) return;
+      // Navegó mientras el hook resolvía: esta invocación está obsoleta
+      if (navToken !== this._navToken) return;
     }
 
     // Re-match route (before hooks may have changed path)
@@ -110,24 +122,47 @@ export class Router {
     // Update document title
     document.title = finalRoute.title || 'Personal Hub';
 
+    // Clean up the previous page (listeners, timers, media)
+    if (this._currentComponent?.cleanup) {
+      try { this._currentComponent.cleanup(); } catch (err) { console.warn('[router] page cleanup failed:', err); }
+    }
+    this._currentComponent = null;
+
     // Render the component
     if (this._container && finalRoute.component) {
       this._container.innerHTML = '';
       try {
-        const component = typeof finalRoute.component === 'function'
-          ? finalRoute.component()
+        // Se pasa el propio router (this) para que las páginas puedan
+        // navegar con router.navigate(). Las rutas lazy dependen de este
+        // argumento (no capturan el router por closure como las directas).
+        let component = typeof finalRoute.component === 'function'
+          ? finalRoute.component(this)
           : finalRoute.component;
 
+        // Async (lazy) components: show a skeleton while resolving
+        if (component && typeof component.then === 'function') {
+          this._container.innerHTML = `<div class="route-loading" role="status" aria-live="polite">
+            <span class="route-loading__spinner" aria-hidden="true"></span>
+            <span>Cargando…</span>
+          </div>`;
+          component = await component;
+          // Navegación cambió mientras cargaba: descartar render obsoleto
+          if (navToken !== this._navToken) return;
+        }
+
         if (component instanceof HTMLElement) {
-          this._container.appendChild(component);
+          // replaceChildren elimina el skeleton y evita que quede visible
+          this._container.replaceChildren(component);
+          this._currentComponent = component;
         } else if (typeof component === 'string') {
           this._container.innerHTML = component;
         }
       } catch (err) {
+        if (navToken !== this._navToken) return; // error obsoleto: no pisar la página actual
         console.error('Error rendering route:', finalPath, err);
-        this._container.innerHTML = `<div class="error-state">
+        this._container.innerHTML = `<div class="error-state" role="alert">
           <p>Error al cargar esta página</p>
-          <small>${err.message}</small>
+          <small>${escapeHtml(err?.message || 'Error inesperado')}</small>
         </div>`;
       }
     }

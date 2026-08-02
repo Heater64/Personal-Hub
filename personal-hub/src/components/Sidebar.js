@@ -46,8 +46,10 @@ export function Sidebar(router) {
 
     aside.innerHTML = `
       <div class="sidebar__brand">
-        <span class="sidebar__eyebrow">Personal Hub</span>
-        <h2 class="sidebar__title">Hub</h2>
+        <h2 class="sidebar__title">
+          <span class="sidebar__title-word sidebar__title-word--primary">Personal</span>
+          <span class="sidebar__title-word sidebar__title-word--accent">Hub</span>
+        </h2>
         <p class="sidebar__tagline">Todo lo bonito, en un solo sitio.</p>
       </div>
 
@@ -77,7 +79,12 @@ export function Sidebar(router) {
       <div class="sidebar__footer">
         ${user ? `
           <div class="sidebar__user" id="sidebarUser">
-            <div class="sidebar__user-avatar">${initial}</div>
+            <div class="sidebar__user-avatar">
+              ${user.avatar
+                ? `<img src="${user.avatar}" alt="" class="sidebar__user-avatar-img" onerror="this.style.display='none';">`
+                : ''}
+              <span class="sidebar__user-avatar-fallback">${initial}</span>
+            </div>
             <div class="sidebar__user-info">
               <span class="sidebar__user-name">${user.name || ''}${isAdmin ? ' <span class="admin-badge">Admin</span>' : ''}</span>
               <span class="sidebar__user-role">${isAdmin ? 'Admin' : 'Princesa'}</span>

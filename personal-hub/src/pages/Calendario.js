@@ -4,22 +4,24 @@
    ========================================== */
 
 import { showToast } from '../components/Toast.js';
+import { escapeHtml } from '../utils/escape.js';
+import { userPrefKey } from '../utils/userStorage.js';
 
 // Nota: en producción, copia data/gifts.json a personal-hub/public/data/gifts.json
 // Para desarrollo con Vite, usa este path:
 const GIFTS_PATH = '/data/gifts.json';
-const PROGRESS_KEY = 'personalHub.giftProgress';
+const PROGRESS_KEY = () => userPrefKey('giftProgress');
 
 let catalog = null;
 let currentMonthKey = null;
 let progressMap = {};
 
 function loadProgress() {
-  try { progressMap = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}'); } catch { progressMap = {}; }
+  try { progressMap = JSON.parse(localStorage.getItem(PROGRESS_KEY()) || '{}'); } catch { progressMap = {}; }
 }
 
 function saveProgress() {
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressMap));
+  localStorage.setItem(PROGRESS_KEY(), JSON.stringify(progressMap));
 }
 
 async function loadGifts() {
@@ -34,13 +36,6 @@ async function loadGifts() {
     showToast('Error cargando calendario', 'error');
     return null;
   }
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, function(m) {
-    return m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : m === '"' ? '&quot;' : '&#39;';
-  });
 }
 
 function getTodayStr() {

@@ -4,22 +4,11 @@
    ========================================== */
 
 import { HOME_DATA } from '../data/homeData.js';
+import { escapeHtml } from '../utils/escape.js';
 
 const START_DATE = '2025-07-03';
 const NEWS = HOME_DATA.news;
 const CURIOSITIES = HOME_DATA.curiosities;
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, m => {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    if (m === '"') return '&quot;';
-    if (m === "'") return '&#39;';
-    return m;
-  });
-}
 
 export function HomePage(router) {
   const page = document.createElement('div');

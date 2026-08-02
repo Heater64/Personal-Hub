@@ -10,11 +10,8 @@ import { moodStore } from '../stores/mood.store.js';
 import { showToast } from '../components/Toast.js';
 import { db } from '../services/db.service.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
-
-// Small helper to safely render dynamic URLs in templates
-function esc(s) {
-  return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
+import { requestEnable, disable } from '../services/notifications.service.js';
+import { escapeHtml } from '../utils/escape.js';
 
 // ==========================================
 // SVG ICONS
@@ -56,14 +53,14 @@ export function ProfilePage(router) {
       <div class="profile-avatar-wrap" id="profileAvatarWrap">
         <div class="profile-avatar" id="profileAvatar">
           ${user?.avatar
-            ? `<img src="${esc(user.avatar)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="profile-initial fallback" id="profileInitial" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">${(user?.name || 'U').charAt(0).toUpperCase()}</span>`
-            : `<span class="profile-initial" id="profileInitial">${(user?.name || 'U').charAt(0).toUpperCase()}</span>`
+            ? `<img src="${escapeHtml(user.avatar)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="profile-initial fallback" id="profileInitial" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">${escapeHtml((user?.name || 'U').charAt(0).toUpperCase())}</span>`
+            : `<span class="profile-initial" id="profileInitial">${escapeHtml((user?.name || 'U').charAt(0).toUpperCase())}</span>`
           }
         </div>
         <span class="profile-avatar-edit" id="profileAvatarEdit">${UI.camera}</span>
         <input type="file" id="profileAvatarInput" accept="image/*" style="display:none">
       </div>
-      <h3 class="profile-name" id="profileName">${user?.name || 'Usuario'}</h3>
+      <h3 class="profile-name" id="profileName">${escapeHtml(user?.name || 'Usuario')}</h3>
       <p class="profile-role" id="profileRole">${userStore.isAdmin ? UI.adminShield + ' Admin' : UI.heart + ' Princesa'}</p>
       <p class="profile-email" id="profileEmail">${user?.email || ''}</p>
     </div>
@@ -356,7 +353,7 @@ export function ProfilePage(router) {
       // Update avatar display immediately
       const avatarContainer = page.querySelector('#profileAvatar');
       if (url) {
-        avatarContainer.innerHTML = `<img src="${esc(url)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        avatarContainer.innerHTML = `<img src="${escapeHtml(url)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
       }
       showToast('Avatar actualizado', 'success');
     } catch (err) {
@@ -372,22 +369,20 @@ export function ProfilePage(router) {
     notifToggle.checked = notifEnabled;
     notifToggle.addEventListener('change', async (e) => {
       if (e.target.checked) {
-        if (!('Notification' in window)) {
-          showToast('Tu navegador no soporta notificaciones', 'error');
-          e.target.checked = false;
-          return;
-        }
-        const perm = await Notification.requestPermission();
-        if (perm === 'granted') {
-          setUserPref('notifications', '1');
+        const ok = await requestEnable();
+        if (ok) {
           showToast('🔔 Recordatorios activados', 'success');
         } else {
           e.target.checked = false;
-          setUserPref('notifications', '0');
-          showToast('Permiso de notificaciones denegado', 'error');
+          showToast(
+            !('Notification' in window)
+              ? 'Tu navegador no soporta notificaciones'
+              : 'Permiso de notificaciones denegado',
+            'error'
+          );
         }
       } else {
-        setUserPref('notifications', '0');
+        await disable();
       }
     });
   }

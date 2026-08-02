@@ -5,10 +5,12 @@
    ========================================== */
 
 import { showToast } from '../components/Toast.js';
+import { escapeHtml } from '../utils/escape.js';
+import { userPrefKey } from '../utils/userStorage.js';
 
-const STORAGE_KEY = 'personalHub.seriesCatalog';
-const PODIO_KEY = 'personalHub.seriesPodio';
-const PROGRESS_KEY = 'personalHub.seriesProgress';
+const STORAGE_KEY = () => userPrefKey('seriesCatalog');
+const PODIO_KEY = () => userPrefKey('seriesPodio');
+const PROGRESS_KEY = () => userPrefKey('seriesProgress');
 
 let catalog = [];
 let podioData = { series: [], movies: [] };
@@ -19,34 +21,29 @@ let currentView = 'catalog';
 
 function loadData() {
   try {
-    catalog = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    podioData = JSON.parse(localStorage.getItem(PODIO_KEY) || '{"series":[],"movies":[]}');
+    catalog = JSON.parse(localStorage.getItem(STORAGE_KEY()) || '[]');
+    podioData = JSON.parse(localStorage.getItem(PODIO_KEY()) || '{"series":[],"movies":[]}');
   } catch { catalog = []; podioData = { series: [], movies: [] }; }
 }
 
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog));
-  localStorage.setItem(PODIO_KEY, JSON.stringify(podioData));
+  localStorage.setItem(STORAGE_KEY(), JSON.stringify(catalog));
+  localStorage.setItem(PODIO_KEY(), JSON.stringify(podioData));
 }
 
 function loadProgress(itemId) {
   try {
-    const all = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
+    const all = JSON.parse(localStorage.getItem(PROGRESS_KEY()) || '{}');
     return all[itemId] || {};
   } catch { return {}; }
 }
 
 function saveProgressForItem(itemId, data) {
   try {
-    const all = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
+    const all = JSON.parse(localStorage.getItem(PROGRESS_KEY()) || '{}');
     all[itemId] = data;
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(all));
+    localStorage.setItem(PROGRESS_KEY(), JSON.stringify(all));
   } catch {}
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : m === '"' ? '&quot;' : '&#39;');
 }
 
 function getTotal(item) {
@@ -639,8 +636,7 @@ export function SeriesPage(router) {
         tipo: page.querySelector('#fTipo').value,
         portada: page.querySelector('#fPortada').value.trim(),
         webUrl: page.querySelector('#fWeb').value.trim(),
-        totalEpisodios: parseInt(page.querySelector('#fTotalEpisodios').value) || 0,
-        progreso: 0
+        totalEpisodios: parseInt(page.querySelector('#fTotalEpisodios').value) || 0
       };
       if (editId) {
         const idx = catalog.findIndex(i => i.id === editId);

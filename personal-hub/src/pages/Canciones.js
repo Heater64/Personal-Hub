@@ -5,6 +5,8 @@
    ========================================== */
 
 import { showToast } from '../components/Toast.js';
+import { escapeHtml } from '../utils/escape.js';
+import { formatTime } from '../utils/format.js';
 
 const SONGS_BASE = "https://canciones-que-me-recuerdan-a-ti.vercel.app";
 
@@ -101,25 +103,6 @@ const ALL_SONGS = [
   { title: "Beauty and a Beat", artist: "Justin Bieber", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsKPNxCtWtPm7_d468VnoWxPSBsOyZk67HcA&s", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748977/Justin_Bieber_Beauty_And_A_Beat_Official_Music_Video_ft_Nicki_Minaj_ivdtfp.m4a" },
   { title: "Fuego", artist: "Don Omar", cover: "https://i.musicaimg.com/letras/250x250/don-omar.jpg", audio: "https://res.cloudinary.com/dcsent4fs/video/upload/v1777748984/Fuego_-_Una_Vaina_Loca_Ft._El_Potro_Alvarez_Official_Video_rp0xvr.m4a" },
 ];
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, function (m) {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    if (m === '"') return '&quot;';
-    if (m === "'") return '&#39;';
-    return m;
-  });
-}
-
-function formatTime(seconds) {
-  if (!seconds || isNaN(seconds)) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
 
 export function CancionesPage(router) {
   const page = document.createElement('div');

@@ -4,8 +4,10 @@
    ========================================== */
 
 import { showToast } from '../components/Toast.js';
+import { escapeHtml } from '../utils/escape.js';
+import { userPrefKey } from '../utils/userStorage.js';
 
-const FAV_KEY = 'personalHub.razonesFavoritas';
+const FAV_KEY = () => userPrefKey('razonesFavoritas');
 
 const RAZONES = [
   'Por lo lista, lo hermosa y lo increíble que eres.',
@@ -21,24 +23,12 @@ const RAZONES = [
   'No son las únicas razones pero así te obligaré a entrar de vez en cuando para ver las nuevas jsjsj',
 ];
 
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, m => {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    if (m === '"') return '&quot;';
-    if (m === "'") return '&#39;';
-    return m;
-  });
-}
-
 function loadFavs() {
-  try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(FAV_KEY()) || '[]'); } catch { return []; }
 }
 
 function saveFavs(favs) {
-  localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+  localStorage.setItem(FAV_KEY(), JSON.stringify(favs));
 }
 
 export function RazonesPage(router) {

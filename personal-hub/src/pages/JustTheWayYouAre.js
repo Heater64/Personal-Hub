@@ -4,6 +4,8 @@
    Traducción línea a línea · Tema coherente
    ========================================== */
 
+import { escapeHtml } from '../utils/escape.js';
+
 const SONG_DATA = {
   title: "Just The Way You Are",
   artist: "Bruno Mars",
@@ -57,21 +59,23 @@ const LYRIC_PAIRS = [
   { start: 222, end: 230, en: "You're amazing, just the way you are", es: "Eres increíble, tal como eres", style: 'accent big' },
 ];
 
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, function(m) {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    if (m === '"') return '&quot;';
-    if (m === "'") return '&#39;';
-    return m;
-  });
-}
-
 export function JustTheWayYouArePage(router) {
   const page = document.createElement('div');
   page.className = 'jt-page';
+
+  // State para cleanup (los handlers se asignan dentro del rAF de init)
+  let rafId = null;
+  let onResize = null;
+  let onKeyDown = null;
+
+  page.cleanup = () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    if (onResize) window.removeEventListener('resize', onResize);
+    if (onKeyDown) document.removeEventListener('keydown', onKeyDown);
+    const audio = page.querySelector('#jtAudio');
+    if (audio) { audio.pause(); audio.src = ''; }
+    document.getElementById('jtCalibrateOverlay')?.remove();
+  };
 
   function render() {
     page.innerHTML = `
@@ -166,7 +170,7 @@ export function JustTheWayYouArePage(router) {
     if (canvas) {
       const ctx = canvas.getContext('2d');
       let stars = [];
-      const resize = () => {
+      onResize = () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         stars = Array.from({ length: 140 }, () => ({
@@ -186,11 +190,11 @@ export function JustTheWayYouArePage(router) {
           ctx.fillStyle = `rgba(230,220,210,${alpha})`;
           ctx.fill();
         });
-        requestAnimationFrame(draw);
+        rafId = requestAnimationFrame(draw);
       };
-      window.addEventListener('resize', resize);
-      resize();
-      requestAnimationFrame(draw);
+      window.addEventListener('resize', onResize);
+      onResize();
+      rafId = requestAnimationFrame(draw);
     }
 
     // ==========================================
@@ -374,29 +378,13 @@ export function JustTheWayYouArePage(router) {
     }
 
     // Keyboard shortcut: Shift+T
-    document.addEventListener('keydown', (e) => {
+    onKeyDown = (e) => {
       if (e.key === 'T' && e.shiftKey) {
         e.preventDefault();
         toggleCalibration();
       }
-    });
-
-    // ==========================================
-    // 4. CLEANUP
-    // ==========================================
-    page._cleanup = () => {
-      if (audio) {
-        audio.pause();
-        audio.src = '';
-      }
-      if (calibrateOverlay) calibrateOverlay.remove();
     };
-
-    window.addEventListener('hashchange', () => {
-      if (!document.contains(page)) {
-        if (page._cleanup) page._cleanup();
-      }
-    });
+    document.addEventListener('keydown', onKeyDown);
   });
 
   return page;

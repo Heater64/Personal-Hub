@@ -21,12 +21,24 @@ export function showToast(message, type = 'info', duration = 4000) {
   const el = document.createElement('div');
   el.className = 'toast';
   el.id = `toast-${id}`;
-  el.innerHTML = `
-    <div class="toast__content">
-      <span class="toast__text">${message}</span>
-    </div>
-    <button class="toast__close" onclick="document.getElementById('toast-${id}').remove()">✕</button>
-  `;
+
+  // Texto vía textContent para evitar XSS con mensajes dinámicos
+  const content = document.createElement('div');
+  content.className = 'toast__content';
+  const text = document.createElement('span');
+  text.className = 'toast__text';
+  text.textContent = message;
+  content.appendChild(text);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'toast__close';
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Cerrar');
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', () => el.remove());
+
+  el.appendChild(content);
+  el.appendChild(closeBtn);
 
   el.style.cssText = `
     background: ${colors.bg};
@@ -50,10 +62,9 @@ export function showToast(message, type = 'info', duration = 4000) {
 
   if (duration > 0) {
     setTimeout(() => {
-      const toast = document.getElementById(`toast-${id}`);
-      if (toast) {
-        toast.style.animation = 'fade-out var(--dur-fast) ease forwards';
-        setTimeout(() => toast.remove(), 200);
+      if (el.isConnected) {
+        el.style.animation = 'fade-out var(--dur-fast) ease forwards';
+        setTimeout(() => el.remove(), 200);
       }
     }, duration);
   }

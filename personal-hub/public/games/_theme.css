@@ -1,0 +1,132 @@
+/* ==========================================================
+   GAMES COMMON LIGHT THEME
+   Shared by /games/*.html. Applied via data-theme="light"
+   set in each game's <head>. Comes AFTER each game's inline
+   <style> + main.css so source order makes light win.
+   ========================================================== */
+[data-theme="light"] :root {
+  --bg-deep: #fdf4f6;
+  --bg-mid: #fff7f9;
+  --panel: rgba(45, 20, 25, 0.04);
+  --panel-border: rgba(100, 60, 70, 0.22);
+  --ink: #2b1b1e;
+  --ash: #907e82;
+  --coral: #cf4062;
+  --coral-dark: #b33854;
+  --gold: #d6a853;
+  --green: #5a9c6e;
+  --red: #ca2d2d;
+  --blue: #4a7fb8;
+  --purple: #8b5cf6;
+  --purple-glow: rgba(139, 92, 246, 0.35);
+  --umbra-light: #2b1b1e;
+  --umbra-ash: #907e82;
+  --accent-coral: #cf4062;
+  --accent-border: rgba(207, 64, 98, 0.3);
+}
+
+[data-theme="light"] body {
+  background: #fdf4f6;
+  color: #2b1b1e;
+}
+
+[data-theme="light"] .game-container {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(100, 60, 70, 0.22);
+  box-shadow: 0 8px 32px rgba(43, 27, 30, 0.08);
+}
+
+[data-theme="light"] canvas {
+  background: #fff7f9;
+  border: 1px solid rgba(100, 60, 70, 0.22);
+  box-shadow: 0 8px 32px rgba(43, 27, 30, 0.10);
+}
+
+[data-theme="light"] .game-message {
+  background: rgba(253, 244, 246, 0.92);
+}
+
+[data-theme="light"] .game-message-content {
+  background: linear-gradient(180deg, #fff7f9, #fff0f5);
+  border: 1px solid rgba(207, 64, 98, 0.3);
+}
+
+[data-theme="light"] .game-message-content .icon { color: #cf4062; }
+[data-theme="light"] .game-message-content h2 { color: #2b1b1e; }
+[data-theme="light"] .game-message-content p { color: #907e82; }
+[data-theme="light"] .game-message-content .btn-primary {
+  background: #cf4062;
+  color: #fff;
+}
+[data-theme="light"] .game-message-content .btn-primary:hover {
+  background: #b33854;
+}
+
+/* ahorcado: letter slots / buttons */
+[data-theme="light"] .letter-slot { border-bottom-color: rgba(100, 60, 70, 0.22); color: #2b1b1e; }
+[data-theme="light"] .letter-btn {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(100, 60, 70, 0.22);
+  color: #2b1b1e;
+}
+[data-theme="light"] .letter-btn:hover:not(.used) {
+  border-color: rgba(207, 64, 98, 0.35);
+  background: rgba(207, 64, 98, 0.06);
+}
+[data-theme="light"] .letter-btn.correct {
+  border-color: #2e8b57;
+  background: rgba(46, 139, 87, 0.12);
+  color: #2e8b57;
+}
+[data-theme="light"] .letter-btn.wrong {
+  border-color: #ca2d2d;
+  background: rgba(202, 45, 45, 0.12);
+  color: #ca2d2d;
+}
+[data-theme="light"] .letter-btn.hint-revealed {
+  border-color: #cf4062;
+  background: rgba(207, 64, 98, 0.12);
+  color: #cf4062;
+}
+
+/* ahorcado: category + nav buttons */
+[data-theme="light"] .category-btn {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(100, 60, 70, 0.22);
+  color: #59494d;
+}
+[data-theme="light"] .category-btn:hover {
+  border-color: rgba(207, 64, 98, 0.35);
+  color: #2b1b1e;
+}
+[data-theme="light"] .category-btn.active {
+  background: rgba(207, 64, 98, 0.12);
+  border-color: #cf4062;
+  color: #cf4062;
+}
+[data-theme="light"] .btn-ghost,
+[data-theme="light"] .back-btn {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(100, 60, 70, 0.22);
+  color: #59494d;
+}
+[data-theme="light"] .btn-ghost:hover,
+[data-theme="light"] .back-btn:hover,
+[data-theme="light"] .btn-ghost.hint-btn:hover {
+  border-color: rgba(207, 64, 98, 0.35);
+  color: #2b1b1e;
+}
+[data-theme="light"] .btn-ghost.hint-btn { color: #cf4062; }
+[data-theme="light"] .btn-ghost.reset { color: #ca2d2d; }
+[data-theme="light"] .btn-ghost.reset:hover {
+  border-color: #ca2d2d;
+  color: #ca2d2d;
+}
+
+/* ahorcado: hangman / status */
+[data-theme="light"] .hangman-display { color: #2b1b1e; }
+[data-theme="light"] .status-msg { color: #907e82; }
+[data-theme="light"] .word-display { color: #2b1b1e; }
+
+/* memoria: flip cards */
+[data-theme="light"] .card-inner { background: #fff7f9; }

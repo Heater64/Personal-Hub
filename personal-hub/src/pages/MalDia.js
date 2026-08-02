@@ -43,6 +43,14 @@ export function MalDiaPage(router) {
   let isMusicPlaying = false;
   let audioPlayer = null;
   let breathingInterval = null;
+  let onKeyDown = null;
+
+  page.cleanup = () => {
+    if (onKeyDown) document.removeEventListener('keydown', onKeyDown);
+    if (breathingInterval) { clearInterval(breathingInterval); breathingInterval = null; }
+    if (audioPlayer) { audioPlayer.pause(); audioPlayer = null; }
+    document.getElementById('betterVideo')?.pause();
+  };
 
   function render() {
     page.innerHTML = `
@@ -259,12 +267,13 @@ export function MalDiaPage(router) {
     document.getElementById('stopBreathingBtn')?.addEventListener('click', stopBreathing);
 
     // ESC key
-    document.addEventListener('keydown', (e) => {
+    onKeyDown = (e) => {
       if (e.key === 'Escape') {
         stopBreathing();
         betterModal.style.display = 'none';
       }
-    });
+    };
+    document.addEventListener('keydown', onKeyDown);
   });
 
   return page;

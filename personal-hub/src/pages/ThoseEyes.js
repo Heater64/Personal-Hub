@@ -7,6 +7,16 @@ export function ThoseEyesPage(router) {
   const page = document.createElement('div');
   page.className = 'thoseeyes-page';
 
+  // State para cleanup: listeners/resoluciones que deben liberarse al salir
+  let rafId = null;
+  let onResize = null;
+
+  page.cleanup = () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    if (onResize) window.removeEventListener('resize', onResize);
+    document.getElementById('thoseEyesAudio')?.pause();
+  };
+
   function render() {
     page.innerHTML = `
       <div class="thoseeyes-wrap">
@@ -115,7 +125,7 @@ export function ThoseEyesPage(router) {
     if (canvas) {
       const ctx = canvas.getContext('2d');
       let stars = [];
-      const resize = () => {
+      onResize = () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         stars = Array.from({ length: 140 }, () => ({
@@ -133,11 +143,11 @@ export function ThoseEyesPage(router) {
           ctx.fillStyle = `rgba(230,220,210,${alpha})`;
           ctx.fill();
         });
-        requestAnimationFrame(draw);
+        rafId = requestAnimationFrame(draw);
       };
-      window.addEventListener('resize', resize);
-      resize();
-      requestAnimationFrame(draw);
+      window.addEventListener('resize', onResize);
+      onResize();
+      rafId = requestAnimationFrame(draw);
     }
 
     // Audio player

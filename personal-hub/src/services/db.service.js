@@ -4,6 +4,7 @@
    ========================================== */
 
 import { supabase } from './supabase.js';
+import { escapeHtml } from '../utils/escape.js';
 
 // Storage keys for localStorage fallback
 const KEYS = {
@@ -33,18 +34,6 @@ function lsSet(key, data) {
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, function (m) {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    if (m === '"') return '&quot;';
-    if (m === "'") return '&#39;';
-    return m;
-  });
 }
 
 // ==========================================

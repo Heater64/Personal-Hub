@@ -11,8 +11,10 @@ import { Sidebar } from './Sidebar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
 import { moodStore } from '../stores/mood.store.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
+import { syncReminderState, showDailyNotification, markWelcomeShownToday } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys } from '../utils/userStorage.js';
+import { todayISO } from '../utils/format.js';
 
 // Rutas que NO deben mostrar navegación (sidebar ni bottom-nav)
 const NO_NAV_ROUTES = ['/login', '/ositos'];
@@ -119,16 +121,6 @@ export function AppShell(router) {
     const now = new Date();
     const today8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0, 0);
 
-    console.log('[Welcome] check:', {
-      hasUser: !!user,
-      isAdmin: userStore.isAdmin,
-      isLoggedIn: userStore.isLoggedIn,
-      hash: window.location.hash,
-      hasSeenToday: moodStore.hasSeenToday(),
-      now: now.toISOString(),
-      after8AM: now >= today8AM
-    });
-
     if (!user) return false;
     if (userStore.isAdmin) return false;
     // Already showing?
@@ -146,42 +138,17 @@ export function AppShell(router) {
   }
 
   function showWelcome() {
-    if (!shouldShowWelcome()) {
-      console.log('[Welcome] showWelcome skipped, shouldShowWelcome false');
-      return;
-    }
+    if (!shouldShowWelcome()) return;
 
     // Prevent re-showing on every route change after 8 AM
-    const today = new Date().toISOString().split('T')[0];
-    if (getUserPref('welcomeShownDate') === today) {
-      console.log('[Welcome] already shown today');
-      return;
-    }
+    const today = todayISO();
+    if (getUserPref('welcomeShownDate') === today) return;
     setUserPref('welcomeShownDate', today);
 
-    console.log('[Welcome] showing welcome screen');
-
-    // Fire local push notification reminder if enabled and permission granted
-    try {
-      if (
-        getUserPref('notifications', '0') === '1' &&
-        'Notification' in window &&
-        Notification.permission === 'granted' &&
-        'serviceWorker' in navigator
-      ) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.showNotification('¡Buenos días! ☀️', {
-            body: 'Es hora de tu check-in diario de estado de ánimo.',
-            tag: 'mood-reminder',
-            vibrate: [200, 100, 200],
-            requireInteraction: false,
-            data: { url: '/' }
-          });
-        });
-      }
-    } catch (err) {
-      console.warn('[Welcome] Could not show notification:', err);
-    }
+    // Notificación local (app abierta) si está habilitada
+    showDailyNotification('¡Buenos días! ☀️', 'Es hora de tu check-in diario de estado de ánimo.');
+    // Marca el día para que el SW (app cerrada) no la duplique: 1 vez/día
+    markWelcomeShownToday();
 
     const ws = WelcomeScreen({
       onDone: () => { currentWelcomeOverlay = null; },
@@ -204,18 +171,14 @@ export function AppShell(router) {
     const today8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), checkHour, 0, 0, 0);
     const tomorrow8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, checkHour, 0, 0, 0);
 
-    console.log('[Welcome] scheduleMoodCheck', { now: now.toISOString(), today8AM: today8AM.toISOString() });
-
     // Already answered today -> wait for tomorrow at 8 AM
     if (moodStore.hasSeenToday()) {
-      console.log('[Welcome] already seen today, scheduling tomorrow');
       moodTimer = setTimeout(scheduleMoodCheck, tomorrow8AM.getTime() - Date.now());
       return;
     }
 
     // After 8 AM and not answered -> show now, then schedule tomorrow
     if (now >= today8AM) {
-      console.log('[Welcome] after 8 AM, showing welcome now');
       showWelcome();
 
       moodTimer = setTimeout(scheduleMoodCheck, tomorrow8AM.getTime() - Date.now());
@@ -223,15 +186,12 @@ export function AppShell(router) {
     }
 
     // Before 8 AM -> wait until 8 AM today
-    console.log('[Welcome] before 8 AM, scheduling for today');
     moodTimer = setTimeout(scheduleMoodCheck, today8AM.getTime() - Date.now());
   }
 
   // Re-evaluate schedule whenever the user state changes
   let legacyKeysCleaned = false;
   userStore.onChange(async () => {
-    console.log('[Welcome] userStore changed, user:', userStore.getUser()?.email);
-
     // Clean up old global localStorage keys once per session now that
     // these preferences are stored per-user.
     if (userStore.getUser() && !legacyKeysCleaned) {
@@ -242,56 +202,54 @@ export function AppShell(router) {
     // Sync today's mood with the server so the welcome screen doesn't ask
     // again if it was already answered on another device.
     if (userStore.getUser()) {
-      moodSyncPromise = moodStore.fetchTodayMood().catch(err => {
-        console.warn('[Welcome] Could not fetch today mood:', err);
-      });
+      moodSyncPromise = moodStore.fetchTodayMood().catch(() => {});
+      // Mantén el recordatorio diario alineado con el SW (IndexedDB + periodicSync)
+      syncReminderState();
     } else {
       moodSyncPromise = null;
+      // Logout: desactiva el recordatorio del SW (escribe enabled:false y desregistra)
+      syncReminderState();
     }
 
     scheduleMoodCheck();
   });
 
-  // Debug helpers for testing the welcome screen (in-memory only)
-  window.__resetMoodDate = () => {
-    const user = userStore.getUser();
-    if (user) {
-      localStorage.removeItem(`ph.moodDate.${user.id}`);
-      localStorage.removeItem(`ph.mood.${user.id}`);
-    } else {
-      localStorage.removeItem('ph.moodDate');
-      localStorage.removeItem('ph.mood');
-    }
-    removeUserPref('welcomeShownDate');
-    console.log('[Welcome] reset mood state and welcomeShownDate');
-    scheduleMoodCheck();
-  };
-  window.__showWelcomeNow = () => {
-    const user = userStore.getUser();
-    if (user) {
-      localStorage.removeItem(`ph.moodDate.${user.id}`);
-      localStorage.removeItem(`ph.mood.${user.id}`);
-    } else {
-      localStorage.removeItem('ph.moodDate');
-    }
-    removeUserPref('welcomeShownDate');
-    showWelcome();
-  };
-  window.__setWelcomeTestHour = (hour) => {
-    const h = parseInt(hour, 10);
-    if (Number.isNaN(h) || h < 0 || h > 23) {
-      console.error('[Welcome] hour must be between 0 and 23');
-      return;
-    }
-    testWelcomeHour = h;
-    console.log('[Welcome] test hour set to', h);
-    scheduleMoodCheck();
-  };
-  window.__clearWelcomeTestHour = () => {
-    testWelcomeHour = null;
-    console.log('[Welcome] test hour cleared');
-    scheduleMoodCheck();
-  };
+  // Debug helpers para testear la bienvenida (solo en desarrollo)
+  if (import.meta.env.DEV) {
+    window.__resetMoodDate = () => {
+      const user = userStore.getUser();
+      if (user) {
+        localStorage.removeItem(`ph.moodDate.${user.id}`);
+        localStorage.removeItem(`ph.mood.${user.id}`);
+      } else {
+        localStorage.removeItem('ph.moodDate');
+        localStorage.removeItem('ph.mood');
+      }
+      removeUserPref('welcomeShownDate');
+      scheduleMoodCheck();
+    };
+    window.__showWelcomeNow = () => {
+      const user = userStore.getUser();
+      if (user) {
+        localStorage.removeItem(`ph.moodDate.${user.id}`);
+        localStorage.removeItem(`ph.mood.${user.id}`);
+      } else {
+        localStorage.removeItem('ph.moodDate');
+      }
+      removeUserPref('welcomeShownDate');
+      showWelcome();
+    };
+    window.__setWelcomeTestHour = (hour) => {
+      const h = parseInt(hour, 10);
+      if (Number.isNaN(h) || h < 0 || h > 23) return;
+      testWelcomeHour = h;
+      scheduleMoodCheck();
+    };
+    window.__clearWelcomeTestHour = () => {
+      testWelcomeHour = null;
+      scheduleMoodCheck();
+    };
+  }
 
   // Initial navigation state
   updateNavigation(router.getCurrentPath());

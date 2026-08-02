@@ -3,6 +3,8 @@
    Cartas interactivas para momentos especiales
    ========================================== */
 
+import { escapeHtml } from '../utils/escape.js';
+
 const LETTERS = [
   {
     title: "Ábrela cuando sientas que no te amo",
@@ -60,20 +62,6 @@ const LETTERS = [
     message: "Buenos días REINA👑, espero que la princesita haya amanecido bien y tenga un día tan hermoso como ella (TÚ). IMPLOSIBLE MI NIÑA ES HERMOSISIMAAAAAAAAAA✨"
   },
 ];
-
-function escapeHtml(str) {
-  if (!str) return '';
-  // Manejar objetos convirtiéndolos a string
-  if (typeof str === 'object') {
-    str = JSON.stringify(str);
-  }
-  return String(str).replace(/[&<>"']/g, m => 
-    m === '&' ? '&amp;' : 
-    m === '<' ? '&lt;' : 
-    m === '>' ? '&gt;' : 
-    m === '"' ? '&quot;' : '&#39;'
-  );
-}
 
 export function OpenWhenPage(router) {
   const page = document.createElement('div');

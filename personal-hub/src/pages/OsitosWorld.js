@@ -5,6 +5,8 @@
    SIN navegación principal (sidebar/bottom-nav ocultos)
    ========================================== */
 
+import { escapeHtml } from '../utils/escape.js';
+
 // ==========================================
 // DATOS COMPLETOS
 // ==========================================
@@ -66,15 +68,6 @@ const NEWS = [
 
 const FAVORITES_KEY = 'ositosWorld.favorites';
 const ACTIVE_SECTION_KEY = 'ositosWorld.activeSection';
-
-// ==========================================
-// HELPER: ESCAPE HTML
-// ==========================================
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, m => m === '&' ? '&amp;' : m === '<' ? '&gt;' : m === '>' ? '&lt;' : m === '"' ? '&quot;' : '&#39;');
-}
 
 // ==========================================
 // EMOJI MAPS
@@ -808,9 +801,16 @@ export function OsitosWorldPage(router) {
     // Keyboard Escape (bound once)
     if (!window.__ositos._escapeBound) {
       window.__ositos._escapeBound = true;
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeModal();
-      });
+      const onKeyDown = (e) => { if (e.key === 'Escape') closeModal(); };
+      page.cleanup = () => {
+        document.removeEventListener('keydown', onKeyDown);
+        window.__ositos._escapeBound = false;
+        document.body.style.overflow = '';
+        // Libera el puente global para no retener closures de esta página
+        delete window.toggleFavInModal;
+        delete window.__ositos;
+      };
+      document.addEventListener('keydown', onKeyDown);
     }
 
     // Update sidebar favs + counters
