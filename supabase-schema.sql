@@ -65,6 +65,8 @@ CREATE POLICY "content_delete_all" ON content FOR DELETE USING (true);
 
 -- ==========================================
 -- 2. MOODS — Estados de ánimo diarios
+--    Un registro por cambio: el mismo día puede
+--    tener varias filas (historial de modificaciones).
 -- ==========================================
 CREATE TABLE IF NOT EXISTS moods (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -74,9 +76,13 @@ CREATE TABLE IF NOT EXISTS moods (
   label TEXT DEFAULT '',
   emoji TEXT DEFAULT '',
   score INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, date)
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migración desde el esquema anterior (UNIQUE user_id+date):
+-- elimina la restricción para permitir historial de cambios por día.
+-- Es idempotente: no falla si ya se ejecutó.
+ALTER TABLE moods DROP CONSTRAINT IF EXISTS moods_user_id_date_key;
 
 ALTER TABLE moods ENABLE ROW LEVEL SECURITY;
 

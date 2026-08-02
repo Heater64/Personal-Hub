@@ -50,19 +50,23 @@ export function ProfilePage(router) {
   const themeLabels = { dark: 'Oscuro', light: 'Claro', auto: 'Auto' };    page.innerHTML = `
     <!-- Header -->
     <div class="profile-header glass-card">
-      <div class="profile-avatar-wrap" id="profileAvatarWrap">
-        <div class="profile-avatar" id="profileAvatar">
-          ${user?.avatar
-            ? `<img src="${escapeHtml(user.avatar)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="profile-initial fallback" id="profileInitial" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">${escapeHtml((user?.name || 'U').charAt(0).toUpperCase())}</span>`
-            : `<span class="profile-initial" id="profileInitial">${escapeHtml((user?.name || 'U').charAt(0).toUpperCase())}</span>`
-          }
+      <div class="profile-header__row">
+        <div class="profile-avatar-wrap" id="profileAvatarWrap">
+          <div class="profile-avatar" id="profileAvatar">
+            ${user?.avatar
+              ? `<img src="${escapeHtml(user.avatar)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="profile-initial fallback" id="profileInitial" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">${escapeHtml((user?.name || 'U').charAt(0).toUpperCase())}</span>`
+              : `<span class="profile-initial" id="profileInitial">${escapeHtml((user?.name || 'U').charAt(0).toUpperCase())}</span>`
+            }
+          </div>
+          <span class="profile-avatar-edit" id="profileAvatarEdit">${UI.camera}</span>
+          <input type="file" id="profileAvatarInput" accept="image/*" style="display:none">
         </div>
-        <span class="profile-avatar-edit" id="profileAvatarEdit">${UI.camera}</span>
-        <input type="file" id="profileAvatarInput" accept="image/*" style="display:none">
+        <div class="profile-user-block">
+          <h3 class="profile-name" id="profileName">${escapeHtml(user?.name || 'Usuario')}</h3>
+          <p class="profile-role" id="profileRole">${userStore.isAdmin ? UI.adminShield + ' Admin' : UI.heart + ' Princesa'}</p>
+          <p class="profile-email" id="profileEmail">${user?.email || ''}</p>
+        </div>
       </div>
-      <h3 class="profile-name" id="profileName">${escapeHtml(user?.name || 'Usuario')}</h3>
-      <p class="profile-role" id="profileRole">${userStore.isAdmin ? UI.adminShield + ' Admin' : UI.heart + ' Princesa'}</p>
-      <p class="profile-email" id="profileEmail">${user?.email || ''}</p>
     </div>
 
     <!-- Theme -->

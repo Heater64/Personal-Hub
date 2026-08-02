@@ -163,7 +163,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 12px 24px;
   border-radius: var(--radius-pill);
   background: var(--theme-accent-dim);
   border: 1px solid var(--theme-border-accent);
@@ -171,7 +171,7 @@
   color: var(--theme-accent-primary);
   transition: all var(--dur-spring);
   cursor: default;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .day-counter:hover {
@@ -706,7 +706,9 @@
   }
 
   .bento-hero h2 {
-    font-size: var(--fs-xl);
+    /* En móvil el "Bienvenida mi princesa" se muestra ~2x más grande */
+    font-size: var(--fs-3xl);
+    line-height: 1.15;
   }
 
   .bento-hero::after {
@@ -759,7 +761,9 @@
   }
 
   .bento-hero h2 {
-    font-size: var(--fs-lg);
+    /* Ultra-móvil: prioriza legibilidad, sigue 2x relativo al base */
+    font-size: var(--fs-2xl);
+    line-height: 1.15;
   }
 
   .bento-hero p {

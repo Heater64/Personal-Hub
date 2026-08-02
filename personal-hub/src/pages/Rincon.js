@@ -166,9 +166,9 @@ export function RinconPage(router) {
           <h1 class="romantic-title">Tu rincón favorito 🤍</h1>
           <p class="romantic-subtitle">Donde cada día eres especial ✨🌸🐱</p>
           <p class="romantic-text">Hecho con amor, especialmente para ti 🤍</p>
-          <div class="romantic-counter">
-            <span class="rincon-day-num">${daysSince}</span>
-            <span class="rincon-day-label">días juntos</span>
+          <div class="day-counter">
+            <span class="day-counter-icon">${ICON_SVGS['heart']}</span>
+            <span class="day-counter-text">${daysSince} días juntos</span>
           </div>
         </header>
 

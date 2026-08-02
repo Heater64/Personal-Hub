@@ -71,26 +71,6 @@
   font-size: var(--fs-sm);
 }
 
-.rincon-day-heart {
-  color: var(--theme-accent-primary);
-  font-size: 1.1rem;
-}
-
-.rincon-day-num {
-  font-weight: 700;
-  font-size: var(--fs-lg);
-  color: var(--theme-accent-primary);
-  font-family: var(--font-display);
-}
-
-.rincon-day-label {
-  color: var(--theme-text-secondary);
-}
-
-.rincon-day-emoji {
-  font-size: 1.1rem;
-}
-
 /* ==========================================
    SECTION CARDS GRID
    ========================================== */
@@ -1793,28 +1773,6 @@ body.lightbox-open {
   font-size: var(--fs-sm);
   color: var(--theme-text-muted);
   margin-bottom: 20px;
-}
-
-.romantic-counter {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 22px;
-  border-radius: var(--radius-pill);
-  background: var(--theme-bg-glass);
-  border: var(--theme-border-subtle);
-  font-size: var(--fs-sm);
-  color: var(--theme-text-secondary);
-  backdrop-filter: blur(4px);
-}
-
-.romantic-counter .rincon-day-num {
-  font-weight: 700;
-  font-size: var(--fs-lg);
-  color: var(--theme-accent-primary);
-  font-family: var(--font-display);
 }
 
 .romantic-menu {

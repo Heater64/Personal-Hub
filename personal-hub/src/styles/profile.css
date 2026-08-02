@@ -17,11 +17,7 @@
    ========================================== */
 .profile-header {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 32px 28px;
+  padding: 28px;
   border-radius: var(--radius-xl);
   background: var(--theme-bg-glass);
   border: var(--theme-border-subtle);
@@ -29,6 +25,14 @@
   isolation: isolate;
   animation: slide-up 0.5s ease forwards;
   transition: padding var(--dur-smooth), border-radius var(--dur-smooth);
+}
+
+.profile-header__row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .profile-header::before {
@@ -52,9 +56,9 @@
 
 .profile-avatar-wrap {
   position: relative;
-  margin-bottom: 16px;
   cursor: pointer;
   z-index: 1;
+  flex-shrink: 0;
 }
 
 .profile-avatar {
@@ -74,6 +78,35 @@
   border-color: var(--theme-accent-primary);
   transform: scale(1.05);
   box-shadow: 0 0 20px var(--theme-accent-dim);
+}
+
+.profile-user-block {
+  min-width: 0;
+}
+
+.profile-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.profile-role {
+  margin: 2px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--theme-accent-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-email {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--theme-text-secondary);
+  letter-spacing: 0.02em;
 }
 
 .profile-initial {
@@ -107,32 +140,6 @@
 
 .profile-avatar-wrap:hover .profile-avatar-edit {
   transform: scale(1.1);
-}
-
-.profile-name {
-  position: relative;
-  z-index: 1;
-  font-size: var(--fs-2xl);
-  margin: 0 0 4px;
-  color: var(--theme-text-primary);
-}
-
-.profile-role {
-  position: relative;
-  z-index: 1;
-  font-size: var(--fs-sm);
-  color: var(--theme-accent-primary);
-  margin: 0 0 4px;
-  font-weight: 500;
-}
-
-.profile-email {
-  position: relative;
-  z-index: 1;
-  font-size: var(--fs-sm);
-  color: var(--theme-text-muted);
-  word-break: break-all;
-  margin: 0;
 }
 
 /* ==========================================
