@@ -65,12 +65,12 @@ export function JuegosPage(router) {
     </footer>
   `;
 
-  // Bind game card clicks — open in new tab (standalone HTML files)
+  // Bind game card clicks — navigate in-place (no new tab)
   page.querySelectorAll('.juego-card').forEach(card => {
     card.addEventListener('click', () => {
       const href = card.dataset.href;
       if (href) {
-        window.open(href, '_blank');
+        window.location.assign(href);
       }
     });
   });
