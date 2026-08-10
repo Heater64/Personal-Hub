@@ -1,0 +1,233 @@
+/* ==========================================
+   NOW PLAYING BAR — reproductor global (tipo Spotify)
+   Vive fuera de las páginas: aparece al reproducir
+   cualquier canción y sigue sonando al navegar.
+   ========================================== */
+
+.now-playing-bar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  z-index: calc(var(--z-sticky) - 1);
+  align-items: center;
+  gap: var(--sp-12);
+  min-height: 64px;
+  padding: var(--sp-8) var(--sp-16);
+  background: var(--theme-surface-elevated);
+  border-top: 1px solid var(--theme-divider);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.22);
+}
+
+.now-playing-bar.is-visible {
+  display: flex;
+}
+
+/* Zona clicable: portada + título (abre Canciones) */
+.npb-main {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: var(--theme-text-primary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.npb-cover {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--theme-surface-pressed);
+}
+
+.npb-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.npb-cover-fb {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+}
+
+.npb-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.npb-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.npb-artist {
+  font-size: var(--fs-caption);
+  color: var(--theme-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Controles */
+.npb-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.npb-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--theme-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast), transform var(--dur-fast);
+}
+
+.npb-btn:hover {
+  background: var(--theme-surface-pressed);
+}
+
+.npb-btn:active {
+  transform: scale(0.92);
+}
+
+.npb-btn:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 1px;
+}
+
+.npb-play {
+  width: 46px;
+  height: 46px;
+  background: var(--theme-accent);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(232, 115, 90, 0.35);
+}
+
+.npb-play:hover {
+  background: var(--theme-accent-hover);
+}
+
+/* Tiempos (compactos; se ocultan en pantallas muy pequeñas) */
+.npb-time {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--theme-text-tertiary);
+  min-width: 30px;
+}
+
+.npb-time-cur {
+  text-align: right;
+}
+
+/* Botón cerrar (detiene la música) */
+.npb-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--theme-text-tertiary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+
+.npb-close:hover {
+  background: var(--theme-surface-pressed);
+  color: var(--theme-text-primary);
+}
+
+/* Barra de progreso fina pegada al borde inferior */
+.npb-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--theme-divider);
+  cursor: pointer;
+}
+
+.npb-progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--theme-accent);
+  transition: width 0.25s linear;
+}
+
+/* Espacio bajo el contenido para que la barra no tape nada */
+.app-shell.has-player .app-content {
+  padding-bottom: calc(var(--bottom-nav-height) + 84px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Mobile estrecho: ocultar tiempos, barra más compacta */
+@media (max-width: 479px) {
+  .npb-time {
+    display: none;
+  }
+
+  .now-playing-bar {
+    min-height: 60px;
+    gap: var(--sp-8);
+    padding: var(--sp-6) var(--sp-12);
+  }
+
+  .npb-cover {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+/* Desktop: la barra vive bajo el sidebar (sin bottom-nav) */
+@media (min-width: 769px) {
+  .app-shell.has-sidebar .now-playing-bar {
+    left: var(--sidebar-width);
+    bottom: 0;
+    min-height: 68px;
+    padding: var(--sp-10) var(--sp-24);
+    border-top: 1px solid var(--theme-divider);
+  }
+
+  .app-shell.has-sidebar.has-player .app-content {
+    padding-bottom: 92px;
+  }
+}
+
+/* Rutas inmersivas (login, ositos) → sin barra (no-nav lo oculta en JS) */
+@media (prefers-reduced-motion: reduce) {
+  .npb-progress-fill {
+    transition: none;
+  }
+}

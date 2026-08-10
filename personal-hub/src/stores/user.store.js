@@ -41,10 +41,13 @@ class UserStore {
       };
       this.isAdmin = admin;
       this.isLoggedIn = true;
+      // Rol definitivo desde la DB (profiles): cuando llegue, refresca isAdmin
+      auth.refreshRole();
     } else {
       this.user = null;
       this.isAdmin = false;
       this.isLoggedIn = false;
+      auth.refreshRole();
     }
     this._notify();
   }

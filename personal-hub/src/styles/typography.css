@@ -26,15 +26,15 @@ p {
 
 p:last-child { margin-bottom: 0; }
 
-small, .text-small { font-size: var(--fs-xs); letter-spacing: 0.02em; color: var(--theme-text-muted); }
+small, .text-small { font-size: var(--fs-xs); letter-spacing: 0.02em; color: var(--theme-text-secondary); }
 .text-sm { font-size: var(--fs-sm); }
 .text-lg { font-size: var(--fs-lg); }
 .text-xl { font-size: var(--fs-xl); }
 
 .text-primary { color: var(--theme-text-primary); }
 .text-secondary { color: var(--theme-text-secondary); }
-.text-muted { color: var(--theme-text-muted); }
-.text-accent { color: var(--theme-accent-primary); }
+.text-muted { color: var(--theme-text-secondary); }
+.text-accent { color: var(--theme-accent); }
 .text-center { text-align: center; }
 
 .font-light { font-weight: 300; }

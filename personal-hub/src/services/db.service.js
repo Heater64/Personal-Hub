@@ -4,6 +4,7 @@
    ========================================== */
 
 import { supabase } from './supabase.js';
+import { auth } from './auth.service.js';
 import { escapeHtml } from '../utils/escape.js';
 
 // Storage keys for localStorage fallback
@@ -37,6 +38,29 @@ function generateId() {
 }
 
 // ==========================================
+// GUARDIA DE AUTORIZACIÓN
+// ==========================================
+
+/**
+ * Barrera de autorización para toda escritura de contenido global.
+ * Defensa en profundidad: la RLS de Supabase ya lo bloquea en servidor;
+ * esta capa evita también el fallback a localStorage y las llamadas
+ * directas desde la consola de un usuario no-admin.
+ * Las acciones personales del usuario (mood, avatar, favoritos) NO pasan
+ * por aquí: solo el contenido administrado por el admin.
+ */
+async function requireAdmin() {
+  if (!auth.isAdmin()) {
+    // Reintenta con el rol fresco de la DB (evita la ventana de timing
+    // justo después del login, cuando refreshRole aún no ha resuelto).
+    await auth.refreshRole();
+    if (!auth.isAdmin()) {
+      throw new Error('Acción restringida a administradores.');
+    }
+  }
+}
+
+// ==========================================
 // SUPABASE HELPERS
 // ==========================================
 
@@ -67,6 +91,7 @@ async function loadContent(id, fallback = null) {
 }
 
 async function saveContent(id, data) {
+  await requireAdmin(); // contenido global: solo ADMIN
   try {
     const { error } = await supabase
       .from(CONTENT_TABLE)
@@ -135,11 +160,17 @@ async function saveMood(date, moodData) {
   // Save to Supabase
   const user = (await supabase.auth.getUser()).data?.user;
   if (user) {
-    supabase.from('moods').upsert({
-      user_id: user.id, date, mood: moodData.mood,
-      label: moodData.label, emoji: moodData.emoji,
-      score: moodData.score, created_at: new Date().toISOString()
-    }, { onConflict: 'user_id,date' }).catch(() => {});
+    // El builder de supabase-js es thenable pero no expone .catch.
+    // Además la tabla moods usa modelo de HISTORIAL (varias filas por día,
+    // la constraint user_id+date se eliminó a propósito): usamos INSERT,
+    // nunca upsert con onConflict (falla si la constraint no existe).
+    try {
+      await supabase.from('moods').insert({
+        user_id: user.id, date, mood: moodData.mood,
+        label: moodData.label, emoji: moodData.emoji,
+        score: moodData.score, created_at: new Date().toISOString()
+      });
+    } catch { /* el fallback local ya está guardado */ }
   }
   return true;
 }
@@ -196,6 +227,35 @@ async function getReasons() {
 
 async function saveReasons(reasons) {
   return saveContent('razones', { reasons });
+}
+
+// ==========================================
+// RINCÓN COVERS (via content table)
+// ==========================================
+
+async function getRinconCovers() {
+  const data = await loadContent('rincon_covers', { covers: {} });
+  return data.covers || {};
+}
+
+async function saveRinconCovers(covers) {
+  return saveContent('rincon_covers', { covers });
+}
+
+// ==========================================
+// AUDIOS (El Rincón — archivo del día 3)
+// Almacenados en la tabla `content` como el resto
+// de contenido global: Supabase con fallback local.
+// ==========================================
+
+/** Lista de audios del Rincón: [{ id, date, year, month, title?, url, duration?, creator?, createdAt? }] */
+async function getAudios() {
+  const data = await loadContent('audios', { audios: [] });
+  return Array.isArray(data?.audios) ? data.audios : [];
+}
+
+async function saveAudios(audios) {
+  return saveContent('audios', { audios: Array.isArray(audios) ? audios : [] });
 }
 
 // ==========================================
@@ -260,16 +320,50 @@ async function saveMaldiaMensajes(mensajes) {
 }
 
 // ==========================================
-// SERIES (via content table)
+// SERIES (via content table) — catálogo COMPARTIDO
+// (la sección Series y el Admin lo leen/escriben en seriesData.js;
+// aquí solo vive la capa Supabase, con fallback offline al espejo local)
 // ==========================================
 
 async function getSeries() {
-  const data = await loadContent('series', { items: [] });
-  return data.items || [];
+  const data = await loadContent('series', { series: null });
+  return data;
 }
 
-async function saveSeries(series) {
-  return saveContent('series', { items: series });
+async function saveSeries(catalog) {
+  return saveContent('series', { series: catalog });
+}
+
+// ==========================================
+// OPEN WHEN (via content table) — cartas personalizadas del Admin
+// (OpenWhen.js las fusiona con las cartas base de la app)
+// ==========================================
+
+function readOpenWhenMirror() {
+  try {
+    const raw = localStorage.getItem('ph.config.openwhen_letters');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.letters) ? parsed.letters : null;
+  } catch { return null; }
+}
+
+async function getOpenWhenLetters() {
+  // Fuente de verdad: Supabase; espejo local (ph.config.openwhen_letters)
+  // como fallback offline (mismo patrón que el catálogo de Series).
+  try {
+    const data = await loadContent('openwhen_letters', { letters: [] });
+    const letters = Array.isArray(data?.letters) ? data.letters : [];
+    if (letters.length) {
+      try { localStorage.setItem('ph.config.openwhen_letters', JSON.stringify({ letters })); } catch { /* cuota llena: ignorar */ }
+      return letters;
+    }
+  } catch { /* sin red o Supabase caído: seguir con el espejo local */ }
+  return readOpenWhenMirror() || [];
+}
+
+async function saveOpenWhenLetters(customLetters) {
+  return saveContent('openwhen_letters', { letters: customLetters });
 }
 
 // ==========================================
@@ -290,18 +384,51 @@ async function logActivity(action, details) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      supabase.from('activity_log').insert({
-        action, user_id: user.id,
-        details: details || '',
-        timestamp: new Date().toISOString()
-      }).catch(() => {});
+      // .catch no existe en el builder thenable de supabase-js: try/catch + await
+      try {
+        await supabase.from('activity_log').insert({
+          action, user_id: user.id,
+          details: details || '',
+          timestamp: new Date().toISOString()
+        });
+      } catch { /* log local ya registrado */ }
     }
   } catch {}
 }
 
 async function getActivity(limit = 50) {
-  const activities = await getCollection(KEYS.activity, []);
-  return activities.slice(0, limit);
+  const local = await getCollection(KEYS.activity, []);
+
+  // Fuente de verdad: activity_log en Supabase (multi-dispositivo).
+  // La RLS permite SELECT solo a admins (public.is_admin()).
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('activity_log')
+        .select('id, action, details, timestamp, user_id')
+        .order('timestamp', { ascending: false })
+        .limit(limit * 2);
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const remote = data.map(r => ({
+          id: r.id,
+          action: r.action,
+          details: r.details || '',
+          timestamp: r.timestamp
+        }));
+        // Merge con el espejo local (por si algún evento solo quedó ahí),
+        // deduplicando por id y manteniendo el orden más reciente primero.
+        const seen = new Set(remote.map(r => r.id));
+        const localExtra = local.filter(e => e.id && !seen.has(e.id));
+        return [...remote, ...localExtra].sort((a, b) =>
+          new Date(b.timestamp || 0) - new Date(a.timestamp || 0)
+        ).slice(0, limit);
+      }
+    } catch (err) {
+      console.warn('[db] Supabase activity read failed:', err.message);
+    }
+  }
+
+  return local.slice(0, limit);
 }
 
 // ==========================================
@@ -414,6 +541,96 @@ async function uploadAvatar(file) {
   return publicUrl;
 }
 
+// Upload gallery photos to Supabase Storage (same storage system as avatars).
+// Falls back to 'galeria' bucket, then 'avatars' if the gallery bucket is missing.
+async function uploadGalleryPhotos(files) {
+  await requireAdmin(); // subir fotos de la galería: solo ADMIN
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('No hay sesión activa');
+  if (!files?.length) return [];
+
+  const images = [...files].filter(f => f.type.startsWith('image/'));
+  if (!images.length) throw new Error('Solo se permiten imágenes');
+  const oversized = images.find(f => f.size > 5 * 1024 * 1024);
+  if (oversized) throw new Error('Cada foto no puede superar los 5 MB');
+
+  const buckets = ['galeria'];
+  const urls = [];
+
+  for (const file of images) {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const filePath = `galeria/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;
+    let uploaded = false;
+    let uploadError = null;
+
+    for (const bucket of buckets) {
+      const { error } = await supabase.storage.from(bucket).upload(filePath, file, { cacheControl: '3600', upsert: false });
+      if (!error) {
+        const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath);
+        urls.push(publicUrl);
+        uploaded = true;
+        break;
+      }
+      uploadError = error;
+    }
+
+    if (!uploaded) {
+      console.error('[db] Gallery upload failed:', uploadError);
+      if (uploadError?.message?.includes('row-level security policy') || uploadError?.code === '42501') {
+        throw new Error('No tienes permisos para subir fotos. Verifica el bucket "galeria" en Supabase.');
+      }
+      throw new Error('Hubo un problema al subir una foto. Inténtalo de nuevo.');
+    }
+  }
+
+  return urls;
+}
+
+// Upload memes (images AND videos) to Supabase Storage.
+// Falls back to 'memes' bucket, then 'galeria', then 'avatars'.
+async function uploadMemes(files) {
+  await requireAdmin(); // subir memes: solo ADMIN
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('No hay sesión activa');
+  if (!files?.length) return [];
+
+  const media = [...files].filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+  if (!media.length) throw new Error('Solo se permiten imágenes y vídeos');
+  const oversized = media.find(f => f.size > 50 * 1024 * 1024);
+  if (oversized) throw new Error('Cada archivo no puede superar los 50 MB');
+
+  const buckets = ['memes', 'galeria'];
+  const urls = [];
+
+  for (const file of media) {
+    const fileExt = file.name.split('.').pop() || (file.type.startsWith('video/') ? 'mp4' : 'jpg');
+    const filePath = `memes/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;
+    let uploaded = false;
+    let uploadError = null;
+
+    for (const bucket of buckets) {
+      const { error } = await supabase.storage.from(bucket).upload(filePath, file, { cacheControl: '3600', upsert: false });
+      if (!error) {
+        const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath);
+        urls.push(publicUrl);
+        uploaded = true;
+        break;
+      }
+      uploadError = error;
+    }
+
+    if (!uploaded) {
+      console.error('[db] Meme upload failed:', uploadError);
+      if (uploadError?.message?.includes('row-level security policy') || uploadError?.code === '42501') {
+        throw new Error('No tienes permisos para subir memes. Verifica el bucket "memes" en Supabase.');
+      }
+      throw new Error('Hubo un problema al subir un archivo. Inténtalo de nuevo.');
+    }
+  }
+
+  return urls;
+}
+
 async function listUsers() {
   if (listUsersPromise) return listUsersPromise;
 
@@ -521,6 +738,7 @@ async function listUsers() {
 }
 
 async function saveUser(userId, updates) {
+  await requireAdmin(); // gestión de usuarios: solo ADMIN
   const users = lsGet('ph.data.users', []);
   const idx = users.findIndex(u => u.id === userId);
   if (idx !== -1) {
@@ -529,10 +747,40 @@ async function saveUser(userId, updates) {
     users[idx] = { ...users[idx], ...safeUpdates };
     lsSet('ph.data.users', users);
   }
+
+  // Sincroniza con Supabase cuando el usuario es real (id UUID), no local
+  if (typeof userId === 'string' && isUuid(userId)) {
+    try {
+      const sessionRes = await supabase.auth.getSession();
+      const accessToken = sessionRes.data?.session?.access_token;
+      if (accessToken) {
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            action: 'update',
+            id: userId,
+            enabled: updates?.enabled
+          })
+        });
+        // En dev (Vite) /api/users no existe y devuelve el HTML del SPA con 200:
+        // detectarlo para no dar por hecho un cambio que no se aplicó.
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('application/json')) {
+          console.warn('[db] Server user update skipped (dev o endpoint no disponible).');
+        }
+      }
+    } catch (err) {
+      console.warn('[db] Could not sync user update with server:', err.message);
+    }
+  }
   return true;
 }
 
 async function createUser(userData) {
+  await requireAdmin(); // creación de usuarios: solo ADMIN
   const users = lsGet('ph.data.users', []);
   // Never persist passwords (even locally) to avoid leaking credentials.
   const { password, ...safeData } = userData || {};
@@ -544,10 +792,174 @@ async function createUser(userData) {
 }
 
 async function deleteUser(userId) {
+  await requireAdmin(); // eliminación de usuarios: solo ADMIN
   const users = lsGet('ph.data.users', []);
   lsSet('ph.data.users', users.filter(u => u.id !== userId));
   logActivity('user_deleted', `Usuario eliminado: ${userId}`);
+
+  // Si es un usuario real de Supabase, elimínalo también en Auth
+  if (typeof userId === 'string' && isUuid(userId)) {
+    try {
+      const sessionRes = await supabase.auth.getSession();
+      const accessToken = sessionRes.data?.session?.access_token;
+      if (accessToken) {
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ action: 'delete', id: userId })
+        });
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('application/json')) {
+          console.warn('[db] Server user deletion skipped (dev o endpoint no disponible).');
+        }
+      }
+    } catch (err) {
+      console.warn('[db] Could not sync user deletion with server:', err.message);
+    }
+  }
   return true;
+}
+
+/** ¿Es un id UUID real de Supabase Auth (no local)? */
+function isUuid(str) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+// ==========================================
+// GIFT RESPONSES — respuestas de regalos interactivos
+// Guardado local por usuario + sincronización con la tabla
+// user_progress (type='gift_responses', RLS por usuario).
+// ==========================================
+
+const GIFT_RESPONSES_TYPE = 'gift_responses';
+
+function giftResponsesLocalKey(userId) {
+  return `ph.giftResponses.${userId || 'guest'}`;
+}
+
+function lsGetGiftResponses(userId) {
+  return lsGet(giftResponsesLocalKey(userId), {});
+}
+
+async function getCurrentUserId() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Guarda la respuesta de un usuario a un regalo (p. ej. un día del
+ * calendario). El dato vive en localStorage y se sincroniza con Supabase
+ * (user_progress), de modo que el Admin puede verlo aunque el usuario
+ * responda desde otro dispositivo.
+ */
+async function saveGiftResponse(giftId, text) {
+  if (!giftId) throw new Error('Falta el identificador del regalo.');
+  const clean = String(text || '').trim();
+  if (!clean) throw new Error('Escribe una respuesta antes de enviar.');
+
+  const userId = await getCurrentUserId();
+  const all = lsGetGiftResponses(userId);
+  let email = '';
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    email = user?.email || '';
+  } catch { /* sin sesión */ }
+
+  all[giftId] = { text: clean, respondedAt: new Date().toISOString(), email };
+  lsSet(giftResponsesLocalKey(userId), all);
+
+  // Sync a Supabase: una fila por usuario con todos sus regalos respondidos.
+  if (userId && isSupabaseConfigured()) {
+    try {
+      const { error } = await supabase
+        .from('user_progress')
+        .upsert(
+          { user_id: userId, type: GIFT_RESPONSES_TYPE, data: all, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id,type' }
+        );
+      if (error) console.warn('[db] gift response sync failed:', error.message);
+    } catch (err) {
+      console.warn('[db] gift response sync failed:', err.message);
+    }
+  }
+  return all[giftId];
+}
+
+/** Respuestas del usuario actual (por giftId). */
+async function getMyGiftResponses() {
+  const userId = await getCurrentUserId();
+  if (userId && isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('data')
+        .eq('user_id', userId)
+        .eq('type', GIFT_RESPONSES_TYPE)
+        .maybeSingle();
+      if (!error && data?.data) {
+        lsSet(giftResponsesLocalKey(userId), data.data);
+        return data.data;
+      }
+    } catch { /* usa el guardado local */ }
+  }
+  return lsGetGiftResponses(userId);
+}
+
+/**
+ * Todas las respuestas de todos los usuarios, agrupadas por giftId.
+ * Uso exclusivo del Admin (la RLS del servidor lo refuerza).
+ * Devuelve { [giftId]: [{ userId, email, text, respondedAt }] }.
+ */
+async function getAllGiftResponses() {
+  const result = {};
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('user_id, data, updated_at')
+        .eq('type', GIFT_RESPONSES_TYPE);
+      if (!error && data) {
+        data.forEach(row => {
+          Object.entries(row.data || {}).forEach(([giftId, resp]) => {
+            if (!result[giftId]) result[giftId] = [];
+            result[giftId].push({
+              userId: row.user_id,
+              email: resp?.email || '',
+              text: resp?.text || '',
+              respondedAt: resp?.respondedAt || row.updated_at || ''
+            });
+          });
+        });
+        return result;
+      }
+    } catch { /* cae al guardado local */ }
+  }
+
+  // Fallback local: recoge todas las claves de respuestas de este navegador.
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('ph.giftResponses.')) continue;
+      const userId = key.replace('ph.giftResponses.', '');
+      const all = JSON.parse(localStorage.getItem(key) || '{}');
+      Object.entries(all).forEach(([giftId, resp]) => {
+        if (!result[giftId]) result[giftId] = [];
+        result[giftId].push({
+          userId,
+          email: resp?.email || '',
+          text: resp?.text || '',
+          respondedAt: resp?.respondedAt || ''
+        });
+      });
+    }
+  } catch { /* sin datos locales */ }
+  return result;
 }
 
 // ==========================================
@@ -566,7 +978,10 @@ const ACTION_LABELS = {
   'news_deleted': 'Noticia eliminada', 'series_created': 'Serie creada',
   'series_updated': 'Serie actualizada', 'series_deleted': 'Serie eliminada',
   'maldia_created': 'Frase/Mensaje creado', 'maldia_updated': 'Frase/Mensaje actualizado',
-  'maldia_deleted': 'Frase/Mensaje eliminado'
+  'maldia_deleted': 'Frase/Mensaje eliminado', 'audio_created': 'Audio creado',
+  'audio_updated': 'Audio actualizado', 'audio_deleted': 'Audio eliminado',
+  'letter_created': 'Carta creada', 'letter_updated': 'Carta actualizada',
+  'letter_deleted': 'Carta eliminada'
 };
 
 function formatAction(action) { return ACTION_LABELS[action] || action; }
@@ -578,14 +993,18 @@ function formatAction(action) { return ACTION_LABELS[action] || action; }
 export const db = {
   getMoods, saveMood, getMoodMonth, getAllMoods, getUserMoods,
   getReasons, saveReasons,
+  getRinconCovers, saveRinconCovers,
+  getAudios, saveAudios,
   getSongs, saveSongs,
   getGifts, saveGifts,
   getNews, saveNews,
-  getMaldiaFrases, getMaldiaMensajes, saveMaldiaFrases, saveMaldiaMensajes,
   getSeries, saveSeries,
+  getOpenWhenLetters, saveOpenWhenLetters,
+  getMaldiaFrases, getMaldiaMensajes, saveMaldiaFrases, saveMaldiaMensajes,
   logActivity, getActivity, formatAction,
   trackVisit, getAnalytics,
   listUsers, saveUser, createUser, deleteUser,
-  uploadAvatar,
+  uploadAvatar, uploadGalleryPhotos, uploadMemes,
+  saveGiftResponse, getMyGiftResponses, getAllGiftResponses,
   escapeHtml, generateId, checkConnection, isSupabaseConfigured
 };

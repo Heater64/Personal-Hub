@@ -1,0 +1,74 @@
+/* ==========================================
+   JUEGOS ONLINE — invitaciones, lobby y partida
+   ========================================== */
+.game-invite-center { position: fixed; inset: 0; z-index: 1200; pointer-events: none; }
+.game-invite-bell {
+  position: fixed; right: 22px; top: 22px; pointer-events: auto;
+  border: 1px solid var(--theme-accent, #e8735a); border-radius: 999px;
+  background: var(--theme-surface, #19191d); color: var(--theme-text-primary, #fff);
+  padding: 10px 15px; font-weight: 700; box-shadow: 0 12px 30px rgba(0,0,0,.25); cursor: pointer;
+}
+.game-invite-card {
+  position: fixed; right: 22px; top: 72px; width: min(360px, calc(100vw - 32px));
+  pointer-events: auto; padding: 22px; border-radius: 22px;
+  background: var(--theme-surface, #19191d); color: var(--theme-text-primary, #fff);
+  border: 1px solid color-mix(in srgb, var(--theme-accent, #e8735a) 55%, transparent);
+  box-shadow: 0 22px 60px rgba(0,0,0,.32); transform: translateY(-10px) scale(.98); opacity: 0;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.game-invite-card.is-visible { opacity: 1; transform: none; }
+.game-invite-card__eyebrow { color: var(--theme-accent, #e8735a); font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.game-invite-card h2 { margin: 8px 0 6px; font-size: 1.25rem; }
+.game-invite-card p { margin: 0; color: var(--theme-text-secondary, rgba(255,255,255,.68)); }
+.game-invite-card__meta { margin-top: 12px; color: var(--theme-text-muted, rgba(255,255,255,.48)); font-size: .76rem; }
+.game-invite-card__actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+.game-invite-card__actions button, .online-btn, .online-choice, .online-game__cell {
+  min-height: 44px; border-radius: 12px; font: inherit; cursor: pointer;
+}
+.game-invite-card__reject { border: 1px solid var(--theme-border, rgba(255,255,255,.14)); background: transparent; color: inherit; padding: 10px 14px; }
+.game-invite-card__accept, .online-btn--primary { border: 0; background: var(--theme-accent, #e8735a); color: #fff; padding: 10px 15px; font-weight: 700; }
+.game-invite-card button:focus-visible, .online-btn:focus-visible, .online-choice:focus-visible, .online-game__cell:focus-visible { outline: 3px solid color-mix(in srgb, var(--theme-accent, #e8735a) 55%, #fff); outline-offset: 2px; }
+
+.online-page { max-width: 820px; margin: 0 auto; padding: 28px 20px 100px; }
+.online-shell { padding: clamp(20px, 4vw, 42px); border-radius: 28px; }
+.online-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
+.online-kicker { margin: 0 0 6px; color: var(--theme-accent, #e8735a); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; }
+.online-title { margin: 0; font-family: var(--font-display, Georgia, serif); font-size: clamp(1.8rem, 5vw, 2.6rem); }
+.online-subtitle { color: var(--theme-text-secondary, rgba(255,255,255,.68)); margin: 8px 0 0; }
+.online-panel { border: 1px solid var(--theme-border, rgba(255,255,255,.12)); border-radius: 20px; padding: 20px; background: var(--theme-surface-soft, rgba(255,255,255,.04)); }
+.online-field { display: grid; gap: 8px; margin: 16px 0; }
+.online-field label { font-size: .8rem; font-weight: 700; color: var(--theme-text-secondary, rgba(255,255,255,.68)); }
+.online-field select { min-height: 46px; border: 1px solid var(--theme-border, rgba(255,255,255,.14)); border-radius: 12px; padding: 0 12px; background: var(--theme-surface, #19191d); color: inherit; font: inherit; }
+.online-targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.online-choice { display: flex; align-items: center; gap: 10px; padding: 12px; text-align: left; border: 1px solid var(--theme-border, rgba(255,255,255,.14)); background: transparent; color: inherit; }
+.online-choice.is-selected { border-color: var(--theme-accent, #e8735a); background: color-mix(in srgb, var(--theme-accent, #e8735a) 12%, transparent); }
+.online-avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--theme-accent, #e8735a) 20%, transparent); font-weight: 700; }
+.online-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.online-btn { border: 1px solid var(--theme-border, rgba(255,255,255,.14)); background: transparent; color: inherit; padding: 10px 16px; }
+.online-btn--primary { border-color: transparent; }
+.online-btn:disabled, .game-invite-card button:disabled { opacity: .55; cursor: wait; }
+.online-status { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--theme-accent, #e8735a) 10%, transparent); color: var(--theme-text-secondary, rgba(255,255,255,.72)); }
+.online-status__dot { width: 10px; height: 10px; border-radius: 50%; background: var(--theme-accent, #e8735a); box-shadow: 0 0 0 5px color-mix(in srgb, var(--theme-accent, #e8735a) 16%, transparent); }
+.online-game__board { display: grid; gap: 8px; margin: 22px auto; max-width: 520px; }
+.online-game__board--connect4 { grid-template-columns: repeat(7, 1fr); background: #2563a8; padding: 10px; border-radius: 18px; }
+.online-game__board--ttt { grid-template-columns: repeat(3, 1fr); max-width: 360px; }
+.online-game__cell { aspect-ratio: 1; border: 1px solid var(--theme-border, rgba(255,255,255,.14)); background: var(--theme-surface, #19191d); color: var(--theme-text-primary, #fff); font-size: clamp(1.4rem, 6vw, 2.5rem); font-weight: 800; display: grid; place-items: center; }
+.online-game__board--connect4 .online-game__cell { border-radius: 50%; background: rgba(255,255,255,.12); border: 0; }
+.online-game__cell[data-value="1"] { color: #ef4444; }
+.online-game__cell[data-value="2"] { color: #facc15; }
+.online-game__cell[data-value="X"] { color: var(--theme-accent, #e8735a); }
+.online-game__cell[data-value="O"] { color: #60a5fa; }
+.online-turn { text-align: center; font-weight: 700; color: var(--theme-accent, #e8735a); }
+.online-result { text-align: center; padding: 24px; border-radius: 20px; background: color-mix(in srgb, var(--theme-accent, #e8735a) 10%, transparent); }
+.online-result h2 { margin: 6px 0; font-family: var(--font-display, Georgia, serif); }
+.online-fleet { display: grid; grid-template-columns: repeat(10, minmax(22px, 1fr)); gap: 3px; max-width: 480px; margin: 12px auto; }
+.online-fleet .online-game__cell { min-height: 28px; aspect-ratio: 1; border-radius: 4px; font-size: .7rem; }
+.online-fleet-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.online-fleet-title { text-align: center; font-size: .8rem; color: var(--theme-text-secondary, rgba(255,255,255,.68)); }
+.online-game__cell.is-ship { background: color-mix(in srgb, #60a5fa 45%, transparent); }
+.online-game__cell.is-shot { background: color-mix(in srgb, #f87171 40%, transparent); }
+.online-game__cell.is-miss { background: color-mix(in srgb, #fff 14%, transparent); }
+.juego-card-online { position: absolute; right: 10px; bottom: 10px; z-index: 3; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 6px 9px; background: rgba(0,0,0,.45); color: #fff; font-size: .68rem; text-decoration: none; }
+.juego-card { position: relative; }
+@media (max-width: 560px) { .game-invite-bell { right: 12px; top: 12px; } .game-invite-card { right: 12px; top: 62px; } .online-header { display: block; } }
+@media (prefers-reduced-motion: reduce) { .game-invite-card { transition: none; } }

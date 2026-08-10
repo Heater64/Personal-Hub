@@ -21,13 +21,19 @@
   },
   "icons": [
     {
-      "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png",
+      "src": "/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://res.cloudinary.com/dcsent4fs/image/upload/v1783958831/imagen_512x512_radslu.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

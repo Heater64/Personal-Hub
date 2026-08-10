@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>2048</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 420px; }
+        canvas { width: 100%; max-width: 420px; aspect-ratio: 1/1; border-radius: 18px; }
+        .controls-hint { margin: 10px 0 4px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>2048</h1>
+            <p class="subtitle">Fusiona las baldosas hasta llegar a 2048</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">🍎 Puntuación</span><span class="stat-value gold" id="scoreDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">🏆 Récord</span><span class="stat-value green" id="highScoreDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">🧩 Mayor</span><span class="stat-value" id="bestTileDisplay">2</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa (P)" aria-label="Pausar o reanudar">⏸️</button>
+            </div>
+        </div>
+        <!-- ===== TAMAÑO DEL TABLERO ===== -->
+        <div class="size-control">
+            <button class="size-btn active" data-size="4">4×4</button>
+            <button class="size-btn" data-size="5">5×5</button>
+            <button class="size-btn" data-size="6">6×6</button>
+        </div>
+
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="420" height="420"></canvas>
+        </div>
+        <div class="controls-hint">Flechas o WASD · Desliza en móvil · P pausa · R nueva partida</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">💀</div>
+            <h2 id="msgTitle">¡Fin de la partida!</h2>
+            <p id="msgText">Puntuación: 0 · Mayor: 2 · Récord: 0</p>
+            <button class="btn-primary" id="msgBtn">Jugar otra vez</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const GAP = 12, PAD = 14;
+
+        // --- Tamaños del tablero (4×4 clásico, 5×5, 6×6) ---
+        const SIZES = {
+            '4': { n: 4, s: 420 },
+            '5': { n: 5, s: 500 },
+            '6': { n: 6, s: 580 }
+        };
+        let sizePref = SIZES[localStorage.getItem('game2048Size')] ? localStorage.getItem('game2048Size') : '4';
+        let N, S, CELL;
+
+        function applyBoard() {
+            const cfg = SIZES[sizePref];
+            N = cfg.n; S = cfg.s;
+            CELL = (S - PAD * 2 - GAP * (N - 1)) / N;
+            canvas.width = S;
+            canvas.height = S;
+            canvas.style.maxWidth = Math.min(S, 560) + 'px';
+            const wrap = document.querySelector('.canvas-wrap');
+            if (wrap) wrap.style.maxWidth = Math.min(S, 600) + 'px';
+        }
+
+        let grid, score, best, over, won, paused;
+
+        best = parseInt(localStorage.getItem('game2048Best') || '0', 10);
+        document.getElementById('highScoreDisplay').textContent = best;
+
+        const COLORS = {
+            2: '#eee4da', 4: '#ede0c8', 8: '#f2b179', 16: '#f59563', 32: '#f67c5f',
+            64: '#f65e3b', 128: '#edcf72', 256: '#edcc61', 512: '#edc850',
+            1024: '#edc53f', 2048: '#edc22e'
+        };
+        const TEXT = v => (v <= 4 ? '#776e65' : '#f9f6f2');
+
+        function emptyCells() {
+            const out = [];
+            for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!grid[r][c]) out.push([r, c]);
+            return out;
+        }
+
+        function addTile() {
+            const empty = emptyCells();
+            if (!empty.length) return;
+            const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+            grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+        }
+
+        function resetGame() {
+            applyBoard();
+            grid = Array.from({ length: N }, () => Array(N).fill(0));
+            score = 0; over = false; won = false; paused = false;
+            document.getElementById('pauseBtn').textContent = '⏸️';
+            addTile(); addTile();
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+            draw();
+        }
+
+        // --- Deslizar una fila hacia la izquierda (lógica pura) ---
+        function slideRow(row) {
+            const vals = row.filter(v => v);
+            const out = [];
+            let gained = 0;
+            for (let i = 0; i < vals.length; i++) {
+                if (vals[i] === vals[i + 1]) { out.push(vals[i] * 2); gained += vals[i] * 2; i++; }
+                else out.push(vals[i]);
+            }
+            while (out.length < N) out.push(0);
+            return { row: out, gained };
+        }
+
+        function move(dir) {
+            if (over || paused) return false;
+            const before = JSON.stringify(grid);
+            let gained = 0;
+            // dir: 0 izq, 1 der, 2 arr, 3 ab
+            const rotate = (g) => {
+                const ng = Array.from({ length: N }, () => Array(N).fill(0));
+                for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) ng[c][N - 1 - r] = g[r][c];
+                return ng;
+            };
+            let g = grid;
+            if (dir === 1) g = g.map(r => r.slice().reverse());
+            else if (dir === 2 || dir === 3) g = rotate(g);
+            if (dir === 3) g = g.map(r => r.slice().reverse());
+
+            const ng = [];
+            for (const row of g) {
+                const res = slideRow(row);
+                ng.push(res.row);
+                gained += res.gained;
+            }
+
+            let ng2 = ng;
+            if (dir === 1) ng2 = ng.map(r => r.slice().reverse());
+            else if (dir === 2 || dir === 3) {
+                const rot = (g) => { const o = Array.from({ length: N }, () => Array(N).fill(0)); for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) o[N - 1 - c][r] = g[r][c]; return o; };
+                ng2 = rot(ng);
+                if (dir === 3) ng2 = rot(ng2);
+            }
+
+            grid = ng2;
+            if (JSON.stringify(grid) === before) return false;
+            if (gained > 0) {
+                score += gained;
+                if (score > best) { best = score; localStorage.setItem('game2048Best', best); }
+                SFX.point();
+                buzz(8);
+            }
+            addTile();
+            updateUI();
+            draw();
+            if (hasWon() && !won) { won = true; SFX.win(); }
+            if (!movesLeft()) gameEnd();
+            return true;
+        }
+
+        function hasWon() { for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] === 2048) return true; return false; }
+
+        function movesLeft() {
+            for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+                if (!grid[r][c]) return true;
+                if (c + 1 < N && grid[r][c] === grid[r][c + 1]) return true;
+                if (r + 1 < N && grid[r][c] === grid[r + 1][c]) return true;
+            }
+            return false;
+        }
+
+        function gameEnd() {
+            over = true;
+            SFX.lose();
+            buzz([60, 40, 60]);
+            const record = score > 0 && score >= best && !(score === best && best === parseInt(localStorage.getItem('game2048Best') || '0', 10) && best > 0);
+            const rec = score > 0 && score >= best;
+            showMessage(rec && score === best ? '🏆' : '💀', rec && score === best ? '¡Nuevo récord!' : '¡Fin de la partida!', `Puntuación: ${score} · Mayor: ${maxTile()} · Récord: ${best}`);
+        }
+
+        function maxTile() { let m = 0; for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) m = Math.max(m, grid[r][c]); return m; }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Jugar otra vez';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('highScoreDisplay').textContent = best;
+            document.getElementById('bestTileDisplay').textContent = maxTile();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, S, S);
+            const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, S, S);
+            // fondo del tablero
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            ctx.fillRect(0, 0, S, S);
+            for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+                const x = PAD + c * (CELL + GAP), y = PAD + r * (CELL + GAP);
+                const v = grid[r][c];
+                ctx.fillStyle = v ? (COLORS[v] || '#edc22e') : 'rgba(255,255,255,0.06)';
+                roundRect(x, y, CELL, CELL, 10);
+                ctx.fill();
+                if (v) {
+                    ctx.fillStyle = TEXT(v);
+                    ctx.font = `700 ${v >= 1024 ? Math.round(CELL * 0.30) : v >= 128 ? Math.round(CELL * 0.38) : Math.round(CELL * 0.5)}px Inter, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(v, x + CELL / 2, y + CELL / 2 + 1);
+                }
+            }
+        }
+
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        function togglePause() {
+            if (over) return;
+            paused = !paused;
+            document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+            SFX.pause();
+        }
+
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+
+        document.addEventListener('keydown', (e) => {
+            const k = e.key;
+            if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(k)) e.preventDefault();
+            if (k === 'r' || k === 'R') { resetGame(); return; }
+            if (k === 'p' || k === 'P' || k === 'Escape') { togglePause(); return; }
+            if (paused || over) return;
+            if (k === 'ArrowLeft' || k === 'a' || k === 'A') move(0);
+            else if (k === 'ArrowRight' || k === 'd' || k === 'D') move(1);
+            else if (k === 'ArrowUp' || k === 'w' || k === 'W') move(2);
+            else if (k === 'ArrowDown' || k === 's' || k === 'S') move(3);
+        });
+
+        let tx = 0, ty = 0, tActive = false;
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tActive = true; }, { passive: false });
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (!tActive) return;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - tx, dy = t.clientY - ty;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) > 30) {
+                if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : 0);
+                else move(dy > 0 ? 3 : 2);
+            }
+            tActive = false;
+        }, { passive: false });
+
+        document.addEventListener('visibilitychange', () => { if (document.hidden && !over && !paused) togglePause(); });
+
+        // --- Selector de tamaño ---
+        function applySizeUI() {
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.size === sizePref);
+            });
+        }
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                sizePref = btn.dataset.size;
+                localStorage.setItem('game2048Size', sizePref);
+                applySizeUI();
+                resetGame();
+                SFX.click();
+            });
+        });
+        applySizeUI();
+
+        resetGame();
+
+        window.__2048 = { move, resetGame, get state() { return { score, best, over, grid, size: sizePref, n: N }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

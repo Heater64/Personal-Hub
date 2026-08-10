@@ -57,28 +57,69 @@ export class Router {
     window.location.hash = path;
   }
 
+  /**
+   * Navegación que REEMPLAZA la entrada de historial actual.
+   * Para redirects automáticos (guards de auth/admin, rutas inexistentes,
+   * logout): evita que el botón Atrás vuelva a una ruta protegida y dispare
+   * un bucle infinito de redirects (p. ej. #/login ← → ruta protegida).
+   */
+  replace(path) {
+    const target = `#${path}`;
+    // Si ya estamos en el destino solo re-render (los guards redirigen por
+    // path, nunca cuando ya estás en el destino, así que no hay recursión).
+    if (window.location.hash === target) {
+      this._handleRoute();
+      return;
+    }
+    history.replaceState(null, '', target);
+    this._handleRoute();
+  }
+
   getCurrentPath() {
     const hash = window.location.hash.slice(1) || '/';
-    return hash;
+    // Normalizar barras finales para consistencia: todos los consumidores
+    // (guards, nav activa, currentRoute.path) ven la misma ruta.
+    return hash.length > 1 ? hash.replace(/\/+$/, '') : hash;
   }
 
   matchRoute(path) {
+    // Split query string (p. ej. /rincon?tab=curiosidades) — el query
+    // queda disponible en route.query para las páginas que hagan deep-link
+    const qIndex = path.indexOf('?');
+    const base = qIndex === -1 ? path : path.slice(0, qIndex);
+    const query = {};
+    if (qIndex !== -1) {
+      path.slice(qIndex + 1).split('&').forEach(pair => {
+        if (!pair) return;
+        const eq = pair.indexOf('=');
+        const k = eq === -1 ? pair : pair.slice(0, eq);
+        const v = eq === -1 ? '' : pair.slice(eq + 1);
+        try {
+          if (k) query[decodeURIComponent(k)] = decodeURIComponent(v || '');
+        } catch { /* query malformado: ignorar */ }
+      });
+    }
+
+    // Normalizar: una barra final (/rincon/) no debe caer en la ruta
+    // inexistente → redirigiría al inicio sin motivo.
+    const normalized = base.length > 1 ? base.replace(/\/+$/, '') : base;
+
     // Exact match first
-    let route = this.routes.find(r => r.path === path);
-    if (route) return route;
+    let route = this.routes.find(r => r.path === normalized);
+    if (route) return { ...route, query };
 
     // Dynamic segments like /profile/:id
     for (const r of this.routes) {
       const pattern = r.path.replace(/:([^/]+)/g, '([^/]+)');
       const regex = new RegExp(`^${pattern}$`);
-      const match = path.match(regex);
+      const match = normalized.match(regex);
       if (match) {
         const params = {};
         const keys = r.path.match(/:([^/]+)/g) || [];
         keys.forEach((key, i) => {
           params[key.slice(1)] = match[i + 1];
         });
-        return { ...r, params };
+        return { ...r, params, query };
       }
     }
 
@@ -113,7 +154,8 @@ export class Router {
     const finalRoute = this.matchRoute(finalPath);
 
     if (!finalRoute) {
-      this.navigate('/');
+      // Ruta inexistente: reemplazar (no acumular entradas de historial)
+      this.replace('/');
       return;
     }
 

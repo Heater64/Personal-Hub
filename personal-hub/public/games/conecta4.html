@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Conecta 4</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 420px; }
+        canvas { width: 100%; max-width: 420px; aspect-ratio: 7/6; border-radius: 18px; cursor: pointer; }
+        .turn-chip { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 12px; padding: 6px 16px; border-radius: 999px; background: var(--panel); border: 1px solid var(--panel-border); font-size: 0.75rem; font-weight: 600; color: var(--ink-dim); }
+        .turn-dot { width: 12px; height: 12px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Conecta 4</h1>
+            <p class="subtitle">Dos jugadores · Une 4 fichas en línea</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">🔴 J1</span><span class="stat-value" id="wins1Display">0</span></div>
+                <div class="stat"><span class="stat-label">🟡 J2</span><span class="stat-value" id="wins2Display">0</span></div>
+                <div class="stat"><span class="stat-label">🤝 Empates</span><span class="stat-value" id="drawsDisplay">0</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Reiniciar (R)" aria-label="Reiniciar partida">🔄</button>
+            </div>
+        </div>
+        <div class="turn-chip" id="turnChip"><span class="turn-dot" id="turnDot"></span><span id="turnText">Turno del Jugador 1</span></div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="420" height="360"></canvas>
+        </div>
+        <div class="controls-hint">Clic en una columna para soltar la ficha · Juegan alternando en el mismo dispositivo</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🎉</div>
+            <h2 id="msgTitle">¡Gana el Jugador 1!</h2>
+            <p id="msgText"></p>
+            <button class="btn-primary" id="msgBtn">Jugar otra vez</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const COLS = 7, ROWS = 6;
+        const W = 420, H = 360, R = 24, MARGIN = 12;
+
+        let board, turn, over, wins1, wins2, draws;
+        wins1 = parseInt(localStorage.getItem('conecta4Wins1') || '0', 10);
+        wins2 = parseInt(localStorage.getItem('conecta4Wins2') || '0', 10);
+        draws = parseInt(localStorage.getItem('conecta4Draws') || '0', 10);
+
+        function resetGame() {
+            board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            turn = 1;
+            over = false;
+            document.getElementById('gameMessage').classList.remove('show');
+            updateChip();
+            draw();
+        }
+
+        function updateChip() {
+            const dot = document.getElementById('turnDot');
+            const text = document.getElementById('turnText');
+            dot.style.background = turn === 1 ? '#ef4444' : '#facc15';
+            text.textContent = over ? 'Partida terminada' : (turn === 1 ? 'Turno del Jugador 1' : 'Turno del Jugador 2');
+        }
+
+        function colX(c) { return MARGIN + R + c * ((W - 2 * MARGIN) / COLS); }
+        function rowY(r) { return MARGIN + R + r * ((H - 2 * MARGIN) / ROWS); }
+
+        function drop(col) {
+            if (over) return false;
+            if (board[0][col]) { SFX.click(); return false; }
+            let row = ROWS - 1;
+            while (row >= 0 && board[row][col]) row--;
+            board[row][col] = turn;
+            SFX.point();
+            buzz(10);
+            draw();
+            if (checkWin(row, col)) {
+                over = true;
+                const icon = turn === 1 ? '🔴' : '🟡';
+                if (turn === 1) { wins1++; localStorage.setItem('conecta4Wins1', wins1); } else { wins2++; localStorage.setItem('conecta4Wins2', wins2); }
+                SFX.win();
+                buzz([30, 20, 30, 20, 60]);
+                document.getElementById(`wins${turn}Display`).textContent = turn === 1 ? wins1 : wins2;
+                updateChip();
+                showMessage('🎉', `¡Gana el Jugador ${turn}!`, `Jugador 1: ${wins1} · Jugador 2: ${wins2} · Empates: ${draws}`);
+            } else if (board.every(r => r.every(c => c))) {
+                over = true;
+                draws++; localStorage.setItem('conecta4Draws', draws);
+                document.getElementById('drawsDisplay').textContent = draws;
+                updateChip();
+                showMessage('🤝', '¡Empate!', `Jugador 1: ${wins1} · Jugador 2: ${wins2} · Empates: ${draws}`);
+            } else {
+                turn = turn === 1 ? 2 : 1;
+                updateChip();
+            }
+            return true;
+        }
+
+        function checkWin(row, col) {
+            const p = board[row][col];
+            const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+            for (const [dr, dc] of dirs) {
+                let count = 1;
+                for (const s of [1, -1]) {
+                    let r = row + dr * s, c = col + dc * s;
+                    while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === p) { count++; r += dr * s; c += dc * s; }
+                }
+                if (count >= 4) return true;
+            }
+            return false;
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Jugar otra vez';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, W, H);
+            const cellW = (W - 2 * MARGIN) / COLS, cellH = (H - 2 * MARGIN) / ROWS;
+            // agujeros
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                const x = MARGIN + cellW / 2 + c * cellW, y = MARGIN + cellH / 2 + r * cellH;
+                ctx.beginPath();
+                ctx.arc(x, y, R - 3, 0, Math.PI * 2);
+                ctx.fillStyle = board[r][c] === 1 ? '#ef4444' : board[r][c] === 2 ? '#facc15' : 'rgba(255,255,255,0.07)';
+                ctx.fill();
+                if (!board[r][c]) { ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke(); }
+            }
+            // indicador de columna (hover / turno)
+            ctx.fillStyle = turn === 1 ? 'rgba(239,68,68,0.25)' : 'rgba(250,204,21,0.25)';
+            ctx.fillRect(0, 0, W, 4);
+        }
+
+        function canvasToCol(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width * W;
+            return Math.max(0, Math.min(COLS - 1, Math.floor((x - MARGIN) / ((W - 2 * MARGIN) / COLS))));
+        }
+
+        canvas.addEventListener('click', (e) => { const col = canvasToCol(e); if (col >= 0 && col < COLS) drop(col); });
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = (t.clientX - rect.left) / rect.width * W;
+            const col = Math.max(0, Math.min(COLS - 1, Math.floor((x - MARGIN) / ((W - 2 * MARGIN) / COLS))));
+            drop(col);
+        }, { passive: false });
+
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+        document.getElementById('pauseBtn').addEventListener('click', resetGame);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') resetGame();
+            if (e.key >= '1' && e.key <= '7') { const c = parseInt(e.key, 10) - 1; drop(c); }
+        });
+
+        document.getElementById('wins1Display').textContent = wins1;
+        document.getElementById('wins2Display').textContent = wins2;
+        document.getElementById('drawsDisplay').textContent = draws;
+
+        resetGame();
+
+        window.__conecta4 = { drop, resetGame, get state() { return { turn, over, wins1, wins2 }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

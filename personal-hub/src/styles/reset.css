@@ -1,6 +1,8 @@
 /* ==========================================
-   RESET
+   RESET — Personal Hub v3 (Native)
+   Optimizado para experiencia móvil nativa.
    ========================================== */
+
 *,
 *::before,
 *::after {
@@ -10,36 +12,33 @@
 }
 
 html {
-  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
   text-size-adjust: 100%;
   touch-action: manipulation;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: none;
 }
 
 body {
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
-  overscroll-behavior: none;
   font-family: var(--font-body);
-  font-size: 16px;
-  font-weight: 300;
-  line-height: 1.6;
-  letter-spacing: 0.02em;
+  font-size: var(--fs-base);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
   color: var(--theme-text-primary);
-  background: var(--theme-bg-primary);
+  background: var(--theme-bg);
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
-  touch-action: manipulation;
 }
 
 a {
   color: inherit;
   text-decoration: none;
-  touch-action: manipulation;
 }
 
 button, input, textarea, select {
@@ -47,9 +46,7 @@ button, input, textarea, select {
   color: inherit;
   border: none;
   background: none;
-  cursor: pointer;
   outline: none;
-  touch-action: manipulation;
 }
 
 img, picture, video, canvas, svg {
@@ -62,31 +59,40 @@ ul, ol {
   list-style: none;
 }
 
+/* Selection */
 ::selection {
-  background: var(--theme-accent-dim);
-  color: var(--theme-text-primary);
+  background: var(--theme-accent);
+  color: #fff;
 }
 
+/* Focus visible — subtle ring */
 :focus-visible {
-  outline: 2px solid var(--theme-accent-primary);
-  outline-offset: 3px;
-  border-radius: var(--radius-sm);
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
 }
 
+/* Scrollbar — minimal nativa */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--theme-scrollbar-track);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--theme-scrollbar-thumb);
-  border-radius: var(--radius-pill);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--theme-scrollbar-thumb-hover);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-scrollbar-thumb) transparent;
 }

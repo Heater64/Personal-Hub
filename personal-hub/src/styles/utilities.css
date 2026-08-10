@@ -2,6 +2,42 @@
    UTILITIES
    ========================================== */
 
+/* ==========================================
+   ACCESIBILIDAD
+   ========================================== */
+
+/* Solo para lectores de pantalla (no visible) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: aparece al enfocar con teclado */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: var(--sp-16, 16px);
+  z-index: var(--z-modal, 1000);
+  padding: 12px 20px;
+  border-radius: var(--r-full, 999px);
+  background: var(--theme-accent-strong, #c14e3a);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: var(--sp-16, 16px);
+}
+
 .hidden { display: none !important; }
 .invisible { visibility: hidden !important; }
 .block { display: block !important; }

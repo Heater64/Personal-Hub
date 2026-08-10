@@ -80,6 +80,12 @@ function init() {
     protected: true
   });
 
+  // Sala online: invitación → espera → partida → resultado.
+  router.addRoute('/juegos/online/:gameId', lazy(() => import('./pages/OnlineGame.js').then(m => m.OnlineGamePage)), {
+    title: 'Partida online · Personal Hub',
+    protected: true
+  });
+
   // Register Calendario page
   router.addRoute('/calendario', lazy(() => import('./pages/Calendario.js').then(m => m.CalendarioPage)), {
     title: 'Calendario · Personal Hub',

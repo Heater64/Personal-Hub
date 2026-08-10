@@ -4,6 +4,7 @@
    ========================================== */
 
 import { userStore } from '../stores/user.store.js';
+import { setUserPref } from '../utils/userStorage.js';
 
 const NAV_ITEMS = [
   { id: 'home',        label: 'Inicio',      icon: 'home' },
@@ -23,7 +24,7 @@ export function BottomNav(router) {
 
   function render() {
     const user = userStore.getUser();
-    const currentId = currentPath.split('/')[1] || 'home';
+    const currentId = (currentPath.split('/')[1] || '').split('?')[0] || 'home';
 
     nav.innerHTML = NAV_ITEMS.map((item, i) => {
       const isActive = item.id === currentId ||
@@ -36,10 +37,12 @@ export function BottomNav(router) {
       let statusDot = '';
       if (item.id === 'perfil' && user) {
         const initial = (user.name || 'U').charAt(0).toUpperCase();
-        const avatarImg = user.avatar
-          ? `<img src="${user.avatar}" alt="" class="bottom-avatar" style="object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`
+        const hasAvatar = !!user.avatar;
+        // La inicial solo se muestra si NO hay foto o si la foto falla al cargar
+        const avatarImg = hasAvatar
+          ? `<img src="${user.avatar}" alt="" class="bottom-avatar" style="object-fit:cover;display:flex;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`
           : '';
-        iconHtml = `<span class="bottom-avatar-wrap">${avatarImg}<span class="bottom-avatar${user.avatar ? ' fallback' : ''}">${initial}</span></span>`;
+        iconHtml = `<span class="bottom-avatar-wrap">${avatarImg}<span class="bottom-avatar${hasAvatar ? ' fallback' : ''}"${hasAvatar ? ' style="display:none"' : ''}>${initial}</span></span>`;
         // Online status dot on the profile tab
         const online = navigator.onLine;
         statusDot = `<span class="bottom-nav__status" style="background:${online ? 'var(--green, #4caf50)' : 'var(--red, #dc3545)'};"></span>`;
@@ -56,6 +59,16 @@ export function BottomNav(router) {
         </button>
       `;
     }).join('');
+
+    // Persist active section to localStorage — ensures a single source of truth
+    const matchedItem = NAV_ITEMS.find(item =>
+      item.id === currentId ||
+      (item.id === 'perfil' && (currentId === 'perfil' || currentId === 'admin')) ||
+      (item.id === 'home' && currentId === '')
+    );
+    if (matchedItem) {
+      setUserPref('activeSection', matchedItem.id);
+    }
 
     // Bind clicks
     nav.querySelectorAll('.bottom-nav__item').forEach(btn => {

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pong</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 560px; }
+        canvas { width: 100%; max-width: 560px; aspect-ratio: 14/9; border-radius: 18px; }
+        .controls-hint { margin: 10px 0 4px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Pong</h1>
+            <p class="subtitle">El clásico de las palas · Llega a 10</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">🔴 J1</span><span class="stat-value" id="p1Display">0</span></div>
+                <div class="stat"><span class="stat-label">🔵 J2/CPU</span><span class="stat-value" id="p2Display">0</span></div>
+                <div class="stat"><span class="stat-label">🔥 Racha</span><span class="stat-value gold" id="rallyDisplay">0</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa (Espacio)" aria-label="Pausar o reanudar">⏸️</button>
+            </div>
+        </div>
+        <div class="size-control">
+            <button class="size-btn active" data-mode="1p">1 Jugador</button>
+            <button class="size-btn" data-mode="2p">2 Jugadores</button>
+        </div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="560" height="360"></canvas>
+        </div>
+        <div class="controls-hint">J1: W/S · J2: ↑/↓ · Espacio pausa · En móvil: arrastra las palas</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🎉</div>
+            <h2 id="msgTitle">¡Gana el Jugador 1!</h2>
+            <p id="msgText">Jugador 1: 10 · Jugador 2: 0</p>
+            <button class="btn-primary" id="msgBtn">Jugar otra vez</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 560, H = 360;
+        const PW = 12, PH = 78, WIN = 10;
+
+        let p1, p2, ball, p1Score, p2Score, rally, mode, running, paused, gameOver, lastTime, animId, serveDelay;
+
+        mode = ['1p', '2p'].includes(localStorage.getItem('pongMode')) ? localStorage.getItem('pongMode') : '1p';
+
+        function applyModeUI() {
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        }
+        document.querySelectorAll('.size-btn').forEach(b => b.addEventListener('click', () => {
+            mode = b.dataset.mode;
+            localStorage.setItem('pongMode', mode);
+            applyModeUI();
+            resetGame();
+        }));
+
+        function serve() {
+            ball = { x: W / 2, y: H / 2, dx: (Math.random() > 0.5 ? 1 : -1) * (4.6 + Math.random()), dy: (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2) };
+            serveDelay = 60;
+            rally = 0;
+            document.getElementById('rallyDisplay').textContent = 0;
+        }
+
+        function resetGame() {
+            p1 = { y: H / 2 - PH / 2 };
+            p2 = { y: H / 2 - PH / 2 };
+            p1Score = 0; p2Score = 0;
+            running = true; paused = false; gameOver = false;
+            document.getElementById('pauseBtn').textContent = '⏸️';
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+            serve();
+        }
+
+        function updateUI() {
+            document.getElementById('p1Display').textContent = p1Score;
+            document.getElementById('p2Display').textContent = p2Score;
+        }
+
+        function update(dt) {
+            if (paused || !running || gameOver) return;
+            const s = dt / 16.7;
+
+            // CPU
+            if (mode === '1p') {
+                const target = ball.dx > 0 ? ball.y : H / 2;
+                const diff = target - (p2.y + PH / 2);
+                p2.y += Math.sign(diff) * Math.min(Math.abs(diff), 3.4 * s);
+            }
+
+            if (serveDelay > 0) { serveDelay -= s; return; }
+
+            ball.x += ball.dx * s;
+            ball.y += ball.dy * s;
+
+            // paredes
+            if (ball.y < 6) { ball.y = 6; ball.dy = Math.abs(ball.dy); }
+            if (ball.y > H - 6) { ball.y = H - 6; ball.dy = -Math.abs(ball.dy); }
+
+            // palas
+            if (ball.dx < 0 && ball.x < 26 && ball.x > 10 && ball.y > p1.y - 6 && ball.y < p1.y + PH + 6) {
+                ball.dx = Math.abs(ball.dx);
+                const off = (ball.y - (p1.y + PH / 2)) / (PH / 2);
+                ball.dy = off * 5;
+                ball.dx += 0.3;
+                rally++;
+                document.getElementById('rallyDisplay').textContent = rally;
+                SFX.point();
+                buzz(6);
+            }
+            if (ball.dx > 0 && ball.x > W - 26 && ball.x < W - 10 && ball.y > p2.y - 6 && ball.y < p2.y + PH + 6) {
+                ball.dx = -Math.abs(ball.dx);
+                const off = (ball.y - (p2.y + PH / 2)) / (PH / 2);
+                ball.dy = off * 5;
+                ball.dx -= 0.3;
+                rally++;
+                document.getElementById('rallyDisplay').textContent = rally;
+                SFX.point();
+                buzz(6);
+            }
+
+            // gol
+            if (ball.x < -20) { p2Score++; scorePoint(2); }
+            if (ball.x > W + 20) { p1Score++; scorePoint(1); }
+        }
+
+        function scorePoint(who) {
+            updateUI();
+            SFX.lose();
+            buzz(20);
+            if ((who === 1 ? p1Score : p2Score) >= WIN) {
+                gameOver = true;
+                SFX.win();
+                const winner = who === 1 ? 'Jugador 1' : (mode === '2p' ? 'Jugador 2' : 'la CPU');
+                showMessage('🎉', `¡Gana ${winner}!`, `Jugador 1: ${p1Score} · Jugador 2: ${p2Score}`);
+            } else {
+                serve();
+            }
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Jugar otra vez';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, W, H);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 12]);
+            ctx.beginPath(); ctx.moveTo(W / 2, 8); ctx.lineTo(W / 2, H - 8); ctx.stroke();
+            ctx.setLineDash([]);
+            // palas
+            ctx.fillStyle = '#e8735a';
+            ctx.fillRect(8, p1.y, PW, PH);
+            ctx.fillStyle = '#60a5fa';
+            ctx.fillRect(W - 8 - PW, p2.y, PW, PH);
+            // bola
+            ctx.fillStyle = '#ffd166';
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, 7, 0, Math.PI * 2); ctx.fill();
+            // puntuación central
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.font = '700 42px Playfair Display, serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(p1Score, W / 2 - 70, 58);
+            ctx.fillText(p2Score, W / 2 + 70, 58);
+        }
+
+        function loop(ts) {
+            if (!lastTime) lastTime = ts;
+            const dt = Math.min(ts - lastTime, 50);
+            lastTime = ts;
+            update(dt);
+            draw();
+            animId = requestAnimationFrame(loop);
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            paused = !paused;
+            document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+            SFX.pause();
+        }
+
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ') { e.preventDefault(); togglePause(); return; }
+            keys[e.key] = true;
+        });
+        document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+        // movimiento por teclado en update
+        const baseUpdate = update;
+        update = function (dt) {
+            if (!paused && !gameOver) {
+                if (keys['w'] || keys['W']) p1.y -= 6.5 * dt / 16.7;
+                if (keys['s'] || keys['S']) p1.y += 6.5 * dt / 16.7;
+                if (mode === '2p') {
+                    if (keys['ArrowUp']) p2.y -= 6.5 * dt / 16.7;
+                    if (keys['ArrowDown']) p2.y += 6.5 * dt / 16.7;
+                }
+                p1.y = Math.max(6, Math.min(H - PH - 6, p1.y));
+                p2.y = Math.max(6, Math.min(H - PH - 6, p2.y));
+            }
+            baseUpdate(dt);
+        };
+
+        // ratón y táctil
+        canvas.addEventListener('mousemove', (e) => {
+            if (paused || gameOver) return;
+            const rect = canvas.getBoundingClientRect();
+            const y = (e.clientY - rect.top) / rect.height * H;
+            p1.y = Math.max(6, Math.min(H - PH - 6, y - PH / 2));
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const y = (t.clientY - rect.top) / rect.height * H;
+            if (t.clientX < rect.left + rect.width / 2) p1.y = Math.max(6, Math.min(H - PH - 6, y - PH / 2));
+            else p2.y = Math.max(6, Math.min(H - PH - 6, y - PH / 2));
+        }, { passive: false });
+
+        document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused && !gameOver) togglePause(); });
+
+        applyModeUI();
+        resetGame();
+        lastTime = 0;
+        animId = requestAnimationFrame(loop);
+
+        window.__pong = { resetGame, togglePause, get state() { return { p1Score, p2Score, mode, gameOver, paused }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

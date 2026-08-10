@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Tetris</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 280px; }
+        canvas { width: 100%; max-width: 280px; aspect-ratio: 1/2; border-radius: 16px; }
+        .controls-hint { margin: 10px 0 4px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Tetris</h1>
+            <p class="subtitle">Completa líneas · Sube de nivel</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">🍎 Puntos</span><span class="stat-value gold" id="scoreDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">🏆 Récord</span><span class="stat-value green" id="highScoreDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">📏 Líneas</span><span class="stat-value" id="linesDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">📈 Nivel</span><span class="stat-value red" id="levelDisplay">1</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa (Espacio)" aria-label="Pausar o reanudar">⏸️</button>
+            </div>
+        </div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="280" height="560"></canvas>
+        </div>
+        <div class="controls-hint">← → mover · ↑ rotar · ↓ bajar · Espacio soltar · P pausa · Desliza en móvil</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">💀</div>
+            <h2 id="msgTitle">¡Game Over!</h2>
+            <p id="msgText">Puntuación: 0 · Líneas: 0 · Récord: 0</p>
+            <button class="btn-primary" id="msgBtn">Reintentar</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const COLS = 10, ROWS = 20, CELL = 28;
+        const W = COLS * CELL, H = ROWS * CELL;
+
+        // --- Piezas (tetrominós) ---
+        const SHAPES = {
+            I: { m: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], c: '#22d3ee' },
+            O: { m: [[1,1],[1,1]], c: '#facc15' },
+            T: { m: [[0,1,0],[1,1,1],[0,0,0]], c: '#a78bfa' },
+            S: { m: [[0,1,1],[1,1,0],[0,0,0]], c: '#4ade80' },
+            Z: { m: [[1,1,0],[0,1,1],[0,0,0]], c: '#f87171' },
+            J: { m: [[1,0,0],[1,1,1],[0,0,0]], c: '#60a5fa' },
+            L: { m: [[0,0,1],[1,1,1],[0,0,0]], c: '#fb923c' }
+        };
+        const KEYS = Object.keys(SHAPES);
+
+        let board, current, nextType, score, lines, level, highScore, paused, gameOver, dropTimer, lastTime, animId, pieceX, pieceY, rot;
+
+        highScore = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
+        document.getElementById('highScoreDisplay').textContent = highScore;
+
+        function newPiece() {
+            const type = nextType;
+            nextType = KEYS[Math.floor(Math.random() * KEYS.length)];
+            const shape = SHAPES[type];
+            pieceX = Math.floor((COLS - shape.m[0].length) / 2);
+            pieceY = 0;
+            rot = 0;
+            if (collides(shape.m, pieceX, pieceY)) { gameOver = true; doGameOver(); }
+        }
+
+        function getMatrix() {
+            let m = SHAPES[current].m;
+            for (let i = 0; i < rot; i++) m = rotate(m);
+            return m;
+        }
+
+        function rotate(m) {
+            const n = m.length;
+            const out = Array.from({ length: n }, () => Array(n).fill(0));
+            for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) out[c][n - 1 - r] = m[r][c];
+            return out;
+        }
+
+        function collides(m, x, y) {
+            for (let r = 0; r < m.length; r++) for (let c = 0; c < m[r].length; c++) {
+                if (!m[r][c]) continue;
+                const bx = x + c, by = y + r;
+                if (bx < 0 || bx >= COLS || by >= ROWS) return true;
+                if (by >= 0 && board[by][bx]) return true;
+            }
+            return false;
+        }
+
+        function lockPiece() {
+            const m = getMatrix();
+            for (let r = 0; r < m.length; r++) for (let c = 0; c < m[r].length; c++) {
+                if (!m[r][c]) continue;
+                const by = pieceY + r, bx = pieceX + c;
+                if (by >= 0) board[by][bx] = SHAPES[current].c;
+            }
+            clearLines();
+        }
+
+        function clearLines() {
+            let cleared = 0;
+            for (let y = ROWS - 1; y >= 0; y--) {
+                if (board[y].every(c => c)) {
+                    board.splice(y, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    cleared++;
+                    y++;
+                }
+            }
+            if (cleared > 0) {
+                const pts = [0, 40, 100, 300, 1200][cleared] * level;
+                score += pts;
+                lines += cleared;
+                level = Math.floor(lines / 10) + 1;
+                SFX.point();
+                buzz(cleared * 10);
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('tetrisHighScore', highScore);
+                    SFX.record();
+                }
+                updateUI();
+            }
+        }
+
+        function move(dx) {
+            if (collides(getMatrix(), pieceX + dx, pieceY)) return;
+            pieceX += dx;
+        }
+
+        function rotatePiece() {
+            const m = getMatrix();
+            const nrot = (rot + 1) % 4;
+            const nm = SHAPES[current].m;
+            let tm = nm;
+            for (let i = 0; i < nrot; i++) tm = rotate(tm);
+            // kick lateral simple
+            for (const k of [0, -1, 1, -2, 2]) {
+                if (!collides(tm, pieceX + k, pieceY)) { pieceX += k; rot = nrot; SFX.click(); return; }
+            }
+        }
+
+        function softDrop() { if (!collides(getMatrix(), pieceX, pieceY + 1)) pieceY++; else { lockPiece(); spawn(); } }
+
+        function hardDrop() {
+            while (!collides(getMatrix(), pieceX, pieceY + 1)) pieceY++;
+            lockPiece();
+            spawn();
+        }
+
+        function spawn() { current = nextType; newPiece(); }
+
+        function doGameOver() {
+            gameOver = true;
+            SFX.lose();
+            buzz([60, 40, 60]);
+            const record = score > 0 && score >= highScore;
+            showMessage(record ? '🏆' : '💀', record ? '¡Nuevo récord!' : '¡Game Over!', `Puntuación: ${score} · Líneas: ${lines} · Récord: ${highScore}`);
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Reintentar';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function resetGame() {
+            board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            score = 0; lines = 0; level = 1;
+            paused = false; gameOver = false;
+            nextType = KEYS[Math.floor(Math.random() * KEYS.length)];
+            current = KEYS[Math.floor(Math.random() * KEYS.length)];
+            newPiece();
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('highScoreDisplay').textContent = highScore;
+            document.getElementById('linesDisplay').textContent = lines;
+            document.getElementById('levelDisplay').textContent = level;
+        }
+
+        function ghostY() {
+            let y = pieceY;
+            while (!collides(getMatrix(), pieceX, y + 1)) y++;
+            return y;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, W, H);
+            // rejilla
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--panel-border') || 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 0.5;
+            for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * CELL, 0); ctx.lineTo(x * CELL, H); ctx.stroke(); }
+            for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * CELL); ctx.lineTo(W, y * CELL); ctx.stroke(); }
+
+            // piezas fijas
+            for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+                if (board[y][x]) drawCell(x, y, board[y][x]);
+            }
+            if (!gameOver && current) {
+                const m = getMatrix();
+                // fantasma
+                const gy = ghostY();
+                for (let r = 0; r < m.length; r++) for (let c = 0; c < m[r].length; c++) {
+                    if (!m[r][c]) continue;
+                    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+                    ctx.fillRect((pieceX + c) * CELL + 1, (gy + r) * CELL + 1, CELL - 2, CELL - 2);
+                }
+                for (let r = 0; r < m.length; r++) for (let c = 0; c < m[r].length; c++) {
+                    if (!m[r][c]) continue;
+                    drawCell(pieceX + c, pieceY + r, SHAPES[current].c);
+                }
+            }
+        }
+
+        function drawCell(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, 4);
+            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            ctx.fillRect(x * CELL + 1, y * CELL + CELL - 5, CELL - 2, 4);
+        }
+
+        function loop(ts) {
+            if (!lastTime) lastTime = ts;
+            const dt = Math.min(ts - lastTime, 50);
+            lastTime = ts;
+            if (!paused && !gameOver) {
+                dropTimer += dt;
+                const interval = Math.max(60, 800 - (level - 1) * 70);
+                while (dropTimer >= interval) {
+                    dropTimer -= interval;
+                    if (!collides(getMatrix(), pieceX, pieceY + 1)) pieceY++;
+                    else { lockPiece(); spawn(); }
+                }
+            }
+            draw();
+            animId = requestAnimationFrame(loop);
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            paused = !paused;
+            document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+            SFX.pause();
+        }
+
+        // --- Input ---
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+
+        let keyLock = {};
+        document.addEventListener('keydown', (e) => {
+            const k = e.key;
+            if (['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' ','Space'].includes(k)) e.preventDefault();
+            if (k === 'p' || k === 'P' || k === 'Escape') { togglePause(); return; }
+            if (paused || gameOver) return;
+            if (k === 'ArrowLeft' || k === 'a' || k === 'A') { move(-1); }
+            else if (k === 'ArrowRight' || k === 'd' || k === 'D') { move(1); }
+            else if (k === 'ArrowDown' || k === 's' || k === 'S') { if (!keyLock.down) { softDrop(); keyLock.down = true; } }
+            else if (k === 'ArrowUp' || k === 'x' || k === 'X' || k === 'w' || k === 'W') rotatePiece();
+            else if (k === ' ' || k === 'Space') hardDrop();
+        });
+        document.addEventListener('keyup', (e) => { if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keyLock.down = false; });
+
+        // Táctil: deslizar
+        let tx = 0, ty = 0, tActive = false;
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tActive = true;
+        }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!tActive) return;
+            const t = e.touches[0];
+            const dx = t.clientX - tx, dy = t.clientY - ty;
+            if (Math.abs(dx) > 24 || Math.abs(dy) > 24) {
+                if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1);
+                else if (dy > 0) softDrop(); else rotatePiece();
+                tx = t.clientX; ty = t.clientY;
+            }
+        }, { passive: false });
+        canvas.addEventListener('touchend', (e) => { e.preventDefault(); tActive = false; }, { passive: false });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && !gameOver && !paused) togglePause();
+        });
+
+        resetGame();
+        lastTime = 0;
+        animId = requestAnimationFrame(loop);
+
+        window.__tetris = { resetGame, togglePause, get state() { return { score, lines, level, highScore, gameOver, paused }; }, softDrop, hardDrop };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

@@ -1,0 +1,545 @@
+/* ==========================================================
+   GAMES — DESIGN SYSTEM "Personal Hub"
+   Shared by /games/*.html. Loaded AFTER each game's inline
+   <style> and _theme.css so its rules win (same specificity,
+   later source order). Aligns every game with the web's
+   native surfaces (dark #0a0a0c / light porcelain) and the
+   coral accent (#e8735a / #c2185b light).
+   ========================================================== */
+
+:root {
+  /* Superficies — espejo de design-tokens.css */
+  --bg-deep: #0a0a0c;
+  --bg-mid: #111114;
+  --surface-1: #111114;
+  --surface-2: #19191d;
+  --surface-3: #222228;
+  --panel: rgba(255, 255, 255, 0.04);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --panel-strong: rgba(255, 255, 255, 0.10);
+
+  /* Texto — jerarquía con opacidades */
+  --ink: rgba(255, 255, 255, 0.93);
+  --ink-dim: rgba(255, 255, 255, 0.65);
+  --ash: rgba(255, 255, 255, 0.38);
+
+  /* Acento coral del tema */
+  --coral: #e8735a;
+  --coral-hover: #f0806a;
+  --coral-dark: #c14e3a;
+  --gold: #ffd166;
+  --green: #4ade80;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --purple: #8b5cf6;
+  --msg-accent-bg: rgba(232, 115, 90, 0.14);
+  --msg-accent-ring: rgba(232, 115, 90, 0.22);
+
+  --elev-1: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --elev-2: 0 3px 6px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --elev-3: 0 10px 20px rgba(0, 0, 0, 0.5), 0 6px 6px rgba(0, 0, 0, 0.4);
+  --elev-4: 0 14px 28px rgba(0, 0, 0, 0.6), 0 10px 10px rgba(0, 0, 0, 0.5);
+  --glow: 0 0 22px rgba(232, 115, 90, 0.18);
+
+  --accent-dim: rgba(232, 115, 90, 0.12);
+  --accent-dim-strong: rgba(232, 115, 90, 0.22);
+  --border-accent: rgba(232, 115, 90, 0.30);
+  --green-dim: rgba(74, 222, 128, 0.12);
+  --red-dim: rgba(248, 113, 113, 0.12);
+  --gold-dim: rgba(255, 209, 102, 0.14);
+
+  /* Alias legacy usados por algunos juegos (se resuelven al acento actual) */
+  --accent-coral: var(--coral);
+  --accent-border: var(--panel-strong);
+  --umbra-light: var(--ink);
+  --umbra-ash: var(--ink-dim);
+  --purple-glow: rgba(139, 92, 246, 0.35);
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+[data-theme="light"] {
+  --bg-deep: #f8edf0;
+  --bg-mid: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #fdf3f6;
+  --surface-3: #f8e7ee;
+  --panel: rgba(50, 16, 32, 0.04);
+  --panel-border: rgba(50, 16, 32, 0.10);
+  --panel-strong: rgba(50, 16, 32, 0.16);
+
+  --ink: rgba(50, 16, 32, 0.94);
+  --ink-dim: rgba(50, 16, 32, 0.62);
+  --ash: rgba(50, 16, 32, 0.40);
+
+  --coral: #c2185b;
+  --coral-hover: #d63068;
+  --coral-dark: #b00f4e;
+  --gold: #b45309;
+  --green: #15803d;
+  --red: #dc2626;
+  --blue: #2563eb;
+  --purple: #7c3aed;
+  --msg-accent-bg: rgba(194, 24, 91, 0.10);
+  --msg-accent-ring: rgba(194, 24, 91, 0.20);
+
+  --elev-1: 0 1px 3px rgba(90, 30, 55, 0.10), 0 1px 1px rgba(90, 30, 55, 0.06);
+  --elev-2: 0 4px 10px rgba(90, 30, 55, 0.10), 0 2px 4px rgba(90, 30, 55, 0.07);
+  --elev-3: 0 12px 24px rgba(90, 30, 55, 0.14), 0 6px 8px rgba(90, 30, 55, 0.09);
+  --elev-4: 0 18px 36px rgba(90, 30, 55, 0.18), 0 10px 12px rgba(90, 30, 55, 0.12);
+  --glow: 0 0 24px rgba(194, 24, 91, 0.18);
+
+  --accent-dim: rgba(194, 24, 91, 0.10);
+  --accent-dim-strong: rgba(194, 24, 91, 0.18);
+  --border-accent: rgba(194, 24, 91, 0.30);
+  --green-dim: rgba(21, 128, 61, 0.12);
+  --red-dim: rgba(220, 38, 38, 0.12);
+  --gold-dim: rgba(180, 83, 9, 0.14);
+}
+
+/* ==========================================================
+   FONDO — iluminación ambiental del tema (profundidad)
+   ========================================================== */
+body {
+  background:
+    radial-gradient(ellipse at 50% -10%, var(--msg-accent-bg) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(255, 179, 71, 0.05) 0%, transparent 50%),
+    var(--bg-deep);
+  color: var(--ink);
+}
+
+/* ==========================================================
+   HEADER
+   ========================================================== */
+.game-header h1 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.game-header .subtitle {
+  color: var(--ink-dim);
+  font-size: 0.7rem;
+}
+
+/* ==========================================================
+   SCORE / TOOLBAR
+   ========================================================== */
+.score-item {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+}
+
+.score-item .label { color: var(--ash); }
+.score-item .value { color: var(--ink); }
+.score-item .value.gold { color: var(--gold); }
+.score-item .value.green { color: var(--green); }
+.score-item .value.red { color: var(--red); }
+
+/* ==========================================================
+   CHIPS DE ESTADÍSTICAS CON ICONO — .stat (escritos a mano
+   en los juegos nuevos o generados por _interface.js)
+   ========================================================== */
+.stat {
+  background: var(--surface-2);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 6px 12px;
+  text-align: left;
+  min-width: 72px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ash);
+  white-space: nowrap;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.stat-value.gold { color: var(--gold); }
+.stat-value.green { color: var(--green); }
+.stat-value.red { color: var(--red); }
+
+/* ==========================================================
+   LAYOUT DE PÁGINA — contenedor, barra superior, chips
+   (base compartida para todos los juegos; cada juego puede
+   afinarla en su <style> local sin romper el resto)
+   ========================================================== */
+.game-container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 28px 24px 40px;
+}
+
+.game-header h1 {
+  font-size: 1.7rem;
+  margin: 0 0 2px;
+}
+
+.game-header .subtitle {
+  font-size: 0.8rem;
+  margin-bottom: 14px;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.top-actions,
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.canvas-wrap {
+  position: relative;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.actions,
+.actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.game-back-nav {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+@media (max-width: 480px) {
+  .game-container { padding: 20px 14px 32px; }
+  .stat { padding: 5px 10px; min-width: 60px; }
+}
+
+.icon-btn {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--ink);
+}
+.icon-btn:hover {
+  border-color: var(--coral);
+  color: var(--coral);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================
+   CANVAS
+   ========================================================== */
+canvas {
+  background: var(--bg-deep);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] canvas {
+  box-shadow: 0 16px 48px rgba(90, 30, 55, 0.12);
+}
+
+.controls-hint { color: var(--ash); }
+
+/* ==========================================================
+   BOTONES
+   ========================================================== */
+.btn-primary {
+  background: var(--coral);
+  border: none;
+  border-radius: 999px;
+  padding: 12px 30px;
+  color: #fff;
+  font-weight: 600;
+  font-family: var(--font-body);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), var(--glow);
+  transition: all 0.2s;
+}
+.btn-primary:hover {
+  background: var(--coral-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3), var(--glow);
+}
+.btn-primary:active {
+  background: var(--coral-dark);
+  transform: translateY(0);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--panel-strong);
+  color: var(--ink-dim);
+}
+.btn-ghost:hover { border-color: var(--coral); color: var(--coral); }
+
+.back-btn {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--ink-dim);
+}
+.back-btn:hover { border-color: var(--coral); color: var(--coral); }
+
+/* ==========================================================
+   MODAL (postjuego + inicio) — alineado con la web
+   ========================================================== */
+.game-message {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  background: rgba(4, 4, 6, 0.85);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.game-message.show {
+  display: flex;
+}
+
+[data-theme="light"] .game-message {
+  background: rgba(74, 20, 45, 0.55);
+}
+
+.game-message-content {
+  background:
+    radial-gradient(ellipse at 50% -20%, var(--msg-accent-bg) 0%, transparent 55%),
+    var(--surface-2);
+  border: 1px solid var(--panel-strong);
+  border-radius: 28px;
+  box-shadow: var(--elev-4), var(--glow);
+  padding: 36px 32px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  animation: modalPop 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.game-message-content .icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  border-radius: 50%;
+  background: var(--msg-accent-bg);
+  box-shadow: inset 0 0 0 1px var(--msg-accent-ring);
+}
+
+.game-message-content h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+
+.game-message-content p {
+  color: var(--ink-dim);
+  margin: 0 0 6px;
+  line-height: 1.55;
+  font-size: 0.85rem;
+}
+
+/* ==========================================================
+   POSTJUEGO — chips de estadísticas (generados por _postgame.js)
+   ========================================================== */
+.msg-stats {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 14px 0 2px;
+}
+
+.msg-stat {
+  background: var(--surface-1);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 10px 16px;
+  min-width: 76px;
+}
+
+.msg-stat-label {
+  display: block;
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ash);
+  margin-bottom: 2px;
+}
+
+.msg-stat-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--coral);
+}
+
+.msg-stat--full .msg-stat-value {
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+}
+
+/* Acciones: reintentar + volver a Juegos */
+.msg-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.msg-actions .btn-primary { min-width: 150px; }
+
+.msg-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--panel-strong);
+  color: var(--ink-dim);
+  transition: all 0.2s;
+}
+.msg-back:hover { border-color: var(--coral); color: var(--coral); }
+
+/* Insignia de victoria */
+.msg-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px auto 0;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(255, 209, 102, 0.14);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ==========================================================
+   CONFETTI (solo victorias)
+   ========================================================== */
+.confetti-piece {
+  position: fixed;
+  top: -14px;
+  z-index: 2100;
+  pointer-events: none;
+  opacity: 1;
+  animation: confettiFall linear forwards;
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(108vh) rotate(720deg); opacity: 0; }
+}
+
+/* ==========================================================
+   SELECTOR SEGMENTADO — .size-control / .size-btn
+   (tamaño, velocidad, dificultad; igual que Snake/Memoria)
+   ========================================================== */
+.size-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  margin-bottom: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+}
+
+.size-btn {
+  border: none;
+  background: transparent;
+  color: var(--ink-dim);
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+}
+
+.size-btn:hover { color: var(--ink); }
+.size-btn.active {
+  background: var(--accent-dim);
+  color: var(--coral);
+  box-shadow: var(--elev-1);
+}
+
+/* ==========================================================
+   TOAST / COMBO
+   ========================================================== */
+.toast {
+  background: var(--surface-2);
+  border: 1px solid var(--panel-strong);
+  color: var(--ink);
+  box-shadow: var(--elev-4);
+}
+
+.combo-display {
+  color: var(--gold);
+  text-shadow: 0 0 30px rgba(255, 209, 102, 0.4);
+}
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+@media (max-width: 480px) {
+  .game-message-content { padding: 28px 20px; }
+  .msg-actions .btn-primary { min-width: 100%; }
+  .msg-back { flex: 1; }
+}

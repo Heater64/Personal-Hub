@@ -40,7 +40,7 @@ export function Sidebar(router) {
   function render() {
     const user = userStore.getUser();
     const isAdmin = userStore.isAdmin;
-    const currentId = currentPath.split('/')[1] || 'home';
+    const currentId = (currentPath.split('/')[1] || '').split('?')[0] || 'home';
 
     const initial = user ? (user.name || 'U').charAt(0).toUpperCase() : '?';
 
@@ -78,7 +78,7 @@ export function Sidebar(router) {
 
       <div class="sidebar__footer">
         ${user ? `
-          <div class="sidebar__user" id="sidebarUser">
+          <div class="sidebar__user" id="sidebarUser" tabindex="0" role="button" aria-label="Abrir mi perfil">
             <div class="sidebar__user-avatar">
               ${user.avatar
                 ? `<img src="${user.avatar}" alt="" class="sidebar__user-avatar-img" onerror="this.style.display='none';">`
@@ -118,15 +118,21 @@ export function Sidebar(router) {
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
         await auth.signOut();
-        router.navigate('/login');
+        // replace: Atrás no debe volver a una página ya protegida por el guard
+        router.replace('/login');
       });
     }
 
     // Bind profile click
     const userRow = aside.querySelector('#sidebarUser');
     if (userRow) {
-      userRow.addEventListener('click', () => {
-        router.navigate('/perfil');
+      const goProfile = () => router.navigate('/perfil');
+      userRow.addEventListener('click', goProfile);
+      userRow.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          goProfile();
+        }
       });
     }
   }

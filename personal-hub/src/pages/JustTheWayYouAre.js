@@ -146,11 +146,17 @@ export function JustTheWayYouArePage(router) {
 
         <!-- CLOSING -->
         <div class="jt-closing" id="closingSection">
+          <span class="jt-closing-heart">❤️</span>
           <p class="closing-msg">
             Eres increíble<br>
             <strong>tal como eres.</strong>
           </p>
           <p class="closing-sub">Y siempre lo serás.</p>
+        </div>
+
+        <!-- Keyboard hint -->
+        <div class="jt-kb-hint">
+          <kbd>Space</kbd> reproducir/pausar &nbsp;·&nbsp; <kbd>Esc</kbd> volver &nbsp;·&nbsp; <kbd>Shift+T</kbd> calibrar
         </div>
       </div>
 
@@ -253,17 +259,21 @@ export function JustTheWayYouArePage(router) {
       }
     }
 
+    const PLAY_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+    const PAUSE_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+
     function togglePlay() {
       if (playing) {
         audio.pause();
-        playBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+        playBtn.innerHTML = PLAY_ICON;
         bars.classList.remove('playing');
+        playing = false;
       } else {
         audio.play().catch(() => {});
-        playBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+        playBtn.innerHTML = PAUSE_ICON;
         bars.classList.add('playing');
+        playing = true;
       }
-      playing = !playing;
     }
 
     audio.addEventListener('timeupdate', () => {
@@ -284,16 +294,25 @@ export function JustTheWayYouArePage(router) {
 
     audio.addEventListener('ended', () => {
       playing = false;
-      playBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+      playBtn.innerHTML = PLAY_ICON;
       bars.classList.remove('playing');
       lastActive = null;
+      // Show closing section on end
+      if (!closingShown) {
+        closingShown = true;
+        closing.classList.add('visible');
+      }
     });
 
+    // Attempt autoplay gracefully
     audio.play().then(() => {
       playing = true;
-      playBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+      playBtn.innerHTML = PAUSE_ICON;
       bars.classList.add('playing');
-    }).catch(() => {});
+    }).catch(() => {
+      // Autoplay blocked — user must click play
+      playing = false;
+    });
 
     playBtn.addEventListener('click', togglePlay);
 
@@ -377,11 +396,24 @@ export function JustTheWayYouArePage(router) {
       }
     }
 
-    // Keyboard shortcut: Shift+T
+    // Keyboard shortcuts
     onKeyDown = (e) => {
+      // Shift+T: calibration mode
       if (e.key === 'T' && e.shiftKey) {
         e.preventDefault();
         toggleCalibration();
+        return;
+      }
+      // Space: play/pause
+      if (e.key === ' ' && e.target === document.body) {
+        e.preventDefault();
+        togglePlay();
+        return;
+      }
+      // Escape: go back
+      if (e.key === 'Escape') {
+        router.navigate('/');
+        return;
       }
     };
     document.addEventListener('keydown', onKeyDown);

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hundir la flota</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 880px; }
+        canvas { width: 100%; max-width: 880px; aspect-ratio: 860/430; border-radius: 18px; cursor: pointer; touch-action: manipulation; }
+        .turn-chip { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 12px; padding: 6px 16px; border-radius: 999px; background: var(--panel); border: 1px solid var(--panel-border); font-size: 0.75rem; font-weight: 600; color: var(--ink-dim); }
+        .turn-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .board-labels { display: flex; gap: 40px; justify-content: center; margin: 6px 0 0; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+        .board-labels span:first-child { margin-right: 0; }
+        .board-labels .own { color: var(--accent); }
+        /* Overlay de pasar turno */
+        .pass-overlay { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); }
+        .pass-overlay.show { display: flex; }
+        .pass-card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 20px; padding: 28px 34px; text-align: center; max-width: 340px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        .pass-card .icon { font-size: 2.6rem; margin-bottom: 8px; }
+        .pass-card h2 { font-family: 'Playfair Display', serif; font-size: 1.25rem; margin: 0 0 6px; color: var(--ink); }
+        .pass-card p { margin: 0 0 18px; font-size: 0.82rem; color: var(--ink-dim); }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Hundir la flota</h1>
+            <p class="subtitle">Dos jugadores · Hunde todos los barcos del rival</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">🔴 J1</span><span class="stat-value" id="wins1Display">0</span></div>
+                <div class="stat"><span class="stat-label">🔵 J2</span><span class="stat-value" id="wins2Display">0</span></div>
+                <div class="stat"><span class="stat-label">🚢 Flota</span><span class="stat-value" id="shipsDisplay">5/5</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Nueva partida (R)" aria-label="Nueva partida">🔄</button>
+            </div>
+        </div>
+        <div class="turn-chip" id="turnChip"><span class="turn-dot" id="turnDot"></span><span id="turnText">Colocando barcos</span></div>
+        <div class="board-labels"><span class="own">Tus barcos</span><span>Disparos al rival</span></div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="860" height="430"></canvas>
+        </div>
+        <div class="controls-hint">Clic en la cuadrícula derecha para disparar · Acierto = repite turno · R nueva partida</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <!-- Pasar turno (hot-seat) -->
+    <div class="pass-overlay" id="passOverlay">
+        <div class="pass-card">
+            <div class="icon">🤫</div>
+            <h2 id="passTitle">Turno del Jugador 2</h2>
+            <p id="passText">Pasa el dispositivo sin mirar el tablero rival.</p>
+            <button class="btn-primary" id="passBtn">Siguiente</button>
+        </div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🎉</div>
+            <h2 id="msgTitle">¡Gana el Jugador 1!</h2>
+            <p id="msgText"></p>
+            <button class="btn-primary" id="msgBtn">Jugar otra vez</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const N = 10, CELL = 38, MARGIN = 10, GAP = 40;
+        const OWN_X = MARGIN, ENEMY_X = MARGIN + N * CELL + GAP;
+        const SIZE = N * CELL;
+        const SHIPS = [5, 4, 3, 3, 2];
+        const W = 860, H = 430;
+
+        let boards, shots, shipsAlive = [SHIPS.length, SHIPS.length], turn, phase, over, wins1, wins2;
+        wins1 = parseInt(localStorage.getItem('battleshipWins1') || '0', 10);
+        wins2 = parseInt(localStorage.getItem('battleshipWins2') || '0', 10);
+
+        function emptyBoard() { return Array.from({ length: N }, () => Array(N).fill(0)); }
+
+        function placeRandom() {
+            const board = emptyBoard();
+            const placed = [];
+            for (const size of SHIPS) {
+                let tries = 0;
+                while (tries < 200) {
+                    tries++;
+                    const horiz = Math.random() < 0.5;
+                    const r = Math.floor(Math.random() * N);
+                    const c = Math.floor(Math.random() * N);
+                    const dr = horiz ? 0 : 1, dc = horiz ? 1 : 0;
+                    const er = r + dr * (size - 1), ec = c + dc * (size - 1);
+                    if (er >= N || ec >= N) continue;
+                    let ok = true;
+                    for (let i = 0; i < size; i++) if (board[r + dr * i][c + dc * i]) { ok = false; break; }
+                    if (!ok) continue;
+                    // regla real: ningún barco puede tocar a otro (ni en diagonal)
+                    for (let i = 0; i < size; i++) {
+                        const rr = r + dr * i, cc = c + dc * i;
+                        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+                            const nr = rr + a, nc = cc + b;
+                            if (nr >= 0 && nr < N && nc >= 0 && nc < N && board[nr][nc]) { ok = false; break; }
+                        }
+                        if (!ok) break;
+                    }
+                    if (!ok) continue;
+                    for (let i = 0; i < size; i++) board[r + dr * i][c + dc * i] = 1;
+                    placed.push({ size, cells: Array.from({ length: size }, (_, i) => [r + dr * i, c + dc * i]) });
+                    break;
+                }
+            }
+            return { board, placed };
+        }
+
+        function resetGame() {
+            const b1 = placeRandom(), b2 = placeRandom();
+            boards = [b1.board, b2.board];
+            shipsAlive = [SHIPS.length, SHIPS.length];
+            shots = [emptyBoard(), emptyBoard()];
+            turn = 1;
+            phase = 'play';
+            over = false;
+            document.getElementById('gameMessage').classList.remove('show');
+            document.getElementById('passOverlay').classList.remove('show');
+            updateChip();
+            updateShips();
+            draw();
+        }
+
+        function updateChip() {
+            const dot = document.getElementById('turnDot');
+            const text = document.getElementById('turnText');
+            dot.style.background = turn === 1 ? '#ef4444' : '#3b82f6';
+            if (over) text.textContent = 'Partida terminada';
+            else if (phase === 'play') text.textContent = `Turno del Jugador ${turn}`;
+            else text.textContent = 'Preparando...';
+        }
+
+        function updateShips() {
+            document.getElementById('shipsDisplay').textContent = `${SHIPS.length - shipsAlive[0]} a ${SHIPS.length - shipsAlive[1]}`;
+        }
+
+        function cellX(gridX, c) { return gridX + c * CELL; }
+        function cellY(r) { return MARGIN + r * CELL; }
+
+        function shoot(r, c) {
+            if (over || phase !== 'play') return false;
+            const target = turn === 1 ? 1 : 0; // índice del rival
+            const me = turn === 1 ? 0 : 1;
+            if (shots[target][r][c]) { SFX.click(); return false; }
+            const hit = boards[target][r][c] === 1;
+            shots[target][r][c] = hit ? 2 : 1;
+            if (hit) {
+                SFX.hit();
+                buzz(15);
+                // ¿Hundido? (evaluar el barco COMPLETO que contiene la celda)
+                const ship = getShipAt(target, r, c);
+                const sunk = ship !== null && ship.every(([rr, cc]) => shots[target][rr][cc] === 2);
+                if (sunk) {
+                    shipsAlive[target]--;
+                    updateShips();
+                    SFX.record();
+                    buzz([40, 30, 60]);
+                    if (shipsAlive[target] === 0) {
+                        over = true;
+                        if (turn === 1) { wins1++; localStorage.setItem('battleshipWins1', wins1); } else { wins2++; localStorage.setItem('battleshipWins2', wins2); }
+                        document.getElementById(`wins${turn}Display`).textContent = turn === 1 ? wins1 : wins2;
+                        SFX.win();
+                        buzz([30, 20, 30, 20, 60]);
+                        updateChip();
+                        draw();
+                        showMessage('🎉', `¡Gana el Jugador ${turn}!`, `Jugador 1: ${wins1} · Jugador 2: ${wins2} · Barcos restantes: 0`);
+                        return true;
+                    }
+                    draw();
+                    return true; // sigue el turno
+                }
+                draw();
+                return true; // acierto = repite
+            }
+            // fallo: pasa turno
+            SFX.lose();
+            buzz([50, 30]);
+            draw();
+            turn = turn === 1 ? 2 : 1;
+            updateChip();
+            showPassOverlay();
+            return true;
+        }
+
+        function collectShips(pIdx) {
+            // reconstruye los barcos del jugador pIdx a partir del tablero
+            const ships = [];
+            const seen = new Set();
+            const board = boards[pIdx];
+            for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+                if (!board[r][c] || seen.has(r * N + c)) continue;
+                let cells = [[r, c]];
+                seen.add(r * N + c);
+                let cc = c + 1;
+                while (cc < N && board[r][cc]) { cells.push([r, cc]); seen.add(r * N + cc); cc++; }
+                if (cells.length === 1) {
+                    let rr = r + 1;
+                    while (rr < N && board[rr][c]) { cells.push([rr, c]); seen.add(rr * N + c); rr++; }
+                }
+                ships.push(cells);
+            }
+            return ships;
+        }
+
+        function getShipAt(pIdx, r, c) {
+            return collectShips(pIdx).find(ship => ship.some(([rr, cc]) => rr === r && cc === c)) || null;
+        }
+
+        function showPassOverlay() {
+            if (over) return;
+            document.getElementById('passTitle').textContent = `Turno del Jugador ${turn}`;
+            document.getElementById('passOverlay').classList.add('show');
+        }
+
+        document.getElementById('passBtn').addEventListener('click', () => {
+            document.getElementById('passOverlay').classList.remove('show');
+            SFX.click();
+        });
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Jugar otra vez';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function drawBoard(ox, cells, own) {
+            for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+                const x = ox + c * CELL, y = cellY(r);
+                ctx.fillStyle = 'rgba(255,255,255,0.04)';
+                ctx.fillRect(x, y, CELL - 1, CELL - 1);
+                if (own && cells[r][c] === 1) {
+                    ctx.fillStyle = 'rgba(96,165,250,0.55)';
+                    ctx.fillRect(x + 2, y + 2, CELL - 5, CELL - 5);
+                }
+                const shot = shots[own ? (turn === 1 ? 0 : 1) : (turn === 1 ? 1 : 0)][r][c];
+                if (shot === 1) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                    ctx.beginPath();
+                    ctx.arc(x + CELL / 2, y + CELL / 2, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (shot === 2) {
+                    ctx.fillStyle = '#f87171';
+                    ctx.beginPath();
+                    ctx.arc(x + CELL / 2, y + CELL / 2, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(x + CELL / 2, y + CELL / 2, 12, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, W, H);
+            // tablero propio (del jugador del turno actual)
+            const me = turn === 1 ? 0 : 1;
+            drawBoard(OWN_X, boards[me], true);
+            // tablero enemigo
+            drawBoard(ENEMY_X, boards[turn === 1 ? 1 : 0], false);
+            // etiquetas de coordenadas
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            for (let i = 0; i < N; i++) {
+                ctx.fillText(i + 1, OWN_X + i * CELL + CELL / 2, MARGIN - 4);
+                ctx.fillText(i + 1, ENEMY_X + i * CELL + CELL / 2, MARGIN - 4);
+                ctx.fillText(String.fromCharCode(65 + i), OWN_X - 8, cellY(i) + CELL / 2 + 3);
+                ctx.fillText(String.fromCharCode(65 + i), ENEMY_X - 8, cellY(i) + CELL / 2 + 3);
+            }
+        }
+
+        function canvasToCell(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width * W;
+            const y = (e.clientY - rect.top) / rect.height * H;
+            const r = Math.floor((y - MARGIN) / CELL);
+            if (r < 0 || r >= N) return null;
+            const cOwn = Math.floor((x - OWN_X) / CELL);
+            const cEnemy = Math.floor((x - ENEMY_X) / CELL);
+            if (cOwn >= 0 && cOwn < N && x >= OWN_X && x < OWN_X + SIZE) return null; // clic en lo propio: nada
+            if (cEnemy >= 0 && cEnemy < N && x >= ENEMY_X && x < ENEMY_X + SIZE) return { r, c: cEnemy };
+            return null;
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const cell = canvasToCell(e);
+            if (cell) shoot(cell.r, cell.c);
+        });
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = (t.clientX - rect.left) / rect.width * W;
+            const y = (t.clientY - rect.top) / rect.height * H;
+            const r = Math.floor((y - MARGIN) / CELL);
+            const cEnemy = Math.floor((x - ENEMY_X) / CELL);
+            if (r >= 0 && r < N && cEnemy >= 0 && cEnemy < N && x >= ENEMY_X && x < ENEMY_X + SIZE) shoot(r, cEnemy);
+        }, { passive: false });
+
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+        document.getElementById('pauseBtn').addEventListener('click', resetGame);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') resetGame();
+            if (e.key === 'Enter' && document.getElementById('passOverlay').classList.contains('show')) {
+                document.getElementById('passOverlay').classList.remove('show');
+                SFX.click();
+            }
+        });
+
+        document.getElementById('wins1Display').textContent = wins1;
+        document.getElementById('wins2Display').textContent = wins2;
+        updateShips();
+
+        resetGame();
+
+        window.__battleship = { shoot, resetGame, get state() { return { turn, phase, over, wins1, wins2, shipsAlive: [...shipsAlive] }; }, get boards() { return boards.map(b => b.map(r => r.slice())); } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

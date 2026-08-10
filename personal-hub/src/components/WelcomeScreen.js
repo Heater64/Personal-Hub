@@ -1,25 +1,45 @@
 /* ==========================================
    Personal Hub v2 — Welcome Screen (Mood Check-in)
-   Solo para la usuaria (no admin): "¿Cómo te sientes ahora mismo princesa?"
+   Panel de bienvenida completo con estado de ánimo diario.
+   Solo para la usuaria (no admin): saludo personalizado
+   según la hora del día con el nombre real del perfil.
    ========================================== */
 
 import { moodStore } from '../stores/mood.store.js';
+import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
+import { hourInSpain } from '../utils/format.js';
+
+const START_DATE = '2025-07-03';
 
 export function WelcomeScreen({ onDone, onSkip } = {}) {
+  const user = userStore.getUser();
+  const userName = user?.name || 'princesa';
+  const daysSince = Math.floor((Date.now() - new Date(START_DATE).getTime()) / 86400000);
+
   const overlay = document.createElement('div');
   overlay.className = 'welcome-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-label', 'Bienvenida diaria');
   overlay.innerHTML = `
     <div class="welcome-modal">
-      <div class="welcome-bg"></div>
+      <div class="welcome-bg">
+        <div class="welcome-bg-particle p1"></div>
+        <div class="welcome-bg-particle p2"></div>
+        <div class="welcome-bg-particle p3"></div>
+        <div class="welcome-bg-particle p4"></div>
+        <div class="welcome-bg-particle p5"></div>
+        <div class="welcome-bg-particle p6"></div>
+      </div>
       <div class="welcome-content">
         <div class="welcome-greeting">
           <div class="welcome-time-icon">
-            <span class="welcome-icon-inner">☀️</span>
+            <span class="welcome-icon-inner" id="welcomeTimeIcon">☀️</span>
           </div>
           <h1 class="welcome-title">
             <span id="welcomeGreeting"></span>,<br>
-            <span class="welcome-name" id="welcomeName">princesa</span>
+            <span class="welcome-name" id="welcomeName">${escapeAttr(userName)}</span>
+            <span class="welcome-heart">♥</span>
           </h1>
           <p class="welcome-subtitle">¿Cómo te sientes ahora mismo?</p>
         </div>
@@ -36,6 +56,8 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
         <button type="button" class="welcome-skip" id="welcomeSkipBtn">
           Pregúntame luego
         </button>
+
+        <p class="welcome-counter" id="welcomeCounter">${daysSince} días compartiendo momentos juntos</p>
       </div>
     </div>
   `;
@@ -48,25 +70,31 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
   const moodsContainer = overlay.querySelector('#welcomeMoods');
   const continueBtn = overlay.querySelector('#welcomeContinueBtn');
   const skipBtn = overlay.querySelector('#welcomeSkipBtn');
-  const nameEl = overlay.querySelector('#welcomeName');
   const greetingEl = overlay.querySelector('#welcomeGreeting');
+  const timeIcon = overlay.querySelector('#welcomeTimeIcon');
 
-  // La bienvenida siempre se dirige a la usuaria como "princesa" (el nombre de
-  // la cuenta puede ser un email/local por defecto). No sobreescribimos nameEl.
-
-  // Set greeting based on time of day (local)
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) greetingEl.textContent = 'Buenos días';
-  else if (hour >= 12 && hour < 18) greetingEl.textContent = 'Buenas tardes';
-  else if (hour >= 18 && hour < 22) greetingEl.textContent = 'Buenas noches';
-  else greetingEl.textContent = 'Buenas noches';
+  // Set greeting and icon based on time of day (hora de España, península)
+  const hour = hourInSpain();
+  if (hour >= 5 && hour < 12) {
+    greetingEl.textContent = 'Buenos días';
+    timeIcon.textContent = '☀️';
+  } else if (hour >= 12 && hour < 18) {
+    greetingEl.textContent = 'Buenas tardes';
+    timeIcon.textContent = '🌤️';
+  } else if (hour >= 18 && hour < 22) {
+    greetingEl.textContent = 'Buenas noches';
+    timeIcon.textContent = '🌙';
+  } else {
+    greetingEl.textContent = 'Buenas noches';
+    timeIcon.textContent = '🌙';
+  }
 
   let selectedMood = null;
 
   // Render mood options
   const moods = moodStore.getMoods();
   moodsContainer.innerHTML = moods.map((mood, i) => `
-    <button type="button" class="mood-btn" data-mood="${mood.id}" style="animation-delay: ${200 + i * 90}ms">
+    <button type="button" class="mood-btn" data-mood="${mood.id}" style="animation-delay: ${150 + i * 80}ms">
       <span class="mood-btn__emoji">${mood.emoji}</span>
       <div class="mood-btn__text">
         <span class="mood-btn__label">${mood.label}</span>
@@ -110,9 +138,11 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
   }
 
   function close() {
-    overlay.style.animation = 'fade-out 0.3s ease forwards';
+    overlay.style.animation = 'fade-out 0.35s ease forwards';
     document.body.style.overflow = '';
-    setTimeout(() => overlay.remove(), 300);
+    setTimeout(() => {
+      if (overlay.isConnected) overlay.remove();
+    }, 350);
   }
 
   continueBtn.addEventListener('click', handleContinue);
@@ -125,4 +155,10 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
   });
 
   return overlay;
+}
+
+// Tiny inline HTML escaper (avoid circular import)
+function escapeAttr(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

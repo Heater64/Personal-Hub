@@ -5,128 +5,144 @@
    <style> + main.css so source order makes light win.
    ========================================================== */
 [data-theme="light"] :root {
-  --bg-deep: #fdf4f6;
-  --bg-mid: #fff7f9;
-  --panel: rgba(45, 20, 25, 0.04);
-  --panel-border: rgba(100, 60, 70, 0.22);
-  --ink: #2b1b1e;
-  --ash: #907e82;
-  --coral: #cf4062;
-  --coral-dark: #b33854;
-  --gold: #d6a853;
-  --green: #5a9c6e;
-  --red: #ca2d2d;
-  --blue: #4a7fb8;
-  --purple: #8b5cf6;
-  --purple-glow: rgba(139, 92, 246, 0.35);
-  --umbra-light: #2b1b1e;
-  --umbra-ash: #907e82;
-  --accent-coral: #cf4062;
-  --accent-border: rgba(207, 64, 98, 0.3);
+  --bg-deep: #f8edf0;
+  --bg-mid: #ffffff;
+  --panel: rgba(50, 16, 32, 0.04);
+  --panel-border: rgba(50, 16, 32, 0.10);
+  --ink: rgba(50, 16, 32, 0.94);
+  --ash: rgba(50, 16, 32, 0.40);
+  --coral: #c2185b;
+  --coral-dark: #b00f4e;
+  --gold: #b45309;
+  --green: #15803d;
+  --red: #dc2626;
+  --blue: #2563eb;
+  --purple: #7c3aed;
+  --purple-glow: rgba(124, 58, 237, 0.30);
+  --umbra-light: rgba(50, 16, 32, 0.94);
+  --umbra-ash: rgba(50, 16, 32, 0.62);
+  --accent-coral: #c2185b;
+  --accent-border: rgba(194, 24, 91, 0.30);
 }
 
 [data-theme="light"] body {
-  background: #fdf4f6;
-  color: #2b1b1e;
+  background: #f8edf0;
+  color: rgba(50, 16, 32, 0.94);
 }
 
 [data-theme="light"] .game-container {
   background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(100, 60, 70, 0.22);
-  box-shadow: 0 8px 32px rgba(43, 27, 30, 0.08);
+  border: 1px solid rgba(50, 16, 32, 0.10);
+  box-shadow: 0 8px 32px rgba(90, 30, 55, 0.08);
 }
 
 [data-theme="light"] canvas {
-  background: #fff7f9;
-  border: 1px solid rgba(100, 60, 70, 0.22);
-  box-shadow: 0 8px 32px rgba(43, 27, 30, 0.10);
+  background: #ffffff;
+  border: 1px solid rgba(50, 16, 32, 0.10);
+  box-shadow: 0 8px 32px rgba(90, 30, 55, 0.10);
 }
 
 [data-theme="light"] .game-message {
-  background: rgba(253, 244, 246, 0.92);
+  background: rgba(248, 237, 240, 0.92);
 }
 
 [data-theme="light"] .game-message-content {
-  background: linear-gradient(180deg, #fff7f9, #fff0f5);
-  border: 1px solid rgba(207, 64, 98, 0.3);
+  background: linear-gradient(180deg, #ffffff, #fdf3f6);
+  border: 1px solid rgba(194, 24, 91, 0.30);
 }
 
-[data-theme="light"] .game-message-content .icon { color: #cf4062; }
-[data-theme="light"] .game-message-content h2 { color: #2b1b1e; }
-[data-theme="light"] .game-message-content p { color: #907e82; }
+[data-theme="light"] .game-message-content .icon { color: #c2185b; }
+[data-theme="light"] .game-message-content h2 { color: rgba(50, 16, 32, 0.94); }
+[data-theme="light"] .game-message-content p { color: rgba(50, 16, 32, 0.62); }
 [data-theme="light"] .game-message-content .btn-primary {
-  background: #cf4062;
+  background: #c2185b;
   color: #fff;
 }
 [data-theme="light"] .game-message-content .btn-primary:hover {
-  background: #b33854;
+  background: #b00f4e;
 }
 
 /* ahorcado: letter slots / buttons */
-[data-theme="light"] .letter-slot { border-bottom-color: rgba(100, 60, 70, 0.22); color: #2b1b1e; }
+[data-theme="light"] .letter-slot { border-bottom-color: rgba(50, 16, 32, 0.12); color: rgba(50, 16, 32, 0.94); }
 [data-theme="light"] .letter-btn {
   background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(100, 60, 70, 0.22);
-  color: #2b1b1e;
+  border: 1px solid rgba(50, 16, 32, 0.12);
+  color: rgba(50, 16, 32, 0.94);
 }
 [data-theme="light"] .letter-btn:hover:not(.used) {
-  border-color: rgba(207, 64, 98, 0.35);
-  background: rgba(207, 64, 98, 0.06);
+  border-color: rgba(194, 24, 91, 0.35);
+  background: rgba(194, 24, 91, 0.06);
 }
 [data-theme="light"] .letter-btn.correct {
-  border-color: #2e8b57;
-  background: rgba(46, 139, 87, 0.12);
-  color: #2e8b57;
+  border-color: #15803d;
+  background: rgba(21, 128, 61, 0.12);
+  color: #15803d;
 }
 [data-theme="light"] .letter-btn.wrong {
-  border-color: #ca2d2d;
-  background: rgba(202, 45, 45, 0.12);
-  color: #ca2d2d;
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
 }
 [data-theme="light"] .letter-btn.hint-revealed {
-  border-color: #cf4062;
-  background: rgba(207, 64, 98, 0.12);
-  color: #cf4062;
+  border-color: #c2185b;
+  background: rgba(194, 24, 91, 0.12);
+  color: #c2185b;
 }
 
 /* ahorcado: category + nav buttons */
 [data-theme="light"] .category-btn {
   background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(100, 60, 70, 0.22);
-  color: #59494d;
+  border: 1px solid rgba(50, 16, 32, 0.12);
+  color: rgba(50, 16, 32, 0.62);
 }
 [data-theme="light"] .category-btn:hover {
-  border-color: rgba(207, 64, 98, 0.35);
-  color: #2b1b1e;
+  border-color: rgba(194, 24, 91, 0.35);
+  color: rgba(50, 16, 32, 0.94);
 }
 [data-theme="light"] .category-btn.active {
-  background: rgba(207, 64, 98, 0.12);
-  border-color: #cf4062;
-  color: #cf4062;
+  background: rgba(194, 24, 91, 0.12);
+  border-color: #c2185b;
+  color: #c2185b;
 }
 [data-theme="light"] .btn-ghost,
 [data-theme="light"] .back-btn {
   background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(100, 60, 70, 0.22);
-  color: #59494d;
+  border: 1px solid rgba(50, 16, 32, 0.12);
+  color: rgba(50, 16, 32, 0.62);
 }
 [data-theme="light"] .btn-ghost:hover,
 [data-theme="light"] .back-btn:hover,
 [data-theme="light"] .btn-ghost.hint-btn:hover {
-  border-color: rgba(207, 64, 98, 0.35);
-  color: #2b1b1e;
+  border-color: rgba(194, 24, 91, 0.35);
+  color: rgba(50, 16, 32, 0.94);
 }
-[data-theme="light"] .btn-ghost.hint-btn { color: #cf4062; }
-[data-theme="light"] .btn-ghost.reset { color: #ca2d2d; }
+[data-theme="light"] .btn-ghost.hint-btn { color: #c2185b; }
+[data-theme="light"] .btn-ghost.reset { color: #dc2626; }
 [data-theme="light"] .btn-ghost.reset:hover {
-  border-color: #ca2d2d;
-  color: #ca2d2d;
+  border-color: #dc2626;
+  color: #dc2626;
 }
 
 /* ahorcado: hangman / status */
-[data-theme="light"] .hangman-display { color: #2b1b1e; }
-[data-theme="light"] .status-msg { color: #907e82; }
-[data-theme="light"] .word-display { color: #2b1b1e; }
+[data-theme="light"] .hangman-display { color: rgba(50, 16, 32, 0.94); }
+[data-theme="light"] .status-msg { color: rgba(50, 16, 32, 0.62); }
+[data-theme="light"] .word-display { color: rgba(50, 16, 32, 0.94); }
 
-/* memoria: flip cards */
-[data-theme="light"] .card-inner { background: #fff7f9; }
+
+/* ==========================================================
+   REDUCED MOTION — respeta la preferencia del sistema
+   (se aplica a todos los juegos: desactiva animaciones
+   decorativas y transiciones, mantiene las imprescindibles)
+   ========================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal-anim, .card, .flipped, .shake, .pulse, .pop, .fade-in {
+    animation: none !important;
+    transition: none !important;
+  }
+}

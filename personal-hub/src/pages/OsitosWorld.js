@@ -1,73 +1,54 @@
 /* ==========================================
-   Personal Hub v2 — OsitosWorld Page
-   Versión completa con capítulos, personajes,
-   lugares, noticias y sistema de favoritos
-   SIN navegación principal (sidebar/bottom-nav ocultos)
+   Personal Hub v3 — OsitosWorld Page
+   Storybook universe: entry screen, living world,
+   book library, character sheets, search, recommendations
    ========================================== */
 
 import { escapeHtml } from '../utils/escape.js';
+import { CHARACTERS } from '../data/ositos-data.js';
+import { userPrefKey } from '../utils/userStorage.js';
 
 // ==========================================
-// DATOS COMPLETOS
+// DATOS DEL MUNDO
+// Estos arrays se rellenan poco a poco. Mientras una sección no tenga
+// contenido real, la UI muestra su estado vacío en lugar de placeholders.
 // ==========================================
 
-const CHAPTERS = [
-  { id: 1, saga: 1, title: '.', summary: '.', pdfUrl: '.', previous: null, next: 2, characters: ['.', '.'], places: ['', '.'] },
-];
+const CHAPTERS = [];
 
-const CHARACTERS = [
-  {
-    id: 'baton-gordito', name: 'Batón Gordito', role: 'heroe',
-    image: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783491042/ChatGPT_Image_6_jul_2026_19_05_44-Photoroom_tsg4yb.png',
-    emoji: '🧸',
-    description: 'Descripción',
-    personality: '.',
-    curiosities: '.',
-    color: '#e8a0b4', friends: ['.', '.'], home: '.'
-  },
-  {
-    id: 'lila-y-lolo', name: 'Lili y Lolo', role: 'aliado',
-    image: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783491103/ChatGPT_Image_6_jul_2026_19_05_52-Photoroom_mvhimf.png',
-    emoji: '🐰',
-    description: 'Descripción',
-    personality: '.',
-    curiosities: '.',
-    color: '#a8d8ea', friends: ['.', '.'], home: '.'
-  },
-  {
-    id: 'vaca', name: 'Vaca Lola', role: 'aliado',
-    image: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783491109/ChatGPT_Image_6_jul_2026_19_06_21-Photoroom_rhv6de.png',
-    emoji: '🐿️',
-    description: 'Descripción',
-    personality: '.',
-    curiosities: '.',
-    color: '#80ced6', friends: ['.', '.'], home: '.'
-  },
-  {
-    id: 'rey-esqueleto', name: 'Rey Esqueleto', role: 'villano',
-    image: 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783358108/ChatGPT_Image_6_jul_2026_19_05_29-Photoroom_tnbedt.png',
-    emoji: '💀',
-    description: 'Descripción',
-    personality: '.',
-    curiosities: '.',
-    color: '#6b5b95', friends: ['.'], home: '.'
-  },
-];
+const PLACES = [];
 
-const PLACES = [
-  { id: 1, name: '.', description: '.', curiosities: '.', pdfUrl: '', characters: ['.', '.', '.', '.'] },
-];
+const NEWS = [];
 
-const NEWS = [
-  { id: 1, date: '.', title: '.', content: '.', relatedCharacters: [], relatedPlaces: [] },
-];
+/**
+ * ¿El valor es contenido real? Los placeholders de scaffolding ('.', vacío,
+ * 'Descripción') no se muestran en la UI: se tratan como "aún sin rellenar".
+ */
+const hasText = (v) =>
+  typeof v === 'string' && v.trim().length > 0 &&
+  !/^\.+$/.test(v.trim()) && !/^Descripci[oó]n\.?$/.test(v.trim());
 
 // ==========================================
 // CONSTANTES
 // ==========================================
 
-const FAVORITES_KEY = 'ositosWorld.favorites';
-const ACTIVE_SECTION_KEY = 'ositosWorld.activeSection';
+// Preferencias aisladas por usuario (coherente con el resto de la app).
+// Se leen a través de userPrefKey(base) → ph.<base>.<userId>.
+const FAVORITES_KEY = () => userPrefKey('ositosWorld.favorites');
+const ACTIVE_SECTION_KEY = () => userPrefKey('ositosWorld.activeSection');
+const ENTRY_SEEN_KEY = () => userPrefKey('ositosWorld.entrySeen');
+
+/** Migra las claves globales legacy a su versión por-usuario (una sola vez). */
+function migrateLegacyKeys() {
+  ['ositosWorld.favorites', 'ositosWorld.activeSection', 'ositosWorld.entrySeen'].forEach(base => {
+    const scoped = userPrefKey(base);
+    if (localStorage.getItem(scoped) !== null) return;
+    const legacy = localStorage.getItem(base);
+    if (legacy === null) return;
+    localStorage.setItem(scoped, legacy);
+    localStorage.removeItem(base);
+  });
+}
 
 // ==========================================
 // EMOJI MAPS
@@ -89,7 +70,7 @@ function getEmojiForPlace(name) {
 }
 
 // ==========================================
-// SVG ICONS (inline, sin dependencia de Lucide)
+// SVG ICONS
 // ==========================================
 
 const I = {
@@ -108,6 +89,8 @@ const I = {
   starFilled: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
   back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
   heartFilled: '<svg width="18" height="18" viewBox="0 0 24 24" fill="#FF6B6B" stroke="#FF6B6B" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
+  search: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  sparkle: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/></svg>',
 };
 
 // ==========================================
@@ -118,17 +101,23 @@ export function OsitosWorldPage(router) {
   const page = document.createElement('div');
   page.className = 'ositos-page';
 
-  let activeSection = localStorage.getItem(ACTIVE_SECTION_KEY) || 'home';
+  migrateLegacyKeys();
+
+  let activeSection = localStorage.getItem(ACTIVE_SECTION_KEY()) || 'home';
   let activeFilter = 'todos';
   let favorites = new Set();
+  let searchQuery = '';
+  let showingDetail = null; // 'character', 'place', 'chapter' — full-page detail overlay
+  let detailData = null;
+  let entryVisible = !localStorage.getItem(ENTRY_SEEN_KEY());
 
   try {
-    const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+    const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY()) || '[]');
     favorites = new Set(saved);
   } catch { favorites = new Set(); }
 
   function saveFavorites() {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites]));
+    localStorage.setItem(FAVORITES_KEY(), JSON.stringify([...favorites]));
   }
 
   function isFav(id) { return favorites.has(id); }
@@ -136,8 +125,10 @@ export function OsitosWorldPage(router) {
     if (favorites.has(id)) favorites.delete(id);
     else favorites.add(id);
     saveFavorites();
-    renderContent();
+    if (activeSection === 'personajes') renderContent();
     updateSidebarFavs();
+    // Also update detail view if open
+    if (showingDetail) renderDetailOverlay();
   }
 
   function getCount(role) {
@@ -164,33 +155,369 @@ export function OsitosWorldPage(router) {
     msg.textContent = text;
     document.body.appendChild(msg);
     setTimeout(() => { msg.style.opacity = '0'; msg.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => msg.remove(), 300); }, 2500);
-  }// ==========================================
-// MODAL
-// ==========================================
-  function openModal(html) {
-    const modal = page.querySelector('#ositosModal');
-    const body = page.querySelector('#ositosModalBody');
-    if (!modal || !body) return;
+  }
+
+  // ==========================================
+  // GLOBAL PARTICLES — living world fireflies
+  // ==========================================
+  function getFirefliesHTML(count = 18) {
+    const emojis = ['✨','⭐','💫','🪐','☁️'];
+    let html = '';
+    for (let i = 0; i < count; i++) {
+      const emoji = emojis[i % emojis.length];
+      const left = Math.random() * 100;
+      const delay = Math.random() * 8;
+      const duration = 4 + Math.random() * 7;
+      const size = 0.5 + Math.random() * 1.2;
+      html += `<span class="os-firefly" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;font-size:${size}rem">${emoji}</span>`;
+    }
+    return html;
+  }
+
+  // ==========================================
+  // SEARCH
+  // ==========================================
+  function searchAll(query) {
+    const q = query.toLowerCase().trim();
+    if (!q) return { characters: [], chapters: [], places: [], news: [] };
+
+    const chars = CHARACTERS.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.role.toLowerCase().includes(q) ||
+      (c.personality && c.personality.toLowerCase().includes(q))
+    );
+
+    const chaps = CHAPTERS.filter(c =>
+      c.title.toLowerCase().includes(q) ||
+      c.summary.toLowerCase().includes(q)
+    );
+
+    const places = PLACES.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.description.toLowerCase().includes(q)
+    );
+
+    const newsItems = NEWS.filter(n =>
+      n.title.toLowerCase().includes(q) ||
+      n.content.toLowerCase().includes(q)
+    );
+
+    return { characters: chars, chapters: chaps, places, news: newsItems };
+  }
+
+  // ==========================================
+  // RECOMMENDATIONS
+  // ==========================================
+  function getRecommendations(type, id) {
+    const recs = [];
+    if (type === 'character') {
+      const char = CHARACTERS.find(c => c.id === id);
+      if (char && char.friends) {
+        char.friends.filter(Boolean).forEach(name => {
+          const friend = CHARACTERS.find(c => c.name === name);
+          if (friend && friend.id !== id) recs.push({ type: 'character', data: friend });
+        });
+      }
+      // Also suggest places
+      const relatedPlaces = PLACES.filter(p => (p.characters || []).includes(char?.name));
+      relatedPlaces.forEach(p => recs.push({ type: 'place', data: p }));
+    } else if (type === 'chapter') {
+      const ch = CHAPTERS.find(c => c.id === id);
+      if (ch && ch.characters) {
+        ch.characters.filter(Boolean).forEach(name => {
+          const char = CHARACTERS.find(c => c.name === name);
+          if (char) recs.push({ type: 'character', data: char });
+        });
+      }
+    } else if (type === 'place') {
+      const place = PLACES.find(p => p.id === id);
+      if (place && place.characters) {
+        place.characters.filter(Boolean).forEach(name => {
+          const char = CHARACTERS.find(c => c.name === name);
+          if (char) recs.push({ type: 'character', data: char });
+        });
+      }
+    }
+    return recs.slice(0, 4);
+  }
+
+  // ==========================================
+  // DETAIL OVERLAY — full-page character/place/chapter view
+  // ==========================================
+  function openDetail(type, data) {
+    showingDetail = type;
+    detailData = data;
+    renderDetailOverlay();
+  }
+
+  function closeDetail() {
+    showingDetail = null;
+    detailData = null;
+    renderContent();
+    renderLayout();
+    bindLayoutEvents();
+  }
+
+  function renderDetailOverlay() {
+    const overlay = page.querySelector('#ositosDetailOverlay');
+    if (!overlay) return;
+    if (!showingDetail || !detailData) {
+      overlay.classList.remove('open');
+      return;
+    }
+    overlay.classList.add('open');
+
+    const body = overlay.querySelector('.os-detail-body');
+    if (!body) return;
+
+    let html = '';
+    const recs = getRecommendations(showingDetail, detailData.id || detailData.name);
+
+    if (showingDetail === 'character') {
+      const c = detailData;
+      const fav = isFav(c.id);
+      const hasImage = c.image && c.image.length > 0;
+      const friendLinks = (c.friends || []).filter(hasText).map(name => {
+        const friend = CHARACTERS.find(ch => ch.name === name);
+        return friend
+          ? `<span class="ositos-chip clickable" data-char-id="${friend.id}">${getEmojiForCharacter(friend.name)} ${escapeHtml(friend.name)}</span>`
+          : `<span class="ositos-chip">${name}</span>`;
+      }).join('');
+
+      const homePlace = hasText(c.home) ? PLACES.find(p => p.name === c.home) : null;
+      const homeHtml = homePlace
+        ? `<span class="ositos-chip clickable" data-place-id="${homePlace.id}">${getEmojiForPlace(homePlace.name)} ${escapeHtml(homePlace.name)}</span>`
+        : (hasText(c.home) ? `<span class="ositos-chip">${escapeHtml(c.home)}</span>` : '');
+
+      // Find chapter appearances
+      const appearances = CHAPTERS.filter(ch => (ch.characters || []).includes(c.name));
+
+      html = `
+        <div class="os-detail-hero" style="--char-color:${c.color}">
+          <button class="os-detail-back" id="osDetailBack">${I.arrowLeft}</button>
+          <button class="os-detail-fav ${fav ? 'active' : ''}" id="osDetailFav">${fav ? '❤️' : '🤍'}</button>
+          <div class="os-detail-portrait">
+            ${hasImage
+              ? `<img src="${c.image}" alt="${escapeHtml(c.name)}" loading="lazy">`
+              : `<span class="os-detail-emoji">${c.emoji}</span>`
+            }
+          </div>
+          <h2 class="os-detail-name">${escapeHtml(c.name)}</h2>
+          <span class="os-detail-badge ${c.role}">${getRoleLabel(c.role)}</span>
+        </div>
+        <div class="os-detail-sections">
+          ${hasText(c.description) ? `<div class="os-detail-section"><h4>📝 Descripción</h4><p>${escapeHtml(c.description)}</p></div>` : ''}
+          ${hasText(c.personality) ? `<div class="os-detail-section"><h4>🎭 Personalidad</h4><p>${escapeHtml(c.personality)}</p></div>` : ''}
+          ${hasText(c.curiosities) ? `<div class="os-detail-section"><h4>💡 Curiosidad</h4><p>${escapeHtml(c.curiosities)}</p></div>` : ''}
+          ${homeHtml ? `<div class="os-detail-section"><h4>🏠 Hogar</h4><div class="os-detail-chips">${homeHtml}</div></div>` : ''}
+          ${friendLinks ? `<div class="os-detail-section"><h4>🤝 Amigos</h4><div class="os-detail-chips">${friendLinks}</div></div>` : ''}
+          ${appearances.length > 0 ? `<div class="os-detail-section"><h4>📖 Apariciones</h4><div class="os-detail-chips">${appearances.map(ch => `<span class="ositos-chip clickable" data-chapter-id="${ch.id}">📖 Cap. ${ch.id}</span>`).join('')}</div></div>` : ''}
+        </div>
+        ${recs.length > 0 ? `
+          <div class="os-detail-recs">
+            <h4>Sigue explorando</h4>
+            <div class="os-detail-recs-grid">${recs.map(r => recCardHTML(r)).join('')}</div>
+          </div>
+        ` : ''}
+      `;
+    } else if (showingDetail === 'chapter') {
+      const ch = detailData;
+      const isChFav = isFav('ch-' + ch.id);
+      const prev = ch.previous ? CHAPTERS.find(c => c.id === ch.previous) : null;
+      const next = ch.next ? CHAPTERS.find(c => c.id === ch.next) : null;
+      const charLinks = (ch.characters || []).filter(Boolean).map(name => {
+        const char = CHARACTERS.find(c => c.name === name);
+        return char ? `<span class="ositos-chip clickable" data-char-id="${char.id}">${getEmojiForCharacter(char.name)} ${escapeHtml(char.name)}</span>` : '';
+      }).join('');
+      const placeLinks = (ch.places || []).filter(Boolean).map(name => {
+        const place = PLACES.find(p => p.name === name);
+        return place ? `<span class="ositos-chip clickable" data-place-id="${place.id}">${getEmojiForPlace(place.name)} ${escapeHtml(place.name)}</span>` : '';
+      }).join('');
+
+      html = `
+        <div class="os-detail-hero os-detail-hero--chapter">
+          <button class="os-detail-back" id="osDetailBack">${I.arrowLeft}</button>
+          <button class="os-detail-fav ${isChFav ? 'active' : ''}" id="osDetailFav">${isChFav ? '❤️' : '🤍'}</button>
+          <div class="os-detail-book-icon">📖</div>
+          <h2 class="os-detail-name">Capítulo ${ch.id}: ${escapeHtml(ch.title)}</h2>
+          <span class="os-detail-badge saga">Saga ${ch.saga}</span>
+        </div>
+        <div class="os-detail-sections">
+          <div class="os-detail-section"><h4>📝 Resumen</h4><p>${escapeHtml(ch.summary)}</p></div>
+          ${charLinks ? `<div class="os-detail-section"><h4>🧸 Personajes</h4><div class="os-detail-chips">${charLinks}</div></div>` : ''}
+          ${placeLinks ? `<div class="os-detail-section"><h4>🏰 Lugares</h4><div class="os-detail-chips">${placeLinks}</div></div>` : ''}
+        </div>
+        <div class="os-detail-nav">
+          <button ${!prev ? 'disabled' : ''} class="os-detail-nav-btn ${!prev ? 'disabled' : ''}" data-chapter-id="${prev?.id || ''}">← Anterior</button>
+          <button ${!next ? 'disabled' : ''} class="os-detail-nav-btn ${!next ? 'disabled' : ''}" data-chapter-id="${next?.id || ''}">Siguiente →</button>
+        </div>
+        ${recs.length > 0 ? `
+          <div class="os-detail-recs">
+            <h4>Sigue explorando</h4>
+            <div class="os-detail-recs-grid">${recs.map(r => recCardHTML(r)).join('')}</div>
+          </div>
+        ` : ''}
+      `;
+    } else if (showingDetail === 'place') {
+      const p = detailData;
+      const isPlFav = isFav('pl-' + p.id);
+      const charLinks = (p.characters || []).filter(Boolean).map(name => {
+        const char = CHARACTERS.find(c => c.name === name);
+        return char ? `<span class="ositos-chip clickable" data-char-id="${char.id}">${getEmojiForCharacter(char.name)} ${escapeHtml(char.name)}</span>` : '';
+      }).join('');
+
+      html = `
+        <div class="os-detail-hero os-detail-hero--place">
+          <button class="os-detail-back" id="osDetailBack">${I.arrowLeft}</button>
+          <button class="os-detail-fav ${isPlFav ? 'active' : ''}" id="osDetailFav">${isPlFav ? '❤️' : '🤍'}</button>
+          <div class="os-detail-place-emoji">${getEmojiForPlace(p.name)}</div>
+          <h2 class="os-detail-name">${escapeHtml(p.name)}</h2>
+        </div>
+        <div class="os-detail-sections">
+          ${hasText(p.description) ? `<div class="os-detail-section"><h4>📝 Descripción</h4><p>${escapeHtml(p.description)}</p></div>` : ''}
+          ${hasText(p.curiosities) ? `<div class="os-detail-section"><h4>💡 Curiosidad</h4><p>${escapeHtml(p.curiosities)}</p></div>` : ''}
+          ${charLinks ? `<div class="os-detail-section"><h4>🧸 Habitantes</h4><div class="os-detail-chips">${charLinks}</div></div>` : ''}
+        </div>
+        ${recs.length > 0 ? `
+          <div class="os-detail-recs">
+            <h4>Sigue explorando</h4>
+            <div class="os-detail-recs-grid">${recs.map(r => recCardHTML(r)).join('')}</div>
+          </div>
+        ` : ''}
+      `;
+    } else if (showingDetail === 'news') {
+      const n = detailData;
+      const charLinks = (n.relatedCharacters || []).filter(Boolean).map(name => {
+        const char = CHARACTERS.find(c => c.name === name);
+        return char ? `<span class="ositos-chip clickable" data-char-id="${char.id}">${getEmojiForCharacter(char.name)} ${escapeHtml(char.name)}</span>` : '';
+      }).join('');
+      const placeLinks = (n.relatedPlaces || []).filter(Boolean).map(name => {
+        const place = PLACES.find(p => p.name === name);
+        return place ? `<span class="ositos-chip clickable" data-place-id="${place.id}">${getEmojiForPlace(place.name)} ${escapeHtml(place.name)}</span>` : '';
+      }).join('');
+
+      html = `
+        <div class="os-detail-hero os-detail-hero--news">
+          <button class="os-detail-back" id="osDetailBack">${I.arrowLeft}</button>
+          <div class="os-detail-news-icon">📰</div>
+          <h2 class="os-detail-name">${escapeHtml(n.title)}</h2>
+          <span class="os-detail-date">${n.date}</span>
+        </div>
+        <div class="os-detail-sections">
+          <div class="os-detail-section"><p>${escapeHtml(n.content)}</p></div>
+          ${charLinks ? `<div class="os-detail-section"><h4>🧸 Personajes</h4><div class="os-detail-chips">${charLinks}</div></div>` : ''}
+          ${placeLinks ? `<div class="os-detail-section"><h4>🏰 Lugares</h4><div class="os-detail-chips">${placeLinks}</div></div>` : ''}
+        </div>
+      `;
+    }
+
     body.innerHTML = html;
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    bindDetailEvents();
   }
 
-  function closeModal() {
-    const modal = page.querySelector('#ositosModal');
-    if (modal) modal.classList.remove('open');
-    document.body.style.overflow = '';
+  function recCardHTML(rec) {
+    if (rec.type === 'character') {
+      const c = rec.data;
+      return `<div class="os-recs-card" data-char-id="${c.id}"><span class="os-recs-emoji">${c.emoji}</span><span class="os-recs-label">${escapeHtml(c.name)}</span></div>`;
+    } else if (rec.type === 'place') {
+      const p = rec.data;
+      return `<div class="os-recs-card" data-place-id="${p.id}"><span class="os-recs-emoji">${getEmojiForPlace(p.name)}</span><span class="os-recs-label">${escapeHtml(p.name)}</span></div>`;
+    }
+    return '';
   }
 
-  // Expose modal functions globally for inline onclick handlers
-  window.__ositos = window.__ositos || {};
-  window.__ositos.closeModal = closeModal;
-  window.__ositos.openModal = openModal;
-  window.__ositos.openChapter = (id) => openChapter(id);
-  window.__ositos.openCharacter = (id) => openCharacter(id);
-  window.__ositos.openPlace = (id) => openPlace(id);
-  window.__ositos.openNews = (id) => openNews(id);
-  window.__ositos.toggleFav = (id) => toggleFav(id);
+  function bindDetailEvents() {
+    const overlay = page.querySelector('#ositosDetailOverlay');
+    if (!overlay) return;
+
+    // Remove previous Escape handler to avoid leaks
+    if (overlay._onKey) document.removeEventListener('keydown', overlay._onKey);
+    overlay._onKey = (e) => { if (e.key === 'Escape') closeDetail(); };
+    document.addEventListener('keydown', overlay._onKey);
+
+    overlay.querySelector('#osDetailBack')?.addEventListener('click', closeDetail);
+    overlay.querySelector('#osDetailFav')?.addEventListener('click', () => {
+      if (detailData) {
+        const prefix = showingDetail === 'chapter' ? 'ch-' : showingDetail === 'place' ? 'pl-' : '';
+        toggleFav(prefix + detailData.id);
+      }
+    });
+
+    // Chips in detail
+    overlay.querySelectorAll('.ositos-chip.clickable[data-char-id]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const char = CHARACTERS.find(c => c.id === chip.dataset.charId);
+        if (char) openDetail('character', char);
+      });
+    });
+    overlay.querySelectorAll('.ositos-chip.clickable[data-place-id]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const place = PLACES.find(p => p.id === Number(chip.dataset.placeId));
+        if (place) openDetail('place', place);
+      });
+    });
+    overlay.querySelectorAll('.ositos-chip.clickable[data-chapter-id]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const ch = CHAPTERS.find(c => c.id === Number(chip.dataset.chapterId));
+        if (ch) openDetail('chapter', ch);
+      });
+    });
+
+    // Chapter nav buttons
+    overlay.querySelectorAll('.os-detail-nav-btn[data-chapter-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.chapterId);
+        if (!id) return;
+        const ch = CHAPTERS.find(c => c.id === id);
+        if (ch) openDetail('chapter', ch);
+      });
+    });
+
+    // Recommendation cards
+    overlay.querySelectorAll('.os-recs-card[data-char-id]').forEach(card => {
+      card.addEventListener('click', () => {
+        const char = CHARACTERS.find(c => c.id === card.dataset.charId);
+        if (char) openDetail('character', char);
+      });
+    });
+    overlay.querySelectorAll('.os-recs-card[data-place-id]').forEach(card => {
+      card.addEventListener('click', () => {
+        const place = PLACES.find(p => p.id === Number(card.dataset.placeId));
+        if (place) openDetail('place', place);
+      });
+    });
+
+    // Close on Escape
+    overlay._onKey = (e) => { if (e.key === 'Escape') closeDetail(); };
+    document.addEventListener('keydown', overlay._onKey);
+  }
+
+  // ==========================================
+  // RENDER: ENTRY SCREEN
+  // ==========================================
+  function renderEntryScreen() {
+    const stars = [];
+    for (let i = 0; i < 30; i++) {
+      const left = Math.random() * 100;
+      const top = Math.random() * 100;
+      const delay = Math.random() * 3;
+      const duration = 2 + Math.random() * 3;
+      const size = 0.3 + Math.random() * 0.8;
+      stars.push(`<span class="os-entry-star" aria-hidden="true" style="left:${left}%;top:${top}%;animation-delay:${delay}s;animation-duration:${duration}s;font-size:${size}rem">⭐</span>`);
+    }
+
+    return `
+      <div class="os-entry-screen" id="osEntryScreen">
+        <div class="os-entry-stars">${stars.join('')}</div>
+        <div class="os-entry-content">
+          <div class="os-entry-logo">🧸</div>
+          <h2 class="os-entry-title">Ositos World</h2>
+          <p class="os-entry-sub">Donde toda tu creatividad no tiene límites</p>
+          <button class="os-entry-enter" id="osEntryEnter">Entrar al mundo</button>
+        </div>
+      </div>
+    `;
+  }
 
   // ==========================================
   // RENDER: HOME
@@ -202,21 +529,23 @@ export function OsitosWorldPage(router) {
 
     return `
       <div class="ositos-page-content active">
-        <div class="ositos-hero-section">
-          <span class="hero-icon">🧸</span>
-          <h1>Bienvenida a <span>Ositos World</span></h1>
-          <p>Un pequeño lugar lleno de aventuras, personajes curiosos y muchas historias por descubrir.</p>
+        <div class="ositos-hero-section os-hero--storybook">
+          <div class="os-hero-title-wrap">
+            <span class="os-hero-pretitle">Bienvenida a</span>
+            <h1 class="os-hero-main-title">Ositos World</h1>
+            <p class="os-hero-desc">Un pequeño universo lleno de personajes mágicos, historias por descubrir y aventuras que esperan por ti.</p>
+          </div>
           <div class="ositos-hero-buttons">
-            <button class="ositos-btn-primary" data-nav="historia">📖 Empezar a leer</button>
+            <button class="ositos-btn-primary" data-nav="historia">📖 Comenzar la aventura</button>
             <button class="ositos-btn-secondary" data-nav="personajes">🧸 Conocer personajes</button>
           </div>
         </div>
 
         <div class="ositos-stats">
-          <div class="ositos-stat-item"><div class="ositos-stat-icon">📖</div><div class="ositos-stat-number">${CHAPTERS.length}</div><div class="ositos-stat-label">Capítulos</div></div>
-          <div class="ositos-stat-item"><div class="ositos-stat-icon">🧸</div><div class="ositos-stat-number">${CHARACTERS.length}</div><div class="ositos-stat-label">Personajes</div></div>
-          <div class="ositos-stat-item"><div class="ositos-stat-icon">🏰</div><div class="ositos-stat-number">${PLACES.length}</div><div class="ositos-stat-label">Lugares</div></div>
-          <div class="ositos-stat-item"><div class="ositos-stat-icon">❤️</div><div class="ositos-stat-number">${favorites.size}</div><div class="ositos-stat-label">Favoritos</div></div>
+          <div class="ositos-stat-item"><div class="ositos-stat-ring"></div><div class="ositos-stat-icon">📖</div><div class="ositos-stat-number">${CHAPTERS.length}</div><div class="ositos-stat-label">Capítulos</div></div>
+          <div class="ositos-stat-item"><div class="ositos-stat-ring"></div><div class="ositos-stat-icon">🧸</div><div class="ositos-stat-number">${CHARACTERS.length}</div><div class="ositos-stat-label">Personajes</div></div>
+          <div class="ositos-stat-item"><div class="ositos-stat-ring"></div><div class="ositos-stat-icon">🏰</div><div class="ositos-stat-number">${PLACES.length}</div><div class="ositos-stat-label">Lugares</div></div>
+          <div class="ositos-stat-item fav"><div class="ositos-stat-ring"></div><div class="ositos-stat-icon">❤️</div><div class="ositos-stat-number">${favorites.size}</div><div class="ositos-stat-label">Favoritos</div></div>
         </div>
 
         <div class="ositos-featured-section">
@@ -231,12 +560,11 @@ export function OsitosWorldPage(router) {
               <div class="ositos-featured-card" data-char-id="${c.id}">
                 <span class="ositos-card-role ${c.role}">${getRoleLabel(c.role)}</span>
                 ${hasImg
-                  ? `<div class="ositos-featured-img" style="background-image:url('${c.image}')"></div>`
+                  ? `<div class="ositos-featured-img" style="background-image:url('${c.image}')"><div class="os-featured-img-glow"></div></div>`
                   : `<div class="ositos-featured-emoji">${c.emoji}</div>`
                 }
                 <h3>${escapeHtml(c.name)}</h3>
-              </div>`;
-            }).join('')}
+              </div>`; }).join('')}
           </div>
         </div>
       </div>
@@ -244,7 +572,7 @@ export function OsitosWorldPage(router) {
   }
 
   // ==========================================
-  // RENDER: HISTORIA
+  // RENDER: HISTORIA — Book library
   // ==========================================
   function renderHistory() {
     const sagas = {};
@@ -256,67 +584,50 @@ export function OsitosWorldPage(router) {
     let html = `
       <div class="ositos-page-content active">
         <div class="ositos-section-header">
-          <h2 class="ositos-section-title">📖 Biblioteca de Capítulos</h2>
+          <h2 class="ositos-section-title">📖 Biblioteca</h2>
           <span class="ositos-orange-curl"></span>
+          <p class="os-section-sub">Cada saga es un libro. Cada capítulo, una página por descubrir.</p>
         </div>
     `;
 
-    Object.keys(sagas).sort((a, b) => a - b).forEach(sagaKey => {
-      const sagaChapters = sagas[sagaKey];
+    const sagaKeys = Object.keys(sagas).sort((a, b) => a - b);
+    if (sagaKeys.length === 0) {
       html += `
-        <div class="ositos-saga-block">
-          <div class="ositos-saga-header">
-            <span class="ositos-saga-icon">📜</span>
-            <h3 class="ositos-saga-title">Ositos World ${sagaKey}</h3>
-            <span class="ositos-saga-count">${sagaChapters.length} capítulos</span>
-          </div>
-          <div class="ositos-grid-3">
-            ${sagaChapters.map(ch => `
-              <div class="ositos-card-home" onclick="__ositos.openChapter(${ch.id})">
-                <div class="card-image"><span>📖</span></div>
-                <span class="tag">Capítulo ${ch.id}</span>
-                <h3>${escapeHtml(ch.title)}</h3>
-                <p>${escapeHtml(ch.summary)}</p>
-                <button class="ositos-btn-sm gold" onclick="event.stopPropagation();__ositos.openChapter(${ch.id})">📖 Leer capítulo</button>
-              </div>
-            `).join('')}
-          </div>
+        <div class="ositos-empty-state">
+          <span class="ositos-empty-icon">📖</span>
+          <h3>La biblioteca aún está en blanco</h3>
+          <p>Pronto llegarán las primeras historias de este mundo.</p>
         </div>
       `;
-    });
+    } else {
+      sagaKeys.forEach(sagaKey => {
+        const sagaChapters = sagas[sagaKey];
+        html += `
+          <div class="ositos-saga-block os-saga--book">
+            <div class="os-saga-cover">
+              <span class="os-saga-spine">📜</span>
+              <h3 class="os-saga-vol">Vol. ${sagaKey}</h3>
+              <span class="os-saga-pages">${sagaChapters.length} capítulos</span>
+            </div>
+            <div class="os-saga-chapters">
+              ${sagaChapters.map(ch => `
+                <div class="os-chapter-card" data-chapter-id="${ch.id}">
+                  <div class="os-chapter-page">
+                    <span class="os-chapter-num">Cap. ${ch.id}</span>
+                    <h4>${escapeHtml(ch.title)}</h4>
+                    <p>${escapeHtml(ch.summary)}</p>
+                  </div>
+                  <button class="ositos-btn-sm gold" data-chapter-id="${ch.id}">📖 Leer</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      });
+    }
 
     html += `</div>`;
     return html;
-  }
-
-  function openChapter(id) {
-    const ch = CHAPTERS.find(c => c.id === id);
-    if (!ch) return;
-
-    const prev = ch.previous ? CHAPTERS.find(c => c.id === ch.previous) : null;
-    const next = ch.next ? CHAPTERS.find(c => c.id === ch.next) : null;
-
-    const charLinks = (ch.characters || []).filter(Boolean).map(name => {
-      const char = CHARACTERS.find(c => c.name === name);
-      return char ? `<span class="ositos-chip clickable" onclick="__ositos.closeModal();__ositos.openCharacter(${char.id})">${getEmojiForCharacter(char.name)} ${escapeHtml(name)}</span>` : `<span class="ositos-chip">${name}</span>`;
-    }).join('');
-
-    const placeLinks = (ch.places || []).filter(Boolean).map(name => {
-      const place = PLACES.find(p => p.name === name);
-      return place ? `<span class="ositos-chip clickable" onclick="__ositos.closeModal();__ositos.openPlace(${place.id})">${getEmojiForPlace(place.name)} ${escapeHtml(name)}</span>` : `<span class="ositos-chip">${name}</span>`;
-    }).join('');
-
-    const html = `
-      <div class="ositos-modal-image"><span>📖</span></div>
-      <h2 class="ositos-modal-name">Capítulo ${ch.id}: ${escapeHtml(ch.title)}</h2>
-      ${charLinks ? `<div class="ositos-modal-section"><h4>🧸 Personajes</h4><div>${charLinks}</div></div>` : ''}
-      ${placeLinks ? `<div class="ositos-modal-section"><h4>🏰 Lugares</h4><div>${placeLinks}</div></div>` : ''}
-      <div class="ositos-modal-nav">
-        <button ${!prev ? 'disabled' : ''} class="ositos-modal-nav-btn ${prev ? '' : 'disabled'}" onclick="          ${prev ? `__ositos.closeModal();__ositos.openChapter(${prev.id})` : ''}">← Anterior</button>
-        <button ${!next ? 'disabled' : ''} class="ositos-modal-nav-btn ${next ? '' : 'disabled'}" onclick="          ${next ? `__ositos.closeModal();__ositos.openChapter(${next.id})` : ''}">Siguiente →</button>
-      </div>
-    `;
-    openModal(html);
   }
 
   // ==========================================
@@ -346,8 +657,8 @@ export function OsitosWorldPage(router) {
           <div class="ositos-grid">
             ${filtered.map(c => {
               const hasImg = c.image && c.image.length > 0;
-              return `<div class="ositos-card ${isFav(c.id) ? 'selected' : ''}" onclick="__ositos.openCharacter('${c.id}')">
-                <button class="ositos-card-fav ${isFav(c.id) ? 'active' : ''}" onclick="event.stopPropagation();__ositos.toggleFav('${c.id}')" title="${isFav(c.id) ? 'Quitar favorito' : 'Añadir favorito'}">
+              return `<div class="ositos-card ${isFav(c.id) ? 'selected' : ''}" data-char-id="${c.id}">
+                <button class="ositos-card-fav ${isFav(c.id) ? 'active' : ''}" data-fav-id="${c.id}" title="${isFav(c.id) ? 'Quitar favorito' : 'Añadir favorito'}">
                   ${isFav(c.id) ? '❤️' : '🤍'}
                 </button>
                 <span class="ositos-card-role ${c.role}">${getRoleLabel(c.role)}</span>
@@ -363,47 +674,6 @@ export function OsitosWorldPage(router) {
     `;
   }
 
-  function openCharacter(id) {
-    const char = CHARACTERS.find(c => c.id === id);
-    if (!char) return;
-
-    const fav = isFav(char.id);
-    const hasImage = char.image && char.image.length > 0;
-
-    const friendLinks = (char.friends || []).filter(Boolean).map(name => {
-      const friend = CHARACTERS.find(c => c.name === name);
-      return friend ? `<span class="ositos-chip clickable" onclick="__ositos.closeModal();__ositos.openCharacter('${friend.id}')">${getEmojiForCharacter(friend.name)} ${escapeHtml(friend.name)}</span>` : `<span class="ositos-chip">${name}</span>`;
-    }).join('');
-
-    const homePlace = char.home ? PLACES.find(p => p.name === char.home) : null;
-    const homeHtml = homePlace
-      ? `<span class="ositos-chip clickable" onclick="__ositos.closeModal();__ositos.openPlace('${homePlace.id}')">${getEmojiForPlace(homePlace.name)} ${escapeHtml(homePlace.name)}</span>`
-      : (char.home ? `<span class="ositos-chip">${escapeHtml(char.home)}</span>` : '');
-
-    const html = `
-      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:4px;">
-        <div></div>
-        <button class="ositos-modal-fav-toggle" onclick="__ositos.toggleFav('${char.id}')" title="${fav ? 'Quitar favorito' : 'Añadir favorito'}">${fav ? '❤️' : '🤍'}</button>
-      </div>
-      <div class="ositos-modal-image" style="aspect-ratio:1/1;max-width:180px;border-radius:50%;margin:0 auto;">
-        ${hasImage
-          ? `<img src="${char.image}" alt="${escapeHtml(char.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
-          : `<span style="font-size:4rem;">${char.emoji}</span>`
-        }
-      </div>
-      <h2 class="ositos-modal-name">${escapeHtml(char.name)}</h2>
-      <span class="ositos-modal-role ${char.role}">${getRoleLabel(char.role)}</span>
-      <div class="ositos-modal-details">
-        ${char.description ? `<p><strong>Descripción:</strong> ${escapeHtml(char.description)}</p>` : ''}
-        ${char.personality ? `<p><strong>Personalidad:</strong> ${escapeHtml(char.personality)}</p>` : ''}
-        ${char.curiosities ? `<p><strong>Curiosidad:</strong> ${escapeHtml(char.curiosities)}</p>` : ''}
-      </div>
-      ${homeHtml ? `<div class="ositos-modal-section"><h4>🏠 Hogar</h4><div>${homeHtml}</div></div>` : ''}
-      ${friendLinks ? `<div class="ositos-modal-section"><h4>🤝 Amigos</h4><div>${friendLinks}</div></div>` : ''}
-    `;
-    openModal(html);
-  }
-
   // ==========================================
   // RENDER: MUNDO
   // ==========================================
@@ -411,42 +681,30 @@ export function OsitosWorldPage(router) {
     return `
       <div class="ositos-page-content active">
         <div class="ositos-section-header">
-          <h2 class="ositos-section-title">🏰 Lugares del Mundo</h2>
+          <h2 class="ositos-section-title">🗺️ Lugares del Mundo</h2>
           <span class="ositos-orange-curl"></span>
+          <p class="os-section-sub">Cada rincón tiene su propia historia.</p>
         </div>
-        <div class="ositos-grid-3">
-          ${PLACES.map(p => `
-            <div class="ositos-card-home" onclick="__ositos.openPlace(${p.id})">
-              <div class="card-image"><span>${getEmojiForPlace(p.name)}</span></div>
-              <h3>${escapeHtml(p.name)}</h3>
-              <p>${escapeHtml(p.description)}</p>
-              <button class="ositos-btn-sm" onclick="event.stopPropagation();__ositos.openPlace(${p.id})">🔍 Explorar</button>
-            </div>
-          `).join('')}
-        </div>
+        ${PLACES.length ? `
+          <div class="ositos-grid-3">
+            ${PLACES.map(p => `
+              <div class="ositos-card-home os-card--place" data-place-id="${p.id}">
+                <div class="card-image"><span>${getEmojiForPlace(p.name)}</span></div>
+                <h3>${escapeHtml(p.name)}</h3>
+                <p>${escapeHtml(p.description)}</p>
+                <button class="ositos-btn-sm" data-place-id="${p.id}">🔍 Explorar</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="ositos-empty-state">
+            <span class="ositos-empty-icon">🗺️</span>
+            <h3>Todavía no hay lugares</h3>
+            <p>Cada rincón de este mundo se irá descubriendo poco a poco.</p>
+          </div>
+        `}
       </div>
     `;
-  }
-
-  function openPlace(id) {
-    const place = PLACES.find(p => p.id === id);
-    if (!place) return;
-
-    const charLinks = (place.characters || []).filter(Boolean).map(name => {
-      const char = CHARACTERS.find(c => c.name === name);
-      return char ? `<span class="ositos-chip clickable" onclick="__ositos.closeModal();__ositos.openCharacter(${char.id})">${getEmojiForCharacter(char.name)} ${escapeHtml(char.name)}</span>` : `<span class="ositos-chip">${name}</span>`;
-    }).join('');
-
-    const html = `
-      <div class="ositos-modal-image"><span style="font-size:4rem;">${getEmojiForPlace(place.name)}</span></div>
-      <h2 class="ositos-modal-name">${escapeHtml(place.name)}</h2>
-      <div class="ositos-modal-details">
-        <p>${escapeHtml(place.description)}</p>
-        ${place.curiosities ? `<p><strong>Curiosidad:</strong> ${escapeHtml(place.curiosities)}</p>` : ''}
-      </div>
-      ${charLinks ? `<div class="ositos-modal-section"><h4>🧸 Personajes que viven aquí</h4><div>${charLinks}</div></div>` : ''}
-    `;
-    openModal(html);
   }
 
   // ==========================================
@@ -467,6 +725,7 @@ export function OsitosWorldPage(router) {
         <div class="ositos-section-header">
           <h2 class="ositos-section-title">📰 Periódico del Mundo</h2>
           <span class="ositos-orange-curl"></span>
+          <p class="os-section-sub">Mantente al día con las últimas noticias del reino.</p>
         </div>
     `;
 
@@ -512,39 +771,169 @@ export function OsitosWorldPage(router) {
 
   function newsCardHTML(n) {
     return `
-      <div class="ositos-card-home" onclick="__ositos.openNews(${n.id})">
+      <div class="ositos-card-home" data-news-id="${n.id}">
         <div class="card-image"><span>📰</span></div>
         <span class="ositos-news-date-label">${n.date}</span>
-        <h3>${n.title}</h3>
-        <p>${n.content.substring(0, 100)}${n.content.length > 100 ? '...' : ''}</p>
-        <button class="ositos-btn-sm" onclick="event.stopPropagation();__ositos.openNews(${n.id})">📰 Leer noticia</button>
+        <h3>${escapeHtml(n.title)}</h3>
+        <p>${escapeHtml(n.content.substring(0, 100))}${n.content.length > 100 ? '...' : ''}</p>
+        <button class="ositos-btn-sm" data-news-id="${n.id}">📰 Leer noticia</button>
       </div>
     `;
   }
 
-  function openNews(id) {
-    const item = NEWS.find(n => n.id === id);
-    if (!item) return;
+  // ==========================================
+  // RENDER: SEARCH RESULTS
+  // ==========================================
+  function renderSearchResults(results) {
+    const { characters, chapters, places, news: newsResults } = results;
+    const total = characters.length + chapters.length + places.length + newsResults.length;
 
-    const charLinks = (item.relatedCharacters || []).filter(Boolean).map(name => {
-      const char = CHARACTERS.find(c => c.name === name);
-      return char ? `<span class="ositos-chip clickable" onclick="__ositos.closeModal();__ositos.openCharacter(${char.id})">${getEmojiForCharacter(char.name)} ${escapeHtml(char.name)}</span>` : `<span class="ositos-chip">${name}</span>`;
-    }).join('');
+    if (total === 0) {
+      return `
+        <div class="ositos-page-content active">
+          <div class="ositos-empty-state">
+            <span class="ositos-empty-icon">🔍</span>
+            <h3>Sin resultados</h3>
+            <p>No se encontró nada para "${escapeHtml(searchQuery)}".</p>
+          </div>
+        </div>
+      `;
+    }
 
-    const placeLinks = (item.relatedPlaces || []).filter(Boolean).map(name => {
-      const place = PLACES.find(p => p.name === name);
-      return place ? `<span class="ositos-chip clickable" onclick="__ositos.closeModal();__ositos.openPlace(${place.id})">${getEmojiForPlace(place.name)} ${escapeHtml(place.name)}</span>` : `<span class="ositos-chip">${name}</span>`;
-    }).join('');
-
-    const html = `
-      <div class="ositos-modal-image"><span style="font-size:3rem;">📰</span></div>
-      <h2 class="ositos-modal-name">${item.title}</h2>
-      <div class="ositos-modal-date">${item.date}</div>
-      <div class="ositos-modal-details">${item.content}</div>
-      ${charLinks ? `<div class="ositos-modal-section"><h4>🧸 Personajes</h4><div>${charLinks}</div></div>` : ''}
-      ${placeLinks ? `<div class="ositos-modal-section"><h4>🏰 Lugares</h4><div>${placeLinks}</div></div>` : ''}
+    let html = `
+      <div class="ositos-page-content active">
+        <div class="ositos-section-header">
+          <h2 class="ositos-section-title">🔍 Resultados</h2>
+          <span class="ositos-orange-curl"></span>
+          <span class="os-section-sub">${total} resultados para "${escapeHtml(searchQuery)}"</span>
+        </div>
     `;
-    openModal(html);
+
+    if (characters.length > 0) {
+      html += `<div class="os-search-section"><h3 class="os-search-heading">🧸 Personajes</h3><div class="ositos-grid">`;
+      characters.forEach(c => {
+        const hasImg = c.image && c.image.length > 0;
+        html += `<div class="ositos-card" data-char-id="${c.id}">
+          <span class="ositos-card-role ${c.role}">${getRoleLabel(c.role)}</span>
+          <div class="ositos-card-image">
+            ${hasImg ? `<img src="${c.image}" alt="${escapeHtml(c.name)}" loading="lazy">` : `<span class="ositos-card-emoji">${c.emoji}</span>`}
+          </div>
+          <div class="ositos-card-name">${escapeHtml(c.name).toUpperCase()}</div>
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    if (chapters.length > 0) {
+      html += `<div class="os-search-section"><h3 class="os-search-heading">📖 Capítulos</h3><div class="ositos-grid-3">`;
+      chapters.forEach(ch => {
+        html += `<div class="ositos-card-home" data-chapter-id="${ch.id}">
+          <div class="card-image"><span>📖</span></div>
+          <span class="tag gold">Saga ${ch.saga}</span>
+          <h3>${escapeHtml(ch.title)}</h3>
+          <p>${escapeHtml(ch.summary)}</p>
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    if (places.length > 0) {
+      html += `<div class="os-search-section"><h3 class="os-search-heading">🏰 Lugares</h3><div class="ositos-grid-3">`;
+      places.forEach(p => {
+        html += `<div class="ositos-card-home" data-place-id="${p.id}">
+          <div class="card-image"><span>${getEmojiForPlace(p.name)}</span></div>
+          <h3>${escapeHtml(p.name)}</h3>
+          <p>${escapeHtml(p.description)}</p>
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    if (newsResults.length > 0) {
+      html += `<div class="os-search-section"><h3 class="os-search-heading">📰 Noticias</h3><div class="ositos-grid-3">`;
+      newsResults.forEach(n => html += newsCardHTML(n));
+      html += `</div></div>`;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  // ==========================================
+  // RENDER: FAVORITES
+  // ==========================================
+  function renderFavorites() {
+    const favChars = CHARACTERS.filter(c => favorites.has(c.id));
+    const favChapters = CHAPTERS.filter(c => favorites.has(`ch-${c.id}`));
+    const favPlaces = PLACES.filter(p => favorites.has(`pl-${p.id}`));
+
+    const total = favChars.length + favChapters.length + favPlaces.length;
+
+    if (total === 0) {
+      return `
+        <div class="ositos-page-content active">
+          <div class="ositos-section-header">
+            <h2 class="ositos-section-title">❤️ Tus Favoritos</h2>
+            <span class="ositos-orange-curl"></span>
+          </div>
+          <div class="ositos-empty-state">
+            <span class="ositos-empty-icon">💝</span>
+            <h3>Aún no tienes favoritos</h3>
+            <p>Marca ❤️ en personajes, lugares y capítulos para verlos aquí.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    let html = `
+      <div class="ositos-page-content active">
+        <div class="ositos-section-header">
+          <h2 class="ositos-section-title">❤️ Tus Favoritos</h2>
+          <span class="ositos-orange-curl"></span>
+          <span class="os-section-sub">${total} tesoros guardados</span>
+        </div>
+    `;
+
+    if (favChars.length > 0) {
+      html += `<div class="os-search-section"><h3 class="os-search-heading">🧸 Personajes</h3><div class="ositos-grid">`;
+      favChars.forEach(c => {
+        const hasImg = c.image && c.image.length > 0;
+        html += `<div class="ositos-card selected" data-char-id="${c.id}">
+          <span class="ositos-card-role ${c.role}">${getRoleLabel(c.role)}</span>
+          <div class="ositos-card-image">${hasImg ? `<img src="${c.image}" alt="${escapeHtml(c.name)}" loading="lazy">` : `<span class="ositos-card-emoji">${c.emoji}</span>`}</div>
+          <div class="ositos-card-name">${escapeHtml(c.name).toUpperCase()}</div>
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    if (favChapters.length > 0) {
+      html += `<div class="os-search-section"><h3 class="os-search-heading">📖 Capítulos</h3><div class="ositos-grid-3">`;
+      favChapters.forEach(ch => {
+        html += `<div class="ositos-card-home" data-chapter-id="${ch.id}">
+          <div class="card-image"><span>📖</span></div>
+          <span class="tag gold">Saga ${ch.saga}</span>
+          <h3>${escapeHtml(ch.title)}</h3>
+          <p>${escapeHtml(ch.summary)}</p>
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    if (favPlaces.length > 0) {
+      html += `<div class="os-search-section"><h3 class="os-search-heading">🏰 Lugares</h3><div class="ositos-grid-3">`;
+      favPlaces.forEach(p => {
+        html += `<div class="ositos-card-home" data-place-id="${p.id}">
+          <div class="card-image"><span>${getEmojiForPlace(p.name)}</span></div>
+          <h3>${escapeHtml(p.name)}</h3>
+          <p>${escapeHtml(p.description)}</p>
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    html += `</div>`;
+    return html;
   }
 
   // ==========================================
@@ -562,24 +951,22 @@ export function OsitosWorldPage(router) {
     }).join('');
 
     favSection.innerHTML = `
-      <div class="ositos-fav-header">${I.heartFilled}<span>FAVORITO</span></div>
-      <p class="ositos-fav-desc">Marca tus personajes favoritos para verlos rápido siempre.</p>
+      <div class="ositos-fav-header">${I.heartFilled}<span>FAVORITOS</span></div>
+      <p class="ositos-fav-desc">Tus personajes favoritos para acceso rápido.</p>
       ${favItems ? `<div class="ositos-sidebar-fav-list">${favItems}</div>` : '<p class="ositos-fav-desc">No hay favoritos aún.</p>'}
-      <button class="ositos-fav-btn" id="showFavoritesBtn">❤️ ${favorites.size > 0 ? `FAVORITOS (${favorites.size})` : 'FAVORITOS'}</button>
+      <button class="ositos-fav-btn" id="showFavoritesBtn">❤️ ${favorites.size > 0 ? `VER TODOS (${favorites.size})` : 'VER TODOS'}</button>
     `;
 
     favSection.querySelectorAll('.ositos-sidebar-fav-item').forEach(item => {
       item.addEventListener('click', () => {
-        const id = item.dataset.charId;
-        const char = CHARACTERS.find(c => c.id === id);
-        if (char) openCharacter(id);
+        const char = CHARACTERS.find(c => c.id === item.dataset.charId);
+        if (char) openDetail('character', char);
       });
     });
 
     favSection.querySelector('#showFavoritesBtn')?.addEventListener('click', () => {
-      activeSection = 'personajes';
-      activeFilter = 'favoritos';
-      localStorage.setItem(ACTIVE_SECTION_KEY, activeSection);
+      activeSection = 'favoritos';
+      localStorage.setItem(ACTIVE_SECTION_KEY(), activeSection);
       renderLayout();
       renderContent();
       bindLayoutEvents();
@@ -606,7 +993,8 @@ export function OsitosWorldPage(router) {
   // ==========================================
   function navigateTo(section) {
     activeSection = section;
-    localStorage.setItem(ACTIVE_SECTION_KEY, section);
+    searchQuery = '';
+    localStorage.setItem(ACTIVE_SECTION_KEY(), section);
 
     // Update nav links
     page.querySelectorAll('.ositos-nav-link, .ositos-mobile-nav-link').forEach(link => {
@@ -620,6 +1008,10 @@ export function OsitosWorldPage(router) {
     if (hamburger) hamburger.classList.remove('active');
     document.body.style.overflow = '';
 
+    // Clear search input
+    const searchInput = page.querySelector('#ositosSearchInput');
+    if (searchInput) searchInput.value = '';
+
     renderContent();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -632,25 +1024,25 @@ export function OsitosWorldPage(router) {
     if (!content) return;
 
     let html = '';
-    switch (activeSection) {
-      case 'home': html = renderHome(); break;
-      case 'historia': html = renderHistory(); break;
-      case 'personajes': html = renderCharacters(); break;
-      case 'mundo': html = renderWorld(); break;
-      case 'noticias': html = renderNews(); break;
-      default: html = renderHome();
+
+    if (searchQuery.trim()) {
+      const results = searchAll(searchQuery);
+      html = renderSearchResults(results);
+    } else {
+      switch (activeSection) {
+        case 'home': html = renderHome(); break;
+        case 'historia': html = renderHistory(); break;
+        case 'personajes': html = renderCharacters(); break;
+        case 'mundo': html = renderWorld(); break;
+        case 'noticias': html = renderNews(); break;
+        case 'favoritos': html = renderFavorites(); break;
+        default: html = renderHome();
+      }
     }
 
     content.innerHTML = html;
 
-    // Expose helper functions on content for onclick handlers
-    content.__openChapter = openChapter;
-    content.__openCharacter = openCharacter;
-    content.__openPlace = openPlace;
-    content.__openNews = openNews;
-    content.__toggleFav = (id) => toggleFav(id);
-
-    // Bind hero section buttons
+    // Bind hero buttons
     content.querySelectorAll('[data-nav]').forEach(btn => {
       btn.addEventListener('click', () => navigateTo(btn.dataset.nav));
     });
@@ -658,10 +1050,66 @@ export function OsitosWorldPage(router) {
     // Bind featured cards
     content.querySelectorAll('.ositos-featured-card').forEach(card => {
       card.addEventListener('click', () => {
-        const id = card.dataset.charId;
-        const char = CHARACTERS.find(c => c.id === id);
-        if (char) openCharacter(id);
+        const char = CHARACTERS.find(c => c.id === card.dataset.charId);
+        if (char) openDetail('character', char);
       });
+    });
+
+    // Bind hero character illustrations
+    content.querySelectorAll('.os-hero-char').forEach(el => {
+      el.addEventListener('click', () => {
+        const char = CHARACTERS.find(c => c.id === el.dataset.charId);
+        if (char) openDetail('character', char);
+      });
+    });
+
+    // Bind character cards
+    content.querySelectorAll('.ositos-card[data-char-id]').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.ositos-card-fav')) return;
+        const char = CHARACTERS.find(c => c.id === card.dataset.charId);
+        if (char) openDetail('character', char);
+      });
+    });
+
+    // Bind fav buttons on cards
+    content.querySelectorAll('.ositos-card-fav').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFav(btn.dataset.favId);
+      });
+    });
+
+    // Bind chapter cards
+    content.querySelectorAll('[data-chapter-id]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.ositos-card-fav')) return;
+        const ch = CHAPTERS.find(c => c.id === Number(el.dataset.chapterId));
+        if (ch) openDetail('chapter', ch);
+      });
+    });
+
+    // Bind place cards
+    content.querySelectorAll('[data-place-id]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.ositos-card-fav')) return;
+        const place = PLACES.find(p => p.id === Number(el.dataset.placeId));
+        if (place) openDetail('place', place);
+      });
+    });
+
+    // Bind news cards
+    content.querySelectorAll('[data-news-id]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.ositos-card-fav')) return;
+        const newsItem = NEWS.find(n => n.id === Number(el.dataset.newsId));
+        if (newsItem) openDetail('news', newsItem);
+      });
+    });
+
+    // Update filter buttons active state
+    page.querySelectorAll('.ositos-filter-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.filter === activeFilter);
     });
   }
 
@@ -674,7 +1122,10 @@ export function OsitosWorldPage(router) {
     const aliados = CHARACTERS.filter(c => c.role === 'aliado').length;
 
     page.innerHTML = `
-      <div class="ositos-fullscreen">
+      ${entryVisible ? renderEntryScreen() : ''}
+      <div class="ositos-fullscreen ${entryVisible ? 'os-fullscreen--hidden' : ''}" id="ositosFullscreen">
+        <div class="os-global-fireflies" id="osGlobalFireflies">${getFirefliesHTML(24)}</div>
+
         <header class="ositos-navbar">
           <div class="ositos-navbar-inner">
             <button class="ositos-nav-back" id="ositosBack" aria-label="Volver">${I.back}<span>Volver</span></button>
@@ -682,23 +1133,32 @@ export function OsitosWorldPage(router) {
               <div class="ositos-logo-text"><span class="ositos-logo-title">OSITOSWORLD</span> <span class="ositos-logo-heart">❤️❤️</span></div>
               <span class="ositos-logo-sub">Donde toda tu creatividad no tiene límites.</span>
             </div>
-            <button class="ositos-hamburger" id="ositosHamburger" aria-label="Menú"><span></span><span></span><span></span></button>
+            <div class="os-nav-actions">
+              <div class="os-search-wrap" id="osSearchWrap">
+                <span class="os-search-icon">${I.search}</span>
+                <input type="text" class="os-search-input" id="ositosSearchInput" placeholder="Buscar personajes, capítulos..." value="${escapeHtml(searchQuery)}" aria-label="Buscar personajes y capítulos">
+                ${searchQuery ? '<button class="os-search-clear" id="osSearchClear">✕</button>' : ''}
+              </div>
+              <button class="ositos-hamburger" id="ositosHamburger" aria-label="Menú"><span></span><span></span><span></span></button>
+            </div>
           </div>
 
           <nav class="ositos-nav-links" id="ositosNavLinks">
             <button class="ositos-nav-link ${activeSection === 'home' ? 'active' : ''}" data-section="home">${I.home}<span>INICIO</span></button>
-            <button class="ositos-nav-link ${activeSection === 'historia' ? 'active' : ''}" data-section="historia">${I.book}<span>HISTORIA</span></button>
+            <button class="ositos-nav-link ${activeSection === 'historia' ? 'active' : ''}" data-section="historia">${I.book}<span>BIBLIOTECA</span></button>
             <button class="ositos-nav-link ${activeSection === 'personajes' ? 'active' : ''}" data-section="personajes">${I.users}<span>PERSONAJES</span></button>
             <button class="ositos-nav-link ${activeSection === 'mundo' ? 'active' : ''}" data-section="mundo">${I.map}<span>MUNDO</span></button>
             <button class="ositos-nav-link ${activeSection === 'noticias' ? 'active' : ''}" data-section="noticias">${I.news}<span>NOTICIAS</span></button>
+            ${favorites.size > 0 ? `<button class="ositos-nav-link ${activeSection === 'favoritos' ? 'active' : ''}" data-section="favoritos">${I.heartFilled}<span>FAVORITOS</span></button>` : ''}
           </nav>
 
           <div class="ositos-mobile-menu" id="ositosMobileMenu">
             <button class="ositos-mobile-nav-link ${activeSection === 'home' ? 'active' : ''}" data-section="home">${I.home}<span>INICIO</span></button>
-            <button class="ositos-mobile-nav-link ${activeSection === 'historia' ? 'active' : ''}" data-section="historia">${I.book}<span>HISTORIA</span></button>
+            <button class="ositos-mobile-nav-link ${activeSection === 'historia' ? 'active' : ''}" data-section="historia">${I.book}<span>BIBLIOTECA</span></button>
             <button class="ositos-mobile-nav-link ${activeSection === 'personajes' ? 'active' : ''}" data-section="personajes">${I.users}<span>PERSONAJES</span></button>
             <button class="ositos-mobile-nav-link ${activeSection === 'mundo' ? 'active' : ''}" data-section="mundo">${I.map}<span>MUNDO</span></button>
             <button class="ositos-mobile-nav-link ${activeSection === 'noticias' ? 'active' : ''}" data-section="noticias">${I.news}<span>NOTICIAS</span></button>
+            ${favorites.size > 0 ? `<button class="ositos-mobile-nav-link ${activeSection === 'favoritos' ? 'active' : ''}" data-section="favoritos">${I.heartFilled}<span>FAVORITOS</span></button>` : ''}
           </div>
         </header>
 
@@ -706,7 +1166,7 @@ export function OsitosWorldPage(router) {
           <aside class="ositos-sidebar">
             <h2 class="ositos-sidebar-title">🤍Reina🤍</h2>
             <div class="ositos-sidebar-underline">~~~~~~</div>
-            <p class="ositos-sidebar-desc">Imagina tu mundo,<br>diseña a los personajes<br>y diviertete con su historia.</p>
+            <p class="ositos-sidebar-desc">Imagina tu mundo,<br>diseña a los personajes<br>y diviértete con su historia.</p>
             <p class="ositos-sidebar-desc">El límite es tu imaginación.</p>
 
             <nav class="ositos-sidebar-filters">
@@ -717,7 +1177,7 @@ export function OsitosWorldPage(router) {
             </nav>
 
             <div class="ositos-sidebar-fav">
-              <div class="ositos-fav-header">${I.heartFilled}<span>FAVORITO</span></div>
+              <div class="ositos-fav-header">${I.heartFilled}<span>FAVORITOS</span></div>
               <p class="ositos-fav-desc">Marca tus personajes favoritos<br>para verlos rápido siempre.</p>
               <button class="ositos-fav-btn" id="showFavoritesBtn">❤️ ${favorites.size > 0 ? `FAVORITOS (${favorites.size})` : 'FAVORITOS'}</button>
             </div>
@@ -735,28 +1195,40 @@ export function OsitosWorldPage(router) {
         </footer>
       </div>
 
-      <div class="ositos-modal" id="ositosModal">
-        <div class="ositos-modal-content">
-          <button class="ositos-modal-close" id="ositosModalClose">${I.close}</button>
-          <div class="ositos-modal-body" id="ositosModalBody"></div>
+      <!-- Full-page detail overlay -->
+      <div class="os-detail-overlay" id="ositosDetailOverlay">
+        <div class="os-detail-scroll">
+          <div class="os-detail-body" id="osDetailBody"></div>
         </div>
       </div>
     `;
-
-    // Expose modal toggle fav globally for inline onclick (legacy compatibility)
-    window.toggleFavInModal = (id) => {
-      toggleFav(id);
-      closeModal();
-      const char = CHARACTERS.find(c => c.id === id);
-      if (char) openCharacter(id);
-    };
-    window.__ositos.toggleFavInModal = window.toggleFavInModal;
   }
 
   // ==========================================
   // BIND LAYOUT EVENTS
   // ==========================================
   function bindLayoutEvents() {
+    // Entry screen
+    const entryScreen = page.querySelector('#osEntryScreen');
+    const entryEnter = page.querySelector('#osEntryEnter');
+    const fullscreen = page.querySelector('#ositosFullscreen');
+
+    if (entryScreen && entryEnter && fullscreen) {
+      const showWorld = () => {
+        entryScreen.classList.add('os-entry--fadeout');
+        fullscreen.classList.remove('os-fullscreen--hidden');
+        localStorage.setItem(ENTRY_SEEN_KEY(), '1');
+        entryVisible = false;
+        setTimeout(() => {
+          if (entryScreen.parentNode) entryScreen.remove();
+        }, 600);
+      };
+      entryEnter.addEventListener('click', showWorld);
+      // Auto-dismiss after 5 seconds if user hasn't clicked
+      const autoTimer = setTimeout(showWorld, 5000);
+      entryEnter.addEventListener('click', () => clearTimeout(autoTimer), { once: true });
+    }
+
     // Nav links
     page.querySelectorAll('.ositos-nav-link[data-section], .ositos-mobile-nav-link[data-section]').forEach(link => {
       link.addEventListener('click', () => {
@@ -769,7 +1241,8 @@ export function OsitosWorldPage(router) {
       btn.addEventListener('click', () => {
         activeFilter = btn.dataset.filter;
         activeSection = 'personajes';
-        localStorage.setItem(ACTIVE_SECTION_KEY, activeSection);
+        searchQuery = '';
+        localStorage.setItem(ACTIVE_SECTION_KEY(), activeSection);
         renderLayout();
         renderContent();
         bindLayoutEvents();
@@ -792,22 +1265,69 @@ export function OsitosWorldPage(router) {
       router.navigate('/');
     });
 
-    // Modal
-    const modal = page.querySelector('#ositosModal');
-    const modalClose = page.querySelector('#ositosModalClose');
-    modalClose?.addEventListener('click', closeModal);
-    modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    // Search
+    const searchInput = page.querySelector('#ositosSearchInput');
+    const searchClear = page.querySelector('#osSearchClear');
+    let searchTimeout;
 
-    // Keyboard Escape (bound once)
-    if (!window.__ositos._escapeBound) {
+    searchInput?.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        searchQuery = e.target.value;
+        if (searchQuery.trim()) {
+          // Stay on current section but show search results
+          renderContent();
+        } else {
+          renderContent();
+        }
+        // Update clear button
+        const wrap = page.querySelector('#osSearchWrap');
+        const existingClear = wrap?.querySelector('.os-search-clear');
+        if (searchQuery.trim() && !existingClear) {
+          const btn = document.createElement('button');
+          btn.className = 'os-search-clear';
+          btn.id = 'osSearchClear';
+          btn.textContent = '✕';
+          btn.addEventListener('click', () => {
+            searchQuery = '';
+            const si = page.querySelector('#ositosSearchInput');
+            if (si) si.value = '';
+            renderContent();
+            btn.remove();
+          });
+          wrap?.appendChild(btn);
+        } else if (!searchQuery.trim() && existingClear) {
+          existingClear.remove();
+        }
+      }, 200);
+    });
+
+    searchClear?.addEventListener('click', () => {
+      searchQuery = '';
+      if (searchInput) searchInput.value = '';
+      renderContent();
+      searchClear.remove();
+    });
+
+    // Close detail overlay on click outside
+    const detailOverlay = page.querySelector('#ositosDetailOverlay');
+    detailOverlay?.addEventListener('click', (e) => {
+      if (e.target === detailOverlay) closeDetail();
+    });
+
+    // Keyboard Escape
+    if (!window.__ositos?._escapeBound) {
+      if (!window.__ositos) window.__ositos = {};
       window.__ositos._escapeBound = true;
-      const onKeyDown = (e) => { if (e.key === 'Escape') closeModal(); };
+      const onKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          if (showingDetail) closeDetail();
+        }
+      };
       page.cleanup = () => {
         document.removeEventListener('keydown', onKeyDown);
-        window.__ositos._escapeBound = false;
+        if (window.__ositos) window.__ositos._escapeBound = false;
         document.body.style.overflow = '';
-        // Libera el puente global para no retener closures de esta página
-        delete window.toggleFavInModal;
         delete window.__ositos;
       };
       document.addEventListener('keydown', onKeyDown);

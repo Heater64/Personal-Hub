@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dino Run</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 560px; }
+        canvas { width: 100%; max-width: 560px; aspect-ratio: 28/15; border-radius: 18px; cursor: pointer; }
+        .controls-hint { margin: 10px 0 4px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Dino Run</h1>
+            <p class="subtitle">Corre sin parar · Salta los obstáculos</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">🍎 Puntos</span><span class="stat-value gold" id="scoreDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">🏆 Récord</span><span class="stat-value green" id="highScoreDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">📈 Velocidad</span><span class="stat-value red" id="speedDisplay">1</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa (Espacio)" aria-label="Pausar o reanudar">⏸️</button>
+            </div>
+        </div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="560" height="300"></canvas>
+        </div>
+        <div class="controls-hint">Espacio, clic o toque para saltar · P pausa</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">💀</div>
+            <h2 id="msgTitle">¡Game Over!</h2>
+            <p id="msgText">Puntuación: 0 · Récord: 0</p>
+            <button class="btn-primary" id="msgBtn">Reintentar</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 560, H = 300, GROUND = H - 46;
+
+        let dino, obstacles, score, highScore, speed, running, paused, gameOver, lastTime, animId, scrollX, canJump;
+
+        highScore = parseInt(localStorage.getItem('dinoHighScore') || '0', 10);
+        document.getElementById('highScoreDisplay').textContent = highScore;
+
+        function resetGame() {
+            dino = { x: 70, y: GROUND - 42, w: 40, h: 42, vy: 0, onGround: true };
+            obstacles = [];
+            score = 0;
+            speed = 6;
+            running = true;
+            paused = false;
+            gameOver = false;
+            scrollX = 0;
+            document.getElementById('pauseBtn').textContent = '⏸️';
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+        }
+
+        function jump() {
+            if (!running || paused || gameOver) return;
+            if (dino.onGround) {
+                dino.vy = -13;
+                dino.onGround = false;
+                SFX.click();
+            }
+        }
+
+        function spawnObstacle() {
+            const type = Math.random();
+            if (type < 0.5) obstacles.push({ x: W + 20, w: 22, h: 40 });
+            else if (type < 0.8) obstacles.push({ x: W + 20, w: 16, h: 54 });
+            else obstacles.push({ x: W + 20, w: 34, h: 34 });
+        }
+
+        function update(dt) {
+            if (paused || !running || gameOver) return;
+            const s = dt / 16.7;
+            scrollX += speed * s;
+            speed = 6 + Math.min(8, score * 0.06);
+
+            // dino física
+            if (!dino.onGround) {
+                dino.vy += 0.7 * s;
+                dino.y += dino.vy * s;
+                if (dino.y >= GROUND - 42) { dino.y = GROUND - 42; dino.vy = 0; dino.onGround = true; }
+            }
+
+            // obstáculos
+            for (const o of obstacles) o.x -= speed * s;
+            obstacles = obstacles.filter(o => o.x > -40);
+            if (Math.random() < 0.012 * s) spawnObstacle();
+
+            // puntuación (distancia)
+            score += Math.floor(s * speed * 0.1);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('dinoHighScore', highScore);
+                if (score % 50 === 0) SFX.record();
+            }
+            updateUI();
+
+            // colisión
+            for (const o of obstacles) {
+                const dinoW = dino.w - 10, dinoH = dino.h - 6;
+                if (dino.x + 6 < o.x + o.w && dino.x + dinoW > o.x && dino.y + 6 < GROUND && dino.y + dinoH > GROUND - o.h) {
+                    die();
+                    return;
+                }
+            }
+        }
+
+        function die() {
+            gameOver = true;
+            SFX.lose();
+            buzz([60, 40, 60]);
+            const record = score > 0 && score >= highScore;
+            showMessage(record ? '🏆' : '💀', record ? '¡Nuevo récord!' : '¡Game Over!', `Puntuación: ${score} · Récord: ${highScore}`);
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Reintentar';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('highScoreDisplay').textContent = highScore;
+            document.getElementById('speedDisplay').textContent = Math.floor(speed);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, W, H);
+            // suelo
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.fillRect(0, GROUND, W, 3);
+            // rayas del suelo en movimiento
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            for (let i = 0; i < 24; i++) {
+                const x = ((i * 46) - (scrollX % 46));
+                ctx.fillRect(x, GROUND + 12, 22, 3);
+            }
+            // obstáculos (cactus)
+            for (const o of obstacles) {
+                ctx.fillStyle = '#4ade80';
+                ctx.fillRect(o.x, GROUND - o.h, o.w, o.h);
+                ctx.fillRect(o.x + o.w / 2 - 3, GROUND - o.h - 14, 6, 14);
+            }
+            // dino
+            ctx.fillStyle = '#e8735a';
+            ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(dino.x + 24, dino.y + 8, 6, 6);
+            ctx.fillStyle = '#222';
+            ctx.fillRect(dino.x + 27, dino.y + 8, 3, 3);
+            // patas (animación simple)
+            ctx.fillStyle = '#e8735a';
+            if (dino.onGround) {
+                const leg = Math.floor(Date.now() / 120) % 2;
+                ctx.fillRect(dino.x + 6, dino.y + dino.h - 8, 8, leg ? 8 : 14);
+                ctx.fillRect(dino.x + 26, dino.y + dino.h - 8, 8, leg ? 14 : 8);
+            }
+            if (!running) {
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.font = '600 20px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Salta para empezar', W / 2, H / 2 - 40);
+            }
+        }
+
+        function loop(ts) {
+            if (!lastTime) lastTime = ts;
+            const dt = Math.min(ts - lastTime, 50);
+            lastTime = ts;
+            update(dt);
+            draw();
+            animId = requestAnimationFrame(loop);
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            paused = !paused;
+            document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+            SFX.pause();
+        }
+
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+
+        const doJump = (e) => {
+            if (e) e.preventDefault();
+            if (!running) { running = true; return; }
+            jump();
+        };
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Space' || e.key === 'ArrowUp') { e.preventDefault(); doJump(); }
+            if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePause();
+        });
+        canvas.addEventListener('click', doJump);
+        canvas.addEventListener('touchstart', doJump, { passive: false });
+
+        document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused && !gameOver) togglePause(); });
+
+        resetGame();
+        lastTime = 0;
+        animId = requestAnimationFrame(loop);
+
+        window.__dino = { resetGame, jump, togglePause, get state() { return { score, highScore, speed, running, paused, gameOver }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

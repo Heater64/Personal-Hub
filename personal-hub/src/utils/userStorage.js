@@ -46,6 +46,24 @@ export function removeUserPref(base) {
   localStorage.removeItem(userPrefKey(base));
 }
 
+/**
+ * Migrates a legacy global key (ph.<base>) to the user-scoped key
+ * (ph.<base>.<userId>), once, preserving existing data.
+ * No-op when there is no legacy value or it is already migrated.
+ *
+ * NOTE: keys migrated with this helper MUST NOT be added to LEGACY_KEYS
+ * (they would be deleted there before this migration can read them).
+ * This is the preserve-on-read strategy; it supersedes the delete-based one.
+ */
+export function migrateUserPref(base) {
+  const scoped = userPrefKey(base);
+  if (localStorage.getItem(scoped) !== null) return;
+  const legacyValue = localStorage.getItem(`ph.${base}`);
+  if (legacyValue === null) return;
+  localStorage.setItem(scoped, legacyValue);
+  localStorage.removeItem(`ph.${base}`);
+}
+
 // Keys that used to be global and are now stored per-user.
 // These are removed once at startup to avoid leaving orphan data.
 const LEGACY_KEYS = [

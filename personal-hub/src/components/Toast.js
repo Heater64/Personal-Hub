@@ -51,7 +51,7 @@ export function showToast(message, type = 'info', duration = 4000) {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    animation: slide-up var(--dur-mid) ease forwards;
+    animation: slide-up var(--dur-mid) forwards;
     font-size: var(--fs-sm);
     box-shadow: var(--theme-shadow-md);
     backdrop-filter: blur(var(--blur-sm));
@@ -95,7 +95,14 @@ toastStyles.textContent = `
     color: var(--theme-text-muted);
     cursor: pointer;
     font-size: 1rem;
-    padding: 2px;
+    /* Área táctil generosa (44px) sin agrandar el icono visible */
+    width: 44px;
+    height: 44px;
+    margin: -12px -8px -12px 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     opacity: 0.6;
     transition: opacity var(--dur-fast);
   }

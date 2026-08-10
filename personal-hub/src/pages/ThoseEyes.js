@@ -1,28 +1,51 @@
 /* ==========================================
-   Personal Hub v2 — Those Eyes Page
-   Experiencia romántica con estrellas, audio y letras sincronizadas
+   Personal Hub — Those Eyes Page
+   Experiencia romántica: solo la canción con
+   letra sincronizada automáticamente.
+   Título + reproductor + letra. Sin fotos.
    ========================================== */
+
+// Audio local (funciona offline y en producción); la versión con fotos
+// usaba una URL de Cloudinary que dejó de existir (404).
+const AUDIO_SRC = '/assets/those-eyes.mp3';
 
 export function ThoseEyesPage(router) {
   const page = document.createElement('div');
   page.className = 'thoseeyes-page';
 
-  // State para cleanup: listeners/resoluciones que deben liberarse al salir
   let rafId = null;
   let onResize = null;
+  let audioEl = null;
+  let playing = false;
+  let lastActive = null;
 
   page.cleanup = () => {
     if (rafId) cancelAnimationFrame(rafId);
     if (onResize) window.removeEventListener('resize', onResize);
-    document.getElementById('thoseEyesAudio')?.pause();
+    if (audioEl) {
+      audioEl.pause();
+      // El source vive en un hijo <source>: hay que quitarlo y llamar a load()
+      // para abortar el fetch de verdad (removeAttribute('src') no basta).
+      audioEl.removeAttribute('src');
+      audioEl.querySelectorAll('source').forEach(s => s.remove());
+      audioEl.load();
+      audioEl = null;
+    }
+    document.removeEventListener('keydown', page._keyHandler);
   };
+
+  function fmt(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
 
   function render() {
     page.innerHTML = `
       <div class="thoseeyes-wrap">
-        <canvas id="starsCanvas" class="thoseeyes-stars-canvas"></canvas>
+        <canvas id="starsCanvas" class="thoseeyes-stars-canvas" aria-hidden="true"></canvas>
 
-        <div class="thoseeyes-hero">
+        <header class="thoseeyes-hero">
           <p class="thoseeyes-eyebrow">para ti · con todo mi amor</p>
           <h1 class="thoseeyes-title">
             <span class="t1">Those</span>
@@ -30,14 +53,14 @@ export function ThoseEyesPage(router) {
           </h1>
           <div class="thoseeyes-meta">
             <span>New West</span>
-            <span class="meta-dot"></span>
+            <span class="meta-dot" aria-hidden="true"></span>
             <span>2023</span>
           </div>
-        </div>
+        </header>
 
-        <div class="thoseeyes-player">
+        <section class="thoseeyes-player" aria-label="Reproductor de la canción">
           <div class="thoseeyes-player-card">
-            <button class="thoseeyes-play-btn" id="playBtn">
+            <button class="thoseeyes-play-btn" id="playBtn" aria-label="Reproducir o pausar">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
             <div class="thoseeyes-player-info">
@@ -45,18 +68,21 @@ export function ThoseEyesPage(router) {
               <div class="thoseeyes-artist">New West</div>
             </div>
             <div class="thoseeyes-player-right">
-              <div class="thoseeyes-audio-bars" id="audioBars">
+              <div class="thoseeyes-audio-bars" id="audioBars" aria-hidden="true">
                 ${'<span></span>'.repeat(6)}
               </div>
               <div class="thoseeyes-time" id="timeDisplay">0:00</div>
             </div>
           </div>
-          <div class="thoseeyes-progress-track" id="progressTrack">
+          <div class="thoseeyes-progress-track" id="progressTrack" role="slider" aria-label="Progreso de la canción" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="thoseeyes-progress-fill" id="progressFill"></div>
           </div>
-        </div>
+          <div class="thoseeyes-loading" id="loadingState" style="display:none" role="status" aria-live="polite">
+            <span class="thoseeyes-loading-spinner" aria-hidden="true"></span> Cargando audio...
+          </div>
+        </section>
 
-        <div class="thoseeyes-lyrics" id="lyricsContainer">
+        <div class="thoseeyes-lyrics" id="lyricsContainer" aria-label="Letra de la canción">
           <div class="lyric-block">
             <span class="lyric-line big" data-start="0" data-end="4">When we're done making love</span>
             <span class="lyric-line italic" data-start="4" data-end="8">And you look up</span>
@@ -112,7 +138,7 @@ export function ThoseEyesPage(router) {
       </div>
 
       <audio id="thoseEyesAudio" loop preload="auto">
-        <source src="/assets/those-eyes.mp3" type="audio/mpeg">
+        <source src="${AUDIO_SRC}" type="audio/mpeg">
       </audio>
     `;
   }
@@ -120,15 +146,19 @@ export function ThoseEyesPage(router) {
   render();
 
   requestAnimationFrame(() => {
-    // Canvas stars
+    // ==========================================
+    // Canvas estrellas (sutil, se adapta al tema)
+    // ==========================================
     const canvas = document.getElementById('starsCanvas');
     if (canvas) {
       const ctx = canvas.getContext('2d');
       let stars = [];
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
       onResize = () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        stars = Array.from({ length: 140 }, () => ({
+        const count = window.innerWidth < 600 ? 60 : 110;
+        stars = Array.from({ length: count }, () => ({
           x: Math.random() * canvas.width, y: Math.random() * canvas.height,
           r: Math.random() * 1.2 + 0.3, sp: Math.random() * 0.008 + 0.002,
           ph: Math.random() * Math.PI * 2
@@ -136,11 +166,12 @@ export function ThoseEyesPage(router) {
       };
       const draw = (time) => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const color = isDark ? '230,220,210' : '190,110,135';
         stars.forEach(s => {
-          const alpha = 0.1 + 0.3 * Math.abs(Math.sin(time * 0.001 * s.sp * 200 + s.ph));
+          const alpha = 0.06 + 0.25 * Math.abs(Math.sin(time * 0.001 * s.sp * 200 + s.ph));
           ctx.beginPath();
           ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(230,220,210,${alpha})`;
+          ctx.fillStyle = `rgba(${color},${alpha})`;
           ctx.fill();
         });
         rafId = requestAnimationFrame(draw);
@@ -150,25 +181,30 @@ export function ThoseEyesPage(router) {
       rafId = requestAnimationFrame(draw);
     }
 
-    // Audio player
-    const audio = document.getElementById('thoseEyesAudio');
+    // ==========================================
+    // Audio player + letra sincronizada
+    // ==========================================
+    audioEl = document.getElementById('thoseEyesAudio');
     const playBtn = document.getElementById('playBtn');
     const bars = document.getElementById('audioBars');
     const timeDisplay = document.getElementById('timeDisplay');
     const progressFill = document.getElementById('progressFill');
     const progressTrack = document.getElementById('progressTrack');
-    const allLines = document.querySelectorAll('.lyric-line[data-start]');
+    const loadingState = document.getElementById('loadingState');
     const closing = document.getElementById('closingSection');
+    const allLines = document.querySelectorAll('.lyric-line[data-start]');
 
-    if (!audio || !playBtn) return;
+    if (!audioEl || !playBtn) return;
+    let audioReady = false;
 
-    let playing = false;
-    let lastActive = null;
-
-    function fmt(sec) {
-      const m = Math.floor(sec / 60);
-      const s = Math.floor(sec % 60).toString().padStart(2, '0');
-      return `${m}:${s}`;
+    function updatePlayState(state) {
+      playing = state;
+      playBtn.innerHTML = state
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+      if (bars) bars.classList.toggle('playing', state);
+      playBtn.classList.toggle('is-playing', state);
+      playBtn.setAttribute('aria-label', state ? 'Pausar' : 'Reproducir');
     }
 
     function syncLyrics(time) {
@@ -187,55 +223,70 @@ export function ThoseEyesPage(router) {
       if (activeEl) {
         activeEl.classList.add('active');
         activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (closing && parseFloat(activeEl.dataset.start) >= 97) {
-          setTimeout(() => closing.classList.add('visible'), 1800);
-        }
       }
     }
 
     function togglePlay() {
-      if (playing) {
-        audio.pause();
-        playBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-        bars.classList.remove('playing');
-      } else {
-        audio.play().catch(() => {});
-        playBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-        bars.classList.add('playing');
-      }
-      playing = !playing;
+      if (!audioReady || !audioEl) return;
+      if (playing) { audioEl.pause(); updatePlayState(false); }
+      else { audioEl.play().then(() => updatePlayState(true)).catch(() => {}); }
     }
 
-    audio.addEventListener('timeupdate', () => {
-      if (audio.duration) {
-        timeDisplay.textContent = fmt(audio.currentTime);
-        progressFill.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
-        syncLyrics(audio.currentTime);
+    audioEl.addEventListener('loadstart', () => {
+      if (loadingState) loadingState.style.display = '';
+      audioReady = false;
+    });
+    audioEl.addEventListener('canplay', () => {
+      if (loadingState) loadingState.style.display = 'none';
+      audioReady = true;
+    });
+    const onAudioError = () => {
+      if (loadingState) {
+        loadingState.innerHTML = '<span style="color:var(--theme-error)">⚠️</span> Esta pista no está disponible ahora mismo.';
+        loadingState.style.display = '';
+      }
+      audioReady = false;
+      playBtn.disabled = true;
+      playBtn.setAttribute('aria-disabled', 'true');
+      playBtn.title = 'Audio no disponible';
+    };
+    audioEl.addEventListener('error', onAudioError);
+    // Con preload="auto" el fetch empieza al insertar el elemento: el error
+    // puede dispararse ANTES de enlazar el listener. Detectarlo y aplicarlo ya.
+    if (audioEl.error || audioEl.networkState === 3) onAudioError();
+
+    audioEl.addEventListener('timeupdate', () => {
+      if (audioEl.duration) {
+        const pct = (audioEl.currentTime / audioEl.duration) * 100;
+        if (timeDisplay) timeDisplay.textContent = fmt(audioEl.currentTime);
+        if (progressFill) progressFill.style.width = `${pct}%`;
+        if (progressTrack) progressTrack.setAttribute('aria-valuenow', String(Math.round(pct)));
+        syncLyrics(audioEl.currentTime);
       }
     });
-
-    audio.addEventListener('ended', () => {
-      playing = false;
-      playBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-      bars.classList.remove('playing');
+    audioEl.addEventListener('ended', () => {
+      updatePlayState(false);
+      if (closing) closing.classList.add('visible');
     });
 
-    // Try autoplay on load
-    audio.play().then(() => {
-      playing = true;
-      playBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-      bars.classList.add('playing');
-    }).catch(() => {});
-
+    // Autoplay: la canción arranca sola al entrar en la página
+    audioEl.play().then(() => updatePlayState(true)).catch(() => {});
     playBtn.addEventListener('click', togglePlay);
 
-    // Progress bar seek
+    // Click en la barra de progreso para saltar
     progressTrack?.addEventListener('click', (e) => {
-      if (!audio.duration) return;
+      if (!audioEl.duration || !audioReady) return;
       const rect = progressTrack.getBoundingClientRect();
-      const pct = (e.clientX - rect.left) / rect.width;
-      audio.currentTime = pct * audio.duration;
+      audioEl.currentTime = ((e.clientX - rect.left) / rect.width) * audioEl.duration;
     });
+
+    // Espacio = play/pausa (accesibilidad por teclado)
+    const keyHandler = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    };
+    document.addEventListener('keydown', keyHandler);
+    page._keyHandler = keyHandler;
   });
 
   return page;

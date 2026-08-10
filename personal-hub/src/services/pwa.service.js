@@ -192,6 +192,9 @@ async function initUpdateDetection() {
     if (data.type === 'UPDATE_APPLIED') {
       showPwaToast('🔄 Actualización aplicada. Recargando...', 'info', 2000);
       setTimeout(() => window.location.reload(), 1500);
+    } else if (data.type === 'PUSH_SUBSCRIPTION_CHANGED' && data.subscription) {
+      // El SW renovó la suscripción push: sincronizarla con el servidor
+      import('./notifications.service.js').then(ns => ns.resyncPushSubscription()).catch(() => {});
     }
   });
 

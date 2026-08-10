@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Simon Dice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 380px; }
+        canvas { width: 100%; max-width: 380px; aspect-ratio: 1/1; border-radius: 50%; cursor: pointer; }
+        .controls-hint { margin: 10px 0 4px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Simon Dice</h1>
+            <p class="subtitle">Repite la secuencia · Cada vez más larga</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">🔁 Ronda</span><span class="stat-value gold" id="roundDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">🏆 Récord</span><span class="stat-value green" id="highScoreDisplay">0</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Reiniciar (R)" aria-label="Reiniciar partida">🔄</button>
+            </div>
+        </div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="380" height="380"></canvas>
+        </div>
+        <div class="controls-hint">Mira la secuencia y repítela tocando los colores · R reiniciar</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">💀</div>
+            <h2 id="msgTitle">Has perdido</h2>
+            <p id="msgText">Ronda: 0 · Récord: 0</p>
+            <button class="btn-primary" id="msgBtn">Jugar otra vez</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const S = 380, R = S / 2 - 14;
+
+        const COLORS = [
+            { name: 'rojo', base: '#dc2626', light: '#ff6b6b', tone: [392, 0.18, 'triangle', 0.12] },
+            { name: 'azul', base: '#2563eb', light: '#6ea8ff', tone: [494, 0.18, 'triangle', 0.12] },
+            { name: 'verde', base: '#16a34a', light: '#4ade80', tone: [587, 0.18, 'triangle', 0.12] },
+            { name: 'amarillo', base: '#ca8a04', light: '#fde047', tone: [784, 0.18, 'triangle', 0.12] }
+        ];
+
+        let sequence, playerIdx, round, highScore, playing, inputLocked, animId, lastTime, gameOver, flashIdx, flashUntil;
+
+        highScore = parseInt(localStorage.getItem('simonHighScore') || '0', 10);
+        document.getElementById('highScoreDisplay').textContent = highScore;
+
+        function resetGame() {
+            sequence = [];
+            playerIdx = 0;
+            round = 0;
+            inputLocked = true;
+            gameOver = false;
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+            setTimeout(nextRound, 800);
+        }
+
+        function nextRound() {
+            if (gameOver) return;
+            round++;
+            sequence.push(Math.floor(Math.random() * 4));
+            playerIdx = 0;
+            inputLocked = true;
+            updateUI();
+            setTimeout(playSequence, 500);
+        }
+
+        function playSequence() {
+            if (gameOver) return;
+            let i = 0;
+            const step = () => {
+                if (gameOver) return;
+                flashIdx = sequence[i];
+                flashUntil = performance.now() + 420;
+                playTone(sequence[i]);
+                i++;
+                if (i < sequence.length) setTimeout(step, 520);
+                else setTimeout(() => { inputLocked = false; }, 600);
+            };
+            setTimeout(step, 200);
+        }
+
+        function playTone(idx) {
+            const t = COLORS[idx].tone;
+            SFX.ensureAudio();
+            SFX.tone(t[0], t[1], t[2], t[3]);
+        }
+
+        function press(idx) {
+            if (inputLocked || gameOver) return;
+            flashIdx = idx;
+            flashUntil = performance.now() + 250;
+            playTone(idx);
+            if (idx !== sequence[playerIdx]) {
+                setTimeout(() => { lose(); }, 350);
+                return;
+            }
+            SFX.point();
+            playerIdx++;
+            if (playerIdx >= sequence.length) {
+                inputLocked = true;
+                SFX.win();
+                buzz(20);
+                if (round > highScore) {
+                    highScore = round;
+                    localStorage.setItem('simonHighScore', highScore);
+                    document.getElementById('highScoreDisplay').textContent = highScore;
+                    SFX.record();
+                }
+                setTimeout(nextRound, 900);
+            }
+        }
+
+        function lose() {
+            gameOver = true;
+            inputLocked = true;
+            SFX.lose();
+            buzz([60, 40, 60]);
+            const record = round > highScore;
+            showMessage(record ? '🏆' : '💀', record ? '¡Nuevo récord!' : 'Has perdido', `Ronda: ${round} · Récord: ${highScore}`);
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Jugar otra vez';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function updateUI() {
+            document.getElementById('roundDisplay').textContent = round;
+            document.getElementById('highScoreDisplay').textContent = highScore;
+        }
+
+        function draw(ts) {
+            ctx.clearRect(0, 0, S, S);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, S, S);
+            const cx = S / 2, cy = S / 2;
+            for (let i = 0; i < 4; i++) {
+                const start = (i * Math.PI) / 2 - Math.PI / 4;
+                const end = start + Math.PI / 2;
+                const lit = (flashIdx === i && ts < flashUntil);
+                ctx.fillStyle = lit ? COLORS[i].light : COLORS[i].base;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, R, start, end);
+                ctx.closePath();
+                ctx.fill();
+                if (lit) {
+                    ctx.shadowColor = COLORS[i].light;
+                    ctx.shadowBlur = 40;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, R, start, end);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+            // centro
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface-2') || '#19191d';
+            ctx.beginPath(); ctx.arc(cx, cy, 74, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.font = '700 26px Playfair Display, serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(round, cx, cy - 6);
+            ctx.font = '600 10px Inter, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillText('SIMON', cx, cy + 18);
+        }
+
+        function loop(ts) {
+            if (!lastTime) lastTime = ts;
+            lastTime = ts;
+            draw(ts);
+            animId = requestAnimationFrame(loop);
+        }
+
+        function canvasToIdx(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width * S;
+            const y = (e.clientY - rect.top) / rect.height * S;
+            const cx = S / 2, cy = S / 2;
+            if (Math.hypot(x - cx, y - cy) > R) return -1;
+            const a = Math.atan2(y - cy, x - cx) + Math.PI / 4;
+            let idx = Math.floor(((a + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 2));
+            return ((idx % 4) + 4) % 4;
+        }
+
+        canvas.addEventListener('click', (e) => { const i = canvasToIdx(e); if (i >= 0) press(i); });
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = (t.clientX - rect.left) / rect.width * S;
+            const y = (t.clientY - rect.top) / rect.height * S;
+            const cx = S / 2, cy = S / 2;
+            if (Math.hypot(x - cx, y - cy) > R) return;
+            const a = Math.atan2(y - cy, x - cx) + Math.PI / 4;
+            press((((Math.floor(((a + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 2)) % 4) + 4) % 4));
+        }, { passive: false });
+
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+        document.getElementById('pauseBtn').addEventListener('click', resetGame);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') resetGame();
+            const map = { '1': 0, '2': 1, '3': 2, '4': 3 };
+            if (map[e.key] !== undefined) press(map[e.key]);
+        });
+
+        resetGame();
+        lastTime = 0;
+        animId = requestAnimationFrame(loop);
+
+        window.__simon = { resetGame, press, nextRound, get state() { return { round, highScore, inputLocked, gameOver, sequence: sequence.slice() }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

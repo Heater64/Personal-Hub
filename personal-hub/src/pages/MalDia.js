@@ -4,6 +4,8 @@
    ========================================== */
 
 import { showToast } from '../components/Toast.js';
+import { db } from '../services/db.service.js';
+import { onContentChange } from '../services/realtime.service.js';
 
 const PHRASES = [
   "Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un abrazo.",
@@ -38,21 +40,32 @@ export function MalDiaPage(router) {
   const page = document.createElement('div');
   page.className = 'maldia-page';
 
-  let currentPhrase = Math.floor(Math.random() * PHRASES.length);
-  let currentMemory = 0;
+  // Frases gestionables desde el Admin (tab Mal Día) con fallback a las estáticas
+  let frases = PHRASES.slice();
+  let dailyMensajes = [];
+  let currentPhrase = Math.floor(Math.random() * frases.length);
   let isMusicPlaying = false;
   let audioPlayer = null;
   let breathingInterval = null;
   let onKeyDown = null;
 
+  const offContent = onContentChange(['maldia_frases', 'maldia_mensajes'], loadAdminContent);
+
   page.cleanup = () => {
+    offContent();
     if (onKeyDown) document.removeEventListener('keydown', onKeyDown);
     if (breathingInterval) { clearInterval(breathingInterval); breathingInterval = null; }
     if (audioPlayer) { audioPlayer.pause(); audioPlayer = null; }
     document.getElementById('betterVideo')?.pause();
+    document.body.style.overflow = '';
   };
 
   function render() {
+    const heroMsg = frases[currentPhrase] || 'Respira, todo va a estar bien. Te quiero.';
+    const dailyMsg = dailyMensajes.length
+      ? dailyMensajes[Math.floor(Math.random() * dailyMensajes.length)]
+      : 'Eres más fuerte de lo que crees, más bonita de lo que piensas y más querida de lo que imaginas.';
+
     page.innerHTML = `
       <div class="maldia-container">
         <div class="maldia-header">
@@ -71,7 +84,7 @@ export function MalDiaPage(router) {
           </div>
           <h2>Frases que pueden ayudarte</h2>
           <div class="maldia-message-wrapper">
-            <p class="maldia-message" id="heroMessage">${PHRASES[currentPhrase]}</p>
+            <p class="maldia-message" id="heroMessage">${heroMsg}</p>
           </div>
           <div class="maldia-actions">
             <button class="maldia-action-btn" id="newPhraseBtn">
@@ -92,7 +105,7 @@ export function MalDiaPage(router) {
               ${'<div class="maldia-wave-bar"></div>'.repeat(6)}
             </div>
             <span class="maldia-music-label" id="musicLabel">Música feliz</span>
-            <button class="maldia-music-toggle" id="musicBtn">
+            <button class="maldia-music-toggle" id="musicBtn" aria-label="Activar o desactivar música" aria-pressed="false">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
             </button>
             <audio id="happyAudio" preload="none" loop>
@@ -101,22 +114,31 @@ export function MalDiaPage(router) {
           </div>
         </div>
 
-        <!-- Memories card -->
-        <div class="maldia-memories-card glass-card">
-          <div class="maldia-memories-header">
+        <!-- Daily message -->
+        <div class="maldia-daily-msg-card glass-card">
+          <div class="maldia-daily-header">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <h3>Mensaje para ti</h3>
           </div>
-          <div class="maldia-daily-message" id="dailyMessage">"Eres más fuerte de lo que crees, más bonita de lo que piensas y más querida de lo que imaginas."</div>
-          <div class="maldia-memory-section">
-            <div class="maldia-memory-frame">
-              <img id="memoryImage" class="maldia-memory-image" src="${MEMORIES[0].image}" alt="Recuerdo especial">
-            </div>
-            <p class="maldia-memory-caption" id="memoryCaption">${MEMORIES[0].caption}</p>
-            <button class="maldia-mini-btn" id="changeMemoryBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-              <span>Cambiar recuerdo</span>
-            </button>
+          <div class="maldia-daily-message">${dailyMsg}</div>
+        </div>
+
+        <!-- Photo Gallery -->
+        <div class="maldia-gallery-card glass-card">
+          <div class="maldia-gallery-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <h3>Nuestros recuerdos</h3>
+            <span class="maldia-gallery-count">${MEMORIES.length} fotos</span>
+          </div>
+          <div class="maldia-gallery-grid">
+            ${MEMORIES.map((mem, i) => `
+              <div class="maldia-gallery-item" data-index="${i}">
+                <img src="${mem.image.replace('w_800', 'w_400,c_fill,g_face,h_300')}" alt="${mem.caption}" loading="lazy">
+                <div class="maldia-gallery-overlay">
+                  <span class="maldia-gallery-caption">${mem.caption}</span>
+                </div>
+              </div>
+            `).join('')}
           </div>
         </div>
 
@@ -129,10 +151,28 @@ export function MalDiaPage(router) {
         </div>
       </div>
 
+      <!-- Photo Lightbox -->
+      <div class="maldia-lightbox" id="galleryLightbox" style="display:none;">
+        <button class="maldia-lightbox-close" id="closeLightbox" aria-label="Cerrar visor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <button class="maldia-lightbox-nav prev" id="lightboxPrev" aria-label="Foto anterior">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <img id="lightboxImage" class="maldia-lightbox-img" src="" alt="">
+        <div class="maldia-lightbox-info">
+          <span id="lightboxCaption"></span>
+          <span id="lightboxCounter"></span>
+        </div>
+        <button class="maldia-lightbox-nav next" id="lightboxNext" aria-label="Foto siguiente">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
       <!-- Breathing Modal -->
       <div class="maldia-modal" id="breathingModal" style="display:none;">
         <div class="maldia-modal-content">
-          <button class="maldia-modal-close" id="closeBreathingModal">
+          <button class="maldia-modal-close" id="closeBreathingModal" aria-label="Cerrar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <div class="maldia-breathing-circle" id="breathingCircle">
@@ -146,7 +186,7 @@ export function MalDiaPage(router) {
       <!-- Better Modal (cat video) -->
       <div class="maldia-modal" id="betterModal" style="display:none;">
         <div class="maldia-modal-content better-content">
-          <button class="maldia-modal-close" id="closeBetterModal">
+          <button class="maldia-modal-close" id="closeBetterModal" aria-label="Cerrar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <div class="maldia-better-video">
@@ -165,6 +205,25 @@ export function MalDiaPage(router) {
 
   render();
 
+  // Carga frases y mensajes gestionados desde el Admin (fallback silencioso a los
+  // estáticos). También se invoca en tiempo real cuando el Admin los edita.
+  async function loadAdminContent() {
+    const [f, m] = await Promise.allSettled([db.getMaldiaFrases(), db.getMaldiaMensajes()]);
+    const frasesAdmin = (f.value || []).filter(x => typeof x === 'string' && x.trim());
+    const msgsAdmin = (m.value || []).filter(x => typeof x === 'string' && x.trim());
+    if (frasesAdmin.length) frases = frasesAdmin;
+    if (msgsAdmin.length) dailyMensajes = msgsAdmin;
+    if (currentPhrase >= frases.length) currentPhrase = 0;
+    const heroMsg = document.getElementById('heroMessage');
+    if (heroMsg) heroMsg.textContent = frases[currentPhrase] || heroMsg.textContent;
+    const dailyEl = page.querySelector('.maldia-daily-message');
+    if (dailyEl && dailyMensajes.length) {
+      dailyEl.textContent = dailyMensajes[Math.floor(Math.random() * dailyMensajes.length)];
+    }
+  }
+
+  loadAdminContent();
+
   requestAnimationFrame(() => {
     audioPlayer = document.getElementById('happyAudio');
 
@@ -173,10 +232,14 @@ export function MalDiaPage(router) {
       const msg = document.getElementById('heroMessage');
       if (msg) {
         let idx;
-        do { idx = Math.floor(Math.random() * PHRASES.length); } while (idx === currentPhrase);
+        if (frases.length > 1) {
+          do { idx = Math.floor(Math.random() * frases.length); } while (idx === currentPhrase);
+        } else {
+          idx = 0;
+        }
         currentPhrase = idx;
         msg.style.opacity = '0';
-        msg.textContent = PHRASES[idx];
+        msg.textContent = frases[idx] || 'Respira, todo va a estar bien. Te quiero.';
         requestAnimationFrame(() => { msg.style.transition = 'opacity 0.3s'; msg.style.opacity = '1'; });
       }
     });
@@ -200,6 +263,7 @@ export function MalDiaPage(router) {
         document.getElementById('musicWave')?.classList.add('playing');
         document.getElementById('musicLabel').textContent = 'Sonando';
       }
+      document.getElementById('musicBtn')?.setAttribute('aria-pressed', String(isMusicPlaying));
     });
 
     // Better button (cat video)
@@ -222,14 +286,53 @@ export function MalDiaPage(router) {
       }
     });
 
-    // Change memory
-    document.getElementById('changeMemoryBtn')?.addEventListener('click', () => {
-      currentMemory = (currentMemory + 1) % MEMORIES.length;
-      const img = document.getElementById('memoryImage');
-      const cap = document.getElementById('memoryCaption');
-      if (img) { img.style.opacity = '0.5'; setTimeout(() => { img.src = MEMORIES[currentMemory].image; img.style.opacity = '1'; }, 150); }
-      if (cap) cap.textContent = MEMORIES[currentMemory].caption;
+    // ==========================================
+    // PHOTO GALLERY — Immersive grid + lightbox
+    // ==========================================
+    let lightboxIndex = 0;
+
+    function openLightbox(index) {
+      lightboxIndex = index;
+      const lb = document.getElementById('galleryLightbox');
+      const img = document.getElementById('lightboxImage');
+      const cap = document.getElementById('lightboxCaption');
+      const counter = document.getElementById('lightboxCounter');
+      if (!lb || !img) return;
+      img.src = MEMORIES[index].image;
+      if (cap) cap.textContent = MEMORIES[index].caption;
+      if (counter) counter.textContent = `${index + 1} / ${MEMORIES.length}`;
+      lb.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      const lb = document.getElementById('galleryLightbox');
+      if (lb) { lb.style.display = 'none'; }
+      document.body.style.overflow = '';
+    }
+
+    function navigateLightbox(dir) {
+      lightboxIndex = (lightboxIndex + dir + MEMORIES.length) % MEMORIES.length;
+      openLightbox(lightboxIndex);
+    }
+
+    // Grid item clicks
+    page.querySelectorAll('.maldia-gallery-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const idx = parseInt(item.dataset.index);
+        openLightbox(idx);
+      });
     });
+
+    // Lightbox close
+    document.getElementById('closeLightbox')?.addEventListener('click', closeLightbox);
+    document.getElementById('galleryLightbox')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeLightbox();
+    });
+
+    // Lightbox nav
+    document.getElementById('lightboxPrev')?.addEventListener('click', () => navigateLightbox(-1));
+    document.getElementById('lightboxNext')?.addEventListener('click', () => navigateLightbox(1));
 
     // Breathing
     const breathingModal = document.getElementById('breathingModal');
@@ -271,7 +374,10 @@ export function MalDiaPage(router) {
       if (e.key === 'Escape') {
         stopBreathing();
         betterModal.style.display = 'none';
+        closeLightbox();
       }
+      if (e.key === 'ArrowLeft') navigateLightbox(-1);
+      if (e.key === 'ArrowRight') navigateLightbox(1);
     };
     document.addEventListener('keydown', onKeyDown);
   });

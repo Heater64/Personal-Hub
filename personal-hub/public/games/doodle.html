@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Doodle Jump</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 360px; }
+        canvas { width: 100%; max-width: 360px; aspect-ratio: 9/16; border-radius: 18px; }
+        .controls-hint { margin: 10px 0 4px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Doodle Jump</h1>
+            <p class="subtitle">Salta de plataforma en plataforma</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">📏 Altura</span><span class="stat-value gold" id="scoreDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">🏆 Récord</span><span class="stat-value green" id="highScoreDisplay">0</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa (Espacio)" aria-label="Pausar o reanudar">⏸️</button>
+            </div>
+        </div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="360" height="640"></canvas>
+        </div>
+        <div class="controls-hint">← → mover · En móvil: toca los lados o inclina</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">💀</div>
+            <h2 id="msgTitle">Has caído</h2>
+            <p id="msgText">Altura: 0 · Récord: 0</p>
+            <button class="btn-primary" id="msgBtn">Reintentar</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 360, H = 640;
+
+        let doodle, platforms, score, highScore, running, paused, gameOver, lastTime, animId, camY, moving, brokenBroken;
+
+        highScore = parseInt(localStorage.getItem('doodleHighScore') || '0', 10);
+        document.getElementById('highScoreDisplay').textContent = highScore;
+
+        function spawnPlatform(y) {
+            const x = 20 + Math.random() * (W - 90);
+            const roll = Math.random();
+            const type = roll < 0.15 ? 'move' : roll < 0.2 ? 'break' : 'solid';
+            platforms.push({ x, y, w: 76, h: 14, type, vx: type === 'move' ? (Math.random() > 0.5 ? 1.6 : -1.6) : 0, broken: false });
+        }
+
+        function resetGame() {
+            doodle = { x: W / 2 - 18, y: H - 120, w: 36, h: 40, vy: 0 };
+            platforms = [];
+            for (let i = 0; i < 12; i++) spawnPlatform(H - 60 - i * 58);
+            score = 0;
+            camY = 0;
+            running = true;
+            paused = false;
+            gameOver = false;
+            moving = { left: false, right: false };
+            document.getElementById('pauseBtn').textContent = '⏸️';
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+        }
+
+        function update(dt) {
+            if (paused || !running || gameOver) return;
+            const s = dt / 16.7;
+
+            // movimiento horizontal
+            if (moving.left) doodle.x -= 5.2 * s;
+            if (moving.right) doodle.x += 5.2 * s;
+            if (doodle.x < -30) doodle.x = W + 10;
+            if (doodle.x > W + 30) doodle.x = -10;
+
+            // gravedad
+            doodle.vy += 0.5 * s;
+            doodle.y += doodle.vy * s;
+
+            // plataformas móviles
+            for (const p of platforms) {
+                if (p.type === 'move') {
+                    p.x += p.vx * s;
+                    if (p.x < 10 || p.x + p.w > W - 10) p.vx *= -1;
+                }
+            }
+
+            // aterrizar
+            if (doodle.vy > 0) {
+                for (const p of platforms) {
+                    if (p.broken) continue;
+                    if (doodle.x + 8 < p.x + p.w && doodle.x + doodle.w - 8 > p.x &&
+                        doodle.y + doodle.h > p.y && doodle.y + doodle.h < p.y + p.h + 14 && doodle.vy > 0) {
+                        if (p.type === 'break') { p.broken = true; SFX.click(); continue; }
+                        doodle.y = p.y - doodle.h;
+                        doodle.vy = -13.5;
+                        SFX.point();
+                        buzz(5);
+                    }
+                }
+            }
+
+            // cámara sube
+            if (doodle.y < H * 0.45) {
+                const diff = H * 0.45 - doodle.y;
+                camY += diff * s;
+                doodle.y += diff * s;
+                score = Math.max(score, Math.floor(camY / 10));
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('doodleHighScore', highScore);
+                    if (score % 100 === 0) SFX.record();
+                }
+                updateUI();
+                // nuevas plataformas arriba
+                while (platforms[platforms.length - 1].y > camY - 80) {
+                    spawnPlatform(platforms[platforms.length - 1].y - 58);
+                }
+            }
+            // limpiar plataformas fuera
+            platforms = platforms.filter(p => p.y < camY + H + 40 && p.y > camY - 80);
+
+            // caída
+            if (doodle.y - camY > H + 30) {
+                gameOver = true;
+                SFX.lose();
+                buzz([60, 40, 60]);
+                const record = score > 0 && score >= highScore;
+                showMessage(record ? '🏆' : '💀', record ? '¡Nuevo récord!' : 'Has caído', `Altura: ${score} · Récord: ${highScore}`);
+            }
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Reintentar';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('highScoreDisplay').textContent = highScore;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, W, H);
+            // estrellas
+            ctx.fillStyle = 'rgba(255,255,255,0.12)';
+            for (let i = 0; i < 40; i++) {
+                const sx = (i * 71 + Math.floor(camY / 3)) % W, sy = (i * 43) % H;
+                ctx.fillRect(sx, sy, 2, 2);
+            }
+            // plataformas
+            for (const p of platforms) {
+                const py = p.y - camY;
+                if (py < -20 || py > H + 20) continue;
+                ctx.fillStyle = p.type === 'break' ? '#f87171' : p.type === 'move' ? '#60a5fa' : '#4ade80';
+                ctx.fillRect(p.x, py, p.w, p.h);
+                ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                ctx.fillRect(p.x + 6, py, p.w - 12, 3);
+            }
+            // doodle
+            const dy = doodle.y - camY;
+            ctx.fillStyle = '#e8735a';
+            ctx.beginPath(); ctx.ellipse(doodle.x + 18, dy + 22, 18, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(doodle.x + 26, dy + 12, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#222';
+            ctx.beginPath(); ctx.arc(doodle.x + 28, dy + 12, 2.6, 0, Math.PI * 2); ctx.fill();
+        }
+
+        function loop(ts) {
+            if (!lastTime) lastTime = ts;
+            const dt = Math.min(ts - lastTime, 50);
+            lastTime = ts;
+            update(dt);
+            draw();
+            animId = requestAnimationFrame(loop);
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            paused = !paused;
+            document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+            SFX.pause();
+        }
+
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') { togglePause(); return; }
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moving.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') moving.right = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moving.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') moving.right = false;
+        });
+
+        // táctil: mitades
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            moving.left = t.clientX < window.innerWidth / 2;
+            moving.right = !moving.left;
+        }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            moving.left = t.clientX < window.innerWidth / 2;
+            moving.right = !moving.left;
+        }, { passive: false });
+        canvas.addEventListener('touchend', (e) => { e.preventDefault(); moving.left = moving.right = false; }, { passive: false });
+
+        document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused && !gameOver) togglePause(); });
+
+        resetGame();
+        lastTime = 0;
+        animId = requestAnimationFrame(loop);
+
+        window.__doodle = { resetGame, togglePause, get state() { return { score, highScore, gameOver, paused }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

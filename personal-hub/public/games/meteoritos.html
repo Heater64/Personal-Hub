@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🌌 Evita los Meteoritos</title>
+    <title>Evita los Meteoritos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -277,12 +277,13 @@
         }
     </style>
     <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
 
 <body>
     <div class="game-container">
         <div class="game-header">
-            <h1>🌌 Evita los Meteoritos</h1>
+            <h1>Evita los Meteoritos</h1>
             <div class="toolbar">
                 <button class="icon-btn" id="pauseBtn" title="Pausa">⏸️</button>
             </div>
@@ -304,7 +305,6 @@
 
         <div class="actions">
             <button class="btn-primary" id="startBtn">▶ Jugar</button>
-            <button class="btn-ghost" id="resetBtn">🔄 Reiniciar</button>
         </div>
 
         <div class="game-back-nav">
@@ -365,7 +365,6 @@
             const livesDisplay = document.getElementById('livesDisplay');
             const levelDisplay = document.getElementById('levelDisplay');
             const startBtn = document.getElementById('startBtn');
-            const resetBtn = document.getElementById('resetBtn');
             const pauseBtn = document.getElementById('pauseBtn');
 
             highScoreDisplay.textContent = highScore;
@@ -402,8 +401,7 @@
                 isPlaying = false;
                 paused = false;
                 pauseBtn.textContent = '⏸️';
-                startBtn.textContent = '▶ Jugar';
-                startBtn.style.opacity = '1';
+                updateStartBtn();
                 generateStars();
                 updateUI();
                 draw();
@@ -796,6 +794,8 @@
                         if (dist < player.r + m.r) {
                             // Impacto
                             lives--;
+                            SFX.hit();
+                            buzz(30);
                             screenShake = 8;
                             spawnParticles(m.x, m.y, '#ff4d4d', 30, 6);
                             spawnParticles(player.x, player.y, '#ff8a65', 20, 5);
@@ -852,6 +852,8 @@
                         } else if (p.type === 'points') {
                             score += 5;
                             showToast('⭐ +5 puntos!');
+                            SFX.special();
+                            buzz(15);
                             updateUI();
                         }
                         powerups.splice(i, 1);
@@ -895,15 +897,19 @@
             // --- Game Over ---
             function gameOver() {
                 isPlaying = false;
+                let recordBroken = false;
                 if (score > highScore) {
                     highScore = score;
+                    recordBroken = true;
                     localStorage.setItem('meteorHighScore', highScore);
                     highScoreDisplay.textContent = highScore;
                     showToast('🏆 ¡Nuevo récord!');
+                    SFX.record();
                 }
-                startBtn.textContent = '▶ Jugar';
-                startBtn.style.opacity = '1';
-                showMessage('💀', '¡Game Over!', `Puntuación: ${score} · Nivel: ${level}`);
+                SFX.lose();
+                buzz([60, 40, 60]);
+                updateStartBtn();
+                showMessage(recordBroken ? '🏆' : '💀', recordBroken ? '¡Nuevo récord!' : '¡Game Over!', `Puntuación: ${score} · Nivel: ${level} · Récord: ${highScore}`);
             }
 
             // --- Mostrar mensaje ---
@@ -925,6 +931,12 @@
                 setTimeout(startGame, 200);
             });
 
+            // --- Botón único: Jugar ⇄ Reiniciar ---
+            function updateStartBtn() {
+                startBtn.textContent = isPlaying ? '🔄 Reiniciar' : '▶ Jugar';
+                startBtn.style.opacity = '1';
+            }
+
             // --- START ---
             function startGame() {
                 if (isPlaying) return;
@@ -934,8 +946,7 @@
                 isPlaying = true;
                 paused = false;
                 pauseBtn.textContent = '⏸️';
-                startBtn.textContent = '⏳ Jugando';
-                startBtn.style.opacity = '0.6';
+                updateStartBtn();
                 if (invincibleTimer === 0) invincibleTimer = 30; // Escudo inicial
                 draw();
             }
@@ -946,8 +957,13 @@
                 paused = false;
                 pauseBtn.textContent = '⏸️';
                 initGame();
-                startBtn.textContent = '▶ Jugar';
-                startBtn.style.opacity = '1';
+                updateStartBtn();
+            }
+
+            // Jugar desde cero / reiniciar a mitad de partida
+            function playFresh() {
+                if (isPlaying) resetGame();
+                startGame();
             }
 
             // --- Pausa ---
@@ -965,8 +981,7 @@
             }
 
             // --- Eventos ---
-            startBtn.addEventListener('click', startGame);
-            resetBtn.addEventListener('click', resetGame);
+            startBtn.addEventListener('click', playFresh);
             pauseBtn.addEventListener('click', togglePause);
 
             document.addEventListener('keydown', (e) => {
@@ -1048,16 +1063,11 @@
             window.togglePause = togglePause;
         })();
     </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="../js/core/profile.js"></script>
-    <script src="../js/core/authGuard.js"></script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('../sw.js')
-        .then(function(reg) { console.log('SW registered:', reg.scope); })
         .catch(function(err) { console.warn('SW error:', err); });
     }
     </script>

@@ -3,59 +3,60 @@
    Requires admin session. Uses SERVICE ROLE KEY.
    ========================================== */
 
-import { createClient } from '@supabase/supabase-js';
-
-// Match the admin definition used by the frontend
-const ADMIN_EMAILS = ['admin@personalhub.com'];
-
-function isAdmin(user) {
-  if (!user) return false;
-  if (user.user_metadata?.role === 'admin') return true;
-  return ADMIN_EMAILS.includes(user.email);
-}
+import { requireAdminCaller } from './_admin.js';
 
 export default async function handler(req, res) {
-  // Only allow GET
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET');
+  // Only allow GET, POST (update/delete de usuarios)
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
-  const authHeader = req.headers.authorization || '';
+  // Autorización común: email verificado en JWT o rol admin en profiles.
+  const authCtx = await requireAdminCaller(req, res);
+  if (!authCtx) return; // ya respondió con el error
+  const supabaseAdmin = authCtx.supabaseAdmin;
 
-  if (!supabaseUrl || !serviceKey || !anonKey) {
-    return res.status(500).json({
-      error: 'Server misconfigured: missing VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY'
-    });
+  if (req.method === 'POST') {
+    const action = req.body?.action || '';
+    const admin = await requireAdminCaller(req, res);
+    if (!admin) return; // ya respondió con el error
+
+    if (action === 'update') {
+      const { id, enabled } = req.body || {};
+      if (!id) return res.status(400).json({ error: 'Missing user id' });
+
+      try {
+        // Actualiza metadata (enabled) en Auth. NO se toca el rol desde aquí:
+        // el rol vive en profiles y el trigger anti-escalación lo protege.
+        const metadata = {};
+        if (typeof enabled === 'boolean') metadata.enabled = enabled;
+        if (metadata.enabled !== undefined) {
+          await admin.supabaseAdmin.auth.admin.updateUserById(id, { user_metadata: metadata });
+        }
+
+        return res.status(200).json({ success: true });
+      } catch (err) {
+        console.error('[api/users] update error:', err.message);
+        return res.status(500).json({ error: err.message || 'Update failed' });
+      }
+    }
+
+    if (action === 'delete') {
+      const { id } = req.body || {};
+      if (!id) return res.status(400).json({ error: 'Missing user id' });
+      try {
+        const { error } = await admin.supabaseAdmin.auth.admin.deleteUser(id);
+        if (error) throw error;
+        return res.status(200).json({ success: true });
+      } catch (err) {
+        console.error('[api/users] delete error:', err.message);
+        return res.status(500).json({ error: err.message || 'Delete failed' });
+      }
+    }
+
+    return res.status(400).json({ error: 'Invalid action. Use: update, delete' });
   }
-
-  // 1. Verify the caller's JWT
-  const anonClient = createClient(supabaseUrl, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
-
-  const token = authHeader.replace(/^Bearer\s*/i, '');
-  if (!token) {
-    return res.status(401).json({ error: 'Missing Authorization header' });
-  }
-
-  const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
-
-  if (userError || !user) {
-    return res.status(401).json({ error: 'Invalid or expired session' });
-  }
-
-  if (!isAdmin(user)) {
-    return res.status(403).json({ error: 'Forbidden: admin only' });
-  }
-
-  // 2. Use service role key to list all auth users
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
 
   try {
     const allUsers = [];
@@ -82,6 +83,15 @@ export default async function handler(req, res) {
       }
     }
 
+    // Roles desde profiles (fuente de verdad); nunca desde user_metadata
+    let profileRoles = {};
+    try {
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, role');
+      (profiles || []).forEach(p => { profileRoles[p.id] = p.role; });
+    } catch { /* profiles puede no existir: los usuarios salen como 'user' */ }
+
     const users = allUsers.map(u => ({
       id: u.id,
       email: u.email,
@@ -91,7 +101,7 @@ export default async function handler(req, res) {
         u.user_metadata?.full_name ||
         u.email?.split('@')[0] ||
         '',
-      role: u.user_metadata?.role || 'user',
+      role: profileRoles[u.id] || 'user',
       photo: u.user_metadata?.avatar_url || u.user_metadata?.photo || '',
       enabled: u.user_metadata?.enabled !== false,
       created_at: u.created_at,

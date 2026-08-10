@@ -13,7 +13,7 @@
 @keyframes pulse-subtle { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-@keyframes glow-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--theme-accent-primary); } 50% { box-shadow: 0 0 30px 6px var(--theme-accent-dim); } }
+@keyframes glow-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--theme-accent); } 50% { box-shadow: 0 0 30px 6px var(--accent-dim); } }
 @keyframes skeleton-shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -23,7 +23,7 @@
   50% { transform: scale(1.02); opacity: 1; }
 }
 @keyframes ripple {
-  0% { box-shadow: 0 0 0 0 var(--theme-accent-dim); }
+  0% { box-shadow: 0 0 0 0 var(--accent-dim); }
   100% { box-shadow: 0 0 0 12px transparent; }
 }
 
@@ -31,34 +31,60 @@
    PAGE TRANSITIONS
    ========================================== */
 .app-content {
-  animation: page-enter var(--dur-smooth) ease forwards;
+  animation: page-enter var(--dur-smooth-out);
 }
 
 @keyframes page-enter {
   0% {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(16px) scale(0.99);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    /* `none` (no un transform identidad) para no crear un containing
+       block que rompa position:fixed de modales/sheets dentro de app-content */
+    transform: none;
   }
+}
+
+/* ==========================================
+   ROUTE LOADING SPINNER
+   ========================================== */
+.route-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 50vh;
+  color: var(--theme-text-secondary);
+  font-size: var(--fs-sm);
+  animation: fade-in var(--dur-mid);
+}
+
+.route-loading__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid 1px solid var(--theme-divider-strong);
+  border-top-color: var(--theme-accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 /* ==========================================
    UTILITY CLASSES
    ========================================== */
-.animate-fade-in { animation: fade-in var(--dur-mid) ease forwards; }
-.animate-slide-up { animation: slide-up var(--dur-mid) ease forwards; }
-.animate-slide-up-sm { animation: slide-up-sm var(--dur-mid) var(--dur-smooth) forwards; }
-.animate-scale-in { animation: scale-in var(--dur-mid) ease forwards; }
+.animate-fade-in { animation: fade-in var(--dur-mid) forwards; }
+.animate-slide-up { animation: slide-up var(--dur-mid) forwards; }
+.animate-slide-up-sm { animation: slide-up-sm var(--dur-mid) forwards; }
+.animate-scale-in { animation: scale-in var(--dur-mid) forwards; }
 .animate-pop-in { animation: pop-in var(--dur-bounce) forwards; }
 .animate-pulse-subtle { animation: pulse-subtle 2s ease-in-out infinite; }
 .animate-spin { animation: spin 1s linear infinite; }
 .animate-float { animation: float 3s ease-in-out infinite; }
 .animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
 .animate-breathe { animation: breathe 3s ease-in-out infinite; }
-.animate-shimmer { background: linear-gradient(90deg, var(--theme-bg-glass) 25%, var(--theme-bg-glass-hover) 50%, var(--theme-bg-glass) 75%); background-size: 200% 100%; animation: skeleton-shimmer 1.5s infinite; }
+.animate-shimmer { background: linear-gradient(90deg, var(--theme-surface) 25%, var(--theme-surface-elevated) 50%, var(--theme-surface) 75%); background-size: 200% 100%; animation: skeleton-shimmer 1.5s infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -66,4 +92,16 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+
+/* ==========================================
+   SHAKE — feedback de error en inputs
+   ========================================== */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
 }

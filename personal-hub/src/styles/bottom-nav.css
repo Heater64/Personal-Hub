@@ -1,6 +1,9 @@
 /* ==========================================
-   BOTTOM NAVIGATION
+   BOTTOM NAV v3 — Native Android style
+   Blur background, pill active indicator,
+   iconos grandes, sin texto (o texto mínimo).
    ========================================== */
+
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -10,14 +13,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   height: var(--bottom-nav-height);
-  padding: 8px 12px;
-  padding-bottom: calc(8px + env(safe-area-inset-bottom));
-  background: var(--theme-bg-secondary);
-  backdrop-filter: blur(var(--blur-lg));
-  border-top: var(--theme-border-subtle);
-  -webkit-backdrop-filter: blur(var(--blur-lg));
+  padding: 0 var(--sp-8);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--theme-surface);
+  backdrop-filter: blur(var(--blur-nav));
+  -webkit-backdrop-filter: blur(var(--blur-nav));
+  border-top: 1px solid var(--theme-divider);
 }
 
 .bottom-nav__item {
@@ -25,73 +27,118 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
-  padding: 6px 4px;
-  border-radius: var(--radius-md);
-  background: none;
+  max-width: 96px;
+  padding: var(--sp-4) 0;
   border: none;
-  color: var(--theme-text-muted);
+  background: none;
+  color: var(--theme-text-tertiary);
   cursor: pointer;
   position: relative;
-  transition: all var(--dur-smooth);
+  transition: color var(--dur-fast);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  touch-action: manipulation;
+}
+
+.bottom-nav__item svg {
+  width: 24px;
+  height: 24px;
+  transition: transform var(--dur-spring);
 }
 
 .bottom-nav__item:hover {
   color: var(--theme-text-secondary);
 }
 
-.bottom-nav__item.is-active {
-  color: var(--theme-accent-primary);
+/* Pressed state — feedback táctil al pulsar */
+.bottom-nav__item:active {
+  color: var(--theme-text-primary);
+  transform: translateY(1px);
 }
 
-.bottom-nav__item svg {
-  position: relative;
-  z-index: 1;
-  transition: transform var(--dur-spring);
+.bottom-nav__item:active svg {
+  transform: scale(0.92);
+}
+
+/* Keyboard focus — anillo visible (WCAG 2.4.7) */
+.bottom-nav__item:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: -2px;
+  border-radius: var(--r-md);
+}
+
+.bottom-nav__item:focus-visible::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+/* Active state — pill background */
+.bottom-nav__item.is-active {
+  color: var(--theme-accent);
+}
+
+[data-theme="light"] .bottom-nav__item.is-active {
+  color: var(--accent-pressed);
 }
 
 .bottom-nav__item.is-active svg {
-  transform: scale(1.15);
-  filter: drop-shadow(0 0 6px var(--theme-accent-dim));
+  transform: scale(1.08);
 }
 
+/* Pill indicator under active icon */
+.bottom-nav__item::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--theme-accent);
+  opacity: 0;
+  transform: scaleX(0);
+  transition: all var(--dur-spring);
+}
+
+.bottom-nav__item.is-active::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+/* Label */
 .bottom-nav__label {
-  font-size: 0.6rem;
+  font-size: var(--fs-caption);
+  font-weight: 500;
   letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
   line-height: 1.2;
-  position: relative;
-  z-index: 1;
-  font-weight: 500;
-  transition: color var(--dur-fast);
+  transition: opacity var(--dur-fast);
 }
 
-.bottom-nav__item.is-active .bottom-nav__label {
-  font-weight: 600;
-}
-
+/* Avatar tab */
 .bottom-avatar {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: var(--theme-accent-dim);
-  border: 1.5px solid currentColor;
+  background: var(--theme-surface-elevated);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.65rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
-  position: relative;
-  z-index: 1;
-  transition: transform var(--dur-spring);
+  color: var(--theme-text-secondary);
+  transition: all var(--dur-spring);
+  border: 1.5px solid transparent;
+}
+
+.bottom-nav__item.is-active .bottom-avatar {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+  background: var(--theme-accent-dim);
 }
 
 .bottom-avatar-wrap {
@@ -101,43 +148,14 @@
   justify-content: center;
 }
 
-.bottom-avatar-wrap .bottom-avatar {
-  display: flex;
-}
-
-.bottom-avatar-wrap .bottom-avatar.fallback {
-  display: none;
-}
-
-.bottom-avatar-wrap img:has(~ .bottom-avatar) + .bottom-avatar {
-  display: none;
-}
-
-.bottom-avatar-wrap img[style*='display: none'] + .bottom-avatar {
-  display: flex;
-}
-
 .bottom-nav__status {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: 0;
+  right: 0;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 2px solid var(--theme-bg-secondary);
-  z-index: 2;
-  pointer-events: none;
-  transition: background var(--dur-fast);
-}
-
-.bottom-nav__item.is-active .bottom-avatar {
-  transform: scale(1.15);
-  border-color: var(--theme-accent-primary);
-}
-
-/* Center item highlight */
-.bottom-nav__item.is-center {
-  position: relative;
+  border: 2px solid var(--theme-surface);
 }
 
 /* Desktop: hide bottom nav */
@@ -147,47 +165,18 @@
   }
 }
 
-/* ==========================================
-   LIGHT THEME — Match pink background
-   ========================================== */
-[data-theme="light"] .bottom-nav {
-  background: var(--theme-bg-primary);
-  border-top-color: rgba(100, 60, 70, 0.1);
-}
-
-/* ==========================================
-   MÓVIL MUY PEQUEÑO (≤ 360px)
-   ========================================== */
+/* Tiny mobile */
 @media (max-width: 360px) {
   .bottom-nav {
-    height: 64px;
-    padding: 4px 6px;
-    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
-    gap: 2px;
-  }
-
-  .bottom-nav__item {
-    padding: 4px 2px;
-    gap: 2px;
+    height: 60px;
   }
 
   .bottom-nav__item svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .bottom-nav__item.is-active svg {
-    transform: scale(1.08);
+    width: 22px;
+    height: 22px;
   }
 
   .bottom-nav__label {
-    font-size: 0.5rem;
-    letter-spacing: 0.01em;
-  }
-
-  .bottom-avatar {
-    width: 18px;
-    height: 18px;
-    font-size: 0.55rem;
+    font-size: 0.6rem;
   }
 }

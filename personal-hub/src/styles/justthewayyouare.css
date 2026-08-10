@@ -1,66 +1,243 @@
 /* ==========================================
-   JUST THE WAY YOU ARE PAGE — Igual a ThoseEyes
+   JUST THE WAY YOU ARE — Romantic lyrics + player
+   Polished with glassmorphism + smooth animations
    ========================================== */
 .jt-page { position: relative; }
 .jt-wrap { position: relative; z-index: 10; max-width: 780px; margin: 0 auto; padding: 0 24px 120px; }
 .jt-stars-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0.5; }
 
-.jt-hero { padding: 72px 0 48px; border-bottom: 1px solid var(--theme-border-subtle); margin-bottom: 56px; }
-.jt-eyebrow { font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--theme-text-muted); margin-bottom: 24px; }
-.jt-title .t1, .jt-title .t2 { display: block; font-family: 'Playfair Display', Georgia, serif; font-weight: 400; font-size: clamp(4rem, 14vw, 8rem); letter-spacing: -0.02em; line-height: 0.95; }
-.jt-title .t2 { font-style: italic; color: var(--theme-accent-primary); }
-.jt-meta { margin-top: 20px; display: flex; align-items: center; gap: 12px; font-size: 0.65rem; letter-spacing: 0.2em; color: var(--theme-text-muted); }
-.meta-dot { width: 3px; height: 3px; background: var(--theme-text-muted); opacity: 0.4; border-radius: 50%; }
+/* ==========================================
+   HERO — Elegant title
+   ========================================== */
+.jt-hero { padding: 72px 0 48px; border-bottom: 1px solid var(--theme-divider); margin-bottom: 56px; position: relative; }
 
+.jt-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 60px;
+  height: 2px;
+  background: var(--theme-accent);
+  border-radius: 2px;
+}
+
+.jt-eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--theme-text-secondary);
+  margin-bottom: 24px;
+}
+
+.jt-title .t1, .jt-title .t2 {
+  display: block;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(4rem, 14vw, 8rem);
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  background: linear-gradient(180deg, var(--theme-text-primary) 0%, var(--theme-text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.jt-title .t2 {
+  font-style: italic;
+  background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-hover));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.jt-meta {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--theme-text-secondary);
+}
+.meta-dot {
+  width: 3px;
+  height: 3px;
+  background: var(--theme-text-secondary);
+  opacity: 0.4;
+  border-radius: 50%;
+}
+
+/* ==========================================
+   PLAYER — Glassmorphism card
+   ========================================== */
 .jt-player { margin-bottom: 64px; }
-.jt-player-card { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-radius: 20px; border: var(--theme-border-subtle); background: var(--theme-bg-glass); max-width: 380px; transition: all var(--dur-smooth); touch-action: manipulation; }
-.jt-player-card:hover { border-color: var(--theme-border-accent); box-shadow: var(--theme-shadow-glass), 0 0 20px var(--theme-accent-dim); }
-.jt-play-btn { flex-shrink: 0; width: 48px; height: 48px; border-radius: 40px; border: 1px solid var(--theme-accent-primary); background: transparent; color: var(--theme-accent-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--dur-spring); touch-action: manipulation; }
-.jt-play-btn:hover { background: var(--theme-accent-primary); color: #fff; transform: scale(1.08); box-shadow: 0 0 16px var(--theme-accent-dim); }
-.jt-play-btn:active { transform: scale(0.95); }
-.jt-player-info { flex: 1; min-width: 0; }
-.jt-song { font-family: 'Playfair Display', Georgia, serif; font-size: 1rem; font-weight: 500; color: var(--theme-text-primary); }
-.jt-artist { font-size: 0.7rem; letter-spacing: 0.08em; color: var(--theme-text-muted); margin-top: 4px; }
-.jt-player-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 
-.jt-audio-bars { display: flex; align-items: center; gap: 3px; height: 20px; }
-.jt-audio-bars span { display: block; width: 2px; background: var(--theme-accent-primary); opacity: 0.3; }
+.jt-player-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  max-width: 400px;
+  transition: all var(--dur-smooth);
+  touch-action: manipulation;
+  box-shadow: var(--elevation-1);
+}
+.jt-player-card:hover {
+  border-color: var(--theme-border-accent);
+  box-shadow: var(--elevation-1), 0 0 24px var(--accent-dim);
+  transform: translateY(-2px);
+}
+
+.jt-play-btn {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--theme-accent);
+  background: transparent;
+  color: var(--theme-accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--dur-spring);
+  touch-action: manipulation;
+}
+.jt-play-btn:hover {
+  background: var(--theme-accent);
+  color: #fff;
+  transform: scale(1.08);
+  box-shadow: 0 0 20px var(--accent-dim);
+}
+.jt-play-btn:active { transform: scale(0.95); }
+
+.jt-player-info { flex: 1; min-width: 0; }
+.jt-song {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--theme-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jt-artist {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--theme-text-secondary);
+  margin-top: 4px;
+}
+
+.jt-player-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* Audio EQ bars */
+.jt-audio-bars { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+.jt-audio-bars span {
+  display: block;
+  width: 2.5px;
+  background: var(--theme-accent);
+  border-radius: 2px;
+  opacity: 0.3;
+  transition: opacity var(--dur-smooth);
+}
 .jt-audio-bars span:nth-child(1) { height: 6px; }
-.jt-audio-bars span:nth-child(2) { height: 12px; }
-.jt-audio-bars span:nth-child(3) { height: 18px; }
-.jt-audio-bars span:nth-child(4) { height: 10px; }
-.jt-audio-bars span:nth-child(5) { height: 14px; }
+.jt-audio-bars span:nth-child(2) { height: 14px; }
+.jt-audio-bars span:nth-child(3) { height: 20px; }
+.jt-audio-bars span:nth-child(4) { height: 11px; }
+.jt-audio-bars span:nth-child(5) { height: 16px; }
 .jt-audio-bars span:nth-child(6) { height: 8px; }
-.jt-audio-bars.playing span { opacity: 0.8; animation: teBeat 1s ease-in-out infinite; }
+
+.jt-audio-bars.playing span {
+  opacity: 0.8;
+  animation: teBeat 0.9s ease-in-out infinite;
+}
 .jt-audio-bars.playing span:nth-child(1) { animation-delay: 0s; }
 .jt-audio-bars.playing span:nth-child(2) { animation-delay: 0.1s; }
 .jt-audio-bars.playing span:nth-child(3) { animation-delay: 0.2s; }
-.jt-audio-bars.playing span:nth-child(4) { animation-delay: 0.3s; }
-.jt-audio-bars.playing span:nth-child(5) { animation-delay: 0.4s; }
-.jt-audio-bars.playing span:nth-child(6) { animation-delay: 0.5s; }
-@keyframes teBeat { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+.jt-audio-bars.playing span:nth-child(4) { animation-delay: 0.15s; }
+.jt-audio-bars.playing span:nth-child(5) { animation-delay: 0.25s; }
+.jt-audio-bars.playing span:nth-child(6) { animation-delay: 0.35s; }
 
-.jt-time { font-size: 0.65rem; font-family: monospace; color: var(--theme-text-muted); }
-.jt-progress-track { height: 3px; background: var(--theme-bg-card-hover); border-radius: 3px; margin-top: 12px; max-width: 380px; cursor: pointer; transition: height var(--dur-fast); touch-action: manipulation; }
+@keyframes teBeat {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+.jt-time {
+  font-size: 0.65rem;
+  font-family: monospace;
+  color: var(--theme-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Progress bar */
+.jt-progress-track {
+  height: 3px;
+  background: var(--theme-surface-elevated);
+  border-radius: 3px;
+  margin-top: 14px;
+  max-width: 400px;
+  cursor: pointer;
+  transition: height var(--dur-fast);
+  touch-action: manipulation;
+  position: relative;
+}
 .jt-progress-track:hover { height: 5px; }
-.jt-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--theme-accent-primary), var(--theme-accent-secondary)); border-radius: 3px; transition: width 0.1s linear; }
+.jt-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--theme-accent), var(--theme-accent-hover));
+  border-radius: 3px;
+  transition: width 0.1s linear;
+  position: relative;
+}
+.jt-progress-fill::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+.jt-progress-track:hover .jt-progress-fill::after {
+  opacity: 1;
+}
 
 /* ==========================================
-   LYRICS — Igual a ThoseEyes (block + line) + traducción
+   LYRICS — Smooth transitions
    ========================================== */
 .jt-lyrics { padding: 0 4px; }
 
-.lyric-block { margin-bottom: 3rem; }
-
-.lyric-block.active {
-  background: var(--theme-accent-dim);
-  border-color: var(--theme-border-accent);
-  box-shadow: 0 0 24px var(--theme-accent-dim);
+.lyric-block {
+  margin-bottom: 3rem;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
   padding: 8px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--theme-border-accent);
   margin-left: -4px;
   margin-right: -4px;
+  transition: all var(--dur-smooth);
+}
+
+.lyric-block.active {
+  background: var(--accent-dim);
+  border-color: var(--theme-border-accent);
+  box-shadow: 0 0 28px var(--accent-dim), inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
 .lyric-line {
@@ -76,83 +253,79 @@
 }
 
 .lyric-line.italic { font-style: italic; font-size: clamp(1.3rem, 4vw, 2.4rem); font-weight: 300; }
-.lyric-line.accent { font-weight: 500; color: var(--theme-accent-primary); opacity: 0.6; }
+.lyric-line.accent { font-weight: 500; color: var(--theme-accent); opacity: 0.55; }
 .lyric-line.big { font-size: clamp(1.8rem, 6vw, 3.4rem); font-weight: 500; }
 
 .lyric-block.active .lyric-line {
   color: var(--theme-text-primary);
   transform: translateX(8px) scale(1.02);
-  text-shadow: 0 0 20px var(--theme-accent-dim);
+  text-shadow: 0 0 24px var(--accent-dim);
 }
-
 .lyric-block.active .lyric-line.accent { opacity: 1; }
+.lyric-block.active .lyric-line.big {
+  transform: translateX(8px) scale(1.04);
+  text-shadow: 0 0 32px var(--accent-dim);
+}
 
 .lyric-block.past .lyric-line {
-  color: var(--theme-text-muted);
-  opacity: 0.4;
+  color: var(--theme-text-secondary);
+  opacity: 0.35;
 }
+.lyric-block.past .lyric-line.accent { opacity: 0.25; }
 
-.lyric-block.past .lyric-line.accent { opacity: 0.3; }
-
-/* Spanish translation under each line */
+/* Spanish translation */
 .lyric-line-es {
   display: block;
   font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(0.85rem, 2.8vw, 1.1rem);
   line-height: 1.4;
-  color: var(--theme-accent-primary);
-  opacity: 0.65;
+  color: var(--theme-accent);
+  opacity: 0.55;
   font-style: italic;
   font-weight: 400;
   transition: opacity var(--dur-smooth), transform var(--dur-smooth);
-  padding-left: 4px;
-  border-left: 2px solid var(--theme-accent-dim);
-  margin-top: 2px;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent-dim);
+  margin-top: 3px;
 }
-
 .lyric-block.active .lyric-line-es {
-  opacity: 1;
-  transform: translateX(4px);
-  border-left-color: var(--theme-accent-primary);
+  opacity: 0.9;
+  transform: translateX(6px);
+  border-left-color: var(--theme-accent);
 }
+.lyric-block.past .lyric-line-es { opacity: 0.25; }
 
-.lyric-block.past .lyric-line-es {
-  opacity: 0.3;
-}
-
-/* Lyric divider */
+/* Section dividers */
 .lyric-divider {
   display: flex;
   align-items: center;
   gap: 16px;
   margin: 1.5rem 0 2rem;
-  opacity: 0.4;
+  opacity: 0.35;
 }
-
 .lyric-divider::before,
 .lyric-divider::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--theme-text-muted), transparent);
+  background: linear-gradient(90deg, transparent, var(--theme-text-secondary), transparent);
 }
-
 .lyric-divider span {
   font-size: 0.7rem;
-  color: var(--theme-accent-primary);
+  color: var(--theme-accent);
 }
 
 /* ==========================================
-   CLOSING
+   CLOSING — Heartfelt fade-in
    ========================================== */
 .jt-closing {
   margin-top: 80px;
-  border-top: 1px solid var(--theme-border-subtle);
-  padding-top: 48px;
+  border-top: 1px solid var(--theme-divider);
+  padding-top: 56px;
   text-align: center;
   opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 1.2s var(--dur-smooth), transform 1.2s var(--dur-smooth);
+  transform: translateY(24px);
+  transition: opacity 1.2s ease, transform 1.2s cubic-bezier(0.22,1,0.36,1);
 }
 
 .jt-closing.visible {
@@ -160,16 +333,30 @@
   transform: translateY(0);
 }
 
+.jt-closing-heart {
+  display: block;
+  font-size: 1.6rem;
+  margin-bottom: 20px;
+  animation: jtHeartPulse 1.8s ease-in-out infinite;
+  color: var(--theme-accent);
+}
+
+@keyframes jtHeartPulse {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.3); }
+  30% { transform: scale(1); }
+}
+
 .closing-msg {
   font-family: 'Playfair Display', Georgia, serif;
   font-style: italic;
   font-size: clamp(1.1rem, 3vw, 1.5rem);
-  color: var(--theme-text-muted);
+  color: var(--theme-text-secondary);
   line-height: 1.6;
+  margin: 0;
 }
-
 .closing-msg strong {
-  color: var(--theme-accent-primary);
+  color: var(--theme-accent);
   font-style: normal;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -178,69 +365,64 @@
 .closing-sub {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(0.8rem, 2vw, 0.95rem);
-  color: var(--theme-text-muted);
-  opacity: 0.6;
-  margin-top: 12px;
+  color: var(--theme-text-secondary);
+  opacity: 0.5;
+  margin-top: 14px;
   font-style: italic;
 }
 
+/* Keyboard hint */
+.jt-kb-hint {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.6rem;
+  color: var(--theme-text-secondary);
+  opacity: 0.4;
+}
+.jt-kb-hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface-elevated);
+  font-family: monospace;
+  font-size: 0.65rem;
+}
+
 /* ==========================================
-   DESKTOP AMPLIO
+   RESPONSIVE
    ========================================== */
 @media (min-width: 1025px) {
-  .jt-hero {
-    padding: 96px 0 56px;
-    margin-bottom: 72px;
-  }
-
-  .jt-wrap {
-    max-width: 900px;
-    padding: 0 40px 160px;
-  }
-
-  .jt-title .t1,
-  .jt-title .t2 {
-    font-size: clamp(5rem, 12vw, 9rem);
-  }
-
-  .jt-lyrics {
-    padding: 0 24px;
-  }
-
+  .jt-hero { padding: 96px 0 56px; margin-bottom: 72px; }
+  .jt-wrap { max-width: 900px; padding: 0 40px 160px; }
+  .jt-title .t1, .jt-title .t2 { font-size: clamp(5rem, 12vw, 9rem); }
+  .jt-lyrics { padding: 0 24px; }
   .lyric-block { margin-bottom: 4rem; }
-
-  .lyric-block.active {
-    padding: 12px 20px;
-    margin-left: -8px;
-    margin-right: -8px;
-  }
-
+  .lyric-block.active { padding: 14px 22px; margin-left: -8px; margin-right: -8px; }
   .lyric-line { font-size: clamp(2rem, 4vw, 3.4rem); }
   .lyric-line.italic { font-size: clamp(1.5rem, 3.5vw, 2.8rem); }
   .lyric-line-es { font-size: clamp(0.95rem, 2.2vw, 1.2rem); }
-
-  .jt-player-card {
-    padding: 20px 28px;
-    max-width: 420px;
-  }
+  .jt-player-card { padding: 22px 28px; max-width: 440px; }
+  .jt-play-btn { width: 56px; height: 56px; }
 }
 
 @media (max-width: 600px) {
   .jt-wrap { padding: 0 16px 100px; }
   .jt-hero { padding: 48px 0 32px; margin-bottom: 40px; }
-  .jt-player-card { padding: 12px 16px; }
-  .jt-play-btn { width: 42px; height: 42px; }
+  .jt-hero::after { width: 40px; }
+  .jt-player-card { padding: 14px 16px; border-radius: var(--r-lg); }
+  .jt-play-btn { width: 44px; height: 44px; }
   .lyric-block.active { padding: 6px 10px; }
 }
 
 @media (max-width: 480px) {
   .jt-wrap { padding: 0 12px 80px; }
   .jt-hero { padding: 36px 0 24px; margin-bottom: 32px; }
-  .jt-title .t1,
-  .jt-title .t2 { font-size: clamp(2.8rem, 12vw, 4rem); }
+  .jt-hero::after { width: 32px; }
+  .jt-title .t1, .jt-title .t2 { font-size: clamp(2.8rem, 12vw, 4rem); }
   .jt-player { margin-bottom: 40px; }
-  .jt-player-card { padding: 10px 14px; gap: 12px; border-radius: 16px; }
-  .jt-play-btn { width: 38px; height: 38px; }
+  .jt-player-card { padding: 12px 14px; gap: 12px; border-radius: var(--r-md); }
+  .jt-play-btn { width: 40px; height: 40px; }
   .jt-play-btn svg { width: 16px; height: 16px; }
   .jt-song { font-size: 0.88rem; }
   .jt-artist { font-size: 0.6rem; }
@@ -252,10 +434,11 @@
   .lyric-block { margin-bottom: 2rem; }
   .jt-closing { margin-top: 48px; padding-top: 32px; }
   .closing-msg { font-size: clamp(0.9rem, 3vw, 1.1rem); }
+  .jt-closing-heart { font-size: 1.2rem; margin-bottom: 14px; }
   .jt-eyebrow { font-size: 0.6rem; margin-bottom: 16px; }
   .jt-meta { font-size: 0.55rem; flex-wrap: wrap; }
   .jt-audio-bars { height: 16px; }
-  .jt-audio-bars span { width: 1.5px; }
+  .jt-audio-bars span { width: 2px; }
   .jt-progress-track { margin-top: 8px; }
   .lyric-divider { margin: 1rem 0 1.5rem; }
 }
@@ -263,10 +446,9 @@
 @media (max-width: 360px) {
   .jt-wrap { padding: 0 8px 72px; }
   .jt-hero { padding: 28px 0 20px; margin-bottom: 24px; }
-  .jt-title .t1,
-  .jt-title .t2 { font-size: clamp(2rem, 10vw, 2.8rem); }
-  .jt-player-card { padding: 8px 10px; gap: 8px; }
-  .jt-play-btn { width: 34px; height: 34px; }
+  .jt-title .t1, .jt-title .t2 { font-size: clamp(2rem, 10vw, 2.8rem); }
+  .jt-player-card { padding: 10px 10px; gap: 8px; }
+  .jt-play-btn { width: 36px; height: 36px; }
   .jt-song { font-size: 0.8rem; }
   .lyric-line { font-size: clamp(1rem, 4.5vw, 1.3rem); }
   .lyric-line.italic { font-size: clamp(0.9rem, 3.5vw, 1.1rem); }
@@ -274,4 +456,5 @@
   .lyric-block { margin-bottom: 1.5rem; }
   .lyric-block.active { padding: 4px 8px; }
   .jt-closing { margin-top: 36px; padding-top: 24px; }
+  .jt-closing-heart { font-size: 1rem; margin-bottom: 10px; }
 }

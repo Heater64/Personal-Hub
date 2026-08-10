@@ -1,0 +1,399 @@
+/* ==========================================
+   MEDIA LIGHTBOX — Estilo Umbra
+   Panel redondeado, controles glass, acento coral.
+   ========================================== */
+
+.media-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.2, 0.9, 0.4, 1);
+}
+
+.media-lightbox.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.lightbox-open { overflow: hidden; }
+
+.ml-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 4, 6, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.ml-shell {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  height: 100%; width: 100%;
+}
+
+/* ==========================================
+   TOPBAR — barra glass flotante
+   ========================================== */
+.ml-topbar {
+  position: relative;
+  display: flex; align-items: center; justify-content: space-between;
+  margin: var(--sp-16);
+  margin-bottom: 0;
+  padding: var(--sp-8);
+  border-radius: var(--r-full);
+  background: rgba(10, 10, 12, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  flex-shrink: 0; z-index: 2;
+}
+
+.ml-topbar-left { display: flex; align-items: center; gap: var(--sp-8); }
+
+.ml-topbar-counter {
+  font-size: var(--fs-xs); color: var(--theme-text-secondary);
+  font-weight: 500; font-variant-numeric: tabular-nums;
+  padding: 0 var(--sp-12);
+}
+
+.ml-topbar-right { display: flex; align-items: center; gap: var(--sp-4); }
+
+.ml-topbar-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.ml-topbar-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff; transform: scale(1.06);
+}
+
+.ml-topbar-btn:active { transform: scale(0.94); }
+
+/* ==========================================
+   STAGE — contenido
+   ========================================== */
+.ml-stage {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  position: relative; min-height: 0; overflow: hidden;
+}
+
+.ml-content {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  max-width: 100%; max-height: 100%; padding: 0 80px;
+}
+
+.ml-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 3;
+  display: flex; align-items: center; justify-content: center;
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 10, 12, 0.6);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: all var(--dur-smooth);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.ml-nav:hover {
+  background: rgba(10, 10, 12, 0.8);
+  border-color: var(--border-accent);
+  color: #fff;
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 0 24px rgba(232, 115, 90, 0.15);
+}
+
+.ml-nav:active { transform: translateY(-50%) scale(0.94); }
+
+.ml-prev { left: 16px; }
+.ml-next { right: 16px; }
+
+/* ==========================================
+   MEDIA — panel redondeado con elevación
+   ========================================== */
+.ml-image-wrap {
+  position: relative; display: flex; align-items: center;
+  justify-content: center; max-width: 100%; max-height: 100%;
+}
+
+.ml-video-wrap {
+  display: flex; align-items: center; justify-content: center;
+  max-width: 95%; max-height: 85vh; position: relative;
+}
+
+.ml-media {
+  max-width: 100%; max-height: 82vh; object-fit: contain;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--elevation-4);
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+}
+
+.ml-video-wrap .ml-media {
+  width: 100%; max-height: 82vh; border-radius: var(--r-lg);
+  box-shadow: var(--elevation-4);
+}
+
+/* ==========================================
+   IMAGE CONTROLS — cluster glass abajo-derecha
+   ========================================== */
+.ml-img-controls {
+  position: absolute;
+  bottom: var(--sp-20); right: var(--sp-20);
+  display: flex; flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  background: rgba(10, 10, 12, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 3;
+}
+
+.ml-zoom-btn,
+.ml-rotate-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: var(--r-sm);
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer; font-size: 1.15rem; font-weight: 500; line-height: 1;
+  transition: all var(--dur-fast);
+}
+
+.ml-zoom-btn:hover,
+.ml-rotate-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff; transform: scale(1.06);
+}
+
+.ml-zoom-btn:active,
+.ml-rotate-btn:active { transform: scale(0.94); }
+
+.ml-zoom-btn.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.ml-rotate-btn {
+  position: static;
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+}
+
+.ml-zoom-label {
+  position: absolute; bottom: var(--sp-20); left: 50%; transform: translateX(-50%);
+  font-size: var(--fs-xs); font-weight: 500; color: var(--theme-text-secondary);
+  background: rgba(10, 10, 12, 0.6);
+  padding: var(--sp-6) var(--sp-14); border-radius: var(--r-full);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+
+/* ==========================================
+   VIDEO — botón de play central grande
+   ========================================== */
+.ml-video-play-overlay {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 76px; height: 76px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(232, 115, 90, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  cursor: pointer; z-index: 4;
+  transition: transform var(--dur-spring), background var(--dur-fast);
+}
+
+.ml-video-play-overlay:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+  background: rgba(232, 115, 90, 0.45);
+}
+
+.ml-video-play-overlay:active { transform: translate(-50%, -50%) scale(0.94); }
+.ml-video-play-overlay.hidden { opacity: 0; pointer-events: none; }
+
+/* ==========================================
+   BOTTOMBAR — caption + thumbnails
+   ========================================== */
+.ml-bottombar {
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-24) var(--sp-20); flex-shrink: 0; z-index: 2;
+}
+
+.ml-caption {
+  font-size: var(--fs-sm); color: var(--theme-text-secondary);
+  text-align: center; max-width: 600px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-style: italic;
+  padding: var(--sp-4) var(--sp-16);
+  border-radius: var(--r-full);
+  background: rgba(10, 10, 12, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ml-thumbs-scroll {
+  display: flex; gap: var(--sp-8); overflow-x: auto;
+  max-width: 100%; padding: var(--sp-4) var(--sp-8); scroll-behavior: smooth;
+}
+
+.ml-thumbs-scroll::-webkit-scrollbar { height: 3px; }
+.ml-thumbs-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12); border-radius: 3px;
+}
+
+.ml-thumb {
+  flex-shrink: 0; width: 60px; height: 60px;
+  border-radius: var(--r-sm);
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden; cursor: pointer; padding: 0;
+  background: rgba(255, 255, 255, 0.03);
+  transition: all var(--dur-fast);
+}
+
+.ml-thumb img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.ml-thumb:hover img { transform: scale(1.08); }
+
+.ml-thumb.active {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 16px var(--accent-dim);
+  transform: translateY(-2px);
+}
+
+.ml-thumb:hover { border-color: rgba(255, 255, 255, 0.25); transform: translateY(-2px); }
+
+.ml-thumb-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Fullscreen */
+.media-lightbox:fullscreen { background: #000; }
+.media-lightbox:fullscreen .ml-backdrop {
+  background: #000; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.media-lightbox:fullscreen .ml-media {
+  max-height: 95vh; max-width: 98vw; border-radius: 0;
+  border: none;
+}
+.media-lightbox:fullscreen .ml-content { padding: 0 100px; }
+
+.media-lightbox:-webkit-full-screen { background: #000; }
+.media-lightbox:-webkit-full-screen .ml-backdrop {
+  background: #000; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.media-lightbox:-webkit-full-screen .ml-media {
+  max-height: 95vh; max-width: 98vw; border-radius: 0;
+}
+.media-lightbox:-webkit-full-screen .ml-content { padding: 0 100px; }
+
+/* ==========================================
+   VIDEO CUSTOM CONTROLS — barra glass
+   ========================================== */
+.ml-video-controls {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: var(--sp-8);
+  padding: var(--sp-16) var(--sp-20) var(--sp-16);
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 60%, transparent 100%);
+  opacity: 0; transition: opacity 0.35s ease; z-index: 5;
+}
+
+.ml-vc-visible,
+.ml-video-wrap:hover .ml-video-controls { opacity: 1; }
+
+.ml-vc-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: none; background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer; transition: all var(--dur-fast);
+  flex-shrink: 0; padding: 0;
+}
+
+.ml-vc-btn:hover {
+  color: #fff; transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.ml-vc-btn:active { transform: scale(0.94); }
+
+.ml-vc-time {
+  font-size: var(--fs-xs); font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0; min-width: 34px;
+}
+
+.ml-vc-progress {
+  flex: 1; display: flex; align-items: center;
+  height: 24px; cursor: pointer;
+}
+
+.ml-vc-progress-track {
+  position: relative; flex: 1; height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px; transition: height 0.2s ease;
+}
+
+.ml-vc-progress:hover .ml-vc-progress-track { height: 6px; }
+
+.ml-vc-progress-fill {
+  position: absolute; top: 0; left: 0; height: 100%;
+  background: var(--theme-accent); border-radius: 2px;
+  transition: width 0.1s linear; width: 0%;
+}
+
+.ml-vc-progress-thumb {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--theme-accent);
+  box-shadow: 0 0 6px rgba(0,0,0,0.4);
+  left: 0%; opacity: 0; transition: opacity 0.2s ease;
+}
+
+.ml-vc-progress:hover .ml-vc-progress-thumb { opacity: 1; }
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 640px) {
+  .ml-content { padding: 0 12px; }
+  .ml-nav { width: 42px; height: 42px; }
+  .ml-prev { left: 4px; }
+  .ml-next { right: 4px; }
+  .ml-media { max-height: 60vh; }
+  .ml-topbar { margin: var(--sp-8); padding: var(--sp-4); }
+  .ml-topbar-btn { width: 40px; height: 40px; }
+  .ml-img-controls { bottom: var(--sp-12); right: var(--sp-8); }
+  .ml-zoom-btn, .ml-rotate-btn { width: 40px; height: 40px; }
+  .ml-video-play-overlay { width: 64px; height: 64px; }
+  .ml-thumb { width: 48px; height: 48px; }
+  .ml-video-controls { padding: var(--sp-12) var(--sp-12) var(--sp-12); gap: var(--sp-6); }
+  .ml-vc-progress { height: 28px; }
+  .media-lightbox:fullscreen .ml-content,
+  .media-lightbox:-webkit-full-screen .ml-content { padding: 0 16px; }
+  .media-lightbox:fullscreen .ml-nav,
+  .media-lightbox:-webkit-full-screen .ml-nav { width: 44px; height: 44px; }
+}

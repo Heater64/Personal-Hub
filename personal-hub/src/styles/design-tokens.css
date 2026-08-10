@@ -1,111 +1,152 @@
 /* ==========================================
-   DESIGN TOKENS — Personal Hub v2
-   Fuente única de verdad para colores, espacios, radios, tipografía
+   DESIGN TOKENS — Personal Hub v3 (Native)
+   Superficies planas, sin glassmorphism, sin cards.
+   Inspirado en apps nativas premium (Spotify, Photos, Apple Music).
    ========================================== */
 
 :root {
   /* ==========================================
-     COLORES BASE — Paleta Umbra (oscuro por defecto)
+     PALETA — Superficies planas, 3 niveles de elevación
      ========================================== */
-  --umbra-black:       #0f0f10;
-  --umbra-dark:        #1a1a1c;
-  --umbra-stone:       #2a2a2e;
-  --umbra-ash:         #6e6a67;
-  --umbra-light:       #e8e6e3;
-  --umbra-white-soft:  #f5f3f0;
+  --surface-0: #0a0a0c;          /* Fondo raíz — el más oscuro */
+  --surface-1: #111114;          /* Superficie elevada (listas, secciones) */
+  --surface-2: #19191d;          /* Superficie más elevada (modals, bottom sheets) */
+  --surface-3: #222228;          /* Superficie activa/presionada */
 
-  /* Acentos principales */
-  --accent-coral:      #c65a3a;
-  --accent-rust:       #8f3e2e;
-  --accent-dim:        rgba(198, 90, 58, 0.15);
-  --accent-border:     rgba(198, 90, 58, 0.35);
+  /* Overlays */
+  --overlay-light: rgba(0, 0, 0, 0.5);
+  --overlay-heavy: rgba(0, 0, 0, 0.85);
+
+  /* ==========================================
+     ACENTOS — Coral refinado (menos saturado, más premium)
+     ========================================== */
+  --accent:            #e8735a;
+  --accent-hover:      #f0806a;
+  --accent-pressed:    #d4624a;
+  --accent-strong:     #c14e3a; /* variante oscura para texto blanco AA sobre coral */
+  --accent-strong-hover: #c5523c; /* hover AA sobre la variante fuerte */
+  --accent-dim:        rgba(232, 115, 90, 0.12);
+  --accent-dim-strong: rgba(232, 115, 90, 0.22);
 
   /* Acentos secundarios */
   --warm-amber:        #ffb347;
-  --warm-pink:         #ff8aa1;
-  --warm-gold-dim:     rgba(255, 179, 71, 0.18);
+  --warm-amber-dim:    rgba(255, 179, 71, 0.15);
+  --warm-rose:         #ff8aa1;
+  --warm-rose-dim:     rgba(255, 138, 161, 0.12);
 
-  /* Estados */
-  --green:             #4caf50;
-  --green-dim:         rgba(76, 175, 80, 0.15);
-  --red:               #dc3545;
-  --red-dim:           rgba(220, 53, 69, 0.15);
-  --blue:              #2196f3;
-  --blue-dim:          rgba(33, 150, 243, 0.15);
-  --yellow:            #ffb347;
-  --yellow-dim:        rgba(255, 179, 71, 0.15);
+  /* Hero — iluminación ambiental sutil (profundidad, no decoración) */
+  --hero-glow-1:       rgba(232, 115, 90, 0.10);
+  --hero-glow-2:       rgba(255, 179, 71, 0.06);
+  --hero-glow-3:       rgba(255, 138, 161, 0.05);
+  --hero-noise:        0.028;
+  --hero-particle:     rgba(255, 138, 161, 0.35);
 
-  /* Superficies */
-  --bg-card:           rgba(255, 255, 255, 0.02);
-  --bg-card-hover:     rgba(255, 255, 255, 0.06);
-  --bg-overlay:        rgba(15, 15, 16, 0.95);
-  --bg-input:          rgba(255, 255, 255, 0.04);
+  /* Estados semánticos */
+  --green:             #4ade80;
+  --green-dim:         rgba(74, 222, 128, 0.12);
+  --red:               #f87171;
+  --red-dim:           rgba(248, 113, 113, 0.12);
+  --blue:              #60a5fa;
+  --blue-dim:          rgba(96, 165, 250, 0.12);
+  --yellow:            #fbbf24;
+  --yellow-dim:        rgba(251, 191, 36, 0.12);
 
   /* ==========================================
-     ESPACIADO
+     TEXTO — Jerarquía clara con pesos
      ========================================== */
-  --space-xs:   8px;
-  --space-sm:   16px;
-  --space-md:   32px;
-  --space-lg:   64px;
-  --space-xl:   120px;
-  --space-xxl:  200px;
+  --text-primary:      rgba(255, 255, 255, 0.93);
+  --text-secondary:    rgba(255, 255, 255, 0.65);
+  --text-tertiary:     rgba(255, 255, 255, 0.38);
+  --text-disabled:     rgba(255, 255, 255, 0.22);
+  --text-inverse:      #0a0a0c;
+  --text-accent:       var(--accent);
 
   /* ==========================================
-     BORDES REDONDEADOS
+     BORDES — Sutiles, casi invisibles, solo para separación
      ========================================== */
-  --radius-sm:   6px;
-  --radius-md:   12px;
-  --radius-lg:   20px;
-  --radius-xl:   28px;
-  --radius-pill: 40px;
+  --divider:           rgba(255, 255, 255, 0.06);
+  --divider-strong:    rgba(255, 255, 255, 0.10);
+  --border-accent:     rgba(232, 115, 90, 0.30);
 
   /* ==========================================
-     TIPOGRAFÍA
+     ESPACIADO — Escala consistente (múltiplos de 4)
+     ========================================== */
+  --sp-2:   2px;
+  --sp-4:   4px;
+  --sp-6:   6px;
+  --sp-8:   8px;
+  --sp-10:  10px;
+  --sp-12:  12px;
+  --sp-14:  14px;
+  --sp-16:  16px;
+  --sp-18:  18px;
+  --sp-20:  20px;
+  --sp-24:  24px;
+  --sp-28:  28px;
+  --sp-32:  32px;
+  --sp-40:  40px;
+  --sp-48:  48px;
+  --sp-64:  64px;
+
+  /* ==========================================
+     RADIOS — Sistema unificado
+     ========================================== */
+  --r-xs:    6px;
+  --r-sm:    10px;
+  --r-md:    16px;
+  --r-lg:    22px;
+  --r-xl:    28px;
+  --r-full:  9999px;
+
+  /* ==========================================
+     TIPOGRAFÍA — Display + Body
      ========================================== */
   --font-body:    'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Playfair Display', Georgia, serif;
 
-  --fs-xs:   0.72rem;
-  --fs-sm:   0.85rem;
-  --fs-md:   1rem;
-  --fs-lg:   1.25rem;
-  --fs-xl:   1.5rem;
-  --fs-2xl:  2rem;
-  --fs-3xl:  2.8rem;
+  /* Escala tipográfica */
+  --fs-caption:  0.6875rem;  /* 11px */
+  --fs-xs:       0.75rem;    /* 12px */
+  --fs-sm:       0.8125rem;  /* 13px */
+  --fs-base:     0.9375rem;  /* 15px */
+  --fs-md:       1.0625rem;  /* 17px */
+  --fs-lg:       1.25rem;    /* 20px */
+  --fs-xl:       1.5rem;     /* 24px */
+  --fs-2xl:      2rem;       /* 32px */
+  --fs-3xl:      2.5rem;     /* 40px */
+  --fs-4xl:      3rem;       /* 48px */
 
   /* ==========================================
-     DURACIONES
+     DURACIONES — Animaciones nativas
      ========================================== */
-  --dur-instant: 0.08s ease;
+  --dur-instant: 0.05s ease;
   --dur-fast:    0.15s ease;
-  --dur-mid:     0.25s ease;
-  --dur-slow:    0.4s ease;
-  --dur-slower:  0.6s ease;
-  --dur-spring:  0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-bounce:  0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-smooth:  0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-smooth-out: 0.35s cubic-bezier(0.83, 0, 0.17, 1);
+  --dur-main:    0.35s ease;
+  --dur-normal:  0.25s ease;
+  --dur-slow:    0.35s ease;
+  --dur-slower:  0.5s ease;
+  --dur-spring:  0.4s cubic-bezier(0.22, 0.9, 0.3, 1.1);
+  --dur-smooth:  0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-decel:   0.35s cubic-bezier(0, 0, 0.2, 1);
+  --dur-accel:   0.2s cubic-bezier(0.4, 0, 1, 1);
 
   /* ==========================================
-     SOMBRAS
+     SOMBRAS — Solo para elementos flotantes reales
+     (modals, bottom sheets, tooltips). NO para cards.
      ========================================== */
-  --shadow-sm:         0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md:         0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg:         0 8px 40px rgba(0, 0, 0, 0.5);
-  --shadow-xl:         0 16px 64px rgba(0, 0, 0, 0.6);
-  --shadow-glow:       0 0 20px rgba(198, 90, 58, 0.15);
-  --shadow-glow-strong: 0 0 30px rgba(198, 90, 58, 0.25);
-  --shadow-inner-top:  inset 0 1px 0 rgba(255,255,255,0.05);
-  --shadow-inner-bottom: inset 0 -1px 0 rgba(0,0,0,0.2);
-  --shadow-glass:      0 2px 4px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.04);
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --elevation-2: 0 3px 6px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
+  --elevation-3: 0 10px 20px rgba(0,0,0,0.5), 0 6px 6px rgba(0,0,0,0.4);
+  --elevation-4: 0 14px 28px rgba(0,0,0,0.6), 0 10px 10px rgba(0,0,0,0.5);
+
+  /* Glow sutil solo para el acento */
+  --glow-accent: 0 0 20px rgba(232, 115, 90, 0.15);
 
   /* ==========================================
-     BLUR
+     BLUR — Solo para overlays y bottom nav
      ========================================== */
-  --blur-sm:  8px;
-  --blur-md:  16px;
-  --blur-lg:  24px;
+  --blur-nav:    20px;
+  --blur-overlay: 12px;
 
   /* ==========================================
      Z-INDEX
@@ -117,151 +158,263 @@
   --z-modal:     1000;
   --z-toast:     1100;
   --z-tooltip:   1200;
-  --z-decor:     2000;
 
   /* ==========================================
-     SIDEBAR
+     LAYOUT CONSTANTS
      ========================================== */
-  --sidebar-width:        260px;
-  --sidebar-width-mobile: 72px;
+  --bottom-nav-height: 64px;
+  --header-height: 56px;
+  --content-max-width: 720px;
+  --content-padding-x: 16px;
 
   /* ==========================================
-     THEME SYSTEM — Tokens semánticos
+     TOKENS SEMÁNTICOS — Theme System
+     Mapean a las variables de superficie plana.
      ========================================== */
 
   /* Fondos */
-  --theme-bg-primary:       var(--umbra-black);
-  --theme-bg-secondary:     var(--umbra-dark);
-  --theme-bg-tertiary:      var(--umbra-stone);
-  --theme-bg-card:          var(--bg-card);
-  --theme-bg-card-hover:    var(--bg-card);
-  --theme-bg-overlay:       var(--bg-overlay);
-  --theme-bg-input:         var(--bg-input);
-  --theme-bg-glass:         rgba(255, 255, 255, 0.04);
-  --theme-bg-glass-hover:   rgba(255, 255, 255, 0.08);
+  --theme-bg:              var(--surface-0);
+  --theme-surface:         var(--surface-1);
+  --theme-surface-elevated: var(--surface-2);
+  --theme-surface-pressed:  var(--surface-3);
 
   /* Texto */
-  --theme-text-primary:     var(--umbra-light);
-  --theme-text-secondary:   #a8a4a0;
-  --theme-text-muted:       var(--umbra-ash);
-  --theme-text-inverse:     var(--umbra-black);
-
-  /* Bordes */
-  --theme-border-subtle:    1px solid rgba(255, 255, 255, 0.05);
-  --theme-border-visible:   1px solid rgba(255, 255, 255, 0.12);
-  --theme-border-accent:    1px solid rgba(198, 90, 58, 0.35);
+  --theme-text-primary:    var(--text-primary);
+  --theme-text-secondary:  var(--text-secondary);
+  --theme-text-tertiary:   var(--text-tertiary);
+  --theme-text-disabled:   var(--text-disabled);
+  --theme-text-inverse:    var(--text-inverse);
 
   /* Acentos */
-  --theme-accent-primary:   var(--accent-coral);
-  --theme-accent-secondary: var(--accent-rust);
+  --theme-accent:           var(--accent);
+  --theme-accent-hover:     var(--accent-hover);
+  --theme-accent-pressed:   var(--accent-pressed);
+  --theme-accent-strong:    var(--accent-strong);
+  --theme-accent-strong-hover: var(--accent-strong-hover);
   --theme-accent-dim:       var(--accent-dim);
-  --theme-accent-border:    var(--accent-border);
-  --theme-accent-glow:      var(--shadow-glow);
+  --theme-accent-dim-strong: var(--accent-dim-strong);
+  --theme-accent-glow:      var(--glow-accent);
 
   /* Estados */
-  --theme-success:          var(--green);
-  --theme-success-dim:      var(--green-dim);
-  --theme-error:            var(--red);
-  --theme-error-dim:        var(--red-dim);
-  --theme-info:             var(--blue);
-  --theme-info-dim:         var(--blue-dim);
-  --theme-warning:          var(--yellow);
-  --theme-warning-dim:      var(--yellow-dim);
+  --theme-success:   var(--green);
+  --theme-success-dim: var(--green-dim);
+  --theme-error:     var(--red);
+  --theme-error-dim: var(--red-dim);
+  --theme-info:      var(--blue);
+  --theme-info-dim:  var(--blue-dim);
+  --theme-warning:   var(--yellow);
+  --theme-warning-dim: var(--yellow-dim);
 
-  /* Sombras */
-  --theme-shadow-sm:        var(--shadow-sm);
-  --theme-shadow-md:        var(--shadow-md);
-  --theme-shadow-lg:        var(--shadow-lg);
-  --theme-shadow-xl:        var(--shadow-xl);
-  --theme-shadow-glow:      var(--shadow-glow);
-  --theme-shadow-glow-strong: var(--shadow-glow-strong);
-  --theme-shadow-inner-top: var(--shadow-inner-top);
-  --theme-shadow-glass:     var(--shadow-glass);
+  /* Divisores */
+  --theme-divider:        var(--divider);
+  --theme-divider-strong: var(--divider-strong);
+  --theme-border-accent:  var(--border-accent);
+
+  /* Aliases semánticos Umbra para componentes heredados */
+  --theme-border:         var(--divider-strong);
+  --theme-primary:        var(--accent);
+  --theme-danger:         var(--red);
+  --theme-text-muted:     var(--text-tertiary);
+  --theme-surface-soft:   var(--surface-1);
+  --theme-surface-2:      var(--surface-2);
+  --theme-bg-hover:       var(--surface-2);
+  --theme-text:           var(--text-primary);
+  --accent-coral-hover:   var(--accent-hover);
 
   /* Scrollbar */
+  --theme-scrollbar-track: transparent;
+  --theme-scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.16);
+
+  /* Sidebar (desktop only) */
+  --sidebar-width: 240px;
+
+  /* ==========================================
+     LEGACY ALIASES — Compatibilidad con CSS existente
+     Mapean tokens antiguos a los nuevos.
+     Se irán eliminando conforme se migren las páginas.
+     ========================================== */
+  --theme-bg-primary:       var(--surface-0);
+  --theme-bg-secondary:     var(--surface-1);
+  --theme-bg-tertiary:      var(--surface-2);
+  --theme-bg-card:          var(--surface-1);
+  --theme-bg-card-hover:    var(--surface-2);
+  --theme-bg-overlay:       var(--overlay-heavy);
+  --theme-bg-input:         var(--surface-2);
+  --theme-bg-glass:         var(--surface-1);
+  --theme-bg-glass-hover:   var(--surface-2);
+
+  --theme-accent-primary:   var(--accent);
+  --theme-accent-secondary: var(--accent-hover);
+  --theme-accent-strong:    var(--accent-strong);
+  --theme-accent-strong-hover: var(--accent-strong-hover);
+  --theme-accent-dim:       var(--accent-dim);
+  --theme-accent-border:    var(--border-accent);
+  --theme-accent-glow:      var(--glow-accent);
+
+  --theme-border-subtle:    1px solid var(--divider);
+  --theme-border-visible:   1px solid var(--divider-strong);
+  --theme-border-accent:    var(--border-accent);
+
+  --theme-shadow-sm:        var(--elevation-1);
+  --theme-shadow-md:        var(--elevation-2);
+  --theme-shadow-lg:        var(--elevation-3);
+  --theme-shadow-xl:        var(--elevation-4);
+  --theme-shadow-glow:      var(--glow-accent);
+  --theme-shadow-glow-strong: var(--glow-accent);
+  --theme-shadow-inner-top: inset 0 1px 0 var(--divider);
+  --theme-shadow-glass:     var(--elevation-1);
+
   --theme-scrollbar-track:  transparent;
-  --theme-scrollbar-thumb:  rgba(255, 255, 255, 0.1);
-  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+  --theme-scrollbar-thumb:  rgba(255, 255, 255, 0.08);
+  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.16);
 
-  /* Sidebar */
-  --theme-sidebar-bg:       linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
-  --theme-sidebar-border:   rgba(255, 255, 255, 0.03);
+  --theme-sidebar-bg:       var(--surface-1);
+  --theme-sidebar-border:   1px solid var(--divider);
 
-  /* Bottom nav */
-  --bottom-nav-height: 72px;
+  --shadow-sm:              var(--elevation-1);
+  --shadow-md:              var(--elevation-2);
+  --shadow-lg:              var(--elevation-3);
+  --shadow-xl:              var(--elevation-4);
+  --shadow-glow:            var(--glow-accent);
+  --shadow-glow-strong:     var(--glow-accent);
+  --shadow-inner-top:       inset 0 1px 0 var(--divider);
+  --shadow-glass:           var(--elevation-1);
+
+  --blur-sm:                8px;
+  --blur-md:                16px;
+  --blur-lg:                24px;
+
+  --radius-sm:              var(--r-xs);
+  --radius-md:              var(--r-sm);
+  --radius-lg:              var(--r-md);
+  --radius-xl:              var(--r-lg);
+  --radius-pill:            var(--r-full);
+
+  --space-xs:               var(--sp-8);
+  --space-sm:               var(--sp-16);
+  --space-md:               var(--sp-32);
+  --space-lg:               var(--sp-64);
+  --space-xl:               var(--sp-48);
+  --space-xxl:              var(--sp-64);
+
+  /* NOTA: la escala tipográfica moderna (--fs-xs … --fs-4xl, definida arriba)
+     es la fuente de verdad. Los antiguos aliases legacy que re-mapeaban
+     --fs-md/--fs-lg/--fs-xl/--fs-2xl/--fs-3xl → 15px se ELIMINARON porque
+     colapsaban todos los títulos de página a tamaño de cuerpo, haciendo que
+     secciones que usan tokens (Series, Sentimientos, Canciones, Rincón,
+     Juegos, Calendario) se vieran sin jerarquía frente a las que usan clamp().
+     Las páginas deben usar la escala moderna (--fs-base para cuerpo 15px,
+     --fs-md 17px, --fs-xl 24px, --fs-2xl 32px, --fs-3xl 40px). */
+
+  --dur-instant: 0.08s ease;
+  --dur-fast:    0.15s ease;
+  --dur-mid:     0.25s ease;
+  --dur-slow:    0.4s ease;
+  --dur-slower:  0.6s ease;
+  --dur-spring:  0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-bounce:  0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-smooth:  0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-smooth-out: 0.35s cubic-bezier(0.83, 0, 0.17, 1);
+
+  --bottom-nav-height: 64px;
+  --z-sidebar: var(--z-sticky);
 }
 
 /* ==========================================
-   LIGHT THEME — Romantic / Cream & Garnet
-   Fondo rosado/crema, tarjetas blancas,
-   sidebar granate oscuro y texto con buen contraste.
+   LIGHT THEME — Porcelana rosa, frambuesa con
+   peso visual. Espejo del dark: misma jerarquía,
+   mismos radios, misma elegancia. El acento se
+   oscurece para cumplir WCAG AA sobre claro.
    ========================================== */
 [data-theme="light"] {
-  /* Fondos — Pink/cream background with white cards */
-  --theme-bg-primary:       #fdf4f6;
-  --theme-bg-secondary:     #ffffff;
-  --theme-bg-tertiary:      #f7e8ec;
-  --theme-bg-card:          rgba(255, 255, 255, 0.95);
-  --theme-bg-card-hover:    rgba(255, 255, 255, 1);
-  --theme-bg-overlay:       rgba(45, 20, 25, 0.5);
-  --theme-bg-input:         rgba(0, 0, 0, 0.03);
-  --theme-bg-glass:         rgba(255, 255, 255, 0.9);
-  --theme-bg-glass-hover:   #ffffff;
+  /* Superficies — porcelana rosa cálida, 4 niveles */
+  --surface-0: #f8edf0;          /* Fondo raíz — rosa porcelana visible (cards blancas destacan) */
+  --surface-1: #ffffff;          /* Panel — blanco puro */
+  --surface-2: #fdf3f6;          /* Elevada — rosa pálido */
+  --surface-3: #f8e7ee;          /* Activa/presionada — rosa visible */
 
-  /* Texto — Dark charcoal/brown for high readability */
-  --theme-text-primary:     #2b1b1e;
-  --theme-text-secondary:   #59494d;
-  --theme-text-muted:       #907e82;
-  --theme-text-inverse:     #ffffff;
+  --overlay-light: rgba(74, 20, 45, 0.32);
+  --overlay-heavy: rgba(74, 20, 45, 0.72);
 
-  /* Bordes — Warm tinted, subtle but defined */
-  --theme-border-subtle:    1px solid rgba(100, 60, 70, 0.15);
-  --theme-border-visible:   1px solid rgba(100, 60, 70, 0.24);
-  --theme-border-accent:    1px solid rgba(207, 64, 98, 0.3);
+  /* ==========================================
+     ACENTO — Frambuesa refinada (contraste AA sobre blanco)
+     ========================================== */
+  --accent:            #c2185b;
+  --accent-hover:      #d63068;
+  --accent-pressed:    #a5124b;
+  --accent-strong:     #b00f4e; /* variante oscura para texto blanco AA sobre frambuesa */
+  --accent-strong-hover: #d63068; /* hover AA sobre la variante fuerte */
+  --accent-dim:        rgba(194, 24, 91, 0.10);
+  --accent-dim-strong: rgba(194, 24, 91, 0.18);
 
-  /* Acentos — Consistent coral/pink from the base theme */
-  --theme-accent-primary:   #cf4062;
-  --theme-accent-secondary: #e55b7b;
-  --theme-accent-dim:       rgba(207, 64, 98, 0.15);
-  --theme-accent-border:    rgba(207, 64, 98, 0.3);
-  --theme-accent-glow:      0 0 20px rgba(207, 64, 98, 0.15);
+  /* Acentos secundarios — versión legible sobre claro */
+  --warm-amber:        #b45309;
+  --warm-amber-dim:    rgba(180, 83, 9, 0.14);
+  --warm-rose:         #c94076;
+  --warm-rose-dim:     rgba(201, 64, 118, 0.12);
 
-  /* Sombras — Crisp, with a slight warm tint for depth */
-  --theme-shadow-sm:        0 1px 2px rgba(45, 20, 25, 0.05);
-  --theme-shadow-md:        0 4px 6px -1px rgba(45, 20, 25, 0.08), 0 2px 4px -1px rgba(45, 20, 25, 0.04);
-  --theme-shadow-lg:        0 10px 15px -3px rgba(45, 20, 25, 0.08), 0 4px 6px -2px rgba(45, 20, 25, 0.04);
-  --theme-shadow-xl:        0 20px 25px -5px rgba(45, 20, 25, 0.1), 0 10px 10px -5px rgba(45, 20, 25, 0.04);
-  --theme-shadow-glow:      0 0 24px rgba(207, 64, 98, 0.15);
-  --theme-shadow-glow-strong: 0 0 32px rgba(207, 64, 98, 0.25);
-  --theme-shadow-glass:     0 4px 16px rgba(45, 20, 25, 0.12);
+  /* Hero — iluminación ambiental rosa (profundidad suave) */
+  --hero-glow-1:       rgba(194, 24, 91, 0.10);
+  --hero-glow-2:       rgba(180, 83, 9, 0.08);
+  --hero-glow-3:       rgba(214, 71, 125, 0.08);
+  --hero-noise:        0.018;
+  --hero-particle:     rgba(194, 24, 91, 0.28);
 
-  /* Scrollbar */
-  --theme-scrollbar-track:  rgba(100, 60, 70, 0.03);
-  --theme-scrollbar-thumb:  rgba(100, 60, 70, 0.15);
-  --theme-scrollbar-thumb-hover: rgba(100, 60, 70, 0.25);
+  /* Estados semánticos — oscurecidos para contraste AA sobre claro */
+  --green:             #15803d;
+  --green-dim:         rgba(21, 128, 61, 0.12);
+  --red:               #dc2626;
+  --red-dim:           rgba(220, 38, 38, 0.12);
+  --blue:              #2563eb;
+  --blue-dim:          rgba(37, 99, 235, 0.12);
+  --yellow:            #b45309;
+  --yellow-dim:        rgba(180, 83, 9, 0.14);
 
-  /* Sidebar — Soft pink gradient */
-  --theme-sidebar-bg:       linear-gradient(180deg, #fdf4f6 0%, #f7e8ec 100%);
-  --theme-sidebar-border:   1px solid rgba(100, 60, 70, 0.15);
+  /* ==========================================
+     TEXTO — Ciruela profunda, nunca negro puro
+     ========================================== */
+  --text-primary:      rgba(50, 16, 32, 0.94);
+  --text-secondary:    rgba(50, 16, 32, 0.62);
+  --text-tertiary:     rgba(50, 16, 32, 0.40);
+  --text-disabled:     rgba(50, 16, 32, 0.24);
+  --text-inverse:      #ffffff;
+
+  /* Divisores — sutiles con tinte cálido */
+  --divider:           rgba(50, 16, 32, 0.07);
+  --divider-strong:    rgba(50, 16, 32, 0.12);
+  --border-accent:     rgba(194, 24, 91, 0.30);
+
+  /* ==========================================
+     SOMBRAS — Elevación con tinte rosa, más
+     presentes que en dark (el claro lo necesita)
+     ========================================== */
+  --elevation-1: 0 1px 3px rgba(90, 30, 55, 0.10), 0 1px 1px rgba(90, 30, 55, 0.06);
+  --elevation-2: 0 4px 10px rgba(90, 30, 55, 0.10), 0 2px 4px rgba(90, 30, 55, 0.07);
+  --elevation-3: 0 12px 24px rgba(90, 30, 55, 0.14), 0 6px 8px rgba(90, 30, 55, 0.09);
+  --elevation-4: 0 18px 36px rgba(90, 30, 55, 0.18), 0 10px 12px rgba(90, 30, 55, 0.12);
+
+  --glow-accent: 0 0 24px rgba(194, 24, 91, 0.18);
+
+  --theme-scrollbar-track: transparent;
+  --theme-scrollbar-thumb: rgba(90, 30, 55, 0.12);
+  --theme-scrollbar-thumb-hover: rgba(90, 30, 55, 0.22);
 }
 
 /* ==========================================
    LARGE TEXT (Accesibilidad)
    ========================================== */
 [data-large-text="true"] {
-  --fs-xs:   0.85rem;
-  --fs-sm:   1rem;
-  --fs-md:   1.15rem;
-  --fs-lg:   1.4rem;
-  --fs-xl:   1.75rem;
-  --fs-2xl:  2.25rem;
-  --fs-3xl:  3.2rem;
-  --space-xs: 10px;
-  --space-sm: 18px;
-  --space-md: 36px;
-  --space-lg: 72px;
-  --space-xl: 130px;
-  --space-xxl: 220px;
+  --fs-caption: 0.8125rem;
+  --fs-xs:      0.875rem;
+  --fs-sm:      0.9375rem;
+  --fs-base:    1.0625rem;
+  --fs-md:      1.1875rem;
+  --fs-lg:      1.375rem;
+  --fs-xl:      1.75rem;
+  --fs-2xl:     2.25rem;
+  --fs-3xl:     2.75rem;
+  --fs-4xl:     3.25rem;
 }
 
 /* ==========================================
@@ -271,9 +424,12 @@
   :root {
     --dur-instant: 0.001s;
     --dur-fast:    0.001s;
-    --dur-mid:     0.001s;
+    --dur-normal:  0.001s;
     --dur-slow:    0.001s;
     --dur-slower:  0.001s;
     --dur-spring:  0.001s;
+    --dur-smooth:  0.001s;
+    --dur-decel:   0.001s;
+    --dur-accel:   0.001s;
   }
 }

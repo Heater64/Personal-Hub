@@ -1,190 +1,343 @@
 /* ==========================================
-   Personal Hub v2 — Home Page
-   Bienvenida · Novedades · Datos Curiosos
+   Personal Hub v8 — Home (Portada emocional viva)
+   Solo tarjetas: meme del día → mensaje → series
+   (continúa viendo) → canciones (sigue escuchando).
    ========================================== */
 
-import { HOME_DATA } from '../data/homeData.js';
+import { MEME_FOLDERS, getVideoPoster } from '../services/rincon-data.js';
+import { LETTERS } from './OpenWhen.js';
 import { escapeHtml } from '../utils/escape.js';
+import { userPrefKey, migrateUserPref } from '../utils/userStorage.js';
+import { hourInSpain } from '../utils/format.js';
+import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
+import { startPosterRotation } from '../utils/posterRotator.js';
 
 const START_DATE = '2025-07-03';
-const NEWS = HOME_DATA.news;
-const CURIOSITIES = HOME_DATA.curiosities;
 
+// ==========================================
+// SVG
+// ==========================================
+const UI = {
+  play: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+};
+
+// ==========================================
+// SEED — contenido que cambia cada día
+// ==========================================
+function dailySeed() {
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+function seededRandom(seed) {
+  let s = seed;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+function pickSeeded(arr, rng) {
+  if (!arr || !arr.length) return null;
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+// ==========================================
+// CONTENIDO ESTÁTICO
+// ==========================================
+const GREETINGS = {
+  morning:  ['Buenos días ☀️<br>Me alegra volver a verte.', 'Buenos días ☀️<br>Hoy también va a ser un día bonito.', 'Buenos días ☀️<br>El sol sale solo para verte sonreír.'],
+  afternoon:['Buenas tardes 🌤️<br>Espero que estés teniendo un lindo día.', 'Buenas tardes 🌤️<br>¿Ya comiste? Cuídate mucho.', 'Buenas tardes 🌤️<br>Cada tarde es mejor si estás tú.'],
+  evening:  ['Buenas noches 🌙<br>Espero que hayas tenido un bonito día.', 'Buenas noches 🌙<br>Descansa, mañana hay más sorpresas.', 'Buenas noches 🌙<br>Gracias por estar otro día más conmigo.'],
+  night:    ['Buenas noches<br>Es tarde... pero nunca es tarde para decirte que te quiero.', 'Buenas noches<br>Que sueñes con cosas bonitas.', 'Buenas noches<br>Cierro los ojos y solo pienso en ti.'],
+};
+
+const PHRASES = [
+  '"El amor no se mira, se siente." — Pablo Neruda',
+  '"Eres mi lugar favorito al que ir cuando mi mente busca paz."',
+  '"Cada día a tu lado es un nuevo capítulo de mi historia favorita."',
+  '"Te elegiría a ti en todas las vidas."',
+  '"Contigo, hasta los días nublados son bonitos."',
+  '"Eres la casualidad más bonita que me ha pasado."',
+];
+
+// ==========================================
+// DATOS CURIOSOS
+// ==========================================
+const FUN_FACTS = [
+  {
+    icon: '🎨',
+    title: 'Paleta de colores',
+    text: 'Los colores de esta web están inspirados en el personaje animado \'Darwin\' y tu color favorito (negro), por eso la web es un poco oscura.'
+  },
+  {
+    icon: '🌠',
+    title: 'La estrella fugaz',
+    text: 'Cada estrella que ves en la web representa lo deslumbrante que eres.'
+  },
+  {
+    icon: '🤍',
+    title: 'El corazón',
+    text: 'Porque simplemente es especial.'
+  },
+  {
+    icon: '📅',
+    title: 'El calendario',
+    text: 'El calendario es una metáfora de nuestro tiempo juntos. Cada día es una oportunidad para crear un recuerdo nuevo.'
+  }
+];
+
+// ==========================================
+// DATA HELPERS
+// ==========================================
+function getMeme(rng) {
+  const folders = Object.entries(MEME_FOLDERS || {});
+  if (!folders.length) return null;
+  const [name, urls] = pickSeeded(folders, rng);
+  const url = pickSeeded(urls, rng);
+  const isVid = /\.(mp4|webm|mov)$/i.test(url);
+  // Los memes de video usan su póster (una imagen jpg), nunca el mp4 en un <img>
+  const thumb = isVid ? getVideoPoster(url) : url.replace('/q_auto,f_auto,w_800/', '/q_auto:good,f_auto,w_600,c_fill,g_auto/');
+  return { thumb, name, isVid };
+}
+
+function getSong() {
+  try {
+    migrateUserPref('continueTrack');
+    const d = JSON.parse(localStorage.getItem(userPrefKey('continueTrack')));
+    if (!d?.title) return null;
+    // Duración cacheada por Canciones (misma clave): permite dibujar la
+    // barra de progreso real de la última escucha.
+    let duration = 0;
+    try {
+      const durs = JSON.parse(localStorage.getItem(userPrefKey('trackDurations')) || '{}');
+      if (d.audio && durs[d.audio]) duration = durs[d.audio];
+    } catch { /* sin duración: barra neutra */ }
+    return { title: d.title, artist: d.artist || '', cover: d.cover || '', time: d.time || 0, duration, audio: d.audio || '' };
+  } catch { return null; }
+}
+
+function getMessage(rng) {
+  return LETTERS?.length ? pickSeeded(LETTERS, rng) : null;
+}
+
+// ==========================================
+// BIND
+// ==========================================
+function bindClicks(root, router) {
+  root.querySelectorAll('[data-route]').forEach(el => {
+    if (el._routeBound) return;
+    el._routeBound = true;
+    const go = () => { const r = el.dataset.route; if (r) router.navigate(r); };
+    el.addEventListener('click', go);
+    // Accesibilidad: las tarjetas son <div> clicables → navegables por teclado
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        go();
+      }
+    });
+  });
+}
+
+// ==========================================
+// MAIN
+// ==========================================
 export function HomePage(router) {
   const page = document.createElement('div');
   page.className = 'home-page';
 
   const daysSince = Math.floor((Date.now() - new Date(START_DATE).getTime()) / 86400000);
+  const hour = hourInSpain(); // saludo según hora de España (península)
+  const seed = dailySeed();
+  const rng = seededRandom(seed);
 
-  const CURIOSITY_ICONS = {
-    palette: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.82.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.5-4.5-10-10-10z"/></svg>',
-    sparkles: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles-icon lucide-sparkles"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>',
-    heart: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
-    'calendar-days': '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>'
-  };
+  let timeKey = hour < 12 ? 'morning' : hour < 19 ? 'afternoon' : hour < 22 ? 'evening' : 'night';
+  const greeting = GREETINGS[timeKey][seed % GREETINGS[timeKey].length];
+  const [gSaludo = 'Buenos días ☀️', gSub = 'Espero que tengas un bonito día.'] = greeting.split('<br>');
+  const phrase = PHRASES[seed % PHRASES.length];
+  // Separa la cita del autor para tipografía independiente
+  const phraseParts = phrase.split(/—/).map(s => s.trim());
+  const phraseQuote = (phraseParts[0] || phrase).replace(/^\"|\"$/g, '');
+  const phraseAuthor = phraseParts[1] || '';
 
-  function getCuriosityIcon(iconKey) {
-    // Try SVG first, fall back to emoji
-    return CURIOSITY_ICONS[iconKey] || '<span class="curiosity-icon-emoji">✦</span>';
+  // Gather data (sync)
+  const meme = getMeme(rng);
+  const song = getSong();
+  const continueList = getContinueWatching();
+  const message = getMessage(rng);
+
+  // ── Hero particles (subtle, seeded) ──
+  let particlesHtml = '';
+  for (let i = 0; i < 4; i++) {
+    particlesHtml += `<span class="home-hero__particle" style="left:${12 + rng() * 76}%;top:${18 + rng() * 60}%;animation-delay:${(rng() * 4).toFixed(2)}s;animation-duration:${(5 + rng() * 5).toFixed(2)}s"></span>`;
   }
 
+  // ── GRID DE TARJETAS — todas cuadradas y del mismo tamaño ──
+  const cards = [];
+
+  // 1. Meme del día — patrón visual. Lleva directo a la pestaña de memes
+  // del Rincón (no al landing).
+  if (meme) {
+    cards.push(`<div class="home-card home-card--meme" data-route="/rincon?tab=memes">
+      <div class="home-card__media">
+        ${meme.thumb ? `<img src="${escapeHtml(meme.thumb)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <span class="home-card__media-fb" style="display:${meme.thumb ? 'none' : 'flex'}">😂</span>
+        ${meme.isVid ? `<span class="home-card__play">${UI.play}</span>` : ''}
+      </div>
+      <div class="home-card__overlay"></div>
+      <span class="home-card__chip">😂 Meme del día</span>
+      <div class="home-card__body">
+        <div class="home-card__title">${escapeHtml(meme.name)}</div>
+        <div class="home-card__sub">Sonríe, es para ti</div>
+      </div>
+    </div>`);
+  }
+
+  // 2. Mensaje sorpresa — patrón emocional
+  if (message) {
+    cards.push(`<div class="home-card home-card--message" data-route="/openwhen">
+      <div class="home-card__media home-card__media--emoji" style="background:radial-gradient(ellipse 95% 110% at 50% 15%, var(--warm-rose-dim) 0%, transparent 62%), var(--theme-surface);">
+        <span class="home-card__emoji">💌</span>
+      </div>
+      <div class="home-card__overlay home-card__overlay--soft"></div>
+      <span class="home-card__chip">💌 Mensaje</span>
+      <div class="home-card__body">
+        <div class="home-card__title">${escapeHtml(message.title)}</div>
+        <div class="home-card__sub">${escapeHtml((message.note || message.message || '').substring(0, 80))}…</div>
+      </div>
+    </div>`);
+  }
+
+  // 3. Series — una sola tarjeta; dentro, las portadas (seguir viendo o aleatorias)
+  const posterPool = continueList.length
+    ? continueList.slice(0, 4)
+    : [...getCatalogSync()].sort(() => Math.random() - 0.5).map(item => ({ item })).slice(0, 4);
+  const posters = posterPool.map(c => c.item.portada).filter(Boolean);
+  const continueFirst = continueList[0];
+  cards.push(`<div class="home-card home-card--series" data-route="/series" data-poster-rotate>
+    <div class="home-card__media">
+      ${posters.length ? `<img class="sr-rotating-poster home-card__poster" src="${escapeHtml(posters[0])}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+      <span class="home-card__media-fb" style="display:${posters.length ? 'none' : 'flex'}">🎬</span>
+    </div>
+    <div class="home-card__overlay"></div>
+    <span class="home-card__chip">${continueList.length ? '📺 Seguir viendo' : '🎬 Series'}</span>
+    <div class="home-card__body">
+      <div class="home-card__title">${continueList.length ? escapeHtml(continueFirst.item.titulo) : 'Series'}</div>
+      <div class="home-card__sub">${continueList.length ? `Ep. ${continueFirst.watched} de ${continueFirst.total} · ${continueFirst.percent}%` : 'Tu tracker de series y películas'}</div>
+      ${continueList.length ? `<div class="home-card__bar"><span class="home-card__bar-fill" style="width:${Math.max(continueFirst.percent, 4)}%"></span></div>` : ''}
+    </div>
+  </div>`);
+
+  // 4. Sigue escuchando — patrón reproductor. Lleva a Canciones y reanuda
+  // la última canción automáticamente (?continue=1).
+  if (song) {
+    const pct = song.duration && song.time ? Math.min(100, Math.round((song.time / song.duration) * 100)) : (song.time > 0 ? 100 : 0);
+    cards.push(`<div class="home-card home-card--music" data-route="/canciones?continue=1">
+      <div class="home-card__media">
+        ${song.cover ? `<img src="${escapeHtml(song.cover)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <span class="home-card__media-fb" style="display:${song.cover ? 'none' : 'flex'}">🎵</span>
+      </div>
+      <div class="home-card__overlay"></div>
+      <span class="home-card__chip">🎵 Sigue escuchando</span>
+      <span class="home-card__play">${UI.play}</span>
+      <div class="home-card__body">
+        <div class="home-card__title">${escapeHtml(song.title)}</div>
+        <div class="home-card__sub">${escapeHtml(song.artist || 'Continuar escuchando')}</div>
+        ${song.time > 0 ? `<div class="home-card__bar"><span class="home-card__bar-fill" style="width:${Math.max(pct, 4)}%"></span></div>` : ''}
+      </div>
+    </div>`);
+  }
+
+  // ── RENDER ──
   page.innerHTML = `
-    <!-- Hero -->
-    <div class="bento-hero glass-card">
-      <p class="eyebrow">
-        <span class="eyebrow-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkle-icon lucide-sparkle"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg></span>
-        centro de webs
-      </p>
-      <h2>Bienvenida<br> mi <em> princesa</em></h2>
-      <div class="hero-divider">
-        <span class="hero-divider-line"></span>
-        <span class="hero-divider-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span>
-        <span class="hero-divider-line"></span>
+    <header class="home-hero">
+      <div class="home-hero__bg"></div>
+      ${particlesHtml}
+      <div class="home-hero__content">
+        <div class="home-hero__welcome">
+          <h1 class="home-hero__title">
+            <span class="home-hero__title-white">Bienvenida mi</span>
+            <span class="home-hero__title-accent">Princesa</span>
+          </h1>
+          <p class="home-hero__greeting">${gSaludo}</p>
+          <p class="home-hero__sub">${gSub}</p>
+        </div>
+
+        <div class="home-hero__center">
+          <div class="home-hero__counter-box">
+            <span class="home-hero__heart">🤍</span>
+            <div class="home-hero__counter">
+              <div class="home-hero__days" id="homeCounter">${daysSince}</div>
+              <div class="home-hero__label">días juntos</div>
+            </div>
+          </div>
+          <p class="home-hero__phrase">${escapeHtml(phraseQuote)}</p>
+          ${phraseAuthor ? `<p class="home-hero__phrase-author">— ${escapeHtml(phraseAuthor)}</p>` : ''}
+        </div>
+
+        <div class="home-hero__divider" aria-hidden="true"></div>
       </div>
-      <p>Explora las webs que iré subiendo a lo largo del tiempo. Cada una es diferente pero con el mismo propósito.</p>
-      <div class="day-counter">
-        <span class="day-counter-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span>
-        <span id="homeDayCounter">${daysSince} días juntos</span>
-      </div>
+    </header>
+
+    <div class="home-grid${cards.length >= 4 ? ' home-grid--four' : ''}">
+      ${cards.join('')}
     </div>
 
-    <!-- Novedades -->
-    <div class="news-banner glass-card" id="newsBanner">
-      <div class="news-header">
-        <span class="news-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles-icon lucide-sparkles"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></span>
-        <span class="news-title">Novedades</span>
-        <span class="news-badge" id="newsBadge">Nuevo</span>
-        <button type="button" class="news-hide-btn" id="newsHideBtn" aria-label="Ocultar novedades" title="Ocultar novedades">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" id="hideEyeIcon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-        </button>
-      </div>
-      <div class="news-content" id="newsContent">
-        <div class="news-empty">Cargando novedades...</div>
-      </div>
-    </div>
-
-    <!-- Datos Curiosos -->
-    <div class="curiosities-section">
-      <div class="curiosities-header">
-        <span class="curiosities-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles-icon lucide-sparkles"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></span>
-        <h3>Datos curiosos</h3>
-      </div>
-      <div class="curiosities-grid">
-        ${CURIOSITIES.map((c, i) => `
-          <div class="card curiosity-card glass-card" style="animation-delay: ${i * 0.1}s">
-            <span class="curiosity-icon">${getCuriosityIcon(c.icon)}</span>
-            <h4>${escapeHtml(c.title)}</h4>
-            <p>${escapeHtml(c.description)}</p>
+    <section class="home-facts" aria-label="Datos curiosos">
+      <h2 class="home-facts__title">Datos curiosos</h2>
+      <div class="home-facts__list">
+        ${FUN_FACTS.map(f => `
+          <div class="home-fact">
+            <span class="home-fact__icon" aria-hidden="true">${f.icon}</span>
+            <div class="home-fact__body">
+              <h3 class="home-fact__title">${f.title}</h3>
+              <p class="home-fact__text">${f.text}</p>
+            </div>
           </div>
         `).join('')}
       </div>
-    </div>
+    </section>
 
-    <!-- Footer -->
     <footer class="home-footer">
       <p>Hecho con amor</p>
     </footer>
   `;
 
-  const NEWS_HIDE_KEY = 'ph.newsHidden';
-  let newsHidden = localStorage.getItem(NEWS_HIDE_KEY) === 'true';
-
-  const EYE_ICONS = {
-    show: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
-    hide: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
-  };
-
-  // Apply initial hidden state
-  const newsBanner = page.querySelector('#newsBanner');
-  const newsHideBtn = page.querySelector('#newsHideBtn');
-  if (newsHidden) {
-    newsBanner.classList.add('news-collapsed');
-    newsHideBtn.classList.add('is-hidden');
-    newsHideBtn.innerHTML = EYE_ICONS.show;
-    newsHideBtn.title = 'Mostrar novedades';
-    newsHideBtn.setAttribute('aria-label', 'Mostrar novedades');
-  }
-
-  // Load news from HOME_DATA into the page element (before it's in DOM)
-  loadNews();
-
-  return page;
-
-  // ==========================================
-  function loadNews() {
-    const container = page.querySelector('#newsContent');
-    if (!container) return;
-    renderNews(NEWS, container);
-
-    // Bind hide/show toggle (after DOM is ready)
-    requestAnimationFrame(() => {
-      bindNewsToggle();
-    });
-  }
-
-  function bindNewsToggle() {
-    const btn = page.querySelector('#newsHideBtn');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      newsHidden = !newsHidden;
-      newsBanner.classList.toggle('news-collapsed', newsHidden);
-      localStorage.setItem(NEWS_HIDE_KEY, newsHidden ? 'true' : 'false');
-      btn.classList.toggle('is-hidden', newsHidden);
-      // Swap icon and title
-      btn.innerHTML = newsHidden ? EYE_ICONS.show : EYE_ICONS.hide;
-      btn.title = newsHidden ? 'Mostrar novedades' : 'Ocultar novedades';
-      btn.setAttribute('aria-label', newsHidden ? 'Mostrar novedades' : 'Ocultar novedades');
-    });
-  }
-
-  function renderNews(items, container) {
-    if (!items || items.length === 0) {
-      container.innerHTML = '<div class="news-empty">✨ No hay novedades por ahora. ¡Vuelve pronto!</div>';
-      return;
+  // ── Counter animation ──
+  requestAnimationFrame(() => {
+    const el = page.querySelector('#homeCounter');
+    if (!el) return;
+    const target = daysSince;
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min((now - start) / 1800, 1);
+      el.textContent = Math.floor((1 - Math.pow(1 - p, 3)) * target);
+      if (p < 1) requestAnimationFrame(tick);
     }
+    requestAnimationFrame(tick);
+  });
 
-    let html = '';
-    const MAX_VISIBLE = 5;
-    let hasHidden = false;
+  // ── Bind clicks ──
+  bindClicks(page, router);
 
-    items.forEach((item, i) => {
-      const hidden = i >= MAX_VISIBLE;
-      if (hidden && !hasHidden) hasHidden = true;
-      const isSeparator = item.type === 'separator';
-
-      if (isSeparator) {
-        html += `
-          <div class="news-separator">
-            <span class="news-separator-line"></span>
-            <span class="news-separator-label">${escapeHtml(item.label || '—')}</span>
-            <span class="news-separator-line"></span>
-          </div>`;
-      } else {
-        html += `
-          <div class="card news-item ${hidden ? 'news-hidden' : ''}" data-index="${item.id || i}">
-            <div class="news-item-top">
-              <span class="news-date">${escapeHtml(item.date || '')}</span>
-            </div>
-            <span class="news-item-title">${escapeHtml(item.title)}</span>
-            <p class="news-item-desc">${escapeHtml(item.description || '')}</p>
-          </div>`;
+  // ── Rotación de portadas dentro de la tarjeta de Series (10s, fade suave) ──
+  const rotateEl = page.querySelector('[data-poster-rotate]');
+  let stopRotation = () => {};
+  if (rotateEl && posters.length > 1) {
+    stopRotation = startPosterRotation(rotateEl, posters, {
+      onChange: (i) => {
+        if (!continueList.length) return; // aleatorio: solo rota la portada
+        const c = continueList[i % continueList.length];
+        if (!c) return;
+        const t = rotateEl.querySelector('.home-card__title');
+        const s = rotateEl.querySelector('.home-card__sub');
+        const bar = rotateEl.querySelector('.home-card__bar-fill');
+        if (t) t.textContent = c.item.titulo;
+        if (s) s.textContent = `Ep. ${c.watched} de ${c.total} · ${c.percent}%`;
+        if (bar) bar.style.width = `${Math.max(c.percent, 4)}%`;
       }
     });
-
-    container.innerHTML = html;
-
-    if (hasHidden) {
-      const toggle = document.createElement('button');
-      toggle.className = 'news-toggle';
-      toggle.type = 'button';
-      toggle.innerHTML = '<span>Ver más novedades</span>';
-      toggle.addEventListener('click', () => {
-        container.querySelectorAll('.news-hidden').forEach(el => {
-          el.classList.remove('news-hidden');
-        });
-        toggle.remove();
-      });
-      container.parentNode.appendChild(toggle);
-    }
   }
+  const origCleanup = page.cleanup;
+  page.cleanup = () => { stopRotation(); if (origCleanup) origCleanup(); };
+
+  return page;
 }

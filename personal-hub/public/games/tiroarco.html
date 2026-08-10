@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🏹 Tiro con Arco</title>
+    <title>Tiro con Arco</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -319,12 +319,13 @@
         }
     </style>
     <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
 
 <body>
     <div class="game-container">
         <div class="game-header">
-            <h1>🏹 Tiro con Arco</h1>
+            <h1>Tiro con Arco</h1>
             <div class="toolbar">
                 <button class="icon-btn" id="pauseBtn" title="Pausa">⏸️</button>
             </div>
@@ -333,8 +334,9 @@
 
         <div class="score-display">
             <div class="score-item"><div class="label">Puntos</div><div class="value gold" id="scoreDisplay">0</div></div>
+            <div class="score-item"><div class="label">Récord</div><div class="value green" id="highScoreDisplay">0</div></div>
             <div class="score-item"><div class="label">Disparos</div><div class="value white" id="shotsDisplay">0</div></div>
-            <div class="score-item"><div class="label">Nivel</div><div class="value green" id="levelDisplay">1</div></div>
+            <div class="score-item"><div class="label">Nivel</div><div class="value" id="levelDisplay">1</div></div>
             <div class="score-item"><div class="label">Ronda</div><div class="value white" id="roundDisplay">0/5</div></div>
         </div>
 
@@ -396,6 +398,7 @@
             let shots = 0;
             let level = 1;
             let roundShots = 0;
+            let highScore = parseInt(localStorage.getItem('tiroarcoHighScore') || '0', 10);
             const SHOTS_PER_ROUND = 5;
             let gameRunning = true;
             let paused = false;
@@ -460,6 +463,7 @@
             // --- Actualizar UI ---
             function updateUI() {
                 scoreDisplay.textContent = score;
+                highScoreDisplay.textContent = highScore;
                 shotsDisplay.textContent = shots;
                 levelDisplay.textContent = level;
                 roundDisplay.textContent = `${roundShots}/${SHOTS_PER_ROUND}`;
@@ -474,18 +478,14 @@
 
             // --- Disparar ---
             function shootArrow() {
-                console.log('🎯 shootArrow() llamado, gameRunning:', gameRunning, 'paused:', paused, 'arrow:', arrow);
                 
                 if (!gameRunning) {
-                    console.log('❌ Juego no está corriendo');
                     return;
                 }
                 if (paused) {
-                    console.log('❌ Juego en pausa');
                     return;
                 }
                 if (arrow) {
-                    console.log('❌ Ya hay una flecha en vuelo');
                     return;
                 }
 
@@ -497,7 +497,6 @@
                 // VELOCIDAD AUMENTADA
                 const speed = 6 + power * 12;
 
-                console.log('🏹 Disparando: ángulo=' + angleSlider.value + '°, potencia=' + powerSlider.value + '%', 'velocidad:', speed);
 
                 // Aplicar viento al ángulo de salida
                 const windEffect = wind * 0.02;
@@ -547,6 +546,8 @@
                         const points = Math.max(0, 10 - rings);
                         score += points;
                         spawnParticles(arrow.x, arrow.y, '#ffd166', 20);
+                        SFX.point();
+                        buzz(8);
 
                         let msg = '';
                         if (points >= 9) msg = '🎯 ¡Centro perfecto! +10';
@@ -568,14 +569,24 @@
                     } else {
                         spawnParticles(arrow.x, arrow.y, '#ff5d5d', 8);
                         showToast('😅 ¡Fallaste! Intenta de nuevo');
+                        SFX.click();
                     }
 
                     arrow = null;
 
                     if (roundShots >= SHOTS_PER_ROUND) {
                         gameRunning = false;
-                        showMessage('🏆', '¡Ronda completada!',
-                            `Nivel ${level} · Puntuación: ${score}\nSiguiente nivel más difícil.`);
+                        let recordBroken = false;
+                        if (score > highScore) {
+                            highScore = score;
+                            recordBroken = true;
+                            localStorage.setItem('tiroarcoHighScore', highScore);
+                            highScoreDisplay.textContent = highScore;
+                            SFX.record();
+                        }
+                        SFX.win();
+                        showMessage(recordBroken ? '🏆' : '🎯', recordBroken ? '¡Nuevo récord!' : '¡Ronda completada!',
+                            `Nivel ${level} · Puntuación: ${score} · Récord: ${highScore}\nSiguiente nivel más difícil.`);
                         draw();
                         return;
                     }
@@ -861,7 +872,6 @@
             if (shootBtn) {
                 shootBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('🔫 Disparando por botón');
                     shootArrow();
                 });
             }
@@ -882,7 +892,6 @@
             document.addEventListener('keydown', (e) => {
                 if (e.key === ' ' || e.key === 'Space') {
                     e.preventDefault();
-                    console.log('🔫 Disparando por tecla Espacio');
                     shootArrow();
                 }
                 if (e.key === 'p' || e.key === 'P') {
@@ -919,13 +928,11 @@
             });
 
             canvas.addEventListener('click', function(e) {
-                console.log('🔫 Disparando por click en canvas');
                 shootArrow();
             });
             
             canvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                console.log('🔫 Disparando por touch en canvas');
                 shootArrow();
             }, { passive: false });
 
@@ -946,16 +953,11 @@
             window.shootArrow = shootArrow;
         })();
     </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="../js/core/profile.js"></script>
-    <script src="../js/core/authGuard.js"></script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('../sw.js')
-        .then(function(reg) { console.log('SW registered:', reg.scope); })
         .catch(function(err) { console.warn('SW error:', err); });
     }
     </script>

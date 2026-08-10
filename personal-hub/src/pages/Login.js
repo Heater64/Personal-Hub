@@ -113,7 +113,8 @@ export function LoginPage(router) {
       setLoading(false);
       // Navegar al home inmediatamente después del login exitoso
       // El beforeEach del router verificará la auth y permitirá el acceso
-      router.navigate('/');
+      // replace: Atrás tras el login no debe volver a la pantalla de login
+      router.replace('/');
     } catch (err) {
       let msg = 'Error al iniciar sesión.';
       if (err.message?.includes('Invalid login credentials')) {

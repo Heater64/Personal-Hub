@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Flappy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 400px; }
+        canvas { width: 100%; max-width: 400px; aspect-ratio: 2/3; border-radius: 18px; cursor: pointer; }
+        .controls-hint { margin: 10px 0 4px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Flappy</h1>
+            <p class="subtitle">Toca para volar · Esquiva las tuberías</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">🍎 Puntos</span><span class="stat-value gold" id="scoreDisplay">0</span></div>
+                <div class="stat"><span class="stat-label">🏆 Récord</span><span class="stat-value green" id="highScoreDisplay">0</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa (Espacio)" aria-label="Pausar o reanudar">⏸️</button>
+            </div>
+        </div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
+        </div>
+        <div class="controls-hint">Espacio, clic o toque para volar · P pausa</div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">💀</div>
+            <h2 id="msgTitle">¡Game Over!</h2>
+            <p id="msgText">Puntuación: 0 · Récord: 0</p>
+            <button class="btn-primary" id="msgBtn">Reintentar</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 400, H = 600;
+
+        const BIRD_X = 120, GRAV = 0.45, FLAP = -8.5;
+        const PIPE_W = 70, PIPE_GAP = 165;
+
+        let bird, pipes, score, highScore, running, paused, gameOver, lastTime, animId, groundY, frame;
+
+        highScore = parseInt(localStorage.getItem('flappyHighScore') || '0', 10);
+        document.getElementById('highScoreDisplay').textContent = highScore;
+
+        function resetGame() {
+            bird = { y: H / 2, vy: 0, r: 15 };
+            pipes = [];
+            score = 0;
+            running = true;
+            paused = false;
+            gameOver = false;
+            groundY = H - 80;
+            frame = 0;
+            document.getElementById('pauseBtn').textContent = '⏸️';
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+        }
+
+        function flap() {
+            if (!running || paused || gameOver) return;
+            bird.vy = FLAP;
+            SFX.click();
+        }
+
+        function spawnPipe() {
+            const gapY = 120 + Math.random() * (H - groundY - 300);
+            pipes.push({ x: W, top: gapY, passed: false });
+        }
+
+        function update(dt) {
+            if (paused || !running || gameOver) return;
+            frame += dt;
+            bird.vy += GRAV * dt / 16.7;
+            bird.y += bird.vy * dt / 16.7;
+
+            // tuberías
+            if (frame > 1500) { spawnPipe(); frame = 0; }
+            const speed = 3 + Math.min(2, score * 0.04);
+            for (const p of pipes) p.x -= speed * dt / 16.7;
+            pipes = pipes.filter(p => p.x > -PIPE_W);
+
+            // puntuación
+            for (const p of pipes) {
+                if (!p.passed && p.x + PIPE_W < BIRD_X) {
+                    p.passed = true;
+                    score++;
+                    SFX.point();
+                    buzz(10);
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('flappyHighScore', highScore);
+                        SFX.record();
+                    }
+                    updateUI();
+                }
+            }
+
+            // colisiones
+            if (bird.y + bird.r > groundY || bird.y - bird.r < 0) { die(); return; }
+            for (const p of pipes) {
+                if (BIRD_X + bird.r > p.x && BIRD_X - bird.r < p.x + PIPE_W) {
+                    if (bird.y - bird.r < p.top || bird.y + bird.r > p.top + PIPE_GAP) { die(); return; }
+                }
+            }
+        }
+
+        function die() {
+            gameOver = true;
+            SFX.lose();
+            buzz([60, 40, 60]);
+            const record = score > 0 && score >= highScore;
+            showMessage(record ? '🏆' : '💀', record ? '¡Nuevo récord!' : '¡Game Over!', `Puntuación: ${score} · Récord: ${highScore}`);
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Reintentar';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('highScoreDisplay').textContent = highScore;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, W, H);
+            // estrellas
+            ctx.fillStyle = 'rgba(255,255,255,0.12)';
+            for (let i = 0; i < 40; i++) {
+                const sx = (i * 97) % W, sy = (i * 53) % (H - 80);
+                ctx.fillRect(sx, sy, 2, 2);
+            }
+            // tuberías
+            for (const p of pipes) {
+                ctx.fillStyle = '#2dd4a0';
+                ctx.fillRect(p.x, 0, PIPE_W, p.top);
+                ctx.fillRect(p.x, p.top + PIPE_GAP, PIPE_W, H - (p.top + PIPE_GAP));
+                ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                ctx.fillRect(p.x + 8, 0, 8, p.top);
+                ctx.fillRect(p.x + 8, p.top + PIPE_GAP, 8, H - (p.top + PIPE_GAP));
+            }
+            // suelo
+            ctx.fillStyle = 'rgba(255,255,255,0.06)';
+            ctx.fillRect(0, groundY, W, H - groundY);
+            // pájaro
+            const tilt = Math.max(-0.5, Math.min(1.2, bird.vy * 0.06));
+            ctx.save();
+            ctx.translate(BIRD_X, bird.y);
+            ctx.rotate(tilt);
+            ctx.fillStyle = '#ffd166';
+            ctx.beginPath(); ctx.arc(0, 0, bird.r, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(5, -6, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#222';
+            ctx.beginPath(); ctx.arc(7, -6, 2.4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb923c';
+            ctx.beginPath(); ctx.moveTo(14, 2); ctx.lineTo(26, 5); ctx.lineTo(14, 10); ctx.closePath(); ctx.fill();
+            ctx.restore();
+            // mensaje inicio
+            if (!running) {
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.font = '600 22px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Toca para volar', W / 2, H / 2 - 60);
+            }
+        }
+
+        function loop(ts) {
+            if (!lastTime) lastTime = ts;
+            const dt = Math.min(ts - lastTime, 50);
+            lastTime = ts;
+            update(dt);
+            draw();
+            animId = requestAnimationFrame(loop);
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            paused = !paused;
+            document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+            SFX.pause();
+        }
+
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+
+        const doFlap = (e) => {
+            if (e) e.preventDefault();
+            if (!running) { running = true; return; }
+            flap();
+        };
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Space' || e.key === 'ArrowUp') { e.preventDefault(); doFlap(); }
+            if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePause();
+        });
+        canvas.addEventListener('click', doFlap);
+        canvas.addEventListener('touchstart', doFlap, { passive: false });
+
+        document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused && !gameOver) togglePause(); });
+
+        resetGame();
+        lastTime = 0;
+        animId = requestAnimationFrame(loop);
+
+        window.__flappy = { resetGame, flap, togglePause, get state() { return { score, highScore, running, paused, gameOver, birdY: Math.round(bird.y) }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

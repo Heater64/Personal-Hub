@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🕳️ Agujero Negro</title>
+    <title>Agujero Negro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -263,12 +263,13 @@
         }
     </style>
     <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
 
 <body>
     <div class="game-container">
         <div class="game-header">
-            <h1>🕳️ Agujero Negro</h1>
+            <h1>Agujero Negro</h1>
             <span class="subtitle">Absorbe objetos y crece</span>
         </div>
 
@@ -292,6 +293,7 @@
         <div class="controls-hint">🖱️ Mueve el ratón · Toca y arrastra · WASD / Flechas</div>
 
         <div class="actions">
+            <button class="btn-ghost" id="pauseBtn" title="Pausar" aria-label="Pausar">⏸️</button>
             <button class="btn-ghost" id="resetBtn">🔄 Reiniciar</button>
         </div>
 
@@ -309,6 +311,16 @@
             <h2 id="msgTitle">¡Colapso gravitacional!</h2>
             <p id="msgText">Has absorbido 0 de masa</p>
             <button class="btn-primary" id="msgBtn">🔄 Volver a jugar</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de inicio -->
+    <div class="game-message" id="gameStart">
+        <div class="game-message-content">
+            <div class="icon">🕳️</div>
+            <h2>Agujero Negro</h2>
+            <p>Absorbe objetos y crece. Mueve el agujero con el ratón, el dedo o las flechas.</p>
+            <button class="btn-primary" id="startBtn">▶ Jugar</button>
         </div>
     </div>
 
@@ -337,8 +349,9 @@
             let bgStars = [];
             let score = 0;
             let level = 1;
-            let gameRunning = true;
+            let gameRunning = false;
             let gameOver = false;
+            let paused = false;
             let mouseX = W / 2, mouseY = H / 2;
             let useMouseControl = false;
             let keysPressed = {};
@@ -426,6 +439,8 @@
                 const newRadius = 14 + Math.sqrt(blackHole.mass * 3.5);
                 blackHole.radius = Math.min(newRadius, 160);
                 createAbsorbParticles(obj.x, obj.y, 10 + obj.mass * 2, obj.color);
+                SFX.special();
+                buzz(12);
                 flashEffect = 0.12;
                 objects.splice(i, 1);
                 const newLevel = Math.floor(blackHole.mass / 15) + 1;
@@ -440,7 +455,7 @@
 
             // --- Update ---
             function update(dt) {
-                if (!gameRunning || gameOver) return;
+                if (!gameRunning || gameOver || paused) return;
 
                 if (useMouseControl) {
                     const dx = mouseX - blackHole.x;
@@ -673,14 +688,19 @@
                 if (blackHole.radius >= 160 && gameRunning && !gameOver) {
                     gameRunning = false;
                     gameOver = true;
+                    let recordBroken = false;
                     if (score > highScore) {
                         highScore = score;
+                        recordBroken = true;
                         localStorage.setItem('agujeroNegroHighScore', String(score));
+                        SFX.record();
                     }
-                    document.getElementById('msgIcon').textContent = '🌌';
-                    document.getElementById('msgTitle').textContent = '¡Agujero negro supermasivo!';
+                    SFX.win();
+                    buzz([40, 20, 40, 20, 80]);
+                    document.getElementById('msgIcon').textContent = recordBroken ? '🏆' : '🌌';
+                    document.getElementById('msgTitle').textContent = recordBroken ? '¡Nuevo récord!' : '¡Agujero negro supermasivo!';
                     document.getElementById('msgText').innerHTML =
-                        `Has absorbido todo a tu alrededor<br>Masa total: <strong>${score}</strong> · Nivel <strong>${level}</strong>`;
+                        `Has absorbido todo a tu alrededor<br>Masa total: <strong>${score}</strong> · Nivel <strong>${level}</strong> · Récord: <strong>${highScore}</strong>`;
                     document.getElementById('gameMessage').classList.add('show');
                     document.getElementById('msgBtn').textContent = '🔄 Volver a jugar';
                 }
@@ -703,6 +723,9 @@
                 level = 1;
                 gameRunning = true;
                 gameOver = false;
+                paused = false;
+                const pauseBtnEl = document.getElementById('pauseBtn');
+                if (pauseBtnEl) { pauseBtnEl.textContent = '⏸️'; pauseBtnEl.title = 'Pausar'; pauseBtnEl.setAttribute('aria-label', 'Pausar'); }
                 spawnTimer = 0;
                 spawnInterval = 1.2;
                 maxObjects = 40;
@@ -763,6 +786,7 @@
                     document.getElementById('msgBtn').click();
                     return;
                 }
+                if (key === 'p') { togglePause(); }
                 if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
                     keysPressed[key] = true;
                     useMouseControl = false;
@@ -784,24 +808,49 @@
                 resetGame();
             });
 
+            function togglePause() {
+                if (!gameRunning || gameOver) return;
+                paused = !paused;
+                const btn = document.getElementById('pauseBtn');
+                btn.textContent = paused ? '▶️' : '⏸️';
+                btn.title = paused ? 'Reanudar' : 'Pausar';
+                btn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
+            }
+            document.getElementById('pauseBtn').addEventListener('click', togglePause);
+            document.getElementById('startBtn').addEventListener('click', () => {
+                if (gameRunning) return;
+                document.getElementById('gameStart').classList.remove('show');
+                gameRunning = true;
+                paused = false;
+            });
+
+            // Auto-pausa al cambiar de pestaña/app (móvil)
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && gameRunning && !gameOver && !paused) {
+                    paused = true;
+                    const btn = document.getElementById('pauseBtn');
+                    btn.textContent = '▶️';
+                    btn.title = 'Reanudar';
+                    btn.setAttribute('aria-label', 'Reanudar');
+                }
+            });
+
             // --- Start ---
             if (highScore > 0) document.getElementById('highScoreDisplay').textContent = highScore;
             resetGame();
+            // Espera al botón "Jugar" antes de arrancar
+            gameRunning = false;
+            document.getElementById('gameStart').classList.add('show');
             requestAnimationFrame(gameLoop);
 
             window.resetGame = resetGame;
         })();
     </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="../js/core/profile.js"></script>
-    <script src="../js/core/authGuard.js"></script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('../sw.js')
-        .then(function(reg) { console.log('SW registered:', reg.scope); })
         .catch(function(err) { console.warn('SW error:', err); });
     }
     </script>

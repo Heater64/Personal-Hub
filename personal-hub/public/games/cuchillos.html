@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
     <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>🎯 Lanza Cuchillos</title>
+<title>Lanza Cuchillos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -254,11 +254,12 @@
     }
 </style>
     <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
 
 <body>
 <div class="game-container">
-    <h1>🎯 Lanza Cuchillos</h1>
+    <h1>Lanza Cuchillos</h1>
     <p class="subtitle">Toca o pulsa Espacio para lanzar · Evita los cuchillos ya clavados</p>
 
     <div class="toolbar">
@@ -268,7 +269,8 @@
 
     <div class="score-display">
         <div class="score-item"><div class="label">Aciertos</div><div class="value gold" id="scoreDisplay">0</div></div>
-        <div class="score-item"><div class="label">Racha</div><div class="value green" id="streakDisplay">0</div></div>
+        <div class="score-item"><div class="label">Récord</div><div class="value green" id="highScoreDisplay">0</div></div>
+        <div class="score-item"><div class="label">Racha</div><div class="value" id="streakDisplay">0</div></div>
         <div class="score-item"><div class="label">Nivel</div><div class="value" id="levelDisplay">1</div></div>
         <div class="score-item"><div class="label">Vidas</div><div class="value red" id="missDisplay">3/3</div></div>
     </div>
@@ -340,6 +342,8 @@
     let comboTimeout = null;
     let toastTimeout = null;
     let soundOn = true;
+    let highScore = parseInt(localStorage.getItem('cuchillosHighScore') || '0', 10);
+    let recordBroken = false;
 
     // --- Audio sintetizado (sin archivos externos) ---
     let actx = null;
@@ -348,7 +352,7 @@
         return actx;
     }
     function beep({ freq = 440, dur = 0.08, type = 'sine', gain = 0.15, slideTo = null, delay = 0 }) {
-        if (!soundOn) return;
+        if (!soundOn || (window.SFX && !SFX.on)) return;
         try {
             const c = ac();
             const osc = c.createOscillator();
@@ -370,6 +374,14 @@
         miss: () => beep({ freq: 180, slideTo: 60, dur: 0.25, type: 'sawtooth', gain: 0.14 }),
         levelUp: () => {
             [523, 659, 784, 1047].forEach((f, i) => beep({ freq: f, dur: 0.14, type: 'sine', gain: 0.1, delay: i * 0.09 }));
+        },
+        lose: () => {
+            beep({ freq: 300, dur: 0.2, type: 'sawtooth', gain: 0.06 });
+            beep({ freq: 200, dur: 0.25, type: 'sawtooth', gain: 0.06, delay: 0.18 });
+            beep({ freq: 140, dur: 0.4, type: 'sawtooth', gain: 0.06, delay: 0.36 });
+        },
+        record: () => {
+            [523, 659, 784, 1046, 1318].forEach((f, i) => beep({ freq: f, dur: 0.18, type: 'triangle', gain: 0.09, delay: i * 0.1 }));
         }
     };
 
@@ -385,6 +397,7 @@
     }
 
     function updateUI() {
+        document.getElementById('highScoreDisplay').textContent = highScore;
         document.getElementById('scoreDisplay').textContent = score;
         document.getElementById('streakDisplay').textContent = streak;
         document.getElementById('levelDisplay').textContent = level;
@@ -492,7 +505,16 @@
 
     function gameOver() {
         gameRunning = false;
-        showMessage('💀', 'Fin del juego', `Aciertos totales: ${score} · Nivel alcanzado: ${level} · Racha máxima: ${maxStreak}`);
+        sfx.lose();
+        buzz([60, 40, 60]);
+        if (score > highScore) {
+            highScore = score;
+            recordBroken = true;
+            localStorage.setItem('cuchillosHighScore', highScore);
+            document.getElementById('highScoreDisplay').textContent = highScore;
+            sfx.record();
+        }
+        showMessage(recordBroken ? '🏆' : '💀', recordBroken ? '¡Nuevo récord!' : 'Fin del juego', `Aciertos totales: ${score} · Nivel alcanzado: ${level} · Racha máxima: ${maxStreak}`);
     }
 
     function showMessage(icon, title, text) {
@@ -565,6 +587,7 @@
                     streak = 0;
                     spawnParticles(k.x, k.y, '#ff5d5d', 18);
                     sfx.miss();
+                    buzz([40, 30, 60]);
                     flyingKnife = null;
                     canThrow = true;
                     updateUI();
@@ -576,6 +599,7 @@
                     if (streak > maxStreak) maxStreak = streak;
                     spawnParticles(CENTER.x + Math.cos(impactAngle) * TARGET_R * 0.85, CENTER.y + Math.sin(impactAngle) * TARGET_R * 0.85, '#ffd166', 12);
                     sfx.hit();
+                    buzz(8);
                     showCombo(streak);
                     flyingKnife = null;
                     canThrow = true;
@@ -786,16 +810,11 @@
     loop();
 })();
 </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="../js/firebase-config.js"></script>
-    <script src="../js/core/profile.js"></script>
-    <script src="../js/core/authGuard.js"></script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('../sw.js')
-        .then(function(reg) { console.log('SW registered:', reg.scope); })
         .catch(function(err) { console.warn('SW error:', err); });
     }
     </script>

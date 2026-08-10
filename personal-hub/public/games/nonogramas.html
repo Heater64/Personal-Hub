@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Nonogramas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        .canvas-wrap { max-width: 400px; }
+        canvas { width: 100%; max-width: 400px; border-radius: 18px; cursor: pointer; }
+        .controls-hint { margin: 10px 0 4px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Nonogramas</h1>
+            <p class="subtitle">Píxeles con lógica · Descubre el dibujo</p>
+        </div>
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat"><span class="stat-label">⏱️ Tiempo</span><span class="stat-value gold" id="timeDisplay">0s</span></div>
+                <div class="stat"><span class="stat-label">🏆 Mejor</span><span class="stat-value green" id="bestDisplay">—</span></div>
+                <div class="stat"><span class="stat-label">❌ Errores</span><span class="stat-value red" id="errorsDisplay">0</span></div>
+            </div>
+            <div class="top-actions toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Reiniciar (R)" aria-label="Reiniciar puzle">🔄</button>
+            </div>
+        </div>
+        <div class="size-control">
+            <button class="size-btn active" data-puzzle="0">Corazón</button>
+            <button class="size-btn" data-puzzle="1">Diamante</button>
+        </div>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="352" height="332"></canvas>
+        </div>
+        <div class="controls-hint">Clic = rellenar · Clic derecho = marcar X · Toca el botón abajo en móvil</div>
+        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:8px 0;">
+            <button class="btn-ghost" id="modeBtn">✏️ Rellenar</button>
+        </div>
+        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🏆</div>
+            <h2 id="msgTitle">¡Puzle completado!</h2>
+            <p id="msgText">Tiempo: 0s · Mejor: 0s</p>
+            <button class="btn-primary" id="msgBtn">Otro puzle</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const PUZZLES = [
+            { name: 'Corazón', sol: [
+                '.##.##',
+                '##..##',
+                '##..##',
+                '.####.',
+                '..##..',
+                '......'
+            ]},
+            { name: 'Diamante', sol: [
+                '...##...',
+                '..####..',
+                '.##..##.',
+                '##....##',
+                '##....##',
+                '.##..##.',
+                '..####..',
+                '...##...'
+            ]}
+        ];
+
+        const CLUE_W = 56, CLUE_H = 36, PAD = 4, BOARD = 288;
+        let puzzleIdx, sol, rows, cols, grid, errors, time, timerInt, won, modeFill, best;
+
+        best = parseInt(localStorage.getItem('nonogramasBest') || '0', 10);
+        document.getElementById('bestDisplay').textContent = best ? best + 's' : '—';
+
+        puzzleIdx = localStorage.getItem('nonogramasPuzzle') === '1' ? 1 : 0;
+        function applyPuzzleUI() {
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.puzzle, 10) === puzzleIdx));
+        }
+        document.querySelectorAll('.size-btn').forEach(b => b.addEventListener('click', () => {
+            puzzleIdx = parseInt(b.dataset.puzzle, 10);
+            localStorage.setItem('nonogramasPuzzle', String(puzzleIdx));
+            applyPuzzleUI();
+            startPuzzle();
+        }));
+
+        function startPuzzle() {
+            sol = PUZZLES[puzzleIdx].sol;
+            rows = sol.length;
+            cols = sol[0].length;
+            grid = Array.from({ length: rows }, () => Array(cols).fill(0));
+            errors = 0;
+            won = false;
+            time = 0;
+            document.getElementById('timeDisplay').textContent = '0s';
+            document.getElementById('errorsDisplay').textContent = '0';
+            document.getElementById('gameMessage').classList.remove('show');
+            clearInterval(timerInt);
+            timerInt = setInterval(() => {
+                if (won) return;
+                time++;
+                document.getElementById('timeDisplay').textContent = time + 's';
+            }, 1000);
+            draw();
+        }
+
+        function cluesFor(line) {
+            const out = [];
+            let run = 0;
+            for (const ch of line) {
+                if (ch === '#') run++;
+                else { if (run) { out.push(run); run = 0; } }
+            }
+            if (run) out.push(run);
+            return out.length ? out : [0];
+        }
+
+        function cellPos(r, c) {
+            const cell = BOARD / cols;
+            const ox = CLUE_W + (BOARD - cols * cell) / 2;
+            const oy = CLUE_H + (BOARD - rows * cell) / 2;
+            return { x: ox + c * cell, y: oy + r * cell, cell };
+        }
+
+        function fill(r, c, mark) {
+            if (won) return;
+            const val = mark ? -1 : 1;
+            grid[r][c] = grid[r][c] === val ? 0 : val;
+            if (!mark && grid[r][c] === 1 && sol[r][c] !== '#') {
+                errors++;
+                document.getElementById('errorsDisplay').textContent = errors;
+                SFX.click();
+            } else {
+                SFX.point();
+            }
+            draw();
+            checkWin();
+        }
+
+        function checkWin() {
+            for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+                const filled = grid[r][c] === 1;
+                if (filled !== (sol[r][c] === '#')) return;
+            }
+            won = true;
+            clearInterval(timerInt);
+            SFX.win();
+            buzz(30);
+            let record = false;
+            if (best === 0 || time < best) {
+                best = time;
+                record = true;
+                localStorage.setItem('nonogramasBest', best);
+                document.getElementById('bestDisplay').textContent = best + 's';
+                SFX.record();
+            }
+            showMessage(record ? '🏆' : '🎉', record ? '¡Nuevo récord!' : '¡Puzle completado!', `Tiempo: ${time}s · Mejor: ${best ? best + 's' : '—'} · Errores: ${errors}`);
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Otro puzle';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function draw() {
+            const W = canvas.width, H = canvas.height;
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, W, H);
+            const cell = BOARD / cols;
+            const ox = CLUE_W + (BOARD - cols * cell) / 2;
+            const oy = CLUE_H + (BOARD - rows * cell) / 2;
+
+            // pistas filas
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.font = '600 12px Inter, sans-serif';
+            for (let r = 0; r < rows; r++) {
+                const cl = cluesFor(sol[r]);
+                const parts = cl.join(' ');
+                const py = oy + r * cell + cell / 2;
+                ctx.fillStyle = cl[0] === 0 && grid[r].every(v => v === 1 || v === -1) ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.85)';
+                ctx.fillText(parts, CLUE_W - 8, py);
+            }
+            // pistas columnas
+            ctx.textAlign = 'center';
+            for (let c = 0; c < cols; c++) {
+                const cl = cluesFor(sol.map(row => row[c]).join(''));
+                const parts = cl.join(' ');
+                const px = ox + c * cell + cell / 2;
+                const colArr = Array.from({ length: rows }, (_, r) => grid[r][c]);
+                ctx.fillStyle = cl[0] === 0 && colArr.every(v => v === 1 || v === -1) ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.85)';
+                ctx.fillText(parts, px, CLUE_H - 8);
+            }
+
+            // celdas
+            for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+                const x = ox + c * cell, y = oy + r * cell;
+                ctx.fillStyle = grid[r][c] === 1 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.04)';
+                ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+                if (grid[r][c] === -1) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(x + 5, y + 5); ctx.lineTo(x + cell - 5, y + cell - 5); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x + cell - 5, y + 5); ctx.lineTo(x + 5, y + cell - 5); ctx.stroke();
+                }
+            }
+            // bordes del tablero
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(ox, oy, cols * cell, rows * cell);
+        }
+
+        function canvasToCell(e) {
+            const rect = canvas.getBoundingClientRect();
+            const px = (e.clientX - rect.left) / rect.width * canvas.width;
+            const py = (e.clientY - rect.top) / rect.height * canvas.height;
+            const cell = BOARD / cols;
+            const ox = CLUE_W + (BOARD - cols * cell) / 2;
+            const oy = CLUE_H + (BOARD - rows * cell) / 2;
+            const c = Math.floor((px - ox) / cell);
+            const r = Math.floor((py - oy) / cell);
+            if (r < 0 || r >= rows || c < 0 || c >= cols) return null;
+            return { r, c };
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const pos = canvasToCell(e);
+            if (pos) fill(pos.r, pos.c, !modeFill);
+        });
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const pos = canvasToCell(e);
+            if (pos) fill(pos.r, pos.c, true);
+        });
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const px = (t.clientX - rect.left) / rect.width * canvas.width;
+            const py = (t.clientY - rect.top) / rect.height * canvas.height;
+            const cell = BOARD / cols;
+            const ox = CLUE_W + (BOARD - cols * cell) / 2;
+            const oy = CLUE_H + (BOARD - rows * cell) / 2;
+            const c = Math.floor((px - ox) / cell), r = Math.floor((py - oy) / cell);
+            if (r >= 0 && r < rows && c >= 0 && c < cols) fill(r, c, !modeFill);
+        }, { passive: false });
+
+        document.getElementById('modeBtn').addEventListener('click', () => {
+            modeFill = !modeFill;
+            document.getElementById('modeBtn').textContent = modeFill ? '❌ Marcar X' : '✏️ Rellenar';
+        });
+        document.getElementById('msgBtn').addEventListener('click', () => {
+            puzzleIdx = (puzzleIdx + 1) % PUZZLES.length;
+            localStorage.setItem('nonogramasPuzzle', String(puzzleIdx));
+            applyPuzzleUI();
+            startPuzzle();
+        });
+        document.getElementById('pauseBtn').addEventListener('click', startPuzzle);
+        document.addEventListener('keydown', (e) => { if (e.key === 'r' || e.key === 'R') startPuzzle(); });
+
+        applyPuzzleUI();
+        startPuzzle();
+
+        window.__nonogramas = { fill, startPuzzle, get state() { return { rows, cols, errors, time, won, best, grid }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>
