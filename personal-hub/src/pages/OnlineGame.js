@@ -30,6 +30,26 @@ function escapeHtml(value) {
   }[character]));
 }
 
+/**
+ * Traduce errores técnicos de Supabase a mensajes que la princesa entienda.
+ * Los errores de sesión/token (401, JWT inválido, API key) son incomprensibles
+ * crudos ("No suitable key or wrong key type") — aquí se convierten en algo útil.
+ */
+function friendlyError(error) {
+  const raw = String(error?.message || error || '');
+  const lower = raw.toLowerCase();
+  if (/no suitable key|wrong key type|invalid api key|invalid jwt|jwt expired|jwt malformed|401/i.test(lower)) {
+    return 'No se pudo conectar con tu sesión. Cierra sesión y entra de nuevo para jugar online.';
+  }
+  if (/row-level security|violates row-level|permission denied|not authorized|forbidden/i.test(lower)) {
+    return 'No tienes permiso para esa acción.';
+  }
+  if (/network|fetch failed|failed to fetch|load failed|timed? ?out/i.test(lower)) {
+    return 'Sin conexión. Comprueba internet y vuelve a intentarlo.';
+  }
+  return raw;
+}
+
 function placeFleet() {
   const board = emptyGrid();
   const ships = [];
@@ -164,7 +184,7 @@ export function OnlineGamePage(router) {
     page.querySelector('.online-content').innerHTML = content;
     page.querySelector('[data-action="back"]').addEventListener('click', async () => {
       if (mode === 'room' && room?.status === 'waiting' && room.host_id === user.id) {
-        try { await cancelGameRoom(room.id); } catch (error) { showToast(error.message, 'info'); }
+        try { await cancelGameRoom(room.id); } catch (error) { showToast(friendlyError(error.message), 'info'); }
       }
       router.navigate('/juegos');
     });
@@ -172,7 +192,7 @@ export function OnlineGamePage(router) {
 
   function renderError(message) {
     shell('<div class="online-panel"><p class="online-status"></p><div class="online-actions"><button class="online-btn online-btn--primary" data-action="retry">Reintentar</button></div></div>');
-    page.querySelector('.online-status').textContent = message;
+    page.querySelector('.online-status').textContent = friendlyError(message);
     page.querySelector('[data-action="retry"]').addEventListener('click', () => loadRoom());
   }
 
@@ -219,7 +239,7 @@ export function OnlineGamePage(router) {
       router.navigate(`/juegos/online/${gameId}?room=${created.room_id}`);
     } catch (error) {
       button.disabled = false;
-      showToast(error.message || 'No se pudo enviar la invitación.', 'error');
+      showToast(friendlyError(error.message) || 'No se pudo enviar la invitación.', 'error');
     }
   }
 
@@ -235,7 +255,7 @@ export function OnlineGamePage(router) {
       room = saved;
       renderRoom();
     } catch (error) {
-      showToast(error.message || 'El rival ha movido primero. Sincronizando…', 'info');
+      showToast(friendlyError(error.message) || 'El rival ha movido primero. Sincronizando…', 'info');
       try { room = await getGameRoom(room.id); renderRoom(); } catch (reloadError) { renderError(reloadError.message); }
     }
   }
@@ -256,7 +276,7 @@ export function OnlineGamePage(router) {
         if (gameId === 'battleship') playerState = await getGamePlayerState(room.id);
         renderRoom();
       }
-      catch (error) { button.disabled = false; showToast(error.message, 'error'); }
+      catch (error) { button.disabled = false; showToast(friendlyError(error.message), 'error'); }
     });
     page.querySelector('[data-action="change"]').addEventListener('click', async () => {
       selectedTarget = room.host_id === user.id ? room.guest_id : room.host_id;
@@ -354,7 +374,7 @@ export function OnlineGamePage(router) {
           playerState = await getGamePlayerState(room.id);
           renderRoom();
         } catch (error) {
-          showToast(error.message || 'El rival ha movido primero. Sincronizando…', 'info');
+          showToast(friendlyError(error.message) || 'El rival ha movido primero. Sincronizando…', 'info');
           try {
             room = await getGameRoom(room.id);
             playerState = await getGamePlayerState(room.id);

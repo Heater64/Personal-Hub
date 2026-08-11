@@ -83,6 +83,12 @@ async function loadContent(id, fallback = null) {
     return data?.data || fallback;
   } catch (err) {
     if (isSupabaseConfigured()) {
+      // Supabase configurado pero caído/token expirado: si hay un espejo
+      // local con datos, úsalos en vez de fallar (mismo patrón que
+      // seriesData.loadCatalog() y gifts.service). El aviso de "Base de
+      // datos no disponible" se muestra aparte vía checkConnection().
+      const mirror = lsGet('ph.config.' + id, null);
+      if (mirror !== null) return mirror;
       console.warn(`[db] Supabase read failed for "${id}":`, err.message);
       throw new Error(`No se pudo leer de Supabase: ${err.message}`);
     }

@@ -7,6 +7,22 @@ import {
 } from '../services/games.service.js';
 import '../styles/online-games.css';
 
+/** Traduce errores técnicos de Supabase a mensajes legibles (misma utilidad que OnlineGame). */
+function friendlyError(error) {
+  const raw = String(error?.message || error || '');
+  const lower = raw.toLowerCase();
+  if (/no suitable key|wrong key type|invalid api key|invalid jwt|jwt expired|jwt malformed|401/i.test(lower)) {
+    return 'No se pudo conectar con tu sesión. Cierra sesión y entra de nuevo.';
+  }
+  if (/row-level security|violates row-level|permission denied|not authorized|forbidden/i.test(lower)) {
+    return 'No tienes permiso para esa acción.';
+  }
+  if (/network|fetch failed|failed to fetch|load failed|timed? ?out/i.test(lower)) {
+    return 'Sin conexión. Comprueba internet y vuelve a intentarlo.';
+  }
+  return raw;
+}
+
 /**
  * Centro global de invitaciones.
  * Vive fuera del router para no desmontarse al cambiar de sección.
@@ -72,7 +88,7 @@ export function GameInviteCenter(router) {
         router.navigate(`/juegos/online/${current.game_id}?room=${current.room_id}`);
       } catch (error) {
         accept.disabled = false;
-        showToast(error.message || 'No se pudo aceptar la invitación.', 'error');
+        showToast(friendlyError(error) || 'No se pudo aceptar la invitación.', 'error');
       }
       render();
     });
@@ -86,7 +102,7 @@ export function GameInviteCenter(router) {
         render();
       } catch (error) {
         reject.disabled = false;
-        showToast(error.message || 'No se pudo rechazar la invitación.', 'error');
+        showToast(friendlyError(error) || 'No se pudo rechazar la invitación.', 'error');
       }
     });
 
@@ -111,7 +127,7 @@ export function GameInviteCenter(router) {
         render();
       });
     } catch (error) {
-      console.warn('[games] Centro de invitaciones no disponible:', error.message);
+      console.warn('[games] Centro de invitaciones no disponible:', friendlyError(error));
     }
     render();
   }
