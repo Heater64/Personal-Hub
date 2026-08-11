@@ -211,6 +211,28 @@
   font-weight: 600;
 }
 
+.music-listen-status .listen-peer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+.listen-peer-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.listen-peer-avatar--fallback {
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--theme-accent, #e8735a) 25%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+}
+
 /* ==========================================
    CATEGORY PILLS
    ========================================== */

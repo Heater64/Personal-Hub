@@ -1404,8 +1404,6 @@
   outline: 2px solid var(--theme-accent); outline-offset: 2px;
 }
 
-.gallery-add-only { display: none; }
-
 /* ----- Hero del álbum ----- */
 .gallery-hero {
   position: relative;
@@ -2189,7 +2187,6 @@
   .gallery-hero-body { padding: var(--sp-20) var(--sp-16) var(--sp-14); }
   .gallery-hero-meta { gap: var(--sp-8); font-size: var(--fs-caption); }
   .gallery-add-label { display: none; }
-  .gallery-add-only { display: inline; font-size: 1.1rem; }
   .gallery-add-btn { width: 42px; height: 42px; padding: 0; justify-content: center; border-radius: 50%; }
   .gallery-photo-fav,
   .gallery-photo-menu {

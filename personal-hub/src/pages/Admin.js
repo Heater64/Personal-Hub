@@ -14,6 +14,7 @@ import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
 import { isValidUrlField, todayISO, hourInSpain } from '../utils/format.js';
+import { refreshSpecialDates } from '../utils/specialDates.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { theme } from '../services/theme.service.js';
@@ -21,7 +22,6 @@ import { CATEGORIES, TYPE_META, LETTERS } from './OpenWhen.js';
 import {
   fileKind, kindLabel, formatBytes
 } from '../services/cloudinary.service.js';
-import { auth } from '../services/auth.service.js';
 import { visiblePhotos, baseFolders } from '../services/galleryData.js';
 import { getUserPref } from '../utils/userStorage.js';
 
@@ -162,7 +162,7 @@ export function AdminPage(router) {
   const user = userStore.getUser();
   const userName = user?.name || 'Admin';
   const userInitial = userName.charAt(0).toUpperCase();
-  const userPhoto = user?.photo || '';
+  const userPhoto = user?.avatar || user?.photo || '';
   const userRole = user?.role || 'admin';
 
   // Time-based greeting (hora de España, península)
@@ -174,29 +174,9 @@ export function AdminPage(router) {
     <div class="admin-layout">
       <main class="admin-main">
         <header class="admin-topbar">
-          <div class="admin-topbar-brand">
-            <span class="admin-topbar-icon">${UI.settings}</span>
-            <div class="admin-topbar-brand-text">
-              <strong>Panel Admin</strong>
-              <span>Personal Hub</span>
-            </div>
-          </div>
           <nav class="admin-topbar-nav" id="adminTopNav" aria-label="Secciones del panel">
             ${TABS.map(t => `<button class="admin-topbar-tab${t.id==='dashboard'?' active':''}" data-section="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
           </nav>
-          <div class="admin-topbar-right">
-            <span class="admin-conn-pill admin-conn-pill--top" id="adminConnPill" title="Estado de la base de datos"></span>
-            <div class="admin-topbar-user">
-              <div class="admin-sidebar-avatar">
-                ${userPhoto ? `<img src="${esc(userPhoto)}" alt="">` : userInitial}
-              </div>
-              <div class="admin-topbar-user-info">
-                <span class="admin-topbar-user">${esc(userName)} <span class="admin-sidebar-admin-badge">ADMIN</span></span>
-                <span class="admin-topbar-role">Administrador</span>
-              </div>
-            </div>
-            <button type="button" class="admin-topbar-logout" id="adminLogout" aria-label="Cerrar sesión">🚪 Salir</button>
-          </div>
         </header>
         <div class="admin-welcome">
           <div class="admin-welcome-greeting">
@@ -270,13 +250,6 @@ export function AdminPage(router) {
 
   page.querySelectorAll('.admin-topbar-tab').forEach(item => {
     item.addEventListener('click', () => setActiveSection(item, item.dataset.section));
-  });
-
-  // Logout
-  page.querySelector('#adminLogout')?.addEventListener('click', async () => {
-    await auth.signOut();
-    // replace: Atrás no debe volver a una página ya protegida por el guard
-    router.replace('/login');
   });
 
   // ===== MODAL =====
@@ -400,9 +373,10 @@ export function AdminPage(router) {
 
     // Fechas especiales configurables (aniversario, inicio del Hub, cumpleaños)
     const hubDates = await db.getHubDates();
-    const annivISO = hubDates.anniversary || '2024-07-10';
+    const annivISO = hubDates.anniversary || '2026-07-03';
     const hubStartISO = hubDates.hubStart || '2024-05-10';
-    const birthdayISO = hubDates.birthday || '2024-11-24';
+    const birthdayISO = hubDates.birthday || '2012-09-03';
+    const userBirthdayISO = hubDates.userBirthday || '2009-08-03';
 
     const moods = arr(allMoods);
     const reasonsList = arr(reasons);
@@ -607,11 +581,17 @@ export function AdminPage(router) {
     let birthday = new Date(todayDate.getFullYear(), bd.getMonth(), bd.getDate());
     if (birthday < todayStart) birthday = new Date(todayDate.getFullYear() + 1, bd.getMonth(), bd.getDate());
     const birthdayDays = daysUntil(birthday);
+    const ubd = new Date(userBirthdayISO + 'T00:00:00');
+    let userBd = new Date(todayDate.getFullYear(), ubd.getMonth(), ubd.getDate());
+    if (userBd < todayStart) userBd = new Date(todayDate.getFullYear() + 1, ubd.getMonth(), ubd.getDate());
+    const userBdDays = daysUntil(userBd);
     const fechas = [
       { icon: '🤍', title: `${annivYears} año${annivYears === 1 ? '' : 's'} juntos`, date: fmtDate(anniv),
         badge: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`, hot: annivDays <= 30 },
       { icon: '🎁', title: 'Cumple de la persona especial', date: fmtDate(bd),
         badge: birthdayDays === 0 ? '¡Hoy! 🎂' : `En ${birthdayDays} día${birthdayDays === 1 ? '' : 's'}`, hot: birthdayDays <= 30 },
+      { icon: '🎂', title: 'Tu cumpleaños', date: fmtDate(ubd),
+        badge: userBdDays === 0 ? '¡Hoy! 🎂' : `En ${userBdDays} día${userBdDays === 1 ? '' : 's'}`, hot: userBdDays <= 30 },
       { icon: '📅', title: 'Nuestro primer mensaje', date: fmtDate(new Date(hubStartISO + 'T00:00:00')), badge: 'Ya pasó', muted: true }
     ];
 
@@ -2494,6 +2474,10 @@ export function AdminPage(router) {
     };
 
     let formHtml;
+    // Archivos de audio subidos desde el modal de Audios: al guardar con
+    // varios archivos se crea una entrada por cada uno (fuera del bloque
+    // `else if` para que lo vea el callback de guardado de modal.open).
+    let pendingAudioFiles = [];
     if (type === 'razones') {
       const val = item ? (typeof item === 'string' ? item : (item.text || item.reason || '')) : '';
       const dateVal = item && typeof item === 'object' && item.date ? item.date : '';
@@ -2547,15 +2531,15 @@ export function AdminPage(router) {
           <label>Audio (archivo o URL) *</label>
           <input type="text" id="editFieldAudio" value="${esc(a.url || '')}" placeholder="https://res.cloudinary.com/...mp3">
           <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-            <button type="button" class="admin-btn admin-btn-sm" id="uploadAudioBtn">${UI.cloud} Subir audio</button>
+            <button type="button" class="admin-btn admin-btn-sm" id="uploadAudioBtn">${UI.cloud} Subir audio(s)</button>
             <span id="uploadAudioStatus" style="font-size:12px;color:var(--theme-text-secondary);"></span>
           </div>
-          <input type="file" id="editFieldAudioFile" accept="audio/*" hidden>
-          <small class="admin-field-hint">Igual que en la sección Audios: el archivo se sube a Supabase y la URL se rellena sola.</small>
+          <input type="file" id="editFieldAudioFile" accept="audio/*" multiple hidden>
+          <small class="admin-field-hint">Igual que en la sección Audios: el archivo se sube a Supabase y la URL se rellena sola. Puedes elegir 1 o varios a la vez.</small>
         </div>
         <div class="admin-field"><label>Creador (opcional)</label><input type="text" id="editFieldCreator" value="${esc(a.creator || '')}" placeholder="Darwin / Ella"></div>
         <div class="admin-field"><label>Duración en segundos (opcional)</label><input type="number" id="editFieldDuration" min="0" value="${esc(a.duration ?? '')}" placeholder="Se calcula automáticamente si la dejas vacía"></div>
-        <small class="admin-field-hint">Si un mes necesita más de un audio, añade otra entrada con la misma fecha.</small>`;
+        <small class="admin-field-hint">Si un mes necesita más de un audio, añade otra entrada con la misma fecha (o elige varios archivos en el botón de subir).</small>`;
       // Subida directa a Cloudinary (misma vía que Multimedia/galería)
       setTimeout(() => {
         const btn = page.querySelector('#uploadAudioBtn');
@@ -2565,29 +2549,44 @@ export function AdminPage(router) {
         if (!btn || !fileInput || !urlInput) return;
         btn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', async () => {
-          const file = fileInput.files?.[0];
+          const files = [...fileInput.files];
           fileInput.value = '';
-          if (!file) return;
-          if (!file.type.startsWith('audio/')) {
+          if (!files.length) return;
+          const valid = files.filter(f => f.type.startsWith('audio/'));
+          if (!valid.length) {
             status.textContent = '⚠ El archivo debe ser de audio (mp3, m4a, ogg, wav…)'; status.style.color = 'var(--theme-error)';
             return;
           }
           btn.disabled = true;
-          status.textContent = 'Subiendo…';
-          status.style.color = 'var(--theme-text-secondary)';
-          try {
-            const [url] = await db.uploadAudios([file]);
-            if (!url) throw new Error('El audio se subió pero no devolvió URL');
-            urlInput.value = url;
-            status.textContent = '✓ Audio subido'; status.style.color = 'var(--theme-success)';
-            if (file.name && !page.querySelector('#editFieldTitle')?.value) {
-              page.querySelector('#editFieldTitle').value = file.name.replace(/\.[^.]+$/, '');
+          const uploaded = [];
+          const errors = [];
+          for (let i = 0; i < valid.length; i++) {
+            const file = valid[i];
+            status.textContent = `Subiendo… ${i + 1}/${valid.length}`;
+            status.style.color = 'var(--theme-text-secondary)';
+            try {
+              const [url] = await db.uploadAudios([file]);
+              if (!url) throw new Error('El audio se subió pero no devolvió URL');
+              uploaded.push({ url, name: file.name });
+            } catch (err) {
+              errors.push(file.name + ': ' + (err?.message || 'Error'));
             }
-          } catch (err) {
-            status.textContent = '⚠ ' + (err?.message || 'Error al subir'); status.style.color = 'var(--theme-error)';
-          } finally {
-            btn.disabled = false;
           }
+          if (uploaded.length) {
+            pendingAudioFiles = uploaded;
+            // Primera URL como valor por defecto del campo; al guardar con
+            // varios archivos se crea una entrada por cada uno.
+            urlInput.value = uploaded[0].url;
+            const plural = uploaded.length === 1 ? 'audio subido' : 'audios subidos';
+            status.textContent = `✓ ${uploaded.length} ${plural}`; status.style.color = 'var(--theme-success)';
+            if (uploaded.length === 1 && uploaded[0].name && !page.querySelector('#editFieldTitle')?.value) {
+              page.querySelector('#editFieldTitle').value = uploaded[0].name.replace(/\.[^.]+$/, '');
+            }
+          } else {
+            status.textContent = '⚠ No se pudo subir el audio'; status.style.color = 'var(--theme-error)';
+          }
+          if (errors.length) status.textContent += ' · ⚠ ' + errors[0];
+          btn.disabled = false;
         });
       }, 0);
     }
@@ -2660,27 +2659,50 @@ export function AdminPage(router) {
         } else if (type === 'audios') {
           const date = page.querySelector('#editFieldDate')?.value?.trim() || '';
           if (!date) throw new Error('La fecha es obligatoria (usa el día 3 del mes)');
-          const url = page.querySelector('#editFieldAudio')?.value?.trim() || '';
-          if (!url) throw new Error('La URL del audio es obligatoria');
+          const creator = page.querySelector('#editFieldCreator')?.value?.trim() || '';
           const durRaw = parseInt(page.querySelector('#editFieldDuration')?.value || '', 10);
-          const prev = isNew ? {} : (items[index] || {});
-          const newItem = {
-            ...prev,
-            id: prev.id || db.generateId(),
-            date,
-            year: parseInt(date.slice(0, 4), 10),
-            month: parseInt(date.slice(5, 7), 10),
-            title: page.querySelector('#editFieldTitle')?.value?.trim() || '',
-            url,
-            creator: page.querySelector('#editFieldCreator')?.value?.trim() || '',
-            duration: isFinite(durRaw) && durRaw > 0 ? durRaw : (prev.duration || undefined),
-            createdAt: prev.createdAt || new Date().toISOString()
-          };
+          const typedTitle = page.querySelector('#editFieldTitle')?.value?.trim() || '';
+          const baseUrl = page.querySelector('#editFieldAudio')?.value?.trim() || '';
           const cloned = [...items];
-          if (isNew) cloned.push(newItem);
-          else cloned[index] = newItem;
-          await saveFn(cloned);
-          logContentAction(type, isNew ? 'created' : 'updated', `${isNew ? 'Añadido' : 'Actualizado'}: ${newItem.title || 'audio'}`);
+          const now = new Date().toISOString();
+
+          // Varios archivos subidos desde el modal → una entrada por cada uno
+          if (isNew && pendingAudioFiles.length > 1) {
+            const created = pendingAudioFiles.map((pf, i) => ({
+              id: db.generateId(),
+              date,
+              year: parseInt(date.slice(0, 4), 10),
+              month: parseInt(date.slice(5, 7), 10),
+              title: (typedTitle && pendingAudioFiles.length === 1) ? typedTitle : (pf.name ? pf.name.replace(/\.[^.]+$/, '') : `Audio ${i + 1}`),
+              url: pf.url,
+              creator,
+              duration: isFinite(durRaw) && durRaw > 0 ? durRaw : undefined,
+              createdAt: now
+            }));
+            cloned.push(...created);
+            await saveFn(cloned);
+            logContentAction(type, 'created', `Añadidos ${created.length} audios`);
+          } else {
+            const url = baseUrl || (pendingAudioFiles[0]?.url) || '';
+            if (!url) throw new Error('La URL del audio es obligatoria');
+            const prev = isNew ? {} : (items[index] || {});
+            const newItem = {
+              ...prev,
+              id: prev.id || db.generateId(),
+              date,
+              year: parseInt(date.slice(0, 4), 10),
+              month: parseInt(date.slice(5, 7), 10),
+              title: typedTitle || '',
+              url,
+              creator,
+              duration: isFinite(durRaw) && durRaw > 0 ? durRaw : (prev.duration || undefined),
+              createdAt: prev.createdAt || now
+            };
+            if (isNew) cloned.push(newItem);
+            else cloned[index] = newItem;
+            await saveFn(cloned);
+            logContentAction(type, isNew ? 'created' : 'updated', `${isNew ? 'Añadido' : 'Actualizado'}: ${newItem.title || 'audio'}`);
+          }
         }
       }
     );
@@ -2973,8 +2995,12 @@ export function AdminPage(router) {
               <input type="date" id="dateHubStart" value="${esc(hubDates.hubStart)}">
             </label>
             <label class="dates-field">
-              <span>🎁 Cumpleaños</span>
+              <span>🎁 Cumpleaños de la persona especial</span>
               <input type="date" id="dateBirthday" value="${esc(hubDates.birthday)}">
+            </label>
+            <label class="dates-field">
+              <span>🎂 Tu cumpleaños (admin)</span>
+              <input type="date" id="dateUserBirthday" value="${esc(hubDates.userBirthday)}">
             </label>
           </div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:14px;">
@@ -3022,15 +3048,20 @@ export function AdminPage(router) {
       const anniversary = page.querySelector('#dateAnniversary').value;
       const hubStart = page.querySelector('#dateHubStart').value;
       const birthday = page.querySelector('#dateBirthday').value;
-      if (!anniversary || !hubStart || !birthday) {
-        showToast('Rellena las tres fechas', 'error');
+      const userBirthday = page.querySelector('#dateUserBirthday').value;
+      if (!anniversary || !hubStart || !birthday || !userBirthday) {
+        showToast('Rellena las cuatro fechas', 'error');
         return;
       }
       try {
-        const saved = await db.saveHubDates({ anniversary, hubStart, birthday });
+        const saved = await db.saveHubDates({ anniversary, hubStart, birthday, userBirthday });
+        // Refresca la caché de fechas: el inicio y la bienvenida reflejan el
+        // cambio al instante (antes se quedaban con el valor viejo hasta
+        // que la re-lectura asíncrona terminaba).
+        refreshSpecialDates().catch(() => {});
         showToast('Fechas especiales guardadas', 'success');
         const hint = page.querySelector('#datesSavedHint');
-        if (hint) hint.textContent = `Aniversario ${saved.anniversary} · Hub ${saved.hubStart} · Cumple ${saved.birthday}`;
+        if (hint) hint.textContent = `Aniversario ${saved.anniversary} · Hub ${saved.hubStart} · Cumple ${saved.birthday} · Tú ${saved.userBirthday}`;
       } catch (err) {
         console.error('[admin] No se pudieron guardar las fechas:', err);
         showToast(err?.message || 'No se pudieron guardar las fechas', 'error');
@@ -3064,13 +3095,6 @@ export function AdminPage(router) {
         ? `<strong>⚠️ Base de datos no disponible</strong> — ${status.message}<br>
            <small>Los cambios se guardarán solo en este navegador hasta que se arregle el permiso en Supabase.</small>`
         : `<strong>️ Modo local</strong> — ${status.message}`;
-    }
-    // Pill de conexión en la sidebar
-    const pill = page.querySelector('#adminConnPill');
-    if (pill) {
-      pill.textContent = status.ok ? '● Supabase' : '● Modo local';
-      pill.classList.toggle('ok', !!status.ok);
-      pill.title = status.message || '';
     }
   }
 

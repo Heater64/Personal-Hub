@@ -19,6 +19,9 @@
         .board-labels { display: flex; gap: 40px; justify-content: center; margin: 6px 0 0; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
         .board-labels span:first-child { margin-right: 0; }
         .board-labels .own { color: var(--accent); }
+        /* Tableros apilados en vertical (móvil): etiquetas también en columna */
+        .board-labels.is-stacked { flex-direction: column; align-items: flex-start; gap: 2px; padding-left: 6px; margin-bottom: 8px; }
+        @media (max-width: 559px) { .controls-hint { font-size: 0.72rem; line-height: 1.5; } }
         /* Overlay de pasar turno */
         .pass-overlay { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); }
         .pass-overlay.show { display: flex; }
@@ -77,11 +80,36 @@
         'use strict';
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const N = 10, CELL = 38, MARGIN = 10, GAP = 40;
-        const OWN_X = MARGIN, ENEMY_X = MARGIN + N * CELL + GAP;
-        const SIZE = N * CELL;
+        const N = 10, MARGIN = 10;
         const SHIPS = [5, 4, 3, 3, 2];
-        const W = 860, H = 430;
+        // Geometría responsive: en pantallas estrechas los dos tableros se
+        // apilan en vertical (cada celda sigue siendo tocable); en escritorio
+        // se mantienen lado a lado (860x430).
+        let CELL = 38, GAP = 40, SIZE = 380, OWN_X = 10, ENEMY_X = 430, ENEMY_Y = 10, W = 860, H = 430;
+
+        function applyLayout() {
+            const container = document.querySelector('.game-container');
+            const avail = container ? container.clientWidth : 860;
+            const mobile = window.innerWidth < 560;
+            document.querySelector('.board-labels')?.classList.toggle('is-stacked', mobile);
+            if (mobile) {
+                CELL = Math.max(16, Math.floor((avail - 2 * MARGIN) / N));
+                GAP = Math.max(12, Math.floor(CELL * 0.55));
+                SIZE = N * CELL;
+                OWN_X = MARGIN;
+                ENEMY_X = MARGIN;
+                ENEMY_Y = MARGIN + SIZE + GAP;
+                W = 2 * MARGIN + SIZE;
+                H = 2 * MARGIN + 2 * SIZE + GAP;
+            } else {
+                CELL = 38; GAP = 40; SIZE = N * CELL;
+                OWN_X = MARGIN; ENEMY_X = MARGIN + SIZE + GAP; ENEMY_Y = MARGIN;
+                W = 860; H = 430;
+            }
+            canvas.width = W;
+            canvas.height = H;
+            canvas.style.aspectRatio = W + ' / ' + H;
+        }
 
         let boards, shots, shipsAlive = [SHIPS.length, SHIPS.length], turn, phase, over, wins1, wins2;
         wins1 = parseInt(localStorage.getItem('battleshipWins1') || '0', 10);
@@ -152,7 +180,6 @@
         }
 
         function cellX(gridX, c) { return gridX + c * CELL; }
-        function cellY(r) { return MARGIN + r * CELL; }
 
         function shoot(r, c) {
             if (over || phase !== 'play') return false;
@@ -242,9 +269,9 @@
             document.getElementById('gameMessage').classList.add('show');
         }
 
-        function drawBoard(ox, cells, own) {
+        function drawBoard(bx, by, cells, own) {
             for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
-                const x = ox + c * CELL, y = cellY(r);
+                const x = bx + c * CELL, y = by + r * CELL;
                 ctx.fillStyle = 'rgba(255,255,255,0.04)';
                 ctx.fillRect(x, y, CELL - 1, CELL - 1);
                 if (own && cells[r][c] === 1) {
@@ -277,47 +304,42 @@
             ctx.fillRect(0, 0, W, H);
             // tablero propio (del jugador del turno actual)
             const me = turn === 1 ? 0 : 1;
-            drawBoard(OWN_X, boards[me], true);
+            drawBoard(OWN_X, MARGIN, boards[me], true);
             // tablero enemigo
-            drawBoard(ENEMY_X, boards[turn === 1 ? 1 : 0], false);
-            // etiquetas de coordenadas
+            drawBoard(ENEMY_X, ENEMY_Y, boards[turn === 1 ? 1 : 0], false);
+            // etiquetas de coordenadas (encima y a la izquierda de cada tablero)
             ctx.fillStyle = 'rgba(255,255,255,0.25)';
             ctx.font = '10px Inter, sans-serif';
             ctx.textAlign = 'center';
             for (let i = 0; i < N; i++) {
                 ctx.fillText(i + 1, OWN_X + i * CELL + CELL / 2, MARGIN - 4);
-                ctx.fillText(i + 1, ENEMY_X + i * CELL + CELL / 2, MARGIN - 4);
-                ctx.fillText(String.fromCharCode(65 + i), OWN_X - 8, cellY(i) + CELL / 2 + 3);
-                ctx.fillText(String.fromCharCode(65 + i), ENEMY_X - 8, cellY(i) + CELL / 2 + 3);
+                ctx.fillText(i + 1, ENEMY_X + i * CELL + CELL / 2, ENEMY_Y - 4);
+                ctx.fillText(String.fromCharCode(65 + i), OWN_X - 8, MARGIN + i * CELL + CELL / 2 + 3);
+                ctx.fillText(String.fromCharCode(65 + i), ENEMY_X - 8, ENEMY_Y + i * CELL + CELL / 2 + 3);
             }
         }
 
-        function canvasToCell(e) {
+        function canvasToCell(px, py) {
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width * W;
-            const y = (e.clientY - rect.top) / rect.height * H;
-            const r = Math.floor((y - MARGIN) / CELL);
-            if (r < 0 || r >= N) return null;
-            const cOwn = Math.floor((x - OWN_X) / CELL);
-            const cEnemy = Math.floor((x - ENEMY_X) / CELL);
-            if (cOwn >= 0 && cOwn < N && x >= OWN_X && x < OWN_X + SIZE) return null; // clic en lo propio: nada
-            if (cEnemy >= 0 && cEnemy < N && x >= ENEMY_X && x < ENEMY_X + SIZE) return { r, c: cEnemy };
-            return null;
+            const x = (px - rect.left) / rect.width * W;
+            const y = (py - rect.top) / rect.height * H;
+            const inEnemy = x >= ENEMY_X && x < ENEMY_X + SIZE && y >= ENEMY_Y && y < ENEMY_Y + SIZE;
+            if (!inEnemy) return null; // clic en lo propio (o fuera): nada
+            const r = Math.floor((y - ENEMY_Y) / CELL);
+            const c = Math.floor((x - ENEMY_X) / CELL);
+            if (r < 0 || r >= N || c < 0 || c >= N) return null;
+            return { r, c };
         }
 
         canvas.addEventListener('click', (e) => {
-            const cell = canvasToCell(e);
+            const cell = canvasToCell(e.clientX, e.clientY);
             if (cell) shoot(cell.r, cell.c);
         });
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const t = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const x = (t.clientX - rect.left) / rect.width * W;
-            const y = (t.clientY - rect.top) / rect.height * H;
-            const r = Math.floor((y - MARGIN) / CELL);
-            const cEnemy = Math.floor((x - ENEMY_X) / CELL);
-            if (r >= 0 && r < N && cEnemy >= 0 && cEnemy < N && x >= ENEMY_X && x < ENEMY_X + SIZE) shoot(r, cEnemy);
+            const cell = canvasToCell(t.clientX, t.clientY);
+            if (cell) shoot(cell.r, cell.c);
         }, { passive: false });
 
         document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
@@ -334,7 +356,15 @@
         document.getElementById('wins2Display').textContent = wins2;
         updateShips();
 
+        applyLayout();
         resetGame();
+
+        // Reajusta la geometría al rotar / cambiar el tamaño (con debounce)
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => { applyLayout(); draw(); }, 150);
+        });
 
         window.__battleship = { shoot, resetGame, get state() { return { turn, phase, over, wins1, wins2, shipsAlive: [...shipsAlive] }; }, get boards() { return boards.map(b => b.map(r => r.slice())); } };
     })();

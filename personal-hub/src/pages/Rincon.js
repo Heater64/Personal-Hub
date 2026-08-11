@@ -1140,7 +1140,6 @@ export function RinconPage(router) {
         <button class="gallery-add-btn" id="galleryAddBtn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           <span class="gallery-add-label">Añadir fotos</span>
-          <span class="gallery-add-only">＋</span>
         </button>
         <input type="file" id="galleryFileInput" accept="image/*" multiple hidden>
       </div>` : ''}
@@ -1407,7 +1406,10 @@ export function RinconPage(router) {
     const BATCH = 18;
     let offset = 0;
     let io = null;
-    const sentinel = document.getElementById('gallerySentinel');
+    // Relativo al grid: en el primer render la página aún no está en el
+    // documento, así que getElementById devolvería null y el scroll
+    // infinito nunca arrancaría.
+    const sentinel = grid.parentElement?.querySelector('#gallerySentinel');
 
     function appendNext() {
       if (token !== state.galleryToken) return;
@@ -1629,7 +1631,10 @@ export function RinconPage(router) {
     if (!container) return;
     const photos = getGalleryPhotos();
     const heroPhotos = photos.slice(0, 5);
-    const grid = document.getElementById('galeriaGrid');
+    // container.querySelector en vez de document.getElementById: la página
+    // se renderiza antes de montarse en el DOM (el router la adjunta al
+    // volver), y getElementById no encuentra nodos desacoplados.
+    const grid = container.querySelector('#galeriaGrid');
     if (grid) renderMasonryGrid(grid, photos);
     bindGalleryHero(container, heroPhotos);
     bindGalleryUpload(container);
@@ -2635,9 +2640,10 @@ export function RinconPage(router) {
       });
     });
 
-    // Animate visible cards
+    // Animate visible cards (todos los tipos: stats, timeline, chips, datos,
+    // razas y gatos famosos — si falta uno se queda con opacity 0 y "en negro")
     requestAnimationFrame(() => {
-      page.querySelectorAll('.disco-stat-card.animate-in, .disco-tl-card.animate-in, .disco-curio-card.animate-in, .disco-chip.animate-in').forEach(el => el.classList.add('visible'));
+      page.querySelectorAll('.disco-stat-card.animate-in, .disco-tl-card.animate-in, .disco-curio-card.animate-in, .disco-chip.animate-in, .disco-dato-featured.animate-in, .disco-dato-open.animate-in, .disco-raza-card.animate-in, .disco-famoso-card.animate-in').forEach(el => el.classList.add('visible'));
     });
 
     // Galería de fotos → lightbox

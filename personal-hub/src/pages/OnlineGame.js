@@ -9,6 +9,7 @@ import {
   submitGameMove,
   submitBattleshipMove,
   requestGameRematch,
+  rejectGameRematch,
   cancelGameRoom,
   subscribeToGameRoom
 } from '../services/games.service.js';
@@ -150,7 +151,7 @@ export function OnlineGamePage(router) {
   const page = document.createElement('div');
   page.className = 'online-page';
 
-  const gameId = router.currentRoute?.params?.gameId;
+  let gameId = router.currentRoute?.params?.gameId;
   const query = router.currentRoute?.query || {};
   const roomId = query.room || '';
   const user = userStore.getUser();
@@ -204,19 +205,41 @@ export function OnlineGamePage(router) {
 
   function renderLobby() {
     mode = 'lobby';
+    const gameChoices = Object.entries(MULTIPLAYER_GAMES).map(([id, game]) =>
+      `<button type="button" class="online-game-chip${id === gameId ? ' is-selected' : ''}" data-game="${id}">${game.emoji} ${game.title}</button>`
+    ).join('');
     const choices = targets.length
       ? targets.map(target => `<button type="button" class="online-choice" data-target="${escapeHtml(target.id)}"><span class="online-avatar"></span><span class="online-target-name"></span></button>`).join('')
       : '<p class="online-status">No hay otro usuario habilitado disponible.</p>';
     shell(`
       <div class="online-panel">
-        <p>Elige a quién quieres invitar a una partida de <strong>${gameInfo().title}</strong>.</p>
+        <p>Elige el juego y a quién quieres invitar.</p>
+        <div class="online-field"><label>Juego</label><div class="online-game-chips">${gameChoices}</div></div>
         <div class="online-field"><label>Tu rival</label><div class="online-targets">${choices}</div></div>
         <div class="online-actions"><button type="button" class="online-btn online-btn--primary" data-action="invite" disabled>Enviar invitación</button></div>
       </div>`);
     const inviteButton = page.querySelector('[data-action="invite"]');
+    page.querySelectorAll('[data-game]').forEach(button => {
+      button.addEventListener('click', () => {
+        gameId = button.dataset.game;
+        page.querySelectorAll('[data-game]').forEach(item => item.classList.toggle('is-selected', item === button));
+        page.querySelector('.online-title').textContent = `${gameInfo().emoji} ${gameInfo().title}`;
+      });
+    });
     page.querySelectorAll('[data-target]').forEach(button => {
       const target = targets.find(item => item.id === button.dataset.target);
-      button.querySelector('.online-avatar').textContent = (target?.name || '?').charAt(0).toUpperCase();
+      const avatarEl = button.querySelector('.online-avatar');
+      avatarEl.textContent = '';
+      if (target?.avatar_url) {
+        const img = document.createElement('img');
+        img.className = 'online-avatar-img';
+        img.src = target.avatar_url;
+        img.alt = '';
+        img.onerror = () => { img.remove(); avatarEl.textContent = (target?.name || '?').charAt(0).toUpperCase(); };
+        avatarEl.appendChild(img);
+      } else {
+        avatarEl.textContent = (target?.name || '?').charAt(0).toUpperCase();
+      }
       button.querySelector('.online-target-name').textContent = target?.name || 'Usuario';
       button.addEventListener('click', () => {
         selectedTarget = target.id;
@@ -262,14 +285,35 @@ export function OnlineGamePage(router) {
 
   function renderResult() {
     const result = getGameResult(gameId, room.state, user.id, room.host_id, room.guest_id);
-    const title = result === 'draw' ? '🤝 Empate' : result === 'win' ? '🎉 ¡Has ganado!' : '💛 Ha ganado tu rival';
-    const waiting = room.host_id === user.id ? room.rematch_host : room.rematch_guest;
+    const outcome = result === 'draw' ? 'draw' : result === 'win' ? 'win' : 'loss';
+    const title = result === 'draw' ? 'Empate' : result === 'win' ? '¡Has ganado!' : 'Ha ganado tu rival';
+    const emblems = {
+      win: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
+      loss: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
+      draw: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M10 9l-2 3 2 3"/><path d="M14 9l2 3-2 3"/></svg>'
+    };
+    const iRequested = room.host_id === user.id ? room.rematch_host : room.rematch_guest;
+    const rivalRequested = room.host_id === user.id ? room.rematch_guest : room.rematch_host;
+    const statusText = iRequested
+      ? 'Esperando a que tu rival confirme la revancha…'
+      : rivalRequested
+        ? 'Tu rival quiere la revancha. ¿Jugamos otra?'
+        : '¿Seguimos con otra partida?';
+    const requestBtn = iRequested
+      ? `<button type="button" class="online-btn" data-action="cancel-rematch">Cancelar petición</button>`
+      : `<button type="button" class="online-btn online-btn--primary" data-action="rematch">Revancha</button>`;
+    const rivalActions = rivalRequested
+      ? `<button type="button" class="online-btn" data-action="reject-rematch">Rechazar</button>`
+      : '';
     shell(`
-      <div class="online-result"><div class="online-kicker">Resultado</div><h2>${title}</h2><p>${waiting ? 'Esperando a que tu rival confirme la revancha…' : '¿Seguimos con otra partida?'}</p>
-        <div class="online-actions"><button type="button" class="online-btn online-btn--primary" data-action="rematch" ${waiting ? 'disabled' : ''}>${waiting ? 'Revancha solicitada' : 'Revancha'}</button><button type="button" class="online-btn" data-action="change">Cambiar de juego</button></div>
+      <div class="online-result online-result--${outcome}">
+        <div class="online-result__emblem">${emblems[outcome]}</div>
+        <div class="online-kicker">Resultado</div>
+        <h2>${title}</h2>
+        <p>${statusText}</p>
+        <div class="online-actions">${requestBtn}${rivalActions}<button type="button" class="online-btn" data-action="change">Cambiar de juego</button></div>
       </div>`);
-    page.querySelector('[data-action="rematch"]').addEventListener('click', async () => {
-      const button = page.querySelector('[data-action="rematch"]');
+    const requestRematch = async (button) => {
       button.disabled = true;
       try {
         room = await requestGameRematch(room.id, initialState(gameId, room.host_id));
@@ -277,7 +321,18 @@ export function OnlineGamePage(router) {
         renderRoom();
       }
       catch (error) { button.disabled = false; showToast(friendlyError(error.message), 'error'); }
-    });
+    };
+    const rejectRematch = async (button) => {
+      button.disabled = true;
+      try {
+        room = await rejectGameRematch(room.id);
+        renderRoom();
+      }
+      catch (error) { button.disabled = false; showToast(friendlyError(error.message), 'error'); }
+    };
+    page.querySelector('[data-action="rematch"]')?.addEventListener('click', (e) => requestRematch(e.currentTarget));
+    page.querySelector('[data-action="cancel-rematch"]')?.addEventListener('click', (e) => rejectRematch(e.currentTarget));
+    page.querySelector('[data-action="reject-rematch"]')?.addEventListener('click', (e) => rejectRematch(e.currentTarget));
     page.querySelector('[data-action="change"]').addEventListener('click', async () => {
       selectedTarget = room.host_id === user.id ? room.guest_id : room.host_id;
       targetName = 'tu rival';
@@ -286,7 +341,18 @@ export function OnlineGamePage(router) {
   }
 
   function renderWaiting() {
-    shell(`<div class="online-panel"><div class="online-status"><span class="online-status__dot"></span><span>Esperando a que ${escapeHtml(targetName || 'tu rival')} acepte la invitación…</span></div><p class="online-subtitle">Puedes seguir en esta pantalla. Te avisaremos en cuanto la sala esté lista.</p><div class="online-actions"><button type="button" class="online-btn" data-action="back">Cancelar y volver</button></div></div>`);
+    shell(`
+      <div class="online-panel online-waiting">
+        <div class="online-waiting__visual" aria-hidden="true">
+          <span class="online-waiting__spinner"></span>
+          <span class="online-waiting__badge">${escapeHtml(gameInfo().emoji)}</span>
+        </div>
+        <div class="online-waiting__content">
+          <div class="online-status"><span class="online-status__dot"></span><span>Esperando a que ${escapeHtml(targetName || 'tu rival')} acepte la invitación…</span></div>
+          <p class="online-subtitle">Puedes seguir en esta pantalla. Te avisaremos en cuanto la sala esté lista.</p>
+        </div>
+        <div class="online-actions"><button type="button" class="online-btn" data-action="back">Cancelar y volver</button></div>
+      </div>`);
   }
 
   function renderRoom() {
@@ -396,7 +462,10 @@ export function OnlineGamePage(router) {
       room = await getGameRoom(roomId);
       if (!room || (room.host_id !== user.id && room.guest_id !== user.id)) throw new Error('No tienes acceso a esta sala.');
       if (room.game_id !== gameId) throw new Error('El juego de esta sala no coincide.');
-      if (gameId === 'battleship') playerState = await getGamePlayerState(room.id);
+      // Battleship: el tablero privado solo existe cuando la sala está activa.
+      // En 'waiting' el RPC devuelve null y no hay nada que mostrar todavía;
+      // la suscripción Realtime lo cargará al aceptar el rival.
+      if (gameId === 'battleship' && room.status !== 'waiting') playerState = await getGamePlayerState(room.id);
       if (room.status === 'waiting') {
         targetName = room.host_id === user.id ? 'tu rival' : 'el anfitrión';
         clearTimeout(expiryTimer);

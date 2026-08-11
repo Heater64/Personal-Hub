@@ -254,7 +254,12 @@ async function saveRinconCovers(covers) {
 // dashboard del Admin (Años juntos, En el Hub, fechas importantes).
 // ==========================================
 
-const DEFAULT_HUB_DATES = { anniversary: '2024-07-10', hubStart: '2024-05-10', birthday: '2024-11-24' };
+const DEFAULT_HUB_DATES = {
+  anniversary: '2026-07-03',   // aniversario de pareja: 03/07/2026 (día/mes/año)
+  hubStart: '2024-05-10',      // inicio del Hub / primer mensaje
+  birthday: '2012-09-03',      // cumpleaños de dada: 03/09/2012
+  userBirthday: '2009-08-03'   // cumpleaños del admin: 03/08/2009
+};
 
 async function getHubDates() {
   try {
@@ -269,7 +274,8 @@ async function saveHubDates(dates) {
   const clean = {
     anniversary: dates?.anniversary || DEFAULT_HUB_DATES.anniversary,
     hubStart: dates?.hubStart || DEFAULT_HUB_DATES.hubStart,
-    birthday: dates?.birthday || DEFAULT_HUB_DATES.birthday
+    birthday: dates?.birthday || DEFAULT_HUB_DATES.birthday,
+    userBirthday: dates?.userBirthday || DEFAULT_HUB_DATES.userBirthday
   };
   await saveContent('hub_dates', clean);
   return clean;
@@ -876,6 +882,30 @@ async function listUsers() {
   }
 }
 
+// ==========================================
+// PROFILE SYNC — sincroniza nombre/avatar con la tabla profiles
+// (el panel Admin, las invitaciones de juego y el RPC de rivales leen
+//  de profiles; sin esto, cambiar el nombre no se propagaba al resto)
+// ==========================================
+
+async function saveProfile(updates) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('No hay sesión activa');
+  const data = {};
+  if (typeof updates?.name === 'string') data.name = updates.name;
+  if (typeof updates?.avatar === 'string') data.avatar_url = updates.avatar;
+  if (!Object.keys(data).length) return true;
+  const { error } = await supabase.from('profiles').update({
+    ...data,
+    email: user.email || '',
+    updated_at: new Date().toISOString()
+  }).eq('id', user.id);
+  if (error) {
+    console.warn('[db] Profile sync skipped:', error.message);
+  }
+  return true;
+}
+
 async function saveUser(userId, updates) {
   await requireAdmin(); // gestión de usuarios: solo ADMIN
   const users = lsGet('ph.data.users', []);
@@ -1257,7 +1287,7 @@ export const db = {
   getMaldiaFrases, getMaldiaMensajes, saveMaldiaFrases, saveMaldiaMensajes,
   logActivity, getActivity, formatAction,
   trackVisit, getAnalytics, getPageVisits,
-  listUsers, saveUser, createUser, deleteUser,
+  listUsers, saveUser, createUser, deleteUser, saveProfile,
   uploadAvatar, uploadGalleryPhotos, uploadMemes, uploadAudios,
   saveGiftResponse, getMyGiftResponses, getAllGiftResponses,
   saveMaldiaNote, getMyMaldiaNotes, getAllMaldiaNotes,

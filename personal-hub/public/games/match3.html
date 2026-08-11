@@ -13,7 +13,7 @@
     <link rel="manifest" href="../manifest.json">
     <style>
         .canvas-wrap { max-width: 440px; }
-        canvas { width: 100%; max-width: 440px; aspect-ratio: 1/1; border-radius: 18px; cursor: pointer; }
+        canvas { width: 100%; max-width: 440px; aspect-ratio: 1/1; border-radius: 18px; cursor: pointer; touch-action: manipulation; }
         .controls-hint { margin: 10px 0 4px; }
     </style>
 </head>
@@ -254,7 +254,8 @@
             return { r, c };
         }
 
-        canvas.addEventListener('click', (e) => {
+        canvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             const pos = posToCell(e);
             if (!pos) return;
             if (!selected) { selected = pos; draw(); return; }

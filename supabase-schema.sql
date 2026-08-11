@@ -547,6 +547,27 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_timestamp ON activity_log(timestamp 
 CREATE INDEX IF NOT EXISTS idx_analytics_visits_timestamp ON analytics_visits(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_admin_actions_timestamp ON admin_actions(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_user_progress_user ON user_progress(user_id);
+-- ==========================================
+-- SYNC PERFIL — mantener profiles al día con auth.users
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.sync_profile_from_auth()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE public.profiles SET
+    name = COALESCE(NULLIF(NEW.raw_user_meta_data->>'name', ''), name),
+    avatar_url = COALESCE(NULLIF(NEW.raw_user_meta_data->>'avatar_url', ''), avatar_url),
+    email = COALESCE(NULLIF(NEW.email, ''), email),
+    updated_at = NOW()
+  WHERE id = NEW.id;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
+CREATE TRIGGER on_auth_user_updated
+  AFTER UPDATE OF raw_user_meta_data, email ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.sync_profile_from_auth();
+
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
 CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
 
@@ -595,6 +616,7 @@ CREATE TABLE IF NOT EXISTS game_invitations (
   inviter_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   invitee_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   inviter_name TEXT NOT NULL DEFAULT '',
+  inviter_avatar TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'expired', 'cancelled')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -669,8 +691,9 @@ CREATE OR REPLACE FUNCTION public.get_game_invite_targets()
 RETURNS TABLE (id UUID, name TEXT, email TEXT, avatar_url TEXT)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
-  SELECT p.id, COALESCE(NULLIF(p.name, ''), split_part(p.email, '@', 1)), p.email, p.avatar_url
+  SELECT p.id, COALESCE(NULLIF(p.name, ''), NULLIF(p.email, ''), NULLIF(u.email, ''), 'Usuario'), COALESCE(NULLIF(p.email, ''), u.email), p.avatar_url
   FROM public.profiles p
+  LEFT JOIN auth.users u ON u.id = p.id
   WHERE auth.uid() IS NOT NULL AND p.enabled = true AND p.id <> auth.uid()
   ORDER BY p.name, p.email;
 $$;
@@ -681,14 +704,14 @@ CREATE OR REPLACE FUNCTION public.create_game_invitation(
 RETURNS game_invitations
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE target profiles%ROWTYPE; created_room game_rooms%ROWTYPE; created_invitation game_invitations%ROWTYPE; current_name TEXT;
+DECLARE target profiles%ROWTYPE; created_room game_rooms%ROWTYPE; created_invitation game_invitations%ROWTYPE; current_name TEXT; current_avatar TEXT;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Debes iniciar sesión.'; END IF;
   IF p_game_id NOT IN ('conecta4', 'tresenraya', 'battleship') THEN RAISE EXCEPTION 'Juego no disponible para multijugador.'; END IF;
   IF p_invitee_id = auth.uid() THEN RAISE EXCEPTION 'No puedes invitarte a ti mismo.'; END IF;
   SELECT * INTO target FROM public.profiles WHERE id = p_invitee_id AND enabled = true;
   IF NOT FOUND THEN RAISE EXCEPTION 'Ese usuario no está disponible.'; END IF;
-  SELECT COALESCE(NULLIF(name, ''), split_part(email, '@', 1), 'Jugador') INTO current_name
+  SELECT COALESCE(NULLIF(name, ''), split_part(email, '@', 1), 'Jugador'), COALESCE(avatar_url, '') INTO current_name, current_avatar
     FROM public.profiles WHERE id = auth.uid();
 
   -- Libera invitaciones pendientes ya caducadas para permitir una nueva
@@ -729,8 +752,8 @@ BEGIN
         ));
   END IF;
 
-  INSERT INTO public.game_invitations (room_id, game_id, inviter_id, invitee_id, inviter_name)
-    VALUES (created_room.id, p_game_id, auth.uid(), p_invitee_id, COALESCE(current_name, 'Jugador'))
+  INSERT INTO public.game_invitations (room_id, game_id, inviter_id, invitee_id, inviter_name, inviter_avatar)
+    VALUES (created_room.id, p_game_id, auth.uid(), p_invitee_id, COALESCE(current_name, 'Jugador'), COALESCE(current_avatar, ''))
     RETURNING * INTO created_invitation;
   RETURN created_invitation;
 END;
@@ -957,6 +980,7 @@ DECLARE
   updated_room game_rooms%ROWTYPE;
   old_board JSONB;
   new_board JSONB;
+  new_board_2d JSONB;
   player_mark INTEGER;
   changed_cells INTEGER := 0;
   changed_row INTEGER := -1;
@@ -998,8 +1022,14 @@ BEGIN
       END IF;
     END LOOP;
     IF changed_cells <> 1 THEN RAISE EXCEPTION 'El movimiento debe cambiar una sola casilla.'; END IF;
-    IF public.game_has_line(new_board, 3, 3, 1, 3) THEN winner_mark := 1;
-    ELSIF public.game_has_line(new_board, 3, 3, 2, 3) THEN winner_mark := 2;
+    -- Tres en Raya guarda el tablero como array plano de 9; game_has_line espera 2D.
+    new_board_2d := jsonb_build_array(
+      jsonb_build_array((new_board->>0)::INTEGER, (new_board->>1)::INTEGER, (new_board->>2)::INTEGER),
+      jsonb_build_array((new_board->>3)::INTEGER, (new_board->>4)::INTEGER, (new_board->>5)::INTEGER),
+      jsonb_build_array((new_board->>6)::INTEGER, (new_board->>7)::INTEGER, (new_board->>8)::INTEGER)
+    );
+    IF public.game_has_line(new_board_2d, 3, 3, 1, 3) THEN winner_mark := 1;
+    ELSIF public.game_has_line(new_board_2d, 3, 3, 2, 3) THEN winner_mark := 2;
     ELSIF NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(new_board) AS cells(mark) WHERE cells.mark = '0') THEN is_draw := true;
     END IF;
   ELSE
@@ -1124,6 +1154,47 @@ GRANT EXECUTE ON FUNCTION public.get_game_player_state(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.submit_battleship_move(UUID, INTEGER, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.submit_game_move(UUID, INTEGER, JSONB, UUID, TEXT, UUID, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.request_game_rematch(UUID, JSONB) TO authenticated;
+
+-- Poda del historial: conserva solo las 5 partidas terminadas más recientes por pareja.
+CREATE OR REPLACE FUNCTION public.prune_game_history() RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  pair RECORD;
+BEGIN
+  FOR pair IN
+    SELECT host_id, guest_id FROM public.game_rooms
+    WHERE status = 'finished' AND guest_id IS NOT NULL
+    GROUP BY host_id, guest_id
+  LOOP
+    DELETE FROM public.game_rooms
+    WHERE host_id = pair.host_id AND guest_id = pair.guest_id AND status = 'finished'
+      AND id NOT IN (
+        SELECT id FROM public.game_rooms
+        WHERE host_id = pair.host_id AND guest_id = pair.guest_id AND status = 'finished'
+        ORDER BY updated_at DESC, created_at DESC, id DESC
+        LIMIT 5
+      );
+  END LOOP;
+
+  DELETE FROM public.game_rooms
+  WHERE status = 'waiting' AND expires_at < NOW();
+
+  DELETE FROM public.game_rooms
+  WHERE status IN ('active', 'cancelled') AND updated_at < NOW() - INTERVAL '24 hours';
+
+  DELETE FROM public.game_invitations
+  WHERE status <> 'pending' AND updated_at < NOW() - INTERVAL '7 days';
+
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prune_game_history ON public.game_rooms;
+CREATE TRIGGER trg_prune_game_history
+AFTER INSERT OR UPDATE ON public.game_rooms
+FOR EACH ROW
+EXECUTE FUNCTION public.prune_game_history();
 
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.game_rooms; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.game_invitations; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

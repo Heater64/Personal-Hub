@@ -16,6 +16,7 @@ import { initPWA, isStandalone } from '../services/pwa.service.js';
 import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
+import { initListenTogether } from '../services/listenTogether.service.js';
 import '../styles/online-games.css';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
 import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref } from '../utils/userStorage.js';
@@ -68,6 +69,10 @@ export function AppShell(router) {
   // responder invitaciones desde cualquier pantalla de la aplicación.
   const gameInviteCenter = GameInviteCenter(router);
   app.appendChild(gameInviteCenter);
+
+  // Escucha global de 'escuchar juntos': permite recibir solicitudes y
+  // respuestas estando en cualquier página de la web.
+  initListenTogether();
 
   // Store ref to remove welcome overlay on route change
   let currentWelcomeOverlay = null;

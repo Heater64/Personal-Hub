@@ -542,4 +542,7 @@ canvas {
   .game-message-content { padding: 28px 20px; }
   .msg-actions .btn-primary { min-width: 100%; }
   .msg-back { flex: 1; }
+  /* Selectores de tamaño/velocidad/dificultad: que no desborden la pantalla */
+  .size-control { flex-wrap: wrap; justify-content: center; border-radius: 16px; max-width: 100%; }
+  .size-btn { padding: 6px 12px; font-size: 0.7rem; }
 }

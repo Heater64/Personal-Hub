@@ -43,6 +43,17 @@ export const GALLERY_FOLDERS = {
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123652/Memes_favoritos_-3_cotmqd.mp4",
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777132934/bailesnowman.mp4",
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777123650/Memes_favoritos_-11_a2qajj.mp4"
+  ],
+  "Momentos": [
+    "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777747760/5199564237372592635_eqj9v5.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766240/5913325400387948133_1_t6a24g.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766239/5913325400387948134_efteqk.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766239/5913325400387948135_diq97c.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948138_ryirj6.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948137_i6fcp2.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948139_qdgn0l.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/6046582610491806111_mx6qc3.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1783252673/5931306366871997939_mpvodw.jpg"
   ]
 };
 
@@ -115,17 +126,6 @@ export const MEME_FOLDERS = {
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745739/perrito_u87752.mp4",
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745743/perritooo_gqdrkf.mp4",
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745738/perroalmohada_ywhcfb.mp4"
-  ],
-  "Momentos": [
-    "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777747760/5199564237372592635_eqj9v5.jpg",
-    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766240/5913325400387948133_1_t6a24g.jpg",
-    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766239/5913325400387948134_efteqk.jpg",
-    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766239/5913325400387948135_diq97c.jpg",
-    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948138_ryirj6.jpg",
-    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948137_i6fcp2.jpg",
-    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948139_qdgn0l.jpg",
-    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/6046582610491806111_mx6qc3.jpg",
-    "https://res.cloudinary.com/dcsent4fs/image/upload/v1783252673/5931306366871997939_mpvodw.jpg"
   ]
 };
 

@@ -149,6 +149,65 @@ export async function requestGameRematch(roomId, initialState) {
   return validateRoom(unwrap(response, 'No se pudo solicitar la revancha.'));
 }
 
+export async function rejectGameRematch(roomId) {
+  assertConfigured();
+  const response = await supabase.rpc('reject_game_rematch', { p_room_id: roomId });
+  return validateRoom(unwrap(response, 'No se pudo rechazar la revancha.'));
+}
+
+/**
+ * Revanchas pendientes para el usuario (filas de game_rematch_requests
+ * donde el OTRO jugador pidió repetir). Devuelve [{ id, room_id, game_id, requester_id }].
+ */
+export async function listPendingRematchRequests(userId) {
+  assertConfigured();
+  const result = await supabase
+    .from('game_rematch_requests')
+    .select('*')
+    .neq('requester_id', userId)
+    .order('created_at', { ascending: false });
+  const rows = unwrap(result, 'No se pudieron cargar las peticiones de revancha.');
+  return (Array.isArray(rows) ? rows : []).filter(item =>
+    isUuid(item?.id) && isUuid(item?.room_id) && MULTIPLAYER_GAMES[item?.game_id]
+  );
+}
+
+/** Notifica en tiempo real (y por polling) cuando llega/desaparece una petición de revancha. */
+export function subscribeToRematchRequests(userId, onChange) {
+  if (!db.isSupabaseConfigured() || !isUuid(userId)) return () => {};
+  let active = true;
+  let lastSignature = '';
+  let refreshSequence = 0;
+  const refresh = async () => {
+    if (!active) return;
+    const sequence = ++refreshSequence;
+    try {
+      const items = await listPendingRematchRequests(userId);
+      if (!active || sequence !== refreshSequence) return;
+      const signature = items.map(item => `${item.id}:${item.created_at}`).join('|');
+      if (signature === lastSignature) return;
+      lastSignature = signature;
+      onChange(items);
+    } catch (error) {
+      console.warn('[games] No se pudieron refrescar revanchas:', error.message);
+    }
+  };
+  const channel = supabase
+    .channel(`rematch-requests-${userId}`)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'game_rematch_requests'
+    }, refresh)
+    .subscribe();
+  const pollTimer = setInterval(refresh, 10000);
+  refresh();
+
+  return () => {
+    active = false;
+    clearInterval(pollTimer);
+    supabase.removeChannel(channel);
+  };
+}
+
 export function subscribeToGameRoom(roomId, onChange) {
   if (!db.isSupabaseConfigured() || !isUuid(roomId)) return () => {};
   let active = true;

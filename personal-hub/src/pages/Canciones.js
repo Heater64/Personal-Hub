@@ -19,7 +19,8 @@ import {
   initPlaylistsRealtime, onPlaylistsChange
 } from '../services/playlists.service.js';
 import {
-  startListenTogether, stopListenTogether, sendListenEvent, onListenTogether
+  startListenTogether, stopListenTogether, sendListenEvent, onListenTogether,
+  requestListenTogether, cancelListenRequest, getListenTogetherState
 } from '../services/listenTogether.service.js';
 
 const SONGS_BASE = "https://canciones-que-me-recuerdan-a-ti.vercel.app";
@@ -332,6 +333,7 @@ export function CancionesPage(router) {
   // Escuchar juntos: sincronización de reproducción entre dispositivos
   let listenTogether = false;   // la sesión compartida está activa
   let listenPeer = '';          // nombre del otro dispositivo en la sesión
+  let listenPeerAvatar = '';    // foto del otro dispositivo en la sesión
   let listenSuppress = 0;       // evita el eco al aplicar eventos recibidos
   let lastListenT = -10;        // último segundo enviado (throttle del seek)
   let offListen = () => {};     // desuscripción de la sesión compartida
@@ -1116,41 +1118,42 @@ export function CancionesPage(router) {
   }
 
   function updateListenChip() {
+    const st = getListenTogetherState();
     const btn = page.querySelector('#listenTogetherBtn');
     if (btn) {
-      btn.classList.toggle('is-active', listenTogether);
-      btn.setAttribute('aria-pressed', String(listenTogether));
+      btn.classList.toggle('is-active', st.active || st.pending);
+      btn.setAttribute('aria-pressed', String(st.active || st.pending));
     }
     const chip = page.querySelector('#listenStatus');
     if (!chip) return;
-    if (!listenTogether) { chip.textContent = ''; chip.classList.remove('is-on'); return; }
+    if (!st.active && !st.pending) { chip.textContent = ''; chip.classList.remove('is-on'); return; }
     chip.classList.add('is-on');
-    chip.textContent = listenPeer
-      ? `🎧 Escuchando con ${listenPeer}`
-      : '🎧 Escuchar juntos activado: reproduce algo y lo oiremos los dos';
+    if (st.active && st.peerName) {
+      const avatarHtml = st.peerAvatar
+        ? `<img src="${escapeHtml(st.peerAvatar)}" alt="" class="listen-peer-avatar" onerror="this.style.display='none';">`
+        : `<span class="listen-peer-avatar listen-peer-avatar--fallback">${escapeHtml(st.peerName.charAt(0).toUpperCase())}</span>`;
+      chip.innerHTML = `🎧 Escuchando con <span class="listen-peer">${avatarHtml}<span>${escapeHtml(st.peerName)}</span></span>`;
+    } else if (st.pending) {
+      chip.textContent = '🎧 Solicitud enviada… esperando respuesta';
+    } else {
+      chip.textContent = '🎧 Escuchar juntos activado: reproduce algo y lo oiremos los dos';
+    }
   }
 
   function toggleListenTogether() {
-    listenTogether = !listenTogether;
+    const user = userStore.getUser();
     if (listenTogether) {
-      const user = userStore.getUser();
-      startListenTogether(user?.name || 'Tu pareja');
-      showToast('🎧 Escuchar juntos activado', 'success');
-    } else {
       stopListenTogether();
       listenPeer = '';
       showToast('Escuchar juntos desactivado', 'info');
+    } else if (getListenTogetherState().pending) {
+      cancelListenRequest();
+      showToast('Solicitud cancelada.', 'info');
+    } else {
+      requestListenTogether(user?.name || 'Tu pareja', user?.avatar || '');
+      showToast('Solicitud enviada. Esperando respuesta…', 'info', 5000);
     }
     updateListenChip();
-    // Pon al día al otro dispositivo con lo que suena ahora mismo
-    if (listenTogether && currentIdx >= 0 && activeList[currentIdx]) {
-      sendListenEvent({
-        action: 'song',
-        key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist),
-        t: audioEl?.currentTime || 0,
-        playing: isPlaying
-      });
-    }
   }
 
   function handlePeerEvent(p) {
@@ -1304,10 +1307,28 @@ export function CancionesPage(router) {
     // Hero — Escuchar juntos (sincronización en tiempo real)
     page.querySelector('#listenTogetherBtn')?.addEventListener('click', toggleListenTogether);
     offListen = onListenTogether(({ type, payload }) => {
+      // 'state' = la sesión cambió (activada, desactivada, peer): sincroniza la UI.
+      if (type === 'state') {
+        const st = getListenTogetherState();
+        listenTogether = st.active;
+        listenPeer = st.peerName;
+        listenPeerAvatar = st.peerAvatar;
+        updateListenChip();
+        if (st.active && currentIdx >= 0 && activeList[currentIdx]) {
+          sendListenEvent({
+            action: 'song',
+            key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist),
+            t: audioEl?.currentTime || 0,
+            playing: isPlaying
+          });
+        }
+        return;
+      }
       if (!listenTogether) return;
       if (type === 'hello') {
         if (payload?.name) {
           listenPeer = payload.name;
+          listenPeerAvatar = typeof payload.avatar === 'string' ? payload.avatar : '';
           updateListenChip();
           showToast(`🎧 ${payload.name} está escuchando contigo`, 'success');
         }
@@ -1316,6 +1337,7 @@ export function CancionesPage(router) {
       if (type === 'bye') {
         if (listenPeer) {
           listenPeer = '';
+          listenPeerAvatar = '';
           updateListenChip();
           showToast('El otro dispositivo dejó de escuchar', 'info');
         }
@@ -1323,6 +1345,8 @@ export function CancionesPage(router) {
       }
       if (type === 'listen') handlePeerEvent(payload);
     });
+    // Sincroniza el chip con el estado global al entrar (sesión ya activa, etc.)
+    updateListenChip();
 
     // Category pills
     page.querySelectorAll('.music-cat').forEach(btn => {
@@ -1955,7 +1979,8 @@ export function CancionesPage(router) {
     offPlChange();
     offPlayer();
     offListen();
-    if (listenTogether) stopListenTogether();
+    // La sesión compartida vive en el servicio global: no se detiene al
+    // salir de Canciones (la música sigue sonando al navegar).
     unwireAudio();
     page.removeEventListener('click', offOutsideClick);
     preloadToken++; // aborta la precarga de duraciones en curso

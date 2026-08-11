@@ -11,25 +11,108 @@ import { showToast } from '../components/Toast.js';
 import { db } from '../services/db.service.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { requestEnable, disable, isPushSupported } from '../services/notifications.service.js';
-import { getInstallPrompt, triggerInstall, isStandalone, checkForUpdates } from '../services/pwa.service.js';
 import { escapeHtml } from '../utils/escape.js';
 
 // ==========================================
 // APP — versión y novedades
 // ==========================================
-const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '2.0.0';
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.1.1';
 
+// Changelog real: cada versión con sus novedades (semver: fix → patch,
+// función nueva → minor). Al subir una versión nueva solo hay que añadir
+// su entrada al principio de la lista y actualizar APP_VERSION.
 const WHATS_NEW = [
   {
-    version: '2.0.0',
+    version: '1.1.1',
     items: [
-      '✨ Nueva experiencia de inicio con tarjetas del día',
-      '🎮 Juegos disponibles sin conexión desde el primer uso',
-      '📲 Pantalla de bienvenida al abrir la app (splash)',
-      '🔔 Recordatorios diarios por notificación push',
-      '🎨 Modo claro, oscuro y automático',
-      '🧸 OsitosWorld: un mundo lleno de aventuras',
-      '📅 Sorpresa del día en el Calendario'
+      '🖼️ La galería carga las fotos al instante al entrar (antes había que tocar una pestaña)',
+      '📁 La carpeta "Momentos" pasó de Memes a la Galería',
+      '🎙️ En Audios puedes subir 1 o varios audios a la vez desde el panel Admin',
+      '🌧️ Sección Mal Día rediseñada: frases, música y respiración guiada en un mismo lugar',
+      '📅 Todos los días del calendario están disponibles para probar los regalos'
+    ]
+  },
+  {
+    version: '1.1.0',
+    items: [
+      '🎮 Juegos multijugador: invita a alguien, espera, juega en tiempo real y pide revancha',
+      '🎙️ Nueva sección Audios en El Rincón: la cápsula de nuestros audios del día 3',
+      '🎁 Regalos interactivos del calendario con cajita para responder',
+      '📅 Calendario completo con juegos y regalos repartidos hasta el 31 de diciembre',
+      '📺 Catálogo de series y películas reorganizado',
+      '🔗 Escuchar juntos: comparte música con tu persona en tiempo real'
+    ]
+  },
+  {
+    version: '1.0.9',
+    items: [
+      '🐛 Correcciones menores de navegación y animaciones',
+      '⚡ La app carga más rápido en el móvil'
+    ]
+  },
+  {
+    version: '1.0.8',
+    items: [
+      '💡 Curiosidades con pestaña detallada para cada dato',
+      '🔍 Buscador en curiosidades y memes'
+    ]
+  },
+  {
+    version: '1.0.7',
+    items: [
+      '🧹 Limpieza de caché desde el perfil',
+      '📊 Mejoras de rendimiento en la galería y los vídeos'
+    ]
+  },
+  {
+    version: '1.0.6',
+    items: [
+      '🖼️ Galería renovada: álbumes, favoritas, presentación y fotos subidas por el Admin',
+      '😄 Memes organizados en álbumes'
+    ]
+  },
+  {
+    version: '1.0.5',
+    items: [
+      '🔔 Notificaciones diarias de ánimo y novedades',
+      '👤 Perfil con avatar y nombre personalizados'
+    ]
+  },
+  {
+    version: '1.0.4',
+    items: [
+      '🌙 Modo oscuro, claro y automático',
+      '🔤 Texto grande para que todo se lea mejor'
+    ]
+  },
+  {
+    version: '1.0.3',
+    items: [
+      '📅 Calendario con la sorpresa de cada día',
+      '🎁 Regalos diarios desbloqueables'
+    ]
+  },
+  {
+    version: '1.0.2',
+    items: [
+      '🎮 Juegos clásicos: Snake, Buscaminas, Ahorcado y más',
+      '🎵 Sección Canciones con la banda sonora de nuestro amor'
+    ]
+  },
+  {
+    version: '1.0.1',
+    items: [
+      '💖 Sección Sentimientos: Razones, Mal Día y Open When',
+      '🧸 OsitosWorld: un mundo lleno de aventuras'
+    ]
+  },
+  {
+    version: '1.0.0',
+    items: [
+      '🚀 Lanzamiento de Personal Hub',
+      '🏠 Inicio con el contador de nuestros días juntos',
+      '🖼️ El Rincón: galería, memes y curiosidades',
+      '📺 Sección Series y películas para seguir juntos'
     ]
   }
 ];
@@ -198,25 +281,7 @@ export function ProfilePage(router) {
         <button class="prof-app-btn" id="noveltiesBtn" type="button">
           <span class="prof-app-btn-text">
             <strong>Novedades</strong>
-            <small>Qué hay de nuevo en esta versión</small>
-          </span>
-          ${UI.arrowRight}
-        </button>
-        <div class="prof-divider"></div>
-        <button class="prof-app-btn" id="installBtn" type="button" hidden>
-          <span class="prof-app-btn-icon">📲</span>
-          <span class="prof-app-btn-text">
-            <strong>Instalar app</strong>
-            <small>Acceso rápido y sin internet</small>
-          </span>
-          ${UI.arrowRight}
-        </button>
-        <div class="prof-divider" id="installDivider" hidden></div>
-        <button class="prof-app-btn" id="checkUpdatesBtn" type="button">
-          <span class="prof-app-btn-icon">🔄</span>
-          <span class="prof-app-btn-text">
-            <strong>Comprobar actualizaciones</strong>
-            <small>Busca la última versión disponible</small>
+            <small>Qué hay de nuevo en cada versión</small>
           </span>
           ${UI.arrowRight}
         </button>
@@ -413,6 +478,9 @@ export function ProfilePage(router) {
     try {
       const url = await db.uploadAvatar(file);
       userStore.updateProfile({ avatar: url }, false);
+      // Sincroniza también la tabla profiles (best effort): Admin, rivales e
+      // invitaciones de juego leen de ahí para mostrar la foto.
+      db.saveProfile({ avatar: url }).catch(err => console.warn('[profile] sync avatar:', err?.message));
       const avatarEl = page.querySelector('#profileAvatar');
       if (url && avatarEl) {
         const initial = avatarEl.querySelector('.prof-avatar-initial');
@@ -498,6 +566,9 @@ export function ProfilePage(router) {
     const currentName = userStore.getUser()?.name || '';
     if (val !== currentName) {
       userStore.updateProfile({ name: val }, true);
+      // Sincroniza también la tabla profiles: el Admin, las invitaciones de
+      // juego y el selector de rivales leen de ahí (best effort, no bloquea).
+      db.saveProfile({ name: val }).catch(err => console.warn('[profile] sync nombre:', err?.message));
       if (profileNameEl) profileNameEl.textContent = val;
       const initialEl = page.querySelector('#profileInitial');
       if (initialEl) initialEl.textContent = val.charAt(0).toUpperCase();
@@ -533,24 +604,7 @@ export function ProfilePage(router) {
     }
   });
 
-  // ===== APP (versión, novedades, instalación) =====
-  const installBtn = page.querySelector('#installBtn');
-  const installDivider = page.querySelector('#installDivider');
-
-  // Botón de instalación: solo si la app NO está instalada como PWA
-  if (installBtn && !isStandalone()) {
-    installBtn.hidden = false;
-    if (installDivider) installDivider.hidden = false;
-    installBtn.addEventListener('click', () => {
-      if (getInstallPrompt()) {
-        const ok = triggerInstall();
-        if (!ok) openSheet({ title: '📲 Instalar Personal Hub', body: INSTALL_HELP });
-      } else {
-        openSheet({ title: '📲 Instalar Personal Hub', body: INSTALL_HELP });
-      }
-    });
-  }
-
+  // ===== APP (versión, novedades) =====
   page.querySelector('#noveltiesBtn')?.addEventListener('click', () => {
     const body = WHATS_NEW.map(v => `
       <div class="prof-novelties__version">
@@ -561,11 +615,6 @@ export function ProfilePage(router) {
       </div>
     `).join('');
     openSheet({ title: 'Novedades', body });
-  });
-
-  page.querySelector('#checkUpdatesBtn')?.addEventListener('click', () => {
-    checkForUpdates();
-    showToast('🔍 Buscando actualizaciones…', 'info', 2500);
   });
 
   return page;
@@ -610,10 +659,4 @@ function openSheet({ title, body }) {
   return close;
 }
 
-// Guía de instalación según plataforma (cuando no hay beforeinstallprompt)
-const INSTALL_HELP = `
-  <p class="prof-sheet__lead">Instala Personal Hub para tener acceso rápido, funcionar sin internet y recibir novedades al instante.</p>
-  <div class="prof-install-step"><span class="prof-install-step__num">1</span><div><strong>Android (Chrome)</strong><p>Toca el menú <em>⋮</em> y elige <em>“Añadir a pantalla de inicio”</em>.</p></div></div>
-  <div class="prof-install-step"><span class="prof-install-step__num">2</span><div><strong>iPhone / iPad (Safari)</strong><p>Toca el botón <em>Compartir</em> y elige <em>“Añadir a pantalla de inicio”</em>.</p></div></div>
-  <div class="prof-install-step"><span class="prof-install-step__num">3</span><div><strong>Escritorio (Chrome / Edge)</strong><p>Toca el icono de instalar <em>⤓</em> en la barra de direcciones.</p></div></div>
-`;
+

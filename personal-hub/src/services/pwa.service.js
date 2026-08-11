@@ -291,7 +291,7 @@ async function registerSW() {
 function checkVersion() {
   try {
     const current = localStorage.getItem(STORAGE_KEYS.VERSION) || '0';
-    const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '2.0.0';
+    const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.1.1';
     if (current !== appVersion) {
       localStorage.setItem(STORAGE_KEYS.VERSION, appVersion);
       // Do a seamless cache update
