@@ -1083,21 +1083,36 @@ export function CancionesPage(router) {
   // ==========================================
   function findSongByKey(key) {
     if (!key) return null;
-    for (const s of ALL_SONGS) {
-      if (songKey(s.title, s.artist) === key) return s;
+    // Busca en TODA la biblioteca: "Nuestras canciones" (SONGS_RECUERDAN)
+    // tiene temas que no están en ALL_SONGS (mi niña, ¿a dónde vamos?, …)
+    for (const list of [ALL_SONGS, SONGS_RECUERDAN]) {
+      for (const s of list) {
+        if (songKey(s.title, s.artist) === key) return s;
+      }
     }
     return null;
   }
 
   /** Reproduce una canción concreta (venga de donde venga: otra playlist). */
   function playSongObject(s, t) {
-    const idx = ALL_SONGS.indexOf(s);
+    const sourceList = ALL_SONGS.includes(s) ? ALL_SONGS : (SONGS_RECUERDAN.includes(s) ? SONGS_RECUERDAN : null);
+    if (!sourceList) return;
+    // Ya está sonando esta misma canción: solo se ajusta la posición (seek),
+    // sin recargar el audio ni reiniciar la reproducción.
+    const current = activeList[currentIdx];
+    if (current && songKey(current.title, current.artist) === songKey(s.title, s.artist)) {
+      if (audioEl && Number.isFinite(t) && t > 0 && Math.abs(audioEl.currentTime - t) > 2) {
+        audioEl.currentTime = t;
+      }
+      return;
+    }
+    const idx = sourceList.indexOf(s);
     if (idx >= 0 && activeList[idx] === s) {
       loadSong(idx);
     } else {
       // La canción no está en la lista activa: se reproduce sobre la biblioteca
-      activeList = ALL_SONGS;
-      currentIdx = ALL_SONGS.indexOf(s);
+      activeList = sourceList;
+      currentIdx = idx;
       updateUI();
       if (audioEl) {
         audioEl.src = s.audio;
@@ -1119,6 +1134,12 @@ export function CancionesPage(router) {
 
   function updateListenChip() {
     const st = getListenTogetherState();
+    // Fuente de verdad: el estado global del servicio. Se sincroniza aquí
+    // (montaje + cada 'state') para que los eventos entrantes no se descarten
+    // aunque la sesión se activara desde otra página (invitación global).
+    listenTogether = st.active;
+    listenPeer = st.peerName;
+    listenPeerAvatar = st.peerAvatar;
     const btn = page.querySelector('#listenTogetherBtn');
     if (btn) {
       btn.classList.toggle('is-active', st.active || st.pending);
@@ -1343,10 +1364,30 @@ export function CancionesPage(router) {
         }
         return;
       }
-      if (type === 'listen') handlePeerEvent(payload);
+      if (type === 'listen') {
+        // Petición de re-sincronización (el otro acaba de entrar en Canciones
+        // con la sesión ya activa): reenviamos nuestra reproducción actual.
+        if (payload?.action === 'sync' && currentIdx >= 0 && activeList[currentIdx]) {
+          sendListenEvent({
+            action: 'song',
+            key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist),
+            t: audioEl?.currentTime || 0,
+            playing: isPlaying
+          });
+          return;
+        }
+        handlePeerEvent(payload);
+      }
     });
     // Sincroniza el chip con el estado global al entrar (sesión ya activa, etc.)
     updateListenChip();
+    // Montaje tardío: si la sesión ya estaba activa al entrar (aceptaste la
+    // invitación desde otra página), pide el estado actual al otro dispositivo
+    // para que la canción aparezca al momento, aunque esté en pausa.
+    const ltSt = getListenTogetherState();
+    if (ltSt.active && ltSt.peerName) {
+      sendListenEvent({ action: 'sync' });
+    }
 
     // Category pills
     page.querySelectorAll('.music-cat').forEach(btn => {

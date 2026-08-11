@@ -24,6 +24,8 @@ let myName = '';
 let myAvatar = '';
 let peerName = '';        // quién está escuchando conmigo
 let peerAvatar = '';
+let lastHello = null;     // último 'hello' recibido (evita perder el nombre
+                          // si llega antes de que nuestra sesión esté activa)
 const subs = new Set();
 
 function emit(type, payload) {
@@ -57,10 +59,11 @@ export function initListenTogether() {
         emit('response', payload);
       })
       .on('broadcast', { event: 'hello' }, ({ payload }) => {
-        if (!active) return;
         if (payload?.name) {
+          lastHello = { name: payload.name, avatar: typeof payload.avatar === 'string' ? payload.avatar : '' };
+          if (!active) return;
           peerName = payload.name;
-          peerAvatar = typeof payload.avatar === 'string' ? payload.avatar : '';
+          peerAvatar = lastHello.avatar;
           emit('hello', { name: peerName, avatar: peerAvatar });
         }
       })
@@ -88,7 +91,16 @@ export function startListenTogether(name = '', avatar = '') {
   if (channel) {
     try { channel.send({ type: 'broadcast', event: 'hello', payload: { name, avatar } }); } catch { /* no-op */ }
   }
+  // Si el 'hello' del otro llegó antes de activar la sesión (carrera típica
+  // en la aceptación mutua), no se pierde: se aplica ahora.
+  if (lastHello && !peerName) {
+    peerName = lastHello.name;
+    peerAvatar = lastHello.avatar;
+  }
   emit('state', {});
+  if (lastHello && peerName) {
+    emit('hello', { name: peerName, avatar: peerAvatar });
+  }
 }
 
 /** Desactiva la sesión y avisa de que te marchas. */
