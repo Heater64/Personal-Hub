@@ -105,3 +105,13 @@
   60% { transform: translateX(-3px); }
   80% { transform: translateX(3px); }
 }
+
+@keyframes music-eq {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes heart-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}

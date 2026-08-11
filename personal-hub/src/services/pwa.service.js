@@ -122,7 +122,7 @@ function showInstallBanner() {
   const banner = document.createElement('div');
   banner.className = 'pwa-install-banner';
   banner.setAttribute('role', 'dialog');
-  banner.setAttribute('aria-label', 'Instalar app');
+  banner.setAttribute('aria-label', 'Descargar Personal Hub');
   banner.innerHTML = `
     <div class="pwa-install-icon">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -132,12 +132,12 @@ function showInstallBanner() {
       </svg>
     </div>
     <div class="pwa-install-body">
-      <div class="pwa-install-title">Instala Personal Hub</div>
-      <div class="pwa-install-text">Acceso rápido, sin internet y novedades al instante. Gratis.</div>
+      <div class="pwa-install-title">Descarga Personal Hub</div>
+      <div class="pwa-install-text">Llévate la app contigo: acceso rápido, sin internet y novedades al instante. Gratis.</div>
     </div>
     <div class="pwa-install-actions">
       <button class="pwa-install-btn pwa-install-btn--ghost" id="pwaInstallDismiss">Ahora no</button>
-      <button class="pwa-install-btn pwa-install-btn--primary" id="pwaInstallAccept">Instalar</button>
+      <button class="pwa-install-btn pwa-install-btn--primary" id="pwaInstallAccept">Descargar</button>
     </div>
   `;
   document.body.appendChild(banner);
@@ -222,12 +222,12 @@ function showUpdateBanner() {
   banner.innerHTML = `
     <div class="pwa-update-icon">✨</div>
     <div class="pwa-update-body">
-      <div class="pwa-update-title">Actualización disponible</div>
-      <div class="pwa-update-text">Una nueva versión está lista para instalarse.</div>
+      <div class="pwa-update-title">Descarga Personal Hub</div>
+      <div class="pwa-update-text">Hay una versión nueva lista. Descárgala para verla al instante.</div>
     </div>
     <div class="pwa-update-actions">
       <button class="pwa-update-btn pwa-update-btn--ghost" id="pwaUpdateDismiss">Ahora no</button>
-      <button class="pwa-update-btn pwa-update-btn--primary" id="pwaUpdateAccept">Actualizar</button>
+      <button class="pwa-update-btn pwa-update-btn--primary" id="pwaUpdateAccept">Descargar</button>
     </div>
   `;
   document.body.appendChild(banner);

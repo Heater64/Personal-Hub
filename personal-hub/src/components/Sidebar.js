@@ -14,6 +14,14 @@ const NAV_ITEMS = [
   { id: 'ositos',      label: 'OsitosWorld',    icon: 'star',           href: '/ositos' }
 ];
 
+const MUSIC_ITEMS = [
+  { id: 'explorar',   label: 'Explorar',   icon: 'music',    href: '/canciones' },
+  { id: 'biblioteca', label: 'Biblioteca', icon: 'library',  href: '/canciones?v=biblioteca' },
+  { id: 'favoritas',  label: 'Favoritas',  icon: 'heart',    href: '/canciones?v=favoritas' },
+  { id: 'playlists',  label: 'Playlists',  icon: 'list',     href: '/canciones?v=playlists' },
+  { id: 'historial',  label: 'Historial',  icon: 'history',  href: '/canciones?v=historial' }
+];
+
 function getIconSVG(icon) {
   const icons = {
     'home': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
@@ -21,6 +29,9 @@ function getIconSVG(icon) {
     'heart-handshake': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart-handshake-icon lucide-heart-handshake"><path d="M19.414 14.414C21 12.828 22 11.5 22 9.5a5.5 5.5 0 0 0-9.591-3.676.6.6 0 0 1-.818.001A5.5 5.5 0 0 0 2 9.5c0 2.3 1.5 4 3 5.5l5.535 5.362a2 2 0 0 0 2.879.052 2.12 2.12 0 0 0-.004-3 2.124 2.124 0 1 0 3-3 2.124 2.124 0 0 0 3.004 0 2 2 0 0 0 0-2.828l-1.881-1.882a2.41 2.41 0 0 0-3.409 0l-1.71 1.71a2 2 0 0 1-2.828 0 2 2 0 0 1 0-2.828l2.823-2.762"/></svg>',
     'music': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
     'star': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    'library': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    'list': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+    'history': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>',
     'gamepad-2': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="6 11 6 8 3 8"/><path d="M15.5 12a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"/><path d="M8.5 12a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/><path d="M12 2a4 4 0 0 1 4 4v1H8V6a4 4 0 0 1 4-4Z"/><path d="M2 17v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-3"/></svg>',
     'settings': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
     'user': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
@@ -41,6 +52,8 @@ export function Sidebar(router) {
     const user = userStore.getUser();
     const isAdmin = userStore.isAdmin;
     const currentId = (currentPath.split('/')[1] || '').split('?')[0] || 'home';
+    // El grupo Música solo se muestra mientras estás dentro de Canciones
+    const onMusic = currentPath.split('?')[0] === '/canciones';
 
     const initial = user ? (user.name || 'U').charAt(0).toUpperCase() : '?';
 
@@ -65,6 +78,21 @@ export function Sidebar(router) {
             </button>
           `;
         }).join('')}
+
+        ${onMusic ? `
+          <div class="sidebar__section-divider">Música</div>
+          ${MUSIC_ITEMS.map(item => {
+            const isActive = currentPath === item.href ||
+              (item.href === '/canciones' && currentPath.split('?')[0] === '/canciones' && !currentPath.includes('?'));
+            return `
+              <button type="button" class="sidebar__link ${isActive ? 'is-active' : ''}"
+                      data-nav="music-${item.id}">
+                <span class="sidebar__link-icon">${getIconSVG(item.icon)}</span>
+                <span class="sidebar__link-label">${item.label}</span>
+              </button>
+            `;
+          }).join('')}
+        ` : ''}
 
         ${isAdmin ? `
           <div class="sidebar__section-divider">Admin</div>
@@ -109,6 +137,11 @@ export function Sidebar(router) {
           home: '/', rincon: '/rincon', sentimientos: '/sentimientos',
           ositos: '/ositos', perfil: '/perfil', admin: '/admin'
         };
+        if (id.startsWith('music-')) {
+          const item = MUSIC_ITEMS.find(m => m.id === id.slice(6));
+          router.navigate(item?.href || '/canciones');
+          return;
+        }
         router.navigate(paths[id] || '/');
       });
     });

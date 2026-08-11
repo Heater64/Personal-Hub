@@ -996,3 +996,162 @@ select.form-input {
   background-position: right 12px center;
   padding-right: 36px;
 }
+
+/* ==========================================
+   PWA — Banners y toasts (descarga / actualización / conexión)
+   Se inyectan en document.body desde pwa.service.js.
+   ========================================== */
+.pwa-install-banner,
+.pwa-update-banner {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translate(-50%, 24px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(540px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border-radius: var(--r-lg, 22px);
+  background: var(--theme-surface-elevated, #19191d);
+  border: 1px solid var(--theme-divider, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.pwa-install-banner--visible,
+.pwa-update-banner--visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.pwa-install-icon,
+.pwa-update-icon {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-accent-dim, rgba(232, 115, 90, 0.12));
+  color: var(--theme-accent, #e8735a);
+  font-size: 18px;
+}
+
+.pwa-install-body,
+.pwa-update-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pwa-install-title,
+.pwa-update-title {
+  font-weight: 700;
+  font-size: var(--fs-sm, 13px);
+  color: var(--theme-text-primary, #fff);
+}
+
+.pwa-install-text,
+.pwa-update-text {
+  font-size: var(--fs-xs, 12px);
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.65));
+  margin-top: 2px;
+}
+
+.pwa-install-actions,
+.pwa-update-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pwa-install-btn,
+.pwa-update-btn {
+  border: none;
+  cursor: pointer;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.pwa-install-btn--ghost,
+.pwa-update-btn--ghost {
+  background: transparent;
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.65));
+}
+
+.pwa-install-btn--ghost:hover,
+.pwa-update-btn--ghost:hover {
+  color: var(--theme-text-primary, #fff);
+  background: var(--theme-bg-hover, #19191d);
+}
+
+.pwa-install-btn--primary,
+.pwa-update-btn--primary {
+  background: var(--theme-accent, #e8735a);
+  color: #fff;
+}
+
+.pwa-install-btn--primary:hover,
+.pwa-update-btn--primary:hover {
+  background: var(--theme-accent-hover, #f0806a);
+}
+
+/* Toasts propios de PWA (conexión, instalada, actualización aplicada) */
+.pwa-toast-container {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pwa-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--theme-text-primary, #fff);
+  background: var(--theme-surface-elevated, #19191d);
+  border: 1px solid var(--theme-divider, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.pwa-toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pwa-toast--hiding {
+  opacity: 0;
+}
+
+.pwa-toast-icon {
+  font-size: 14px;
+}
+
+@media (max-width: 480px) {
+  .pwa-install-banner,
+  .pwa-update-banner {
+    bottom: 12px;
+    padding: 12px 14px;
+  }
+}

@@ -15,6 +15,14 @@
 GRANT USAGE ON SCHEMA public TO anon;
 GRANT USAGE ON SCHEMA public TO authenticated;
 
+-- service_role (API de Vercel, scripts y service key): acceso total.
+-- ⚠️ Si falta este GRANT, todo lo que use la service key da 403
+--    "permission denied for table …" (visto en producción: /api/users,
+--    /api/push y scripts de mantenimiento fallan silenciosamente).
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+
 -- ==========================================
 -- MIGRACIÓN: Asegurar UUID en columnas de clave
 -- ==========================================
@@ -471,10 +479,28 @@ DROP TABLE IF EXISTS user_profiles CASCADE;
 --  el trigger se desactiva temporalmente para que la corrección funcione)
 -- ==========================================
 ALTER TABLE public.profiles DISABLE TRIGGER profiles_prevent_role_change;
+
+-- Crea los perfiles que falten: los usuarios de auth.users creados ANTES
+-- del trigger on_auth_user_created no tienen fila en profiles. Sin ella,
+-- public.is_admin() devuelve false y la RLS bloquea TODAS las escrituras
+-- (content, etc.) con "new row violates row-level security policy".
+INSERT INTO public.profiles (id, email, name, avatar_url, role, created_at, updated_at)
+SELECT
+  au.id,
+  COALESCE(au.email, ''),
+  COALESCE(au.raw_user_meta_data->>'name', split_part(COALESCE(au.email, ''), '@', 1), 'Usuario'),
+  COALESCE(au.raw_user_meta_data->>'avatar_url', ''),
+  CASE WHEN LOWER(au.email) = 'admin@personalhub.com' THEN 'admin' ELSE 'user' END,
+  au.created_at,
+  au.created_at
+FROM auth.users au
+LEFT JOIN public.profiles p ON p.id = au.id
+WHERE p.id IS NULL;
+
 UPDATE public.profiles SET role = 'user'
-  WHERE role = 'admin' AND email IS DISTINCT FROM 'admin@personalhub.com';
+  WHERE role = 'admin' AND LOWER(email) IS DISTINCT FROM 'admin@personalhub.com';
 UPDATE public.profiles SET role = 'admin'
-  WHERE email = 'admin@personalhub.com';
+  WHERE LOWER(email) = 'admin@personalhub.com';
 ALTER TABLE public.profiles ENABLE TRIGGER profiles_prevent_role_change;
 
 -- ==========================================
@@ -499,7 +525,10 @@ INSERT INTO content (id, data, updated_at) VALUES
   ('maldia_frases', '{"phrases": ["Todo va a estar bien ❤️", "Eres mas fuerte de lo que crees"]}', NOW()),
   ('maldia_mensajes', '{"messages": ["Recuerda lo mucho que te quiero", "Siempre estare aqui para ti"]}', NOW()),
   ('changelog', '{"items": ["Migracion completa a Supabase - adios Firebase!"]}', NOW()),
-  ('series', '{"items": []}', NOW())
+  ('series', '{"items": []}', NOW()),
+  ('rincon_covers', '{"covers": {}}', NOW()),
+  ('audios', '{"audios": []}', NOW()),
+  ('openwhen_letters', '{"letters": []}', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- ==========================================
@@ -1062,3 +1091,37 @@ GRANT EXECUTE ON FUNCTION public.request_game_rematch(UUID, JSONB) TO authentica
 
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.game_rooms; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.game_invitations; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- ==========================================
+-- 10. PLAYLISTS — Playlists de música compartidas
+--     REGLA: ambos usuarios (pareja) pueden leer y escribir.
+--     Solo se guardan nombre/icono/lista de claves de canción;
+--     los datos de cada canción viven en el catálogo estático.
+-- ==========================================
+CREATE TABLE IF NOT EXISTS playlists (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  icon TEXT NOT NULL DEFAULT '❤️',
+  songs JSONB NOT NULL DEFAULT '[]',
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE playlists ENABLE ROW LEVEL SECURITY;
+
+-- anon: sin permisos
+REVOKE ALL ON playlists FROM anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON playlists TO authenticated;
+
+DROP POLICY IF EXISTS "playlists_read_all" ON playlists;
+DROP POLICY IF EXISTS "playlists_write_all" ON playlists;
+DROP POLICY IF EXISTS "playlists_update_all" ON playlists;
+DROP POLICY IF EXISTS "playlists_delete_all" ON playlists;
+
+CREATE POLICY "playlists_read_all" ON playlists FOR SELECT USING (true);
+CREATE POLICY "playlists_write_all" ON playlists FOR INSERT WITH CHECK (true);
+CREATE POLICY "playlists_update_all" ON playlists FOR UPDATE USING (true);
+CREATE POLICY "playlists_delete_all" ON playlists FOR DELETE USING (true);
+
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.playlists; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

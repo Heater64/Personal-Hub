@@ -2891,24 +2891,51 @@ export function RinconPage(router) {
   }
 
   /**
-   * Rango de meses a mostrar: desde el primer mes con audio (o el año actual)
-   * hasta diciembre del año actual. Los meses futuros salen como bloqueados.
+   * Meses que muestra el archivo para cada año:
+   * - 2025: solo septiembre (primer audio del día 3)
+   * - 2026: de junio a diciembre
+   * - 2027 en adelante: el año completo
+   * Si existe un audio en un mes fuera de esta lista, ese mes también se muestra
+   * (nunca se oculta contenido real).
+   */
+  function audioYearMonths(year) {
+    if (year === 2025) return [9];
+    if (year === 2026) return [6, 7, 8, 9, 10, 11, 12];
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  }
+
+  /**
+   * Rango de años a mostrar: desde el inicio del archivo (2025) hasta el año
+   * actual. Los meses futuros salen como bloqueados.
    */
   function audioMonthRange() {
     const now = new Date();
     const curYear = now.getFullYear();
     const curMonth = now.getMonth() + 1;
     const map = audiosByMonth();
-    let minYear = curYear;
+
+    let minYear = 2025;
+    let maxYear = curYear;
     Object.keys(map).forEach(k => {
-      const y = parseInt(k.split('-')[0], 10);
+      const [y] = k.split('-').map(Number);
       if (y < minYear) minYear = y;
+      if (y > maxYear) maxYear = y;
     });
-    if (!minYear || minYear < 2000) minYear = curYear;
+
+    // Por año: meses por defecto del archivo + meses con audio (unión).
+    const yearMonths = {};
+    for (let y = minYear; y <= maxYear; y++) {
+      const months = new Set(audioYearMonths(y));
+      Object.keys(map).forEach(k => {
+        const [ky, km] = k.split('-').map(Number);
+        if (ky === y) months.add(km);
+      });
+      yearMonths[y] = [...months].sort((a, b) => a - b);
+    }
 
     const years = [];
-    for (let y = minYear; y <= curYear; y++) years.push(y);
-    return { years: years.reverse(), curYear, curMonth };
+    for (let y = minYear; y <= maxYear; y++) years.push(y);
+    return { years: years.reverse(), yearMonths, curYear, curMonth };
   }
 
   /** Estado de un mes: 'available' | 'future' | 'empty' */
@@ -2924,20 +2951,20 @@ export function RinconPage(router) {
       return renderAudioDetailContent(state.audiosMonth.year, state.audiosMonth.month);
     }
 
-    const { years, curYear, curMonth } = audioMonthRange();
+    const { years, yearMonths, curYear, curMonth } = audioMonthRange();
     const map = audiosByMonth();
     const total = state.audios.length;
 
-    // Indicadores del año actual: cada mes un punto (● disponible, ○ otro)
-    const dots = AUDIO_MONTHS_SHORT.map((label, i) => {
-      const m = i + 1;
+    // Indicadores del año actual: cada mes del archivo un punto (● disponible, ○ otro)
+    const dots = (yearMonths[curYear] || []).map(m => {
+      const label = AUDIO_MONTHS_SHORT[m - 1] || '';
       const has = map[`${curYear}-${m}`]?.length > 0;
       return `<span class="audios-dot${has ? ' is-on' : ''}" title="${label} ${curYear}${has ? ' · audio disponible' : ''}">${label.slice(0, 1)}</span>`;
     }).join('');
 
     const yearBlocks = years.map(y => {
-      const months = AUDIO_MONTHS.map((name, i) => {
-        const m = i + 1;
+      const months = (yearMonths[y] || []).map(m => {
+        const name = AUDIO_MONTHS[m - 1] || 'Mes';
         const list = map[`${y}-${m}`] || [];
         const st = audioMonthState(y, m, curYear, curMonth, list.length > 0);
         return renderAudioMonthCard(y, m, name, st, list);
@@ -2950,15 +2977,26 @@ export function RinconPage(router) {
       `;
     }).join('');
 
-    // Selector de mes para subir (solo admin): los audios del día 3.
-    // El mes actual aparece primero y preseleccionado (lo más común).
-    const now = new Date();
-    const uploadOptions = [];
-    for (let back = 0; back <= 5; back++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - back, 1);
-      const selected = back === 0 ? ' selected' : '';
-      uploadOptions.push(`<option value="${d.getFullYear()}-${d.getMonth() + 1}"${selected}>${AUDIO_MONTHS[d.getMonth()]} ${d.getFullYear()}</option>`);
+    // Selector de mes para subir (solo admin): los meses del archivo hasta el mes
+    // actual. El mes actual aparece primero y preseleccionado; el resto, del más
+    // reciente al más antiguo (los meses futuros aún no se pueden subir).
+    const uploadMonths = [];
+    Object.entries(yearMonths).forEach(([key, months]) => {
+      const y = Number(key); // las claves del objeto son strings; curYear/curMonth son números
+      (months || []).forEach(m => {
+        if (y < curYear || (y === curYear && m <= curMonth)) uploadMonths.push({ y, m });
+      });
+    });
+    uploadMonths.sort((a, b) => b.y - a.y || b.m - a.m); // más reciente primero
+    const curIdx = uploadMonths.findIndex(({ y, m }) => y === curYear && m === curMonth);
+    if (curIdx > 0) {
+      const [cur] = uploadMonths.splice(curIdx, 1);
+      uploadMonths.unshift(cur);
     }
+    const uploadOptions = uploadMonths.map(({ y, m }) => {
+      const selected = (y === curYear && m === curMonth) ? ' selected' : '';
+      return `<option value="${y}-${m}"${selected}>${AUDIO_MONTHS[m - 1]} ${y}</option>`;
+    });
 
     return `
       <div class="audios-page">
