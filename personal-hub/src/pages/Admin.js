@@ -14,13 +14,26 @@ import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
 import { isValidUrlField, todayISO, hourInSpain } from '../utils/format.js';
-import { isPushSupported, isEnabled, showDailyNotification } from '../services/notifications.service.js';
+import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
+import { theme } from '../services/theme.service.js';
 import { CATEGORIES, TYPE_META, LETTERS } from './OpenWhen.js';
 import {
-  isCloudinaryConfigured, getCloudinaryConfig, cloudinaryMediaLibraryUrl,
-  fileKind, kindLabel, formatBytes, uploadFile
+  fileKind, kindLabel, formatBytes
 } from '../services/cloudinary.service.js';
+import { auth } from '../services/auth.service.js';
+import { visiblePhotos, baseFolders } from '../services/galleryData.js';
+import { getUserPref } from '../utils/userStorage.js';
+
+// Resuelve una promesa sin romper el panel: si la query falla (Supabase caído,
+// sesión caducada, RLS…), devuelve el fallback en vez de colgar el dashboard.
+function safe(promise, fallback) {
+  return Promise.resolve(promise).catch(err => {
+    console.warn('[admin] Query fallida (usando fallback):', err?.message || err);
+    return fallback;
+  });
+}
+const arr = v => (Array.isArray(v) ? v : []);
 
 // ==========================================
 // SVG ICONS
@@ -64,6 +77,45 @@ const MOOD_LABELS = { great: 'Muy bieeeen', good: 'Bien', meh: 'Un poquito mal',
 const MOOD_SCORES = { great: 4, good: 3, meh: 2, bad: 1, love: 0 };
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+// ==========================================
+// ACTIVIDAD DE USO — helpers compartidos
+// (dashboard y detalle de usuario)
+// ==========================================
+const SECTION_LABELS = {
+  '/': 'Inicio', '/rincon': 'Rincón', '/galeria': 'Galería', '/memes': 'Memes',
+  '/audios': 'Audios', '/curiosidades': 'Curiosidades', '/canciones': 'Música',
+  '/juegos': 'Juegos', '/series': 'Series', '/sentimientos': 'Sentimientos',
+  '/razones': 'Razones', '/openwhen': 'Open When', '/calendario': 'Calendario',
+  '/maldia': 'Mal Día', '/ositos': 'OsitosWorld', '/thoseeyes': 'Those Eyes',
+  '/justthewayyouare': 'Just The Way You Are', '/perfil': 'Perfil', '/admin': 'Panel Admin'
+};
+
+/** Sección raíz de una página: '/canciones?v=x' → '/canciones', '/juegos/online/1' → '/juegos' */
+function basePageOf(p) {
+  const base = String(p || '/').split('?')[0].replace(/\/+$/, '') || '/';
+  return '/' + (base.split('/').filter(Boolean)[0] || '');
+}
+
+/** Duración legible a partir de ms. */
+function fmtDuration(ms) {
+  const m = Math.round(ms / 60000);
+  if (m <= 0) return '<1 min';
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return `${h} h ${m % 60} min`;
+}
+
+/** "Ahora mismo", "Hace 5 min", "Hace 2 h" o fecha corta. */
+function relTimeShort(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60e3) return 'Ahora mismo';
+  if (diff < 3600e3) return `Hace ${Math.floor(diff / 60e3)} min`;
+  if (diff < 86400e3) return `Hace ${Math.floor(diff / 3600e3)} h`;
+  return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+}
+
 // Content-tab sub-tabs
 const CONTENT_SUBS = [
   { id: 'razones',   icon: UI.heart,     label: 'Razones' },
@@ -83,7 +135,8 @@ const TABS = [
   { id:'contenido',       icon: UI.content,  label:'Contenido' },
   { id:'multimedia',      icon: UI.cloud,    label:'Multimedia' },
   { id:'notificaciones',  icon: UI.bell,     label:'Notificaciones' },
-  { id:'actividad',       icon: UI.activity, label:'Actividad' }
+  { id:'actividad',       icon: UI.activity, label:'Actividad' },
+  { id:'config',          icon: UI.settings, label:'Configuración' }
 ];
 
 // ==========================================
@@ -119,35 +172,37 @@ export function AdminPage(router) {
 
   page.innerHTML = `
     <div class="admin-layout">
-      <aside class="admin-sidebar" id="adminSidebar">
-        <div class="admin-sidebar-brand">
-          <div class="admin-sidebar-brand-icon">${UI.settings}</div>
-          <div class="admin-sidebar-brand-text">
-            <strong>Panel Admin</strong>
-            <span>Personal Hub</span>
-          </div>
-        </div>
-        <nav class="admin-sidebar-nav">
-          ${TABS.map(t => `<button class="admin-sidebar-item${t.id==='dashboard'?' active':''}" data-section="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
-        </nav>
-        <div class="admin-sidebar-divider"></div>
-        <div class="admin-sidebar-footer">
-          <div class="admin-sidebar-avatar">
-            ${userPhoto ? `<img src="${esc(userPhoto)}" alt="">` : userInitial}
-          </div>
-          <div class="admin-sidebar-user-info">
-            <span class="admin-sidebar-user">${esc(userName)}</span>
-            <span class="admin-sidebar-role">${esc(userRole)}</span>
-          </div>
-        </div>
-      </aside>
       <main class="admin-main">
+        <header class="admin-topbar">
+          <div class="admin-topbar-brand">
+            <span class="admin-topbar-icon">${UI.settings}</span>
+            <div class="admin-topbar-brand-text">
+              <strong>Panel Admin</strong>
+              <span>Personal Hub</span>
+            </div>
+          </div>
+          <nav class="admin-topbar-nav" id="adminTopNav" aria-label="Secciones del panel">
+            ${TABS.map(t => `<button class="admin-topbar-tab${t.id==='dashboard'?' active':''}" data-section="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
+          </nav>
+          <div class="admin-topbar-right">
+            <span class="admin-conn-pill admin-conn-pill--top" id="adminConnPill" title="Estado de la base de datos"></span>
+            <div class="admin-topbar-user">
+              <div class="admin-sidebar-avatar">
+                ${userPhoto ? `<img src="${esc(userPhoto)}" alt="">` : userInitial}
+              </div>
+              <div class="admin-topbar-user-info">
+                <span class="admin-topbar-user">${esc(userName)} <span class="admin-sidebar-admin-badge">ADMIN</span></span>
+                <span class="admin-topbar-role">Administrador</span>
+              </div>
+            </div>
+            <button type="button" class="admin-topbar-logout" id="adminLogout" aria-label="Cerrar sesión">🚪 Salir</button>
+          </div>
+        </header>
         <div class="admin-welcome">
           <div class="admin-welcome-greeting">
-            <h1>${greeting} ${greetingEmoji}</h1>
+            <h1>${greeting}, ${esc(userName)} ${greetingEmoji}</h1>
             <div class="admin-welcome-sub">
-              <span>Panel de administración</span>
-              <span class="admin-welcome-dot"></span>
+              <span>Aquí tienes un resumen de tu Personal Hub.</span>
             </div>
           </div>
           <div class="admin-welcome-actions">
@@ -155,13 +210,18 @@ export function AdminPage(router) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span id="adminTimeText"></span>
             </span>
-            <button class="admin-menu-toggle" id="adminMenuToggle" aria-label="Menú">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
+            <span class="admin-time-badge admin-date-badge" id="adminDateBadge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span id="adminDateText"></span>
+            </span>
           </div>
         </div>
         <div class="admin-db-status" id="adminDbStatus" style="display:none"></div>
         <div class="admin-content" id="adminContent"></div>
+        <footer class="admin-footer">
+          <span>De hecho te amo</span>
+          <span>${new Date().getFullYear()} · hecho por tu peluche</span>
+        </footer>
       </main>
     </div>
     <div class="admin-modal-overlay" id="adminModal" style="display:none">
@@ -194,23 +254,29 @@ export function AdminPage(router) {
   updateClock();
   const clockInterval = setInterval(updateClock, 30000);
 
-  // ===== SIDEBAR NAV =====
-  page.querySelectorAll('.admin-sidebar-item').forEach(item => {
-    item.addEventListener('click', () => {
-      page.querySelectorAll('.admin-sidebar-item').forEach(t => t.classList.remove('active'));
-      item.classList.add('active');
-      S.section = item.dataset.section;
-      loadSection(S.section);
-      // Auto-close sidebar on mobile
-      if (window.innerWidth < 768) {
-        page.querySelector('#adminSidebar')?.classList.remove('is-open');
-      }
-    });
+  // Fecha actual en el header
+  const dateText = page.querySelector('#adminDateText');
+  if (dateText) {
+    dateText.textContent = new Date().toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  // ===== TOPBAR NAV =====
+  function setActiveSection(btn, section) {
+    page.querySelectorAll('.admin-topbar-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    S.section = section;
+    loadSection(section);
+  }
+
+  page.querySelectorAll('.admin-topbar-tab').forEach(item => {
+    item.addEventListener('click', () => setActiveSection(item, item.dataset.section));
   });
 
-  // Mobile menu toggle
-  page.querySelector('#adminMenuToggle')?.addEventListener('click', () => {
-    page.querySelector('#adminSidebar')?.classList.toggle('is-open');
+  // Logout
+  page.querySelector('#adminLogout')?.addEventListener('click', async () => {
+    await auth.signOut();
+    // replace: Atrás no debe volver a una página ya protegida por el guard
+    router.replace('/login');
   });
 
   // ===== MODAL =====
@@ -294,7 +360,8 @@ export function AdminPage(router) {
       usuarios: loadUsuarios, contenido: loadContenido,
       multimedia: loadMultimedia,
       notificaciones: loadNotificaciones,
-      actividad: loadActividad
+      actividad: loadActividad,
+      config: loadConfiguracion
     };
     if (loaders[section]) loaders[section]();
   }
@@ -306,134 +373,523 @@ export function AdminPage(router) {
     // Skeleton
     content.innerHTML = `
       <section class="admin-section active">
-        <div class="admin-section-header"><h2>${UI.dash} Dashboard</h2></div>
-        <div class="stats-grid">
-          ${'<div class="stat-card skeleton-card" style="height:100px"></div>'.repeat(6)}
+        <div class="admin-section-header"><h2>${UI.dash} Resumen general</h2></div>
+        <div class="dash-metrics">
+          ${'<div class="dash-metric skeleton-card"></div>'.repeat(5)}
+        </div>
+        <div class="dash-metrics">
+          ${'<div class="dash-metric skeleton-card"></div>'.repeat(5)}
         </div>
       </section>
     `;
 
     const token = sectionToken;
-    const [reasons, songs, gifts, users, activity] = await Promise.all([
-      db.getReasons(), db.getSongs(), db.getGifts(), db.listUsers(),
-      db.getActivity(5)
+    const today = todayISO();
+    const todayDate = new Date();
+
+    const [
+      reasons, songs, giftsData, users, audios, news,
+      maldiaFrases, maldiaMensajes, owLetters, activity, allMoods, seriesCatalog, visits
+    ] = await Promise.all([
+      safe(db.getReasons(), []), safe(db.getSongs(), []), safe(db.getGifts(), { gifts: [] }),
+      safe(db.listUsers(), []), safe(db.getAudios(), []), safe(db.getNews(), []),
+      safe(db.getMaldiaFrases(), []), safe(db.getMaldiaMensajes(), []), safe(db.getOpenWhenLetters(), []),
+      safe(db.getActivity(200), []), safe(db.getAllMoods('2024-01-01', today), []), safe(loadCatalog(), null),
+      safe(db.getPageVisits(2000), [])
     ]);
 
-    const today = todayISO();
-    const startOfYear = `${today.slice(0, 4)}-01-01`;
-    const allMoods = await db.getAllMoods(startOfYear, today);
+    // Fechas especiales configurables (aniversario, inicio del Hub, cumpleaños)
+    const hubDates = await db.getHubDates();
+    const annivISO = hubDates.anniversary || '2024-07-10';
+    const hubStartISO = hubDates.hubStart || '2024-05-10';
+    const birthdayISO = hubDates.birthday || '2024-11-24';
 
-    const moodCount = allMoods.length;
-    const moodUserIds = new Set();
-    allMoods.forEach(m => { if (m.user_id) moodUserIds.add(m.user_id); });
+    const moods = arr(allMoods);
+    const reasonsList = arr(reasons);
+    const songsList = arr(songs);
+    const newsList = arr(news);
+    const maldiaFrasesList = arr(maldiaFrases);
+    const maldiaMensajesList = arr(maldiaMensajes);
+    const owLettersList = arr(owLetters);
+    const visitsList = arr(visits);
+    const audiosList = arr(audios);
+    const activityList = arr(activity);
+    const giftsCount = (giftsData?.gifts || []).length;
+    const seriesCount = Array.isArray(seriesCatalog) ? seriesCatalog.length : 0;
     const realUsers = users.filter(u => !u.id.startsWith('local_') && u.id.length > 10);
-    const activeMoodUsers = moodUserIds.size;
-    const todayMoods = allMoods.filter(m => m.date === today);
-    const todayMoodCount = todayMoods.length;
-
-    const news = await db.getNews();
 
     if (token !== sectionToken) return; // la sección cambió mientras cargaba
 
-    const statCards = [
-      { icon: UI.users, value: realUsers.length, label: 'Usuarios' },
-      { icon: UI.heart, value: activeMoodUsers, label: 'Con ánimo' },
-      { icon: UI.activity, value: moodCount, label: 'Ánimos totales' },
-      { icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', value: todayMoodCount, label: 'Ánimos hoy' },
-      { icon: UI.heart, value: reasons.length, label: 'Razones' },
-      { icon: UI.music, value: songs.length, label: 'Canciones' },
-      { icon: UI.gift, value: (gifts?.gifts || []).length, label: 'Regalos' },
-      { icon: UI.newspaper, value: news.length, label: 'Noticias' }
-    ];
+    // ---- Helpers de fechas ----
+    const yearsBetween = (iso) => {
+      const start = new Date(iso + 'T00:00:00');
+      let y = todayDate.getFullYear() - start.getFullYear();
+      if (new Date(todayDate.getFullYear(), start.getMonth(), start.getDate()) > todayDate) y--;
+      return Math.max(y, 0);
+    };
+    const monthsBetween = (iso) => {
+      const start = new Date(iso + 'T00:00:00');
+      let m = (todayDate.getFullYear() - start.getFullYear()) * 12 + (todayDate.getMonth() - start.getMonth());
+      if (todayDate.getDate() < start.getDate()) m--;
+      return Math.max(m, 0);
+    };
+    const fmtShortDate = (iso) => new Date(iso + 'T00:00:00')
+      .toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
 
-    // Tendencia de ánimo — últimos 14 días
-    const trendDays = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const ds = todayISO(d);
-      const count = allMoods.filter(m => m.date === ds).length;
-      trendDays.push({ ds, count, label: d.toLocaleDateString('es', { day: 'numeric', month: 'short' }) });
-    }
-    const trendMax = Math.max(...trendDays.map(t => t.count), 1);
-    const trendHtml = trendDays.map((t, i) => {
-      const h = t.count ? Math.max(Math.round((t.count / trendMax) * 100), 10) : 3;
-      const isToday = i === trendDays.length - 1;
-      return `<div class="trend-col" title="${t.ds}: ${t.count} registro${t.count === 1 ? '' : 's'}">
-        <div class="trend-bar-wrap"><div class="trend-bar${t.count ? ' has' : ''}${isToday ? ' today' : ''}" style="height:${h}%"></div></div>
-        <span class="trend-label">${t.label}</span>
+    // ---- Métricas ----
+    const monthKey = today.slice(0, 7);
+    const usersThisMonth = realUsers.filter(u => (u.created_at || '').startsWith(monthKey)).length;
+    const moodsThisMonth = moods.filter(m => (m.date || '').startsWith(monthKey)).length;
+    const songsThisWeek = songsList.filter(s => {
+      const t = s && (s.createdAt || s.addedAt);
+      return t && (Date.now() - new Date(t).getTime()) < 7 * 864e5;
+    }).length;
+
+    // Fotos de la galería
+    let galleryPhotos = 0;
+    try {
+      const folders = baseFolders();
+      (folders.length ? folders : ['general']).forEach(f => { galleryPhotos += visiblePhotos(f).length; });
+    } catch { galleryPhotos = 0; }
+
+    // Notificaciones sin leer: razones nuevas + cartas Open When sin abrir
+    let unreadReasons = 0;
+    try {
+      const readSet = new Set(JSON.parse(getUserPref('razonesRead', '[]') || '[]'));
+      unreadReasons = reasonsList.filter((r, i) => r && r.date && r.date <= today && !readSet.has(r.id || `r${i}`)).length;
+    } catch { /* */ }
+    let unreadLetters = 0;
+    try {
+      const seen = new Set(JSON.parse(getUserPref('openwhen.seen', '[]') || '[]'));
+      unreadLetters = owLettersList.filter(l => l && l.id && !seen.has(l.id)).length;
+    } catch { /* */ }
+
+    const frases = reasonsList.length + maldiaFrasesList.length;
+    const mensajes = frases + maldiaMensajesList.length;
+    const hubMonths = monthsBetween(hubStartISO);
+
+    const row1 = [
+      { icon: '👥', value: realUsers.length, label: 'Usuarios', trend: `+${usersThisMonth} este mes` },
+      { icon: '❤️', value: moods.length, label: 'Contenido de ánimo', trend: `+${moodsThisMonth} este mes` },
+      { icon: '📅', value: yearsBetween(annivISO), label: 'Años juntos', trend: fmtShortDate(annivISO) },
+      { icon: '⏱️', value: hubMonths >= 24 ? `${Math.floor(hubMonths / 12)} años` : `${hubMonths} meses`, label: 'En el Hub', trend: 'Desde el inicio' },
+      { icon: '🎵', value: songsList.length, label: 'Canciones', trend: songsThisWeek ? `+${songsThisWeek} esta semana` : 'En el catálogo' }
+    ];
+    const row2 = [
+      { icon: '🎁', value: giftsCount, label: 'Regalos', trend: 'Total registrados' },
+      { icon: '📝', value: audiosList.length, label: 'Notas', trend: 'Notas de voz' },
+      { icon: '🖼️', value: galleryPhotos, label: 'Fotos', trend: 'En la galería' },
+      { icon: '💬', value: mensajes, label: 'Mensajes', trend: 'En frases' },
+      { icon: '🔔', value: unreadReasons + unreadLetters, label: 'Notificaciones', trend: 'Sin leer' }
+    ];
+    const metricCard = (m) => `
+      <div class="dash-metric">
+        <div class="dash-metric-icon">${m.icon}</div>
+        <div class="dash-metric-value">${m.value}</div>
+        <div class="dash-metric-label">${m.label}</div>
+        <div class="dash-metric-trend">${m.trend}</div>
+      </div>`;
+
+    // ---- Serie de los últimos N días (actividad o ánimos, área) ----
+    let chartMetric = 'activity'; // 'activity' | 'mood'
+    const seriesDays = (n, metric) => {
+      const days = [];
+      for (let i = n - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const ds = todayISO(d);
+        days.push({ ds, count: 0, label: d.toLocaleDateString('es', { day: 'numeric', month: 'short' }) });
+      }
+      const byDay = new Map(days.map(x => [x.ds, x]));
+      const source = metric === 'mood' ? moods : metric === 'visits' ? visitsList : activityList;
+      source.forEach(e => {
+        const ts = metric === 'mood' ? (e.date || '') : e.timestamp;
+        if (!ts) return;
+        const day = byDay.get(todayISO(new Date(ts)));
+        if (day) day.count++;
+      });
+      return days;
+    };
+
+    const areaChart = (days) => {
+      const W = 540, H = 150, PAD = 10;
+      const max = Math.max(...days.map(d => d.count), 4);
+      const stepX = (W - PAD * 2) / (days.length - 1 || 1);
+      const y = (c) => H - PAD - (c / max) * (H - PAD * 2);
+      const pts = days.map((d, i) => [PAD + i * stepX, y(d.count)]);
+      const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+      const area = `${line} L${(W - PAD).toFixed(1)},${(H - PAD).toFixed(1)} L${PAD},${(H - PAD).toFixed(1)} Z`;
+      const grid = [1, 0.66, 0.33, 0].map(f => Math.round(max * f));
+      const labelsEvery = Math.max(1, Math.ceil(days.length / 6));
+      return `
+        <svg class="dash-area-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Actividad de los últimos ${days.length} días">
+          <defs>
+            <linearGradient id="dashAreaFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ff6b4a" stop-opacity="0.32"/>
+              <stop offset="100%" stop-color="#ff6b4a" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          ${grid.map(g => `<line x1="${PAD}" y1="${y(g)}" x2="${W - PAD}" y2="${y(g)}" class="dash-area-grid"/>`).join('')}
+          <path d="${area}" fill="url(#dashAreaFill)"/>
+          <path d="${line}" fill="none" class="dash-area-line"/>
+          ${pts.map((p, i) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${days[i].count ? 3 : 1.6}" class="dash-area-dot"/>`).join('')}
+        </svg>
+        <div class="dash-area-labels">
+          ${days.map((d, i) => (i % labelsEvery === 0 || i === days.length - 1)
+            ? `<span>${d.label}</span>` : `<span></span>`).join('')}
+        </div>`;
+    };
+
+    // ---- Distribución de contenido (dona) ----
+    const dist = [
+      { label: 'Series', count: seriesCount, color: '#ff6b4a' },
+      { label: 'Fotos', count: galleryPhotos, color: '#ff9e7a' },
+      { label: 'Frases', count: mensajes, color: '#f5b942' },
+      { label: 'Música', count: songsList.length + audiosList.length, color: '#4ec9b0' },
+      { label: 'Otros', count: giftsCount + newsList.length + owLettersList.length, color: '#9b8cff' }
+    ];
+    const distTotal = dist.reduce((s, d) => s + d.count, 0) || 1;
+    let acc = 0;
+    const distSegs = dist.map(d => {
+      const frac = d.count / distTotal;
+      const seg = { ...d, frac, start: acc };
+      acc += frac;
+      return seg;
+    });
+    const R = 42, CIRC = 2 * Math.PI * R;
+    const donutHtml = distSegs.map(d => {
+      const len = Math.max(d.frac * CIRC - 2, 0.5);
+      return `<circle r="${R}" cx="60" cy="60" fill="none" stroke="${d.color}" stroke-width="14"
+        stroke-dasharray="${len.toFixed(1)} ${(CIRC - len).toFixed(1)}" stroke-dashoffset="${(-d.start * CIRC).toFixed(1)}" stroke-linecap="butt"/>`;
+    }).join('');
+    const donutLegend = distSegs.map(d => `
+      <div class="dash-legend-row">
+        <span class="dash-legend-dot" style="background:${d.color}"></span>
+        <span class="dash-legend-label">${d.label}</span>
+        <span class="dash-legend-count">${d.count} (${Math.round(d.frac * 100)}%)</span>
+      </div>`).join('');
+
+    // ---- Tendencia de ánimo ----
+    const MOOD_FACE = { great: '🤍🤍', good: '😊', meh: '😕', bad: '😔', love: '❤️' };
+    const MOOD_TITLE = { great: 'Muy bien', good: 'Feliz', meh: 'Regular', bad: 'Necesita un abrazo', love: 'Enamorada' };
+    const moodCounts = {};
+    moods.forEach(m => { const k = m.mood || m.status || 'good'; moodCounts[k] = (moodCounts[k] || 0) + 1; });
+    const dominant = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
+    const domKey = dominant ? dominant[0] : 'good';
+    const avgScore = moods.length
+      ? moods.reduce((s, m) => s + (MOOD_SCORES[m.mood || m.status] ?? 2), 0) / moods.length
+      : 2;
+    const WEEK_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const weekCounts = [0, 0, 0, 0, 0, 0, 0];
+    moods.forEach(m => {
+      if (!m.date) return;
+      weekCounts[new Date(m.date + 'T12:00:00').getDay()]++;
+    });
+    const weekMax = Math.max(...weekCounts, 1);
+    const weekBars = WEEK_LABELS.map((l, i) => {
+      const h = weekCounts[i] ? Math.max(Math.round((weekCounts[i] / weekMax) * 100), 12) : 4;
+      return `<div class="dash-week-col" title="${l}: ${weekCounts[i]} registro${weekCounts[i] === 1 ? '' : 's'}">
+        <div class="dash-week-wrap"><div class="dash-week-bar${weekCounts[i] ? ' has' : ''}" style="height:${h}%"></div></div>
+        <span class="dash-week-label">${l}</span>
       </div>`;
     }).join('');
 
-    const quickActions = [
-      { section: 'contenido',      icon: UI.content, label: 'Gestionar contenido' },
-      { section: 'multimedia',     icon: UI.cloud,   label: 'Subir a Cloudinary' },
-      { section: 'notificaciones', icon: UI.bell,    label: 'Enviar notificación' },
-      { section: 'moods',          icon: UI.heart,   label: 'Ver ánimos' },
-      { section: 'usuarios',       icon: UI.users,   label: 'Usuarios' }
+    // ---- Fechas importantes ----
+    const fmtDate = (d) => d.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+    const todayStart = new Date(today + 'T00:00:00');
+    const daysUntil = (target) => Math.round((target - todayStart) / 864e5);
+    const startAnniv = new Date(annivISO + 'T00:00:00');
+    let anniv = new Date(todayDate.getFullYear(), startAnniv.getMonth(), startAnniv.getDate());
+    if (anniv < todayStart) anniv = new Date(todayDate.getFullYear() + 1, startAnniv.getMonth(), startAnniv.getDate());
+    const annivDays = daysUntil(anniv);
+    const annivYears = anniv.getFullYear() - startAnniv.getFullYear();
+    const bd = new Date(birthdayISO + 'T00:00:00');
+    let birthday = new Date(todayDate.getFullYear(), bd.getMonth(), bd.getDate());
+    if (birthday < todayStart) birthday = new Date(todayDate.getFullYear() + 1, bd.getMonth(), bd.getDate());
+    const birthdayDays = daysUntil(birthday);
+    const fechas = [
+      { icon: '🤍', title: `${annivYears} año${annivYears === 1 ? '' : 's'} juntos`, date: fmtDate(anniv),
+        badge: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`, hot: annivDays <= 30 },
+      { icon: '🎁', title: 'Cumple de la persona especial', date: fmtDate(bd),
+        badge: birthdayDays === 0 ? '¡Hoy! 🎂' : `En ${birthdayDays} día${birthdayDays === 1 ? '' : 's'}`, hot: birthdayDays <= 30 },
+      { icon: '📅', title: 'Nuestro primer mensaje', date: fmtDate(new Date(hubStartISO + 'T00:00:00')), badge: 'Ya pasó', muted: true }
     ];
+
+    // ---- Actividad reciente ----
+    const ACT_ICONS = { reason: '💌', song: '🎵', gift: '🎁', news: '📰', series: '📺', maldia: '💬', audio: '🎙️', letter: '📮', user: '👤', login: '🔑', logout: '🚪' };
+    const actIcon = (action = '') => ACT_ICONS[String(action).split('_')[0]] || '✨';
+    const relTime = (ts) => {
+      if (!ts) return '';
+      const d = new Date(ts);
+      const hm = d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+      if (d.toDateString() === todayDate.toDateString()) return `Hoy, ${hm}`;
+      const yest = new Date(todayDate); yest.setDate(todayDate.getDate() - 1);
+      if (d.toDateString() === yest.toDateString()) return `Ayer, ${hm}`;
+      return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    };
+
+    // ---- Accesos rápidos y atajos ----
+    const quickActions = [
+      { section: 'contenido',      emoji: '📁', label: 'Gestionar contenido' },
+      { section: 'multimedia',     emoji: '☁️', label: 'Subir multimedia' },
+      { section: 'notificaciones', emoji: '✈️', label: 'Enviar notificación' },
+      { section: 'moods',          emoji: '😊', label: 'Ver ánimos' },
+      { section: 'usuarios',       emoji: '👥', label: 'Usuarios' },
+      { section: 'config',         emoji: '⚙️', label: 'Configuración' }
+    ];
+    const shortcuts = [
+      { icon: '📮', label: 'Open When', count: owLettersList.length, section: 'contenido', sub: 'openwhen' },
+      { icon: '🖼️', label: 'Galeria', count: galleryPhotos, section: 'multimedia' },
+      { icon: '💬', label: 'Frases', count: mensajes, section: 'contenido', sub: 'razones' },
+      { icon: '🎵', label: 'Música', count: songsList.length, section: 'contenido', sub: 'canciones' },
+      { icon: '🎁', label: 'Regalos', count: giftsCount, section: 'contenido', sub: 'regalos' },
+      { icon: '📝', label: 'Notas', count: audiosList.length, section: 'contenido', sub: 'audios' }
+    ];
+
+    // ---- Uso de la app: tiempo por sección y últimas conexiones ----
+    const perSection = {};
+    const perUser = {};
+    const byPerson = {};
+    const sortedVisits = [...visitsList].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    sortedVisits.forEach(v => {
+      const uid = v.user_id || 'anon';
+      const bp = basePageOf(v.page);
+      const ts = new Date(v.timestamp).getTime() || 0;
+      (perSection[bp] = perSection[bp] || { count: 0, ms: 0 }).count++;
+      const u = (perUser[uid] = perUser[uid] || { count: 0, msBySection: {}, lastTs: 0 });
+      u.count++;
+      u.lastTs = Math.max(u.lastTs, ts);
+      (byPerson[uid] = byPerson[uid] || []).push({ bp, ts, uid });
+    });
+    // Atribución: el tiempo de cada visita es el hueco hasta la siguiente de
+    // la misma persona (máx. 30 min; si hay más, es una nueva sesión).
+    Object.values(byPerson).forEach(list => {
+      list.sort((a, b) => a.ts - b.ts);
+      for (let i = 0; i < list.length - 1; i++) {
+        const gap = list[i + 1].ts - list[i].ts;
+        if (gap > 0 && gap <= 30 * 60 * 1000) {
+          perSection[list[i].bp].ms += gap;
+          const u = perUser[list[i].uid];
+          if (u) u.msBySection[list[i].bp] = (u.msBySection[list[i].bp] || 0) + gap;
+        }
+      }
+    });
+    const topSections = Object.entries(perSection)
+      .filter(([, s]) => s.count > 0)
+      .sort((a, b) => b[1].ms - a[1].ms || b[1].count - a[1].count)
+      .slice(0, 6);
+    const sectionMaxMs = Math.max(...topSections.map(([, s]) => s.ms), 1);
+    const useHtml = topSections.length
+      ? topSections.map(([bp, s]) => `
+        <div class="dash-use-row">
+          <span class="dash-use-label">${esc(SECTION_LABELS[bp] || bp)}</span>
+          <div class="dash-use-track"><div class="dash-use-fill" style="width:${Math.max(Math.round(s.ms / sectionMaxMs * 100), 4)}%"></div></div>
+          <span class="dash-use-meta">${s.count} visita${s.count === 1 ? '' : 's'} · ${fmtDuration(s.ms)}</span>
+        </div>`).join('')
+      : '<p class="muted-text" style="margin:0">Todavía no hay datos de actividad. Se recogen automáticamente al navegar por la web.</p>';
+    const userById = new Map(realUsers.map(u => [u.id, u]));
+    const connections = Object.entries(perUser)
+      .map(([uid, u]) => {
+        const user = userById.get(uid);
+        const topSec = Object.entries(u.msBySection).sort((a, b) => b[1] - a[1])[0];
+        return {
+          uid,
+          name: user?.name || (user?.email ? user.email.split('@')[0] : 'Invitado'),
+          isAdmin: user?.role === 'admin',
+          count: u.count,
+          lastTs: u.lastTs,
+          topSec: topSec ? (SECTION_LABELS[topSec[0]] || topSec[0]) : '—'
+        };
+      })
+      .filter(c => c.count > 0)
+      .sort((a, b) => b.lastTs - a.lastTs)
+      .slice(0, 6);
+    const connHtml = connections.length
+      ? connections.map(c => `
+        <div class="dash-conn-row">
+          <span class="dash-conn-dot${c.isAdmin ? ' admin' : ''}"></span>
+          <span class="dash-conn-name">${esc(c.name)}${c.isAdmin ? ' <span class="admin-badge-tag">Admin</span>' : ''}</span>
+          <span class="dash-conn-meta">${c.count} visita${c.count === 1 ? '' : 's'} · ${c.topSec}</span>
+          <span class="dash-conn-time">${relTimeShort(c.lastTs)}</span>
+        </div>`).join('')
+      : '<p class="muted-text" style="margin:0">Sin conexiones registradas todavía.</p>';
 
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header">
           <h2>${UI.dash} Resumen general</h2>
-          <button class="admin-btn-ghost" id="refreshDashboard" title="Actualizar">${UI.refresh}</button>
+          <div class="dash-header-tools">
+            <span class="dash-conn-pill" id="dashConnPill">Comprobando…</span>
+            <button class="admin-btn-ghost" id="refreshDashboard" title="Actualizar">${UI.refresh}</button>
+          </div>
         </div>
-        <div class="stats-grid">
-          ${statCards.map(s => `
-            <div class="stat-card">
-              <div class="stat-card-content">
-                <div class="stat-card-icon">${s.icon}</div>
-                <div class="stat-card-info">
-                  <div class="stat-value">${s.value}</div>
-                  <div class="stat-label">${s.label}</div>
-                </div>
-              </div>
-            </div>
-          `).join('')}
+
+        <div class="dash-metrics">
+          ${row1.map(metricCard).join('')}
+        </div>
+        <div class="dash-metrics">
+          ${row2.map(metricCard).join('')}
         </div>
 
         <div class="admin-dash-grid">
           <div class="admin-panel">
             <div class="admin-panel-head">
-              <h4>${UI.activity} Tendencia de ánimo · últimos 14 días</h4>
-              <span class="admin-panel-badge">${allMoods.filter(m => m.date >= trendDays[0].ds).length} registros</span>
+              <div class="dash-chart-toggle-group" role="group" aria-label="Métrica del gráfico">
+                <button type="button" class="dash-chart-toggle active" data-metric="activity">Actividad</button>
+                <button type="button" class="dash-chart-toggle" data-metric="mood">Ánimos</button>
+                <button type="button" class="dash-chart-toggle" data-metric="visits">Visitas</button>
+              </div>
+              <select class="dash-range-select" id="dashActivityRange" aria-label="Rango de días">
+                <option value="7">7 días</option>
+                <option value="14" selected>14 días</option>
+                <option value="30">30 días</option>
+              </select>
             </div>
-            <div class="trend-chart">${trendHtml}</div>
+            <div id="dashActivityChart">${areaChart(seriesDays(14, 'activity'))}</div>
           </div>
           <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Accesos rápidos</h4></div>
-            <div class="quick-actions">
-              ${quickActions.map(q => `<button class="quick-action" data-goto="${q.section}">${q.icon}<span>${q.label}</span></button>`).join('')}
+            <div class="admin-panel-head"><h4>Distribución de contenido</h4></div>
+            <div class="dash-donut">
+              <div class="dash-donut-wrap">
+                <svg viewBox="0 0 120 120" class="dash-donut-svg">${donutHtml}</svg>
+                <div class="dash-donut-center"><strong>${distTotal}</strong><span>Total</span></div>
+              </div>
+              <div class="dash-donut-legend">${donutLegend}</div>
             </div>
           </div>
         </div>
 
-        ${activity.length > 0 ? `
-        <div class="admin-subsection">
-          <h4>${UI.activity} Actividad reciente</h4>
-          ${activity.map(e => {
-            const time = e.timestamp ? new Date(e.timestamp).toLocaleString('es') : '';
-            return `<div class="admin-activity-item">
-              <div class="admin-activity-dot"></div>
-              <div class="admin-activity-body">
-                <div class="admin-activity-action">${esc(db.formatAction(e.action))}</div>
-                <div class="admin-activity-details">${esc(e.details||'')} · ${time}</div>
+        <div class="admin-dash-grid">
+          <div class="admin-panel">
+            <div class="admin-panel-head">
+              <h4>Tendencia de ánimo</h4>
+              <div class="dash-panel-actions">
+                <button class="dash-link" data-goto="moods">Historial →</button>
+                <span class="admin-panel-badge">${moods.length} registros</span>
               </div>
-            </div>`;
-          }).join('')}
-        </div>` : ''}
+            </div>
+            <div class="dash-mood-head">
+              <div class="dash-mood-text">
+                <div class="dash-mood-main">${MOOD_TITLE[domKey] || 'Feliz'} ${MOOD_FACE[domKey] || '😊'}</div>
+                <div class="dash-mood-sub">${avgScore >= 2.5 ? 'Predomina el buen ánimo. ¡Sigue así!' : 'Un poquito de cariño no viene mal hoy.'}</div>
+              </div>
+              <div class="dash-mood-face">${MOOD_FACE[domKey] || '😊'}</div>
+            </div>
+            <div class="dash-week-chart">${weekBars}</div>
+          </div>
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Fechas importantes</h4></div>
+            <div class="dash-fechas">
+              ${fechas.map(f => `
+                <div class="dash-fecha">
+                  <div class="dash-fecha-icon">${f.icon}</div>
+                  <div class="dash-fecha-body">
+                    <div class="dash-fecha-title">${f.title}</div>
+                    <div class="dash-fecha-date">${f.date}</div>
+                  </div>
+                  <span class="dash-fecha-badge${f.hot ? ' hot' : ''}${f.muted ? ' muted' : ''}">${f.badge}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-dash-grid">
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Dónde pasa más tiempo</h4><span class="admin-panel-badge">${sortedVisits.length} visitas</span></div>
+            <div class="dash-use">${useHtml}</div>
+          </div>
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Últimas conexiones</h4></div>
+            <div class="dash-conn">${connHtml}</div>
+          </div>
+        </div>
+
+        <div class="admin-dash-grid">
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Actividad reciente</h4></div>
+            <div class="admin-activity-list">
+              ${activity.slice(0, 5).map(e => `
+                <div class="admin-activity-item">
+                  <div class="admin-activity-emoji">${actIcon(e.action)}</div>
+                  <div class="admin-activity-body">
+                    <div class="admin-activity-action">${esc(db.formatAction(e.action))}</div>
+                    <div class="admin-activity-details">${esc(e.details || '')}</div>
+                  </div>
+                  <div class="admin-activity-time">${relTime(e.timestamp)}</div>
+                </div>`).join('')}
+            </div>
+            <button class="dash-more-btn" data-goto="actividad">Ver toda la actividad →</button>
+          </div>
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Accesos rápidos</h4></div>
+            <div class="quick-actions">
+              ${quickActions.map(q => `<button class="quick-action" data-goto="${q.section}"><span class="quick-action-emoji">${q.emoji}</span><span>${q.label}</span></button>`).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel dash-shortcuts-panel">
+          <div class="admin-panel-head"><h4>Atajos de gestión</h4></div>
+          <div class="dash-shortcuts">
+            ${shortcuts.map(s => `
+              <button type="button" class="dash-shortcut" data-shortcut='${JSON.stringify({ href: s.href || '', section: s.section || '', sub: s.sub || '' })}'>
+                <span class="dash-shortcut-icon">${s.icon}</span>
+                <span class="dash-shortcut-label">${s.label}</span>
+                <span class="dash-shortcut-count">${s.count} ${s.count === 1 ? 'elemento' : 'elementos'}</span>
+              </button>`).join('')}
+          </div>
+        </div>
       </section>
     `;
 
     page.querySelector('#refreshDashboard')?.addEventListener('click', loadDashboard);
 
+    // Estado de la conexión (chip del dashboard)
+    db.checkConnection().then(status => {
+      const pill = page.querySelector('#dashConnPill');
+      if (pill && page.querySelector('#adminContent')?.contains(pill)) {
+        pill.textContent = status.ok ? '● Supabase conectado' : '● Modo local';
+        pill.classList.toggle('ok', !!status.ok);
+      }
+    }).catch(() => {});
+
+    // Métrica del gráfico: Actividad | Ánimos
+    page.querySelectorAll('.dash-chart-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        chartMetric = btn.dataset.metric;
+        page.querySelectorAll('.dash-chart-toggle').forEach(b => b.classList.toggle('active', b === btn));
+        const range = page.querySelector('#dashActivityRange');
+        const el = page.querySelector('#dashActivityChart');
+        if (el && range) el.innerHTML = areaChart(seriesDays(Number(range.value), chartMetric));
+      });
+    });
+
+    // Rango del gráfico
+    page.querySelector('#dashActivityRange')?.addEventListener('change', (e) => {
+      const el = page.querySelector('#dashActivityChart');
+      if (el) el.innerHTML = areaChart(seriesDays(Number(e.target.value), chartMetric));
+    });
+
     // Accesos rápidos → cambian de sección
     page.querySelectorAll('[data-goto]').forEach(btn => {
       btn.addEventListener('click', () => {
         S.section = btn.dataset.goto;
-        page.querySelectorAll('.admin-sidebar-item').forEach(t => t.classList.remove('active'));
-        const navBtn = page.querySelector(`.admin-sidebar-item[data-section="${S.section}"]`);
+        page.querySelectorAll('.admin-topbar-tab').forEach(t => t.classList.remove('active'));
+        const navBtn = page.querySelector(`.admin-topbar-tab[data-section="${S.section}"]`);
+        if (navBtn) navBtn.classList.add('active');
+        loadSection(S.section);
+      });
+    });
+
+    // Atajos de gestión
+    page.querySelectorAll('[data-shortcut]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const s = JSON.parse(btn.dataset.shortcut || '{}');
+        if (s.href) { router.navigate(s.href); return; }
+        if (s.sub) S.contentSub = s.sub;
+        S.section = s.section;
+        page.querySelectorAll('.admin-topbar-tab').forEach(t => t.classList.remove('active'));
+        const navBtn = page.querySelector(`.admin-topbar-tab[data-section="${S.section}"]`);
         if (navBtn) navBtn.classList.add('active');
         loadSection(S.section);
       });
@@ -567,10 +1023,33 @@ export function AdminPage(router) {
     `;
 
     const token = sectionToken;
-    const [users, allMoods] = await Promise.all([
-      db.listUsers(),
-      db.getAllMoods('2024-01-01', todayISO())
+    const [users, allMoods, visits] = await Promise.all([
+      safe(db.listUsers(), []),
+      safe(db.getAllMoods('2024-01-01', todayISO()), []),
+      safe(db.getPageVisits(3000), [])
     ]);
+
+    // Actividad de uso por usuario: visitas, última conexión y tiempo por sección.
+    const visitStats = {};
+    [...visits].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).forEach(v => {
+      const uid = v.user_id || 'anon';
+      const bp = basePageOf(v.page);
+      const ts = new Date(v.timestamp).getTime() || 0;
+      const st = (visitStats[uid] = visitStats[uid] || { count: 0, lastTs: 0, msBySection: {}, order: [] });
+      st.count++;
+      st.lastTs = Math.max(st.lastTs, ts);
+      st.order.push({ bp, ts });
+    });
+    Object.values(visitStats).forEach(st => {
+      const list = st.order.sort((a, b) => a.ts - b.ts);
+      for (let i = 0; i < list.length - 1; i++) {
+        const gap = list[i + 1].ts - list[i].ts;
+        if (gap > 0 && gap <= 30 * 60 * 1000) {
+          st.msBySection[list[i].bp] = (st.msBySection[list[i].bp] || 0) + gap;
+        }
+      }
+      delete st.order;
+    });
 
     const userMoodStats = {};
     allMoods.forEach(m => {
@@ -592,7 +1071,7 @@ export function AdminPage(router) {
 
     function renderUserList(list) {
       const listEl = page.querySelector('#userList');
-      if (listEl) listEl.innerHTML = renderUsers(list, userMoodStats);
+      if (listEl) listEl.innerHTML = renderUsers(list, userMoodStats, visitStats);
     }
 
     renderUserList(users);
@@ -633,7 +1112,17 @@ export function AdminPage(router) {
         modal.open(
           `${UI.trash} Eliminar usuario`,
           `<p style="margin:0;">¿Seguro que quieres eliminar a <strong>${esc(name)}</strong>? Esta acción no se puede deshacer.</p>`,
-          async () => { await db.deleteUser(uid); showToast('Usuario eliminado', 'success'); },
+          async () => {
+            try {
+              await db.deleteUser(uid);
+              showToast('Usuario eliminado', 'success');
+              // Recarga la lista para que desaparezca al momento
+              await loadUsuarios();
+            } catch (err) {
+              console.error('[admin] No se pudo eliminar el usuario:', err);
+              showToast(err?.message || 'No se pudo eliminar el usuario', 'error');
+            }
+          },
           'Eliminar'
         );
         return;
@@ -644,16 +1133,18 @@ export function AdminPage(router) {
       if (!item) return;
       const userId = item.dataset.userId;
       const detailUser = users.find(u => u.id === userId);
-      if (detailUser) await showUserDetail(detailUser, userMoodStats[userId]);
+      if (detailUser) await showUserDetail(detailUser, userMoodStats[userId], visitStats);
     });
   }
 
-  function renderUsers(users, moodStats) {
+  function renderUsers(users, moodStats, visitStats) {
     if (users.length === 0) return '<div class="admin-empty">No hay usuarios</div>';
     return users.map((u) => {
       const initial = esc((u.name||u.email||'?').charAt(0).toUpperCase());
       const status = u.enabled !== false ? '🟢' : '🔴';
-      const lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString('es') : '—';
+      const vs = visitStats[u.id];
+      const online = vs?.lastTs && (Date.now() - vs.lastTs < 5 * 60e3);
+      const lastLogin = vs?.lastTs ? relTimeShort(vs.lastTs) : (u.last_login ? new Date(u.last_login).toLocaleDateString('es') : '—');
       const stats = moodStats[u.id];
       const moodBadge = stats && stats.total > 0
         ? getMoodSummaryBadge(stats)
@@ -672,7 +1163,7 @@ export function AdminPage(router) {
           </div>
           <div class="item-sub">
             ${u.email ? esc(u.email) : 'ID: ' + u.id.slice(0,12)+'…'}
-            · ${status} · Último: ${lastLogin}
+            · ${status} · ${online ? '<strong class="user-online">En línea ahora</strong>' : `Última conexión: ${lastLogin}`}
           </div>
           <div class="user-mood-row">${moodBadge}</div>
         </div>
@@ -701,10 +1192,34 @@ export function AdminPage(router) {
     `;
   }
 
-  async function showUserDetail(user, stats) {
+  async function showUserDetail(user, stats, visitStats) {
     const initial = esc((user.name||user.email||'?').charAt(0).toUpperCase());
     const created = user.created_at ? new Date(user.created_at).toLocaleDateString('es') : '—';
-    const lastLogin = user.last_login ? new Date(user.last_login).toLocaleDateString('es') : '—';
+    const vs = visitStats?.[user.id];
+    const lastLogin = vs?.lastTs ? new Date(vs.lastTs).toLocaleString('es', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : (user.last_login ? new Date(user.last_login).toLocaleDateString('es') : '—');
+
+    // Actividad de uso: dónde pasa más tiempo y última conexión.
+    let useHtml = '<p class="muted-text" style="font-size:0.82rem">Sin actividad registrada todavía. Se recoge automáticamente al usar la app.</p>';
+    if (vs && vs.count > 0) {
+      const top = Object.entries(vs.msBySection).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const maxMs = Math.max(...top.map(t => t[1]), 1);
+      const totalMs = Object.values(vs.msBySection).reduce((a, b) => a + b, 0);
+      const rows = top.length
+        ? top.map(([bp, ms]) => `
+          <div class="moods-bar-row">
+            <span class="moods-bar-label" style="min-width:130px">${esc(SECTION_LABELS[bp] || bp)}</span>
+            <div class="moods-bar-track"><div class="moods-bar-fill mood-good" style="width:${Math.round(ms / maxMs * 100)}%"></div></div>
+            <span class="moods-bar-pct">${fmtDuration(ms)}</span>
+          </div>`).join('')
+        : '<div class="muted-text">Todavía sin tiempo acumulado por sección</div>';
+      useHtml = `
+        <div class="user-mood-summary-card" style="margin-bottom:12px">
+          <div><strong>${vs.count}</strong><div class="muted-text">Visitas</div></div>
+          <div><strong>${fmtDuration(totalMs)}</strong><div class="muted-text">Tiempo activo</div></div>
+          <div><strong>${new Date(vs.lastTs).toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong><div class="muted-text">Última conexión</div></div>
+        </div>
+        ${rows}`;
+    }
 
     let moodHtml = '<p style="color:var(--theme-text-secondary);font-size:0.82rem;margin-bottom:12px;">Sin registros de ánimo</p>';
     if (stats && stats.total > 0) {
@@ -782,9 +1297,13 @@ export function AdminPage(router) {
         <div class="admin-field">
           <p><strong>ID:</strong> ${user.id}</p>
           <p><strong>Creado:</strong> ${created}</p>
-          <p><strong>Último login:</strong> ${lastLogin}</p>
+          <p><strong>Última conexión:</strong> ${lastLogin}</p>
           <p><strong>Estado:</strong> ${user.enabled !== false ? '🟢 Activo' : '🔴 Inactivo'}</p>
         </div>
+
+        <hr style="opacity:0.2;margin:12px 0;">
+        <h3 style="font-size:1rem;margin:0 0 12px;">${UI.activity} Actividad de uso</h3>
+        ${useHtml}
 
         <hr style="opacity:0.2;margin:12px 0;">
         <h3 style="font-size:1rem;margin:0 0 12px;">${UI.heart} Resumen de Ánimo</h3>
@@ -803,7 +1322,7 @@ export function AdminPage(router) {
       <section class="admin-section active">
         <div class="admin-section-header"><h2>${UI.content} Gestión de Contenido</h2></div>
         <div class="admin-tabs" id="contentSubTabs" style="margin-bottom:16px">
-          ${CONTENT_SUBS.map(t => `<button class="admin-tab${t.id==='razones'?' active':''}" data-content="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
+          ${CONTENT_SUBS.map(t => `<button class="admin-tab${t.id === (S.contentSub || 'razones') ? ' active' : ''}" data-content="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
         </div>
         <div id="contentSubContent">${skeletonCard('200px')}</div>
       </section>
@@ -831,13 +1350,13 @@ export function AdminPage(router) {
   }
 
   const CONTENT_LOADERS = {
-    razones:   async () => ({ title: 'Razones', items: await db.getReasons(), save: db.saveReasons }),
-    canciones: async () => ({ title: 'Canciones', items: await db.getSongs(), save: db.saveSongs }),
-    noticias:  async () => ({ title: 'Noticias', items: await db.getNews(), save: db.saveNews }),
-    series:    async () => ({ title: 'Series', items: await loadCatalog(), save: saveCatalog }),
+    razones:   async () => ({ title: 'Razones', items: await safe(db.getReasons(), []), save: db.saveReasons }),
+    canciones: async () => ({ title: 'Canciones', items: await safe(db.getSongs(), []), save: db.saveSongs }),
+    noticias:  async () => ({ title: 'Noticias', items: await safe(db.getNews(), []), save: db.saveNews }),
+    series:    async () => ({ title: 'Series', items: await safe(loadCatalog(), []), save: saveCatalog }),
     regalos:   async () => {
       // Fuente unificada: lo guardado en Supabase, o gifts.json como semilla.
-      const cat = await loadGiftsCatalog();
+      const cat = await safe(loadGiftsCatalog(), { gifts: [] });
       return {
         title: 'Regalos',
         catalog: cat,
@@ -852,19 +1371,19 @@ export function AdminPage(router) {
     },
     maldia:    async () => ({
       title: 'Mal Día',
-      frases: await db.getMaldiaFrases(),
-      mensajes: await db.getMaldiaMensajes(),
+      frases: await safe(db.getMaldiaFrases(), []),
+      mensajes: await safe(db.getMaldiaMensajes(), []),
       saveFrases: db.saveMaldiaFrases,
       saveMensajes: db.saveMaldiaMensajes
     }),
     audios:    async () => ({
       title: 'Audios',
-      items: await db.getAudios(),
+      items: await safe(db.getAudios(), []),
       save: (audios) => db.saveAudios(audios)
     }),
     openwhen:  async () => ({
       title: 'Open When',
-      items: await db.getOpenWhenLetters(),
+      items: await safe(db.getOpenWhenLetters(), []),
       staticLetters: LETTERS,
       save: (letters) => db.saveOpenWhenLetters(letters)
     })
@@ -887,7 +1406,10 @@ export function AdminPage(router) {
         <div class="admin-subsection">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <h4>Frases (${data.frases.length})</h4>
-            <button class="admin-btn admin-btn-sm" id="addMaldiaFrase">${UI.plus} Añadir</button>
+            <div style="display:flex;gap:8px;">
+              <button class="admin-btn admin-btn-sm" id="viewMaldiaNotes">💌 Notas</button>
+              <button class="admin-btn admin-btn-sm" id="addMaldiaFrase">${UI.plus} Añadir</button>
+            </div>
           </div>
           <div class="admin-list">${renderSimpleList(data.frases, 'frase')}</div>
         </div>
@@ -902,6 +1424,24 @@ export function AdminPage(router) {
 
       bindSimpleCRUD('maldia_frase', data.frases, data.saveFrases, loadContentSub);
       bindSimpleCRUD('maldia_mensaje', data.mensajes, data.saveMensajes, loadContentSub);
+
+      // Notas que la usuaria deja desde Mal Día (llegan directas al Admin)
+      page.querySelector('#viewMaldiaNotes')?.addEventListener('click', async () => {
+        const notes = await db.getAllMaldiaNotes();
+        if (!notes.length) {
+          modal.open('💌 Notas de Mal Día', '<p style="margin:0;color:var(--theme-text-secondary);">Todavía no hay notas. Cuando ella escriba una desde la sección Mal Día, aparecerá aquí.</p>');
+          return;
+        }
+        const listHtml = notes.map(n => {
+          const who = n.email || (n.userId ? String(n.userId).slice(0, 8) : 'Ella');
+          const when = n.createdAt ? new Date(n.createdAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+          return `<div class="gift-response">
+            <div class="gift-response__meta">${esc(who)}${when ? ` · ${esc(when)}` : ''}</div>
+            <div class="gift-response__text">${esc(n.text || '—')}</div>
+          </div>`;
+        }).join('');
+        modal.open('💌 Notas de Mal Día', `<div class="gift-responses-list">${listHtml}</div>`);
+      });
     } else if (id === 'series') {
       // Catálogo unificado con la sección Series (misma fuente local)
       renderSeriesAdmin(sub, data.items, data.save, loadContentSub);
@@ -950,12 +1490,20 @@ export function AdminPage(router) {
   // ==========================================
   const UPLOAD_HISTORY_KEY = 'ph.admin.uploads';
 
-  function loadUploadHistory() {
-    try { return JSON.parse(localStorage.getItem(UPLOAD_HISTORY_KEY) || '[]'); } catch { return []; }
+  // Historial por sección: { galeria: [...], memes: [...], audios: [...] }
+  function loadUploadHistory(sectionId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(UPLOAD_HISTORY_KEY) || '{}');
+      return Array.isArray(all[sectionId]) ? all[sectionId] : [];
+    } catch { return []; }
   }
 
-  function saveUploadHistory(list) {
-    try { localStorage.setItem(UPLOAD_HISTORY_KEY, JSON.stringify(list.slice(0, 50))); } catch { /* cuota llena */ }
+  function saveUploadHistory(sectionId, list) {
+    try {
+      const all = JSON.parse(localStorage.getItem(UPLOAD_HISTORY_KEY) || '{}');
+      all[sectionId] = list.slice(0, 30);
+      localStorage.setItem(UPLOAD_HISTORY_KEY, JSON.stringify(all));
+    } catch { /* cuota llena */ }
   }
 
   async function copyText(text, msg = 'URL copiada al portapapeles') {
@@ -1012,126 +1560,139 @@ export function AdminPage(router) {
 
   async function loadMultimedia() {
     const token = sectionToken;
-    const cfg = getCloudinaryConfig();
-    const history = loadUploadHistory();
-    const uploads = history.map(h => ({ ...h, status: 'done' }));
+
+    // Cada sección gestiona su propia subida: el archivo va directo al bucket
+    // correcto de Supabase y aparece en esa sección de la app al momento.
+    const SECTIONS = [
+      {
+        id: 'galeria', icon: '🖼️', title: 'Galería',
+        desc: 'Fotos (máx. 5 MB c/u) — aparecen al instante en la Galería de la app.',
+        accept: 'image/*', route: '/galeria',
+        uploadFn: (files) => db.uploadGalleryPhotos(files)
+      },
+      {
+        id: 'memes', icon: '😂', title: 'Memes',
+        desc: 'Imágenes y vídeos (máx. 50 MB) — aparecen al instante en Memes.',
+        accept: 'image/*,video/*', route: '/memes',
+        uploadFn: (files) => db.uploadMemes(files)
+      },
+      {
+        id: 'audios', icon: '🎙️', title: 'Audios',
+        desc: 'Notas de voz (máx. 50 MB) — aparecen al instante en Audios del Rincón.',
+        accept: 'audio/*', route: '/audios',
+        uploadFn: (files) => db.uploadAudios(files)
+      }
+    ];
+
+    const sections = SECTIONS.map(s => ({
+      ...s,
+      uploads: loadUploadHistory(s.id).map(h => ({ ...h, status: 'done' }))
+    }));
 
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header">
-          <h2>${UI.cloud} Subir contenido a Cloudinary</h2>
-          <a class="admin-btn admin-btn-ghost" href="${cloudinaryMediaLibraryUrl()}" target="_blank" rel="noopener">${UI.link} Abrir Media Library</a>
+          <h2>${UI.cloud} Subir multimedia</h2>
         </div>
+        <p class="muted-text" style="margin-top:-6px">Sube cada archivo desde su sección: va directo a Galería, Memes o Audios y aparece en la app al momento. (También puedes subir desde cada sección en la app.)</p>
 
-        ${cfg.mode === 'unsigned'
-          ? `<div class="admin-banner admin-banner--ok">
-              <span>✓ Cloudinary conectado · subida directa (sin límite de tamaño)</span>
-              <small>Cloud: <strong>${esc(cfg.cloudName)}</strong> · preset <strong>${esc(cfg.uploadPreset)}</strong> · carpeta <em>personal-hub</em></small>
-            </div>`
-          : `<div class="admin-banner admin-banner--ok">
-              <span>✓ Cloudinary listo · subida firmada vía servidor</span>
-              <small>Cloud: <strong>${esc(cfg.cloudName)}</strong> · CLOUDINARY_URL en el servidor · límite ~${cfg.signedLimitMB} MB por archivo.
-              Para archivos grandes (vídeos) crea un <em>unsigned preset</em> y añade VITE_CLOUDINARY_UPLOAD_PRESET.</small>
-            </div>`}
-        <div class="admin-banner admin-banner--warn" style="margin-top:-4px">
-          <strong>Cómo configurar Cloudinary (una vez)</strong>
-          <ol class="admin-setup-list">
-            <li>Obtén tu API Key y API Secret en <a href="https://cloudinary.com/console" target="_blank" rel="noopener">cloudinary.com/console</a> → <strong>Settings → Access Keys</strong> (cloud: <em>dcsent4fs</em>).</li>
-            <li>Añade en las variables del servidor (Vercel → personal-hub → Settings → Environment Variables, y en <code>.env</code> local):
-              <code>CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@dcsent4fs</code></li>
-            <li>Opcional, para archivos grandes: crea un <strong>unsigned upload preset</strong> (Settings → Upload → Add preset → Unsigned) y añade
-              <code>VITE_CLOUDINARY_UPLOAD_PRESET=su_nombre</code> (y <code>VITE_CLOUDINARY_CLOUD_NAME=dcsent4fs</code>).</li>
-            <li>Recarga esta página y podrás subir fotos, vídeos, audios y PDFs desde aquí.</li>
-          </ol>
-        </div>
-
-        <div class="upload-dropzone" id="uploadDropzone">
-          <div class="upload-dropzone-icon">${UI.cloud}</div>
-          <div class="upload-dropzone-title">Arrastra archivos aquí o toca para elegir</div>
-          <div class="upload-dropzone-sub">Fotos · Vídeos · Audios · PDF — se suben a Cloudinary y obtienes la URL</div>
-          <input type="file" id="uploadInput" multiple accept="image/*,video/*,audio/*,.pdf" hidden>
-        </div>
-
-        <div class="admin-subsection" style="margin-top:16px">
-          <h4>Subidas de esta sesión (${uploads.length})</h4>
-          <div class="upload-list" id="uploadList"></div>
+        <div class="admin-dash-grid">
+          ${sections.map(s => `
+            <div class="admin-panel">
+              <div class="admin-panel-head">
+                <h4>${s.icon} ${s.title}</h4>
+                <a class="admin-btn admin-btn-ghost admin-btn-sm" href="#${s.route}" rel="noopener">${UI.link} Abrir sección</a>
+              </div>
+              <p class="muted-text">${s.desc}</p>
+              <div class="upload-dropzone" data-dropzone="${s.id}">
+                <div class="upload-dropzone-icon">${UI.cloud}</div>
+                <div class="upload-dropzone-title">Arrastra archivos aquí o toca para elegir</div>
+                <div class="upload-dropzone-sub">${s.id === 'galeria' ? 'Fotos' : s.id === 'memes' ? 'Imágenes y vídeos' : 'Audios (mp3, m4a, ogg, wav…)'}</div>
+                <input type="file" data-input="${s.id}" multiple accept="${s.accept}" hidden>
+              </div>
+              <div class="admin-subsection" style="margin-top:12px">
+                <h4>Subidas recientes (${s.uploads.length})</h4>
+                <div class="upload-list" data-list="${s.id}"></div>
+              </div>
+            </div>`).join('')}
         </div>
       </section>
     `;
 
     if (token !== sectionToken) return;
-    const listEl = page.querySelector('#uploadList');
-    renderUploadsList(uploads, listEl);
 
-    const dropzone = page.querySelector('#uploadDropzone');
-    const input = page.querySelector('#uploadInput');
+    sections.forEach(s => {
+      const dropzone = page.querySelector(`[data-dropzone="${s.id}"]`);
+      const input = page.querySelector(`[data-input="${s.id}"]`);
+      const listEl = page.querySelector(`[data-list="${s.id}"]`);
+      if (!dropzone || !input || !listEl) return;
+      renderUploadsList(s.uploads, listEl);
 
-    const pickFiles = (files) => {
-      const valid = [...files].filter(f => f && f.size > 0);
-      if (!valid.length) return;
-      valid.forEach(file => {
-        const entry = {
-          name: file.name,
-          size: file.size,
-          kind: fileKind(file),
-          status: 'uploading',
-          progress: 0,
-          preview: fileKind(file) === 'image' ? URL.createObjectURL(file) : ''
-        };
-        uploads.unshift(entry);
-        renderUploadsList(uploads, listEl);
-        uploadFile(file, {
-          onProgress: (pct) => { entry.progress = pct; renderUploadsList(uploads, listEl); }
-        }).then(result => {
-          Object.assign(entry, {
-            status: 'done',
-            secure_url: result.secure_url,
-            public_id: result.public_id,
-            progress: 100
+      const renderList = () => renderUploadsList(s.uploads, listEl);
+      const pickFiles = (files) => {
+        const valid = [...files].filter(f => f && f.size > 0);
+        if (!valid.length) return;
+        valid.forEach(file => {
+          const entry = {
+            name: file.name,
+            size: file.size,
+            kind: fileKind(file),
+            status: 'uploading',
+            progress: 0,
+            preview: fileKind(file) === 'image' ? URL.createObjectURL(file) : ''
+          };
+          s.uploads.unshift(entry);
+          renderList();
+          s.uploadFn([file]).then(urls => {
+            const url = urls?.[0];
+            Object.assign(entry, {
+              status: url ? 'done' : 'error',
+              secure_url: url || '',
+              error: url ? '' : 'El archivo se subió pero no devolvió URL',
+              progress: 100
+            });
+            renderList();
+            if (url) {
+              saveUploadHistory(s.id, s.uploads.map(u => ({
+                name: u.name, size: u.size, kind: u.kind,
+                secure_url: u.secure_url, date: new Date().toISOString()
+              })).filter(u => u.secure_url));
+              showToast(`✅ ${file.name} subido a ${s.title}`, 'success');
+            } else {
+              showToast(`Error al subir ${file.name}`, 'error');
+            }
+          }).catch(err => {
+            entry.status = 'error';
+            entry.error = err?.message || 'Error al subir';
+            renderList();
+            showToast(err?.message || `Error al subir ${file.name}`, 'error');
           });
-          renderUploadsList(uploads, listEl);
-          const saved = loadUploadHistory();
-          saved.unshift({
-            name: file.name, size: file.size, kind: entry.kind,
-            secure_url: result.secure_url, public_id: result.public_id,
-            date: new Date().toISOString()
-          });
-          saveUploadHistory(saved);
-          showToast(`✅ Subido: ${file.name}`, 'success');
-        }).catch(err => {
-          entry.status = 'error';
-          entry.error = err?.message || 'Error al subir';
-          renderUploadsList(uploads, listEl);
-          showToast(`Error al subir ${file.name}`, 'error');
         });
+      };
+
+      dropzone.addEventListener('click', () => input.click());
+      input.addEventListener('change', () => { pickFiles(input.files); input.value = ''; });
+      ['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('is-dragging');
+      }));
+      ['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('is-dragging');
+      }));
+      dropzone.addEventListener('drop', (e) => pickFiles(e.dataTransfer?.files || []));
+
+      // Delegación de acciones (copiar / abrir) sobre la lista de esta sección
+      listEl.addEventListener('click', (e) => {
+        const copyBtn = e.target.closest('[data-copy]');
+        const openBtn = e.target.closest('[data-open]');
+        const idx = copyBtn?.dataset.copy ?? openBtn?.dataset.open;
+        if (idx === undefined) return;
+        const u = s.uploads[parseInt(idx, 10)];
+        if (!u?.secure_url) return;
+        if (copyBtn) copyText(u.secure_url);
+        else window.open(u.secure_url, '_blank', 'noopener');
       });
-    };
-
-    dropzone?.addEventListener('click', () => input?.click());
-    input?.addEventListener('change', () => { pickFiles(input.files); input.value = ''; });
-
-    ['dragenter', 'dragover'].forEach(ev => dropzone?.addEventListener(ev, (e) => {
-      e.preventDefault();
-      dropzone.classList.add('is-dragging');
-    }));
-    ['dragleave', 'drop'].forEach(ev => dropzone?.addEventListener(ev, (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('is-dragging');
-    }));
-    dropzone?.addEventListener('drop', (e) => {
-      pickFiles(e.dataTransfer?.files || []);
-    });
-
-    // Delegación de acciones (copiar / abrir) sobre la lista
-    listEl?.addEventListener('click', (e) => {
-      const copyBtn = e.target.closest('[data-copy]');
-      const openBtn = e.target.closest('[data-open]');
-      const idx = copyBtn?.dataset.copy ?? openBtn?.dataset.open;
-      if (idx === undefined) return;
-      const u = uploads[parseInt(idx, 10)];
-      if (!u?.secure_url) return;
-      if (copyBtn) copyText(u.secure_url);
-      else window.open(u.secure_url, '_blank', 'noopener');
     });
   }
 
@@ -1986,11 +2547,11 @@ export function AdminPage(router) {
           <label>Audio (archivo o URL) *</label>
           <input type="text" id="editFieldAudio" value="${esc(a.url || '')}" placeholder="https://res.cloudinary.com/...mp3">
           <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-            <button type="button" class="admin-btn admin-btn-sm" id="uploadAudioBtn">${UI.cloud} Subir audio a Cloudinary</button>
+            <button type="button" class="admin-btn admin-btn-sm" id="uploadAudioBtn">${UI.cloud} Subir audio</button>
             <span id="uploadAudioStatus" style="font-size:12px;color:var(--theme-text-secondary);"></span>
           </div>
           <input type="file" id="editFieldAudioFile" accept="audio/*" hidden>
-          <small class="admin-field-hint">Igual que la galería y los memes: el archivo se sube a Cloudinary y la URL se rellena sola.</small>
+          <small class="admin-field-hint">Igual que en la sección Audios: el archivo se sube a Supabase y la URL se rellena sola.</small>
         </div>
         <div class="admin-field"><label>Creador (opcional)</label><input type="text" id="editFieldCreator" value="${esc(a.creator || '')}" placeholder="Darwin / Ella"></div>
         <div class="admin-field"><label>Duración en segundos (opcional)</label><input type="number" id="editFieldDuration" min="0" value="${esc(a.duration ?? '')}" placeholder="Se calcula automáticamente si la dejas vacía"></div>
@@ -2012,14 +2573,12 @@ export function AdminPage(router) {
             return;
           }
           btn.disabled = true;
-          status.textContent = 'Subiendo… 0%';
+          status.textContent = 'Subiendo…';
           status.style.color = 'var(--theme-text-secondary)';
           try {
-            const result = await uploadFile(file, {
-              folder: 'personal-hub/audios',
-              onProgress: (pct) => { status.textContent = `Subiendo… ${pct}%`; }
-            });
-            urlInput.value = result.secure_url || result.url || '';
+            const [url] = await db.uploadAudios([file]);
+            if (!url) throw new Error('El audio se subió pero no devolvió URL');
+            urlInput.value = url;
             status.textContent = '✓ Audio subido'; status.style.color = 'var(--theme-success)';
             if (file.name && !page.querySelector('#editFieldTitle')?.value) {
               page.querySelector('#editFieldTitle').value = file.name.replace(/\.[^.]+$/, '');
@@ -2331,6 +2890,166 @@ export function AdminPage(router) {
   }
 
   // ==========================================
+  // CONFIGURACIÓN
+  // ==========================================
+  async function loadConfiguracion() {
+    const token = sectionToken;
+    const themeState = theme.currentTheme || 'dark';
+    const notifEnabled = isEnabled();
+    const pushOk = isPushSupported();
+    const account = userStore.getUser();
+    const hubDates = await db.getHubDates();
+
+    content.innerHTML = `
+      <section class="admin-section active">
+        <div class="admin-section-header">
+          <h2>${UI.settings} Configuración</h2>
+        </div>
+
+        <div class="admin-dash-grid">
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Apariencia</h4></div>
+            <p class="muted-text">El tema se aplica en toda la web y se recuerda en este navegador.</p>
+            <div class="admin-seg" id="themeSeg">
+              ${[{ id: 'dark', label: '🌙 Oscuro' }, { id: 'light', label: '☀️ Claro' }, { id: 'auto', label: '🖥️ Auto' }]
+                .map(t => `<button type="button" class="admin-seg-btn${themeState === t.id ? ' active' : ''}" data-theme-set="${t.id}">${t.label}</button>`).join('')}
+            </div>
+          </div>
+
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Notificaciones</h4></div>
+            <p class="muted-text">El recordatorio diario se envía a las 8:00 (hora de España) a los dispositivos suscritos.</p>
+            <div class="notif-status-grid">
+              <div class="notif-status-card">
+                <span class="notif-status-icon ${pushOk ? 'ok' : 'muted'}">${UI.bell}</span>
+                <div><strong>${pushOk ? 'Web Push compatible' : 'Push no disponible'}</strong><div class="muted-text">Este navegador puede recibir notificaciones</div></div>
+              </div>
+              <div class="notif-status-card">
+                <span class="notif-status-icon ${notifEnabled ? 'ok' : 'muted'}">${UI.check}</span>
+                <div><strong>${notifEnabled ? 'Activadas' : 'Apagadas'}</strong><div class="muted-text">Estado de tu suscripción</div></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+              ${notifEnabled
+                ? `<button class="admin-btn admin-btn-secondary" id="disableNotifBtn">Apagar notificaciones</button>`
+                : `<button class="admin-btn admin-btn-primary" id="enableNotifBtn">${UI.bell} Activar notificaciones</button>`}
+              <button class="admin-btn admin-btn-ghost" id="testNotifBtn">Enviar prueba</button>
+            </div>
+            <div class="notif-result" id="configNotifResult"></div>
+          </div>
+        </div>
+
+        <div class="admin-dash-grid">
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Base de datos</h4></div>
+            <div id="configDbStatus">${skeletonText()}</div>
+            <button class="admin-btn admin-btn-ghost" id="recheckDbBtn" style="margin-top:12px">${UI.refresh} Comprobar de nuevo</button>
+          </div>
+
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Cuenta</h4></div>
+            <div class="admin-profile-row">
+              <div class="admin-sidebar-avatar">${userPhoto ? `<img src="${esc(userPhoto)}" alt="">` : userInitial}</div>
+              <div>
+                <strong>${esc(account?.name || userName)}</strong>
+                <div class="muted-text">${esc(account?.email || '')}</div>
+              </div>
+              <span class="admin-sidebar-admin-badge">ADMIN</span>
+            </div>
+            <p class="muted-text" style="margin-top:14px">Hora base: <strong>España (península)</strong> · ahora son las ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</p>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h4>Fechas especiales</h4></div>
+          <p class="muted-text">Estas fechas alimentan las métricas del dashboard: «Años juntos», «En el Hub», el cumpleaños y el primer mensaje.</p>
+          <div class="dates-editor">
+            <label class="dates-field">
+              <span>🤍 Aniversario</span>
+              <input type="date" id="dateAnniversary" value="${esc(hubDates.anniversary)}">
+            </label>
+            <label class="dates-field">
+              <span>📅 Inicio del Hub / primer mensaje</span>
+              <input type="date" id="dateHubStart" value="${esc(hubDates.hubStart)}">
+            </label>
+            <label class="dates-field">
+              <span>🎁 Cumpleaños</span>
+              <input type="date" id="dateBirthday" value="${esc(hubDates.birthday)}">
+            </label>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:14px;">
+            <button class="admin-btn admin-btn-primary" id="saveDatesBtn">${UI.check} Guardar fechas</button>
+            <div class="muted-text" id="datesSavedHint"></div>
+          </div>
+        </div>
+      </section>
+    `;
+
+    if (token !== sectionToken) return;
+
+    // ---- Tema ----
+    page.querySelectorAll('[data-theme-set]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        theme.setTheme(btn.dataset.themeSet);
+        page.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('active', b === btn));
+        showToast(`Tema: ${btn.dataset.themeSet}`, 'success');
+      });
+    });
+
+    // ---- Notificaciones ----
+    const notifResult = page.querySelector('#configNotifResult');
+    page.querySelector('#enableNotifBtn')?.addEventListener('click', async () => {
+      const ok = await requestEnable();
+      notifResult.innerHTML = ok
+        ? '<div class="notif-ok">✓ Notificaciones activadas en este dispositivo.</div>'
+        : '<div class="notif-err">No se concedió el permiso. Revisa los permisos del navegador.</div>';
+      loadConfiguracion();
+    });
+    page.querySelector('#disableNotifBtn')?.addEventListener('click', async () => {
+      await disable();
+      showToast('Notificaciones apagadas', 'success');
+      loadConfiguracion();
+    });
+    page.querySelector('#testNotifBtn')?.addEventListener('click', async () => {
+      const ok = await showDailyNotification('📣 Personal Hub', 'Prueba desde Configuración', '/');
+      notifResult.innerHTML = ok
+        ? '<div class="notif-ok">✓ Notificación mostrada en este dispositivo.</div>'
+        : '<div class="notif-err">No se pudo mostrar: activa las notificaciones y concede el permiso.</div>';
+    });
+
+    // ---- Fechas especiales ----
+    page.querySelector('#saveDatesBtn')?.addEventListener('click', async () => {
+      const anniversary = page.querySelector('#dateAnniversary').value;
+      const hubStart = page.querySelector('#dateHubStart').value;
+      const birthday = page.querySelector('#dateBirthday').value;
+      if (!anniversary || !hubStart || !birthday) {
+        showToast('Rellena las tres fechas', 'error');
+        return;
+      }
+      try {
+        const saved = await db.saveHubDates({ anniversary, hubStart, birthday });
+        showToast('Fechas especiales guardadas', 'success');
+        const hint = page.querySelector('#datesSavedHint');
+        if (hint) hint.textContent = `Aniversario ${saved.anniversary} · Hub ${saved.hubStart} · Cumple ${saved.birthday}`;
+      } catch (err) {
+        console.error('[admin] No se pudieron guardar las fechas:', err);
+        showToast(err?.message || 'No se pudieron guardar las fechas', 'error');
+      }
+    });
+
+    // ---- Base de datos ----
+    const dbStatusEl = page.querySelector('#configDbStatus');
+    const renderDb = async () => {
+      const status = await db.checkConnection();
+      dbStatusEl.innerHTML = status.ok
+        ? `<div class="notif-status-card"><span class="notif-status-icon ok">${UI.check}</span><div><strong>Supabase conectado</strong><div class="muted-text">Los cambios se guardan y se sincronizan entre dispositivos.</div></div></div>`
+        : `<div class="notif-status-card"><span class="notif-status-icon muted">⚠️</span><div><strong>Modo local</strong><div class="muted-text">${esc(status.message || 'Sin conexión a Supabase.')} Los datos se guardan solo en este navegador.</div></div></div>`;
+    };
+    renderDb();
+    page.querySelector('#recheckDbBtn')?.addEventListener('click', renderDb);
+  }
+
+  // ==========================================
   // DB CONNECTION STATUS
   // ==========================================
   async function renderDbStatus() {
@@ -2345,6 +3064,13 @@ export function AdminPage(router) {
         ? `<strong>⚠️ Base de datos no disponible</strong> — ${status.message}<br>
            <small>Los cambios se guardarán solo en este navegador hasta que se arregle el permiso en Supabase.</small>`
         : `<strong>️ Modo local</strong> — ${status.message}`;
+    }
+    // Pill de conexión en la sidebar
+    const pill = page.querySelector('#adminConnPill');
+    if (pill) {
+      pill.textContent = status.ok ? '● Supabase' : '● Modo local';
+      pill.classList.toggle('ok', !!status.ok);
+      pill.title = status.message || '';
     }
   }
 

@@ -9,13 +9,12 @@ import { moodStore } from '../stores/mood.store.js';
 import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
 import { hourInSpain } from '../utils/format.js';
-
-const START_DATE = '2025-07-03';
+import { daysSinceAnniversary, loadSpecialDates } from '../utils/specialDates.js';
 
 export function WelcomeScreen({ onDone, onSkip } = {}) {
   const user = userStore.getUser();
   const userName = user?.name || 'princesa';
-  const daysSince = Math.floor((Date.now() - new Date(START_DATE).getTime()) / 86400000);
+  const daysSince = daysSinceAnniversary();
 
   const overlay = document.createElement('div');
   overlay.className = 'welcome-overlay';
@@ -63,6 +62,13 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
   `;
 
   document.body.appendChild(overlay);
+
+  // Contador dinámico: si las fechas configuradas llegan después del render
+  // (Supabase), actualiza el contador de la bienvenida en caliente.
+  loadSpecialDates().then(() => {
+    const el = overlay.querySelector('#welcomeCounter');
+    if (el) el.textContent = `${daysSinceAnniversary()} días compartiendo momentos juntos`;
+  });
 
   // Prevent body scroll
   document.body.style.overflow = 'hidden';

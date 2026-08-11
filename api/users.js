@@ -46,6 +46,15 @@ export default async function handler(req, res) {
       const { id } = req.body || {};
       if (!id) return res.status(400).json({ error: 'Missing user id' });
       try {
+        // Limpia los datos asociados ANTES de borrar el usuario de Auth.
+        // profiles se elimina sola (ON DELETE CASCADE desde auth.users),
+        // pero moods y analytics_visits no tienen FK: sin este paso el
+        // usuario reaparecía en el panel porque listUsers los reconstruye.
+        const tables = ['moods', 'analytics_visits'];
+        for (const table of tables) {
+          const { error } = await admin.supabaseAdmin.from(table).delete().eq('user_id', id);
+          if (error) console.warn(`[api/users] No se pudieron borrar ${table}:`, error.message);
+        }
         const { error } = await admin.supabaseAdmin.auth.admin.deleteUser(id);
         if (error) throw error;
         return res.status(200).json({ success: true });

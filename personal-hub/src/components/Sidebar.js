@@ -22,6 +22,37 @@ const MUSIC_ITEMS = [
   { id: 'historial',  label: 'Historial',  icon: 'history',  href: '/canciones?v=historial' }
 ];
 
+// La sidebar en PC es contextual: muestra las tarjetas/secciones de la zona
+// en la que estás. Rincón (landing) → sus tarjetas; Galería/Memes/Audios →
+// sus 3 secciones; Curiosidades → sus colecciones.
+const RINCON_CARDS = [
+  { label: 'Galería y Memes', icon: 'image',     href: '/galeria' },
+  { label: 'Juegos',          icon: 'gamepad-2', href: '/juegos' },
+  { label: 'Curiosidades',    icon: 'lightbulb', href: '/curiosidades' },
+  { label: 'Canciones',       icon: 'music',     href: '/canciones' },
+  { label: 'Those Eyes',      icon: 'star',      href: '/thoseeyes' },
+  { label: 'Series',          icon: 'book',      href: '/series' }
+];
+
+const GALERIA_ITEMS = [
+  { label: 'Galería', icon: 'image',     href: '/galeria' },
+  { label: 'Memes',   icon: 'smile',     href: '/memes' },
+  { label: 'Audios',  icon: 'mic',       href: '/audios' }
+];
+
+const CURIOSIDADES_ITEMS = [
+  { label: 'San Juan Pueblo',     icon: 'map-pin',  href: '/curiosidades?cat=spb' },
+  { label: 'San Petersburgo',     icon: 'mountain', href: '/curiosidades?cat=sp' },
+  { label: 'Enciclopedia Gatuna', icon: 'paw',      href: '/curiosidades?cat=gatos' }
+];
+
+const SENTIMIENTOS_ITEMS = [
+  { label: 'Razones',     icon: 'sparkles', href: '/razones' },
+  { label: 'Open When',   icon: 'mail',     href: '/openwhen' },
+  { label: 'Calendario',  icon: 'calendar', href: '/calendario' },
+  { label: 'Mal Día',     icon: 'sun',      href: '/maldia' }
+];
+
 function getIconSVG(icon) {
   const icons = {
     'home': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
@@ -35,7 +66,19 @@ function getIconSVG(icon) {
     'gamepad-2': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="6 11 6 8 3 8"/><path d="M15.5 12a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"/><path d="M8.5 12a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/><path d="M12 2a4 4 0 0 1 4 4v1H8V6a4 4 0 0 1 4-4Z"/><path d="M2 17v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-3"/></svg>',
     'settings': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
     'user': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-    'log-out': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
+    'log-out': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+    'image': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+    'smile': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>',
+    'mic': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>',
+    'lightbulb': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4.2 12.6c.7.6 1.2 1.5 1.2 2.4h6c0-.9.5-1.8 1.2-2.4A7 7 0 0 0 12 2z"/></svg>',
+    'book': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    'map-pin': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    'mountain': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>',
+    'paw': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M20 13a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M8 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M5 13a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M12 12c-2.5 0-4.5 1-6 2.5C4.5 16 4 18 4 20c0 1.5 1 1.5 1 1.5h14s1 0 1-1.5c0-2-.5-3.5-2-5.5-1.5-1.5-3.5-2.5-6-2.5z"/></svg>',
+    'sparkles': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/><path d="M19 2l.5 2L21 4.5l-1.5.5L19 7l-.5-2L17 4.5l1.5-.5z"/><path d="M5 20l.5 1.5L7 22l-1.5.5L5 24l-.5-1.5L3 22l1.5-.5z"/></svg>',
+    'mail': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+    'calendar': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+    'sun': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
   };
   return icons[icon] || icons.home;
 }
@@ -54,6 +97,12 @@ export function Sidebar(router) {
     const currentId = (currentPath.split('/')[1] || '').split('?')[0] || 'home';
     // El grupo Música solo se muestra mientras estás dentro de Canciones
     const onMusic = currentPath.split('?')[0] === '/canciones';
+    // Grupos contextuales: cambian según la sección en la que estés
+    const basePath = currentPath.split('?')[0];
+    const onRinconLanding = basePath === '/rincon';
+    const onGaleria = ['/galeria', '/memes', '/audios'].includes(basePath);
+    const onCuriosidades = basePath === '/curiosidades';
+    const onSentimientos = basePath === '/sentimientos';
 
     const initial = user ? (user.name || 'U').charAt(0).toUpperCase() : '?';
 
@@ -87,6 +136,62 @@ export function Sidebar(router) {
             return `
               <button type="button" class="sidebar__link ${isActive ? 'is-active' : ''}"
                       data-nav="music-${item.id}">
+                <span class="sidebar__link-icon">${getIconSVG(item.icon)}</span>
+                <span class="sidebar__link-label">${item.label}</span>
+              </button>
+            `;
+          }).join('')}
+        ` : ''}
+
+        ${onRinconLanding ? `
+          <div class="sidebar__section-divider">Rincón</div>
+          ${RINCON_CARDS.map(item => {
+            const isActive = basePath === item.href;
+            return `
+              <button type="button" class="sidebar__link ${isActive ? 'is-active' : ''}"
+                      data-nav-href="${item.href}">
+                <span class="sidebar__link-icon">${getIconSVG(item.icon)}</span>
+                <span class="sidebar__link-label">${item.label}</span>
+              </button>
+            `;
+          }).join('')}
+        ` : ''}
+
+        ${onGaleria ? `
+          <div class="sidebar__section-divider">Galería y Memes</div>
+          ${GALERIA_ITEMS.map(item => {
+            const isActive = basePath === item.href;
+            return `
+              <button type="button" class="sidebar__link ${isActive ? 'is-active' : ''}"
+                      data-nav-href="${item.href}">
+                <span class="sidebar__link-icon">${getIconSVG(item.icon)}</span>
+                <span class="sidebar__link-label">${item.label}</span>
+              </button>
+            `;
+          }).join('')}
+        ` : ''}
+
+        ${onCuriosidades ? `
+          <div class="sidebar__section-divider">Curiosidades</div>
+          ${CURIOSIDADES_ITEMS.map(item => {
+            const isActive = currentPath === item.href;
+            return `
+              <button type="button" class="sidebar__link ${isActive ? 'is-active' : ''}"
+                      data-nav-href="${item.href}">
+                <span class="sidebar__link-icon">${getIconSVG(item.icon)}</span>
+                <span class="sidebar__link-label">${item.label}</span>
+              </button>
+            `;
+          }).join('')}
+        ` : ''}
+
+        ${onSentimientos ? `
+          <div class="sidebar__section-divider">Sentimientos</div>
+          ${SENTIMIENTOS_ITEMS.map(item => {
+            const isActive = basePath === item.href;
+            return `
+              <button type="button" class="sidebar__link ${isActive ? 'is-active' : ''}"
+                      data-nav-href="${item.href}">
                 <span class="sidebar__link-icon">${getIconSVG(item.icon)}</span>
                 <span class="sidebar__link-label">${item.label}</span>
               </button>
@@ -132,6 +237,12 @@ export function Sidebar(router) {
     // Bind nav clicks
     aside.querySelectorAll('.sidebar__link').forEach(btn => {
       btn.addEventListener('click', () => {
+        // Botones de grupos contextuales (tarjetas del Rincón, Galería/Memes/
+        // Audios, colecciones de Curiosidades): navegan directo a su href.
+        if (btn.dataset.navHref) {
+          router.navigate(btn.dataset.navHref);
+          return;
+        }
         const id = btn.dataset.nav;
         const paths = {
           home: '/', rincon: '/rincon', sentimientos: '/sentimientos',

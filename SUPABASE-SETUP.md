@@ -21,7 +21,7 @@ en modo denegar-todo.
 | Tablas | `content`, `moods`, `activity_log`, `profiles`, `user_progress`, `analytics_visits`, `analytics_events`, `admin_actions`, `game_rooms`, `game_invitations`, `game_room_players`, `playlists` (playlists de música compartidas de la pareja) |
 | Funciones | `is_admin()`, `handle_new_user()`, `prevent_role_escalation()`, `get_game_invite_targets()`, `create_game_invitation()`, `respond_game_invitation()`, `cancel_game_room()`, `get_game_player_state()`, `submit_battleship_move()`, `submit_game_move()`, `request_game_rematch()`, `game_has_line()` |
 | Triggers | `on_auth_user_created` (crea perfil al registrarse), `profiles_prevent_role_change` (anti-escalada de rol) |
-| Buckets | `avatars`, `galeria`, `memes` (+ políticas RLS: lectura pública, escritura admin/carpeta propia) |
+| Buckets | `avatars`, `galeria`, `memes`, `audios` (+ políticas RLS: lectura pública, escritura admin/carpeta propia) |
 | Realtime | `content`, `game_rooms`, `game_invitations` añadidos a la publicación `supabase_realtime` |
 | Seeds | `razones`, `canciones`, `noticias`, `gifts`, `maldia_frases`, `maldia_mensajes`, `changelog`, `series`, `rincon_covers`, `audios`, `openwhen_letters` |
 

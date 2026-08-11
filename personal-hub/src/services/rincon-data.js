@@ -115,6 +115,17 @@ export const MEME_FOLDERS = {
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745739/perrito_u87752.mp4",
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745743/perritooo_gqdrkf.mp4",
     "https://res.cloudinary.com/dcsent4fs/video/upload/v1777745738/perroalmohada_ywhcfb.mp4"
+  ],
+  "Momentos": [
+    "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1777747760/5199564237372592635_eqj9v5.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766240/5913325400387948133_1_t6a24g.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766239/5913325400387948134_efteqk.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766239/5913325400387948135_diq97c.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948138_ryirj6.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948137_i6fcp2.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/5913325400387948139_qdgn0l.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1782766238/6046582610491806111_mx6qc3.jpg",
+    "https://res.cloudinary.com/dcsent4fs/image/upload/v1783252673/5931306366871997939_mpvodw.jpg"
   ]
 };
 
@@ -244,6 +255,78 @@ export const CURIOSIDADES_DATA = {
     ]
   }
 };
+
+/* ==========================================
+   CURIOSIDADES EXTRA — contenido general (el que
+   alimenta "Añadido recientemente" y la búsqueda)
+   ========================================== */
+
+export const CURIOSIDADES_EXTRA = [
+  {
+    id: 'piramides',
+    cat: 'historia',
+    title: 'Las pirámides no fueron construidas por esclavos',
+    text: 'Fueron construidas por trabajadores asalariados y bien alimentados que vivían en aldeas cercanas con pan, cerveza y carne.',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Great_Pyramid_of_Giza_-_20080716a.jpg/960px-Great_Pyramid_of_Giza_-_20080716a.jpg',
+    tags: ['historia', 'egipto', 'pirámides', 'antigüedad']
+  },
+  {
+    id: 'tortuga',
+    cat: 'animales',
+    title: 'Las tortugas pueden respirar por la cola',
+    text: 'Las tortugas de agua dulce tienen órganos especiales en la cloaca que les permiten extraer oxígeno del agua mientras hibernan.',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Green_turtle_swimming_over_coral_reefs_in_Kona.jpg/960px-Green_turtle_swimming_over_coral_reefs_in_Kona.jpg',
+    tags: ['animales', 'tortugas', 'mar', 'biología']
+  },
+  {
+    id: 'chocolate',
+    cat: 'comida',
+    title: 'El chocolate fue usado como moneda',
+    text: 'Los aztecas y mayas usaban los granos de cacao como moneda: un conejo costaba 10 granos y un esclavo, 100.',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Chocolate.jpg/960px-Chocolate.jpg',
+    tags: ['comida', 'chocolate', 'historia', 'cacao']
+  },
+  {
+    id: 'aurora',
+    cat: 'ciencia',
+    title: 'La aurora boreal suena como chasquidos',
+    text: 'En el norte de Europa se han grabado chasquidos y crujidos asociados a las auroras, causados por la electricidad estática en el aire.',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Aurora_borealis_over_Eielson_Air_Force_Base%2C_Alaska.jpg/960px-Aurora_borealis_over_Eielson_Air_Force_Base%2C_Alaska.jpg',
+    tags: ['ciencia', 'aurora', 'naturaleza', 'física']
+  },
+  {
+    id: 'espacio',
+    cat: 'datos',
+    title: 'El espacio huele a carne asada y metal caliente',
+    text: 'Los astronautas describen el olor del espacio como una mezcla de filete a la brasa, metal caliente y humo de soldadura.',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/STS-116_spacewalk_1.jpg/960px-STS-116_spacewalk_1.jpg',
+    tags: ['datos', 'espacio', 'astronautas', 'ciencia']
+  },
+  {
+    id: 'muralla',
+    cat: 'historia',
+    title: 'La Muralla China no es visible desde el espacio',
+    text: 'Ni los astronautas ni los satélites pueden verla a simple vista desde la órbita: el mito viene de observadores con binoculares.',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/The_Great_Wall_of_China_at_Jinshanling-edit.jpg/960px-The_Great_Wall_of_China_at_Jinshanling-edit.jpg',
+    tags: ['historia', 'china', 'muralla', 'dato']
+  },
+  {
+    id: 'pulpo',
+    cat: 'animales',
+    title: 'Los pulpos tienen tres corazones',
+    text: 'Dos corazones bombean sangre a las branquias y el tercero al resto del cuerpo. Cuando nadan, el corazón principal se detiene.',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Octopus_vulgaris_2.jpg/960px-Octopus_vulgaris_2.jpg',
+    tags: ['animales', 'pulpos', 'mar', 'biología']
+  },
+  {
+    id: 'vainilla',
+    cat: 'comida',
+    title: 'La vainilla es el fruto de una orquídea',
+    text: 'La vainilla proviene de una orquídea trepadora. Es la segunda especia más cara del mundo, solo detrás del azafrán.',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Vanilla_culture_in_Puerto_Rico_%281948%29_%2820381846168%29.jpg/960px-Vanilla_culture_in_Puerto_Rico_%281948%29_%2820381846168%29.jpg',
+    tags: ['comida', 'vainilla', 'orquídea', 'dato']
+  }
+];
 
 // Helper: Check if a URL is a video
 export function isVideo(src) {

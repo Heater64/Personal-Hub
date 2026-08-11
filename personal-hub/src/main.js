@@ -56,6 +56,27 @@ function init() {
     protected: true
   });
 
+  // Secciones independientes del Rincón (cada una con su propia ruta)
+  router.addRoute('/galeria', lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)), {
+    title: 'Galería · Personal Hub',
+    protected: true
+  });
+
+  router.addRoute('/memes', lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)), {
+    title: 'Memes · Personal Hub',
+    protected: true
+  });
+
+  router.addRoute('/audios', lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)), {
+    title: 'Audios · Personal Hub',
+    protected: true
+  });
+
+  router.addRoute('/curiosidades', lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)), {
+    title: 'Curiosidades · Personal Hub',
+    protected: true
+  });
+
   // Register Canciones page
   router.addRoute('/canciones', lazy(() => import('./pages/Canciones.js').then(m => m.CancionesPage)), {
     title: 'Canciones · Personal Hub',

@@ -40,6 +40,9 @@ END $$;
 -- ==========================================
 -- HELPER: verificar si el usuario actual es administrador
 -- Usa SECURITY DEFINER para evitar recursión en RLS
+-- El rol viene de profiles, pero también se acepta el email de admin
+-- verificado por Supabase Auth (misma fuente que ADMIN_EMAILS en la app),
+-- para no depender de que el perfil tenga el rol correcto.
 -- ==========================================
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
@@ -47,6 +50,10 @@ BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id::uuid = auth.uid() AND role = 'admin'
+  )
+  OR EXISTS (
+    SELECT 1 FROM auth.users
+    WHERE id = auth.uid() AND email = 'admin@personalhub.com'
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -254,6 +261,7 @@ CREATE TRIGGER on_auth_user_created
 --    avatares:  lectura pública · escritura carpeta propia o admin
 --    galeria:   lectura pública · escritura SOLO admin
 --    memes:     lectura pública · escritura SOLO admin
+--    audios:    lectura pública · escritura SOLO admin
 -- ==========================================
 -- Crea los buckets si no existen.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -271,7 +279,14 @@ ON CONFLICT (id) DO UPDATE SET
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES ('memes', 'memes', true, 52428800, ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime'])
+VALUES ('memes', 'memes', true, 52428800, ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime', 'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/flac', 'audio/x-flac'])
+ON CONFLICT (id) DO UPDATE SET
+  public = EXCLUDED.public,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('audios', 'audios', true, 52428800, ARRAY['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm', 'audio/aac', 'audio/flac', 'audio/x-flac'])
 ON CONFLICT (id) DO UPDATE SET
   public = EXCLUDED.public,
   file_size_limit = EXCLUDED.file_size_limit,
@@ -357,6 +372,27 @@ DROP POLICY IF EXISTS "memes_delete_admin" ON storage.objects;
 CREATE POLICY "memes_delete_admin"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'memes' AND public.is_admin());
+
+-- audios: lectura pública, escritura SOLO admin
+DROP POLICY IF EXISTS "audios_select_all" ON storage.objects;
+CREATE POLICY "audios_select_all"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'audios');
+
+DROP POLICY IF EXISTS "audios_insert_admin" ON storage.objects;
+CREATE POLICY "audios_insert_admin"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'audios' AND public.is_admin());
+
+DROP POLICY IF EXISTS "audios_update_admin" ON storage.objects;
+CREATE POLICY "audios_update_admin"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'audios' AND public.is_admin());
+
+DROP POLICY IF EXISTS "audios_delete_admin" ON storage.objects;
+CREATE POLICY "audios_delete_admin"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'audios' AND public.is_admin());
 
 -- ==========================================
 -- 6. USER_PROGRESS — Progreso del usuario (datos personales)

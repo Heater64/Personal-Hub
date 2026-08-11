@@ -5,15 +5,15 @@
    External: Juegos, Canciones, ThoseEyes, Series
    ========================================== */
 
-import { GALLERY_FOLDERS, MEME_FOLDERS, SPB_DATA, CURIOSIDADES_DATA, isVideo, buildMediaItems, getVideoPoster } from '../services/rincon-data.js';
+import { GALLERY_FOLDERS, MEME_FOLDERS, SPB_DATA, CURIOSIDADES_DATA, CURIOSIDADES_EXTRA, isVideo, buildMediaItems, getVideoPoster } from '../services/rincon-data.js';
 import { loadGiftsCatalog, getGiftsCatalog, unlockedCalendarVideos } from '../services/gifts.service.js';
 import { createLightbox, openLightbox, playSlideshow, pauseSlideshow } from '../components/MediaLightbox.js';
 import { db } from '../services/db.service.js';
-import { uploadFile } from '../services/cloudinary.service.js';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
 import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
+import { daysSinceAnniversary, loadSpecialDates } from '../utils/specialDates.js';
 import { player } from '../services/player.service.js';
 import { getAllSongs } from './Canciones.js';
 import { GAMES } from './Juegos.js';
@@ -30,6 +30,7 @@ import {
   loadMemeFavs, saveMemeFavs, toggleMemeFav, albumSummary, libraryStats
 } from '../services/memesData.js';
 import { userStore } from '../stores/user.store.js';
+import { userPrefKey } from '../utils/userStorage.js';
 import { onContentChange } from '../services/realtime.service.js';
 
 // ==========================================
@@ -53,17 +54,19 @@ const state = {
   renderToken: 0,
   curiosidadTab: 'landing',
   discoCat: 'todas',           // chip de categoría activo
+  curioFavs: new Set(),        // curiosidades favoritas (user-scoped)
+  curioDetail: null,           // id de la curiosidad abierta en su pestaña detalle
   editMode: false,             // edición de portadas de tarjetas (solo admin)
   covers: {},                  // portadas personalizadas por tarjeta
   audios: [],                  // lista de audios del Rincón (día 3)
   audiosLoaded: false,         // carga inicial hecha
   audiosView: 'months',        // months | detail
-  audiosMonth: null            // { year, month } abierto en detalle
+  audiosMonth: null,           // { year, month } abierto en detalle
+  audiosEditId: null,          // id del audio en edición (nombre/fecha)
 };
 
 const MASONRY_RATIOS = ['4/3', '3/4', '1/1', '3/2', '2/3', '4/5', '5/4', '16/9', '9/16'];
 
-const START_DATE = '2025-07-03';
 
 /** Portada decorativa en SVG (degradado diagonal) para tarjetas sin fotos reales. */
 function gradientPoster(from, to) {
@@ -250,6 +253,15 @@ const ICON_SVGS = {
   'lock': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
   'volume': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>',
   'pause': '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
+  'search': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  'sliders': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
+  'book': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  'paw': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M20 13a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M8 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M5 13a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/><path d="M12 12c-2.5 0-4.5 1-6 2.5C4.5 16 4 18 4 20c0 1.5 1 1.5 1 1.5h14s1 0 1-1.5c0-2-.5-3.5-2-5.5-1.5-1.5-3.5-2.5-6-2.5z"/></svg>',
+  'lightbulb': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4.2 12.6c.7.6 1.2 1.5 1.2 2.4h6c0-.9.5-1.8 1.2-2.4A7 7 0 0 0 12 2z"/></svg>',
+  'flask': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2v6L4.5 20a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>',
+  'leaf': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>',
+  'bookmark': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+  'compass': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>',
 };
 
 // ==========================================
@@ -265,6 +277,7 @@ export function RinconPage(router) {
   // Cargar favoritas persistentes del usuario (user-scoped)
   state.galeriaFavs = loadFavPhotos();
   state.memeFavs = loadMemeFavs();
+  state.curioFavs = loadCurioFavs();
   const isAdmin = userStore.isAdmin;
 
   // Rotación de portadas de las tarjetas (Series, Canciones, Juegos, Curiosidades).
@@ -283,6 +296,27 @@ export function RinconPage(router) {
     state.view = 'curiosidades';
     state.curiosidadTab = 'landing';
   }
+
+  // Secciones independientes del Rincón: cada ruta abre su contenido directo
+  // (Galería, Memes, Audios y Curiosidades viven fuera de la landing).
+  const _rinconBase = (router.getCurrentPath() || '').split('?')[0];
+  if (_rinconBase === '/galeria') { state.view = 'galeria-memes'; }
+  else if (_rinconBase === '/memes') { state.view = 'memes'; }
+  else if (_rinconBase === '/audios') { state.view = 'audios'; state.audiosView = 'months'; state.audiosMonth = null; }
+  else if (_rinconBase === '/curiosidades') { state.view = 'curiosidades'; state.curiosidadTab = 'landing'; }
+
+  // Colecciones de curiosidades desde la sidebar: /curiosidades?cat=spb|sp|gatos
+  if (_rinconBase === '/curiosidades' && ['spb', 'sp', 'gatos'].includes(router?.currentRoute?.query?.cat)) {
+    state.curiosidadTab = router.currentRoute.query.cat;
+  }
+
+  // Mapa de secciones internas del Rincón → rutas independientes
+  const RINCON_SECTION_ROUTES = {
+    'galeria-memes': '/galeria',
+    'memes': '/memes',
+    'audios': '/audios',
+    'curiosidades': '/curiosidades'
+  };
 
   function render() {
     switch (state.view) {
@@ -360,7 +394,7 @@ export function RinconPage(router) {
   // 1. LANDING — Immersive, warm experience
   // ==========================================
   function renderLanding() {
-    const daysSince = Math.floor((Date.now() - new Date(START_DATE).getTime()) / 86400000);
+    const daysSince = daysSinceAnniversary();
     const bgPhotos = GALLERY_FOLDERS?.['Atardeceres'] || [];
     const bgImage = bgPhotos.length ? bgPhotos[Math.floor(Math.random() * bgPhotos.length)] : '';
     const descubrir = getDescubreHoy();
@@ -385,7 +419,7 @@ export function RinconPage(router) {
           <p class="rincon-hero-sub">Donde cada día eres especial</p>
           <div class="rincon-hero-counter">
             ${ICON_SVGS['heart']}
-            <span>${daysSince} días juntos</span>
+            <span id="rinconDaysCounter">${daysSince} días juntos</span>
           </div>
           <div class="rincon-hero-sparkles">🌸🐱</div>
         </div>
@@ -413,11 +447,20 @@ export function RinconPage(router) {
       page.querySelectorAll('.rincon-section-card-v2.animate-in').forEach(el => el.classList.add('visible'));
     });
 
+    // Contador dinámico: si las fechas configuradas llegan después del
+    // render (Supabase), actualiza el contador del hero en caliente.
+    loadSpecialDates().then(() => {
+      const el = page.querySelector('#rinconDaysCounter');
+      if (el) el.textContent = `${daysSinceAnniversary()} días juntos`;
+    });
+
     // Bind featured card click + keyboard
     const featuredCard = page.querySelector('#rinconFeatured');
     if (featuredCard) {
       const handleFeatured = () => {
         if (descubrir.internal && descubrir.sectionId) {
+          const r = RINCON_SECTION_ROUTES[descubrir.sectionId];
+          if (r) { router.navigate(r); return; }
           state.view = descubrir.sectionId;
           if (descubrir.sectionId === 'curiosidades') state.curiosidadTab = 'landing';
           render();
@@ -444,6 +487,8 @@ export function RinconPage(router) {
         }
         if (state.editMode) { openCoverEditor(id); return; }
         if (section.internal) {
+          const r = RINCON_SECTION_ROUTES[id];
+          if (r) { router.navigate(r); return; }
           state.view = id;
           if (id === 'curiosidades') state.curiosidadTab = 'landing';
           render();
@@ -947,46 +992,44 @@ export function RinconPage(router) {
   // 2. GALERÍA + MEMES (PRESERVED)
   // ==========================================
   function renderGaleriaMemes() {
-    // Las tarjetas "Memes" y "Audios" abren directamente su pestaña
-    const initialTab = state.view === 'memes' ? 'memes' : state.view === 'audios' ? 'audios' : 'galeria';
+    // Barra superior (Galería | Memes | Audios): navega entre las rutas
+    // independientes. En PC las mismas secciones aparecen también en la sidebar.
+    const currentBase = (router.getCurrentPath() || '').split('?')[0];
+    const activeTab = currentBase === '/memes' ? 'memes' : currentBase === '/audios' ? 'audios' : 'galeria';
     page.innerHTML = `
       <div class="rincon-subpage">
-        <button class="rincon-back-btn" data-back="landing">
-          ${ICON_SVGS['chevron-left']} Volver al Rincón
+        <button class="rincon-back-btn" data-back="rincon">
+          ${ICON_SVGS['chevron-left']} Rincón
         </button>
         <nav class="rincon-subnav" aria-label="Secciones">
-          <button class="rincon-subnav__btn${initialTab === 'galeria' ? ' active' : ''}" data-sub="galeria">
+          <button class="rincon-subnav__btn${activeTab === 'galeria' ? ' active' : ''}" data-sub="galeria">
             <span class="rincon-subnav__icon-wrap">${ICON_SVGS['image']}</span> Galería
           </button>
-          <button class="rincon-subnav__btn${initialTab === 'memes' ? ' active' : ''}" data-sub="memes">
+          <button class="rincon-subnav__btn${activeTab === 'memes' ? ' active' : ''}" data-sub="memes">
             <span class="rincon-subnav__icon-wrap">${ICON_SVGS['smile']}</span> Memes
           </button>
-          <button class="rincon-subnav__btn${initialTab === 'audios' ? ' active' : ''}" data-sub="audios">
+          <button class="rincon-subnav__btn${activeTab === 'audios' ? ' active' : ''}" data-sub="audios">
             <span class="rincon-subnav__icon-wrap">${ICON_SVGS['mic']}</span> Audios
           </button>
         </nav>
         <div id="galeriaMemesContent">${
-          initialTab === 'memes' ? renderMemesContent() :
-          initialTab === 'audios' ? renderAudiosTabContent() : renderGaleriaContent()
+          activeTab === 'memes' ? renderMemesContent() :
+          activeTab === 'audios' ? renderAudiosTabContent() : renderGaleriaContent()
         }</div>
       </div>
     `;
 
-    page.querySelector('[data-back="landing"]').addEventListener('click', () => { state.view = 'landing'; render(); });
+    page.querySelector('[data-back="rincon"]').addEventListener('click', () => router.navigate('/rincon'));
     page.querySelectorAll('.rincon-subnav__btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        page.querySelectorAll('.rincon-subnav__btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         const sub = btn.dataset.sub;
-        state.view = sub === 'memes' ? 'memes' : sub === 'audios' ? 'audios' : 'galeria-memes';
-        const content = document.getElementById('galeriaMemesContent');
-        if (sub === 'galeria') { content.innerHTML = renderGaleriaContent(); bindGaleriaEvents(content); }
-        else if (sub === 'audios') { content.innerHTML = renderAudiosTabContent(); bindAudiosEvents(content); }
-        else { content.innerHTML = renderMemesContent(); bindMemesEvents(content); }
+        if (sub === 'memes') router.navigate('/memes');
+        else if (sub === 'audios') router.navigate('/audios');
+        else router.navigate('/galeria');
       });
     });
-    if (initialTab === 'memes') bindMemesEvents(page.querySelector('#galeriaMemesContent'));
-    else if (initialTab === 'audios') bindAudiosEvents(page.querySelector('#galeriaMemesContent'));
+    if (activeTab === 'memes') bindMemesEvents(page.querySelector('#galeriaMemesContent'));
+    else if (activeTab === 'audios') bindAudiosEvents(page.querySelector('#galeriaMemesContent'));
     else bindGaleriaEvents(page.querySelector('#galeriaMemesContent'));
     // Sincroniza los vídeos desbloqueados del calendario cuando el catálogo llegue
     if (!getGiftsCatalog()) syncCalendarGallery();
@@ -1895,7 +1938,7 @@ export function RinconPage(router) {
     }
     container.querySelector('#memeAlbumBackBtn')?.addEventListener('click', () => { rerenderMemes(); });
     container.querySelectorAll('.memes-breadcrumb-item[data-nav="landing"]').forEach(btn => {
-      btn.addEventListener('click', () => { state.view = 'landing'; render(); });
+      btn.addEventListener('click', () => router.navigate('/rincon'));
     });
     container.querySelector('#memeAlbumAddBtn')?.addEventListener('click', () => requestMemeUpload());
     container.querySelector('#memeEmptyAddBtn')?.addEventListener('click', () => requestMemeUpload());
@@ -1973,7 +2016,7 @@ export function RinconPage(router) {
     if (!container) return;
     // Breadcrumb navigation
     container.querySelectorAll('.memes-breadcrumb-item[data-nav="landing"]').forEach(btn => {
-      btn.addEventListener('click', () => { state.view = 'landing'; render(); });
+      btn.addEventListener('click', () => router.navigate('/rincon'));
     });
     // Buscador instantáneo (filtra el grid existente, sin perder el foco)
     const searchInput = container.querySelector('#memeSearchInput');
@@ -2055,139 +2098,268 @@ export function RinconPage(router) {
   ];
 
   function renderCuriosidades() {
-    if (state.curiosidadTab === 'landing') {
+    if (state.curioDetail) {
+      renderCuriosidadDetail(state.curioDetail);
+    } else if (state.curiosidadTab === 'landing') {
       renderCuriosidadesLanding();
     } else {
       renderCuriosidadesCategory(state.curiosidadTab);
     }
   }
 
-  // Chips de categoría derivados de los tags reales de los datos
+  // ==========================================
+  // CURIOSIDADES — datos auxiliares del landing
+  // ==========================================
+
+  // Chips de categoría (con icono SVG, sin emojis)
   const DISCO_CATEGORIES = [
-    { id: 'lugares', label: 'Lugares', emoji: '🌍', match: ['honduras', 'atlántida', 'pueblo', 'río', 'rusia', 'ciudad', 'imperial', 'puentes'] },
-    { id: 'historia', label: 'Historia', emoji: '📜', match: ['historia', 'cronología', 'fundación'] },
-    { id: 'comida', label: 'Comida', emoji: '🍕', match: ['comida', 'gastronomía', 'gastronómico'] },
-    { id: 'animales', label: 'Animales', emoji: '🐾', match: ['felino', 'mascota', 'animal'] },
-    { id: 'datos', label: 'Datos curiosos', emoji: '💡', match: ['estadística', 'dato', 'curiosidad'] }
+    { id: 'todas', label: 'Todas', icon: 'sparkles', match: [] },
+    { id: 'lugares', label: 'Lugares', icon: 'globe', match: ['honduras', 'atlántida', 'pueblo', 'río', 'rusia', 'ciudad', 'imperial', 'puentes'] },
+    { id: 'historia', label: 'Historia', icon: 'landmark', match: ['historia', 'cronología', 'fundación', 'pirámides', 'muralla', 'antigüedad'] },
+    { id: 'comida', label: 'Comida', icon: 'utensils-crossed', match: ['comida', 'gastronomía', 'gastronómico', 'chocolate', 'vainilla', 'cacao'] },
+    { id: 'animales', label: 'Animales', icon: 'paw', match: ['felino', 'mascota', 'animal', 'tortugas', 'pulpos', 'mar', 'biología'] },
+    { id: 'datos', label: 'Datos curiosos', icon: 'lightbulb', match: ['estadística', 'dato', 'curiosidad', 'espacio', 'astronautas'] },
+    { id: 'ciencia', label: 'Ciencia', icon: 'flask', match: ['ciencia', 'aurora', 'física'] },
+    { id: 'cultura', label: 'Cultura', icon: 'leaf', match: ['cultura', 'tradiciones', 'tolupán'] }
   ];
+
+  // Etiqueta legible para cada categoría de CURIOSIDADES_EXTRA
+  const EXTRA_CAT_LABELS = {
+    historia: 'Historia', comida: 'Comida', animales: 'Animales',
+    ciencia: 'Ciencia', datos: 'Datos curiosos', lugares: 'Lugares', cultura: 'Cultura'
+  };
+
+  // ==========================================
+  // FAVORITAS de curiosidades (user-scoped)
+  // ==========================================
+  function loadCurioFavs() {
+    try { return new Set(JSON.parse(localStorage.getItem(userPrefKey('curioFavs')) || '[]')); }
+    catch { return new Set(); }
+  }
+  function saveCurioFavs() {
+    try { localStorage.setItem(userPrefKey('curioFavs'), JSON.stringify([...state.curioFavs])); } catch { /* quota */ }
+  }
+  function toggleCurioFav(id) {
+    if (state.curioFavs.has(id)) state.curioFavs.delete(id);
+    else state.curioFavs.add(id);
+    saveCurioFavs();
+    return state.curioFavs.has(id);
+  }
+
+  // Items "Añadido recientemente": colecciones con portada + extras con imagen
+  function buildRecentItems() {
+    const items = [];
+    if (SPB_DATA?.galeriaSPB?.[0]) {
+      items.push({ id: 'spb-intro', cat: 'lugares', category: 'Lugares', title: 'San Juan Pueblo, Atlántida', text: SPB_DATA.intro.slice(0, 120) + '…', img: SPB_DATA.galeriaSPB[0].src });
+    }
+    if (CURIOSIDADES_DATA.sanPetersburgo?.galeria?.[0]) {
+      items.push({ id: 'sp-intro', cat: 'lugares', category: 'Lugares', title: 'San Petersburgo, la Venecia del Norte', text: CURIOSIDADES_DATA.sanPetersburgo.intro.slice(0, 120) + '…', img: CURIOSIDADES_DATA.sanPetersburgo.galeria[0].src });
+    }
+    if (GATO_IMG[0]) {
+      items.push({ id: 'gatos-intro', cat: 'animales', category: 'Animales', title: 'Enciclopedia Gatuna 🐱', text: CURIOSIDADES_DATA.gatos.intro.slice(0, 120) + '…', img: GATO_IMG[0] });
+    }
+    CURIOSIDADES_EXTRA.forEach(x => {
+      items.push({ id: 'extra-' + x.id, cat: x.cat, category: EXTRA_CAT_LABELS[x.cat] || 'Curiosidad', title: x.title, text: x.text, img: x.img });
+    });
+    return items;
+  }
+
+  // Piscina para "Curiosidad del día": años de la cronología, datos y extras
+  function buildDayPool() {
+    const pool = [];
+    (SPB_DATA.timeline || []).forEach(t => pool.push({
+      number: t.year, text: t.desc, place: 'San Juan Pueblo',
+      img: SPB_DATA.galeriaSPB?.[0]?.src || '', catId: 'spb'
+    }));
+    (CURIOSIDADES_DATA.sanPetersburgo?.datos || []).forEach(d => pool.push({
+      number: d.titulo, text: d.texto, place: 'San Petersburgo',
+      img: CURIOSIDADES_DATA.sanPetersburgo?.galeria?.[0]?.src || '', catId: 'sp'
+    }));
+    (CURIOSIDADES_DATA.gatos?.datos || []).forEach(d => pool.push({
+      number: d.titulo, text: d.texto, place: 'Enciclopedia Gatuna',
+      img: GATO_IMG[0] || '', catId: 'gatos'
+    }));
+    CURIOSIDADES_EXTRA.forEach(x => pool.push({
+      number: x.title, text: x.text, place: EXTRA_CAT_LABELS[x.cat] || 'Curiosidad',
+      img: x.img, catId: null
+    }));
+    return pool;
+  }
 
   // Selección determinista por fecha: misma curiosidad todo el día
   function getCuriosidadDelDia() {
-    const all = buildAllCurioItems();
-    if (!all.length) return null;
+    const pool = buildDayPool();
+    if (!pool.length) return null;
     const today = new Date();
     const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-    return all[seed % all.length];
+    return pool[seed % pool.length];
   }
 
+  // Stats del landing: cifras reales derivadas de los datos
+  function buildCurioStats() {
+    const all = buildAllCurioItems();
+    // "Lugares" = curiosidades de las colecciones de lugares (SJP + San Petersburgo)
+    const lugares = all.filter(i => i.category === 'San Juan Pueblo' || i.category === 'San Petersburgo').length;
+    return [
+      { icon: 'book', value: all.length + CURIOSIDADES_EXTRA.length, label: 'Curiosidades' },
+      { icon: 'globe', value: DISCO_CATEGORIES.length - 1, label: 'Categorías' },
+      { icon: 'map-pin', value: lugares, label: 'Lugares' },
+      { icon: 'bookmark', value: state.curioFavs.size, label: 'Favoritas' }
+    ];
+  }
+
+  // ==========================================
+  // CURIOSIDADES — landing (mockup: hero, búsqueda, categorías,
+  // curiosidad del día, stats, colecciones, recientes, temas, banner)
+  // ==========================================
   function renderCuriosidadesLanding() {
     const dayItem = getCuriosidadDelDia();
+    const recentItems = buildRecentItems();
+    const stats = buildCurioStats();
+
     page.innerHTML = `<div class="rincon-subpage">
-      <button class="rincon-back-btn" data-back="landing">${ICON_SVGS['chevron-left']} Volver al Rincón</button>
-      <header class="disco-landing-hero">
-        <div class="disco-landing-icon">${ICON_SVGS['globe']}</div>
-        <h2 class="disco-landing-title">Descubre y aprende</h2>
-        <p class="disco-landing-sub">Una pequeña enciclopedia de cosas curiosas que nos gustan.</p>
+      <div class="curio-topbar">
+        <span class="curio-crumb">El Rincón / Curiosidades</span>
+        <button class="rincon-back-btn" data-back="landing">${ICON_SVGS['chevron-left']} Volver al Rincón</button>
+      </div>
+
+      <header class="curio-hero">
+        <div class="curio-hero-copy">
+          <span class="curio-hero-eyebrow">${ICON_SVGS['sparkles']} Explora y aprende</span>
+          <h1 class="curio-hero-title">Curiosidades <span class="curio-hero-sparkles">${ICON_SVGS['sparkles']}${ICON_SVGS['sparkles']}</span></h1>
+          <p class="curio-hero-sub">Descubre datos increíbles sobre lugares, historia, comida, animales y mucho más.</p>
+        </div>
+        <div class="curio-hero-art" aria-hidden="true">
+          <svg width="160" height="140" viewBox="0 0 160 140" fill="none" stroke="var(--theme-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="70" cy="62" r="40"/>
+            <ellipse cx="70" cy="62" rx="18" ry="40"/>
+            <line x1="30" y1="62" x2="110" y2="62"/>
+            <path d="M70 22a38 38 0 0 1 38 38" stroke="var(--theme-text-tertiary)"/>
+            <circle cx="120" cy="42" r="16" stroke="var(--warm-amber)"/>
+            <line x1="131" y1="53" x2="148" y2="70" stroke="var(--warm-amber)"/>
+            <path d="M30 118h62l14 12H30z" stroke="var(--theme-text-secondary)"/>
+            <path d="M30 118v-14M92 118v-14M44 118v-14M78 118v-14" stroke="var(--theme-text-tertiary)"/>
+          </svg>
+        </div>
       </header>
-      <div class="discovery-search-wrap">
-        <div class="discovery-search glass-card">
-          <span class="discovery-search-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-          <input type="text" class="discovery-search-input" id="discoGlobalSearch" placeholder="Buscar datos, lugares, comida..." autocomplete="off">
+
+      <div class="curio-search-row">
+        <div class="discovery-search">
+          <span class="discovery-search-icon">${ICON_SVGS['search']}</span>
+          <input type="text" class="discovery-search-input" id="discoGlobalSearch" placeholder="Buscar curiosidades..." autocomplete="off">
           <button class="discovery-search-clear" id="discoGlobalClear" style="display:none" aria-label="Limpiar búsqueda"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
-        <p class="discovery-results-count" id="discoveryResultsCount"></p>
+        <button class="curio-filter-btn" id="curioFilterBtn" aria-label="Filtros" title="Filtros">${ICON_SVGS['sliders']}</button>
+      </div>
+      <p class="discovery-results-count" id="discoveryResultsCount"></p>
+
+      <div class="disco-category-row" aria-label="Filtrar por categoría">
+        ${DISCO_CATEGORIES.map(c => `<button class="disco-filter-chip${state.discoCat === c.id ? ' is-active' : ''}" data-disco-cat="${c.id}" role="tab" aria-selected="${state.discoCat === c.id ? 'true' : 'false'}"><span class="disco-filter-chip-icon">${ICON_SVGS[c.icon] || ''}</span>${c.label}</button>`).join('')}
       </div>
 
       ${dayItem ? `
-      <section class="disco-day-section" aria-label="Curiosidad del día">
-        <span class="disco-day-eyebrow">✦ Curiosidad del día</span>
-        <button class="disco-day-card card animate-in" role="button" tabindex="0">
-          <span class="disco-day-icon">${ICON_SVGS[dayItem.icon] || '✦'}</span>
-          <div class="disco-day-body">
-            <h3 class="disco-day-title">${dayItem.title}</h3>
-            <p class="disco-day-text">${dayItem.text}</p>
-            <span class="disco-day-go">${dayItem.category} ${ICON_SVGS['arrow-right'] || '→'}</span>
+      <section class="curio-day-section" aria-label="Curiosidad del día">
+        <span class="curio-day-eyebrow">${ICON_SVGS['sparkles']} CURIOSIDAD DEL DÍA</span>
+        <button class="curio-day-card card animate-in" role="button" tabindex="0">
+          <div class="curio-day-copy">
+            <span class="curio-day-number">${escapeHtml(dayItem.number)}</span>
+            <p class="curio-day-text">${escapeHtml(dayItem.text)}</p>
+            <span class="curio-day-loc">${ICON_SVGS['map-pin']} ${escapeHtml(dayItem.place)} ${ICON_SVGS['arrow-right']}</span>
           </div>
+          ${dayItem.img ? `<div class="curio-day-img"><img src="${dayItem.img}" alt="" loading="eager"></div>` : ''}
         </button>
       </section>` : ''}
 
-      <div class="disco-category-row" aria-label="Filtrar por categoría">
-        ${DISCO_CATEGORIES.map(c => `<button class="disco-filter-chip${state.discoCat === c.id ? ' is-active' : ''}" data-disco-cat="${c.id}" role="tab" aria-selected="${state.discoCat === c.id ? 'true' : 'false'}">${c.emoji} ${c.label}</button>`).join('')}
+      <div class="curio-stats" aria-label="Estadísticas">
+        ${stats.map((s, i) => `<article class="curio-stat-card card animate-in${s.icon === 'bookmark' ? ' is-fav' : ''}" style="--enter-delay:${i * 50}ms"${s.icon === 'bookmark' ? ' data-fav' : ''}>
+          <span class="curio-stat-icon">${ICON_SVGS[s.icon] || ''}</span>
+          <div class="curio-stat-body">
+            <strong class="curio-stat-value">${s.value}</strong>
+            <span class="curio-stat-label">${s.label}</span>
+          </div>
+        </article>`).join('')}
       </div>
 
-      <section class="disco-collections-section">
-        <div class="disco-collections-head">
-          <h3 class="disco-section-title">Explora por colección</h3>
+      <section class="curio-section">
+        <div class="curio-sec-head">
+          <h3 class="curio-sec-title">Explora por colección</h3>
+          <span class="curio-sec-link" data-scroll="curioCollGrid">Ver todas ${ICON_SVGS['arrow-right']}</span>
         </div>
-        <div class="disco-cat-grid" id="discoCatGrid">
+        <div class="curio-coll-grid" id="curioCollGrid">
           ${CATEGORIES.map((cat, i) => renderCategoryCard(cat, i)).join('')}
         </div>
       </section>
+
+      <section class="curio-section">
+        <div class="curio-sec-head">
+          <h3 class="curio-sec-title">Añadido recientemente</h3>
+          <span class="curio-sec-link" data-scroll="curioRecentGrid">Ver todas ${ICON_SVGS['arrow-right']}</span>
+        </div>
+        <div class="curio-recent-grid" id="curioRecentGrid"></div>
+      </section>
+
+      <section class="curio-banner">
+        <span class="curio-banner-icon">${ICON_SVGS['lightbulb']}</span>
+        <div class="curio-banner-copy">
+          <strong>¿Sabías que tu curiosidad te hace diferente?</strong>
+          <span>Sigue explorando y aprendiendo cosas increíbles cada día.</span>
+        </div>
+        <button class="curio-banner-btn" id="curioBannerBtn">Descubrir más ${ICON_SVGS['arrow-right']}</button>
+      </section>
     </div>`;
 
-    page.querySelector('[data-back="landing"]').addEventListener('click', () => { state.view = 'landing'; render(); });
+    page.querySelector('[data-back="landing"]').addEventListener('click', () => router.navigate('/rincon'));
 
     // Animate cards
     requestAnimationFrame(() => {
-      page.querySelectorAll('.disco-cat-card.animate-in, .disco-day-card.animate-in').forEach(el => el.classList.add('visible'));
+      page.querySelectorAll('.curio-day-card.animate-in, .curio-stat-card.animate-in, .curio-coll-card.animate-in, .curio-recent-card.animate-in').forEach(el => el.classList.add('visible'));
     });
 
-    // Category card clicks
-    page.querySelectorAll('.disco-cat-card').forEach(card => {
-      card.addEventListener('click', () => {
-        state.curiosidadTab = card.dataset.cat;
-        render();
-      });
-    });
+    // Collection cards → categoría
+    bindCategoryCardClicks(page);
 
-    // Curiosidad del día → abre su colección
-    const dayCard = page.querySelector('.disco-day-card');
-    if (dayCard) {
+    // Curiosidad del día → abre su colección (o el visor si es un dato suelto)
+    const dayCard = page.querySelector('.curio-day-card');
+    if (dayCard && dayItem) {
       const openDay = () => {
-        const cat = CATEGORIES.find(c => c.id === (dayItem?.catId || ''));
-        if (cat) { state.curiosidadTab = cat.id; render(); }
+        if (dayItem.catId) { state.curiosidadTab = dayItem.catId; render(); }
+        else { openDatoViewer([{ icon: 'lightbulb', title: dayItem.number, text: dayItem.text }], 0); }
       };
       dayCard.addEventListener('click', openDay);
       dayCard.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDay(); } });
     }
 
-    // Global search + chips de categoría — filtran el mismo grid
-    const allItems = buildAllCurioItems();
+    // Búsqueda + chips filtran la cuadrícula de recientes
+    const recentGrid = page.querySelector('#curioRecentGrid');
     const searchInput = page.querySelector('#discoGlobalSearch');
     const searchClear = page.querySelector('#discoGlobalClear');
     const resultsCount = page.querySelector('#discoveryResultsCount');
-    const catGrid = page.querySelector('#discoCatGrid');
+    const filterBtn = page.querySelector('#curioFilterBtn');
 
     const applyFilters = () => {
       const query = searchInput.value.trim().toLowerCase();
       const activeCat = DISCO_CATEGORIES.find(c => c.id === state.discoCat);
-      let filtered = allItems;
-      if (activeCat) {
-        filtered = filtered.filter(item =>
-          (item.tags || []).some(t => activeCat.match.some(m => t.includes(m)))
-        );
+      let filtered = recentItems;
+      if (activeCat && activeCat.id !== 'todas' && activeCat.match.length) {
+        filtered = filtered.filter(item => {
+          const haystack = (item.title + ' ' + item.text + ' ' + item.category).toLowerCase();
+          return activeCat.match.some(m => haystack.includes(m));
+        });
       }
       if (query) {
         filtered = filtered.filter(item =>
           item.title.toLowerCase().includes(query) ||
           item.text.toLowerCase().includes(query) ||
-          item.category.toLowerCase().includes(query) ||
-          (item.tags || []).some(t => t.toLowerCase().includes(query))
+          item.category.toLowerCase().includes(query)
         );
       }
       searchClear.style.display = query ? '' : 'none';
-      if (query || activeCat) {
-        updateResultsCount(filtered.length, allItems.length, resultsCount);
-        renderSearchResults(catGrid, filtered);
-      } else {
-        updateResultsCount(allItems.length, allItems.length, resultsCount);
-        restoreCategoryGrid(catGrid);
-      }
+      updateResultsCount(filtered.length, recentItems.length, resultsCount);
+      renderRecentGrid(recentGrid, filtered);
     };
 
-    updateResultsCount(allItems.length, allItems.length, resultsCount);
-    // Si hay un chip activo persistido (p. ej. al volver a la página), aplicarlo
-    if (state.discoCat !== 'todas') applyFilters();
+    renderRecentGrid(recentGrid, recentItems);
+    updateResultsCount(recentItems.length, recentItems.length, resultsCount);
 
     let searchTimeout;
     searchInput.addEventListener('input', () => {
@@ -2199,48 +2371,72 @@ export function RinconPage(router) {
       applyFilters();
       searchInput.focus();
     });
+    const applyChip = (chip) => {
+      const wasActive = chip.classList.contains('is-active');
+      page.querySelectorAll('.disco-filter-chip').forEach(c => {
+        c.classList.remove('is-active');
+        c.setAttribute('aria-selected', 'false');
+      });
+      if (!wasActive) {
+        chip.classList.add('is-active');
+        chip.setAttribute('aria-selected', 'true');
+        state.discoCat = chip.dataset.discoCat;
+      } else {
+        state.discoCat = 'todas';
+      }
+      applyFilters();
+    };
     page.querySelectorAll('.disco-filter-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const wasActive = chip.classList.contains('is-active');
-        page.querySelectorAll('.disco-filter-chip').forEach(c => {
-          c.classList.remove('is-active');
-          c.setAttribute('aria-selected', 'false');
-        });
-        if (!wasActive) {
-          chip.classList.add('is-active');
-          chip.setAttribute('aria-selected', 'true');
-          state.discoCat = chip.dataset.discoCat;
-        } else {
-          state.discoCat = 'todas';
-        }
-        applyFilters();
+      chip.addEventListener('click', () => applyChip(chip));
+    });
+
+    // Filtros: hace scroll a las categorías (el botón sliders del mockup)
+    filterBtn.addEventListener('click', () => {
+      page.querySelector('.disco-category-row')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    // "Ver todas" → scroll a la sección correspondiente
+    page.querySelectorAll('.curio-sec-link').forEach(link => {
+      link.addEventListener('click', () => {
+        const target = page.querySelector('#' + link.dataset.scroll);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
+
+    // Banner "Descubrir más" → abre la curiosidad del día
+    const bannerBtn = page.querySelector('#curioBannerBtn');
+    if (bannerBtn) {
+      bannerBtn.addEventListener('click', () => {
+        if (dayItem?.catId) { state.curiosidadTab = dayItem.catId; render(); }
+        else if (dayItem) { openDatoViewer([{ icon: 'lightbulb', title: dayItem.number, text: dayItem.text }], 0); }
+        else { page.querySelector('.curio-day-section')?.scrollIntoView({ behavior: 'smooth' }); }
+      });
+    }
   }
 
+  // Tarjetas de colección — verticales con foto de fondo (mockup)
   function renderCategoryCard(cat, index) {
     const img = cat.heroImg;
     const delay = index * 0.08;
-    return `<button class="disco-cat-card card animate-in" style="--enter-delay:${delay}s;--disco-color:${cat.accentColor}" data-cat="${cat.id}">
-      <div class="disco-cat-visual">
+    return `<button class="curio-coll-card card animate-in" style="--enter-delay:${delay}s;--disco-color:${cat.accentColor}" data-cat="${cat.id}">
+      <div class="curio-coll-visual">
         ${img
           ? `<img src="${img}" alt="${cat.title}" loading="lazy" decoding="async">`
-          : `<div class="disco-cat-emoji-wrap"><span class="disco-cat-emoji">${cat.emoji}</span></div>`
+          : `<div class="curio-coll-emoji-wrap"><span class="curio-coll-emoji">${cat.emoji}</span></div>`
         }
+        <div class="curio-coll-overlay"></div>
+        <span class="curio-coll-icon" style="color:${cat.accentColor}">${ICON_SVGS[cat.iconKey] || ''}</span>
       </div>
-      <div class="disco-cat-body">
-        <div class="disco-cat-header">
-          <span class="disco-cat-icon" style="color:${cat.accentColor}">${ICON_SVGS[cat.iconKey] || ''}</span>
-          <h3 class="disco-cat-title">${cat.title}</h3>
-        </div>
-        <p class="disco-cat-desc">${cat.desc}</p>
-        <span class="disco-cat-count">${cat.statsCount} curiosidades</span>
+      <div class="curio-coll-body">
+        <h3 class="curio-coll-title">${cat.title}</h3>
+        <p class="curio-coll-desc">${cat.desc}</p>
+        <span class="curio-coll-count" style="color:${cat.accentColor}">${cat.statsCount} curiosidades</span>
       </div>
     </button>`;
   }
 
   function bindCategoryCardClicks(container) {
-    container.querySelectorAll('.disco-cat-card').forEach(card => {
+    container.querySelectorAll('.curio-coll-card').forEach(card => {
       card.addEventListener('click', () => {
         state.curiosidadTab = card.dataset.cat;
         render();
@@ -2248,39 +2444,146 @@ export function RinconPage(router) {
     });
   }
 
-  // Re-render the category grid (after clearing a search) and animate it in
-  function restoreCategoryGrid(catGrid) {
-    catGrid.innerHTML = CATEGORIES.map((cat, i) => renderCategoryCard(cat, i)).join('');
-    bindCategoryCardClicks(catGrid);
-    requestAnimationFrame(() => {
-      catGrid.querySelectorAll('.disco-cat-card.animate-in').forEach(el => el.classList.add('visible'));
-    });
+  const CURIO_CAT_COLORS = {
+    'San Juan Pueblo': 'var(--theme-accent-primary)', 'San Petersburgo': '#818cf8',
+    'Lugares': 'var(--theme-accent-primary)', 'Historia': '#f59e0b', 'Comida': '#34d399',
+    'Animales': '#f472b6', 'Ciencia': '#60a5fa', 'Datos curiosos': '#a78bfa', 'Cultura': '#4ade80', 'Curiosidad': 'var(--theme-accent-primary)'
+  };
+
+  /** HTML de una tarjeta-portada de curiosidad (abre su pestaña de detalle). */
+  function recentCardHTML(item, i) {
+    const catColor = CURIO_CAT_COLORS[item.category] || 'var(--theme-accent-primary)';
+    const fav = state.curioFavs.has(item.id);
+    return `<article class="curio-recent-card card animate-in" style="--enter-delay:${i * 40}ms" data-curio-id="${item.id}" role="button" tabindex="0" aria-label="Abrir: ${escapeHtml(item.title)}">
+      <div class="curio-recent-img">
+        <img src="${item.img || ''}" alt="" loading="lazy" onerror="this.closest('.curio-recent-img').classList.add('is-empty')">
+        <button class="curio-recent-fav${fav ? ' is-on' : ''}" data-fav-id="${item.id}" aria-label="${fav ? 'Quitar de favoritas' : 'Añadir a favoritas'}" aria-pressed="${fav}">${ICON_SVGS['bookmark']}</button>
+        <span class="curio-recent-badge" style="background:${catColor}">${item.category}</span>
+      </div>
+      <div class="curio-recent-body">
+        <h4 class="curio-recent-title">${escapeHtml(item.title)}</h4>
+        <p class="curio-recent-text">${escapeHtml(item.text.slice(0, 110))}${item.text.length > 110 ? '…' : ''}</p>
+      </div>
+    </article>`;
   }
 
-  function renderSearchResults(grid, items) {
-    const catColors = { 'San Juan Pueblo': 'var(--theme-accent-primary)', 'San Petersburgo': '#818cf8', 'Gatos': '#f59e0b' };
-    const catEmojis = { 'San Juan Pueblo': '🏔️', 'San Petersburgo': '🚢', 'Gatos': '🐱' };
+  // Cuadrícula "Añadido recientemente" — portadas que abren su pestaña de detalle
+  function renderRecentGrid(grid, items) {
     if (!items.length) {
       grid.innerHTML = '<div class="empty-state">🔍 No se encontraron resultados. Prueba con otras palabras.</div>';
       return;
     }
-    grid.innerHTML = items.map((item, i) => {
-      const catColor = catColors[item.category] || 'var(--theme-accent-primary)';
-      const catEmoji = catEmojis[item.category] || '✦';
-      return `<article class="disco-search-card card animate-in" style="--enter-delay:${i * 40}ms;--disco-color:${catColor}">
-        <div class="disco-search-accent"></div>
-        <div class="disco-search-header">
-          <span class="disco-search-icon" style="color:${catColor}">${ICON_SVGS[item.icon] || '✦'}</span>
-          <div>
-            <h4 class="disco-search-title">${escapeHtml(item.title)}</h4>
-            <span class="disco-search-cat" style="color:${catColor}">${catEmoji} ${escapeHtml(item.category)}</span>
+    grid.innerHTML = items.map((item, i) => recentCardHTML(item, i)).join('');
+    requestAnimationFrame(() => {
+      grid.querySelectorAll('.curio-recent-card.animate-in').forEach(el => el.classList.add('visible'));
+    });
+    bindRecentCards(grid);
+  }
+
+  /** Clic en una tarjeta-portada → abre su pestaña (colección o detalle). */
+  function bindRecentCards(grid) {
+    grid.querySelectorAll('.curio-recent-card').forEach(card => {
+      const open = () => {
+        const id = card.dataset.curioId;
+        if (!id) return;
+        // Las portadas de colección llevan a su colección completa
+        if (id === 'spb-intro') { state.curioDetail = null; state.curiosidadTab = 'spb'; render(); return; }
+        if (id === 'sp-intro') { state.curioDetail = null; state.curiosidadTab = 'sp'; render(); return; }
+        if (id === 'gatos-intro') { state.curioDetail = null; state.curiosidadTab = 'gatos'; render(); return; }
+        state.curioDetail = id;
+        render();
+      };
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    });
+
+    // Bookmark = favorita (persistente por usuario, actualiza la stat de Favoritas)
+    grid.querySelectorAll('.curio-recent-fav').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const on = toggleCurioFav(btn.dataset.favId);
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-pressed', String(on));
+        btn.setAttribute('aria-label', on ? 'Quitar de favoritas' : 'Añadir a favoritas');
+        const statCard = page.querySelector('.curio-stat-card[data-fav]');
+        if (statCard) statCard.querySelector('.curio-stat-value').textContent = state.curioFavs.size;
+        showToast(on ? 'Añadida a favoritas 🤍' : 'Quitada de favoritas', on ? 'success' : 'info');
+      });
+    });
+  }
+
+  // ==========================================
+  // CURIOSIDAD — pestaña de detalle (portada → información)
+  // ==========================================
+  function renderCuriosidadDetail(itemId) {
+    const all = buildRecentItems();
+    const item = all.find(i => i.id === itemId) || all.find(i => 'extra-' + i.id === itemId);
+    if (!item) { state.curioDetail = null; render(); return; }
+
+    const catColor = CURIO_CAT_COLORS[item.category] || 'var(--theme-accent-primary)';
+    const fav = state.curioFavs.has(item.id);
+    // Relacionadas: misma categoría (o cualquier otra si no hay)
+    const related = all.filter(i => i.id !== item.id && i.category === item.category).slice(0, 4);
+
+    page.innerHTML = `<div class="rincon-subpage">
+      <div class="disco-breadcrumb">
+        <button class="disco-breadcrumb-item" data-curio-nav="rincon">El Rincón</button>
+        <span class="disco-breadcrumb-sep">/</span>
+        <button class="disco-breadcrumb-item" data-curio-nav="curiosidades">Curiosidades</button>
+        <span class="disco-breadcrumb-sep">/</span>
+        <button class="disco-breadcrumb-item" data-curio-nav="curiosidades">${escapeHtml(item.category)}</button>
+        <span class="disco-breadcrumb-sep">/</span>
+        <span class="disco-breadcrumb-current">${escapeHtml(item.title.slice(0, 34))}${item.title.length > 34 ? '…' : ''}</span>
+      </div>
+
+      <header class="curio-detail-hero card">
+        <div class="curio-detail-copy">
+          <span class="curio-detail-badge" style="background:${catColor}">${item.category}</span>
+          <h2 class="curio-detail-title">${escapeHtml(item.title)}</h2>
+          <p class="curio-detail-text">${escapeHtml(item.text)}</p>
+          <div class="curio-detail-actions">
+            <button class="curio-detail-fav${fav ? ' is-on' : ''}" data-fav-id="${item.id}" aria-pressed="${fav}">
+              ${ICON_SVGS['bookmark']} <span>${fav ? 'En favoritas' : 'Guardar'}</span>
+            </button>
           </div>
         </div>
-        <p class="disco-search-text">${escapeHtml(item.text.slice(0, 180))}${item.text.length > 180 ? '…' : ''}</p>
-      </article>`;
-    }).join('');
+        ${item.img ? `<div class="curio-detail-img"><img src="${item.img}" alt="" loading="eager" onerror="this.closest('.curio-detail-img').classList.add('is-empty')"></div>` : ''}
+      </header>
+
+      ${related.length ? `<section class="curio-section">
+        <div class="curio-sec-head">
+          <h3 class="curio-sec-title">Más ${escapeHtml(item.category)}</h3>
+        </div>
+        <div class="curio-recent-grid">${related.map((r, i) => recentCardHTML(r, i)).join('')}</div>
+      </section>` : ''}
+    </div>`;
+
+    // Breadcrumb: volver al Rincón o a Curiosidades
+    page.querySelectorAll('[data-curio-nav]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.curioNav === 'rincon') { state.view = 'landing'; state.curioDetail = null; render(); }
+        else { state.curioDetail = null; render(); }
+      });
+    });
+
+    // Favorita desde el detalle
+    const favBtn = page.querySelector('.curio-detail-fav');
+    if (favBtn) {
+      favBtn.addEventListener('click', () => {
+        const on = toggleCurioFav(favBtn.dataset.favId);
+        favBtn.classList.toggle('is-on', on);
+        favBtn.querySelector('span').textContent = on ? 'En favoritas' : 'Guardar';
+        favBtn.setAttribute('aria-pressed', String(on));
+        showToast(on ? 'Añadida a favoritas 🤍' : 'Quitada de favoritas', on ? 'success' : 'info');
+      });
+    }
+
+    // Relacionadas clicables
+    const relatedGrid = page.querySelector('.curio-section .curio-recent-grid');
+    if (relatedGrid) bindRecentCards(relatedGrid);
+
     requestAnimationFrame(() => {
-      grid.querySelectorAll('.disco-search-card.animate-in').forEach(el => el.classList.add('visible'));
+      page.querySelectorAll('.curio-recent-card.animate-in').forEach(el => el.classList.add('visible'));
     });
   }
 
@@ -2315,11 +2618,11 @@ export function RinconPage(router) {
       ${renderRecommendations(catId)}
     </div>`;
 
-    // Breadcrumb nav
+    // Breadcrumb nav: el primer crumb (Rincón) navega a la landing del Rincón
     page.querySelectorAll('.disco-breadcrumb-item').forEach((btn, i) => {
       btn.addEventListener('click', () => {
-        if (i === 0) { state.view = 'landing'; state.curiosidadTab = 'landing'; }
-        else { state.curiosidadTab = 'landing'; }
+        if (i === 0) { router.navigate('/rincon'); return; }
+        state.curiosidadTab = 'landing';
         render();
       });
     });
@@ -3071,14 +3374,18 @@ export function RinconPage(router) {
       const dateLabel = a.date ? formatAudioDate(a.date) : `${name} ${year}`;
       const title = a.title || (list.length > 1 ? `Audio ${i + 1}` : `Audio del ${dateLabel}`);
       const creator = a.creator ? `<span class="audios-player-creator">${ICON_SVGS['mic']} ${escapeHtml(a.creator)}</span>` : '';
+      const editBtn = userStore.isAdmin
+        ? `<button type="button" class="audios-edit-btn" data-audios-edit="${escapeHtml(a.id)}" aria-label="Editar nombre y fecha" title="Editar nombre y fecha">✏️</button>`
+        : '';
       return `
-        <article class="audios-player-card" data-audio-url="${escapeHtml(a.url || '')}" data-audio-title="${escapeHtml(title)}">
+        <article class="audios-player-card" data-audio-url="${escapeHtml(a.url || '')}" data-audio-title="${escapeHtml(title)}" data-audio-id="${escapeHtml(a.id)}">
           <div class="audios-player-head">
             <div class="audios-player-icon">${ICON_SVGS['mic']}</div>
             <div class="audios-player-info">
               <h4 class="audios-player-title">${escapeHtml(title)}</h4>
               <p class="audios-player-date">${dateLabel}${creator ? ' · ' + creator : ''}</p>
             </div>
+            ${editBtn}
           </div>
           <audio preload="metadata" src="${escapeHtml(a.url || '')}"></audio>
           <div class="audios-player-controls">
@@ -3098,12 +3405,33 @@ export function RinconPage(router) {
         <header class="audios-detail-hero">
           <div class="audios-detail-icon">${ICON_SVGS['mic']}</div>
           <h1 class="audios-hero-title">${name} ${year}</h1>
-          <p class="audios-hero-sub">${list.length === 1 ? 'Audio del 3 de ' + name : `${list.length} audios del día 3`}</p>
+          <p class="audios-hero-sub">${list.length === 1 ? 'Audio del ' + (list[0].date ? formatAudioDate(list[0].date) : '3 de ' + name) : `${list.length} audios`}</p>
         </header>
         <div class="audios-list">
           ${list.length ? audioCards : `<div class="audios-error"><p>Este mes no tiene audio guardado.</p></div>`}
         </div>
       </div>
+      ${userStore.isAdmin ? `
+      <div class="audios-edit-overlay" id="audiosEditOverlay" hidden role="dialog" aria-modal="true" aria-label="Editar audio">
+        <div class="audios-edit-modal">
+          <div class="audios-edit-head">
+            <h3>Editar audio</h3>
+            <button type="button" class="audios-edit-close" data-audios-edit-close aria-label="Cerrar">✕</button>
+          </div>
+          <label class="audios-edit-field">
+            <span>Nombre</span>
+            <input type="text" id="audiosEditName" maxlength="120" placeholder="Nombre del audio">
+          </label>
+          <label class="audios-edit-field">
+            <span>Fecha</span>
+            <input type="date" id="audiosEditDate">
+          </label>
+          <div class="audios-edit-actions">
+            <button type="button" class="audios-edit-btn-ghost" data-audios-edit-close>Cancelar</button>
+            <button type="button" class="audios-edit-btn-primary" data-audios-edit-save>Guardar</button>
+          </div>
+        </div>
+      </div>` : ''}
     `;
   }
 
@@ -3132,7 +3460,7 @@ export function RinconPage(router) {
       });
     });
 
-    // Subida de audio (solo admin): Cloudinary + guardado global para todos
+    // Subida de audio (solo admin): Supabase Storage + guardado global para todos
     const uploadBtn = container.querySelector('#audiosUploadBtn');
     const fileInput = container.querySelector('#audiosFileInput');
     const monthSel = container.querySelector('#audiosUploadMonth');
@@ -3157,13 +3485,8 @@ export function RinconPage(router) {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           try {
-            const result = await uploadFile(file, {
-              folder: 'personal-hub/audios',
-              onProgress: () => {
-                if (statusEl) statusEl.textContent = `Subiendo… ${i}/${files.length}`;
-              }
-            });
-            const url = result.secure_url || result.url || '';
+            if (statusEl) statusEl.textContent = `Subiendo… ${i + 1}/${files.length}`;
+            const [url] = await db.uploadAudios([file]);
             if (!url) throw new Error('No se obtuvo la URL del audio');
             uploaded.push({
               id: db.generateId(),
@@ -3195,6 +3518,50 @@ export function RinconPage(router) {
         }
         if (errors.length && statusEl) {
           statusEl.textContent = (statusEl.textContent ? statusEl.textContent + ' · ' : '') + '⚠ ' + errors[0];
+        }
+      });
+    }
+
+    // Edición de audio (solo admin): nombre y fecha
+    const editOverlay = container.querySelector('#audiosEditOverlay');
+    if (editOverlay) {
+      const editNameEl = container.querySelector('#audiosEditName');
+      const editDateEl = container.querySelector('#audiosEditDate');
+      const openEdit = (id) => {
+        const audio = (state.audios || []).find(a => a.id === id);
+        if (!audio) return;
+        state.audiosEditId = id;
+        editNameEl.value = audio.title || '';
+        editDateEl.value = (audio.date || `${audio.year || new Date().getFullYear()}-${String(audio.month || 1).padStart(2, '0')}-03`).slice(0, 10);
+        editOverlay.hidden = false;
+        editNameEl.focus();
+      };
+      const closeEdit = () => { editOverlay.hidden = true; state.audiosEditId = null; };
+      container.querySelectorAll('[data-audios-edit]').forEach(btn => {
+        btn.addEventListener('click', () => openEdit(btn.dataset.audiosEdit));
+      });
+      editOverlay.querySelectorAll('[data-audios-edit-close]').forEach(b => b.addEventListener('click', closeEdit));
+      editOverlay.addEventListener('click', (e) => { if (e.target === editOverlay) closeEdit(); });
+      editOverlay.querySelector('[data-audios-edit-save]').addEventListener('click', async () => {
+        const id = state.audiosEditId;
+        if (!id) return;
+        const title = (editNameEl.value || '').trim();
+        if (!title) { showToast('Escribe un nombre para el audio', 'error'); editNameEl.focus(); return; }
+        const date = (editDateEl.value || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { showToast('Elige una fecha válida', 'error'); return; }
+        const [y, m] = date.split('-').map(Number);
+        const next = (state.audios || []).map(a => a.id === id ? { ...a, title, date, year: y, month: m } : a);
+        try {
+          await db.saveAudios(next);
+          state.audios = next;
+          closeEdit();
+          showToast('Audio actualizado ✓', 'success');
+          state.audiosView = 'detail';
+          state.audiosMonth = { year: y, month: m };
+          container.innerHTML = renderAudiosTabContent();
+          bindAudiosEvents(container);
+        } catch (err) {
+          showToast(err?.message || 'No se pudo guardar', 'error');
         }
       });
     }

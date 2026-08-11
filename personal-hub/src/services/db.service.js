@@ -243,6 +243,33 @@ async function saveRinconCovers(covers) {
 }
 
 // ==========================================
+// FECHAS ESPECIALES (aniversario, inicio del Hub, cumpleaños)
+// Se guardan en la tabla content y alimentan las métricas del
+// dashboard del Admin (Años juntos, En el Hub, fechas importantes).
+// ==========================================
+
+const DEFAULT_HUB_DATES = { anniversary: '2024-07-10', hubStart: '2024-05-10', birthday: '2024-11-24' };
+
+async function getHubDates() {
+  try {
+    const data = await loadContent('hub_dates', {});
+    return { ...DEFAULT_HUB_DATES, ...(data && typeof data === 'object' ? data : {}) };
+  } catch {
+    return { ...DEFAULT_HUB_DATES };
+  }
+}
+
+async function saveHubDates(dates) {
+  const clean = {
+    anniversary: dates?.anniversary || DEFAULT_HUB_DATES.anniversary,
+    hubStart: dates?.hubStart || DEFAULT_HUB_DATES.hubStart,
+    birthday: dates?.birthday || DEFAULT_HUB_DATES.birthday
+  };
+  await saveContent('hub_dates', clean);
+  return clean;
+}
+
+// ==========================================
 // AUDIOS (El Rincón — archivo del día 3)
 // Almacenados en la tabla `content` como el resto
 // de contenido global: Supabase con fallback local.
@@ -449,13 +476,74 @@ async function saveCollection(key, data) {
 // ==========================================
 
 async function trackVisit(page) {
+  // Resuelve el usuario primero para registrarlo tanto en el espejo local
+  // como en Supabase (así el Admin ve la actividad por usuario incluso si
+  // la sincronización remota falla).
+  let userId = '';
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) userId = user.id;
+    } catch { /* sesión no válida: se registra como invitado */ }
+  }
+
+  const visit = { page, timestamp: new Date().toISOString(), id: generateId(), user_id: userId };
+  // Espejo local (offline / fallback).
   const analytics = lsGet(KEYS.analytics, { visits: [] });
-  analytics.visits.push({ page, timestamp: new Date().toISOString(), id: generateId() });
+  analytics.visits.push(visit);
   if (analytics.visits.length > 500) analytics.visits.length = 500;
   lsSet(KEYS.analytics, analytics);
+
+  // Sync a Supabase (analytics_visits): el Admin ve la actividad de cada
+  // usuario aunque navegue desde otro dispositivo. RLS: insert = cualquier
+  // autenticado, select = solo admin; aquí solo se inserta.
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('analytics_visits').insert({
+      user_id: userId,
+      page,
+      user_agent: (typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '').slice(0, 200)
+    });
+    if (error) console.warn('[db] Visita no sincronizada:', error.message);
+  } catch (err) {
+    console.warn('[db] Visita no sincronizada:', err.message);
+  }
 }
 
 async function getAnalytics() { return lsGet(KEYS.analytics, { visits: [] }); }
+
+/**
+ * Visitas registradas para el Admin: [{ id, user_id, page, timestamp }] de
+ * más a menos reciente. En Supabase la RLS solo deja leer al admin; si no
+ * hay acceso (modo local), se devuelve el espejo local.
+ * El tiempo por sección se calcula en el cliente por atribución entre
+ * visitas consecutivas de la misma persona (gap <= 30 min).
+ */
+async function getPageVisits(limit = 2000) {
+  const local = lsGet(KEYS.analytics, { visits: [] });
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('analytics_visits')
+        .select('id, user_id, page, timestamp')
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return data.map(v => ({
+          id: v.id,
+          user_id: v.user_id || '',
+          page: v.page || '/',
+          timestamp: v.timestamp
+        }));
+      }
+    } catch (err) {
+      console.warn('[db] Lectura de visitas fallida:', err.message);
+    }
+  }
+  return local.visits.map(v => ({
+    id: v.id, user_id: v.user_id || '', page: v.page || '/', timestamp: v.timestamp
+  }));
+}
 
 // ==========================================
 // USERS & MOOD HISTORY
@@ -625,6 +713,51 @@ async function uploadMemes(files) {
         throw new Error('No tienes permisos para subir memes. Verifica el bucket "memes" en Supabase.');
       }
       throw new Error('Hubo un problema al subir un archivo. Inténtalo de nuevo.');
+    }
+  }
+
+  return urls;
+}
+
+// Upload audios (notas de voz, grabaciones) to Supabase Storage.
+// Falls back to 'audios' bucket, then 'memes', then 'galeria'.
+async function uploadAudios(files) {
+  await requireAdmin(); // subir audios: solo ADMIN
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('No hay sesión activa');
+  if (!files?.length) return [];
+
+  const audio = [...files].filter(f => f.type.startsWith('audio/'));
+  if (!audio.length) throw new Error('Solo se permiten archivos de audio');
+  const oversized = audio.find(f => f.size > 50 * 1024 * 1024);
+  if (oversized) throw new Error('Cada audio no puede superar los 50 MB');
+
+  const buckets = ['audios', 'memes', 'galeria'];
+  const urls = [];
+
+  for (const file of audio) {
+    const fileExt = file.name.split('.').pop() || 'm4a';
+    const filePath = `audios/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;
+    let uploaded = false;
+    let uploadError = null;
+
+    for (const bucket of buckets) {
+      const { error } = await supabase.storage.from(bucket).upload(filePath, file, { cacheControl: '3600', upsert: false });
+      if (!error) {
+        const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath);
+        urls.push(publicUrl);
+        uploaded = true;
+        break;
+      }
+      uploadError = error;
+    }
+
+    if (!uploaded) {
+      console.error('[db] Audio upload failed:', uploadError);
+      if (uploadError?.message?.includes('row-level security policy') || uploadError?.code === '42501') {
+        throw new Error('No tienes permisos para subir audios. Verifica el bucket "audios" en Supabase.');
+      }
+      throw new Error('Hubo un problema al subir el audio: ' + (uploadError?.message || 'inténtalo de nuevo'));
     }
   }
 
@@ -963,6 +1096,120 @@ async function getAllGiftResponses() {
 }
 
 // ==========================================
+// MAL DÍA NOTES — notas que la usuaria deja para el Admin
+// Mismo patrón que gift_responses: localStorage por usuario +
+// sincronización con user_progress (type='maldia_notes').
+// ==========================================
+
+const MALDIA_NOTES_TYPE = 'maldia_notes';
+
+function maldiaNotesLocalKey(userId) {
+  return `ph.maldiaNotes.${userId || 'guest'}`;
+}
+
+/**
+ * Guarda una nota de Mal Día (para el Admin). Cada envío añade una
+ * entrada con marca de tiempo; el Admin las lee desde el panel.
+ */
+async function saveMaldiaNote(text) {
+  const clean = String(text || '').trim();
+  if (!clean) throw new Error('Escribe una nota antes de enviar.');
+
+  const userId = await getCurrentUserId();
+  let email = '';
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    email = user?.email || '';
+  } catch { /* sin sesión */ }
+
+  const entry = { text: clean, createdAt: new Date().toISOString(), email };
+  const stored = lsGet(maldiaNotesLocalKey(userId), []);
+  const all = Array.isArray(stored) ? stored : [];
+  all.push(entry);
+  lsSet(maldiaNotesLocalKey(userId), all);
+
+  if (userId && isSupabaseConfigured()) {
+    try {
+      const { error } = await supabase
+        .from('user_progress')
+        .upsert(
+          { user_id: userId, type: MALDIA_NOTES_TYPE, data: all, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id,type' }
+        );
+      if (error) console.warn('[db] maldia note sync failed:', error.message);
+    } catch (err) {
+      console.warn('[db] maldia note sync failed:', err.message);
+    }
+  }
+  return entry;
+}
+
+/** Notas enviadas por la usuaria actual (más reciente primero). */
+async function getMyMaldiaNotes() {
+  const userId = await getCurrentUserId();
+  if (userId && isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('data')
+        .eq('user_id', userId)
+        .eq('type', MALDIA_NOTES_TYPE)
+        .maybeSingle();
+      if (!error && Array.isArray(data?.data)) {
+        lsSet(maldiaNotesLocalKey(userId), data.data);
+        return [...data.data].reverse();
+      }
+    } catch { /* usa el guardado local */ }
+  }
+  return [...(lsGet(maldiaNotesLocalKey(userId), []))].reverse();
+}
+
+/**
+ * Todas las notas de todos los usuarios, más reciente primero.
+ * Uso exclusivo del Admin (la RLS del servidor lo refuerza).
+ */
+async function getAllMaldiaNotes() {
+  const result = [];
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('user_id, data, updated_at')
+        .eq('type', MALDIA_NOTES_TYPE);
+      if (!error && data) {
+        data.forEach(row => {
+          (Array.isArray(row.data) ? row.data : []).forEach(note => {
+            result.push({
+              userId: row.user_id,
+              email: note?.email || '',
+              text: note?.text || '',
+              createdAt: note?.createdAt || row.updated_at || ''
+            });
+          });
+        });
+        result.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        return result;
+      }
+    } catch { /* cae al guardado local */ }
+  }
+
+  // Fallback local: recoge las claves de notas de este navegador.
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('ph.maldiaNotes.')) continue;
+      const userId = key.replace('ph.maldiaNotes.', '');
+      const all = JSON.parse(localStorage.getItem(key) || '[]');
+      (Array.isArray(all) ? all : []).forEach(note => {
+        result.push({ userId, email: note?.email || '', text: note?.text || '', createdAt: note?.createdAt || '' });
+      });
+    }
+    result.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  } catch { /* sin datos locales */ }
+  return result;
+}
+
+// ==========================================
 // FORMAT HELPERS
 // ==========================================
 
@@ -994,6 +1241,7 @@ export const db = {
   getMoods, saveMood, getMoodMonth, getAllMoods, getUserMoods,
   getReasons, saveReasons,
   getRinconCovers, saveRinconCovers,
+  getHubDates, saveHubDates,
   getAudios, saveAudios,
   getSongs, saveSongs,
   getGifts, saveGifts,
@@ -1002,9 +1250,10 @@ export const db = {
   getOpenWhenLetters, saveOpenWhenLetters,
   getMaldiaFrases, getMaldiaMensajes, saveMaldiaFrases, saveMaldiaMensajes,
   logActivity, getActivity, formatAction,
-  trackVisit, getAnalytics,
+  trackVisit, getAnalytics, getPageVisits,
   listUsers, saveUser, createUser, deleteUser,
-  uploadAvatar, uploadGalleryPhotos, uploadMemes,
+  uploadAvatar, uploadGalleryPhotos, uploadMemes, uploadAudios,
   saveGiftResponse, getMyGiftResponses, getAllGiftResponses,
+  saveMaldiaNote, getMyMaldiaNotes, getAllMaldiaNotes,
   escapeHtml, generateId, checkConnection, isSupabaseConfigured
 };

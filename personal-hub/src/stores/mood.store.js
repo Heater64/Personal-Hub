@@ -9,7 +9,7 @@ import { userPrefKey } from '../utils/userStorage.js';
 import { todayISO } from '../utils/format.js';
 
 const MOODS = [
-  { id: 'great',  label: 'Muy bieeeen',         emoji: '🤍🤍🤍', score: 4 },
+  { id: 'great',  label: 'Muy bieeeen',         emoji: '🤍',       score: 4 },
   { id: 'good',   label: 'Bien',                emoji: '😊',      score: 3 },
   { id: 'meh',    label: 'Un poquito mal',       emoji: '😕',      score: 2 },
   { id: 'bad',    label: 'Mal',                 emoji: '😔',      score: 1 },

@@ -11,8 +11,7 @@ import { userPrefKey, migrateUserPref } from '../utils/userStorage.js';
 import { hourInSpain } from '../utils/format.js';
 import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
-
-const START_DATE = '2025-07-03';
+import { daysSinceAnniversary, loadSpecialDates } from '../utils/specialDates.js';
 
 // ==========================================
 // SVG
@@ -144,7 +143,7 @@ export function HomePage(router) {
   const page = document.createElement('div');
   page.className = 'home-page';
 
-  const daysSince = Math.floor((Date.now() - new Date(START_DATE).getTime()) / 86400000);
+  const daysSince = daysSinceAnniversary();
   const hour = hourInSpain(); // saludo según hora de España (península)
   const seed = dailySeed();
   const rng = seededRandom(seed);
@@ -313,6 +312,13 @@ export function HomePage(router) {
       if (p < 1) requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
+  });
+
+  // ── Contador dinámico: si las fechas especiales configuradas llegan
+  //    después del render (Supabase), actualiza el contador en caliente.
+  loadSpecialDates().then(() => {
+    const el = page.querySelector('#homeCounter');
+    if (el) el.textContent = String(daysSinceAnniversary());
   });
 
   // ── Bind clicks ──

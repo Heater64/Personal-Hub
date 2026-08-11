@@ -6,6 +6,7 @@
 
 import { userStore } from '../stores/user.store.js';
 import { auth } from '../services/auth.service.js';
+import { db } from '../services/db.service.js';
 import { BottomNav } from './BottomNav.js';
 import { Sidebar } from './Sidebar.js';
 import { NowPlayingBar } from './NowPlayingBar.js';
@@ -136,6 +137,12 @@ export function AppShell(router) {
     updateNavigation(path);
     scheduleMoodCheck();
     hideBootSplash();
+    // Registro de actividad (analítica): con qué secciones pasa más tiempo
+    // cada usuario y su última conexión. Fire-and-forget: nunca bloquea la
+    // navegación. Se omite la pantalla de login (no aporta señal útil).
+    if (path && path !== '/login') {
+      db.trackVisit(path).catch(() => {});
+    }
   });
 
   // Oculta el splash de arranque (index.html) en la primera vista montada.
