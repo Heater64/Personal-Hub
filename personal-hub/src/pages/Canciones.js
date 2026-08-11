@@ -1117,7 +1117,10 @@ export function CancionesPage(router) {
 
   function updateListenChip() {
     const btn = page.querySelector('#listenTogetherBtn');
-    if (btn) btn.classList.toggle('is-active', listenTogether);
+    if (btn) {
+      btn.classList.toggle('is-active', listenTogether);
+      btn.setAttribute('aria-pressed', String(listenTogether));
+    }
     const chip = page.querySelector('#listenStatus');
     if (!chip) return;
     if (!listenTogether) { chip.textContent = ''; chip.classList.remove('is-on'); return; }

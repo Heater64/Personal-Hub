@@ -31,6 +31,17 @@ export function loadGiftsCatalog() {
       try {
         data = await db.getGifts();
       } catch { data = null; }
+      // Si Supabase está caído (o el token expiró) pero ya hay un espejo
+      // local con datos, úsalos en vez de mostrar el calendario vacío.
+      // Mismo patrón de resiliencia que seriesData.loadCatalog().
+      if (!data || !(data.gifts?.length || (data.months && Object.keys(data.months).length))) {
+        try {
+          const mirror = JSON.parse(localStorage.getItem('ph.config.gifts'));
+          if (mirror && (mirror.gifts?.length || (mirror.months && Object.keys(mirror.months).length))) {
+            data = mirror;
+          }
+        } catch { /* espejo corrupto: ignorar */ }
+      }
       const hasContent = !!(data && (data.gifts?.length || (data.months && Object.keys(data.months).length)));
       // Marca de "ya se guardó alguna vez": saveContent siempre escribe
       // ph.config.<id> (incluso tras guardar un catálogo vacío). Sin esto,
