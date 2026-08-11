@@ -10,7 +10,7 @@
 import { db } from '../services/db.service.js';
 
 const DEFAULTS = {
-  anniversary: '2026-07-03',     // aniversario de pareja: 03/07/2026 (día/mes/año)
+  anniversary: '2025-07-03',     // aniversario de pareja: 03/07/2025 (día/mes/año)
   hubStart: '2024-05-10',        // inicio del Hub / primer mensaje
   birthday: '2012-09-03',        // cumpleaños de dada: 03/09/2012
   userBirthday: '2009-08-03'     // cumpleaños del admin: 03/08/2009

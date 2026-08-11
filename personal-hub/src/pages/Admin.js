@@ -373,7 +373,7 @@ export function AdminPage(router) {
 
     // Fechas especiales configurables (aniversario, inicio del Hub, cumpleaños)
     const hubDates = await db.getHubDates();
-    const annivISO = hubDates.anniversary || '2026-07-03';
+    const annivISO = hubDates.anniversary || '2025-07-03';
     const hubStartISO = hubDates.hubStart || '2024-05-10';
     const birthdayISO = hubDates.birthday || '2012-09-03';
     const userBirthdayISO = hubDates.userBirthday || '2009-08-03';
