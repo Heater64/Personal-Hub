@@ -27,15 +27,6 @@ const SONGS_BASE = "https://canciones-que-me-recuerdan-a-ti.vercel.app";
 
 const HERO_DEFAULT_IMG = `${SONGS_BASE}/Fotos/OIP%20(8).webp`;
 
-const CAT_META = {
-  canciones: { label: 'Canciones', icon: 'music' },
-  artistas:  { label: 'Artistas',  icon: 'mic' },
-  albumes:   { label: 'Álbumes',   icon: 'disc' },
-  generos:   { label: 'Géneros',   icon: 'tag' }
-};
-
-const MOOD_META = { romanticas: 'Románticas', animadas: 'Animadas', relajantes: 'Para la noche' };
-
 const PLAYLIST_ICON_CHOICES = ['❤️', '🎵', '🎉', '🌙', '🚀', '⭐', '🌧️', '💜', '🔥', '🫶'];
 
 // ==========================================
@@ -48,13 +39,10 @@ const MUSIC_ICONS = {
   music:  (s = 16) => svgIcon('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>', s),
   mic:    (s = 16) => svgIcon('<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>', s),
   disc:   (s = 16) => svgIcon('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>', s),
-  tag:    (s = 16) => svgIcon('<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>', s),
   heart:  (s = 16) => svgIcon('<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>', s),
   'heart-off': (s = 16) => svgIcon('<path d="m2 2 20 20"/><path d="M16.5 16.5 12 21l-7-7c-1.5-1.45-3-3.2-3-5.5A5.5 5.5 0 0 1 7.5 3c1.76 0 3 .5 4.5 2 1.5-1.5 2.74-2 4.5-2a5.5 5.5 0 0 1 5.5 5.5c0 1.43-.5 2.74-1.5 4"/>', s),
   star:   (s = 16) => svgIcon('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>', s),
   sparkles: (s = 16) => svgIcon('<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>', s),
-  rocket: (s = 16) => svgIcon('<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>', s),
-  moon:   (s = 16) => svgIcon('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>', s),
   'cloud-rain': (s = 16) => svgIcon('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><line x1="16" y1="14" x2="16" y2="18"/><line x1="8" y1="14" x2="8" y2="18"/><line x1="12" y1="14" x2="12" y2="22"/>', s),
   shuffle: (s = 16) => svgIcon('<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>', s),
   play:   (s = 16) => svgIcon('<polygon points="5 3 19 12 5 21 5 3"/>', s, true),
@@ -272,9 +260,6 @@ function buildPlaylists(favorites) {
     { id: 'completas', name: 'Todas las canciones', icon: 'music', desc: 'Toda la biblioteca del hub', cover: null, songs: ALL_SONGS, count: ALL_SONGS.length },
     { id: 'recuerdan', name: 'Nuestras canciones', icon: 'heart', desc: 'Canciones que me recuerdan a ti', cover: null, songs: SONGS_RECUERDAN, count: SONGS_RECUERDAN.length },
     { id: 'favoritas', name: 'Favoritas', icon: 'star', desc: 'Las que más nos gustan', cover: null, songs: allFavs, count: allFavs.length },
-    { id: 'romanticas', name: 'Románticas', icon: 'heart', desc: 'Para dedicar con el corazón', cover: null, songs: ALL_SONGS.filter(s => s.moods?.includes('romanticas')), count: ALL_SONGS.filter(s => s.moods?.includes('romanticas')).length },
-    { id: 'animadas', name: 'Motivación', icon: 'rocket', desc: 'Sube el volumen y a bailar', cover: null, songs: ALL_SONGS.filter(s => s.moods?.includes('animadas')), count: ALL_SONGS.filter(s => s.moods?.includes('animadas')).length },
-    { id: 'relajantes', name: 'Para la noche', icon: 'moon', desc: 'Baja las revoluciones', cover: null, songs: ALL_SONGS.filter(s => s.moods?.includes('relajantes')), count: ALL_SONGS.filter(s => s.moods?.includes('relajantes')).length },
     // Favoritas siempre existe (es una playlist individual, aunque esté vacía)
   ].filter(p => p.count > 0 || p.id === 'favoritas');
 }
@@ -307,7 +292,6 @@ export function CancionesPage(router) {
   let currentIdx = -1;
   let isPlaying = false;
   // Estado del layout tipo Spotify
-  let activeCat = 'canciones';   // 'canciones' | 'artistas' | 'albumes' | 'generos'
   let activeFilter = null;       // { type: 'artist'|'cover'|'mood', value }
   let isCustomView = false;      // la lista activa es una playlist compartida
   let favMenuTitle = null;       // título de la canción con el menú ⋮ abierto
@@ -335,7 +319,13 @@ export function CancionesPage(router) {
   let listenPeer = '';          // nombre del otro dispositivo en la sesión
   let listenPeerAvatar = '';    // foto del otro dispositivo en la sesión
   let listenSuppress = 0;       // evita el eco al aplicar eventos recibidos
-  let lastListenT = -10;        // último segundo enviado (throttle del seek)
+  let lastSync = { key: null, playing: null, t: -1 }; // último estado enviado al peer
+  // Último evento de canción aceptado (local o del peer): { at, from }. El
+  // orden total (timestamp, id) garantiza que ambos dispositivos convergen en
+  // la MISMA canción: si dos anuncios coinciden en el milisegundo, gana el de
+  // id mayor (desempate determinista, no aleatorio).
+  let lastSongEvent = { at: 0, from: '' };
+  let syncTimer = null;         // tick de sincronización (~3 veces por segundo)
   let offListen = () => {};     // desuscripción de la sesión compartida
   let searchQuery = '';
   let sortBy = 'default'; // 'default' | 'name' | 'favorites'
@@ -524,8 +514,6 @@ export function CancionesPage(router) {
         list = list.filter(s => s.artist.toLowerCase() === String(activeFilter.value).toLowerCase());
       } else if (activeFilter.type === 'cover') {
         list = list.filter(s => (s.cover || '') === activeFilter.value);
-      } else if (activeFilter.type === 'mood') {
-        list = list.filter(s => s.moods?.includes(activeFilter.value));
       }
     }
 
@@ -578,7 +566,6 @@ export function CancionesPage(router) {
     if (activeFilter) {
       if (activeFilter.type === 'artist') { listTitle = `Canciones de ${activeFilter.value}`; filterLabel = activeFilter.value; filterIcon = MUSIC_ICONS.mic(13); }
       else if (activeFilter.type === 'cover') { listTitle = 'Del álbum'; filterLabel = 'Álbum'; filterIcon = MUSIC_ICONS.disc(13); }
-      else if (activeFilter.type === 'mood') { listTitle = `Género: ${MOOD_META[activeFilter.value] || activeFilter.value}`; filterLabel = MOOD_META[activeFilter.value] || activeFilter.value; filterIcon = MUSIC_ICONS.tag(13); }
     }
 
     page.innerHTML = `
@@ -612,19 +599,6 @@ export function CancionesPage(router) {
             <div class="music-listen-status" id="listenStatus"></div>
           </div>
         </section>
-
-        <!-- Category pills -->
-        <div class="music-cats" role="tablist" aria-label="Categorías de música">
-          ${Object.entries(CAT_META).map(([id, meta]) => `
-            <button class="music-cat ${activeCat === id ? 'is-active' : ''}" data-cat="${id}" role="tab" aria-selected="${activeCat === id}" type="button">
-              <span class="music-cat-emoji">${MUSIC_ICONS[meta.icon](15)}</span> ${meta.label}
-            </button>`).join('')}
-        </div>
-
-        <!-- Panel de categoría (artistas / álbumes / géneros) -->
-        ${activeCat === 'artistas' ? renderCatArtists() : ''}
-        ${activeCat === 'albumes' ? renderCatAlbums() : ''}
-        ${activeCat === 'generos' ? renderCatMoods() : ''}
 
         <!-- Escuchado recientemente -->
         <section class="music-section" id="musicRecent">
@@ -824,27 +798,6 @@ export function CancionesPage(router) {
     return picks;
   }
 
-  function buildArtists() {
-    const seen = new Map();
-    [...SONGS_RECUERDAN, ...ALL_SONGS].forEach(sg => {
-      const k = (sg.artist || '').toLowerCase();
-      if (!k) return;
-      if (!seen.has(k)) seen.set(k, { name: sg.artist, cover: sg.cover, count: 0 });
-      seen.get(k).count++;
-    });
-    return [...seen.values()].sort((a, b) => b.count - a.count);
-  }
-
-  function buildAlbums() {
-    const seen = new Map();
-    [...SONGS_RECUERDAN, ...ALL_SONGS].forEach(sg => {
-      if (!sg.cover) return;
-      if (!seen.has(sg.cover)) seen.set(sg.cover, { cover: sg.cover, title: sg.title, artist: sg.artist, count: 0 });
-      seen.get(sg.cover).count++;
-    });
-    return [...seen.values()];
-  }
-
   function getFavSongs() {
     const seen = new Set();
     const out = [];
@@ -881,52 +834,6 @@ export function CancionesPage(router) {
       <span class="music-pl-tab-name">${escapeHtml(cleanPlaylistName(pl.name))}</span>
       <span class="music-pl-tab-count">${pl.count}</span>
     </button>`;
-  }
-
-  function renderCatArtists() {
-    const artists = buildArtists();
-    return `<section class="music-cat-panel">
-      <div class="music-cat-grid">
-        ${artists.map(a => `
-          <button class="music-artist-card" data-artist="${escapeHtml(a.name)}" type="button">
-            <span class="music-artist-cover">
-              ${a.cover ? `<img src="${a.cover}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${coverFallback(a.name)}` : coverFallback(a.name)}
-            </span>
-            <span class="music-artist-name">${escapeHtml(a.name)}</span>
-            <span class="music-artist-count">${a.count} canciones</span>
-          </button>`).join('')}
-      </div>
-    </section>`;
-  }
-
-  function renderCatAlbums() {
-    const albums = buildAlbums();
-    return `<section class="music-cat-panel">
-      <div class="music-cat-grid">
-        ${albums.map(a => `
-          <button class="music-album-card" data-cover="${escapeHtml(a.cover)}" type="button">
-            <span class="music-cover-art">
-              <img src="${a.cover}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${coverFallback(a.title)}
-            </span>
-            <span class="music-cover-title">${escapeHtml(a.title)}</span>
-            <span class="music-cover-artist">${escapeHtml(a.artist || '')} · ${a.count}</span>
-          </button>`).join('')}
-      </div>
-    </section>`;
-  }
-
-  function renderCatMoods() {
-    const moods = Object.keys(MOOD_META).filter(m => ALL_SONGS.some(sg => sg.moods?.includes(m)));
-    return `<section class="music-cat-panel">
-      <div class="music-cat-grid music-cat-grid--moods">
-        ${moods.map(m => `
-          <button class="music-mood-card" data-mood="${m}" type="button">
-            <span class="music-mood-emoji">${MUSIC_ICONS[m === 'romanticas' ? 'heart' : m === 'animadas' ? 'rocket' : 'moon'](30)}</span>
-            <span class="music-mood-name">${MOOD_META[m]}</span>
-            <span class="music-mood-count">${ALL_SONGS.filter(sg => sg.moods?.includes(m)).length} canciones</span>
-          </button>`).join('')}
-      </div>
-    </section>`;
   }
 
   function renderFavs() {
@@ -1056,7 +963,10 @@ export function CancionesPage(router) {
     // Ficha del tema para la barra global y Media Session (pantalla de bloqueo)
     player.setInfo({ title: s.title, artist: s.artist || '', cover: s.cover || '' });
     saveContinue(activePlaylistId, idx, 0);
-    // Escuchar juntos: avisa del cambio de canción
+    // Escuchar juntos: avisa del cambio de canción. Se actualiza lastSync para
+    // que el tick no reenvíe el mismo cambio (el broadcast directo es la
+    // autoridad: el tick solo detecta lo que este aviso no cubrió).
+    lastSync = { key: songKey(s.title, s.artist), playing: isPlaying && !audioEl?.paused, t: audioEl?.currentTime || 0 };
     maybeBroadcast({ action: 'song', key: songKey(s.title, s.artist), t: audioEl?.currentTime || 0, playing: isPlaying });
   }
 
@@ -1072,8 +982,10 @@ export function CancionesPage(router) {
       updatePlayBtn();
     }
     player.setPlaying(isPlaying);
-    // Escuchar juntos: avisa del play/pause
+    // Escuchar juntos: avisa del play/pause. lastSync se actualiza para que el
+    // tick no reenvíe el mismo estado (mismo criterio que en loadSong).
     if (currentIdx >= 0 && activeList[currentIdx]) {
+      lastSync = { key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist), playing: isPlaying && !audioEl?.paused, t: audioEl?.currentTime || 0 };
       maybeBroadcast({ action: 'playpause', key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist), t: audioEl?.currentTime || 0, playing: isPlaying });
     }
   }
@@ -1125,11 +1037,68 @@ export function CancionesPage(router) {
     }
   }
 
-  /** Envía un evento a la sesión, salvo el eco de lo que acabamos de aplicar. */
+  /** Envía un evento a la sesión, salvo el eco de lo que acabamos de aplicar.
+   *  Los cambios de canción llevan timestamp (último escritor gana): el
+   *  dispositivo que cambió la canción más recientemente manda, y el otro
+   *  simplemente le sigue (así no se pisan entre ellos). */
   function maybeBroadcast(payload) {
     if (!listenTogether) return;
     if (Date.now() - listenSuppress < 1500) return;
+    if (payload.action === 'song') {
+      const from = userStore.getUser()?.id || '';
+      lastSongEvent = { at: Date.now(), from };
+      payload = { ...payload, at: lastSongEvent.at, from };
+    }
     sendListenEvent(payload);
+  }
+
+  /** Tick de sincronización (~3 veces por segundo, como pide el diseño):
+   *  comprueba si ha cambiado la canción, el estado (pausa/reproduciendo)
+   *  o el segundo de la misma canción, y lo reenvía al otro dispositivo.
+   *  Así el seguimiento es continuo (cada ~333ms) y no solo al cambiar. */
+  function syncTick() {
+    if (!listenTogether) return;
+    if (currentIdx < 0 || !activeList[currentIdx]) return;
+    const s = activeList[currentIdx];
+    const key = songKey(s.title, s.artist);
+    const playing = isPlaying && !audioEl?.paused;
+    const t = audioEl?.currentTime || 0;
+    const prev = lastSync;
+    // 1) La canción cambió → 'song' (último escritor gana con timestamp)
+    if (key !== prev.key) {
+      lastSync = { key, playing, t };
+      maybeBroadcast({ action: 'song', key, t, playing });
+      return;
+    }
+    // 2) El estado (play/pausa) cambió → 'playpause'
+    if (playing !== prev.playing) {
+      lastSync = { key, playing, t };
+      maybeBroadcast({ action: 'playpause', key, t, playing });
+      return;
+    }
+    // 3) Misma canción pero el segundo avanzó → 'seek' (no más de 1/s)
+    if (Math.abs(t - prev.t) >= 1) {
+      lastSync = { key, playing, t };
+      maybeBroadcast({ action: 'seek', key, t, playing });
+    }
+  }
+
+  /** Arranca el tick de sincronización (idempotente). */
+  function startSyncTick() {
+    if (syncTimer || !listenTogether) return;
+    if (currentIdx >= 0 && activeList[currentIdx]) {
+      const s = activeList[currentIdx];
+      lastSync = { key: songKey(s.title, s.artist), playing: isPlaying && !audioEl?.paused, t: audioEl?.currentTime || 0 };
+    }
+    syncTimer = setInterval(syncTick, 333); // ~3 veces por segundo
+  }
+
+  /** Detiene el tick de sincronización. */
+  function stopSyncTick() {
+    if (syncTimer) {
+      clearInterval(syncTimer);
+      syncTimer = null;
+    }
   }
 
   function updateListenChip() {
@@ -1177,12 +1146,86 @@ export function CancionesPage(router) {
     updateListenChip();
   }
 
+  /** Aplica un evento del otro dispositivo sin crear ping-pong:
+   *  · 'seek' y 'playpause' NUNCA cambian de canción (solo se aplican si la
+   *    canción del evento es la que ya está sonando).
+   *  · 'song' solo se aplica si es más reciente que nuestro último cambio
+   *    local (último escritor gana) → ambos dispositivos convergen en la
+   *    misma canción en lugar de pelearse. */
   function handlePeerEvent(p) {
     if (!p?.key) return;
+    const current = activeList[currentIdx];
+    const sameSong = !!(current && songKey(current.title, current.artist) === p.key);
+
+    // Posición: solo se ajusta si es la misma canción. Nunca la cambia.
+    if (p.action === 'seek') {
+      if (!sameSong) return;
+      listenSuppress = Date.now();
+      if (audioEl && Number.isFinite(p.t) && p.t > 0 && Math.abs(audioEl.currentTime - p.t) > 1) {
+        audioEl.currentTime = p.t;
+      }
+      // Asimila la posición recibida para no reenviarla de vuelta (anti-eco)
+      lastSync = { ...lastSync, t: p.t };
+      return;
+    }
+
+    // Play/pausa: solo aplica si es la misma canción. Nunca la cambia.
+    if (p.action === 'playpause') {
+      if (!sameSong) return;
+      listenSuppress = Date.now();
+      if (p.playing === true && audioEl?.paused) {
+        isPlaying = true;
+        updatePlayBtn();
+        audioEl.play().catch(() => { isPlaying = false; updatePlayBtn(); });
+        player.setPlaying(true);
+      } else if (p.playing === false && audioEl && !audioEl.paused) {
+        audioEl.pause();
+        isPlaying = false;
+        updatePlayBtn();
+        player.setPlaying(false);
+      }
+      lastSync = { ...lastSync, playing: p.playing === true };
+      return;
+    }
+
+    // Cambio de canción: último escritor gana con orden total (timestamp, id).
+    // Si dos anuncios coinciden en el mismo milisegundo, gana el de id mayor:
+    // ambos dispositivos hacen la MISMA comparación, así convergen en la misma
+    // canción en lugar de intercambiársela (A=Y, B=X) y pelearse para siempre.
+    if (p.action === 'song') {
+      const peAt = p.at || 0;
+      const peFrom = p.from || '';
+      if (lastSongEvent.at !== 0) {
+        const newer = peAt > lastSongEvent.at
+          || (peAt === lastSongEvent.at && peFrom > lastSongEvent.from);
+        if (!newer) return; // evento viejo o empatado que no gana: ignora
+      }
+      const s = findSongByKey(p.key);
+      if (!s) return;
+      listenSuppress = Date.now();
+      if (peAt > 0) lastSongEvent = { at: peAt, from: peFrom };
+      playSongObject(s, p.t);
+      lastSync = { key: p.key, playing: p.playing === true, t: p.t || 0 };
+      if (p.playing === true && audioEl?.paused) {
+        isPlaying = true;
+        updatePlayBtn();
+        audioEl.play().catch(() => { isPlaying = false; updatePlayBtn(); });
+        player.setPlaying(true);
+      } else if (p.playing === false && audioEl && !audioEl.paused) {
+        audioEl.pause();
+        isPlaying = false;
+        updatePlayBtn();
+        player.setPlaying(false);
+      }
+      return;
+    }
+
+    // Compatibilidad: eventos antiguos sin action se tratan como 'song'.
     const s = findSongByKey(p.key);
     if (!s) return;
     listenSuppress = Date.now();
     playSongObject(s, p.t);
+    lastSync = { key: p.key, playing: p.playing === true, t: p.t || 0 };
     if (p.playing === true && audioEl?.paused) {
       isPlaying = true;
       updatePlayBtn();
@@ -1256,14 +1299,6 @@ export function CancionesPage(router) {
     const ct = page.querySelector('#currentTime');
     if (ct) ct.textContent = formatTime(audioEl.currentTime);
     saveContinueThrottled(); // persiste la última posición en vivo
-    // Escuchar juntos: mantiene en sincronía la posición (~cada 5s)
-    if (listenTogether && isPlaying && currentIdx >= 0 && activeList[currentIdx]) {
-      const t = audioEl.currentTime;
-      if (t - lastListenT >= 5) {
-        lastListenT = t;
-        maybeBroadcast({ action: 'seek', key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist), t, playing: true });
-      }
-    }
   }
 
   function onEnded() {
@@ -1335,12 +1370,16 @@ export function CancionesPage(router) {
         listenPeer = st.peerName;
         listenPeerAvatar = st.peerAvatar;
         updateListenChip();
+        if (st.active) startSyncTick(); else stopSyncTick();
+        // Al activar la sesión, anuncia la canción que está sonando para que
+        // el otro dispositivo la adopte (con timestamp de último escritor).
         if (st.active && currentIdx >= 0 && activeList[currentIdx]) {
-          sendListenEvent({
+          const s = activeList[currentIdx];
+          maybeBroadcast({
             action: 'song',
-            key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist),
+            key: songKey(s.title, s.artist),
             t: audioEl?.currentTime || 0,
-            playing: isPlaying
+            playing: isPlaying && !audioEl?.paused
           });
         }
         return;
@@ -1368,11 +1407,12 @@ export function CancionesPage(router) {
         // Petición de re-sincronización (el otro acaba de entrar en Canciones
         // con la sesión ya activa): reenviamos nuestra reproducción actual.
         if (payload?.action === 'sync' && currentIdx >= 0 && activeList[currentIdx]) {
-          sendListenEvent({
+          const s = activeList[currentIdx];
+          maybeBroadcast({
             action: 'song',
-            key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist),
+            key: songKey(s.title, s.artist),
             t: audioEl?.currentTime || 0,
-            playing: isPlaying
+            playing: isPlaying && !audioEl?.paused
           });
           return;
         }
@@ -1382,52 +1422,16 @@ export function CancionesPage(router) {
     // Sincroniza el chip con el estado global al entrar (sesión ya activa, etc.)
     updateListenChip();
     // Montaje tardío: si la sesión ya estaba activa al entrar (aceptaste la
-    // invitación desde otra página), pide el estado actual al otro dispositivo
-    // para que la canción aparezca al momento, aunque esté en pausa.
+    // invitación desde otra página), arranca el tick de sincronización y pide
+    // el estado actual al otro dispositivo para que la canción aparezca al
+    // momento, aunque esté en pausa.
     const ltSt = getListenTogetherState();
-    if (ltSt.active && ltSt.peerName) {
-      sendListenEvent({ action: 'sync' });
+    if (ltSt.active) {
+      startSyncTick();
+      if (ltSt.peerName) sendListenEvent({ action: 'sync' });
+    } else {
+      stopSyncTick();
     }
-
-    // Category pills
-    page.querySelectorAll('.music-cat').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (activeCat === btn.dataset.cat) return;
-        activeCat = btn.dataset.cat;
-        activeFilter = null;
-        favMenuTitle = null;
-        searchQuery = '';
-        const si = page.querySelector('#musicSearch');
-        if (si) si.value = '';
-        updateUI();
-      });
-    });
-
-    // Category cards → filtran la lista principal
-    page.querySelectorAll('.music-artist-card').forEach(card => {
-      card.addEventListener('click', () => {
-        activeFilter = { type: 'artist', value: card.dataset.artist };
-        activeCat = 'canciones';
-        updateUI();
-        scrollToId('musicList');
-      });
-    });
-    page.querySelectorAll('.music-album-card').forEach(card => {
-      card.addEventListener('click', () => {
-        activeFilter = { type: 'cover', value: card.dataset.cover };
-        activeCat = 'canciones';
-        updateUI();
-        scrollToId('musicList');
-      });
-    });
-    page.querySelectorAll('.music-mood-card').forEach(card => {
-      card.addEventListener('click', () => {
-        activeFilter = { type: 'mood', value: card.dataset.mood };
-        activeCat = 'canciones';
-        updateUI();
-        scrollToId('musicList');
-      });
-    });
 
     // Quitar filtro de la lista
     page.querySelector('#filterClear')?.addEventListener('click', () => {
@@ -1896,9 +1900,6 @@ export function CancionesPage(router) {
     const q = (router?.getCurrentPath?.().split('?')[1] || '');
     const v = new URLSearchParams(q).get('v');
     if (v === 'biblioteca') { /* por defecto: lista completa */ viewScrollId = 'musicList'; }
-    else if (v === 'artistas') activeCat = 'artistas';
-    else if (v === 'albumes') activeCat = 'albumes';
-    else if (v === 'generos') activeCat = 'generos';
     else if (v === 'favoritas') {
       const pl = getPlaylists().find(p => p.id === 'favoritas');
       if (pl) { activePlaylistId = pl.id; activeList = pl.songs; }
@@ -2020,6 +2021,7 @@ export function CancionesPage(router) {
     offPlChange();
     offPlayer();
     offListen();
+    stopSyncTick(); // detiene el tick de sincronización (~3x/s)
     // La sesión compartida vive en el servicio global: no se detiene al
     // salir de Canciones (la música sigue sonando al navegar).
     unwireAudio();
