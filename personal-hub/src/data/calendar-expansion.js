@@ -261,12 +261,16 @@ export function expandCalendarCatalog(input) {
       if (item.type === 'polaroid') data.image = '';
       if (item.type === 'video') data.videoUrl = '';
       if (item.type === 'craft') data.pdfUrl = '';
+      // Los juegos llevan redirectUrl (generada en buildGameGift): se preserva
+      // para que el día abra la página del juego en vez de un modal genérico.
+      if (item.redirectUrl) data.redirectUrl = item.redirectUrl;
       const gift = {
         id,
         title: item.title,
         type: item.type,
         unlock: { mode: 'date', value: dateStr },
-        redirect: false,
+        redirect: !!item.redirectUrl,
+        redirectUrl: item.redirectUrl || '',
         data
       };
       catalog.gifts.push(gift);

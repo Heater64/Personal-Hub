@@ -18,6 +18,9 @@ import {
   addSongToPlaylist, removeSongFromPlaylist, moveSong,
   initPlaylistsRealtime, onPlaylistsChange
 } from '../services/playlists.service.js';
+import {
+  startListenTogether, stopListenTogether, sendListenEvent, onListenTogether
+} from '../services/listenTogether.service.js';
 
 const SONGS_BASE = "https://canciones-que-me-recuerdan-a-ti.vercel.app";
 
@@ -326,6 +329,12 @@ export function CancionesPage(router) {
   migrateUserPref('favSongs');
   let favorites = new Set((JSON.parse(localStorage.getItem(userPrefKey('favSongs')) || '[]') || []).map(t => String(t).toLowerCase()));
   let queue = []; // indices in activeList
+  // Escuchar juntos: sincronización de reproducción entre dispositivos
+  let listenTogether = false;   // la sesión compartida está activa
+  let listenPeer = '';          // nombre del otro dispositivo en la sesión
+  let listenSuppress = 0;       // evita el eco al aplicar eventos recibidos
+  let lastListenT = -10;        // último segundo enviado (throttle del seek)
+  let offListen = () => {};     // desuscripción de la sesión compartida
   let searchQuery = '';
   let sortBy = 'default'; // 'default' | 'name' | 'favorites'
   // Duraciones cacheadas (metadatos): cargadas de localStorage (aisladas por usuario) y precargadas en 2º plano
@@ -596,7 +605,9 @@ export function CancionesPage(router) {
                 Reproducir mix
               </button>
               <button class="music-hero-btn" id="heroShuffle" type="button"><span class="music-hero-btn-icon">${MUSIC_ICONS.shuffle(13)}</span> Aleatorio</button>
+              <button class="music-hero-btn" id="listenTogetherBtn" type="button" aria-pressed="${listenTogether}" title="Sincroniza la música con el otro dispositivo">🎧 Escuchar juntos</button>
             </div>
+            <div class="music-listen-status" id="listenStatus"></div>
           </div>
         </section>
 
@@ -1043,6 +1054,8 @@ export function CancionesPage(router) {
     // Ficha del tema para la barra global y Media Session (pantalla de bloqueo)
     player.setInfo({ title: s.title, artist: s.artist || '', cover: s.cover || '' });
     saveContinue(activePlaylistId, idx, 0);
+    // Escuchar juntos: avisa del cambio de canción
+    maybeBroadcast({ action: 'song', key: songKey(s.title, s.artist), t: audioEl?.currentTime || 0, playing: isPlaying });
   }
 
   function togglePlay() {
@@ -1057,6 +1070,103 @@ export function CancionesPage(router) {
       updatePlayBtn();
     }
     player.setPlaying(isPlaying);
+    // Escuchar juntos: avisa del play/pause
+    if (currentIdx >= 0 && activeList[currentIdx]) {
+      maybeBroadcast({ action: 'playpause', key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist), t: audioEl?.currentTime || 0, playing: isPlaying });
+    }
+  }
+
+  // ==========================================
+  // ESCUCHAR JUNTOS — sincronización entre dispositivos
+  // ==========================================
+  function findSongByKey(key) {
+    if (!key) return null;
+    for (const s of ALL_SONGS) {
+      if (songKey(s.title, s.artist) === key) return s;
+    }
+    return null;
+  }
+
+  /** Reproduce una canción concreta (venga de donde venga: otra playlist). */
+  function playSongObject(s, t) {
+    const idx = ALL_SONGS.indexOf(s);
+    if (idx >= 0 && activeList[idx] === s) {
+      loadSong(idx);
+    } else {
+      // La canción no está en la lista activa: se reproduce sobre la biblioteca
+      activeList = ALL_SONGS;
+      currentIdx = ALL_SONGS.indexOf(s);
+      updateUI();
+      if (audioEl) {
+        audioEl.src = s.audio;
+        audioEl.currentTime = 0;
+      }
+      player.setInfo({ title: s.title, artist: s.artist || '', cover: s.cover || '' });
+    }
+    if (audioEl && Number.isFinite(t) && t > 0 && Math.abs(audioEl.currentTime - t) > 2) {
+      audioEl.currentTime = t;
+    }
+  }
+
+  /** Envía un evento a la sesión, salvo el eco de lo que acabamos de aplicar. */
+  function maybeBroadcast(payload) {
+    if (!listenTogether) return;
+    if (Date.now() - listenSuppress < 1500) return;
+    sendListenEvent(payload);
+  }
+
+  function updateListenChip() {
+    const btn = page.querySelector('#listenTogetherBtn');
+    if (btn) btn.classList.toggle('is-active', listenTogether);
+    const chip = page.querySelector('#listenStatus');
+    if (!chip) return;
+    if (!listenTogether) { chip.textContent = ''; chip.classList.remove('is-on'); return; }
+    chip.classList.add('is-on');
+    chip.textContent = listenPeer
+      ? `🎧 Escuchando con ${listenPeer}`
+      : '🎧 Escuchar juntos activado: reproduce algo y lo oiremos los dos';
+  }
+
+  function toggleListenTogether() {
+    listenTogether = !listenTogether;
+    if (listenTogether) {
+      const user = userStore.getUser();
+      startListenTogether(user?.name || 'Tu pareja');
+      showToast('🎧 Escuchar juntos activado', 'success');
+    } else {
+      stopListenTogether();
+      listenPeer = '';
+      showToast('Escuchar juntos desactivado', 'info');
+    }
+    updateListenChip();
+    // Pon al día al otro dispositivo con lo que suena ahora mismo
+    if (listenTogether && currentIdx >= 0 && activeList[currentIdx]) {
+      sendListenEvent({
+        action: 'song',
+        key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist),
+        t: audioEl?.currentTime || 0,
+        playing: isPlaying
+      });
+    }
+  }
+
+  function handlePeerEvent(p) {
+    if (!p?.key) return;
+    const s = findSongByKey(p.key);
+    if (!s) return;
+    listenSuppress = Date.now();
+    playSongObject(s, p.t);
+    if (p.playing === true && audioEl?.paused) {
+      isPlaying = true;
+      updatePlayBtn();
+      audioEl.play().catch(() => { isPlaying = false; updatePlayBtn(); });
+      player.setPlaying(true);
+    } else if (p.playing === false && audioEl && !audioEl.paused) {
+      audioEl.pause();
+      isPlaying = false;
+      updatePlayBtn();
+      player.setPlaying(false);
+    }
   }
 
   function nextSong() {
@@ -1119,6 +1229,14 @@ export function CancionesPage(router) {
     const ct = page.querySelector('#currentTime');
     if (ct) ct.textContent = formatTime(audioEl.currentTime);
     saveContinueThrottled(); // persiste la última posición en vivo
+    // Escuchar juntos: mantiene en sincronía la posición (~cada 5s)
+    if (listenTogether && isPlaying && currentIdx >= 0 && activeList[currentIdx]) {
+      const t = audioEl.currentTime;
+      if (t - lastListenT >= 5) {
+        lastListenT = t;
+        maybeBroadcast({ action: 'seek', key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist), t, playing: true });
+      }
+    }
   }
 
   function onEnded() {
@@ -1178,6 +1296,29 @@ export function CancionesPage(router) {
       if (!pl) return;
       switchPlaylist(pl.id);
       if (activeList.length) playAt(Math.floor(Math.random() * activeList.length));
+    });
+
+    // Hero — Escuchar juntos (sincronización en tiempo real)
+    page.querySelector('#listenTogetherBtn')?.addEventListener('click', toggleListenTogether);
+    offListen = onListenTogether(({ type, payload }) => {
+      if (!listenTogether) return;
+      if (type === 'hello') {
+        if (payload?.name) {
+          listenPeer = payload.name;
+          updateListenChip();
+          showToast(`🎧 ${payload.name} está escuchando contigo`, 'success');
+        }
+        return;
+      }
+      if (type === 'bye') {
+        if (listenPeer) {
+          listenPeer = '';
+          updateListenChip();
+          showToast('El otro dispositivo dejó de escuchar', 'info');
+        }
+        return;
+      }
+      if (type === 'listen') handlePeerEvent(payload);
     });
 
     // Category pills
@@ -1810,6 +1951,8 @@ export function CancionesPage(router) {
     offContent();
     offPlChange();
     offPlayer();
+    offListen();
+    if (listenTogether) stopListenTogether();
     unwireAudio();
     page.removeEventListener('click', offOutsideClick);
     preloadToken++; // aborta la precarga de duraciones en curso

@@ -191,6 +191,26 @@
   align-items: center;
 }
 
+/* Escuchar juntos */
+.music-hero-btn.is-active {
+  background: var(--theme-success, #5fd6a0);
+  border-color: transparent;
+  color: #0c2216;
+  box-shadow: 0 8px 24px rgba(95, 214, 160, 0.35);
+}
+
+.music-listen-status {
+  margin-top: 10px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--theme-text-tertiary);
+  min-height: 18px;
+}
+
+.music-listen-status.is-on {
+  color: var(--theme-success, #5fd6a0);
+  font-weight: 600;
+}
+
 /* ==========================================
    CATEGORY PILLS
    ========================================== */
