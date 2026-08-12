@@ -28,6 +28,8 @@ class PlayerService {
     this.audio = createAudio();
     this.info = null;       // { title, artist, cover } del tema actual
     this._playing = false;
+    this.shuffle = false;          // reproducción aleatoria (compartida: barra + Canciones)
+    this.repeat = 'all';           // 'off' | 'all' | 'one' — por defecto repite la lista
     this._subs = new Set();
     this._mediaSessionReady = false;
     this._wireMediaSession();
@@ -68,10 +70,36 @@ class PlayerService {
     return this._playing;
   }
 
+  // ==========================================
+  // SHUFFLE / REPEAT — estado compartido entre la barra
+  // global (reproductor expandido) y la página de Canciones.
+  // Al cambiar se emite 'change' para que ambas se sincronicen.
+  // ==========================================
+  setShuffle(v) {
+    this.shuffle = !!v;
+    this.emit('change', { shuffle: this.shuffle });
+  }
+
+  toggleShuffle() {
+    this.setShuffle(!this.shuffle);
+  }
+
+  setRepeat(mode) {
+    this.repeat = ['off', 'all', 'one'].includes(mode) ? mode : 'off';
+    this.emit('change', { repeat: this.repeat });
+  }
+
+  cycleRepeat() {
+    const next = { off: 'all', all: 'one', one: 'off' }[this.repeat] || 'off';
+    this.setRepeat(next);
+  }
+
   /** Órdenes desde la barra global / Media Session → la página las ejecuta. */
   commandNext() { this.emit('next'); }
   commandPrev() { this.emit('prev'); }
   commandToggle() { this.emit('toggle'); }
+  /** Abre la cola en la página de Canciones (la recoge al montarse). */
+  commandQueue() { this.emit('queue'); }
 
   // ==========================================
   // MEDIA SESSION — pantalla de bloqueo / notificación

@@ -625,33 +625,155 @@
   font-size: var(--fs-md);
 }
 
-/* Música */
-.cal-media__info {
+/* Música — tarjeta con portada y reproductor de audio propio (glass) */
+.cal-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-16);
+}
+.cal-media__cover {
+  position: relative;
+  width: min(100%, 280px);
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--elevation-2);
+  background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-hover));
   display: flex;
   align-items: center;
-  gap: var(--sp-12);
-  margin-bottom: var(--sp-16);
   justify-content: center;
-  color: var(--theme-text-primary);
 }
-.cal-media__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--r-md);
-  background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-hover));
-  display: inline-flex;
+.cal-media__cover.is-player { cursor: pointer; }
+.cal-media__cover-fallback {
+  font-size: 3.4rem;
+  opacity: 0.85;
+}
+.cal-media__cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cal-media__msg {
+  margin: 0;
+  color: var(--theme-text-primary);
+  text-align: center;
+  line-height: 1.6;
+}
+.cal-media__player { width: 100%; }
+
+/* Reproductor de audio — barra glass acorde a la web */
+.cal-audio { width: 100%; }
+.cal-audio__overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
   color: #fff;
-  flex-shrink: 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: transform var(--dur-fast), opacity var(--dur-fast), background var(--dur-fast);
+  z-index: 2;
 }
-.cal-media__box {
-  padding: var(--sp-16);
+.cal-audio__overlay:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+  background: rgba(0, 0, 0, 0.6);
+}
+.cal-audio__overlay.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.cal-audio__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-12) var(--sp-14);
   border-radius: var(--r-md);
   border: 1px solid var(--theme-divider);
   background: var(--theme-surface);
+  box-shadow: var(--elevation-1);
 }
-.cal-media__box audio { width: 100%; }
+.cal-audio__btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-accent-dim);
+  color: var(--theme-accent);
+  cursor: pointer;
+  transition: transform var(--dur-fast), background var(--dur-fast);
+  flex-shrink: 0;
+}
+.cal-audio__btn:hover { transform: scale(1.08); }
+.cal-audio__btn:active { transform: scale(0.94); }
+.cal-audio__play {
+  width: 42px;
+  height: 42px;
+  background: var(--theme-accent);
+  color: #fff;
+}
+.cal-audio__time {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--theme-text-secondary);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  flex-shrink: 0;
+}
+.cal-audio__progress {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 22px;
+  cursor: pointer;
+}
+.cal-audio__track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: var(--theme-divider-strong);
+  border-radius: 2px;
+  transition: height var(--dur-fast);
+}
+.cal-audio__progress:hover .cal-audio__track { height: 6px; }
+.cal-audio__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0%;
+  background: var(--theme-accent);
+  border-radius: 2px;
+}
+.cal-audio__thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+  left: 0%;
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+.cal-audio__progress:hover .cal-audio__thumb { opacity: 1; }
 
 /* Foto / regalo */
 .cal-photo { text-align: center; }
@@ -660,6 +782,7 @@
   max-height: 52vh;
   border-radius: var(--r-lg);
   box-shadow: var(--elevation-2);
+  margin-inline: auto; /* el reset pone img como block; centramos con márgenes */
 }
 .cal-photo__msg {
   margin-top: var(--sp-16);
@@ -729,20 +852,103 @@
 }
 
 /* Estrella interactiva */
+/* Minijuego de tocar estrellas (tipo clickStar) — todo dentro de la tarjeta */
 .cal-star { text-align: center; }
-.cal-star__btn {
+.cal-star-game__field {
+  position: relative;
+  height: 240px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--theme-divider);
+  background:
+    radial-gradient(1px 1px at 18% 26%, rgba(255, 214, 102, 0.55) 50%, transparent 50%),
+    radial-gradient(1px 1px at 72% 18%, rgba(255, 214, 102, 0.4) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 45% 78%, rgba(255, 214, 102, 0.5) 50%, transparent 50%),
+    radial-gradient(1px 1px at 85% 62%, rgba(255, 214, 102, 0.45) 50%, transparent 50%),
+    radial-gradient(1px 1px at 30% 55%, rgba(255, 214, 102, 0.35) 50%, transparent 50%),
+    var(--theme-surface);
+  overflow: hidden;
+}
+.cal-star-game__star {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 3.2rem;
+  padding: 8px;
+  font-size: 2.6rem;
   line-height: 1;
-  padding: var(--sp-16);
-  transition: transform var(--dur-spring);
-  filter: drop-shadow(0 0 14px rgba(255, 179, 71, 0.35));
+  filter: drop-shadow(0 0 12px rgba(255, 179, 71, 0.5));
+  transition: opacity var(--dur-fast);
+  animation: calStarFloat 2.4s ease-in-out infinite;
+  -webkit-tap-highlight-color: transparent;
 }
-.cal-star__btn:hover { transform: scale(1.08) rotate(-4deg); }
-.cal-star__btn.is-popped { transform: scale(1.25) rotate(6deg); }
-.cal-star p { color: var(--theme-text-secondary); }
+.cal-star-game__star:hover { transform: scale(1.12) rotate(-4deg); }
+.cal-star-game__star.is-popped {
+  animation: none;
+  transform: scale(1.9) rotate(18deg);
+  opacity: 0;
+}
+.cal-star-game__puff {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 1.1rem;
+  pointer-events: none;
+  opacity: 0;
+}
+.cal-star-game__puff.is-burst {
+  animation: calStarPuff 0.6s ease-out forwards;
+}
+.cal-star-game__win {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: radial-gradient(circle, rgba(255, 214, 102, 0.22), transparent 70%);
+}
+.cal-star-game__win.is-show { display: flex; }
+.cal-star-game__win-star {
+  font-size: 3.4rem;
+  filter: drop-shadow(0 0 16px rgba(255, 179, 71, 0.6));
+  animation: calStarPop 0.5s var(--dur-spring);
+}
+.cal-star-game__win-text {
+  font-weight: 700;
+  color: var(--theme-accent);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+}
+.cal-star-game__counter {
+  text-align: center;
+  font-weight: 600;
+  color: var(--theme-text-secondary);
+  margin: 10px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.cal-star-game__msg {
+  color: var(--theme-text-secondary);
+  text-align: center;
+  margin-top: var(--sp-8);
+}
+
+@keyframes calStarFloat {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-6px) rotate(3deg); }
+}
+@keyframes calStarPuff {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.7); }
+}
+@keyframes calStarPop {
+  0%   { transform: scale(0) rotate(-30deg); }
+  60%  { transform: scale(1.3) rotate(8deg); }
+  100% { transform: scale(1) rotate(0); }
+}
 
 /* Lista de deseos */
 .cal-wishlist__title {
@@ -1153,6 +1359,12 @@ body.sheet-locked { overflow: hidden; }
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Día con un solo contenido: la cabecera de la hoja ya muestra chip y título */
+.cal-multi__item.is-single {
+  align-items: center;
+  width: 100%;
 }
 
 .cal-multi__sep {

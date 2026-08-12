@@ -40,7 +40,7 @@
     "2026-08": {
       "label": "Agosto 2026",
       "calendarMapping": {
-        "1": "carta_agosto1",
+        "1": "",
         "2": "",
         "3": "",
         "4": "",
@@ -142,7 +142,8 @@
       },
       "redirect": false,
       "data": {
-        "message": "Haz clic en las estrellas que aparecen."
+        "message": "Haz clic en las estrellas que aparecen.",
+        "stars": 8
       }
     },
     {
@@ -360,20 +361,6 @@
         "videoUrl": "https://res.cloudinary.com/dcsent4fs/video/upload/v1784300673/video5967786976810638627_tilj4s.mp4",
         "cover": "https://res.cloudinary.com/dcsent4fs/video/upload/f_jpg,so_auto/v1784300673/video5967786976810638627_tilj4s.jpg",
         "caption": "El video esta disponible en tu rincón favorito!"
-      }
-    },
-    {
-      "id": "carta_agosto1",
-      "title": "✉️ Carta de Agosto",
-      "type": "letter",
-      "unlock": {
-        "mode": "date",
-        "value": "2026-08-01"
-      },
-      "redirect": false,
-      "data": {
-        "content": "Bienvenida a Agosto, mi amor.\n\nUn nuevo mes lleno de sorpresas y momentos bonitos.\n\nTe quiero mucho, más de lo que las palabras pueden expresar.\n\nSiempre tuyo,\ntu peluche 🤍",
-        "question": "¿Cuál es tu recuerdo favorito conmigo?"
       }
     }
   ]

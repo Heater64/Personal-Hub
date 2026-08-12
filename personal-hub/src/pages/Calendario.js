@@ -97,6 +97,7 @@ let progressMap = {};
 let lastFocusedEl = null;
 let onKey = null;
 let calVideoRefs = []; // vídeos del sheet activo (para pausarlos con suavidad)
+let calAudioRefs = []; // reproductores de audio del sheet activo (ídem)
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -483,17 +484,18 @@ export function CalendarioPage(router) {
     const sheet = page.querySelector('#calSheet');
     sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
 
-    // Estrella interactiva (tipo clickStar)
-    const star = page.querySelector('#calStar');
-    if (star) star.addEventListener('click', () => {
-      star.classList.add('is-popped');
-      setTimeout(() => star.classList.remove('is-popped'), 320);
-    });
   }
 
   // ===== APERTURA DEL DÍA (uno o varios contenidos) =====
   function renderDayContents(gifts) {
     const esc = escapeHtml;
+    // Con un solo contenido, la cabecera de la hoja ya muestra el chip y el
+    // título; no se repiten dentro de la tarjeta.
+    const single = gifts.length === 1;
+    if (single) {
+      const g = gifts[0];
+      return `<div class="cal-multi__item is-single">${renderContent(g)}${g?.data?.question ? renderAskBlock(g) : ''}</div>`;
+    }
     return `<div class="cal-multi">${gifts.map((g, i) => {
       const meta = TYPE_META[g.type] || { label: 'Sorpresa', emoji: '✨' };
       return `
@@ -529,7 +531,9 @@ export function CalendarioPage(router) {
     const meta = TYPE_META[gifts[0].type] || { label: 'Sorpresa', emoji: '✨' };
     chip.textContent = single ? `${meta.emoji} ${meta.label}` : `🎁 ${gifts.length} sorpresas hoy`;
     chip.classList.toggle('is-special', gifts.some(g => g.special));
-    title.textContent = single ? (gifts[0].title || 'Sorpresa') : (gifts[0].title || 'Sorpresas del día');
+    // En días múltiples la cabecera es genérica: cada tarjeta lleva su propio
+    // chip y título, así no se repite el de la primera.
+    title.textContent = single ? (gifts[0].title || 'Sorpresa') : 'Sorpresas del día';
     body.innerHTML = `<div class="cal-reveal">${renderDayContents(gifts)}</div>`;
 
     // Monta los reproductores de vídeo (varios posibles) con la barra glass
@@ -543,6 +547,30 @@ export function CalendarioPage(router) {
       calVideoRefs.push(player);
     });
 
+    // Portadas de música: si la imagen falla, se muestra el fallback
+    body.querySelectorAll('.cal-media__cover-img').forEach(img => {
+      if (img.complete && img.naturalWidth === 0) { img.remove(); return; }
+      img.addEventListener('error', () => img.remove(), { once: true });
+    });
+
+    // Monta los reproductores de audio (varios posibles) con la barra glass
+    body.querySelectorAll('.cal-media__player[data-audio-url]').forEach(audioSlot => {
+      if (!audioSlot.dataset.audioUrl) return;
+      const player = buildAudioPlayer({ src: audioSlot.dataset.audioUrl });
+      audioSlot.appendChild(player.wrap);
+      const cover = audioSlot.closest('.cal-media')?.querySelector('.cal-media__cover');
+      if (cover) {
+        // Tocar la portada reproduce/pausa; el botón grande flota sobre ella
+        cover.classList.add('is-player');
+        cover.appendChild(player.overlay);
+        cover.addEventListener('click', () => {
+          if (player.audio.paused) player.audio.play();
+          else player.audio.pause();
+        });
+      }
+      calAudioRefs.push(player);
+    });
+
     doneBtn.textContent = 'Hecho ❤';
     doneBtn.dataset.playUrl = '';
 
@@ -554,6 +582,9 @@ export function CalendarioPage(router) {
 
     // Acertijos y mates: botón "mostrar respuesta"
     bindReveals(body);
+
+    // Minijuego de estrellas (tipo clickStar) — todo dentro de la tarjeta
+    body.querySelectorAll('.cal-star[data-stars]').forEach(bindStarGame);
 
     lastFocusedEl = document.activeElement;
     sheet.classList.add('is-open');
@@ -590,6 +621,83 @@ export function CalendarioPage(router) {
         btn.textContent = show ? 'Ocultar respuesta' : label;
       });
     });
+  }
+
+  /** Minijuego de tocar estrellas (tipo clickStar): una estrella aparece en
+   *  un punto aleatorio del campo; al tocarla salta ✨ y aparece la siguiente.
+   *  Al completar todas, muestra el estado de victoria. Todo dentro de la tarjeta. */
+  function bindStarGame(root) {
+    if (!root) return;
+    const field = root.querySelector('.cal-star-game__field');
+    const star = root.querySelector('.cal-star-game__star');
+    const puff = root.querySelector('.cal-star-game__puff');
+    const win = root.querySelector('.cal-star-game__win');
+    const countEl = root.querySelector('.cal-star-game__count');
+    const total = parseInt(root.dataset.stars, 10) || 8;
+    if (!field || !star) return;
+
+    let got = 0;
+    let pending = false;
+
+    function placeStar() {
+      if (!root.isConnected) return;
+      const w = field.clientWidth;
+      const h = field.clientHeight;
+      const size = 56; // espacio que ocupa la estrella + padding
+      const x = Math.max(0, Math.min(w - size, Math.random() * (w - size)));
+      const y = Math.max(0, Math.min(h - size, Math.random() * (h - size)));
+      star.style.left = x + 'px';
+      star.style.top = y + 'px';
+      star.classList.remove('is-popped');
+      star.style.opacity = '';
+      star.style.transform = '';
+    }
+
+    function burst(x, y) {
+      if (!puff) return;
+      puff.style.left = x + 'px';
+      puff.style.top = y + 'px';
+      puff.classList.remove('is-burst');
+      void puff.offsetWidth; // reinicia la animación
+      puff.classList.add('is-burst');
+    }
+
+    function finish() {
+      if (!root.isConnected) return;
+      star.style.opacity = '0';
+      win.classList.add('is-show');
+      countEl.textContent = total;
+      // Pequeña lluvia de chispas para celebrar
+      for (let i = 0; i < 6; i++) {
+        setTimeout(() => {
+          if (!root.isConnected) return;
+          burst(
+            14 + Math.random() * Math.max(10, field.clientWidth - 28),
+            14 + Math.random() * Math.max(10, field.clientHeight - 28)
+          );
+        }, 90 * i);
+      }
+    }
+
+    star.addEventListener('click', () => {
+      if (pending) return;
+      pending = true;
+      got++;
+      countEl.textContent = got;
+
+      const sr = star.getBoundingClientRect();
+      const fr = field.getBoundingClientRect();
+      burst(sr.left - fr.left + sr.width / 2 - 12, sr.top - fr.top + sr.height / 2 - 12);
+      star.classList.add('is-popped');
+
+      if (got >= total) {
+        setTimeout(finish, 200);
+      } else {
+        setTimeout(() => { pending = false; placeStar(); }, 240);
+      }
+    });
+
+    placeStar();
   }
 
   /** Cajita de respuesta de un regalo interactivo (pregunta del Admin) */
@@ -697,8 +805,9 @@ export function CalendarioPage(router) {
     sheet.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('sheet-locked');
     if (onKey) { document.removeEventListener('keydown', onKey); onKey = null; }
-    // Pausa suave antes de destruir los vídeos (evita el corte brusco de audio)
+    // Pausa suave antes de destruir los vídeos/audios (evita el corte brusco)
     calVideoRefs.forEach(v => { try { v.video.pause(); } catch (e) {} });
+    calAudioRefs.forEach(a => { try { a.audio.pause(); } catch (e) {} });
     // Deja que la animación de salida complete (el contenido se desliza
     // con el panel) antes de destruirlo — transición no brusca
     const calBody = page.querySelector('#calSheetBody');
@@ -706,6 +815,8 @@ export function CalendarioPage(router) {
       if (!sheet.classList.contains('is-open')) {
         calVideoRefs.forEach(v => { try { v.destroy(); } catch (e) {} });
         calVideoRefs = [];
+        calAudioRefs.forEach(a => { try { a.destroy(); } catch (e) {} });
+        calAudioRefs = [];
         if (calBody) calBody.innerHTML = '';
       }
     }, 320);
@@ -762,19 +873,21 @@ export function CalendarioPage(router) {
             <span class="cal-letter__sigil" aria-hidden="true">❤</span>
           </div>`;
 
-      case 'cassette':
+      case 'cassette': {
+        const cover = data.coverImage || data.cover || '';
+        const audioUrl = data.audioUrl || '';
+        // Tarjeta de música: portada en grande con fallback, mensaje y reproductor
+        // de audio propio (barra glass acorde a la web) montado en openDay.
         return `
           <div class="cal-type cal-media">
-            <div class="cal-media__info">
-              <span class="cal-media__icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-              </span>
-              <strong>${esc(data.message || 'Música')}</strong>
+            <div class="cal-media__cover${cover ? '' : ' is-fallback'}"${audioUrl ? ` data-audio-url="${esc(audioUrl)}"` : ''}>
+              <span class="cal-media__cover-fallback" aria-hidden="true">🎵</span>
+              ${cover ? `<img class="cal-media__cover-img" src="${esc(cover)}" alt="Portada de la canción" loading="lazy">` : ''}
             </div>
-            <div class="cal-media__box">
-              ${data.audioUrl ? `<audio controls preload="metadata"><source src="${esc(data.audioUrl)}"></audio>` : '<p class="cal-muted">No hay audio disponible aún</p>'}
-            </div>
+            ${data.message ? `<p class="cal-media__msg">${esc(data.message)}</p>` : ''}
+            ${audioUrl ? '<div class="cal-media__player" data-audio-url="' + esc(audioUrl) + '"></div>' : '<p class="cal-muted">No hay audio disponible aún</p>'}
           </div>`;
+      }
 
       case 'giftBox':
         return `
@@ -835,12 +948,23 @@ export function CalendarioPage(router) {
           </div>`;
       }
 
-      case 'clickStar':
+      case 'clickStar': {
+        // Minijuego de tocar estrellas, todo dentro de la tarjeta.
+        const total = Math.max(3, Math.min(20, parseInt(data.stars, 10) || 8));
         return `
-          <div class="cal-type cal-star">
-            <button class="cal-star__btn" id="calStar" aria-label="Toca la estrella"><span aria-hidden="true">⭐</span></button>
-            <p>${esc(data.message || 'Toca la estrella ✧')}</p>
+          <div class="cal-type cal-star" data-stars="${total}">
+            <div class="cal-star-game__field">
+              <button class="cal-star-game__star" type="button" aria-label="Toca la estrella"><span aria-hidden="true">⭐</span></button>
+              <span class="cal-star-game__puff" aria-hidden="true">✨</span>
+              <div class="cal-star-game__win">
+                <span class="cal-star-game__win-star" aria-hidden="true">⭐</span>
+                <span class="cal-star-game__win-text">¡Lo conseguiste!</span>
+              </div>
+            </div>
+            <p class="cal-star-game__counter">★ <span class="cal-star-game__count">0</span> / ${total}</p>
+            <p class="cal-star-game__msg">${esc(data.message || 'Toca las estrellas que aparecen ✧')}</p>
           </div>`;
+      }
 
       case 'game': {
         // Los juegos clásicos (julio) guardan redirectUrl a nivel de regalo;
@@ -993,8 +1117,176 @@ export function CalendarioPage(router) {
     if (onKey) { document.removeEventListener('keydown', onKey); onKey = null; }
     calVideoRefs.forEach(v => { try { v.destroy(); } catch (e) {} });
     calVideoRefs = [];
+    calAudioRefs.forEach(a => { try { a.destroy(); } catch (e) {} });
+    calAudioRefs = [];
     document.body.classList.remove('sheet-locked');
   };
 
   return page;
+}
+
+// ==========================================
+// REPRODUCTOR DE AUDIO — barra glass acorde a la web (tarjeta de música)
+// Misma familia visual que el reproductor de vídeo de la galería, pero
+// adaptada a la superficie clara del calendario.
+// ==========================================
+function audioMime(url) {
+  const ext = (url.split('?')[0].split('.').pop() || '').toLowerCase();
+  if (ext === 'mp3') return 'audio/mpeg';
+  if (ext === 'm4a' || ext === 'm4b' || ext === 'aac') return 'audio/mp4';
+  if (ext === 'wav') return 'audio/wav';
+  if (ext === 'ogg' || ext === 'oga') return 'audio/ogg';
+  return '';
+}
+
+const AUDIO_CTRL_HTML = `
+  <button class="cal-audio__btn cal-audio__play" type="button" title="Reproducir / Pausar" aria-label="Reproducir">
+    <svg class="cal-audio__play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <svg class="cal-audio__pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+  </button>
+  <span class="cal-audio__time">0:00</span>
+  <div class="cal-audio__progress">
+    <div class="cal-audio__track">
+      <div class="cal-audio__fill"></div>
+      <div class="cal-audio__thumb"></div>
+    </div>
+  </div>
+  <span class="cal-audio__time cal-audio__time--total">0:00</span>
+  <button class="cal-audio__btn cal-audio__vol" type="button" title="Silenciar" aria-label="Silenciar">
+    <svg class="cal-audio__vol-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+    <svg class="cal-audio__vol-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+  </button>
+`;
+
+/** Construye el reproductor de audio de la tarjeta de música.
+ *  Devuelve { wrap, audio, overlay, destroy }. */
+function buildAudioPlayer(opts = {}) {
+  const { src = '' } = opts;
+  const wrap = document.createElement('div');
+  wrap.className = 'cal-audio';
+
+  const audio = document.createElement('audio');
+  audio.preload = 'metadata';
+  const source = document.createElement('source');
+  source.src = src;
+  const mime = audioMime(src);
+  if (mime) source.type = mime;
+  audio.appendChild(source);
+
+  // Gran botón de play flotante sobre la portada (solo visible en pausa)
+  const overlay = document.createElement('button');
+  overlay.className = 'cal-audio__overlay';
+  overlay.type = 'button';
+  overlay.title = 'Reproducir';
+  overlay.setAttribute('aria-label', 'Reproducir canción');
+  overlay.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+  overlay.addEventListener('click', (e) => {
+    e.stopPropagation(); // evita el toggle del cover
+    audio.play();
+  });
+
+  const ctrlBar = document.createElement('div');
+  ctrlBar.className = 'cal-audio__controls';
+  ctrlBar.innerHTML = AUDIO_CTRL_HTML;
+
+  wrap.appendChild(audio);
+  wrap.appendChild(ctrlBar);
+  bindAudioControls(audio, ctrlBar, overlay);
+
+  function destroy() {
+    try {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    } catch (e) {}
+    try { ctrlBar._calAudioCleanup?.(); } catch (e) {}
+  }
+
+  return { wrap, audio, overlay, destroy };
+}
+
+/** Conecta la barra glass al <audio>: play/pausa, progreso (clic + arrastre),
+ *  tiempos y volumen. Actualiza el botón flotante de la portada. */
+function bindAudioControls(audio, ctrlBar, overlay) {
+  const playBtn = ctrlBar.querySelector('.cal-audio__play');
+  const playIcon = ctrlBar.querySelector('.cal-audio__play-icon');
+  const pauseIcon = ctrlBar.querySelector('.cal-audio__pause-icon');
+  const progress = ctrlBar.querySelector('.cal-audio__progress');
+  const track = ctrlBar.querySelector('.cal-audio__track');
+  const fill = ctrlBar.querySelector('.cal-audio__fill');
+  const thumb = ctrlBar.querySelector('.cal-audio__thumb');
+  const timeEl = ctrlBar.querySelector('.cal-audio__time');
+  const totalEl = ctrlBar.querySelector('.cal-audio__time--total');
+  const volBtn = ctrlBar.querySelector('.cal-audio__vol');
+  const volOn = ctrlBar.querySelector('.cal-audio__vol-on');
+  const volOff = ctrlBar.querySelector('.cal-audio__vol-off');
+
+  let isDragging = false;
+
+  const fmt = s => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+  };
+
+  function setPlaying(paused) {
+    playIcon.style.display = paused ? '' : 'none';
+    pauseIcon.style.display = paused ? 'none' : '';
+    playBtn.setAttribute('aria-label', paused ? 'Reproducir' : 'Pausar');
+    if (overlay) overlay.classList.toggle('is-hidden', !paused);
+  }
+
+  function updateProgress() {
+    if (!audio.duration || isDragging) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    fill.style.width = pct + '%';
+    thumb.style.left = pct + '%';
+    timeEl.textContent = fmt(audio.currentTime);
+  }
+
+  function seekTo(e) {
+    const rect = track.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (audio.duration) audio.currentTime = pct * audio.duration;
+  }
+
+  playBtn.addEventListener('click', () => {
+    if (audio.paused) audio.play();
+    else audio.pause();
+  });
+
+  // Progreso: clic + arrastre (ratón y táctil)
+  progress.addEventListener('click', (e) => { seekTo(e); updateProgress(); });
+  progress.addEventListener('mousedown', (e) => { isDragging = true; seekTo(e); updateProgress(); });
+  progress.addEventListener('touchstart', (e) => { isDragging = true; seekTo(e.touches[0]); updateProgress(); }, { passive: true });
+  const onMove = (e) => { if (isDragging) { seekTo(e); updateProgress(); } };
+  const onUp = () => { isDragging = false; };
+  const onTouchMove = (e) => { if (isDragging) { seekTo(e.touches[0]); updateProgress(); } };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchmove', onTouchMove, { passive: true });
+  document.addEventListener('touchend', onUp);
+
+  // Volumen
+  volBtn.addEventListener('click', () => {
+    audio.muted = !audio.muted;
+    volOn.style.display = audio.muted ? 'none' : '';
+    volOff.style.display = audio.muted ? '' : 'none';
+    volBtn.setAttribute('aria-label', audio.muted ? 'Activar sonido' : 'Silenciar');
+  });
+
+  audio.addEventListener('timeupdate', updateProgress);
+  audio.addEventListener('play', () => setPlaying(false));
+  audio.addEventListener('pause', () => setPlaying(true));
+  audio.addEventListener('loadedmetadata', () => {
+    totalEl.textContent = fmt(audio.duration || 0);
+    updateProgress();
+  });
+
+  ctrlBar._calAudioCleanup = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('touchend', onUp);
+  };
 }

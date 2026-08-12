@@ -8,31 +8,31 @@
    ❤️ Motivación · 💌 Cartas · 🧩 Acertijos · 💡 Curiosidades
    · 🧘 Desconexión · 🎯 Retos · 📸 Fotos · 🎬 Vídeos
    · 🎁 Sorpresas · 🔗 Retos reales · 🎨 Manualidades PDF
-   · 🎮 Juegos (fechas fijas).
+   · 🎮 Juegos (solo los no desbloqueados en julio, en días
+     consecutivos desde el arranque; luego sigue el resto).
 
    El Admin puede reemplazar este esqueleto desde el panel
    (Contenido → Regalos) sin necesidad de tocar código.
    ========================================== */
 
-const START_DATE = '2026-08-11';
+const START_DATE = '2026-08-15';
 const END_DATE = '2026-12-31';
 
+// Solo los juegos que NO se desbloquearon en julio (los de julio ya se
+// jugaron: memoria, ahorcado, tiroarco, snake, buscaminas, laberinto,
+// meteoritos, cuchillos, torre, breakout), en días consecutivos desde el
+// 15 de agosto. Los juegos retirados de la sala (flappy, nonogramas, dino,
+// doodle, match3, asteroides) tampoco se asignan.
 const GAME_DATES = {
-  '2026-08-11': ['agujero-negro', 'Agujero Negro', 'Escapa de la gravedad antes de que te atrape.'],
-  '2026-08-20': ['tetris', 'Tetris', 'Completa líneas y supera tu mejor marca.'],
-  '2026-08-29': ['2048', '2048', 'Une las baldosas hasta alcanzar el 2048.'],
-  '2026-09-08': ['conecta4', 'Conecta 4', 'Invita a tu rival y consigue cuatro fichas en línea.'],
-  '2026-09-18': ['tresenraya', 'Tres en Raya', 'Un clásico rápido para jugar juntos.'],
-  '2026-09-28': ['flappy', 'Flappy Bird', 'Mantén el vuelo y supera tu récord.'],
-  '2026-10-08': ['invaders', 'Space Invaders', 'Defiende la galaxia de la invasión.'],
-  '2026-10-18': ['pong', 'Pong', 'Un duelo clásico, sencillo y adictivo.'],
-  '2026-10-28': ['asteroides', 'Asteroides', 'Pilota con cuidado y despeja el espacio.'],
-  '2026-11-07': ['simon', 'Simon Dice', 'Recuerda la secuencia y llega más lejos.'],
-  '2026-11-17': ['nonogramas', 'Nonogramas', 'Resuelve la imagen siguiendo las pistas.'],
-  '2026-11-27': ['dino', 'Dino Run', 'Salta los cactus y aguanta todo lo posible.'],
-  '2026-12-07': ['doodle', 'Doodle Jump', 'Salta entre plataformas sin dejar de subir.'],
-  '2026-12-17': ['match3', 'Match-3', 'Combina gemas y encadena tus mejores jugadas.'],
-  '2026-12-27': ['battleship', 'Hundir la Flota', 'Prepara tu estrategia y encuentra la flota rival.']
+  '2026-08-15': ['agujero-negro', 'Agujero Negro', 'Escapa de la atracción gravitatoria antes de que te atrape.'],
+  '2026-08-16': ['tetris', 'Tetris', 'Encaja las piezas y completa líneas.'],
+  '2026-08-17': ['2048', '2048', 'Une las baldosas hasta alcanzar el 2048.'],
+  '2026-08-18': ['conecta4', 'Conecta 4', 'Consigue cuatro fichas en línea antes que tu rival.'],
+  '2026-08-19': ['tresenraya', 'Tres en Raya', 'Un clásico rápido para jugar juntos.'],
+  '2026-08-20': ['invaders', 'Space Invaders', 'Defiende la galaxia de la invasión alienígena.'],
+  '2026-08-21': ['pong', 'Pong', 'Un duelo clásico, sencillo y adictivo.'],
+  '2026-08-22': ['simon', 'Simon Dice', 'Recuerda la secuencia y llega más lejos.'],
+  '2026-08-23': ['battleship', 'Hundir la Flota', 'Prepara tu estrategia y encuentra la flota rival.']
 };
 
 // ==========================================
@@ -243,10 +243,14 @@ export function expandCalendarCatalog(input) {
     const existingTypes = new Set(existingIds.map(id => catalog.giftsById?.[id]?.type).filter(Boolean));
 
     const plan = [];
-    if (GAME_DATES[dateStr]) plan.unshift(buildGameGift(dateStr, GAME_DATES[dateStr]));
-    const dayPlan = buildDayPlan(dateStr, dayIndex, extraSeq);
-    if (dayPlan.length === 3) extraSeq += 1; // se añadió el extra → avanza la rotación
-    dayPlan.forEach(item => plan.push(item));
+    if (GAME_DATES[dateStr]) {
+      // Días de juego: SOLO el juego, sin motivación/carta ni acertijo/curiosidad.
+      plan.push(buildGameGift(dateStr, GAME_DATES[dateStr]));
+    } else {
+      const dayPlan = buildDayPlan(dateStr, dayIndex, extraSeq);
+      if (dayPlan.length === 3) extraSeq += 1; // se añadió el extra → avanza la rotación
+      dayPlan.forEach(item => plan.push(item));
+    }
 
     // Respeta lo ya asignado y añade el plan sin duplicar tipos ni ids
     const finalIds = [...existingIds];

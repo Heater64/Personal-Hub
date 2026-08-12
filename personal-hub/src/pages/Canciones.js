@@ -19,8 +19,9 @@ import {
   initPlaylistsRealtime, onPlaylistsChange
 } from '../services/playlists.service.js';
 import {
-  startListenTogether, stopListenTogether, sendListenEvent, onListenTogether,
-  requestListenTogether, cancelListenRequest, getListenTogetherState
+  startListenTogether, stopListenTogether, onListenTogether,
+  requestListenTogether, cancelListenRequest, getListenTogetherState,
+  submitListenState, fetchListenState
 } from '../services/listenTogether.service.js';
 
 const SONGS_BASE = "https://canciones-que-me-recuerdan-a-ti.vercel.app";
@@ -49,6 +50,11 @@ const MUSIC_ICONS = {
   plus:   (s = 16) => svgIcon('<path d="M5 12h14"/><path d="M12 5v14"/>', s),
   list:   (s = 16) => svgIcon('<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>', s),
   'list-x': (s = 16) => svgIcon('<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="m19 10 4 4"/><path d="m23 10-4 4"/>', s),
+  'list-plus': (s = 16) => svgIcon('<path d="M3 6h13"/><path d="M3 12h13"/><path d="M3 18h7"/><path d="M19 9v6"/><path d="M22 12h-6"/>', s),
+  'play-next': (s = 16) => svgIcon('<path d="M4 5v14l9-7-9-7Z"/><path d="M19 5v14"/>', s),
+  prev:   (s = 16) => svgIcon('<polygon points="19 20 9 12 19 4 19 20"/><rect x="5" y="4" width="2.6" height="16" rx="1.3"/>', s),
+  next:   (s = 16) => svgIcon('<polygon points="5 4 15 12 5 20 5 4"/><rect x="16.4" y="4" width="2.6" height="16" rx="1.3"/>', s),
+  repeat: (s = 16) => svgIcon('<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>', s),
   'move-right': (s = 16) => svgIcon('<path d="M18 8 22 12 18 16"/><path d="M2 12H22"/>', s),
   edit:   (s = 16) => svgIcon('<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>', s),
   trash:  (s = 16) => svgIcon('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>', s),
@@ -296,6 +302,7 @@ export function CancionesPage(router) {
   let isCustomView = false;      // la lista activa es una playlist compartida
   let favMenuTitle = null;       // título de la canción con el menú ⋮ abierto
   let trackMenuKey = null;       // clave (título|artista) con el menú ⋮ abierto
+  let deleteConfirmKey = null;   // clave de la canción pendiente de confirmar el borrado
   let playlistEditId = null;     // playlist personalizada en edición (modal)
   let picker = null;             // { key, mode: 'add'|'move', fromId }
   let plCardMenu = null;         // id de la playlist con su menú ⋮ abierto (tarjeta)
@@ -308,23 +315,22 @@ export function CancionesPage(router) {
   // Audio GLOBAL (player.service): sobrevive a re-renders y a la navegación.
   let audioEl = player.audio;
   let consecutiveErrors = 0; // guarda anti-bucle al saltar pistas rotas
-  let shuffleMode = false;
   let shuffleHistory = [];
+  // shuffle/repeat viven en player.service: la barra global (reproductor
+  // expandido) y esta página comparten el mismo estado.
   // Favoritos normalizados en minúsculas + aislados por usuario (migración legacy incluida)
   migrateUserPref('favSongs');
   let favorites = new Set((JSON.parse(localStorage.getItem(userPrefKey('favSongs')) || '[]') || []).map(t => String(t).toLowerCase()));
   let queue = []; // indices in activeList
+  let queueMenuPos = null; // posición en la cola con el menú ⋮ abierto
+  let queuePanelOpen = false; // el panel de cola sobrevive a los re-renders
   // Escuchar juntos: sincronización de reproducción entre dispositivos
   let listenTogether = false;   // la sesión compartida está activa
   let listenPeer = '';          // nombre del otro dispositivo en la sesión
   let listenPeerAvatar = '';    // foto del otro dispositivo en la sesión
   let listenSuppress = 0;       // evita el eco al aplicar eventos recibidos
-  let lastSync = { key: null, playing: null, t: -1 }; // último estado enviado al peer
-  // Último evento de canción aceptado (local o del peer): { at, from }. El
-  // orden total (timestamp, id) garantiza que ambos dispositivos convergen en
-  // la MISMA canción: si dos anuncios coinciden en el milisegundo, gana el de
-  // id mayor (desempate determinista, no aleatorio).
-  let lastSongEvent = { at: 0, from: '' };
+  let lastSync = { key: null, playing: null, t: -1 }; // último estado enviado al servidor
+  let syncInFlight = false;     // evita solapar RPCs del tick (heartbeat en curso)
   let syncTimer = null;         // tick de sincronización (~3 veces por segundo)
   let offListen = () => {};     // desuscripción de la sesión compartida
   let searchQuery = '';
@@ -537,12 +543,34 @@ export function CancionesPage(router) {
     return list;
   }
 
-  function getRandomIdx(len) {
-    const avoid = Math.min(3, Math.floor(len / 2));
-    const recent = shuffleHistory.slice(-avoid);
-    const available = [];
-    for (let i = 0; i < len; i++) if (!recent.includes(i)) available.push(i);
-    return available.length > 0 ? available[Math.floor(Math.random() * available.length)] : Math.floor(Math.random() * len);
+  // Modo aleatorio SIN repetir: shuffleHistory guarda los índices ya sonados
+  // del ciclo actual. Al completar el ciclo (toda la lista sonó) se reinicia
+  // sin repetir la canción que acaba de sonar. loadSong() añade cada tema al
+  // historial cuando el shuffle está activo.
+  function pickShuffleIdx(len) {
+    if (len <= 1) return 0;
+    let pool = [];
+    for (let i = 0; i < len; i++) {
+      if (i !== currentIdx && !shuffleHistory.includes(i)) pool.push(i);
+    }
+    if (!pool.length) {
+      // Ciclo completado: nuevo ciclo excluyendo solo la canción actual.
+      shuffleHistory = [currentIdx];
+      for (let i = 0; i < len; i++) if (i !== currentIdx) pool.push(i);
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // ¿Queda alguna canción siguiente? Se usa en el modo 'off' (sin repetición)
+  // para detenerse cuando la lista se acaba: en orden, tras la última; en
+  // aleatorio, cuando ya han sonado todas las del ciclo.
+  function hasNextTrack() {
+    if (queue.length > 0) return true;
+    const len = activeList.length;
+    if (len <= 1) return false;
+    if (currentIdx < 0 || currentIdx >= len) return true;
+    if (player.shuffle) return shuffleHistory.length < len;
+    return currentIdx < len - 1;
   }
 
   // ==========================================
@@ -553,6 +581,8 @@ export function CancionesPage(router) {
     const s = currentIdx >= 0 ? activeList[currentIdx] : null;
     const displayList = getFilteredSortedList();
     const user = userStore.getUser();
+    // Eliminar canción del catálogo: solo el admin y solo en "Todas las canciones"
+    const isAdminUser = !!userStore.isAdmin;
     const name = user?.name || '';
     const heroImg = s?.cover || HERO_DEFAULT_IMG;
     const curPl = playlists.find(p => p.id === activePlaylistId);
@@ -684,10 +714,17 @@ export function CancionesPage(router) {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                   </a>` : ''}
                   ${menuOpen ? `<div class="music-track-menu-pop" data-key="${escapeHtml(key)}">
+                    <button class="music-track-menu-item" data-qplay-next data-key="${escapeHtml(key)}" type="button">${MUSIC_ICONS['play-next'](15)} Reproducir a continuación</button>
+                    ${queueHas(key)
+                      ? `<button class="music-track-menu-item" data-qremove data-key="${escapeHtml(key)}" type="button">${MUSIC_ICONS['list-x'](15)} Quitar de la cola</button>`
+                      : `<button class="music-track-menu-item" data-qadd data-key="${escapeHtml(key)}" type="button">${MUSIC_ICONS['list-plus'](15)} Añadir a la cola</button>`}
+                    <div class="music-track-menu-sep" role="separator"></div>
                     <button class="music-track-menu-item" data-pl-pick="add" data-key="${escapeHtml(key)}" type="button">${MUSIC_ICONS.plus(15)} Añadir a playlist</button>
                     ${inCurPl ? `<button class="music-track-menu-item" data-pl-remove data-key="${escapeHtml(key)}" type="button">${MUSIC_ICONS['list-x'](15)} Quitar de la playlist</button>` : ''}
                     ${inCurPl ? `<button class="music-track-menu-item" data-pl-pick="move" data-key="${escapeHtml(key)}" type="button">${MUSIC_ICONS['move-right'](15)} Mover a otra playlist</button>` : ''}
                     ${t.lyrics ? `<button class="music-track-menu-item" data-pl-lyrics data-key="${escapeHtml(key)}" type="button">${MUSIC_ICONS.music(15)} Ver letra</button>` : ''}
+                    ${isAdminUser && activePlaylistId === 'completas' ? `<div class="music-track-menu-sep" role="separator"></div>
+                    <button class="music-track-menu-item is-danger" data-song-del data-key="${escapeHtml(key)}" type="button">${MUSIC_ICONS.trash(15)} Eliminar canción</button>` : ''}
                   </div>` : ''}
                 </div>`;
               }).join('')}
@@ -697,7 +734,7 @@ export function CancionesPage(router) {
         </section>
 
         <!-- Queue panel -->
-        <div class="music-queue" id="queuePanel" style="display:none">
+        <div class="music-queue" id="queuePanel" style="display:${queuePanelOpen ? '' : 'none'}">
           <div class="music-queue-header">
             <h3>Cola de reproducción</h3>
             <button class="music-queue-clear" id="queueClear" type="button">Limpiar cola</button>
@@ -760,6 +797,38 @@ export function CancionesPage(router) {
             </div>
           </div>
         </div>` : ''}
+
+        <!-- Confirmación de borrado de canción (solo admin) -->
+        ${deleteConfirmKey ? (() => {
+          const dg = resolveSongByKey(deleteConfirmKey);
+          if (!dg) return '';
+          return `<div class="music-modal" id="songDelModal">
+            <div class="music-modal-card music-modal-card--confirm">
+              <div class="music-modal-head">
+                <h3>Eliminar canción</h3>
+                <button class="music-modal-close" id="songDelCancel" type="button" aria-label="Cerrar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div class="song-del-song">
+                <span class="song-del-cover">
+                  ${dg.cover
+                    ? `<img src="${escapeHtml(dg.cover)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${coverFallback(dg.title)}`
+                    : coverFallback(dg.title)}
+                </span>
+                <span class="song-del-meta">
+                  <strong>${escapeHtml(dg.title)}</strong>
+                  ${dg.artist ? `<span>${escapeHtml(dg.artist)}</span>` : ''}
+                </span>
+              </div>
+              <p class="song-del-warning">Se borrará de todas las canciones y de la base de datos: desaparecerá para los dos. Esta acción no se puede deshacer.</p>
+              <div class="music-modal-actions">
+                <button class="music-pl-cancel" id="songDelCancelBtn" type="button">Cancelar</button>
+                <button class="song-del-confirm" id="songDelConfirm" type="button">${MUSIC_ICONS.trash(15)} Eliminar</button>
+              </div>
+            </div>
+          </div>`;
+        })() : ''}
       </div>
     `;
   }
@@ -866,6 +935,8 @@ export function CancionesPage(router) {
         const isCurrent = s && sg.title === s.title && sg.artist === s.artist;
         const dur = trackDurations[sg.audio] ? formatTime(trackDurations[sg.audio]) : '--:--';
         const menuOpen = favMenuTitle === sg.title;
+        const fKey = songKey(sg.title, sg.artist);
+        const canQueue = idxInActiveList(fKey) >= 0; // la cola vive sobre la lista activa
         return `
         <div class="music-fav-row ${isCurrent ? 'is-active' : ''}" data-title="${escapeHtml(sg.title)}" data-artist="${escapeHtml(sg.artist || '')}" role="button" tabindex="0" aria-label="Reproducir ${escapeHtml(sg.title)}">
           <span class="music-fav-idx">${isCurrent && isPlaying
@@ -891,8 +962,12 @@ export function CancionesPage(router) {
           </span>
         </div>
         ${menuOpen ? `<div class="music-fav-menu">
+          ${canQueue ? `<button class="music-fav-menu-item" data-qplay-next data-key="${escapeHtml(fKey)}" type="button">${MUSIC_ICONS['play-next'](14)} Reproducir a continuación</button>
+          ${queueHas(fKey)
+            ? `<button class="music-fav-menu-item" data-qremove data-key="${escapeHtml(fKey)}" type="button">${MUSIC_ICONS['list-x'](14)} Quitar de la cola</button>`
+            : `<button class="music-fav-menu-item" data-qadd data-key="${escapeHtml(fKey)}" type="button">${MUSIC_ICONS['list-plus'](14)} Añadir a la cola</button>`}` : ''}
           ${sg.lyrics ? `<button class="music-fav-menu-item" data-lyrics="${escapeHtml(sg.title)}" type="button">${MUSIC_ICONS.music(15)} Ver letra</button>` : ''}
-          <button class="music-fav-menu-item" data-pl-pick="add" data-key="${escapeHtml(songKey(sg.title, sg.artist))}" type="button">${MUSIC_ICONS.plus(15)} Añadir a playlist</button>
+          <button class="music-fav-menu-item" data-pl-pick="add" data-key="${escapeHtml(fKey)}" type="button">${MUSIC_ICONS.plus(15)} Añadir a playlist</button>
           <button class="music-fav-menu-item" data-unfav="${escapeHtml(sg.title)}" type="button">${MUSIC_ICONS['heart-off'](15)} Quitar de favoritas</button>
         </div>` : ''}`;
       }).join('')}
@@ -929,6 +1004,49 @@ export function CancionesPage(router) {
   }
 
   // ==========================================
+  // COLA — acciones desde el menú ⋮ de cada canción
+  // (la cola guarda índices sobre activeList; las acciones
+  // localizan por clave "título | artista" por si la lista
+  // cambió de orden/filtro entre renderizados)
+  // ==========================================
+  function idxInActiveList(key) {
+    return activeList.findIndex(s => songKey(s.title, s.artist) === key);
+  }
+
+  function queueHas(key) {
+    const idx = idxInActiveList(key);
+    return idx >= 0 && queue.includes(idx);
+  }
+
+  // "Reproducir a continuación": la mete la primera de la cola
+  // (quita duplicados previos para no sonar dos veces).
+  function playNextInQueue(key) {
+    const idx = idxInActiveList(key);
+    if (idx < 0) return;
+    queue = queue.filter(q => q !== idx);
+    queue.unshift(idx);
+    renderQueue();
+    showToast('Se reproducirá a continuación', 'success');
+  }
+
+  function addToQueue(key) {
+    const idx = idxInActiveList(key);
+    if (idx < 0) return;
+    if (queue.includes(idx)) { showToast('Ya está en la cola', 'info'); return; }
+    queue.push(idx);
+    renderQueue();
+    showToast('Añadida a la cola', 'success');
+  }
+
+  function removeFromQueue(key) {
+    const idx = idxInActiveList(key);
+    if (idx < 0) return;
+    queue = queue.filter(q => q !== idx);
+    renderQueue();
+    showToast('Quitada de la cola', 'info');
+  }
+
+  // ==========================================
   // UPDATE UI (partial updates without full re-render)
   // ==========================================
   function updateUI() {
@@ -936,20 +1054,21 @@ export function CancionesPage(router) {
     // la reproducción se conserva sola entre re-renders.
     render();
     bindEvents();
+    // El render recrea el panel de cola: si estaba abierto, repinta su lista
+    if (queuePanelOpen) renderQueue();
   }
 
   function updatePlayBtn() {
-    const playIcon = page.querySelector('#playIcon');
-    if (!playIcon) return;
-    playIcon.innerHTML = isPlaying
-      ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
-      : '<polygon points="5 3 19 12 5 21 5 3"/>';
-    const artwork = page.querySelector('#artworkWrapper');
-    if (artwork) artwork.classList.toggle('is-spinning', isPlaying);
+    // El botón de play vive en la barra global (NowPlayingBar), que se
+    // actualiza sola al cambiar el estado del player. Se mantiene como
+    // punto de enganche por si la página recupera controles propios.
   }
 
   function loadSong(idx) {
     currentIdx = idx;
+    // Modo aleatorio sin repetir: cada tema que suena entra en el historial
+    // del ciclo actual (cubre reproducciones manuales, cola y saltos).
+    if (player.shuffle && !shuffleHistory.includes(idx)) shuffleHistory.push(idx);
     const s = activeList[idx];
     if (!s) return;
     // updateUI() re-renderiza y recrea el <audio>: asignamos el src DESPUÉS,
@@ -1037,49 +1156,68 @@ export function CancionesPage(router) {
     }
   }
 
-  /** Envía un evento a la sesión, salvo el eco de lo que acabamos de aplicar.
-   *  Los cambios de canción llevan timestamp (último escritor gana): el
-   *  dispositivo que cambió la canción más recientemente manda, y el otro
-   *  simplemente le sigue (así no se pisan entre ellos). */
+  /** Envía el estado local de reproducción al SERVIDOR autoritativo.
+   *  El servidor valida (acciones explícitas vs heartbeats del líder) y
+   *  decide qué se aplica → elimina el ping-pong entre dispositivos.
+   *  Solo se envía si no acabamos de aplicar el estado del servidor
+   *  (anti-eco) y si algo cambió realmente. */
   function maybeBroadcast(payload) {
     if (!listenTogether) return;
     if (Date.now() - listenSuppress < 1500) return;
-    if (payload.action === 'song') {
-      const from = userStore.getUser()?.id || '';
-      lastSongEvent = { at: Date.now(), from };
-      payload = { ...payload, at: lastSongEvent.at, from };
-    }
-    sendListenEvent(payload);
+    const s = activeList[currentIdx];
+    if (!s) return;
+    const key = payload.key || songKey(s.title, s.artist);
+    submitListenState({
+      song_key: key,
+      title: s.title || payload.title || '',
+      artist: s.artist || payload.artist || '',
+      playing: payload.playing === true,
+      position: Number.isFinite(payload.t) ? payload.t : 0,
+      is_action: true // cambio de canción / play / pausa: acción explícita
+    });
   }
 
   /** Tick de sincronización (~3 veces por segundo, como pide el diseño):
-   *  comprueba si ha cambiado la canción, el estado (pausa/reproduciendo)
-   *  o el segundo de la misma canción, y lo reenvía al otro dispositivo.
-   *  Así el seguimiento es continuo (cada ~333ms) y no solo al cambiar. */
-  function syncTick() {
-    if (!listenTogether) return;
-    if (currentIdx < 0 || !activeList[currentIdx]) return;
-    const s = activeList[currentIdx];
-    const key = songKey(s.title, s.artist);
-    const playing = isPlaying && !audioEl?.paused;
-    const t = audioEl?.currentTime || 0;
-    const prev = lastSync;
-    // 1) La canción cambió → 'song' (último escritor gana con timestamp)
-    if (key !== prev.key) {
-      lastSync = { key, playing, t };
-      maybeBroadcast({ action: 'song', key, t, playing });
-      return;
-    }
-    // 2) El estado (play/pausa) cambió → 'playpause'
-    if (playing !== prev.playing) {
-      lastSync = { key, playing, t };
-      maybeBroadcast({ action: 'playpause', key, t, playing });
-      return;
-    }
-    // 3) Misma canción pero el segundo avanzó → 'seek' (no más de 1/s)
-    if (Math.abs(t - prev.t) >= 1) {
-      lastSync = { key, playing, t };
-      maybeBroadcast({ action: 'seek', key, t, playing });
+   *  1) Heartbeat: envía el estado local al servidor (el servidor valida;
+   *     solo el líder avanza la posición en la misma canción/estado).
+   *  2) Sondeo: lee el estado autoritativo y lo aplica localmente, así
+   *     ambos dispositivos convergen a la misma canción, estado y segundo.
+   *  El servidor es la ÚNICA fuente de verdad: un dispositivo no puede
+   *  arrastrar el reloj compartido hacia atrás ni deshacer el estado del otro. */
+  async function syncTick() {
+    if (!listenTogether || syncInFlight) return;
+    syncInFlight = true;
+    try {
+      // 1) Heartbeat: envía el estado local SOLO si hay canción y algo cambió.
+      if (currentIdx >= 0 && activeList[currentIdx]) {
+        const s = activeList[currentIdx];
+        const key = songKey(s.title, s.artist);
+        const playing = isPlaying && !audioEl?.paused;
+        const t = audioEl?.currentTime || 0;
+        const prev = lastSync;
+        const suppress = Date.now() - listenSuppress < 1500;
+        const songChanged = key !== prev.key;
+        const stateChanged = playing !== prev.playing;
+        const jump = Math.abs(t - prev.t) > 2;      // seek manual (adelantar/retroceder)
+        const advanced = Math.abs(t - prev.t) >= 1; // avance normal de reproducción
+        if (!suppress && (songChanged || stateChanged || jump || advanced)) {
+          lastSync = { key, playing, t };
+          await submitListenState({
+            song_key: key,
+            title: s.title || '',
+            artist: s.artist || '',
+            playing,
+            position: t,
+            is_action: songChanged || stateChanged || jump
+          });
+        }
+      }
+      // 2) Sondeo del estado autoritativo SIEMPRE (aunque no haya canción
+      //    local ni hayamos enviado nada): adoptamos lo que diga el servidor.
+      const st = await fetchListenState();
+      if (st && st.song_key) applyServerState(st);
+    } finally {
+      syncInFlight = false;
     }
   }
 
@@ -1146,92 +1284,55 @@ export function CancionesPage(router) {
     updateListenChip();
   }
 
-  /** Aplica un evento del otro dispositivo sin crear ping-pong:
-   *  · 'seek' y 'playpause' NUNCA cambian de canción (solo se aplican si la
-   *    canción del evento es la que ya está sonando).
-   *  · 'song' solo se aplica si es más reciente que nuestro último cambio
-   *    local (último escritor gana) → ambos dispositivos convergen en la
-   *    misma canción en lugar de pelearse. */
-  function handlePeerEvent(p) {
-    if (!p?.key) return;
+  /** Aplica el estado AUTORITATIVO que devuelve el servidor (única fuente
+   *  de verdad). No hay arbitraje local: si el servidor dice otra canción,
+   *  otro estado o otra posición (fuera de tolerancia), lo aplicamos.
+   *  Se marca listenSuppress y se asimila lastSync para NO reenviar el eco
+   *  de lo que acabamos de aplicar (el ping-pong del broadcast desaparece). */
+  function applyServerState(st) {
+    if (!st || !st.song_key) return;
     const current = activeList[currentIdx];
-    const sameSong = !!(current && songKey(current.title, current.artist) === p.key);
+    const localKey = current ? songKey(current.title, current.artist) : '';
+    const localPlaying = isPlaying && !audioEl?.paused;
+    const localT = audioEl?.currentTime || 0;
+    const serverPlaying = st.playing === true;
+    const serverT = Number.isFinite(st.position) ? st.position : 0;
 
-    // Posición: solo se ajusta si es la misma canción. Nunca la cambia.
-    if (p.action === 'seek') {
-      if (!sameSong) return;
-      listenSuppress = Date.now();
-      if (audioEl && Number.isFinite(p.t) && p.t > 0 && Math.abs(audioEl.currentTime - p.t) > 1) {
-        audioEl.currentTime = p.t;
-      }
-      // Asimila la posición recibida para no reenviarla de vuelta (anti-eco)
-      lastSync = { ...lastSync, t: p.t };
-      return;
-    }
-
-    // Play/pausa: solo aplica si es la misma canción. Nunca la cambia.
-    if (p.action === 'playpause') {
-      if (!sameSong) return;
-      listenSuppress = Date.now();
-      if (p.playing === true && audioEl?.paused) {
-        isPlaying = true;
-        updatePlayBtn();
-        audioEl.play().catch(() => { isPlaying = false; updatePlayBtn(); });
-        player.setPlaying(true);
-      } else if (p.playing === false && audioEl && !audioEl.paused) {
-        audioEl.pause();
-        isPlaying = false;
-        updatePlayBtn();
-        player.setPlaying(false);
-      }
-      lastSync = { ...lastSync, playing: p.playing === true };
-      return;
-    }
-
-    // Cambio de canción: último escritor gana con orden total (timestamp, id).
-    // Si dos anuncios coinciden en el mismo milisegundo, gana el de id mayor:
-    // ambos dispositivos hacen la MISMA comparación, así convergen en la misma
-    // canción en lugar de intercambiársela (A=Y, B=X) y pelearse para siempre.
-    if (p.action === 'song') {
-      const peAt = p.at || 0;
-      const peFrom = p.from || '';
-      if (lastSongEvent.at !== 0) {
-        const newer = peAt > lastSongEvent.at
-          || (peAt === lastSongEvent.at && peFrom > lastSongEvent.from);
-        if (!newer) return; // evento viejo o empatado que no gana: ignora
-      }
-      const s = findSongByKey(p.key);
+    // El servidor dice OTRA canción → cambiar de canción.
+    if (st.song_key !== localKey) {
+      const s = findSongByKey(st.song_key);
       if (!s) return;
       listenSuppress = Date.now();
-      if (peAt > 0) lastSongEvent = { at: peAt, from: peFrom };
-      playSongObject(s, p.t);
-      lastSync = { key: p.key, playing: p.playing === true, t: p.t || 0 };
-      if (p.playing === true && audioEl?.paused) {
-        isPlaying = true;
-        updatePlayBtn();
-        audioEl.play().catch(() => { isPlaying = false; updatePlayBtn(); });
-        player.setPlaying(true);
-      } else if (p.playing === false && audioEl && !audioEl.paused) {
-        audioEl.pause();
-        isPlaying = false;
-        updatePlayBtn();
-        player.setPlaying(false);
-      }
+      playSongObject(s, serverT);
+      applyPlayState(serverPlaying);
+      lastSync = { key: st.song_key, playing: serverPlaying, t: serverT };
       return;
     }
 
-    // Compatibilidad: eventos antiguos sin action se tratan como 'song'.
-    const s = findSongByKey(p.key);
-    if (!s) return;
-    listenSuppress = Date.now();
-    playSongObject(s, p.t);
-    lastSync = { key: p.key, playing: p.playing === true, t: p.t || 0 };
-    if (p.playing === true && audioEl?.paused) {
+    // Misma canción pero el estado cambió → play/pausa.
+    if (serverPlaying !== localPlaying) {
+      listenSuppress = Date.now();
+      applyPlayState(serverPlaying);
+      lastSync = { ...lastSync, playing: serverPlaying, t: serverT };
+      return;
+    }
+
+    // Misma canción y estado: corregir la posición si se desvía >2s.
+    if (serverPlaying && Math.abs(localT - serverT) > 2) {
+      listenSuppress = Date.now();
+      if (audioEl && serverT > 0) audioEl.currentTime = serverT;
+      lastSync = { ...lastSync, t: serverT };
+    }
+  }
+
+  /** Aplica play/pausa localmente (compartido por applyServerState). */
+  function applyPlayState(playing) {
+    if (playing === true && audioEl?.paused) {
       isPlaying = true;
       updatePlayBtn();
       audioEl.play().catch(() => { isPlaying = false; updatePlayBtn(); });
       player.setPlaying(true);
-    } else if (p.playing === false && audioEl && !audioEl.paused) {
+    } else if (playing === false && audioEl && !audioEl.paused) {
       audioEl.pause();
       isPlaying = false;
       updatePlayBtn();
@@ -1249,7 +1350,9 @@ export function CancionesPage(router) {
       return;
     }
     const len = activeList.length;
-    const next = shuffleMode && len > 1 ? getRandomIdx(len) : (currentIdx + 1) % len;
+    // En orden avanza por la lista y, al llegar al final, da la vuelta (la
+    // playlist se repite). En aleatorio, salta a un tema no sonado del ciclo.
+    const next = player.shuffle && len > 1 ? pickShuffleIdx(len) : (currentIdx + 1) % len;
     loadSong(next);
     if (isPlaying && audioEl) audioEl.play().catch(() => { isPlaying = false; updatePlayBtn(); });
   }
@@ -1258,7 +1361,7 @@ export function CancionesPage(router) {
     if (!activeList.length) return;
     saveContinue(activePlaylistId, currentIdx, audioEl?.currentTime || 0);
     const len = activeList.length;
-    const prev = shuffleMode && len > 1 ? getRandomIdx(len) : (currentIdx - 1 + len) % len;
+    const prev = player.shuffle && len > 1 ? pickShuffleIdx(len) : (currentIdx - 1 + len) % len;
     loadSong(prev);
     if (isPlaying && audioEl) audioEl.play().catch(() => { isPlaying = false; updatePlayBtn(); });
   }
@@ -1290,20 +1393,30 @@ export function CancionesPage(router) {
   }
 
   function onTimeUpdate() {
-    if (!audioEl.duration) return;
-    const pct = (audioEl.currentTime / audioEl.duration) * 100;
-    const fill = page.querySelector('#progressFill');
-    const thumb = page.querySelector('#progressThumb');
-    if (fill) fill.style.width = pct + '%';
-    if (thumb) thumb.style.left = pct + '%';
-    const ct = page.querySelector('#currentTime');
-    if (ct) ct.textContent = formatTime(audioEl.currentTime);
-    saveContinueThrottled(); // persiste la última posición en vivo
+    // El progreso/times se pintan en la barra global (NowPlayingBar); aquí
+    // solo se persiste la posición para "Sigue escuchando".
+    saveContinueThrottled();
   }
 
   function onEnded() {
     saveContinue(activePlaylistId, currentIdx, 0);
-    // El servicio marca pausa al terminar; la página reactiva el auto-avance.
+    // 'one' → repite la misma canción desde el principio.
+    if (player.repeat === 'one' && currentIdx >= 0 && activeList[currentIdx]) {
+      audioEl.currentTime = 0;
+      audioEl.play().catch(() => {});
+      return;
+    }
+    // 'off' → sin bucle: cuando la lista se acaba (en orden o al agotarse el
+    // ciclo aleatorio sin repetir) se detiene. En el resto de modos (y por
+    // defecto, 'all') sigue automáticamente y la playlist se repite.
+    if (player.repeat === 'off' && !hasNextTrack()) {
+      isPlaying = false;
+      updatePlayBtn();
+      player.setPlaying(false);
+      return;
+    }
+    // Avance automático: al terminar la canción suena la siguiente; si la
+    // lista se acaba, nextSong da la vuelta y la playlist se repite.
     isPlaying = true;
     nextSong();
   }
@@ -1333,8 +1446,6 @@ export function CancionesPage(router) {
   function onPlaying() { consecutiveErrors = 0; }
 
   function onLoadedMetadata() {
-    const tt = page.querySelector('#totalTime');
-    if (tt) tt.textContent = formatTime(audioEl.duration);
     if (audioEl.duration && audioEl.src) trackDurations[audioEl.src] = audioEl.duration;
   }
 
@@ -1352,7 +1463,7 @@ export function CancionesPage(router) {
 
     // Hero — Aleatorio
     page.querySelector('#heroShuffle')?.addEventListener('click', () => {
-      shuffleMode = true;
+      player.setShuffle(true);
       showToast('Aleatorio activado', 'info');
       const pl = getPlaylists().find(p => p.id === 'completas') || getPlaylists()[0];
       if (!pl) return;
@@ -1362,6 +1473,10 @@ export function CancionesPage(router) {
 
     // Hero — Escuchar juntos (sincronización en tiempo real)
     page.querySelector('#listenTogetherBtn')?.addEventListener('click', toggleListenTogether);
+    // bindEvents() se re-ejecuta en cada render (cada cambio de canción):
+    // desuscribir el handler anterior evita acumular suscripciones y aplicar
+    // el estado del servidor dos veces (toasts duplicados, seeks dobles).
+    offListen();
     offListen = onListenTogether(({ type, payload }) => {
       // 'state' = la sesión cambió (activada, desactivada, peer): sincroniza la UI.
       if (type === 'state') {
@@ -1403,32 +1518,16 @@ export function CancionesPage(router) {
         }
         return;
       }
-      if (type === 'listen') {
-        // Petición de re-sincronización (el otro acaba de entrar en Canciones
-        // con la sesión ya activa): reenviamos nuestra reproducción actual.
-        if (payload?.action === 'sync' && currentIdx >= 0 && activeList[currentIdx]) {
-          const s = activeList[currentIdx];
-          maybeBroadcast({
-            action: 'song',
-            key: songKey(s.title, s.artist),
-            t: audioEl?.currentTime || 0,
-            playing: isPlaying && !audioEl?.paused
-          });
-          return;
-        }
-        handlePeerEvent(payload);
-      }
     });
     // Sincroniza el chip con el estado global al entrar (sesión ya activa, etc.)
     updateListenChip();
     // Montaje tardío: si la sesión ya estaba activa al entrar (aceptaste la
-    // invitación desde otra página), arranca el tick de sincronización y pide
-    // el estado actual al otro dispositivo para que la canción aparezca al
-    // momento, aunque esté en pausa.
+    // invitación desde otra página), arranca el tick de sincronización y lee
+    // el estado autoritativo del servidor (el tick lo mantiene al día ~3x/s).
     const ltSt = getListenTogetherState();
     if (ltSt.active) {
       startSyncTick();
-      if (ltSt.peerName) sendListenEvent({ action: 'sync' });
+      fetchListenState().then(st => { if (st && st.song_key) applyServerState(st); });
     } else {
       stopSyncTick();
     }
@@ -1490,13 +1589,12 @@ export function CancionesPage(router) {
     });
 
     // Queue
-    let queueVisible = false;
     page.querySelector('#queueBtn')?.addEventListener('click', () => {
-      queueVisible = !queueVisible;
+      queuePanelOpen = !queuePanelOpen;
       const panel = page.querySelector('#queuePanel');
       if (panel) {
-        panel.style.display = queueVisible ? '' : 'none';
-        if (queueVisible) renderQueue();
+        panel.style.display = queuePanelOpen ? '' : 'none';
+        if (queuePanelOpen) renderQueue();
       }
     });
     page.querySelector('#queueClear')?.addEventListener('click', () => {
@@ -1504,6 +1602,9 @@ export function CancionesPage(router) {
       renderQueue();
       showToast('Cola vaciada', 'info');
     });
+
+    // El reproductor expandido (controles de la canción actual) vive en la
+    // barra global (NowPlayingBar); aquí ya no hay tarjeta propia.
 
     // Search
     const searchInput = page.querySelector('#musicSearch');
@@ -1621,6 +1722,112 @@ export function CancionesPage(router) {
         trackMenuKey = null;
         updateUI();
       });
+    });
+
+    // Cola — reproducir a continuación / añadir / quitar (lista y favoritas)
+    page.querySelectorAll('[data-qplay-next]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playNextInQueue(btn.dataset.key);
+        trackMenuKey = null;
+        favMenuTitle = null;
+        updateUI();
+      });
+    });
+    page.querySelectorAll('[data-qadd]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        addToQueue(btn.dataset.key);
+        trackMenuKey = null;
+        favMenuTitle = null;
+        updateUI();
+      });
+    });
+    page.querySelectorAll('[data-qremove]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeFromQueue(btn.dataset.key);
+        trackMenuKey = null;
+        favMenuTitle = null;
+        updateUI();
+      });
+    });
+
+    // Eliminar canción del catálogo (solo admin, lista "Todas las canciones").
+    // Abre el modal de confirmación; el borrado real ocurre en el modal.
+    page.querySelectorAll('[data-song-del]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = btn.dataset.key;
+        if (!resolveSongByKey(key) || !userStore.isAdmin) return;
+        trackMenuKey = null;
+        deleteConfirmKey = key;
+        updateUI();
+      });
+    });
+
+    // Modal de confirmación de borrado
+    page.querySelector('#songDelCancel')?.addEventListener('click', () => {
+      deleteConfirmKey = null;
+      updateUI();
+    });
+    page.querySelector('#songDelCancelBtn')?.addEventListener('click', () => {
+      deleteConfirmKey = null;
+      updateUI();
+    });
+    page.querySelector('#songDelModal')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        deleteConfirmKey = null;
+        updateUI();
+      }
+    });
+    page.querySelector('#songDelConfirm')?.addEventListener('click', async () => {
+      const key = deleteConfirmKey;
+      deleteConfirmKey = null;
+      const sg = resolveSongByKey(key);
+      if (!sg || !userStore.isAdmin) return;
+      try {
+        // 1) Base de datos: persiste el catálogo completo SIN la canción.
+        //    Así la semilla estática no la recupera al recargar la página.
+        const dbSongs = await db.getSongs();
+        const merged = dedupeSongs([...ALL_SONGS, ...(Array.isArray(dbSongs) ? dbSongs : [])])
+          .filter(s => songKeyOf(s) !== key);
+        await db.saveSongs(merged);
+
+        // 2) Catálogo local
+        const idx = ALL_SONGS.findIndex(s => songKeyOf(s) === key);
+        if (idx < 0) return;
+
+        // 3) Cola pendiente: los índices cambian al borrar; reconstruir por claves
+        const queueKeys = queue.map(qi => ALL_SONGS[qi] ? songKeyOf(ALL_SONGS[qi]) : null).filter(Boolean);
+        ALL_SONGS.splice(idx, 1);
+        queue = queueKeys.filter(k => k !== key)
+          .map(k => ALL_SONGS.findIndex(s => songKeyOf(s) === k))
+          .filter(i => i >= 0);
+
+        // 4) Si sonaba la canción borrada: la música sigue, pero sin índice válido
+        if (currentIdx >= 0) {
+          const src = audioEl?.getAttribute('src');
+          currentIdx = src ? ALL_SONGS.findIndex(s => s.audio === src) : -1;
+        }
+
+        // 5) Quitar de favoritas
+        favorites.delete(String(sg.title).toLowerCase());
+        saveFavorites();
+
+        // 6) Purga la clave de las playlists compartidas (ya no resuelve)
+        await Promise.all(userPlaylists.map(pl => {
+          if (!pl.songs.includes(key)) return null;
+          return updatePlaylist({ id: pl.id, songs: pl.songs.filter(k => k !== key) });
+        }));
+        refreshActiveFromPlaylists();
+        showToast('Canción eliminada', 'success');
+      } catch (err) {
+        console.warn('[canciones] no se pudo eliminar la canción:', err);
+        showToast('No se pudo eliminar la canción', 'error');
+      }
+      trackMenuKey = null;
+      updateUI();
     });
 
     // Picker de playlists (añadir / mover canción)
@@ -1833,31 +2040,82 @@ export function CancionesPage(router) {
   function renderQueue() {
     const list = page.querySelector('#queueList');
     if (!list) return;
+    if (queueMenuPos !== null && queueMenuPos >= queue.length) queueMenuPos = null;
     if (!queue.length) {
+      queueMenuPos = null;
       list.innerHTML = '<div class="music-queue-empty">La cola está vacía. Reproduce canciones para añadirlas.</div>';
       return;
     }
+    const MORE_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>';
     list.innerHTML = queue.map((idx, i) => {
       const s = activeList[idx];
       if (!s) return '';
-      return `<div class="music-queue-item">
+      const open = queueMenuPos === i;
+      return `<div class="music-queue-item ${open ? 'is-open' : ''}" data-qpos="${i}" role="button" tabindex="0" aria-label="Reproducir ${escapeHtml(s.title)}">
         <span class="music-queue-num">${i + 1}</span>
         <img src="${s.cover}" alt="" class="music-queue-cover" loading="lazy">
         <div class="music-queue-info">
           <strong>${escapeHtml(s.title)}</strong>
           <span>${escapeHtml(s.artist)}</span>
         </div>
-        <button class="music-queue-remove" data-qidx="${i}" title="Eliminar">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+        <button class="music-queue-more ${open ? 'is-open' : ''}" data-qmenu="${i}" type="button" title="Más opciones" aria-label="Más opciones de ${escapeHtml(s.title)}">${MORE_ICON}</button>
+        ${open ? `<div class="music-queue-menu-pop" data-qpop="${i}">
+          <button class="music-track-menu-item" data-qplay-now="${i}" type="button">${MUSIC_ICONS.play(15)} Reproducir ahora</button>
+          <button class="music-track-menu-item is-danger" data-qremove-pos="${i}" type="button">${MUSIC_ICONS['list-x'](15)} Quitar de la cola</button>
+        </div>` : ''}
       </div>`;
     }).join('');
-    list.querySelectorAll('.music-queue-remove').forEach(btn => {
-      btn.addEventListener('click', () => {
-        queue.splice(parseInt(btn.dataset.qidx), 1);
+
+    // La fila reproduce la canción y la saca de la cola pendiente
+    list.querySelectorAll('.music-queue-item').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.music-queue-more') || e.target.closest('.music-queue-menu-pop')) return;
+        const pos = parseInt(row.dataset.qpos, 10);
+        const idx = queue[pos];
+        if (idx === undefined) return;
+        queue.splice(pos, 1);
+        queueMenuPos = null;
+        renderQueue();
+        playAt(idx);
+      });
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); }
+      });
+    });
+    list.querySelectorAll('.music-queue-more').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        queueMenuPos = queueMenuPos === Number(btn.dataset.qmenu) ? null : Number(btn.dataset.qmenu);
         renderQueue();
       });
     });
+    list.querySelectorAll('[data-qplay-now]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pos = parseInt(btn.dataset.qplayNow, 10);
+        const idx = queue[pos];
+        if (idx === undefined) return;
+        queue.splice(pos, 1);
+        queueMenuPos = null;
+        renderQueue();
+        playAt(idx);
+      });
+    });
+    list.querySelectorAll('[data-qremove-pos]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        queue.splice(parseInt(btn.dataset.qremovePos, 10), 1);
+        queueMenuPos = null;
+        renderQueue();
+      });
+    });
+
+    // Posiciona el popup ⋮ abierto (fixed, sin recortarse dentro del panel)
+    const openBtn = list.querySelector('.music-queue-more.is-open');
+    if (openBtn) {
+      const pop = list.querySelector('.music-queue-menu-pop[data-qpop="' + openBtn.dataset.qmenu + '"]');
+      if (pop) positionMenu(openBtn, pop);
+    }
   }
 
   // Keyboard shortcuts
@@ -1866,6 +2124,10 @@ export function CancionesPage(router) {
     if (e.key === ' ') { e.preventDefault(); togglePlay(); }
     if (e.key === 'ArrowRight' && e.ctrlKey) nextSong();
     if (e.key === 'ArrowLeft' && e.ctrlKey) prevSong();
+    if (e.key === 'Escape' && deleteConfirmKey) {
+      deleteConfirmKey = null;
+      updateUI();
+    }
   }
 
   // Init
@@ -1910,8 +2172,24 @@ export function CancionesPage(router) {
   } catch { /* ignorar */ }
 
   const unwireAudio = wireAudioEvents();
+  // Botón "Cola" del reproductor expandido (barra global): venimos con la
+  // orden de abrir el panel de cola directamente. La bandera cubre la llegada
+  // desde otra página (la lee este init antes del primer render); el evento
+  // cubre el caso de estar YA en Canciones (el router no re-monta la página).
+  if (sessionStorage.getItem('ph.openQueue')) {
+    sessionStorage.removeItem('ph.openQueue');
+    queuePanelOpen = true;
+  }
+  const onOpenQueue = () => {
+    if (!page.isConnected) return;
+    queuePanelOpen = true;
+    updateUI();
+    scrollToId('queuePanel');
+  };
+  window.addEventListener('ph:open-queue', onOpenQueue);
   render();
   bindEvents();
+  if (queuePanelOpen && page.querySelector('#queuePanel')) scrollToId('queuePanel');
   document.addEventListener('keydown', onKeyDown);
 
   // Cierra los menús ⋮ al hacer clic fuera. El elemento page persiste entre
@@ -2030,6 +2308,7 @@ export function CancionesPage(router) {
     clearTimeout(saveDurTimer); // vacía el debounce pendiente
     try { localStorage.setItem(userPrefKey('trackDurations'), JSON.stringify(trackDurations)); } catch { /* ignorar */ }
     document.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('ph:open-queue', onOpenQueue);
     if (isPlaying && currentIdx >= 0) {
       saveContinue(activePlaylistId, currentIdx, audioEl?.currentTime || 0);
     }

@@ -231,3 +231,310 @@
     transition: none;
   }
 }
+
+/* ==========================================
+   REPRODUCTOR EXPANDIDO — al pulsar la barra se
+   abre a pantalla completa (portada + controles)
+   ========================================== */
+.np-full {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 10);
+  display: flex;
+  flex-direction: column;
+  background: var(--theme-surface, #101014);
+  color: var(--theme-text-primary, #fff);
+  animation: npf-up 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+  overscroll-behavior: contain;
+}
+
+/* display:flex de .np-full pisaría la regla del navegador [hidden]{display:none} */
+.np-full[hidden] {
+  display: none;
+}
+
+@keyframes npf-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Cabecera: botón contraer + marca */
+.npf-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: calc(var(--sp-8) + env(safe-area-inset-top, 0px)) var(--sp-16) 0;
+}
+
+.npf-collapse {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--theme-text-primary, #fff);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast);
+}
+
+.npf-collapse:hover {
+  background: var(--theme-surface-pressed, #26262b);
+}
+
+.npf-brand {
+  flex: 1;
+  text-align: center;
+  font-size: var(--fs-caption, 11px);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--theme-text-tertiary, rgba(255, 255, 255, 0.4));
+}
+
+.npf-top-spacer {
+  width: 42px;
+  flex-shrink: 0;
+}
+
+/* Cuerpo: todo centrado, con scroll si la pantalla es baja */
+.npf-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-14);
+  padding: var(--sp-16) var(--sp-24) calc(var(--sp-24) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+
+.npf-art {
+  position: relative;
+  width: min(72vw, 320px);
+  aspect-ratio: 1 / 1;
+  border-radius: 22px;
+  overflow: hidden;
+  display: block;
+  background: var(--theme-surface-2, #19191d);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  flex-shrink: 0;
+}
+
+.npf-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.npf-art-fb {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-text-tertiary, rgba(255, 255, 255, 0.35));
+}
+
+.npf-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+}
+
+.npf-title {
+  font-size: clamp(1.15rem, 5vw, 1.5rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--theme-text-primary, #fff);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.npf-artist {
+  font-size: var(--fs-sm, 13px);
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.65));
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Progreso + tiempos */
+.npf-progress {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--theme-surface-pressed, #26262b);
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.npf-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--theme-accent, #e8735a);
+}
+
+.npf-progress-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+
+.npf-progress:hover .npf-progress-thumb,
+.npf-progress:focus-visible .npf-progress-thumb {
+  opacity: 1;
+}
+
+.npf-progress:focus-visible {
+  outline: 2px solid var(--theme-accent, #e8735a);
+  outline-offset: 2px;
+}
+
+.npf-times {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 480px;
+  font-size: var(--fs-xs, 12px);
+  font-variant-numeric: tabular-nums;
+  color: var(--theme-text-tertiary, rgba(255, 255, 255, 0.45));
+  margin-top: -10px;
+}
+
+/* Controles */
+.npf-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-6);
+}
+
+.npf-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.7));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-fast), background var(--dur-fast), transform var(--dur-fast);
+}
+
+.npf-btn:hover {
+  color: var(--theme-text-primary, #fff);
+  background: var(--theme-surface-pressed, #26262b);
+}
+
+.npf-btn:active {
+  transform: scale(0.92);
+}
+
+.npf-btn.is-active {
+  color: var(--theme-accent, #e8735a);
+}
+
+.npf-btn:focus-visible {
+  outline: 2px solid var(--theme-accent, #e8735a);
+  outline-offset: 1px;
+}
+
+.npf-play {
+  width: 66px;
+  height: 66px;
+  background: var(--theme-accent, #e8735a);
+  color: #fff !important;
+  box-shadow: 0 10px 28px rgba(232, 115, 90, 0.4);
+}
+
+.npf-play:hover {
+  background: var(--theme-accent-hover, #f0806a);
+}
+
+.npf-play svg {
+  display: block;
+}
+
+.npf-repeat-one {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--theme-accent, #e8735a);
+}
+
+/* Botón de cola */
+.npf-queue {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-top: 4px;
+  padding: var(--sp-10) var(--sp-16);
+  border: 1px solid var(--theme-divider, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  background: var(--theme-surface-2, #19191d);
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.75));
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+
+.npf-queue:hover {
+  background: var(--theme-surface-pressed, #26262b);
+  color: var(--theme-text-primary, #fff);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .np-full {
+    animation: none;
+  }
+}
+
+/* Pantallas muy bajas: compactar para que quepa el bloque */
+@media (max-height: 640px) {
+  .npf-art {
+    width: min(52vw, 200px);
+  }
+
+  .npf-body {
+    gap: var(--sp-10);
+  }
+}

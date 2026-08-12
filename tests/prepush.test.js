@@ -13,7 +13,7 @@ function projectPath(...parts) {
   return path.join(ROOT, ...parts);
 }
 
-test('el catálogo expandido cubre del 11 de agosto al 31 de diciembre', () => {
+test('el catálogo expandido cubre del 15 de agosto al 31 de diciembre', () => {
   const catalog = expandCalendarCatalog({});
   const dates = [];
   for (const [monthKey, month] of Object.entries(catalog.months)) {
@@ -22,9 +22,9 @@ test('el catálogo expandido cubre del 11 de agosto al 31 de diciembre', () => {
     }
   }
 
-  assert.equal(dates.length, 143);
+  assert.equal(dates.length, 139);
   const numericDates = dates.map(date => Number(date.replaceAll('-', '')));
-  assert.equal(Math.min(...numericDates), Number('20260811'));
+  assert.equal(Math.min(...numericDates), Number('20260815'));
   assert.equal(Math.max(...numericDates), Number('20261231'));
   assert.equal(new Set(dates).size, dates.length);
 });
@@ -33,7 +33,7 @@ test('los juegos del calendario apuntan a archivos existentes', () => {
   const catalog = expandCalendarCatalog({});
   const gameGifts = catalog.gifts.filter(gift => gift.type === 'game');
 
-  assert.equal(gameGifts.length, 15);
+  assert.equal(gameGifts.length, 9);
   for (const gift of gameGifts) {
     assert.match(gift.redirectUrl, /^games\/[\w-]+\.html$/);
     assert.equal(existsSync(projectPath('personal-hub', 'public', gift.redirectUrl)), true, gift.redirectUrl);
@@ -44,11 +44,15 @@ test('cada juego listado en Juegos tiene su página pública', async () => {
   const source = await readFile(projectPath('personal-hub', 'src', 'pages', 'Juegos.js'), 'utf8');
   const hrefs = [...source.matchAll(/href:\s*'([^']+\.html)'/g)].map(match => match[1]);
 
-  assert.equal(hrefs.length, 25);
+  assert.equal(hrefs.length, 19);
   assert.equal(new Set(hrefs).size, hrefs.length);
   for (const href of hrefs) {
     const relativePath = href.replace(/^\//, '');
     assert.equal(existsSync(projectPath('personal-hub', 'public', relativePath)), true, href);
+  }
+  // Los juegos retirados del catálogo ya no deben aparecer.
+  for (const removed of ['dino', 'flappy', 'asteroides', 'nonogramas', 'doodle', 'match3']) {
+    assert.equal(source.includes(removed), false, `${removed} no debería seguir en Juegos.js`);
   }
 });
 

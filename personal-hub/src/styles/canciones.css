@@ -312,7 +312,9 @@
   display: flex;
   gap: 18px;
   overflow-x: auto;
-  padding: 4px 2px 12px;
+  padding: 4px 18px 12px;
+  scroll-padding-left: 18px;
+  scroll-padding-right: 18px;
   scrollbar-width: none;
   scroll-snap-type: x proximity;
 }
@@ -651,6 +653,7 @@
 
 .music-fav-menu {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 4px 16px 12px;
   margin: 0 6px 2px;
@@ -1193,6 +1196,13 @@
   color: var(--theme-danger, #e5484d);
 }
 
+/* Separador entre acciones de cola y el resto del menú */
+.music-track-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--theme-divider, rgba(255, 255, 255, 0.08));
+}
+
 .music-tracks-empty {
   padding: 40px 20px;
   text-align: center;
@@ -1296,7 +1306,11 @@
   text-overflow: ellipsis;
 }
 
-.music-queue-remove {
+.music-queue-item.is-open {
+  background: var(--theme-bg-hover, #19191d);
+}
+
+.music-queue-more {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1310,9 +1324,25 @@
   transition: all var(--dur-fast);
 }
 
-.music-queue-remove:hover {
-  color: var(--theme-error, #f87171);
-  background: rgba(248, 113, 113, 0.1);
+.music-queue-more:hover,
+.music-queue-more.is-open {
+  color: var(--theme-text-primary, #fff);
+  background: var(--theme-bg-hover, #19191d);
+}
+
+.music-queue-menu-pop {
+  position: fixed;
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--theme-divider, rgba(255, 255, 255, 0.1));
+  background: var(--theme-surface-2, #19191d);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: menu-pop-in 0.16s ease-out;
 }
 
 .music-queue-empty {
@@ -1620,6 +1650,105 @@
 
 .music-pl-save:hover {
   filter: brightness(1.1);
+}
+
+/* ==========================================
+   MODAL — confirmación de borrado de canción
+   ========================================== */
+.song-del-song {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--theme-bg-hover, #19191d);
+  margin-bottom: 12px;
+}
+
+.song-del-cover {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--theme-surface-2, #19191d);
+  display: flex;
+}
+
+.song-del-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.song-del-cover .music-cover-fb {
+  width: 100%;
+  height: 100%;
+  font-size: 0.8rem;
+}
+
+.song-del-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.song-del-meta strong {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--theme-text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-del-meta span {
+  font-size: var(--fs-xs, 12px);
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.65));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-del-warning {
+  margin: 0 0 4px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.55;
+  color: var(--theme-danger, #e5484d);
+  background: var(--theme-danger-dim, rgba(229, 72, 77, 0.1));
+  border: 1px solid rgba(229, 72, 77, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.song-del-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--theme-danger, #e5484d);
+  color: #fff;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter var(--dur-fast), transform var(--dur-fast);
+}
+
+.song-del-confirm:hover {
+  filter: brightness(1.12);
+}
+
+.song-del-confirm:active {
+  transform: scale(0.97);
+}
+
+.song-del-confirm:focus-visible {
+  outline: 2px solid var(--theme-danger, #e5484d);
+  outline-offset: 2px;
 }
 
 /* ==========================================

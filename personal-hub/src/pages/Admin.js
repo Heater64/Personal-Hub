@@ -17,6 +17,7 @@ import { isValidUrlField, todayISO, hourInSpain } from '../utils/format.js';
 import { refreshSpecialDates } from '../utils/specialDates.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
+import { expandCalendarCatalog } from '../data/calendar-expansion.js';
 import { theme } from '../services/theme.service.js';
 import { CATEGORIES, TYPE_META, LETTERS } from './OpenWhen.js';
 import {
@@ -1770,6 +1771,7 @@ export function AdminPage(router) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
         <span style="color:var(--theme-text-secondary);font-size:var(--fs-sm);" id="calAdminCount">${daysWithContent} de ${daysInMonth} días · ${totalGifts} regalos</span>
         <div style="display:flex;gap:8px;">
+          <button class="admin-btn admin-btn-sm" id="calAdminRebuild" title="Regenera el calendario desde el esqueleto base (agosto empieza el 15, juegos en días seguidos)">♻️ Regenerar</button>
           <button class="admin-btn admin-btn-sm" id="calAdminResponses">💌 Respuestas</button>
         </div>
       </div>
@@ -1852,6 +1854,26 @@ export function AdminPage(router) {
 
     // Respuestas (mismo modal que la lista genérica)
     page.querySelector('#calAdminResponses').onclick = () => openGiftResponses('regalos', catalog.gifts || []);
+
+    // Regenerar desde el esqueleto base: reconstruye el calendario desde
+    // gifts.json (se mantiene julio, agosto empieza el 15 y los juegos van en
+    // días consecutivos). Los contenidos personalizados de agosto en adelante
+    // se pierden; por eso pide confirmación.
+    page.querySelector('#calAdminRebuild').onclick = () => {
+      modal.open(
+        '♻️ Regenerar calendario',
+        '<p style="margin:0;">Se reconstruirá el calendario desde el esqueleto base:<br>· Agosto empieza el <strong>15</strong><br>· Los <strong>juegos</strong> (solo los que no se desbloquearon en julio) van en días consecutivos (15 ago → 23 ago), <strong>solo el juego</strong> esos días<br>· Cuando se acaban los juegos, sigue el resto de contenidos<br><br>Se conserva <strong>julio</strong> tal cual. Los contenidos personalizados de agosto en adelante se eliminarán. ¿Continuar?</p>',
+        async () => {
+          const res = await fetch('/data/gifts.json', { cache: 'no-cache' });
+          if (!res.ok) throw new Error('No se pudo leer el esqueleto base');
+          const next = expandCalendarCatalog(await res.json());
+          await data.save(next);
+          renderCalendarAdmin(page.querySelector('#contentSubContent'), { catalog: next, save: data.save });
+          showToast('Calendario regenerado ✓', 'success');
+        },
+        'Regenerar'
+      );
+    };
 
     // Añadir contenido al día seleccionado
     page.querySelector('#calAdminAdd').onclick = () => openCalGiftEditor(null, selDateStr, catalog, data.save);
