@@ -6,7 +6,12 @@
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { gameCover } from '../utils/gameCovers.js';
 
-const MULTIPLAYER_IDS = new Set(['conecta4', 'tresenraya', 'battleship']);
+const MULTIPLAYER_IDS = new Set([
+  'conecta4', 'tresenraya', 'battleship',
+  '2048', 'agujero-negro', 'ahorcado', 'breakout', 'buscaminas', 'cuchillos',
+  'invaders', 'laberinto', 'memoria', 'meteoritos', 'pong', 'simon',
+  'snake', 'tetris', 'tiroarco', 'torre'
+]);
 
 export const GAMES = [
   { id: 'memoria',    icon: 'brain',   title: 'Memoria',      desc: 'Encuentra las parejas. Pon a prueba tu mente con cartas que esconden sorpresas.', href: '/games/memoria.html',    color: '#ff8aa1', accent: '#ffb3c1', difficulty: 'Fácil',   category: 'Puzzle',     duration: '2-5 min' },
@@ -26,15 +31,9 @@ export const GAMES = [
   { id: '2048',       icon: 'grid',    title: '2048',         desc: 'Desliza las baldosas y fusiona números hasta llegar a 2048.',                    href: '/games/2048.html',       color: '#ffcf4d', accent: '#ffe59a', difficulty: 'Medio',   category: 'Puzzle',     duration: '3-10 min' },
   { id: 'conecta4',   icon: 'connect', title: 'Conecta 4',    desc: 'Dos jugadores · Lanza fichas y consigue 4 en línea antes que tu rival.',        href: '/games/conecta4.html',   color: '#ff8a5e', accent: '#ffb08f', difficulty: 'Fácil',   category: 'Estrategia', duration: '2-5 min' },
   { id: 'tresenraya', icon: 'xo',      title: 'Tres en Raya',  desc: 'Clásico de X y O contra la máquina. Tres en línea y ganas.',                    href: '/games/tresenraya.html', color: '#9ad1ff', accent: '#bce3ff', difficulty: 'Fácil',   category: 'Puzzle',     duration: '1-3 min' },
-  { id: 'flappy',     icon: 'bird',    title: 'Flappy Bird',  desc: 'Toca para volar y esquiva las tuberías. Sencillo y vicioso.',                   href: '/games/flappy.html',     color: '#7ee0a3', accent: '#a5f0bf', difficulty: 'Difícil', category: 'Arcade',     duration: '1-2 min' },
   { id: 'invaders',   icon: 'ufo',     title: 'Space Invaders', desc: 'Mueve tu nave y dispara a las oleadas de alienígenas.',                      href: '/games/invaders.html',   color: '#5ed6d0', accent: '#8ae8e3', difficulty: 'Medio',   category: 'Arcade',     duration: '3-8 min' },
   { id: 'pong',       icon: 'pong',    title: 'Pong',         desc: 'Ping-pong clásico contra la CPU o en 2 jugadores. El origen de todo.',          href: '/games/pong.html',       color: '#ff9f6e', accent: '#ffc08f', difficulty: 'Fácil',   category: 'Arcade',     duration: '2-6 min' },
-  { id: 'asteroides', icon: 'ship',    title: 'Asteroides',   desc: 'Pilotas la nave, esquiva y destruye los asteroides del espacio.',              href: '/games/asteroides.html', color: '#b39bff', accent: '#cdbfff', difficulty: 'Medio',   category: 'Acción',     duration: '3-8 min' },
   { id: 'simon',      icon: 'simon',   title: 'Simon Dice',   desc: 'Repite la secuencia de colores que se hace cada vez más larga.',               href: '/games/simon.html',      color: '#ffcf6e', accent: '#ffdf9e', difficulty: 'Fácil',   category: 'Memoria',    duration: '1-4 min' },
-  { id: 'nonogramas', icon: 'nonogram',title: 'Nonogramas',   desc: 'Puzle de lógica: rellena las casillas siguiendo las pistas numéricas.',        href: '/games/nonogramas.html', color: '#ffb347', accent: '#ffcf8a', difficulty: 'Difícil', category: 'Puzzle',     duration: '10-30 min' },
-  { id: 'dino',       icon: 'dino',    title: 'Dino Run',     desc: 'Corredor infinito: salta los cactus y llega lo más lejos posible.',            href: '/games/dino.html',       color: '#8be06e', accent: '#a8f08a', difficulty: 'Fácil',   category: 'Arcade',     duration: '1-3 min' },
-  { id: 'doodle',     icon: 'doodle',  title: 'Doodle Jump',  desc: 'Salta entre plataformas sin parar de subir. ¿Hasta dónde llegarás?',          href: '/games/doodle.html',     color: '#f5a05e', accent: '#ffc58a', difficulty: 'Fácil',   category: 'Acción',     duration: '2-6 min' },
-  { id: 'match3',     icon: 'gems',    title: 'Match-3',      desc: 'Intercambia gemas para hacer líneas de 3 o más. Fácil y adictivo.',           href: '/games/match3.html',     color: '#f87171', accent: '#ff9d9d', difficulty: 'Fácil',   category: 'Puzzle',     duration: '3-10 min' },
   { id: 'battleship', icon: 'fleet',   title: 'Hundir la Flota', desc: 'Dos jugadores · Hunde todos los barcos del rival antes que él.',           href: '/games/battleship.html', color: '#5aa0ff', accent: '#8ac0ff', difficulty: 'Medio',   category: 'Estrategia', duration: '5-15 min' }
 ];
 
@@ -54,15 +53,9 @@ const ICONS = {
   'grid':     '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>',
   'connect':  '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="16" rx="3"/><circle cx="6.5" cy="11" r="1.6" fill="currentColor"/><circle cx="10" cy="14" r="1.6" fill="currentColor"/><circle cx="13.5" cy="9" r="1.6" fill="currentColor"/><circle cx="17" cy="16" r="1.6" fill="currentColor"/></svg>',
   'xo':       '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="m7 7 4 4"/><path d="m11 7-4 4"/><circle cx="17" cy="17" r="2.2"/></svg>',
-  'bird':     '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="6"/><path d="M17 9l4-2"/><path d="m17.5 12.5 3 .5"/><path d="M12 6c-1.5-2-3-2-4-1"/></svg>',
   'ufo':      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12c0-3 3.1-5 7-5s7 2 7 5-3.1 5-7 5-7-2-7-5z"/><path d="M12 17v4"/><path d="m8 21 4-3 4 3"/></svg>',
   'pong':     '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="3" height="10" rx="1.5"/><rect x="18" y="7" width="3" height="10" rx="1.5"/><path d="M12 5v14" stroke-dasharray="2 4"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>',
-  'ship':     '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3 7 14h10L12 3z"/><path d="M12 3v3"/><path d="M9.5 17H7"/><path d="M17 17h-2.5"/><path d="M4 20h16"/></svg>',
   'simon':    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 12 12 5A7 7 0 0 1 19 12Z"/><path d="M12 12 19 12A7 7 0 0 1 12 19Z"/><path d="M12 12 12 19A7 7 0 0 1 5 12Z"/></svg>',
-  'nonogram': '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h6"/><path d="M9 3v6"/><rect x="10" y="10" width="4" height="4" rx="1" fill="currentColor"/><rect x="15" y="6" width="3" height="3" rx="1" fill="currentColor"/><rect x="6" y="15" width="3" height="3" rx="1" fill="currentColor"/></svg>',
-  'dino':     '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 16h5v-5h4V9h4V6h-2V4h-2v2h-2v2H9v3H4z"/><circle cx="13" cy="9" r="1" fill="currentColor"/><path d="M4 16v4"/><path d="M13 20v-4"/></svg>',
-  'doodle':   '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 17h6"/><path d="M14 13h6"/><path d="M4 9h6"/><path d="M14 5h6"/><path d="M12 20 12 12 15 15"/></svg>',
-  'gems':     '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 3 5 5-5 5-5-5z"/><path d="m12 3 5 5-5 5-5-5z"/><path d="m18 13 4 4-4 4-4-4z"/><path d="m5 13 3 3-3 3-3-3z"/></svg>',
   'fleet':    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 18h18"/><path d="M5 18l2-6h10l2 6"/><rect x="9" y="5" width="2.5" height="7" rx="1"/><rect x="12.5" y="5" width="2.5" height="7" rx="1"/><path d="M9 9h7"/></svg>',
   'chevron-right': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>',
   'gamepad': '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg>',
@@ -165,7 +158,7 @@ export function JuegosPage(router) {
             <span class="juego-card-shade"></span>
             <h3 class="juego-card-title">${game.title}</h3>
           </div>
-          ${MULTIPLAYER_IDS.has(game.id) ? `<a class="juego-card-online" href="#/juegos/online/${game.id}" aria-label="Invitar a jugar ${game.title}">🎮 Jugar online</a>` : ''}
+          ${MULTIPLAYER_IDS.has(game.id) ? `<a class="juego-card-online" href="#/juegos/online/${game.id}" aria-label="Invitar a jugar ${game.title}"><span class="juego-card-online__icon">${ICONS['gamepad']}</span><span>Jugar online</span></a>` : ''}
         </div>
       `}).join('')}
     </div>
