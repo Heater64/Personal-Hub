@@ -1,23 +1,35 @@
 /* ==========================================
    Personal Hub — Escuchar juntos (sincronización de música)
-   Canal broadcast de Supabase Realtime (sin tabla nueva):
-   - 'request'     → alguien quiere escuchar contigo { name, avatar }
-   - 'response'    → respuesta a una solicitud { approved, name, avatar }
-   - 'hello' / 'bye' → quién está escuchando contigo (presencia)
-   - 'listen'      → { action: 'song'|'playpause'|'seek', key, t, playing }
-   El estado de la sesión (activa + con quién) vive aquí, para que la
-   solicitud y la aceptación funcionen desde cualquier página. El estado
-   de reproducción vive en Canciones.js; aquí solo vive el canal, el envío
-   y la suscripción. Si Supabase no está disponible, todo degrada a no-op.
+
+   DOS capas:
+   1. PRESENCIA + INVITACIONES (canal broadcast de Supabase Realtime):
+      - 'request'     → alguien quiere escuchar contigo { name, avatar }
+      - 'response'    → respuesta a una solicitud { approved, name, avatar }
+      - 'hello' / 'bye' → quién está escuchando contigo (presencia)
+
+   2. ESTADO DE REPRODUCCIÓN (SERVIDOR AUTORITATIVO, tabla listen_sessions):
+      Cada dispositivo envía su estado a submit_listen_state() y el SERVIDOR
+      valida y decide qué se aplica (elimina el ping-pong del broadcast:
+      antes cada uno empujaba su estado y se pisaban). Devuelve el estado
+      autoritativo, que el cliente aplica. El servidor solo permite:
+      · acciones explícitas (cambiar canción / play / pausa / seek)
+      · heartbeats del LÍDER actual que avancen la posición en la MISMA
+        canción con el MISMO estado.
+      Un seguidor NUNCA puede arrastrar el reloj hacia atrás.
+
+   Si Supabase no está disponible, todo degrada a no-op.
    ========================================== */
 
 import { supabase } from './supabase.js';
 import { db } from './db.service.js';
 
 const CHANNEL = 'ph-listen-together';
+const LISTEN_CHANNEL = 'ph-listen-state';
 
 let channel = null;
+let listenChannel = null; // canal de postgres_changes para listen_sessions
 let subscribed = false;   // el canal está escuchando (solicitudes incluidas)
+let listenSubscribed = false; // suscripción a cambios de estado en tiempo real
 let active = false;       // la sesión compartida está activa
 let pending = false;      // hay una solicitud enviada esperando respuesta
 let myName = '';
@@ -51,7 +63,6 @@ export function initListenTogether() {
   try {
     channel = supabase
       .channel(CHANNEL)
-      .on('broadcast', { event: 'listen' }, ({ payload }) => emit('listen', payload))
       .on('broadcast', { event: 'request' }, ({ payload }) => emit('request', payload))
       .on('broadcast', { event: 'response' }, ({ payload }) => {
         pending = false;
@@ -79,6 +90,36 @@ export function initListenTogether() {
   } catch (err) {
     console.warn('[listen] Realtime no disponible:', err.message);
   }
+}
+
+/** Suscribe a cambios en listen_sessions vía postgres_changes (push instantáneo).
+ *  Cuando el líder escribe vía RPC, el seguidor recibe la notificación al
+ *  instante en lugar de esperar al próximo tick de sondeo (~333ms). */
+export function initListenStateRealtime() {
+  if (listenSubscribed || !db.isSupabaseConfigured()) return;
+  listenSubscribed = true;
+  try {
+    listenChannel = supabase
+      .channel(LISTEN_CHANNEL)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listen_sessions' }, (payload) => {
+        const row = payload.new;
+        if (row && row.song_key) {
+          emit('listen', row);
+        }
+      })
+      .subscribe();
+  } catch (err) {
+    console.warn('[listen] Realtime state no disponible:', err.message);
+  }
+}
+
+/** Detiene la suscripción a cambios de estado en tiempo real. */
+export function stopListenStateRealtime() {
+  if (listenChannel) {
+    try { supabase.removeChannel(listenChannel); } catch { /* ya eliminado */ }
+    listenChannel = null;
+  }
+  listenSubscribed = false;
 }
 
 /** Activa la sesión compartida y avisa al otro (presencia). */
@@ -146,10 +187,40 @@ export function getListenTogetherState() {
   return { active, pending, peerName, peerAvatar };
 }
 
-/** Envía un evento de reproducción a quien esté en la sesión. */
-export function sendListenEvent(payload) {
-  if (!active) return;
-  broadcast('listen', payload);
+/** Envía el estado local de reproducción al servidor autoritativo.
+ *  El servidor valida (acciones explícitas vs heartbeats del líder) y
+ *  devuelve el estado decidido. Devuelve null si Supabase no está.
+ *  payload: { song_key, title, artist, playing, position, is_action } */
+export async function submitListenState(payload = {}) {
+  if (!db.isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase.rpc('submit_listen_state', {
+      p_song_key: String(payload.song_key || ''),
+      p_title: String(payload.title || ''),
+      p_artist: String(payload.artist || ''),
+      p_playing: Boolean(payload.playing),
+      p_position: Number.isFinite(payload.position) ? payload.position : 0,
+      p_is_action: Boolean(payload.is_action)
+    });
+    if (error) { console.warn('[listen] submit:', error.message); return null; }
+    return data;
+  } catch (err) {
+    console.warn('[listen] submit:', err.message);
+    return null;
+  }
+}
+
+/** Lee el estado autoritativo actual del servidor (sondeo ~3x/s). */
+export async function fetchListenState() {
+  if (!db.isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase.rpc('get_listen_state');
+    if (error) { console.warn('[listen] fetch:', error.message); return null; }
+    return data;
+  } catch (err) {
+    console.warn('[listen] fetch:', err.message);
+    return null;
+  }
 }
 
 /** Suscripción: handler({ type: 'listen'|'request'|'response'|'hello'|'bye'|'state', payload }). */

@@ -16,7 +16,8 @@ import { initPWA, isStandalone } from '../services/pwa.service.js';
 import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
-import { initListenTogether } from '../services/listenTogether.service.js';
+import { initListenTogether, onListenTogether, getListenTogetherState, initListenStateRealtime, stopListenStateRealtime } from '../services/listenTogether.service.js';
+import { player } from '../services/player.service.js';
 import '../styles/online-games.css';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
 import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref } from '../utils/userStorage.js';
@@ -73,6 +74,50 @@ export function AppShell(router) {
   // Escucha global de 'escuchar juntos': permite recibir solicitudes y
   // respuestas estando en cualquier página de la web.
   initListenTogether();
+
+  // Handler global de sincronización: cuando el otro dispositivo cambia de
+  // canción (evento 'listen' via postgres_changes), busca la canción en el
+  // catálogo y la carga en el player global para que NowPlayingBar aparezca
+  // desde cualquier página (incluido OsitosWorld).
+  let _findSongByKey = null;
+  onListenTogether(({ type, payload }) => {
+    // 'state' = la sesión cambió: arranca/detiene la suscripción Realtime
+    if (type === 'state') {
+      const st = getListenTogetherState();
+      if (st.active) {
+        initListenStateRealtime();
+      } else {
+        stopListenStateRealtime();
+      }
+      return;
+    }
+    // 'listen' = cambio de estado vía postgres_changes (push instantáneo).
+    if (type === 'listen') {
+      if (!payload?.song_key) return;
+      // Lazy-import del catálogo: solo se carga la primera vez que llega un
+      // evento 'listen' (evita arrastrar el módulo de Canciones al arranque).
+      import('../pages/Canciones.js').then(mod => {
+        _findSongByKey = mod.findSongByKey;
+        const song = _findSongByKey(payload.song_key);
+        if (!song) return;
+        player.setInfo({ title: song.title, artist: song.artist || '', cover: song.cover || '' });
+        if (player.audio.src !== song.audio) {
+          player.audio.src = song.audio;
+          player.audio.currentTime = 0;
+        }
+        if (Number.isFinite(payload.position) && payload.position > 0) {
+          if (Math.abs(player.audio.currentTime - payload.position) > 2) {
+            player.audio.currentTime = payload.position;
+          }
+        }
+        if (payload.playing === true && player.audio.paused) {
+          player.audio.play().catch(() => {});
+        } else if (payload.playing === false && !player.audio.paused) {
+          player.audio.pause();
+        }
+      }).catch(() => {});
+    }
+  });
 
   // Store ref to remove welcome overlay on route change
   let currentWelcomeOverlay = null;
