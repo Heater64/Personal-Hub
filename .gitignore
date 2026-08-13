@@ -18,6 +18,14 @@ dist/
 .ruff_cache/
 .agents/
 .freebuff/
+.freebuff-tmp/
+
+# AI tool configs (no van al repo)
+.mcp.json
+opencode.json
+
+# Security scan results
+strix_runs/
 
 # IDE
 .vscode/
@@ -32,3 +40,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Repos de referencia descargados
+/external/

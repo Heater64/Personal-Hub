@@ -1232,3 +1232,103 @@ CREATE POLICY "playlists_update_all" ON playlists FOR UPDATE USING (true);
 CREATE POLICY "playlists_delete_all" ON playlists FOR DELETE USING (true);
 
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.playlists; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- ==========================================
+-- 13. ESCUCHAR JUNTOS — Estado compartido de reproducción
+--     Una sola fila (id=1) con el estado de la sesión de la pareja.
+--     RPC SECURITY DEFINER: submit_listen_state / get_listen_state.
+-- ==========================================
+CREATE TABLE IF NOT EXISTS listen_sessions (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  song_key TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  artist TEXT NOT NULL DEFAULT '',
+  playing BOOLEAN NOT NULL DEFAULT false,
+  position DOUBLE PRECISION NOT NULL DEFAULT 0,
+  updated_by UUID,
+  revision BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO listen_sessions (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE listen_sessions ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON listen_sessions FROM anon;
+REVOKE ALL ON listen_sessions FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.submit_listen_state(
+  p_song_key TEXT DEFAULT '',
+  p_title TEXT DEFAULT '',
+  p_artist TEXT DEFAULT '',
+  p_playing BOOLEAN DEFAULT false,
+  p_position DOUBLE PRECISION DEFAULT 0,
+  p_is_action BOOLEAN DEFAULT false
+)
+RETURNS listen_sessions
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  cur listen_sessions%ROWTYPE;
+  caller UUID;
+  pos DOUBLE PRECISION;
+  leader_stale BOOLEAN;
+BEGIN
+  caller := auth.uid();
+  IF caller IS NULL THEN RAISE EXCEPTION 'Debes iniciar sesión.'; END IF;
+  IF p_position IS NULL OR p_position <> p_position OR p_position < 0 OR p_position > 86400 THEN
+    pos := 0;
+  ELSE
+    pos := p_position;
+  END IF;
+  p_song_key := LEFT(COALESCE(p_song_key, ''), 300);
+  p_title := LEFT(COALESCE(p_title, ''), 300);
+  p_artist := LEFT(COALESCE(p_artist, ''), 300);
+
+  SELECT * INTO cur FROM public.listen_sessions WHERE id = 1 FOR UPDATE;
+  IF NOT FOUND THEN
+    INSERT INTO public.listen_sessions (id) VALUES (1) RETURNING * INTO cur;
+  END IF;
+
+  IF p_is_action THEN
+    cur.song_key := p_song_key;
+    cur.title := p_title;
+    cur.artist := p_artist;
+    cur.playing := p_playing;
+    cur.position := pos;
+    cur.updated_by := caller;
+    cur.revision := cur.revision + 1;
+    cur.updated_at := NOW();
+  ELSE
+    leader_stale := cur.updated_by IS NULL OR NOW() - cur.updated_at > INTERVAL '5 seconds';
+    IF (caller = cur.updated_by OR leader_stale)
+       AND p_song_key = cur.song_key AND p_playing = cur.playing
+       AND pos >= cur.position THEN
+      cur.position := pos;
+      cur.updated_by := caller;
+      cur.updated_at := NOW();
+    END IF;
+  END IF;
+
+  UPDATE public.listen_sessions
+  SET song_key = cur.song_key, title = cur.title, artist = cur.artist,
+      playing = cur.playing, position = cur.position,
+      updated_by = cur.updated_by, revision = cur.revision, updated_at = cur.updated_at
+  WHERE id = 1;
+
+  RETURN cur;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_listen_state()
+RETURNS listen_sessions
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT * FROM public.listen_sessions WHERE id = 1;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.submit_listen_state(TEXT, TEXT, TEXT, BOOLEAN, DOUBLE PRECISION, BOOLEAN) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_listen_state() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.submit_listen_state(TEXT, TEXT, TEXT, BOOLEAN, DOUBLE PRECISION, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_listen_state() TO authenticated;
+
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.listen_sessions; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
