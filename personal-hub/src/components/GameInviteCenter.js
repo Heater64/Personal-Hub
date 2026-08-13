@@ -19,12 +19,14 @@ function escapeHtml(value) {
 }
 import {
   MULTIPLAYER_GAMES,
+  createGameInitialState,
   respondGameInvitation,
   subscribeToGameInvitations,
   subscribeToRematchRequests,
   requestGameRematch,
   rejectGameRematch
 } from '../services/games.service.js';
+import { gameCover } from '../utils/gameCovers.js';
 import {
   initListenTogether, startListenTogether, stopListenTogether, respondListenTogether, onListenTogether
 } from '../services/listenTogether.service.js';
@@ -109,10 +111,13 @@ export function GameInviteCenter(router) {
     card.className = 'game-invite-card';
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-label', 'Invitación a jugar');
+    const cover = MULTIPLAYER_GAMES[current.game_id]
+      ? gameCover(current.game_id, game.color, game.accent)
+      : '';
     card.innerHTML = `
       <div class="game-invite-card__glow" aria-hidden="true"></div>
       <header class="game-invite-card__head">
-        <span class="game-invite-card__emblem">${game.emoji}</span>
+        <span class="game-invite-card__emblem game-invite-card__emblem--cover">${cover ? `<img class="game-invite-card__cover" src="${cover}" alt="">` : game.emoji}</span>
         <div>
           <div class="game-invite-card__eyebrow">Invitación para jugar</div>
           <h2>${escapeHtml(game.title)}</h2>
@@ -282,10 +287,13 @@ export function GameInviteCenter(router) {
     card.className = 'game-invite-card game-invite-card--rematch';
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-label', 'Revancha');
+    const cover = MULTIPLAYER_GAMES[current.game_id]
+      ? gameCover(current.game_id, game.color, game.accent)
+      : '';
     card.innerHTML = `
       <div class="game-invite-card__glow" aria-hidden="true"></div>
       <header class="game-invite-card__head">
-        <span class="game-invite-card__emblem"><span class="game-invite-card__emblem-icon">${ICON.refresh}</span></span>
+        <span class="game-invite-card__emblem game-invite-card__emblem--cover">${cover ? `<img class="game-invite-card__cover" src="${cover}" alt="">` : `<span class="game-invite-card__emblem-icon">${ICON.refresh}</span>`}</span>
         <div>
           <div class="game-invite-card__eyebrow">Revancha</div>
           <h2>${escapeHtml(game.title)}</h2>
@@ -303,7 +311,10 @@ export function GameInviteCenter(router) {
       const btn = card.querySelector('[data-rematch="accept"]');
       btn.disabled = true;
       try {
-        await requestGameRematch(current.room_id, {});
+        // Estado inicial REAL: con {} el servidor reusaría el estado final
+        // (tablero lleno o puntuaciones puestas) y la revancha nacería rota.
+        const me = userStore.getUser();
+        await requestGameRematch(current.room_id, createGameInitialState(current.game_id, me?.id || ''));
         rematches = rematches.filter(item => item.id !== current.id);
         showToast('Revancha aceptada. ¡A por otra!', 'success');
         router.navigate(`/juegos/online/${current.game_id}?room=${current.room_id}`);

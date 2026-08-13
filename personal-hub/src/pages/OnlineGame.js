@@ -2,20 +2,45 @@ import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
 import {
   MULTIPLAYER_GAMES,
+  SCORE_GAME_IDS,
+  LOWER_SCORE_WINS,
+  createGameInitialState,
   listGameInviteTargets,
   createGameInvitation,
   getGameRoom,
   getGamePlayerState,
   submitGameMove,
   submitBattleshipMove,
+  submitScoreMove,
+  forfeitGameRoom,
   requestGameRematch,
   rejectGameRematch,
   cancelGameRoom,
-  subscribeToGameRoom
+  subscribeToGameRoom,
+  SHIP_SIZES,
+  BOARD_SIZE
 } from '../services/games.service.js';
+import { gameCover } from '../utils/gameCovers.js';
 
-const SHIP_SIZES = [5, 4, 3, 3, 2];
-const BOARD_SIZE = 10;
+/** Instrucciones cortas por juego para el modo reto. */
+const SCORE_INSTRUCTIONS = {
+  '2048': 'Desliza las baldosas y suma hasta llegar lo más lejos posible.',
+  'agujero-negro': 'Esquiva la atracción y aguanta todo lo que puedas.',
+  'ahorcado': 'Adivina la palabra con el mayor número de aciertos.',
+  'breakout': 'Rompe todos los ladrillos. Más puntos, mejor.',
+  'buscaminas': 'Descubre el máximo de casillas sin pisar una mina.',
+  'cuchillos': 'Lanza cuchillos con precisión. Cada acierto suma.',
+  'invaders': 'Dispara a las oleadas y consigue la mayor puntuación.',
+  'laberinto': 'Llega al nivel más alto del laberinto.',
+  'memoria': 'Encuentra todas las parejas en el menor número de movimientos.',
+  'meteoritos': 'Sobrevive esquivando meteoritos y suma puntos.',
+  'pong': 'Juega contra la CPU. Tu marcador es el que cuenta.',
+  'simon': 'Repite la secuencia hasta la ronda más alta.',
+  'snake': 'Come y crece sin chocar. Más longitud, más puntos.',
+  'tetris': 'Completa líneas y consigue la mejor puntuación.',
+  'tiroarco': 'Encesta y gana puntos. La precisión lo es todo.',
+  'torre': 'Construye la torre más alta y suma puntos.'
+};
 
 function emptyGrid(size = BOARD_SIZE) {
   return Array.from({ length: size }, () => Array(size).fill(0));
@@ -49,50 +74,6 @@ function friendlyError(error) {
     return 'Sin conexión. Comprueba internet y vuelve a intentarlo.';
   }
   return raw;
-}
-
-function placeFleet() {
-  const board = emptyGrid();
-  const ships = [];
-  for (const size of SHIP_SIZES) {
-    let placed = false;
-    for (let attempt = 0; attempt < 500 && !placed; attempt++) {
-      const horizontal = Math.random() > 0.5;
-      const row = Math.floor(Math.random() * BOARD_SIZE);
-      const col = Math.floor(Math.random() * BOARD_SIZE);
-      const cells = Array.from({ length: size }, (_, i) => [
-        row + (horizontal ? 0 : i), col + (horizontal ? i : 0)
-      ]);
-      if (cells.some(([r, c]) => r >= BOARD_SIZE || c >= BOARD_SIZE || board[r][c])) continue;
-      // Separación de barcos para que la flota sea legible.
-      const around = cells.flatMap(([r, c]) => {
-        const result = [];
-        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) result.push([r + dr, c + dc]);
-        return result;
-      });
-      if (around.some(([r, c]) => r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c])) continue;
-      cells.forEach(([r, c]) => { board[r][c] = 1; });
-      ships.push(cells);
-      placed = true;
-    }
-    if (!placed) return placeFleet();
-  }
-  return { board, ships };
-}
-
-function initialState(gameId, hostId) {
-  if (gameId === 'conecta4') {
-    return { board: Array.from({ length: 6 }, () => Array(7).fill(0)), turn: hostId, winner: null, draw: false };
-  }
-  if (gameId === 'tresenraya') {
-    return { board: Array(9).fill(0), turn: hostId, winner: null, draw: false };
-  }
-  const first = placeFleet();
-  const second = placeFleet();
-  return {
-    boards: [first.board, second.board], ships: [first.ships, second.ships], shots: [emptyGrid(), emptyGrid()],
-    shipsAlive: [SHIP_SIZES.length, SHIP_SIZES.length], turn: hostId, winner: null, draw: false
-  };
 }
 
 function winningLine(board, size) {
@@ -141,6 +122,10 @@ function validGameState(gameId, state) {
   if (!state || typeof state !== 'object') return false;
   if (gameId === 'conecta4') return validGrid(state.board, 6, 7, [0, 1, 2]);
   if (gameId === 'tresenraya') return Array.isArray(state.board) && state.board.length === 9 && state.board.every(value => [0, 1, 2].includes(value));
+  if (SCORE_GAME_IDS.has(gameId)) {
+    return Array.isArray(state.scores) && state.scores.length === 2
+      && state.scores.every(score => score === null || (Number.isInteger(score) && score >= 0));
+  }
   return Array.isArray(state.shots) && state.shots.length === 2
     && state.shots.every(shots => validGrid(shots, BOARD_SIZE, BOARD_SIZE, [0, 1, 2]))
     && Array.isArray(state.shipsAlive) && state.shipsAlive.length === 2
@@ -164,6 +149,8 @@ export function OnlineGamePage(router) {
   let expiryTimer = null;
   let disposed = false;
   let mode = roomId ? 'room' : 'lobby';
+  let scoreFrame = null;
+  let scoreMessageHandler = null;
 
   if (!user || !MULTIPLAYER_GAMES[gameId]) {
     page.innerHTML = '<div class="online-shell glass-card"><p>Esta partida no está disponible.</p></div>';
@@ -171,6 +158,40 @@ export function OnlineGamePage(router) {
   }
 
   function gameInfo() { return MULTIPLAYER_GAMES[gameId]; }
+  function scoreMode() { return SCORE_GAME_IDS.has(gameId); }
+
+  function coverSrc() {
+    const game = gameInfo();
+    return gameCover(gameId, game.color, game.accent);
+  }
+
+  /** Modal de confirmación al salir en mitad de una partida activa. */
+  function confirmExit() {
+    const overlay = document.createElement('div');
+    overlay.className = 'online-exit-overlay';
+    overlay.setAttribute('role', 'presentation');
+    overlay.innerHTML = `
+      <div class="online-exit-card" role="dialog" aria-modal="true" aria-label="¿Salir de la partida?">
+        <h2>¿Seguro que quieres salir?</h2>
+        <p>Si sales ahora abandonarás la partida y <strong>tu rival ganará automáticamente</strong>.</p>
+        <div class="online-actions online-exit-card__actions">
+          <button type="button" class="online-btn" data-exit="cancel">Seguir jugando</button>
+          <button type="button" class="online-btn online-btn--primary" data-exit="confirm">Sí, salir</button>
+        </div>
+      </div>`;
+    overlay.querySelector('[data-exit="cancel"]').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('[data-exit="confirm"]').addEventListener('click', async () => {
+      const confirmButton = overlay.querySelector('[data-exit="confirm"]');
+      confirmButton.disabled = true;
+      try { await forfeitGameRoom(room.id); }
+      catch (error) { showToast(friendlyError(error.message), 'info'); }
+      overlay.remove();
+      router.navigate('/juegos');
+    });
+    page.appendChild(overlay);
+    const focusTarget = overlay.querySelector('[data-exit="cancel"]');
+    if (focusTarget) focusTarget.focus();
+  }
 
   function shell(content) {
     page.innerHTML = `
@@ -186,6 +207,12 @@ export function OnlineGamePage(router) {
     page.querySelector('[data-action="back"]').addEventListener('click', async () => {
       if (mode === 'room' && room?.status === 'waiting' && room.host_id === user.id) {
         try { await cancelGameRoom(room.id); } catch (error) { showToast(friendlyError(error.message), 'info'); }
+        router.navigate('/juegos');
+        return;
+      }
+      if (mode === 'room' && room?.status === 'active') {
+        confirmExit();
+        return;
       }
       router.navigate('/juegos');
     });
@@ -206,7 +233,10 @@ export function OnlineGamePage(router) {
   function renderLobby() {
     mode = 'lobby';
     const gameChoices = Object.entries(MULTIPLAYER_GAMES).map(([id, game]) =>
-      `<button type="button" class="online-game-chip${id === gameId ? ' is-selected' : ''}" data-game="${id}">${game.emoji} ${game.title}</button>`
+      `<button type="button" class="online-game-chip${id === gameId ? ' is-selected' : ''}" data-game="${id}">
+        <img class="online-game-chip__cover" src="${gameCover(id, game.color, game.accent)}" alt="" loading="lazy">
+        <span>${game.title}</span>
+      </button>`
     ).join('');
     const choices = targets.length
       ? targets.map(target => `<button type="button" class="online-choice" data-target="${escapeHtml(target.id)}"><span class="online-avatar"></span><span class="online-target-name"></span></button>`).join('')
@@ -257,7 +287,7 @@ export function OnlineGamePage(router) {
     if (!selectedTarget) return;
     button.disabled = true;
     try {
-      const created = await createGameInvitation(gameId, selectedTarget, initialState(gameId, user.id));
+      const created = await createGameInvitation(gameId, selectedTarget, createGameInitialState(gameId, user.id));
       showToast(`Invitación enviada a ${targetName}.`, 'success');
       router.navigate(`/juegos/online/${gameId}?room=${created.room_id}`);
     } catch (error) {
@@ -268,6 +298,11 @@ export function OnlineGamePage(router) {
 
   function playerIndex() { return room.host_id === user.id ? 0 : 1; }
   function isMyTurn() { return room?.turn_user_id === user.id; }
+
+  function scoreOf(index) {
+    const scores = room?.state?.scores;
+    return Array.isArray(scores) && typeof scores[index] === 'number' ? scores[index] : null;
+  }
 
   async function commit(state, status = 'active', winnerId = null, result = {}) {
     try {
@@ -283,10 +318,106 @@ export function OnlineGamePage(router) {
     }
   }
 
+  /** Modo reto: envía la puntuación del turno actual. */
+  async function submitScore(score) {
+    if (disposed || !room) return;
+    try {
+      room = await submitScoreMove({
+        roomId: room.id,
+        expectedRevision: room.revision,
+        score,
+        result: { score },
+        higherWins: !LOWER_SCORE_WINS.has(gameId)
+      });
+      showToast('Puntuación enviada ✓', 'success');
+      renderRoom();
+    } catch (error) {
+      showToast(friendlyError(error.message) || 'El rival ha terminado antes. Sincronizando…', 'info');
+      try {
+        room = await getGameRoom(room.id);
+        renderRoom();
+      } catch (reloadError) { renderError(reloadError.message); }
+    }
+  }
+
+  /** Modo reto: pantalla de juego (iframe del juego individual). */
+  function renderScorePlay() {
+    const me = playerIndex();
+    const rival = me === 0 ? 1 : 0;
+    const myScore = scoreOf(me);
+    const rivalScore = scoreOf(rival);
+    const game = gameInfo();
+    const src = `${game.href}?accent=${game.color.replace('#', '')}&online=1&game=${encodeURIComponent(gameId)}`;
+    shell(`
+      <div class="online-panel online-score">
+        <div class="online-score__head">
+          <div class="online-score__cover"><img src="${coverSrc()}" alt="Portada de ${escapeHtml(game.title)}"></div>
+          <div>
+            <p class="online-turn">Tu turno · consigue la mejor puntuación</p>
+            <p class="online-subtitle">${escapeHtml(SCORE_INSTRUCTIONS[gameId] || 'Juega tu ronda. La puntuación se envía sola al terminar.')}</p>
+            <div class="online-score-mini">
+              <div class="online-score-mini__row"><span>Tú</span><strong>${myScore ?? '—'}</strong></div>
+              <div class="online-score-mini__row"><span>Rival</span><strong>${rivalScore ?? 'pendiente'}</strong></div>
+            </div>
+          </div>
+        </div>
+        <div class="online-score__frame-wrap">
+          <iframe class="online-score__frame" title="${escapeHtml(game.title)}" src="${escapeHtml(src)}" allow="autoplay; fullscreen"></iframe>
+        </div>
+        <p class="online-score__hint">Cuando tu ronda termine, la puntuación se enviará automáticamente.</p>
+      </div>`);
+    scoreFrame = page.querySelector('.online-score__frame');
+    if (!scoreMessageHandler) {
+      scoreMessageHandler = (event) => {
+        if (!scoreFrame || event.source !== scoreFrame.contentWindow) return;
+        const data = event.data;
+        if (!data || data.type !== 'ph-score' || data.game !== gameId) return;
+        if (typeof data.score !== 'number') {
+          showToast('No se pudo leer tu puntuación. Juega la ronda de nuevo.', 'error');
+          return;
+        }
+        submitScore(data.score);
+      };
+      window.addEventListener('message', scoreMessageHandler);
+    }
+  }
+
+  /** Modo reto: esperar mientras el rival juega su turno. */
+  function renderScoreWaiting() {
+    const me = playerIndex();
+    const rival = me === 0 ? 1 : 0;
+    const myScore = scoreOf(me);
+    const rivalScore = scoreOf(rival);
+    shell(`
+      <div class="online-panel online-waiting">
+        <div class="online-waiting__visual" aria-hidden="true">
+          <span class="online-waiting__spinner"></span>
+          <span class="online-waiting__badge"><img class="online-waiting__cover" src="${coverSrc()}" alt=""></span>
+        </div>
+        <div class="online-waiting__content">
+          <div class="online-status"><span class="online-status__dot"></span><span>Tu rival está jugando su turno…</span></div>
+          <p class="online-subtitle">Cuando termine verás el resultado. Quédate en esta pantalla.</p>
+          <div class="online-score-mini">
+            <div class="online-score-mini__row"><span>Tú</span><strong>${myScore ?? '—'}</strong></div>
+            <div class="online-score-mini__row"><span>Rival</span><strong>${rivalScore ?? 'jugando…'}</strong></div>
+          </div>
+        </div>
+      </div>`);
+  }
+
   function renderResult() {
-    const result = getGameResult(gameId, room.state, user.id, room.host_id, room.guest_id);
-    const outcome = result === 'draw' ? 'draw' : result === 'win' ? 'win' : 'loss';
-    const title = result === 'draw' ? 'Empate' : result === 'win' ? '¡Has ganado!' : 'Ha ganado tu rival';
+    const forfeited = room.result?.forfeit === true;
+    let title;
+    let outcome;
+    if (forfeited) {
+      const loserIsMe = String(room.result.loser_id || '') === String(user.id);
+      title = loserIsMe ? 'Has abandonado la partida' : 'Tu rival abandonó la partida';
+      outcome = loserIsMe ? 'loss' : 'win';
+    } else {
+      const result = getGameResult(gameId, room.state, user.id, room.host_id, room.guest_id);
+      outcome = result === 'draw' ? 'draw' : result === 'win' ? 'win' : 'loss';
+      title = result === 'draw' ? 'Empate' : result === 'win' ? '¡Has ganado!' : 'Ha ganado tu rival';
+    }
     const emblems = {
       win: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
       loss: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
@@ -294,29 +425,46 @@ export function OnlineGamePage(router) {
     };
     const iRequested = room.host_id === user.id ? room.rematch_host : room.rematch_guest;
     const rivalRequested = room.host_id === user.id ? room.rematch_guest : room.rematch_host;
-    const statusText = iRequested
-      ? 'Esperando a que tu rival confirme la revancha…'
-      : rivalRequested
-        ? 'Tu rival quiere la revancha. ¿Jugamos otra?'
-        : '¿Seguimos con otra partida?';
+    const statusText = forfeited
+      ? 'Puedes buscar otra partida cuando quieras.'
+      : iRequested
+        ? 'Esperando a que tu rival confirme la revancha…'
+        : rivalRequested
+          ? 'Tu rival quiere la revancha. ¿Jugamos otra?'
+          : '¿Seguimos con otra partida?';
     const requestBtn = iRequested
       ? `<button type="button" class="online-btn" data-action="cancel-rematch">Cancelar petición</button>`
       : `<button type="button" class="online-btn online-btn--primary" data-action="rematch">Revancha</button>`;
     const rivalActions = rivalRequested
       ? `<button type="button" class="online-btn" data-action="reject-rematch">Rechazar</button>`
       : '';
+    const scoreBoard = scoreMode() && !forfeited
+      ? (() => {
+          const mine = playerIndex(), rivalIndex = mine === 0 ? 1 : 0;
+          const myScore = scoreOf(mine), rivalScore = scoreOf(rivalIndex);
+          const label = LOWER_SCORE_WINS.has(gameId) ? 'movimientos' : 'puntos';
+          const note = LOWER_SCORE_WINS.has(gameId) ? '<p class="online-score-board__note">Menos movimientos gana</p>' : '';
+          return `
+          <div class="online-score-board">
+            <div class="online-score-board__row"><span>Tú</span><strong>${myScore ?? '—'} ${label}</strong></div>
+            <div class="online-score-board__row"><span>Rival</span><strong>${rivalScore ?? '—'} ${label}</strong></div>
+            ${note}
+          </div>`;
+        })()
+      : '';
     shell(`
       <div class="online-result online-result--${outcome}">
         <div class="online-result__emblem">${emblems[outcome]}</div>
         <div class="online-kicker">Resultado</div>
         <h2>${title}</h2>
+        ${scoreBoard}
         <p>${statusText}</p>
         <div class="online-actions">${requestBtn}${rivalActions}<button type="button" class="online-btn" data-action="change">Cambiar de juego</button></div>
       </div>`);
     const requestRematch = async (button) => {
       button.disabled = true;
       try {
-        room = await requestGameRematch(room.id, initialState(gameId, room.host_id));
+        room = await requestGameRematch(room.id, createGameInitialState(gameId, room.host_id));
         if (gameId === 'battleship') playerState = await getGamePlayerState(room.id);
         renderRoom();
       }
@@ -345,7 +493,7 @@ export function OnlineGamePage(router) {
       <div class="online-panel online-waiting">
         <div class="online-waiting__visual" aria-hidden="true">
           <span class="online-waiting__spinner"></span>
-          <span class="online-waiting__badge">${escapeHtml(gameInfo().emoji)}</span>
+          <span class="online-waiting__badge"><img class="online-waiting__cover" src="${coverSrc()}" alt=""></span>
         </div>
         <div class="online-waiting__content">
           <div class="online-status"><span class="online-status__dot"></span><span>Esperando a que ${escapeHtml(targetName || 'tu rival')} acepte la invitación…</span></div>
@@ -365,6 +513,10 @@ export function OnlineGamePage(router) {
     if (room.status !== 'active') { renderError('Esta sala ya no está disponible.'); return; }
     if (!validGameState(gameId, room.state) || (gameId === 'battleship' && !validBattleshipPrivateState(playerState))) {
       renderError('La partida devolvió un estado no válido.'); return;
+    }
+    if (scoreMode()) {
+      if (isMyTurn()) renderScorePlay(); else renderScoreWaiting();
+      return;
     }
     if (gameId === 'conecta4') renderConnect4();
     else if (gameId === 'tresenraya') renderTtt();
@@ -494,6 +646,11 @@ export function OnlineGamePage(router) {
     disposed = true;
     clearTimeout(expiryTimer);
     if (roomUnsubscribe) roomUnsubscribe();
+    if (scoreMessageHandler) {
+      window.removeEventListener('message', scoreMessageHandler);
+      scoreMessageHandler = null;
+    }
+    scoreFrame = null;
   };
   return page;
 }

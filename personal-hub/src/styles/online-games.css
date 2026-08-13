@@ -157,7 +157,16 @@
 .online-game__cell.is-ship { background: color-mix(in srgb, #60a5fa 45%, transparent); }
 .online-game__cell.is-shot { background: color-mix(in srgb, #f87171 40%, transparent); }
 .online-game__cell.is-miss { background: color-mix(in srgb, #fff 14%, transparent); }
-.juego-card-online { position: absolute; right: 10px; bottom: 10px; z-index: 3; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 6px 9px; background: rgba(0,0,0,.45); color: #fff; font-size: .68rem; text-decoration: none; }
+.juego-card-online {
+  position: absolute; right: 10px; bottom: 10px; z-index: 3;
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 6px 10px;
+  background: rgba(0,0,0,.45); color: #fff; font-size: .68rem; font-weight: 600; text-decoration: none;
+  transition: background .15s ease, transform .12s ease;
+}
+.juego-card-online:hover { background: rgba(0,0,0,.62); transform: translateY(-1px); }
+.juego-card-online__icon { display: inline-flex; }
+.juego-card-online__icon svg { width: 13px; height: 13px; display: block; }
 .juego-card { position: relative; }
 /* Esperando al rival: spinner + insignia del juego */
 .online-waiting { display: grid; gap: 20px; justify-items: center; text-align: center; padding: 34px 24px; }
@@ -219,5 +228,93 @@
 .online-panel { padding: 26px; }
 .online-panel > p:first-child { margin-top: 0; color: var(--theme-text-secondary, rgba(255,255,255,.7)); }
 
-@media (max-width: 560px) { .game-invite-bell { right: 12px; top: 12px; } .game-invite-card { right: 12px; top: 62px; } .online-header { display: block; } }
-@media (prefers-reduced-motion: reduce) { .game-invite-card { transition: none; animation: none; transform: none; opacity: 1; } .game-invite-bell { animation: none; } .online-waiting__spinner, .online-waiting__badge, .online-waiting__content .online-status__dot { animation: none; } }
+/* Portadas de juego: chips del lobby, insignia de espera y tarjetas de invitación */
+.online-game-chip { padding: 6px 10px 6px 6px; }
+.online-game-chip__cover {
+  width: 30px; height: 30px; border-radius: 8px; object-fit: cover;
+  box-shadow: 0 3px 10px rgba(0,0,0,.3); flex-shrink: 0; display: block;
+}
+.online-waiting__badge { overflow: hidden; }
+.online-waiting__cover { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 21px; }
+.game-invite-card__emblem--cover { overflow: hidden; padding: 0; }
+.game-invite-card__cover { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ==========================================
+   MODO RETO — turno con iframe del juego
+   ========================================== */
+.online-score { display: grid; gap: 18px; }
+.online-score__head { display: flex; gap: 16px; align-items: flex-start; }
+.online-score__cover {
+  flex-shrink: 0; width: 84px; height: 84px; border-radius: 18px; overflow: hidden;
+  box-shadow: 0 10px 26px rgba(0,0,0,.35);
+  border: 1px solid color-mix(in srgb, var(--theme-accent, #e8735a) 35%, transparent);
+}
+.online-score__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.online-score__head .online-turn { text-align: left; margin: 0 0 6px; }
+.online-score__head .online-subtitle { margin-top: 0; font-size: .9rem; }
+.online-score-mini {
+  display: inline-grid; gap: 5px; margin-top: 10px; padding: 10px 14px;
+  border-radius: 14px; background: color-mix(in srgb, var(--theme-accent, #e8735a) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-accent, #e8735a) 22%, transparent);
+  font-size: .86rem; min-width: 180px;
+}
+.online-score-mini__row { display: flex; justify-content: space-between; gap: 18px; color: var(--theme-text-secondary, rgba(255,255,255,.72)); }
+.online-score-mini__row strong { color: var(--theme-text-primary, #fff); }
+.online-score__frame-wrap {
+  position: relative; border-radius: 18px; overflow: hidden;
+  border: 1px solid var(--theme-border, rgba(255,255,255,.14));
+  background: #101014;
+  box-shadow: 0 18px 46px rgba(0,0,0,.32);
+}
+.online-score__frame { display: block; width: 100%; height: min(62vh, 620px); border: 0; background: #101014; }
+.online-score__hint { margin: 0; text-align: center; color: var(--theme-text-muted, rgba(255,255,255,.5)); font-size: .8rem; }
+
+/* Marcadores del resultado (modo reto) */
+.online-score-board {
+  display: grid; gap: 8px; max-width: 320px; margin: 14px auto; padding: 16px 18px;
+  border-radius: 16px; background: color-mix(in srgb, var(--theme-accent, #e8735a) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-accent, #e8735a) 20%, transparent);
+  position: relative;
+}
+.online-score-board__row { display: flex; justify-content: space-between; gap: 20px; font-size: .95rem; color: var(--theme-text-secondary, rgba(255,255,255,.75)); }
+.online-score-board__row strong { color: var(--theme-text-primary, #fff); }
+.online-score-board__note { margin: 2px 0 0; font-size: .74rem; color: var(--theme-text-muted, rgba(255,255,255,.5)); }
+
+/* ==========================================
+   MODAL DE SALIDA (abandonar partida en curso)
+   ========================================== */
+.online-exit-overlay {
+  position: fixed; inset: 0; z-index: 1500; display: grid; place-items: center;
+  background: rgba(0,0,0,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: onlineFadeIn .18s ease both;
+}
+@keyframes onlineFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.online-exit-card {
+  width: min(400px, calc(100vw - 40px)); padding: 26px 24px; border-radius: 24px;
+  background: linear-gradient(160deg, var(--theme-surface, #1d1d22), var(--theme-surface, #19191d));
+  border: 1px solid color-mix(in srgb, var(--theme-accent, #e8735a) 32%, transparent);
+  color: var(--theme-text-primary, #fff);
+  box-shadow: 0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.05) inset;
+  text-align: center;
+  animation: onlineCardUp .26s cubic-bezier(.2, .9, .3, 1.25) both;
+}
+@keyframes onlineCardUp { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: none; } }
+.online-exit-card h2 { margin: 0 0 8px; font-family: var(--font-display, Georgia, serif); font-size: 1.45rem; }
+.online-exit-card p { margin: 0; color: var(--theme-text-secondary, rgba(255,255,255,.72)); line-height: 1.55; }
+.online-exit-card p strong { color: var(--theme-text-primary, #fff); }
+.online-exit-card__actions { justify-content: center; }
+
+@media (max-width: 560px) {
+  .game-invite-bell { right: 12px; top: 12px; }
+  .game-invite-card { right: 12px; top: 62px; }
+  .online-header { display: block; }
+  .online-score__head { gap: 12px; }
+  .online-score__cover { width: 64px; height: 64px; border-radius: 14px; }
+  .online-score__frame { height: 58vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-invite-card { transition: none; animation: none; transform: none; opacity: 1; }
+  .game-invite-bell { animation: none; }
+  .online-waiting__spinner, .online-waiting__badge, .online-waiting__content .online-status__dot { animation: none; }
+  .online-exit-overlay, .online-exit-card { animation: none; }
+}

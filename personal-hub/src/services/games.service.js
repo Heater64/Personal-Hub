@@ -14,10 +14,92 @@ import { supabase } from './supabase.js';
 import { db } from './db.service.js';
 
 export const MULTIPLAYER_GAMES = {
-  conecta4: { title: 'Conecta 4', emoji: '🔴', href: '/games/conecta4.html' },
-  tresenraya: { title: 'Tres en Raya', emoji: '❌', href: '/games/tresenraya.html' },
-  battleship: { title: 'Hundir la Flota', emoji: '🚢', href: '/games/battleship.html' }
+  // Juegos de turnos clásicos (tablero compartido, validado movimiento a movimiento)
+  conecta4: { title: 'Conecta 4', emoji: '🔴', href: '/games/conecta4.html', color: '#ff8a5e', accent: '#ffb08f' },
+  tresenraya: { title: 'Tres en Raya', emoji: '❌', href: '/games/tresenraya.html', color: '#9ad1ff', accent: '#bce3ff' },
+  battleship: { title: 'Hundir la Flota', emoji: '🚢', href: '/games/battleship.html', color: '#5aa0ff', accent: '#8ac0ff' },
+  // Modo reto (batalla por puntuación: cada uno juega su turno, gana el de más puntos)
+  '2048': { title: '2048', emoji: '🔢', href: '/games/2048.html', color: '#ffcf4d', accent: '#ffe59a' },
+  'agujero-negro': { title: 'Agujero Negro', emoji: '🕳️', href: '/games/agujero-negro.html', color: '#b45309', accent: '#ffb347' },
+  ahorcado: { title: 'Ahorcado', emoji: '💀', href: '/games/ahorcado.html', color: '#ffb347', accent: '#ffc96b' },
+  breakout: { title: 'Breakout', emoji: '🧱', href: '/games/breakout.html', color: '#d4624a', accent: '#e8735a' },
+  buscaminas: { title: 'Buscaminas', emoji: '💣', href: '/games/buscaminas.html', color: '#f5a05e', accent: '#ffbd85' },
+  cuchillos: { title: 'Cuchillos', emoji: '🔪', href: '/games/cuchillos.html', color: '#ff8aa1', accent: '#ffa9ba' },
+  invaders: { title: 'Space Invaders', emoji: '👾', href: '/games/invaders.html', color: '#5ed6d0', accent: '#8ae8e3' },
+  laberinto: { title: 'Laberinto', emoji: '🌀', href: '/games/laberinto.html', color: '#e8735a', accent: '#f7a180' },
+  memoria: { title: 'Memoria', emoji: '🧠', href: '/games/memoria.html', color: '#ff8aa1', accent: '#ffb3c1' },
+  meteoritos: { title: 'Meteoritos', emoji: '☄️', href: '/games/meteoritos.html', color: '#ff9f6e', accent: '#ffb98f' },
+  pong: { title: 'Pong', emoji: '🏓', href: '/games/pong.html', color: '#ff9f6e', accent: '#ffc08f' },
+  simon: { title: 'Simon Dice', emoji: '🔔', href: '/games/simon.html', color: '#ffcf6e', accent: '#ffdf9e' },
+  snake: { title: 'Snake', emoji: '🐍', href: '/games/snake.html', color: '#e8735a', accent: '#f08a70' },
+  tetris: { title: 'Tetris', emoji: '🧩', href: '/games/tetris.html', color: '#7c9cff', accent: '#a5baff' },
+  tiroarco: { title: 'Tiro al Arco', emoji: '🎯', href: '/games/tiroarco.html', color: '#ffc96b', accent: '#ffdd9e' },
+  torre: { title: 'Torre', emoji: '🏗️', href: '/games/torre.html', color: '#f5a05e', accent: '#ffb347' }
 };
+
+/** Juegos de modo reto: cada jugador juega su turno y gana el de más puntos. */
+export const SCORE_GAME_IDS = new Set([
+  '2048', 'agujero-negro', 'ahorcado', 'breakout', 'buscaminas', 'cuchillos',
+  'invaders', 'laberinto', 'memoria', 'meteoritos', 'pong', 'simon',
+  'snake', 'tetris', 'tiroarco', 'torre'
+]);
+
+/** Juegos donde gana el que tenga MENOS puntos (p.ej. Memoria: menos movimientos). */
+export const LOWER_SCORE_WINS = new Set(['memoria']);
+
+export const SHIP_SIZES = [5, 4, 3, 3, 2];
+export const BOARD_SIZE = 10;
+
+function emptyGrid(size = BOARD_SIZE) {
+  return Array.from({ length: size }, () => Array(size).fill(0));
+}
+
+function placeFleet() {
+  const board = emptyGrid();
+  const ships = [];
+  for (const size of SHIP_SIZES) {
+    let placed = false;
+    for (let attempt = 0; attempt < 500 && !placed; attempt++) {
+      const horizontal = Math.random() > 0.5;
+      const row = Math.floor(Math.random() * BOARD_SIZE);
+      const col = Math.floor(Math.random() * BOARD_SIZE);
+      const cells = Array.from({ length: size }, (_, i) => [
+        row + (horizontal ? 0 : i), col + (horizontal ? i : 0)
+      ]);
+      if (cells.some(([r, c]) => r >= BOARD_SIZE || c >= BOARD_SIZE || board[r][c])) continue;
+      const around = cells.flatMap(([r, c]) => {
+        const result = [];
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) result.push([r + dr, c + dc]);
+        return result;
+      });
+      if (around.some(([r, c]) => r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c])) continue;
+      cells.forEach(([r, c]) => { board[r][c] = 1; });
+      ships.push(cells);
+      placed = true;
+    }
+    if (!placed) return placeFleet();
+  }
+  return { board, ships };
+}
+
+/** Estado inicial por juego (lo usan invitación, partida y revancha). */
+export function createGameInitialState(gameId, hostId) {
+  if (gameId === 'conecta4') {
+    return { board: Array.from({ length: 6 }, () => Array(7).fill(0)), turn: hostId, winner: null, draw: false };
+  }
+  if (gameId === 'tresenraya') {
+    return { board: Array(9).fill(0), turn: hostId, winner: null, draw: false };
+  }
+  if (SCORE_GAME_IDS.has(gameId)) {
+    return { scores: [null, null], turn: hostId, winner: null, draw: false };
+  }
+  const first = placeFleet();
+  const second = placeFleet();
+  return {
+    boards: [first.board, second.board], ships: [first.ships, second.ships], shots: [emptyGrid(), emptyGrid()],
+    shipsAlive: [SHIP_SIZES.length, SHIP_SIZES.length], turn: hostId, winner: null, draw: false
+  };
+}
 
 function assertConfigured() {
   if (!db.isSupabaseConfigured()) {
@@ -138,6 +220,26 @@ export async function submitGameMove({ roomId, expectedRevision, state, turnUser
     p_result: result
   });
   return validateRoom(unwrap(response, 'No se pudo guardar el movimiento.'));
+}
+
+/** Modo reto: envía la puntuación del turno actual. El servidor valida y decide. */
+export async function submitScoreMove({ roomId, expectedRevision, score, result = {}, higherWins = true }) {
+  assertConfigured();
+  const response = await supabase.rpc('submit_score_move', {
+    p_room_id: roomId,
+    p_expected_revision: expectedRevision,
+    p_score: score,
+    p_result: result,
+    p_higher_wins: Boolean(higherWins)
+  });
+  return validateRoom(unwrap(response, 'No se pudo guardar tu puntuación.'));
+}
+
+/** Abandona una partida activa: la sala termina y gana el rival. */
+export async function forfeitGameRoom(roomId) {
+  assertConfigured();
+  const response = await supabase.rpc('forfeit_game_room', { p_room_id: roomId });
+  return validateRoom(unwrap(response, 'No se pudo abandonar la partida.'));
 }
 
 export async function requestGameRematch(roomId, initialState) {
