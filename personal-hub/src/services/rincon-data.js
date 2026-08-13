@@ -268,7 +268,8 @@ export const CURIOSIDADES_EXTRA = [
     title: 'Las pirámides no fueron construidas por esclavos',
     text: 'Fueron construidas por trabajadores asalariados y bien alimentados que vivían en aldeas cercanas con pan, cerveza y carne.',
     img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Great_Pyramid_of_Giza_-_20080716a.jpg/960px-Great_Pyramid_of_Giza_-_20080716a.jpg',
-    tags: ['historia', 'egipto', 'pirámides', 'antigüedad']
+    tags: ['historia', 'egipto', 'pirámides', 'antigüedad'],
+    src: { name: 'Muy Interesante', url: 'https://muyinteresante.okdiario.com/historia/63209.html' }
   },
   {
     id: 'tortuga',
@@ -276,15 +277,17 @@ export const CURIOSIDADES_EXTRA = [
     title: 'Las tortugas pueden respirar por la cola',
     text: 'Las tortugas de agua dulce tienen órganos especiales en la cloaca que les permiten extraer oxígeno del agua mientras hibernan.',
     img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Green_turtle_swimming_over_coral_reefs_in_Kona.jpg/960px-Green_turtle_swimming_over_coral_reefs_in_Kona.jpg',
-    tags: ['animales', 'tortugas', 'mar', 'biología']
+    tags: ['animales', 'tortugas', 'mar', 'biología'],
+    src: { name: 'Infobae', url: 'https://www.infobae.com/america/perrosygatos/2022/08/06/la-extrana-forma-de-respiracion-de-las-tortugas-en-invierno' }
   },
   {
     id: 'chocolate',
     cat: 'comida',
     title: 'El chocolate fue usado como moneda',
-    text: 'Los aztecas y mayas usaban los granos de cacao como moneda: un conejo costaba 10 granos y un esclavo, 100.',
+    text: 'Los aztecas usaban los granos de cacao como moneda: con 4 granos se compraba un conejo y con 100, un esclavo.',
     img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Chocolate.jpg/960px-Chocolate.jpg',
-    tags: ['comida', 'chocolate', 'historia', 'cacao']
+    tags: ['comida', 'chocolate', 'historia', 'cacao'],
+    src: { name: 'Xataka Ciencia', url: 'https://xatakaciencia.com/sabias-que/cacao-el-alimento-de-los-dioses-de-linneo' }
   },
   {
     id: 'aurora',
@@ -292,7 +295,8 @@ export const CURIOSIDADES_EXTRA = [
     title: 'La aurora boreal suena como chasquidos',
     text: 'En el norte de Europa se han grabado chasquidos y crujidos asociados a las auroras, causados por la electricidad estática en el aire.',
     img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Aurora_borealis_over_Eielson_Air_Force_Base%2C_Alaska.jpg/960px-Aurora_borealis_over_Eielson_Air_Force_Base%2C_Alaska.jpg',
-    tags: ['ciencia', 'aurora', 'naturaleza', 'física']
+    tags: ['ciencia', 'aurora', 'naturaleza', 'física'],
+    src: { name: 'BBC Mundo', url: 'https://www.bbc.com/mundo/noticias-36684686' }
   },
   {
     id: 'espacio',
@@ -300,7 +304,8 @@ export const CURIOSIDADES_EXTRA = [
     title: 'El espacio huele a carne asada y metal caliente',
     text: 'Los astronautas describen el olor del espacio como una mezcla de filete a la brasa, metal caliente y humo de soldadura.',
     img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/STS-116_spacewalk_1.jpg/960px-STS-116_spacewalk_1.jpg',
-    tags: ['datos', 'espacio', 'astronautas', 'ciencia']
+    tags: ['datos', 'espacio', 'astronautas', 'ciencia'],
+    src: { name: 'OK Diario', url: 'https://okdiario.com/ciencia/astronautas-revelan-primera-vez-cual-desagradable-olor-del-espacio-exterior-13822933' }
   },
   {
     id: 'muralla',
@@ -308,7 +313,8 @@ export const CURIOSIDADES_EXTRA = [
     title: 'La Muralla China no es visible desde el espacio',
     text: 'Ni los astronautas ni los satélites pueden verla a simple vista desde la órbita: el mito viene de observadores con binoculares.',
     img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/The_Great_Wall_of_China_at_Jinshanling-edit.jpg/960px-The_Great_Wall_of_China_at_Jinshanling-edit.jpg',
-    tags: ['historia', 'china', 'muralla', 'dato']
+    tags: ['historia', 'china', 'muralla', 'dato'],
+    src: { name: 'Chequeado', url: 'https://chequeado.com/mitos-y-enganos/la-muralla-china-se-ve-desde-la-luna' }
   },
   {
     id: 'pulpo',
@@ -316,7 +322,8 @@ export const CURIOSIDADES_EXTRA = [
     title: 'Los pulpos tienen tres corazones',
     text: 'Dos corazones bombean sangre a las branquias y el tercero al resto del cuerpo. Cuando nadan, el corazón principal se detiene.',
     img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Octopus_vulgaris_2.jpg/960px-Octopus_vulgaris_2.jpg',
-    tags: ['animales', 'pulpos', 'mar', 'biología']
+    tags: ['animales', 'pulpos', 'mar', 'biología'],
+    src: { name: 'National Geographic', url: 'https://nationalgeographic.com.es/mundo-animal/pulpos-maestros-camuflaje_19681' }
   },
   {
     id: 'vainilla',
@@ -325,6 +332,87 @@ export const CURIOSIDADES_EXTRA = [
     text: 'La vainilla proviene de una orquídea trepadora. Es la segunda especia más cara del mundo, solo detrás del azafrán.',
     img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Vanilla_culture_in_Puerto_Rico_%281948%29_%2820381846168%29.jpg/960px-Vanilla_culture_in_Puerto_Rico_%281948%29_%2820381846168%29.jpg',
     tags: ['comida', 'vainilla', 'orquídea', 'dato']
+  },
+  {
+    id: 'miel',
+    cat: 'comida',
+    title: 'La miel no caduca',
+    text: 'Se han encontrado vasijas de miel comestibles en tumbas egipcias de hace más de 3.000 años: su baja humedad y su acidez frenan a las bacterias.',
+    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Honeycomb.jpg?width=960',
+    tags: ['comida', 'miel', 'egipto', 'alimentos'],
+    src: { name: 'BBC Mundo', url: 'https://www.bbc.com/mundo/noticias-40732588' }
+  },
+  {
+    id: 'abejas',
+    cat: 'animales',
+    title: 'Las abejas se comunican bailando',
+    text: 'Las abejas usan la "danza del meneo": dibujan ochos y menean el abdomen para indicar dónde está el néctar y a qué distancia.',
+    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bees_Collecting_Pollen_2004-08-14.jpg?width=960',
+    tags: ['animales', 'abejas', 'biología', 'naturaleza'],
+    src: { name: 'National Geographic', url: 'https://nationalgeographic.com.es/naturaleza/curiosa-comunicacion-abejas_15537' }
+  },
+  {
+    id: 'banano',
+    cat: 'comida',
+    title: 'El plátano no es un árbol',
+    text: 'El plátano crece en una planta herbácea gigante del género Musa: su "tronco" está formado por hojas superpuestas.',
+    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bananas.jpg?width=960',
+    tags: ['comida', 'plátano', 'plantas', 'dato'],
+    src: { name: 'Wikipedia', url: 'https://es.wikipedia.org/wiki/Musa_%C3%97_paradisiaca' }
+  },
+  {
+    id: 'cleopatra',
+    cat: 'historia',
+    title: 'Cleopatra vivió más cerca del iPhone que de las pirámides',
+    text: 'Unos 2.500 años separan la Gran Pirámide de Cleopatra, y solo 2.050 separan a Cleopatra del primer iPhone.',
+    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kleopatra-VII.-Altes-Museum-Berlin1.jpg?width=960',
+    tags: ['historia', 'egipto', 'cleopatra', 'dato'],
+    src: { name: 'El Imparcial', url: 'https://elimparcial.com/locurioso/2024/10/02/sabias-que-cleopatra-esta-mas-cerca-del-iphone-que-de-las-piramides' }
+  },
+  {
+    id: 'jirafas',
+    cat: 'animales',
+    title: 'Las jirafas apenas duermen',
+    text: 'Las jirafas duermen solo entre 30 y 40 minutos al día, en microsiestas de pocos minutos y muchas veces de pie.',
+    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Giraffe08%20-%20melbourne%20zoo.jpg?width=960',
+    tags: ['animales', 'jirafas', 'sueño', 'dato'],
+    src: { name: 'ExpertoAnimal', url: 'https://expertoanimal.elperiodico.com/curiosidades-de-las-jirafas-21895.html' }
+  },
+  {
+    id: 'arpanet',
+    cat: 'datos',
+    title: 'El primer mensaje de internet fue "LO"',
+    text: 'El 29 de octubre de 1969, el primer mensaje de ARPANET iba a ser "login", pero la red se cayó y solo llegaron las letras "LO".',
+    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Arpanet_1974.svg?width=960',
+    tags: ['datos', 'internet', 'historia', 'tecnología'],
+    src: { name: 'NIC Argentina', url: 'https://nic.ar/es/enterate/novedades/arpanet-el-origen-de-internet' }
+  },
+  {
+    id: 'venus',
+    cat: 'ciencia',
+    title: 'En Venus un día dura más que un año',
+    text: 'Venus tarda 243 días terrestres en girar sobre sí misma, pero solo 225 en dar la vuelta al Sol.',
+    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Venus-real%20color.jpg?width=960',
+    tags: ['ciencia', 'venus', 'planetas', 'espacio'],
+    src: { name: 'NASA Space Place', url: 'https://spaceplace.nasa.gov/all-about-venus/sp' }
+  },
+  {
+    id: 'sol',
+    cat: 'ciencia',
+    title: 'La luz del Sol tarda 8 minutos en llegarte',
+    text: 'La luz del Sol viaja 150 millones de kilómetros a 300.000 km/s, así que tarda unos 8 minutos en llegar a la Tierra.',
+    img: 'https://en.wikipedia.org/wiki/Special:FilePath/Sun%20white.jpg?width=960',
+    tags: ['ciencia', 'sol', 'luz', 'espacio'],
+    src: { name: 'NASA Ciencia', url: 'https://ciencia.nasa.gov/que-es-el-sol/' }
+  },
+  {
+    id: 'bebes',
+    cat: 'datos',
+    title: 'Los bebés nacen con unos 300 huesos',
+    text: 'Al crecer, muchos huesos se fusionan: los bebés nacen con unos 300 y en la edad adulta solo quedan 206.',
+    img: 'https://commons.wikimedia.org/wiki/Special:FilePath/Newborn_baby.jpg?width=960',
+    tags: ['datos', 'bebés', 'cuerpo', 'biología'],
+    src: { name: 'La Sexta', url: 'https://www.lasexta.com/tecnologia-tecnoxplora/curiosidades/por-que-los-bebes-nacen-con-mas-huesos-que-los-adultos_20220920572a0b81515ea60001b5b2bb.html' }
   }
 ];
 

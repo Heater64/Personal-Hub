@@ -56,6 +56,25 @@ const PHRASES = [
 ];
 
 // ==========================================
+// PORTADAS DE CANCIONES — fallback cuando no hay "seguir escuchando"
+// ponytail: extraído de Canciones.js para evitar import circular
+// ==========================================
+const RANDOM_COVERS = [
+  { title: 'Si No Estás', artist: 'Iñigo Quintero', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/1200x1200bf-60.jpg' },
+  { title: 'Mi niña', artist: 'Wisin, Myke Towers', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(3).webp' },
+  { title: 'Rara vez', artist: 'Milo J, Taiu', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(4).webp' },
+  { title: 'Pareja del año', artist: 'Sebastián Yatra, Myke Towers', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(5).webp' },
+  { title: 'Cuando te vi', artist: 'Trueno, Maria Becerra', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/923cf890949406f52539a8ed4d16a352.1000x1000x1.png' },
+  { title: 'Todo de Ti', artist: 'Rauw Alejandro', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(7).webp' },
+  { title: 'Tacones Rojos', artist: 'Sebastián Yatra', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(8).webp' },
+  { title: 'Bailando', artist: 'Enrique Iglesias', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/R%20(1).png' },
+  { title: 'La Plena', artist: 'Beéle, Westcol', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/ab67616d0000b2734740100d84f3667f1eae6870.jpeg' },
+  { title: 'Cosas Que No Te Dije', artist: 'Saiko', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/ab67616d0000b273fb045f7dda9773e266437bc6.jpeg' },
+  { title: 'Indeciso', artist: 'Reik, J Balvin', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/R%20(3).jpeg' },
+  { title: 'Loco Enamorado', artist: 'Abraham Mateo, Farruko', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/f53f05470b4146d4a202cf5df55b4ead.1000x1000x1.png' },
+];
+
+// ==========================================
 // DATOS CURIOSOS
 // ==========================================
 const FUN_FACTS = [
@@ -95,20 +114,27 @@ function getMeme(rng) {
   return { thumb, name, isVid };
 }
 
-function getSong() {
+function getSong(rng) {
   try {
     migrateUserPref('continueTrack');
     const d = JSON.parse(localStorage.getItem(userPrefKey('continueTrack')));
-    if (!d?.title) return null;
-    // Duración cacheada por Canciones (misma clave): permite dibujar la
-    // barra de progreso real de la última escucha.
-    let duration = 0;
-    try {
-      const durs = JSON.parse(localStorage.getItem(userPrefKey('trackDurations')) || '{}');
-      if (d.audio && durs[d.audio]) duration = durs[d.audio];
-    } catch { /* sin duración: barra neutra */ }
-    return { title: d.title, artist: d.artist || '', cover: d.cover || '', time: d.time || 0, duration, audio: d.audio || '' };
-  } catch { return null; }
+    if (d?.title) {
+      // Duración cacheada por Canciones (misma clave): permite dibujar la
+      // barra de progreso real de la última escucha.
+      let duration = 0;
+      try {
+        const durs = JSON.parse(localStorage.getItem(userPrefKey('trackDurations')) || '{}');
+        if (d.audio && durs[d.audio]) duration = durs[d.audio];
+      } catch { /* sin duración: barra neutra */ }
+      return { title: d.title, artist: d.artist || '', cover: d.cover || '', time: d.time || 0, duration, audio: d.audio || '' };
+    }
+  } catch { /* ignore */ }
+  // ponytail: cuando no hay "seguir escuchando", muestra una portada aleatoria del día
+  if (rng && RANDOM_COVERS.length) {
+    const pick = pickSeeded(RANDOM_COVERS, rng);
+    return { title: pick.title, artist: pick.artist, cover: pick.cover, time: 0, duration: 0, audio: '' };
+  }
+  return null;
 }
 
 function getMessage(rng) {
@@ -159,7 +185,7 @@ export function HomePage(router) {
 
   // Gather data (sync)
   const meme = getMeme(rng);
-  const song = getSong();
+  const song = getSong(rng);
   const continueList = getContinueWatching();
   const message = getMessage(rng);
 
@@ -229,13 +255,14 @@ export function HomePage(router) {
   // la última canción automáticamente (?continue=1).
   if (song) {
     const pct = song.duration && song.time ? Math.min(100, Math.round((song.time / song.duration) * 100)) : (song.time > 0 ? 100 : 0);
-    cards.push(`<div class="home-card home-card--music" data-route="/canciones?continue=1">
+    const isContinue = song.time > 0 || song.duration > 0;
+    cards.push(`<div class="home-card home-card--music" data-route="${isContinue ? '/canciones?continue=1' : '/canciones'}">
       <div class="home-card__media">
         ${song.cover ? `<img src="${escapeHtml(song.cover)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
         <span class="home-card__media-fb" style="display:${song.cover ? 'none' : 'flex'}">🎵</span>
       </div>
       <div class="home-card__overlay"></div>
-      <span class="home-card__chip">🎵 Sigue escuchando</span>
+      <span class="home-card__chip">${isContinue ? '🎵 Sigue escuchando' : '🎵 Escuchar'}</span>
       <span class="home-card__play">${UI.play}</span>
       <div class="home-card__body">
         <div class="home-card__title">${escapeHtml(song.title)}</div>

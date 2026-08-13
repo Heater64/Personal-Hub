@@ -21,7 +21,8 @@ import {
 import {
   startListenTogether, stopListenTogether, onListenTogether,
   requestListenTogether, cancelListenRequest, getListenTogetherState,
-  submitListenState, fetchListenState
+  submitListenState, fetchListenState,
+  initListenStateRealtime, stopListenStateRealtime
 } from '../services/listenTogether.service.js';
 
 const SONGS_BASE = "https://canciones-que-me-recuerdan-a-ti.vercel.app";
@@ -252,6 +253,17 @@ ALL_SONGS.splice(0, ALL_SONGS.length, ...dedupeSongs(ALL_SONGS));
 /** Catálogo completo de canciones (semilla + las del Admin) — para otras secciones. */
 export function getAllSongs() {
   return ALL_SONGS;
+}
+
+/** Localiza una canción por clave "título | artista" (exportado para App.js). */
+export function findSongByKey(key) {
+  if (!key) return null;
+  for (const list of [ALL_SONGS, SONGS_RECUERDAN]) {
+    for (const s of list) {
+      if (songKey(s.title, s.artist) === key) return s;
+    }
+  }
+  return null;
 }
 
 // ==========================================
@@ -1485,7 +1497,13 @@ export function CancionesPage(router) {
         listenPeer = st.peerName;
         listenPeerAvatar = st.peerAvatar;
         updateListenChip();
-        if (st.active) startSyncTick(); else stopSyncTick();
+        if (st.active) {
+          startSyncTick();
+          initListenStateRealtime(); // push instantáneo vía postgres_changes
+        } else {
+          stopSyncTick();
+          stopListenStateRealtime();
+        }
         // Al activar la sesión, anuncia la canción que está sonando para que
         // el otro dispositivo la adopte (con timestamp de último escritor).
         if (st.active && currentIdx >= 0 && activeList[currentIdx]) {
@@ -1497,6 +1515,12 @@ export function CancionesPage(router) {
             playing: isPlaying && !audioEl?.paused
           });
         }
+        return;
+      }
+      // 'listen' = cambio de estado vía postgres_changes (push instantáneo).
+      // El servidor ya arbitró: aplicamos lo que diga sin preguntar.
+      if (type === 'listen' && listenTogether) {
+        applyServerState(payload);
         return;
       }
       if (!listenTogether) return;
@@ -1522,11 +1546,12 @@ export function CancionesPage(router) {
     // Sincroniza el chip con el estado global al entrar (sesión ya activa, etc.)
     updateListenChip();
     // Montaje tardío: si la sesión ya estaba activa al entrar (aceptaste la
-    // invitación desde otra página), arranca el tick de sincronización y lee
-    // el estado autoritativo del servidor (el tick lo mantiene al día ~3x/s).
+    // invitación desde otra página), arranca el tick de sincronización, la
+    // suscripción Realtime (push instantáneo) y lee el estado autoritativo.
     const ltSt = getListenTogetherState();
     if (ltSt.active) {
       startSyncTick();
+      initListenStateRealtime();
       fetchListenState().then(st => { if (st && st.song_key) applyServerState(st); });
     } else {
       stopSyncTick();
@@ -2300,6 +2325,7 @@ export function CancionesPage(router) {
     offPlayer();
     offListen();
     stopSyncTick(); // detiene el tick de sincronización (~3x/s)
+    stopListenStateRealtime(); // detiene la suscripción Realtime (push instantáneo)
     // La sesión compartida vive en el servicio global: no se detiene al
     // salir de Canciones (la música sigue sonando al navegar).
     unwireAudio();

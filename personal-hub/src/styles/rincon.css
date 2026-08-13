@@ -824,6 +824,22 @@
   font-weight: 600;
 }
 
+.disco-filter-chip-count {
+  min-width: 20px;
+  padding: 1px var(--sp-8);
+  border-radius: var(--r-full);
+  background: var(--theme-divider);
+  color: var(--theme-text-tertiary);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+}
+.disco-filter-chip.is-active .disco-filter-chip-count {
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+}
+
 /* ==========================================
    CURIOSIDADES — dato destacado + lista numerada
    ========================================== */
@@ -4806,6 +4822,29 @@
   text-transform: uppercase;
   color: #0a0a0c;
 }
+.curio-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  flex-wrap: wrap;
+}
+.curio-detail-src {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-8);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--theme-text-secondary);
+  text-decoration: none;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.curio-detail-src:hover {
+  color: var(--theme-accent);
+  background: var(--accent-dim);
+}
+.curio-detail-src-arrow { font-size: 0.85em; line-height: 1; }
 .curio-detail-title {
   font-family: var(--font-display);
   font-size: var(--fs-xl);

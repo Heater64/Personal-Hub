@@ -2164,7 +2164,7 @@ export function RinconPage(router) {
       items.push({ id: 'gatos-intro', cat: 'animales', category: 'Animales', title: 'Enciclopedia Gatuna 🐱', text: CURIOSIDADES_DATA.gatos.intro.slice(0, 120) + '…', img: GATO_IMG[0] });
     }
     CURIOSIDADES_EXTRA.forEach(x => {
-      items.push({ id: 'extra-' + x.id, cat: x.cat, category: EXTRA_CAT_LABELS[x.cat] || 'Curiosidad', title: x.title, text: x.text, img: x.img });
+      items.push({ id: 'extra-' + x.id, cat: x.cat, category: EXTRA_CAT_LABELS[x.cat] || 'Curiosidad', title: x.title, text: x.text, img: x.img, src: x.src || null });
     });
     return items;
   }
@@ -2186,7 +2186,7 @@ export function RinconPage(router) {
     }));
     CURIOSIDADES_EXTRA.forEach(x => pool.push({
       number: x.title, text: x.text, place: EXTRA_CAT_LABELS[x.cat] || 'Curiosidad',
-      img: x.img, catId: null
+      img: x.img, catId: null, itemId: 'extra-' + x.id
     }));
     return pool;
   }
@@ -2221,6 +2221,13 @@ export function RinconPage(router) {
     const dayItem = getCuriosidadDelDia();
     const recentItems = buildRecentItems();
     const stats = buildCurioStats();
+
+    // Conteo real por chip (misma lógica de filtrado que applyFilters)
+    const chipCounts = {};
+    DISCO_CATEGORIES.forEach(c => {
+      if (c.id === 'todas') { chipCounts[c.id] = recentItems.length; return; }
+      chipCounts[c.id] = recentItems.filter(it => c.match.some(m => (it.title + ' ' + it.text + ' ' + it.category).toLowerCase().includes(m))).length;
+    });
 
     page.innerHTML = `<div class="rincon-subpage">
       <div class="curio-topbar">
@@ -2259,7 +2266,7 @@ export function RinconPage(router) {
       <p class="discovery-results-count" id="discoveryResultsCount"></p>
 
       <div class="disco-category-row" aria-label="Filtrar por categoría">
-        ${DISCO_CATEGORIES.map(c => `<button class="disco-filter-chip${state.discoCat === c.id ? ' is-active' : ''}" data-disco-cat="${c.id}" role="tab" aria-selected="${state.discoCat === c.id ? 'true' : 'false'}"><span class="disco-filter-chip-icon">${ICON_SVGS[c.icon] || ''}</span>${c.label}</button>`).join('')}
+        ${DISCO_CATEGORIES.map(c => `<button class="disco-filter-chip${state.discoCat === c.id ? ' is-active' : ''}" data-disco-cat="${c.id}" role="tab" aria-selected="${state.discoCat === c.id ? 'true' : 'false'}"><span class="disco-filter-chip-icon">${ICON_SVGS[c.icon] || ''}</span>${c.label}<span class="disco-filter-chip-count">${chipCounts[c.id]}</span></button>`).join('')}
       </div>
 
       ${dayItem ? `
@@ -2328,6 +2335,7 @@ export function RinconPage(router) {
     if (dayCard && dayItem) {
       const openDay = () => {
         if (dayItem.catId) { state.curiosidadTab = dayItem.catId; render(); }
+        else if (dayItem.itemId) { state.curioDetail = dayItem.itemId; render(); }
         else { openDatoViewer([{ icon: 'lightbulb', title: dayItem.number, text: dayItem.text }], 0); }
       };
       dayCard.addEventListener('click', openDay);
@@ -2413,6 +2421,7 @@ export function RinconPage(router) {
     if (bannerBtn) {
       bannerBtn.addEventListener('click', () => {
         if (dayItem?.catId) { state.curiosidadTab = dayItem.catId; render(); }
+        else if (dayItem?.itemId) { state.curioDetail = dayItem.itemId; render(); }
         else if (dayItem) { openDatoViewer([{ icon: 'lightbulb', title: dayItem.number, text: dayItem.text }], 0); }
         else { page.querySelector('.curio-day-section')?.scrollIntoView({ behavior: 'smooth' }); }
       });
@@ -2543,7 +2552,10 @@ export function RinconPage(router) {
 
       <header class="curio-detail-hero card">
         <div class="curio-detail-copy">
-          <span class="curio-detail-badge" style="background:${catColor}">${item.category}</span>
+          <div class="curio-detail-meta">
+            <span class="curio-detail-badge" style="background:${catColor}">${item.category}</span>
+            ${item.src ? `<a class="curio-detail-src" href="${escapeHtml(item.src.url)}" target="_blank" rel="noopener noreferrer">Fuente: ${escapeHtml(item.src.name)} <span class="curio-detail-src-arrow">↗</span></a>` : ''}
+          </div>
           <h2 class="curio-detail-title">${escapeHtml(item.title)}</h2>
           <p class="curio-detail-text">${escapeHtml(item.text)}</p>
           <div class="curio-detail-actions">
