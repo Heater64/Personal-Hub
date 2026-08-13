@@ -40,15 +40,9 @@ const PRECACHE_URLS = [
   '/games/2048.html',
   '/games/conecta4.html',
   '/games/tresenraya.html',
-  '/games/flappy.html',
   '/games/invaders.html',
   '/games/pong.html',
-  '/games/asteroides.html',
   '/games/simon.html',
-  '/games/nonogramas.html',
-  '/games/dino.html',
-  '/games/doodle.html',
-  '/games/match3.html',
   '/games/battleship.html',
   '/games/_theme.css'
 ];
