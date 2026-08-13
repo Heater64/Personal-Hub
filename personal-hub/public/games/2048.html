@@ -137,17 +137,22 @@
             const before = JSON.stringify(grid);
             let gained = 0;
             // dir: 0 izq, 1 der, 2 arr, 3 ab
-            const rotate = (g) => {
-                const ng = Array.from({ length: N }, () => Array(N).fill(0));
-                for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) ng[c][N - 1 - r] = g[r][c];
-                return ng;
+            // Arriba/Abajo: transponer (cada columna pasa a ser fila),
+            // deslizar y deshacer la transposición. Evita la rotación que
+            // empujaba las fichas en dirección contraria.
+            const transpose = (g) => {
+                const o = Array.from({ length: N }, () => Array(N).fill(0));
+                for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) o[c][r] = g[r][c];
+                return o;
             };
             let g = grid;
             if (dir === 1) g = g.map(r => r.slice().reverse());
-            else if (dir === 2 || dir === 3) g = rotate(g);
-            if (dir === 3) g = g.map(r => r.slice().reverse());
+            else if (dir === 2 || dir === 3) {
+                g = transpose(g);
+                if (dir === 3) g = g.map(r => r.slice().reverse());
+            }
 
-            const ng = [];
+            let ng = [];
             for (const row of g) {
                 const res = slideRow(row);
                 ng.push(res.row);
@@ -157,9 +162,8 @@
             let ng2 = ng;
             if (dir === 1) ng2 = ng.map(r => r.slice().reverse());
             else if (dir === 2 || dir === 3) {
-                const rot = (g) => { const o = Array.from({ length: N }, () => Array(N).fill(0)); for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) o[N - 1 - c][r] = g[r][c]; return o; };
-                ng2 = rot(ng);
-                if (dir === 3) ng2 = rot(ng2);
+                if (dir === 3) ng = ng.map(r => r.slice().reverse());
+                ng2 = transpose(ng);
             }
 
             grid = ng2;
@@ -315,4 +319,5 @@
       navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
     }
     </script>
+    <script src="_online.js"></script>
 </html>

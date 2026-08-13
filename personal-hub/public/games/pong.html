@@ -111,6 +111,7 @@
 
             if (serveDelay > 0) { serveDelay -= s; return; }
 
+            const px = ball.x, py = ball.y; // posición previa para el barrido
             ball.x += ball.dx * s;
             ball.y += ball.dy * s;
 
@@ -118,26 +119,40 @@
             if (ball.y < 6) { ball.y = 6; ball.dy = Math.abs(ball.dy); }
             if (ball.y > H - 6) { ball.y = H - 6; ball.dy = -Math.abs(ball.dy); }
 
-            // palas
-            if (ball.dx < 0 && ball.x < 26 && ball.x > 10 && ball.y > p1.y - 6 && ball.y < p1.y + PH + 6) {
-                ball.dx = Math.abs(ball.dx);
-                const off = (ball.y - (p1.y + PH / 2)) / (PH / 2);
-                ball.dy = off * 5;
-                ball.dx += 0.3;
-                rally++;
-                document.getElementById('rallyDisplay').textContent = rally;
-                SFX.point();
-                buzz(6);
+            // palas — colisión por barrido del segmento recorrido en el frame:
+            // si la bola cruza el plano de la pala y en ese punto su Y está
+            // dentro del rango de la pala, rebota. Evita que la bola atraviese
+            // las palas a alta velocidad o con bajadas de FPS.
+            const R = 7;
+            if (ball.dx < 0 && px > 8 + PW + R && ball.x <= 8 + PW + R) {
+                const t = (px - (8 + PW + R)) / (px - ball.x);
+                const yAt = py + (ball.y - py) * t;
+                if (yAt > p1.y - R && yAt < p1.y + PH + R) {
+                    ball.dx = Math.abs(ball.dx);
+                    ball.x = 8 + PW + R + 0.1;
+                    const off = (yAt - (p1.y + PH / 2)) / (PH / 2);
+                    ball.dy = off * 5;
+                    ball.dx += 0.3;
+                    rally++;
+                    document.getElementById('rallyDisplay').textContent = rally;
+                    SFX.point();
+                    buzz(6);
+                }
             }
-            if (ball.dx > 0 && ball.x > W - 26 && ball.x < W - 10 && ball.y > p2.y - 6 && ball.y < p2.y + PH + 6) {
-                ball.dx = -Math.abs(ball.dx);
-                const off = (ball.y - (p2.y + PH / 2)) / (PH / 2);
-                ball.dy = off * 5;
-                ball.dx -= 0.3;
-                rally++;
-                document.getElementById('rallyDisplay').textContent = rally;
-                SFX.point();
-                buzz(6);
+            if (ball.dx > 0 && px < W - 8 - PW - R && ball.x >= W - 8 - PW - R) {
+                const t = ((W - 8 - PW - R) - px) / (ball.x - px);
+                const yAt = py + (ball.y - py) * t;
+                if (yAt > p2.y - R && yAt < p2.y + PH + R) {
+                    ball.dx = -Math.abs(ball.dx);
+                    ball.x = W - 8 - PW - R - 0.1;
+                    const off = (yAt - (p2.y + PH / 2)) / (PH / 2);
+                    ball.dy = off * 5;
+                    ball.dx -= 0.3;
+                    rally++;
+                    document.getElementById('rallyDisplay').textContent = rally;
+                    SFX.point();
+                    buzz(6);
+                }
             }
 
             // gol
@@ -267,4 +282,5 @@
       navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
     }
     </script>
+    <script src="_online.js"></script>
 </html>

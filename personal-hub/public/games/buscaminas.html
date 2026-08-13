@@ -573,6 +573,9 @@
                     showMessage('💥', '¡Boom!', 'Has pisado una mina.');
                     revealAllMines(x, y);
                     render();
+                    // Marcar visualmente la mina que explotó (animación de impacto)
+                    const exploded = getCellElement(x, y);
+                    if (exploded) exploded.classList.add('mine-exploded');
                     return;
                 }
 
@@ -848,4 +851,5 @@
     }
     </script>
 
+    <script src="_online.js"></script>
 </html>

@@ -76,7 +76,10 @@
         document.getElementById('highScoreDisplay').textContent = highScore;
 
         function newPiece() {
-            const type = nextType;
+            // Centrar según la pieza ACTUAL (la que se dibuja), no según la
+            // siguiente: así la primera pieza de la partida y tras cada
+            // bloqueo sale correctamente centrada.
+            const type = current;
             nextType = KEYS[Math.floor(Math.random() * KEYS.length)];
             const shape = SHAPES[type];
             pieceX = Math.floor((COLS - shape.m[0].length) / 2);
@@ -328,4 +331,5 @@
       navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
     }
     </script>
+    <script src="_online.js"></script>
 </html>

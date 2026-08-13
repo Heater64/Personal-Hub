@@ -147,14 +147,17 @@
       newLabel.className = 'stat-label';
       newLabel.textContent = icon + ' ' + label;
 
-      var newValue = document.createElement('span');
-      newValue.className = 'stat-value' + (colorClass ? ' ' + colorClass : '');
-      if (valueEl.id) newValue.id = valueEl.id;
-      newValue.textContent = valueEl.textContent;
+      // IMPORTANTE: se REUTILIZA el elemento .value original en vez de
+      // sustituirlo por uno nuevo. Los juegos guardaron su referencia con
+      // getElementById ANTES de que este script corriera; reemplazar el nodo
+      // dejaba el HUD congelado (el juego escribía en un nodo desconectado y
+      // el marcador visible nunca se actualizaba).
+      valueEl.className = 'stat-value' + (colorClass ? ' ' + colorClass : '');
+      valueEl.textContent = valueEl.textContent;
 
       item.innerHTML = '';
       item.appendChild(newLabel);
-      item.appendChild(newValue);
+      item.appendChild(valueEl);
     });
   }
 

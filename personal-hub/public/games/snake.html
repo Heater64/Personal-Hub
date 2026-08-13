@@ -721,7 +721,11 @@
                     return;
                 }
 
-                if (snake.some(s => s.x === head.x && s.y === head.y)) {
+                // Autocolisión excluyendo la cola: al moverse, la cola
+                // abandona su celda en este mismo tick (si no se come), así
+                // que entrar en ella es una jugada legal en Snake clásico.
+                const willEat = food && head.x === food.x && head.y === food.y;
+                if (snake.some((s, i) => s.x === head.x && s.y === head.y && !(i === snake.length - 1 && !willEat))) {
                     gameOver();
                     return;
                 }
@@ -1002,4 +1006,5 @@
     }
     </script>
 
+    <script src="_online.js"></script>
 </html>

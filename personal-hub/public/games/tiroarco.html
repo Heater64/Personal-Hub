@@ -541,9 +541,11 @@
                 // Salir de pantalla o impacto
                 if (arrow.x > W + 20 || arrow.y > H + 20 || arrow.x < -20 || inTarget) {
                     if (inTarget) {
-                        // Calcular puntuación
-                        const rings = Math.floor((target.radius - Math.min(dist, target.radius)) / target.ring);
-                        const points = Math.max(0, 10 - rings);
+                        // Calcular puntuación: el centro exacto da 10 y baja
+                        // según la distancia al centro (anillos hacia fuera).
+                        // Antes estaba invertido: el borde daba más puntos.
+                        const rings = Math.floor(dist / target.ring);
+                        const points = Math.max(1, 10 - rings);
                         score += points;
                         spawnParticles(arrow.x, arrow.y, '#ffd166', 20);
                         SFX.point();
@@ -962,4 +964,5 @@
     }
     </script>
 
+    <script src="_online.js"></script>
 </html>
