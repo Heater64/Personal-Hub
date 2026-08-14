@@ -2,7 +2,9 @@ import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
 import {
   MULTIPLAYER_GAMES,
+  ONLINE_GAMES_ENABLED,
   SCORE_GAME_IDS,
+  RACE_GAME_IDS,
   LOWER_SCORE_WINS,
   createGameInitialState,
   listGameInviteTargets,
@@ -12,11 +14,15 @@ import {
   submitGameMove,
   submitBattleshipMove,
   submitScoreMove,
+  submitRaceResult,
   forfeitGameRoom,
   requestGameRematch,
   rejectGameRematch,
   cancelGameRoom,
   subscribeToGameRoom,
+  joinRaceProgress,
+  leaveRaceProgress,
+  sendRaceProgress,
   SHIP_SIZES,
   BOARD_SIZE
 } from '../services/games.service.js';
@@ -40,6 +46,11 @@ const SCORE_INSTRUCTIONS = {
   'tetris': 'Completa líneas y consigue la mejor puntuación.',
   'tiroarco': 'Encesta y gana puntos. La precisión lo es todo.',
   'torre': 'Construye la torre más alta y suma puntos.'
+};
+
+/** Instrucciones cortas por juego para el modo carrera (quien termina antes gana). */
+const RACE_INSTRUCTIONS = {
+  'memoria': 'Encuentra todas las parejas lo antes posible. El reloj corre desde tu primera jugada.'
 };
 
 function emptyGrid(size = BOARD_SIZE) {
@@ -122,6 +133,12 @@ function validGameState(gameId, state) {
   if (!state || typeof state !== 'object') return false;
   if (gameId === 'conecta4') return validGrid(state.board, 6, 7, [0, 1, 2]);
   if (gameId === 'tresenraya') return Array.isArray(state.board) && state.board.length === 9 && state.board.every(value => [0, 1, 2].includes(value));
+  if (RACE_GAME_IDS.has(gameId)) {
+    return Array.isArray(state.scores) && state.scores.length === 2
+      && state.scores.every(score => score === null || (Number.isInteger(score) && score >= 0))
+      && Array.isArray(state.times) && state.times.length === 2
+      && state.times.every(time => time === null || (Number.isInteger(time) && time >= 0));
+  }
   if (SCORE_GAME_IDS.has(gameId)) {
     return Array.isArray(state.scores) && state.scores.length === 2
       && state.scores.every(score => score === null || (Number.isInteger(score) && score >= 0));
@@ -151,6 +168,28 @@ export function OnlineGamePage(router) {
   let mode = roomId ? 'room' : 'lobby';
   let scoreFrame = null;
   let scoreMessageHandler = null;
+  let progressMessageHandler = null;
+  let myProgress = null;
+  let rivalProgress = null;
+  let raceJoined = false;
+  let raceLeaveProgress = null;
+
+  // Modo online oculto temporalmente: no se entra ni por URL directa.
+  if (!ONLINE_GAMES_ENABLED) {
+    page.innerHTML = `
+      <div class="online-shell glass-card">
+        <div class="online-panel online-waiting">
+          <div class="online-waiting__visual" aria-hidden="true"><span class="online-waiting__spinner"></span><span class="online-waiting__badge">🎮</span></div>
+          <div class="online-waiting__content">
+            <div class="online-status"><span class="online-status__dot"></span><span>El modo online estará disponible pronto</span></div>
+            <p class="online-subtitle">Estamos puliendo la experiencia multijugador. Vuelve en unos días. 💛</p>
+          </div>
+          <div class="online-actions"><button type="button" class="online-btn online-btn--primary" data-action="back">← Volver a Juegos</button></div>
+        </div>
+      </div>`;
+    page.querySelector('[data-action="back"]').addEventListener('click', () => router.navigate('/juegos'));
+    return page;
+  }
 
   if (!user || !MULTIPLAYER_GAMES[gameId]) {
     page.innerHTML = '<div class="online-shell glass-card"><p>Esta partida no está disponible.</p></div>';
@@ -159,6 +198,7 @@ export function OnlineGamePage(router) {
 
   function gameInfo() { return MULTIPLAYER_GAMES[gameId]; }
   function scoreMode() { return SCORE_GAME_IDS.has(gameId); }
+  function raceMode() { return RACE_GAME_IDS.has(gameId); }
 
   function coverSrc() {
     const game = gameInfo();
@@ -304,6 +344,12 @@ export function OnlineGamePage(router) {
     return Array.isArray(scores) && typeof scores[index] === 'number' ? scores[index] : null;
   }
 
+  /** Modo carrera: tiempo en segundos del jugador (null = aún sin terminar). */
+  function timeOf(index) {
+    const times = room?.state?.times;
+    return Array.isArray(times) && typeof times[index] === 'number' ? times[index] : null;
+  }
+
   async function commit(state, status = 'active', winnerId = null, result = {}) {
     try {
       const saved = await submitGameMove({
@@ -335,6 +381,44 @@ export function OnlineGamePage(router) {
       showToast(friendlyError(error.message) || 'El rival ha terminado antes. Sincronizando…', 'info');
       try {
         room = await getGameRoom(room.id);
+        renderRoom();
+      } catch (reloadError) { renderError(reloadError.message); }
+    }
+  }
+
+  /** Modo carrera: envía el resultado (puntuación + tiempo) al terminar. */
+  async function submitRace(score, time) {
+    if (disposed || !room) return;
+    try {
+      room = await submitRaceResult({
+        roomId: room.id,
+        expectedRevision: room.revision,
+        score,
+        time,
+        result: { score, time }
+      });
+      renderRoom();
+    } catch (error) {
+      showToast(friendlyError(error.message) || 'Tu rival ha terminado antes. Sincronizando…', 'info');
+      try {
+        room = await getGameRoom(room.id);
+        // Si la carrera ya terminó por el envío del rival pero mi resultado
+        // aún no consta (los dos terminaron casi a la vez), reintento con la
+        // revisión nueva para que la pantalla compare los dos tiempos.
+        const recorded = scoreOf(playerIndex()) !== null;
+        if (!recorded && room?.status === 'finished' && room?.result?.race === true) {
+          try {
+            room = await submitRaceResult({
+              roomId: room.id,
+              expectedRevision: room.revision,
+              score,
+              time,
+              result: { score, time }
+            });
+          } catch (retryError) {
+            showToast(friendlyError(retryError.message) || 'No se pudo guardar tu resultado.', 'error');
+          }
+        }
         renderRoom();
       } catch (reloadError) { renderError(reloadError.message); }
     }
@@ -382,6 +466,137 @@ export function OnlineGamePage(router) {
     }
   }
 
+  /* ==========================================================
+     MODO CARRERA — HUD de duelo en vivo
+     Los dos juegan a la vez. El iframe emite su progreso
+     (ph-progress) ~1×/s; lo reenviamos al rival por broadcast y
+     actualizamos las tarjetas SIN reconstruir el iframe (si no,
+     la partida se reiniciaría en cada tick).
+     ========================================================== */
+  function duelCard(side, name, avatarUrl) {
+    const initial = escapeHtml((name || (side === 'me' ? 'Tú' : 'Rival')).charAt(0).toUpperCase());
+    const avatar = avatarUrl
+      ? `<img src="${escapeHtml(avatarUrl)}" alt="" data-avatar-img>`
+      : initial;
+    return `
+      <div class="duel-player duel-player--${side}" data-player="${side}">
+        <div class="duel-player__top">
+          <span class="duel-player__avatar">${avatar}</span>
+          <div class="duel-player__id">
+            <span class="duel-player__name">${escapeHtml(name)}</span>
+            <span class="duel-player__state" data-state>Calentando…</span>
+          </div>
+        </div>
+        <div class="duel-player__metrics">
+          <div class="duel-player__metric"><span>Parejas</span><strong data-metric="pairs">—</strong></div>
+          <div class="duel-player__metric"><span>Movimientos</span><strong data-metric="moves">—</strong></div>
+          <div class="duel-player__metric"><span>Tiempo</span><strong data-metric="time">—</strong></div>
+        </div>
+        <div class="duel-player__track"><span class="duel-player__bar" data-bar style="width:0%"></span></div>
+      </div>`;
+  }
+
+  /** Actualiza una tarjeta del HUD sin tocar el iframe (progreso en vivo). */
+  function updateDuelPlayer(side, progress) {
+    const card = page.querySelector(`.duel-player[data-player="${side}"]`);
+    if (!card) return;
+    const started = !!(progress && (progress.pairs > 0 || progress.moves > 0));
+    const stateEl = card.querySelector('[data-state]');
+    if (stateEl) stateEl.textContent = started ? 'Jugando…' : 'Calentando…';
+    const pairs = progress?.pairs ?? 0;
+    const total = progress?.totalPairs ?? 0;
+    const pairsEl = card.querySelector('[data-metric="pairs"]');
+    if (pairsEl) pairsEl.textContent = total > 0 ? `${pairs}/${total}` : '—';
+    const movesEl = card.querySelector('[data-metric="moves"]');
+    if (movesEl) movesEl.textContent = progress?.moves != null ? String(progress.moves) : '—';
+    const timeEl = card.querySelector('[data-metric="time"]');
+    if (timeEl) timeEl.textContent = progress?.seconds != null ? `${progress.seconds}s` : '—';
+    const bar = card.querySelector('[data-bar]');
+    if (bar) bar.style.width = `${total > 0 ? Math.min(100, Math.round((pairs / total) * 100)) : 0}%`;
+  }
+
+  function leaveRace() {
+    raceJoined = false;
+    if (raceLeaveProgress) { try { raceLeaveProgress(); } catch { /* canal ya cerrado */ } raceLeaveProgress = null; }
+    myProgress = null;
+    rivalProgress = null;
+  }
+
+  function ensureRaceJoined() {
+    if (raceJoined || !room || !raceMode()) return;
+    raceJoined = true;
+    raceLeaveProgress = joinRaceProgress(room.id, (payload) => {
+      if (disposed || !room || room.status !== 'active') return;
+      // Ignora broadcasts propios (p.ej. otra pestaña del mismo usuario):
+      // solo nos interesa el progreso del rival.
+      if (payload && payload.player === playerIndex()) return;
+      const progress = payload && payload.progress;
+      if (progress && typeof progress === 'object') {
+        rivalProgress = progress;
+        updateDuelPlayer('rival', rivalProgress);
+      }
+    });
+  }
+
+  /**
+   * Modo carrera: los DOS jugadores ven esta pantalla a la vez. Cada uno
+   * juega su propia partida en el iframe; el primero en terminar envía su
+   * tiempo y la carrera se cierra para ambos.
+   */
+  function renderRacePlay() {
+    const game = gameInfo();
+    const src = `${game.href}?accent=${game.color.replace('#', '')}&online=1&game=${encodeURIComponent(gameId)}&race=1`;
+    const myName = user.name || 'Tú';
+    shell(`
+      <div class="online-panel duel">
+        <p class="duel-state">⚡ ¡Carrera! El primero en terminar gana</p>
+        <div class="duel-players">
+          ${duelCard('me', myName, user.avatar || '')}
+          <div class="duel-vs">VS</div>
+          ${duelCard('rival', 'Rival', '')}
+        </div>
+        <div class="duel-board">
+          <iframe class="duel-board__frame" title="${escapeHtml(game.title)}" src="${escapeHtml(src)}" allow="autoplay; fullscreen"></iframe>
+        </div>
+        <p class="online-score__hint">${escapeHtml(RACE_INSTRUCTIONS[gameId] || 'El reloj corre desde tu primera jugada. Cuando termines, tu tiempo se envía automáticamente.')}</p>
+      </div>`);
+    // Avatar propio con fallback a la inicial si la carga falla.
+    const meAvatar = page.querySelector('.duel-player[data-player="me"] .duel-player__avatar');
+    if (meAvatar && user.avatar) {
+      const img = meAvatar.querySelector('img');
+      if (img) img.onerror = () => { img.remove(); meAvatar.textContent = myName.charAt(0).toUpperCase(); };
+    }
+    scoreFrame = page.querySelector('.duel-board__frame');
+    myProgress = null;
+    rivalProgress = null;
+    ensureRaceJoined();
+    if (!scoreMessageHandler) {
+      scoreMessageHandler = (event) => {
+        if (!scoreFrame || event.source !== scoreFrame.contentWindow) return;
+        const data = event.data;
+        if (!data || data.type !== 'ph-race' || data.game !== gameId) return;
+        if (typeof data.score !== 'number' || typeof data.time !== 'number') {
+          showToast('No se pudo leer tu resultado. Juega la ronda de nuevo.', 'error');
+          return;
+        }
+        submitRace(data.score, data.time);
+      };
+      window.addEventListener('message', scoreMessageHandler);
+    }
+    if (!progressMessageHandler) {
+      progressMessageHandler = (event) => {
+        if (!scoreFrame || event.source !== scoreFrame.contentWindow) return;
+        const data = event.data;
+        if (!data || data.type !== 'ph-progress' || data.game !== gameId) return;
+        if (!data.progress || typeof data.progress !== 'object') return;
+        myProgress = data.progress;
+        updateDuelPlayer('me', myProgress);
+        sendRaceProgress(data.progress, playerIndex());
+      };
+      window.addEventListener('message', progressMessageHandler);
+    }
+  }
+
   /** Modo reto: esperar mientras el rival juega su turno. */
   function renderScoreWaiting() {
     const me = playerIndex();
@@ -417,6 +632,9 @@ export function OnlineGamePage(router) {
       const result = getGameResult(gameId, room.state, user.id, room.host_id, room.guest_id);
       outcome = result === 'draw' ? 'draw' : result === 'win' ? 'win' : 'loss';
       title = result === 'draw' ? 'Empate' : result === 'win' ? '¡Has ganado!' : 'Ha ganado tu rival';
+      if (raceMode()) {
+        title = result === 'draw' ? 'Empate' : result === 'win' ? '¡Has sido el más rápido!' : 'Tu rival fue más rápido';
+      }
     }
     const emblems = {
       win: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
@@ -438,7 +656,7 @@ export function OnlineGamePage(router) {
     const rivalActions = rivalRequested
       ? `<button type="button" class="online-btn" data-action="reject-rematch">Rechazar</button>`
       : '';
-    const scoreBoard = scoreMode() && !forfeited
+    const scoreBoard = scoreMode() && !raceMode() && !forfeited
       ? (() => {
           const mine = playerIndex(), rivalIndex = mine === 0 ? 1 : 0;
           const myScore = scoreOf(mine), rivalScore = scoreOf(rivalIndex);
@@ -452,12 +670,43 @@ export function OnlineGamePage(router) {
           </div>`;
         })()
       : '';
+    const raceBoard = raceMode() && !forfeited
+      ? (() => {
+          const mine = playerIndex(), rivalIndex = mine === 0 ? 1 : 0;
+          const rows = [
+            { label: 'Tú', time: timeOf(mine), score: scoreOf(mine) },
+            { label: 'Rival', time: timeOf(rivalIndex), score: scoreOf(rivalIndex) }
+          ].sort((a, b) =>
+            (a.time === null ? 1 : 0) - (b.time === null ? 1 : 0)
+            || (a.time ?? Infinity) - (b.time ?? Infinity)
+          );
+          const medals = ['🥇', '🥈'];
+          const bothFinished = rows.every(row => row.time !== null);
+          return `
+          <div class="podium">
+            ${rows.map((row, i) => `
+              <div class="podium__row${i === 0 ? ' podium__row--winner' : ''}">
+                <span class="podium__medal">${medals[i]}</span>
+                <div class="podium__who">
+                  <strong>${row.label}</strong>
+                  <span>${row.time === null ? 'no terminó' : `${row.score ?? '—'} movimientos`}</span>
+                </div>
+                <div class="podium__stats">
+                  <strong>${row.time === null ? '—' : `${row.time}s`}</strong>
+                  <span>${row.time === null ? '' : 'tiempo'}</span>
+                </div>
+              </div>`).join('')}
+          </div>
+          <p class="podium__note">${bothFinished ? 'El que consiguió el mejor tiempo gana' : 'El primero en terminar gana la carrera'}</p>`;
+        })()
+      : '';
     shell(`
       <div class="online-result online-result--${outcome}">
         <div class="online-result__emblem">${emblems[outcome]}</div>
-        <div class="online-kicker">Resultado</div>
+        <div class="online-kicker">${raceMode() && !forfeited ? 'Resultado de la carrera' : 'Resultado'}</div>
         <h2>${title}</h2>
         ${scoreBoard}
+        ${raceBoard}
         <p>${statusText}</p>
         <div class="online-actions">${requestBtn}${rivalActions}<button type="button" class="online-btn" data-action="change">Cambiar de juego</button></div>
       </div>`);
@@ -507,12 +756,17 @@ export function OnlineGamePage(router) {
     if (disposed || !room) return;
     if (room.status === 'waiting') { renderWaiting(); return; }
     if (room.status === 'finished') {
+      if (raceMode()) leaveRace();
       if (!validGameState(gameId, room.state) || (gameId === 'battleship' && !validBattleshipPrivateState(playerState))) { renderError('La partida devolvió un estado no válido.'); return; }
       renderResult(); return;
     }
     if (room.status !== 'active') { renderError('Esta sala ya no está disponible.'); return; }
     if (!validGameState(gameId, room.state) || (gameId === 'battleship' && !validBattleshipPrivateState(playerState))) {
       renderError('La partida devolvió un estado no válido.'); return;
+    }
+    if (raceMode()) {
+      renderRacePlay();
+      return;
     }
     if (scoreMode()) {
       if (isMyTurn()) renderScorePlay(); else renderScoreWaiting();
@@ -646,9 +900,14 @@ export function OnlineGamePage(router) {
     disposed = true;
     clearTimeout(expiryTimer);
     if (roomUnsubscribe) roomUnsubscribe();
+    leaveRace();
     if (scoreMessageHandler) {
       window.removeEventListener('message', scoreMessageHandler);
       scoreMessageHandler = null;
+    }
+    if (progressMessageHandler) {
+      window.removeEventListener('message', progressMessageHandler);
+      progressMessageHandler = null;
     }
     scoreFrame = null;
   };

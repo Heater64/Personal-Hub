@@ -416,6 +416,7 @@
     <div class="game-container">
         <!-- ===== CABECERA ===== -->
         <div class="game-header">
+            <span class="game-header__emoji" aria-hidden="true">💀</span>
             <h1>Ahorcado</h1>
             <p class="subtitle">Adivina la palabra antes de que se complete el dibujo</p>
         </div>
@@ -920,11 +921,12 @@
                 if (e.target === gameMessage) hideModal();
             });
 
-            // Teclado físico: letras, pista (H), reiniciar (R), cerrar (Esc)
+            // Teclado físico: letras (A-Z y Ñ) y cerrar modal (Esc).
+            // Sin atajos con letras para pista/reinicio: "H" y "R" son letras
+            // del juego y deben adivinarse, no disparar acciones (si no, pulsar
+            // R reiniciaba la partida en lugar de adivinar la letra).
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') hideModal();
-                if (e.key === 'h' || e.key === 'H') revealHint();
-                if (e.key === 'r' || e.key === 'R') resetGame();
                 if (/^[a-zñ]$/i.test(e.key)) {
                     guessLetter(e.key.toLowerCase());
                 }

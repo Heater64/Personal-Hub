@@ -19,6 +19,7 @@ function escapeHtml(value) {
 }
 import {
   MULTIPLAYER_GAMES,
+  ONLINE_GAMES_ENABLED,
   createGameInitialState,
   respondGameInvitation,
   subscribeToGameInvitations,
@@ -70,6 +71,12 @@ export function GameInviteCenter(router) {
   function render() {
     clearTimeout(expiryTimer);
     root.innerHTML = '';
+    // Modo online oculto: solo se atiende "escuchar juntos" (música),
+    // nunca las invitaciones de juego ni las revanchas.
+    if (!ONLINE_GAMES_ENABLED) {
+      if (listenRequest) renderListenRequest(listenRequest);
+      return;
+    }
     if (!invitations.length && !rematches.length && !listenRequest) return;
     if (listenRequest) {
       renderListenRequest(listenRequest);
@@ -378,33 +385,36 @@ export function GameInviteCenter(router) {
         }
       }
     });
-    try {
-      unsubscribe = subscribeToGameInvitations(user.id, (items) => {
-        const hadNone = invitations.length === 0;
-        invitations = items || [];
-        if (!hadNone && invitations.length > 0) {
-          playInviteChime('invite');
-          showToast('Tienes una nueva invitación para jugar 🎮', 'info', 6000);
-        }
-        render();
-      });
-    } catch (error) {
-      console.warn('[games] Centro de invitaciones no disponible:', friendlyError(error));
-    }
-    try {
-      const rematchUnsub = subscribeToRematchRequests(user.id, (items) => {
-        const hadNone = rematches.length === 0;
-        rematches = items || [];
-        if (!hadNone && rematches.length > 0) {
-          playInviteChime('rematch');
-          showToast('Tu rival quiere la revancha 🎮', 'info', 6000);
-        }
-        render();
-      });
-      const previousUnsub = unsubscribe;
-      unsubscribe = () => { previousUnsub(); rematchUnsub(); };
-    } catch (error) {
-      console.warn('[games] Notificaciones de revancha no disponibles:', friendlyError(error));
+    // Invitaciones de juego y revanchas solo si el modo online está activo.
+    if (ONLINE_GAMES_ENABLED) {
+      try {
+        unsubscribe = subscribeToGameInvitations(user.id, (items) => {
+          const hadNone = invitations.length === 0;
+          invitations = items || [];
+          if (!hadNone && invitations.length > 0) {
+            playInviteChime('invite');
+            showToast('Tienes una nueva invitación para jugar 🎮', 'info', 6000);
+          }
+          render();
+        });
+      } catch (error) {
+        console.warn('[games] Centro de invitaciones no disponible:', friendlyError(error));
+      }
+      try {
+        const rematchUnsub = subscribeToRematchRequests(user.id, (items) => {
+          const hadNone = rematches.length === 0;
+          rematches = items || [];
+          if (!hadNone && rematches.length > 0) {
+            playInviteChime('rematch');
+            showToast('Tu rival quiere la revancha 🎮', 'info', 6000);
+          }
+          render();
+        });
+        const previousUnsub = unsubscribe;
+        unsubscribe = () => { previousUnsub(); rematchUnsub(); };
+      } catch (error) {
+        console.warn('[games] Notificaciones de revancha no disponibles:', friendlyError(error));
+      }
     }
     render();
   }

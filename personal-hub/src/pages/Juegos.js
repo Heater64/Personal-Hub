@@ -5,13 +5,8 @@
 
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { gameCover } from '../utils/gameCovers.js';
-
-const MULTIPLAYER_IDS = new Set([
-  'conecta4', 'tresenraya', 'battleship',
-  '2048', 'agujero-negro', 'ahorcado', 'breakout', 'buscaminas', 'cuchillos',
-  'invaders', 'laberinto', 'memoria', 'meteoritos', 'pong', 'simon',
-  'snake', 'tetris', 'tiroarco', 'torre'
-]);
+import { loadGiftsCatalog, getGiftsCatalog, getGiftTodayStr } from '../services/gifts.service.js';
+import { MULTIPLAYER_GAMES, ONLINE_GAMES_ENABLED } from '../services/games.service.js';
 
 export const GAMES = [
   { id: 'memoria',    icon: 'brain',   title: 'Memoria',      desc: 'Encuentra las parejas. Pon a prueba tu mente con cartas que esconden sorpresas.', href: '/games/memoria.html',    color: '#ff8aa1', accent: '#ffb3c1', difficulty: 'Fácil',   category: 'Puzzle',     duration: '2-5 min' },
@@ -90,18 +85,41 @@ function gameHref(game) {
   return `${game.href}?accent=${game.color.replace('#', '')}`;
 }
 
+/**
+ * Juegos bloqueados por el calendario: su fecha de desbloqueo aún no ha
+ * llegado, así que no deben aparecer en la sala. Devuelve un Set de ids.
+ * Si el catálogo no está disponible, no se bloquea nada (fail-open).
+ */
+function blockedGameIds() {
+  const catalog = getGiftsCatalog();
+  if (!catalog?.gifts) return new Set();
+  const today = getGiftTodayStr();
+  const blocked = new Set();
+  for (const gift of catalog.gifts) {
+    if (gift?.type !== 'game') continue;
+    const url = gift.redirectUrl || gift.data?.redirectUrl || '';
+    const match = url.match(/games\/([^/?#]+)\.html/i);
+    if (!match) continue;
+    if (gift.unlock?.value && today < gift.unlock.value) blocked.add(decodeURIComponent(match[1]));
+  }
+  return blocked;
+}
+
 // ==========================================
 // MAIN PAGE
 // ==========================================
-export function JuegosPage(router) {
+export async function JuegosPage(router) {
+  await loadGiftsCatalog();
+  const visibleGames = GAMES.filter(game => !blockedGameIds().has(game.id));
+
   const page = document.createElement('div');
   page.className = 'juegos-page';
 
-  const totalGames = GAMES.length;
+  const totalGames = visibleGames.length;
   const lastId = lastPlayedId();
-  const lastGame = lastId ? GAMES.find(g => g.id === lastId) : null;
+  const lastGame = lastId ? visibleGames.find(g => g.id === lastId) : null;
   const favId = favGameId();
-  const favGame = favId ? GAMES.find(g => g.id === favId) : null;
+  const favGame = favId ? visibleGames.find(g => g.id === favId) : null;
 
   page.innerHTML = `
     <!-- ===== HERO ===== -->
@@ -147,7 +165,7 @@ export function JuegosPage(router) {
 
     <!-- ===== GAME GRID ===== -->
     <div class="juegos-grid">
-      ${GAMES.map((game, i) => {
+      ${visibleGames.map((game, i) => {
         const isFav = favGameId() === game.id;
         return `
         <div class="juego-card glass-card card" role="link" tabindex="0" data-href="${gameHref(game)}" data-id="${game.id}" style="--game-color:${game.color};--game-accent:${game.accent};--enter-delay:${i * 50}ms">
@@ -158,7 +176,7 @@ export function JuegosPage(router) {
             <span class="juego-card-shade"></span>
             <h3 class="juego-card-title">${game.title}</h3>
           </div>
-          ${MULTIPLAYER_IDS.has(game.id) ? `<a class="juego-card-online" href="#/juegos/online/${game.id}" aria-label="Invitar a jugar ${game.title}"><span class="juego-card-online__icon">${ICONS['gamepad']}</span><span>Jugar online</span></a>` : ''}
+          ${ONLINE_GAMES_ENABLED && MULTIPLAYER_GAMES[game.id] ? `<a class="juego-card-online" href="#/juegos/online/${game.id}" aria-label="Invitar a jugar ${game.title}"><span class="juego-card-online__icon">${ICONS['gamepad']}</span><span>Jugar online</span></a>` : ''}
         </div>
       `}).join('')}
     </div>
@@ -205,7 +223,7 @@ export function JuegosPage(router) {
       if (statsEl) {
         const statsFav = statsEl.querySelector('.juegos-stat:last-child');
         if (currentFav === id && !statsFav) {
-          const g = GAMES.find(g => g.id === id);
+          const g = visibleGames.find(g => g.id === id);
           if (g) {
             const favDiv = document.createElement('div');
             favDiv.className = 'juegos-stat';

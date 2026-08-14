@@ -44,8 +44,23 @@ export const SCORE_GAME_IDS = new Set([
   'snake', 'tetris', 'tiroarco', 'torre'
 ]);
 
+/**
+ * Juegos de modo carrera: los dos jugadores juegan A LA VEZ, cada uno su
+ * partida, y en cuanto UNO termina se muestra quién fue más rápido.
+ * El estado es { scores: [p0, p1], times: [t0, t1], turn, winner, draw }.
+ */
+export const RACE_GAME_IDS = new Set(['memoria']);
+
 /** Juegos donde gana el que tenga MENOS puntos (p.ej. Memoria: menos movimientos). */
 export const LOWER_SCORE_WINS = new Set(['memoria']);
+
+/**
+ * Modo online desactivado temporalmente: los juegos multijugador aún no
+ * están listos. Mientras sea false, no se muestra ningún punto de entrada
+ * (enlace "Jugar online", centro de invitaciones de juego ni la sala).
+ * Cuando vuelva a true, todo se reactiva sin tocar más código.
+ */
+export const ONLINE_GAMES_ENABLED = false;
 
 export const SHIP_SIZES = [5, 4, 3, 3, 2];
 export const BOARD_SIZE = 10;
@@ -89,6 +104,9 @@ export function createGameInitialState(gameId, hostId) {
   }
   if (gameId === 'tresenraya') {
     return { board: Array(9).fill(0), turn: hostId, winner: null, draw: false };
+  }
+  if (RACE_GAME_IDS.has(gameId)) {
+    return { scores: [null, null], times: [null, null], turn: hostId, winner: null, draw: false };
   }
   if (SCORE_GAME_IDS.has(gameId)) {
     return { scores: [null, null], turn: hostId, winner: null, draw: false };
@@ -222,6 +240,23 @@ export async function submitGameMove({ roomId, expectedRevision, state, turnUser
   return validateRoom(unwrap(response, 'No se pudo guardar el movimiento.'));
 }
 
+/**
+ * Modo carrera: envía el resultado del jugador (puntuación + tiempo). El
+ * servidor arbitra: el primero en terminar cierra la carrera y, si el rival
+ * también termina, compara los tiempos para decidir quién fue más rápido.
+ */
+export async function submitRaceResult({ roomId, expectedRevision, score, time, result = {} }) {
+  assertConfigured();
+  const response = await supabase.rpc('submit_race_result', {
+    p_room_id: roomId,
+    p_expected_revision: expectedRevision,
+    p_score: score,
+    p_time: time,
+    p_result: result
+  });
+  return validateRoom(unwrap(response, 'No se pudo guardar tu resultado.'));
+}
+
 /** Modo reto: envía la puntuación del turno actual. El servidor valida y decide. */
 export async function submitScoreMove({ roomId, expectedRevision, score, result = {}, higherWins = true }) {
   assertConfigured();
@@ -308,6 +343,67 @@ export function subscribeToRematchRequests(userId, onChange) {
     clearInterval(pollTimer);
     supabase.removeChannel(channel);
   };
+}
+
+/* ==========================================
+   PROGRESO EN VIVO (broadcast efímero por sala)
+   Mismo patrón que listenTogether: un canal broadcast por sala para
+   intercambiar el progreso del rival (movimientos, tiempo, parejas…)
+   SIN escribir en la BD. El resultado final sigue yendo por RPC.
+   ========================================== */
+const PROGRESS_CHANNEL_PREFIX = 'race-live-';
+let progressChannel = null;
+let progressRoomId = '';
+
+/**
+ * Entra en el canal de progreso de una sala. `onProgress` recibe el payload
+ * del rival ({ sender, game, pairs, moves, seconds, ... }). Devuelve un
+ * cleanup (llamar al salir de la sala).
+ */
+export function joinRaceProgress(roomId, onProgress) {
+  if (!db.isSupabaseConfigured() || !isUuid(roomId)) return () => {};
+  leaveRaceProgress();
+  progressRoomId = roomId;
+  try {
+    progressChannel = supabase
+      .channel(PROGRESS_CHANNEL_PREFIX + roomId)
+      .on('broadcast', { event: 'progress' }, ({ payload }) => {
+        if (payload && payload.room === roomId && typeof onProgress === 'function') {
+          onProgress(payload);
+        }
+      })
+      .subscribe();
+  } catch (err) {
+    console.warn('[games] Progreso en vivo no disponible:', err.message);
+  }
+  return leaveRaceProgress;
+}
+
+export function leaveRaceProgress() {
+  if (progressChannel) {
+    try { supabase.removeChannel(progressChannel); } catch { /* ya eliminado */ }
+    progressChannel = null;
+  }
+  progressRoomId = '';
+}
+
+/**
+ * Publica el progreso local al rival (throttle en el emisor).
+ * `player` es el índice del emisor (0 = host, 1 = invitado); el receptor
+ * lo usa para ignorar broadcasts propios (p.ej. otra pestaña del mismo
+ * usuario) y quedarse solo con el progreso del rival.
+ */
+export function sendRaceProgress(progress = {}, player = null) {
+  if (!progressChannel || !progressRoomId) return;
+  try {
+    progressChannel.send({
+      type: 'broadcast',
+      event: 'progress',
+      payload: { room: progressRoomId, progress, player }
+    });
+  } catch (err) {
+    console.warn('[games] No se pudo enviar progreso:', err.message);
+  }
 }
 
 export function subscribeToGameRoom(roomId, onChange) {

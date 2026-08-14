@@ -113,6 +113,31 @@
   }
 
   /* ==========================================================
+     INSIGNIA DE EMOJI — identidad propia de cada juego
+     Inyecta el emoji del juego como insignia en .game-header
+     (estilada por _game-ui.css con el acento ?accent=HEX).
+     ========================================================== */
+  var GAME_EMOJI = {
+    '2048': '🔢', 'agujero-negro': '🕳️', 'ahorcado': '💀', 'breakout': '🧱',
+    'buscaminas': '💣', 'cuchillos': '🔪', 'invaders': '👾', 'laberinto': '🌀',
+    'memoria': '🧠', 'meteoritos': '☄️', 'pong': '🏓', 'simon': '🔔',
+    'snake': '🐍', 'tetris': '🧩', 'tiroarco': '🎯', 'torre': '🏗️',
+    'conecta4': '🔴', 'tresenraya': '❌', 'battleship': '🚢'
+  };
+
+  function injectHeaderEmoji() {
+    var emoji = GAME_EMOJI[gameId];
+    if (!emoji) return;
+    var header = document.querySelector('.game-header');
+    if (!header || header.querySelector('.game-header__emoji')) return;
+    var badge = document.createElement('span');
+    badge.className = 'game-header__emoji';
+    badge.textContent = emoji;
+    badge.setAttribute('aria-hidden', 'true');
+    header.insertBefore(badge, header.firstChild);
+  }
+
+  /* ==========================================================
      CHIPS CON ICONOS — .score-item → .stat (icono + etiqueta)
      ========================================================== */
   var ICONS = {
@@ -175,6 +200,7 @@
   /* ==========================================================
      INIT
      ========================================================== */
+  injectHeaderEmoji();
   injectSoundButton();
   upgradeChips();
 })();

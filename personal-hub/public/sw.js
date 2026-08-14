@@ -240,8 +240,8 @@ self.addEventListener('push', event => {
   const title = payload.title || 'Personal Hub';
   const options = {
     body: payload.body || '',
-    icon: payload.icon || '/icons/icon-192.png',
-    badge: payload.badge || '/icons/icon-144.png',
+    icon: payload.icon || 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png',
+    badge: payload.badge || 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783958838/imagen_180x180_vzdvku.png',
     tag: payload.tag || 'default',
     data: {
       url: payload.url || '/',
