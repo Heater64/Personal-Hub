@@ -92,6 +92,7 @@ const ICON_X = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stro
 const ICON_CHEV = (dir) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="${dir === 'left' ? '15 18 9 12 15 6' : '9 18 15 12 9 6'}"/></svg>`;
 
 let catalog = null;
+let previewAllGifts = false; // modo revisión ?previewGifts=1 (ignora los bloqueos por fecha)
 let currentMonthKey = null;
 let progressMap = {};
 let lastFocusedEl = null;
@@ -142,9 +143,22 @@ async function loadGifts() {
 
 function getDayState(dateStr, ids) {
   if (!ids?.length) return 'empty';
+  const today = getTodayStr();
+  // Bloqueo por fecha: el día solo se abre cuando llega la fecha de su regalo.
+  // Se comprueba ANTES del estado 'opened' para que los días futuros que se
+  // abrieron con una versión anterior (cuando todo estaba disponible) queden
+  // bloqueados de nuevo hasta su fecha.
+  // Un regalo sin fecha se considera siempre disponible (no bloquea).
+  if (!previewAllGifts) {
+    const anyUnlocked = ids.some(id => {
+      const unlock = catalog?.giftsById?.[id]?.unlock?.value;
+      if (!unlock) return true;
+      return today >= unlock;
+    });
+    if (!anyUnlocked) return 'locked';
+  }
   if (ids.every(id => progressMap[id]?.opened)) return 'opened';
-  // Todos los contenidos están disponibles: no hay bloqueo por fecha.
-  return dateStr === getTodayStr() ? 'today' : 'catchup';
+  return dateStr === today ? 'today' : 'catchup';
 }
 
 function resolveInitialMonth() {
@@ -167,7 +181,7 @@ export function CalendarioPage(router) {
   page.className = 'calendario-page';
   // Modo temporal de revisión: permite abrir todos los regalos sin cambiar
   // sus fechas reales ni la distribución futura del calendario.
-  const previewAllGifts = router?.currentRoute?.query?.previewGifts === '1';
+  previewAllGifts = router?.currentRoute?.query?.previewGifts === '1';
 
   // ===== ESTADO DE CARGA (skeleton) =====
   page.innerHTML = `
@@ -474,7 +488,9 @@ export function CalendarioPage(router) {
     page.querySelectorAll('.cal-day.is-locked').forEach(cell => {
       cell.addEventListener('click', () => {
         const ids = normalizeIds(cell.dataset.giftIds?.split(' '));
-        showToast(ids.length ? 'Aún no disponible — vuelve ese día' : 'Este día no tiene sorpresa', 'info');
+        if (!ids.length) { showToast('Este día no tiene sorpresa', 'info'); return; }
+        const [, m, d] = `${currentMonthKey}-${pad(cell.dataset.day)}`.split('-').map(Number);
+        showToast(`Disponible el ${d} de ${MONTHS_ES[m]} 🗓️`, 'info');
       });
     });
 
