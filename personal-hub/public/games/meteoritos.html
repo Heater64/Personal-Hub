@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
     <style>
         :root {
             --bg-deep: #0a0a12;
@@ -37,20 +40,24 @@
             font-family: var(--font-body);
         }
 
+        body {
+            margin: 0;
+        }
+
         .game-container {
-            max-width: 560px;
+            max-width: 680px;
             margin: 0 auto;
-            padding: 20px 16px 40px;
+            padding: 24px 24px 28px;
             text-align: center;
         }
 
         .game-header {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            flex-wrap: wrap;
-            gap: 6px;
+            margin-bottom: 14px;
+            gap: 4px 12px;
+            text-align: left;
         }
 
         .game-header h1 {
@@ -61,11 +68,20 @@
         }
 
         .game-header .subtitle {
+            grid-column: 1 / -1;
             color: var(--ash);
             font-size: 0.7rem;
             margin: 0;
-            width: 100%;
             text-align: center;
+        }
+
+        .game-header__emoji {
+            grid-row: 1 / span 2;
+            width: 54px;
+            height: 54px;
+            font-size: 1.55rem;
+            border-radius: 16px;
+            margin-bottom: 6px;
         }
 
         .toolbar {
@@ -91,11 +107,12 @@
         .icon-btn.active { border-color: var(--gold); color: var(--gold); }
 
         .score-display {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 8px;
-            justify-content: center;
-            margin: 10px 0 14px;
-            flex-wrap: wrap;
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto 14px;
         }
 
         .score-item {
@@ -124,8 +141,23 @@
         .score-item .value.red { color: var(--red); }
         .score-item .value.blue { color: var(--blue); }
 
+        .score-display .stat {
+            min-width: 0;
+            padding: 8px 6px;
+            text-align: center;
+        }
+
+        .score-display .stat-label {
+            font-size: 0.5rem;
+        }
+
+        .score-display .stat-value {
+            font-size: 1rem;
+        }
+
         .canvas-wrap {
             position: relative;
+            width: 100%;
             max-width: 480px;
             margin: 0 auto;
         }
@@ -144,10 +176,13 @@
 
         .controls-hint {
             color: var(--ash);
-            font-size: 0.65rem;
-            margin: 10px 0;
-            opacity: 0.5;
+            font-size: 0.68rem;
+            line-height: 1.4;
+            margin: 11px 0 9px;
+            opacity: 0.72;
         }
+
+        .mobile-hint { display: none; }
 
         .actions {
             display: flex;
@@ -155,6 +190,11 @@
             justify-content: center;
             flex-wrap: wrap;
             margin-top: 10px;
+        }
+
+        .actions .btn-primary {
+            min-width: 144px;
+            min-height: 42px;
         }
 
         .btn-ghost {
@@ -269,23 +309,97 @@
         }
         .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                padding: max(16px, env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                grid-template-columns: 1fr auto;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            .game-header__emoji {
+                display: none;
+            }
+
+            .game-header h1 {
+                grid-column: 1 / -1;
+                font-size: 1.35rem;
+                line-height: 1.15;
+            }
+
+            .game-header .subtitle {
+                font-size: 0.68rem;
+            }
+
+            .score-display {
+                max-width: none;
+                gap: 5px;
+                margin-bottom: 12px;
+            }
+
+            .score-display .stat {
+                padding: 7px 3px;
+                border-radius: 11px;
+            }
+
+            .score-display .stat-label {
+                font-size: 0.42rem;
+                letter-spacing: 0.02em;
+            }
+
+            .score-display .stat-value {
+                font-size: 0.88rem;
+            }
+
+            .canvas-wrap,
+            canvas {
+                max-width: none;
+                width: 100%;
+            }
+
+            canvas {
+                border-radius: 16px;
+            }
+
+            .controls-hint {
+                margin: 9px 0 7px;
+                font-size: 0.66rem;
+            }
+
+            .desktop-hint { display: none; }
+            .mobile-hint { display: inline; }
+
+            .actions {
+                margin-top: 8px;
+            }
+
+            .actions .btn-primary {
+                width: 100%;
+                min-width: 0;
+                min-height: 44px;
+            }
+
+            .game-back-nav { display: none; }
+        }
+
         @media (max-width: 480px) {
             .game-message-content { padding: 24px 18px; }
-            .score-item { padding: 4px 8px; min-width: 44px; }
-            .score-item .value { font-size: 0.9rem; }
-            .game-header h1 { font-size: 1.2rem; }
         }
     </style>
-    <link rel="stylesheet" href="_theme.css">
-    <link rel="stylesheet" href="_game-ui.css">
-    <link rel="manifest" href="../manifest.json">
+</head>
 
 <body>
     <div class="game-container">
         <div class="game-header">
             <h1>Evita los Meteoritos</h1>
             <div class="toolbar">
-                <button class="icon-btn" id="pauseBtn" title="Pausa">⏸️</button>
+                <button class="icon-btn" id="pauseBtn" title="Pausa" aria-label="Pausar" disabled>⏸️</button>
             </div>
             <span class="subtitle">Esquiva los meteoritos · Sobrevive</span>
         </div>
@@ -298,10 +412,13 @@
         </div>
 
         <div class="canvas-wrap">
-            <canvas id="gameCanvas" width="480" height="480"></canvas>
+            <canvas id="gameCanvas" width="480" height="480" tabindex="0" aria-label="Campo espacial. Usa las flechas, WASD o desliza para mover la nave"></canvas>
         </div>
 
-        <div class="controls-hint">⬆ ⬇ ⬅ ➡ · WASD · Toca y arrastra</div>
+        <div class="controls-hint" aria-label="Controles">
+            <span class="desktop-hint">Flechas / WASD · Desliza para mover</span>
+            <span class="mobile-hint">Desliza para mover · Espacio para pausar</span>
+        </div>
 
         <div class="actions">
             <button class="btn-primary" id="startBtn">▶ Jugar</button>
@@ -804,6 +921,7 @@
                             updateUI();
 
                             if (lives <= 0) {
+                                pauseBtn.disabled = true;
                                 gameOver();
                                 return;
                             }
@@ -935,6 +1053,7 @@
             function updateStartBtn() {
                 startBtn.textContent = isPlaying ? '🔄 Reiniciar' : '▶ Jugar';
                 startBtn.style.opacity = '1';
+                pauseBtn.disabled = !isPlaying;
             }
 
             // --- START ---
@@ -945,7 +1064,10 @@
                 }
                 isPlaying = true;
                 paused = false;
-                pauseBtn.textContent = '⏸️';
+                pauseBtn.textContent = '⏸️ Pausa';
+                pauseBtn.setAttribute('aria-label', 'Pausar');
+                pauseBtn.title = 'Pausar';
+                pauseBtn.disabled = false;
                 updateStartBtn();
                 if (invincibleTimer === 0) invincibleTimer = 30; // Escudo inicial
                 draw();
@@ -962,7 +1084,8 @@
 
             // Jugar desde cero / reiniciar a mitad de partida
             function playFresh() {
-                if (isPlaying) resetGame();
+                // Tras un Game Over siempre se empieza desde un estado limpio.
+                resetGame();
                 startGame();
             }
 
@@ -970,7 +1093,9 @@
             function togglePause() {
                 if (!isPlaying) return;
                 paused = !paused;
-                pauseBtn.textContent = paused ? '▶️' : '⏸️';
+                pauseBtn.textContent = paused ? '▶️ Reanudar' : '⏸️ Pausa';
+                pauseBtn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
+                pauseBtn.title = paused ? 'Reanudar' : 'Pausar';
                 draw();
             }
 
@@ -1049,7 +1174,8 @@
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden && isPlaying) {
                     paused = true;
-                    pauseBtn.textContent = '▶️';
+                    pauseBtn.textContent = '▶️ Reanudar';
+                    pauseBtn.setAttribute('aria-label', 'Reanudar');
                 }
             });
 
@@ -1061,6 +1187,14 @@
             window.startGame = startGame;
             window.resetGame = resetGame;
             window.togglePause = togglePause;
+            window.__meteoritos = {
+                start: startGame,
+                reset: resetGame,
+                pause: togglePause,
+                get state() {
+                    return { score, highScore, lives, level, isPlaying, paused, meteors: meteors.length, player: { ...player } };
+                }
+            };
         })();
     </script>
     <script src="_interface.js"></script>

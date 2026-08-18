@@ -17,8 +17,39 @@ export class Router {
     this._pendingNavigation = null;
     this._currentComponent = null;
     this._navToken = 0;
+    this._navigationDepth = 0;
+    this._ignoreHashChange = null;
 
-    window.addEventListener('hashchange', () => this._handleRoute());
+    // Cada entrada interna lleva profundidad propia. Así el botón Atrás
+    // puede comportarse como una navegación nativa sin sacar al usuario de
+    // la app cuando acaba de abrirla desde un enlace externo.
+    const initialPath = this.getCurrentPath();
+    const currentState = history.state || {};
+    if (currentState.__phRouter) {
+      this._navigationDepth = Number.isFinite(currentState.phDepth)
+        ? Math.max(0, currentState.phDepth)
+        : 0;
+    } else {
+      history.replaceState({ ...currentState, __phRouter: true, phDepth: 0, phPath: initialPath }, '', window.location.href);
+    }
+
+    window.addEventListener('popstate', (event) => {
+      const state = event.state || {};
+      this._navigationDepth = state.__phRouter && Number.isFinite(state.phDepth)
+        ? Math.max(0, state.phDepth)
+        : 0;
+      // Traversing a hash history entry may also emit hashchange. Ignore the
+      // duplicate event so a page is not mounted twice on mobile back.
+      this._ignoreHashChange = window.location.hash;
+      this._handleRoute();
+    });
+    window.addEventListener('hashchange', () => {
+      if (this._ignoreHashChange === window.location.hash) {
+        this._ignoreHashChange = null;
+        return;
+      }
+      this._handleRoute();
+    });
     window.addEventListener('load', () => this._handleRoute());
   }
 
@@ -54,7 +85,29 @@ export class Router {
   }
 
   navigate(path) {
-    window.location.hash = path;
+    const target = `#${path}`;
+    if (window.location.hash === target) return;
+
+    this._navigationDepth += 1;
+    history.pushState({
+      ...(history.state || {}),
+      __phRouter: true,
+      phDepth: this._navigationDepth,
+      phPath: path
+    }, '', target);
+    this._handleRoute();
+  }
+
+  /**
+   * Vuelve a la pantalla anterior dentro de la app. Si la página actual se
+   * abrió directamente, usa un destino seguro en vez de abandonar la web.
+   */
+  back(fallback = '/') {
+    if (this._navigationDepth > 0) {
+      history.back();
+      return;
+    }
+    this.replace(fallback);
   }
 
   /**
@@ -71,7 +124,12 @@ export class Router {
       this._handleRoute();
       return;
     }
-    history.replaceState(null, '', target);
+    history.replaceState({
+      ...(history.state || {}),
+      __phRouter: true,
+      phDepth: this._navigationDepth,
+      phPath: path
+    }, '', target);
     this._handleRoute();
   }
 

@@ -12,33 +12,288 @@
     <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
     <style>
-        .canvas-wrap { max-width: 280px; }
-        canvas { width: 100%; max-width: 280px; aspect-ratio: 1/2; border-radius: 16px; }
-        .controls-hint { margin: 10px 0 4px; }
+        /* Tetris: el tablero es el protagonista, HUD compacto, móvil edge-to-edge */
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            width: min(100%, 720px);
+            padding: 18px 24px 34px;
+        }
+
+        .game-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "copy toolbar" "subtitle subtitle";
+            align-items: center;
+            gap: 4px 14px;
+            margin: 0 auto 15px;
+            text-align: left;
+        }
+
+        .game-header h1 {
+            grid-area: copy;
+            font-size: clamp(1.45rem, 2.8vw, 1.9rem);
+            line-height: 1.05;
+        }
+
+        .game-header .subtitle {
+            grid-area: subtitle;
+            width: auto;
+            margin: 0;
+            text-align: left;
+            font-size: 0.72rem;
+        }
+
+        .game-header__emoji {
+            display: none;
+        }
+
+        .toolbar {
+            grid-area: toolbar;
+            justify-self: end;
+        }
+
+        .icon-btn {
+            width: auto;
+            min-width: 42px;
+            min-height: 42px;
+            padding: 0 13px;
+            border-radius: 13px;
+            font-family: var(--font-body);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .score-display {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            width: min(100%, 560px);
+            margin: 0 auto 14px;
+        }
+
+        .score-item {
+            min-width: 0;
+            padding: 9px 10px 8px;
+            border-radius: 15px;
+            background: linear-gradient(145deg, var(--surface-2), var(--panel));
+            box-shadow: var(--elev-1);
+        }
+
+        .score-item .label {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .score-item .value {
+            font-size: 1.18rem;
+            line-height: 1.1;
+        }
+
+        .canvas-wrap {
+            width: min(100%, 420px, calc((100dvh - 360px) / 2));
+            max-width: 420px;
+            padding: 6px;
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            background: linear-gradient(145deg, var(--surface-2), rgba(232, 115, 90, 0.07));
+            box-shadow: var(--elev-3), 0 0 38px rgba(232, 115, 90, 0.1);
+        }
+
+        canvas {
+            width: 100%;
+            max-width: none;
+            aspect-ratio: 1 / 2;
+            border: 0;
+            border-radius: 18px;
+            outline: none;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+            touch-action: none;
+        }
+
+        .controls-hint {
+            width: min(100%, 560px);
+            margin: 10px auto 0;
+            padding: 8px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            background: var(--panel);
+            color: var(--ink-dim);
+            font-size: 0.66rem;
+            line-height: 1.45;
+        }
+
+        .mobile-hint { display: none; }
+
+        .touch-pad {
+            display: none;
+        }
+
+        .actions {
+            width: min(100%, 560px);
+            margin: 12px auto 0;
+        }
+
+        .actions .btn-primary {
+            min-width: 170px;
+            min-height: 44px;
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                padding: max(14px, env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                grid-template-columns: 1fr auto;
+                margin-bottom: 8px;
+                text-align: center;
+            }
+
+            .game-header h1 {
+                grid-column: 1 / -1;
+                font-size: 1.3rem;
+            }
+
+            .game-header .subtitle {
+                text-align: center;
+                font-size: 0.68rem;
+            }
+
+            .score-display {
+                max-width: none;
+                gap: 5px;
+                margin-bottom: 10px;
+            }
+
+            .score-item {
+                padding: 7px 4px 6px;
+                border-radius: 13px;
+            }
+
+            .score-item .label {
+                font-size: 0.42rem;
+                letter-spacing: 0.05em;
+            }
+
+            .score-item .value {
+                font-size: 0.95rem;
+            }
+
+            .canvas-wrap {
+                width: min(100%, calc((100dvh - 390px) / 2));
+                max-width: none;
+                padding: 5px;
+                border-radius: 20px;
+            }
+
+            canvas {
+                border-radius: 15px;
+            }
+
+            .controls-hint {
+                margin: 7px auto 0;
+                padding: 6px 10px;
+                font-size: 0.63rem;
+            }
+
+            .desktop-hint { display: none; }
+            .mobile-hint { display: inline; }
+
+            /* Pad táctil: mover, rotar, bajar */
+            .touch-pad {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                width: 100%;
+                max-width: 320px;
+                margin: 8px auto 0;
+            }
+
+            .touch-pad button {
+                min-height: 44px;
+                border-radius: 14px;
+                background: var(--panel);
+                border: 1px solid var(--panel-border);
+                color: var(--ink);
+                font-family: var(--font-body);
+                font-size: 1.05rem;
+                font-weight: 600;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+                transition: transform 0.1s, background 0.15s;
+            }
+
+            .touch-pad button:active {
+                background: var(--accent-dim);
+                transform: scale(0.95);
+            }
+
+            .actions {
+                margin: 8px auto 0;
+            }
+
+            .actions .btn-primary {
+                width: 100%;
+                min-width: 0;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
         <div class="game-header">
             <h1>Tetris</h1>
-            <p class="subtitle">Completa líneas · Sube de nivel</p>
-        </div>
-        <div class="top-bar">
-            <div class="stats">
-                <div class="stat"><span class="stat-label">🍎 Puntos</span><span class="stat-value gold" id="scoreDisplay">0</span></div>
-                <div class="stat"><span class="stat-label">🏆 Récord</span><span class="stat-value green" id="highScoreDisplay">0</span></div>
-                <div class="stat"><span class="stat-label">📏 Líneas</span><span class="stat-value" id="linesDisplay">0</span></div>
-                <div class="stat"><span class="stat-label">📈 Nivel</span><span class="stat-value red" id="levelDisplay">1</span></div>
+            <div class="toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa" aria-label="Pausar" disabled>⏸️ Pausa</button>
             </div>
-            <div class="top-actions toolbar">
-                <button class="icon-btn" id="pauseBtn" title="Pausa (Espacio)" aria-label="Pausar o reanudar">⏸️</button>
-            </div>
+            <span class="subtitle">Completa líneas · Sube de nivel</span>
         </div>
+
+        <div class="score-display">
+            <div class="score-item"><span class="label">Puntos</span><span class="value gold" id="scoreDisplay">0</span></div>
+            <div class="score-item"><span class="label">Récord</span><span class="value green" id="highScoreDisplay">0</span></div>
+            <div class="score-item"><span class="label">Líneas</span><span class="value white" id="linesDisplay">0</span></div>
+            <div class="score-item"><span class="label">Nivel</span><span class="value red" id="levelDisplay">1</span></div>
+        </div>
+
         <div class="canvas-wrap">
-            <canvas id="gameCanvas" width="280" height="560"></canvas>
+            <canvas id="gameCanvas" width="320" height="640" tabindex="0" aria-label="Tablero de Tetris. Flechas para mover y rotar, espacio para soltar"></canvas>
         </div>
-        <div class="controls-hint">← → mover · ↑ rotar · ↓ bajar · Espacio soltar · P pausa · Desliza en móvil</div>
-        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+
+        <div class="controls-hint" aria-label="Controles">
+            <span class="desktop-hint">← → mover · ↑ rotar · ↓ bajar · Espacio soltar · P pausa</span>
+            <span class="mobile-hint">Desliza para mover · ↑ rotar · ↓ bajar · Botones táctiles</span>
+        </div>
+
+        <div class="touch-pad" id="touchPad" aria-label="Controles táctiles">
+            <button id="padLeft" aria-label="Mover a la izquierda">◀</button>
+            <button id="padRight" aria-label="Mover a la derecha">▶</button>
+            <button id="padRotate" aria-label="Rotar">⟳</button>
+            <button id="padDrop" aria-label="Bajar">▼</button>
+        </div>
+
+        <div class="actions">
+            <button class="btn-primary" id="startBtn">▶ Jugar</button>
+        </div>
     </div>
 
     <div class="game-message" id="gameMessage">
@@ -55,7 +310,7 @@
         'use strict';
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const COLS = 10, ROWS = 20, CELL = 28;
+        const COLS = 10, ROWS = 20, CELL = 32;
         const W = COLS * CELL, H = ROWS * CELL;
 
         // --- Piezas (tetrominós) ---
@@ -70,10 +325,18 @@
         };
         const KEYS = Object.keys(SHAPES);
 
-        let board, current, nextType, score, lines, level, highScore, paused, gameOver, dropTimer, lastTime, animId, pieceX, pieceY, rot;
+        let board, current, nextType, score, lines, level, highScore, paused, gameOver, started,
+            dropTimer, lastTime, animId, pieceX, pieceY, rot;
+
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const linesDisplay = document.getElementById('linesDisplay');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
 
         highScore = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
-        document.getElementById('highScoreDisplay').textContent = highScore;
+        highScoreDisplay.textContent = highScore;
 
         function newPiece() {
             // Centrar según la pieza ACTUAL (la que se dibuja), no según la
@@ -153,7 +416,6 @@
         }
 
         function rotatePiece() {
-            const m = getMatrix();
             const nrot = (rot + 1) % 4;
             const nm = SHAPES[current].m;
             let tm = nm;
@@ -176,6 +438,11 @@
 
         function doGameOver() {
             gameOver = true;
+            started = false;
+            pauseBtn.disabled = true;
+            pauseBtn.textContent = '⏸️ Pausa';
+            pauseBtn.setAttribute('aria-label', 'Pausar');
+            startBtn.textContent = '▶ Jugar';
             SFX.lose();
             buzz([60, 40, 60]);
             const record = score > 0 && score >= highScore;
@@ -193,19 +460,39 @@
         function resetGame() {
             board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
             score = 0; lines = 0; level = 1;
-            paused = false; gameOver = false;
+            started = false; paused = false; gameOver = false;
             nextType = KEYS[Math.floor(Math.random() * KEYS.length)];
             current = KEYS[Math.floor(Math.random() * KEYS.length)];
             newPiece();
             document.getElementById('gameMessage').classList.remove('show');
+            pauseBtn.disabled = true;
+            pauseBtn.textContent = '⏸️ Pausa';
+            pauseBtn.setAttribute('aria-label', 'Pausar');
+            startBtn.textContent = '▶ Jugar';
             updateUI();
+            draw();
+        }
+
+        function startGame() {
+            if (started && !gameOver) return;
+            if (gameOver) resetGame();
+            started = true;
+            paused = false;
+            gameOver = false;
+            pauseBtn.disabled = false;
+            pauseBtn.textContent = '⏸️ Pausa';
+            pauseBtn.setAttribute('aria-label', 'Pausar');
+            startBtn.textContent = '🔄 Reiniciar';
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+            draw();
         }
 
         function updateUI() {
-            document.getElementById('scoreDisplay').textContent = score;
-            document.getElementById('highScoreDisplay').textContent = highScore;
-            document.getElementById('linesDisplay').textContent = lines;
-            document.getElementById('levelDisplay').textContent = level;
+            scoreDisplay.textContent = score;
+            highScoreDisplay.textContent = highScore;
+            linesDisplay.textContent = lines;
+            levelDisplay.textContent = level;
         }
 
         function ghostY() {
@@ -242,6 +529,25 @@
                     drawCell(pieceX + c, pieceY + r, SHAPES[current].c);
                 }
             }
+
+            // Overlay de estado
+            if (!started && !gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.font = '700 22px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('▶ Jugar', W / 2, H / 2);
+            } else if (paused && started) {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.font = '700 22px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⏸️ Pausa', W / 2, H / 2);
+            }
         }
 
         function drawCell(x, y, color) {
@@ -257,7 +563,7 @@
             if (!lastTime) lastTime = ts;
             const dt = Math.min(ts - lastTime, 50);
             lastTime = ts;
-            if (!paused && !gameOver) {
+            if (started && !paused && !gameOver) {
                 dropTimer += dt;
                 const interval = Math.max(60, 800 - (level - 1) * 70);
                 while (dropTimer >= interval) {
@@ -271,14 +577,18 @@
         }
 
         function togglePause() {
-            if (gameOver) return;
+            if (!started || gameOver) return;
             paused = !paused;
-            document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+            pauseBtn.textContent = paused ? '▶️ Reanudar' : '⏸️ Pausa';
+            pauseBtn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
+            pauseBtn.title = paused ? 'Reanudar' : 'Pausar';
             SFX.pause();
+            draw();
         }
 
         // --- Input ---
-        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        pauseBtn.addEventListener('click', togglePause);
+        startBtn.addEventListener('click', () => { started && !gameOver ? resetGame() : startGame(); });
         document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
 
         let keyLock = {};
@@ -286,7 +596,7 @@
             const k = e.key;
             if (['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' ','Space'].includes(k)) e.preventDefault();
             if (k === 'p' || k === 'P' || k === 'Escape') { togglePause(); return; }
-            if (paused || gameOver) return;
+            if (!started || paused || gameOver) return;
             if (k === 'ArrowLeft' || k === 'a' || k === 'A') { move(-1); }
             else if (k === 'ArrowRight' || k === 'd' || k === 'D') { move(1); }
             else if (k === 'ArrowDown' || k === 's' || k === 'S') { if (!keyLock.down) { softDrop(); keyLock.down = true; } }
@@ -313,15 +623,27 @@
         }, { passive: false });
         canvas.addEventListener('touchend', (e) => { e.preventDefault(); tActive = false; }, { passive: false });
 
+        // Pad táctil
+        const pad = (btn, fn) => {
+            btn.addEventListener('pointerdown', (e) => { e.preventDefault(); if (!started || paused || gameOver) return; fn(); });
+        };
+        pad(document.getElementById('padLeft'), () => move(-1));
+        pad(document.getElementById('padRight'), () => move(1));
+        pad(document.getElementById('padRotate'), rotatePiece);
+        pad(document.getElementById('padDrop'), softDrop);
+
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden && !gameOver && !paused) togglePause();
+            if (document.hidden && started && !gameOver && !paused) togglePause();
         });
 
         resetGame();
         lastTime = 0;
         animId = requestAnimationFrame(loop);
 
-        window.__tetris = { resetGame, togglePause, get state() { return { score, lines, level, highScore, gameOver, paused }; }, softDrop, hardDrop };
+        window.startGame = startGame;
+        window.resetGame = resetGame;
+        window.togglePause = togglePause;
+        window.__tetris = { resetGame, startGame, togglePause, get state() { return { score, lines, level, highScore, gameOver, paused, started }; }, softDrop, hardDrop };
     })();
     </script>
     <script src="_interface.js"></script>

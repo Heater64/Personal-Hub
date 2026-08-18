@@ -648,3 +648,97 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   .game-container, .game-header__emoji { animation: none; }
 }
+
+/* ==========================================================
+   GAME TOPBAR — navegación contextual nativa
+   Inyectada por _postgame.js en todos los juegos.
+   ========================================================== */
+.game-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: -10px 0 16px;
+  padding: 4px 0;
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  border-bottom: 1px solid var(--panel-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.game-topbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 36px;
+  padding: 0 4px;
+  border-radius: 999px;
+  color: var(--coral);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.game-topbar__link svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+.game-topbar__link--calendar {
+  justify-self: end;
+}
+
+.game-topbar__link:active {
+  background: var(--accent-dim);
+  transform: scale(0.96);
+}
+
+.game-topbar__link:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 1px;
+}
+
+.game-topbar__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .game-topbar {
+    top: 0;
+    min-height: 48px;
+    margin: calc(-1 * max(16px, env(safe-area-inset-top, 0px))) -12px 14px;
+    padding: max(4px, env(safe-area-inset-top, 0px)) 12px 4px;
+  }
+
+  .game-topbar__link {
+    min-height: 40px;
+    font-size: 0.72rem;
+  }
+
+  .game-topbar__link svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .game-topbar__title {
+    font-size: 0.8rem;
+  }
+}

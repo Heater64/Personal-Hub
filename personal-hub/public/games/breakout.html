@@ -15,9 +15,37 @@
         /* Breakout — tablero a ancho completo del dispositivo (16:10).
            El chrome (header, chips, modal, botones) lo estiliza _game-ui.css;
            estas reglas van después y solo ajustan lo específico del juego. */
+        body {
+            margin: 0;
+        }
+
         .game-container {
+            box-sizing: border-box;
             max-width: 1060px;
+            padding-bottom: 24px;
             text-align: center;
+        }
+
+        .game-header {
+            margin-bottom: 16px;
+        }
+
+        .game-header__emoji {
+            width: 54px;
+            height: 54px;
+            font-size: 1.55rem;
+            border-radius: 16px;
+            margin-bottom: 6px;
+        }
+
+        .game-header h1 {
+            font-size: 1.6rem;
+            line-height: 1.1;
+        }
+
+        .game-header .subtitle {
+            margin: 4px 0 0;
+            font-size: 0.72rem;
         }
         canvas {
             display: block;
@@ -30,17 +58,160 @@
             touch-action: none;
         }
         .score-display {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 16px 0;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto 14px;
         }
+
+        .score-display .stat {
+            min-width: 0;
+            padding: 8px 10px;
+            text-align: center;
+        }
+
+        .score-display .stat-label {
+            font-size: 0.52rem;
+        }
+
+        .score-display .stat-value {
+            font-size: 1rem;
+        }
+        .size-control {
+            display: flex;
+            flex-wrap: nowrap;
+            width: fit-content;
+            max-width: 100%;
+            margin: 0 auto 16px;
+            padding: 4px;
+            border-radius: 14px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .size-control::-webkit-scrollbar { display: none; }
+
+        .size-btn {
+            min-width: 104px;
+            padding: 8px 12px;
+            border-radius: 9px;
+            white-space: nowrap;
+        }
+
+        .game-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .game-actions .btn-ghost {
+            min-width: 132px;
+            min-height: 42px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-family: var(--font-body);
+            font-weight: 600;
+        }
+
+        .game-actions .btn-ghost:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
         .controls-hint {
-            margin: 12px 0;
-            font-size: 0.8rem;
+            margin: 10px 0 0;
+            font-size: 0.72rem;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                min-height: 100dvh;
+                margin: 0;
+            }
+
+            .game-container {
+                box-sizing: border-box;
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                padding: max(16px, env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                margin-bottom: 10px;
+            }
+
+            .game-header__emoji {
+                display: none;
+            }
+
+            .game-header h1 {
+                font-size: 1.35rem;
+            }
+
+            .game-header .subtitle {
+                font-size: 0.68rem;
+            }
+
+            .score-display {
+                gap: 5px;
+                max-width: none;
+            }
+
+            .score-display .stat {
+                padding: 7px 4px;
+                border-radius: 11px;
+            }
+
+            .score-display .stat-label {
+                font-size: 0.44rem;
+                letter-spacing: 0.03em;
+            }
+
+            .score-display .stat-value {
+                font-size: 0.9rem;
+            }
+
+            .size-control {
+                display: flex;
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+                box-sizing: border-box;
+                width: 100%;
+                margin-bottom: 12px;
+                overflow-x: auto;
+            }
+
+            .size-btn {
+                flex: 0 0 auto;
+                min-width: 104px;
+            }
+
+            .game-actions {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .game-actions .btn-ghost {
+                flex: 1;
+                min-width: 0;
+                min-height: 44px;
+            }
+
+            .controls-hint {
+                font-size: 0.66rem;
+                margin-top: 8px;
+            }
+
+            .game-back-nav { display: none; }
         }
     </style>
+</head>
 
 <body>
     <div class="game-container">
@@ -68,9 +239,9 @@
 
         <div class="controls-hint">← → o mouse/touch</div>
 
-        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
-            <button id="pauseBtn" class="btn-ghost" title="Pausar" aria-label="Pausar">⏸️ Pausa</button>
-            <button onclick="resetGame()" class="btn-ghost">🔄 Reiniciar</button>
+        <div class="game-actions">
+            <button id="pauseBtn" class="btn-ghost" title="Pausar" aria-label="Pausar" disabled>⏸️ Pausa</button>
+            <button id="resetBtn" class="btn-ghost">🔄 Reiniciar</button>
         </div>
 
         <div class="game-back-nav">
@@ -93,7 +264,7 @@
         <div class="game-message-content">
             <div class="icon">🧊</div>
             <h2>Breakout</h2>
-            <p>Elige el tamaño del tablero y rompe todos los bloques. Mueve la paleta con ← →, el ratón o el dedo.</p>
+            <p>Rompe todos los bloques. Mueve la paleta con ← →, el ratón o el dedo.</p>
             <button class="btn-primary" id="startBtn">▶ Jugar</button>
         </div>
     </div>
@@ -235,6 +406,7 @@
                 document.getElementById('livesDisplay').textContent = hearts || '💀';
                 if (lives <= 0) {
                     gameRunning = false;
+                    document.getElementById('pauseBtn').disabled = true;
                     checkRecord();
                     SFX.lose();
                     buzz([60, 40, 60]);
@@ -254,7 +426,7 @@
             if (!gameRunning) return;
             paused = !paused;
             const btn = document.getElementById('pauseBtn');
-            btn.textContent = paused ? '▶️' : '⏸️';
+            btn.textContent = paused ? '▶️ Reanudar' : '⏸️ Pausa';
             btn.title = paused ? 'Reanudar' : 'Pausar';
             btn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
         }
@@ -338,7 +510,12 @@
             gameRunning = true;
             paused = false;
             const pauseBtnEl = document.getElementById('pauseBtn');
-            if (pauseBtnEl) { pauseBtnEl.textContent = '⏸️'; pauseBtnEl.title = 'Pausar'; pauseBtnEl.setAttribute('aria-label', 'Pausar'); }
+            if (pauseBtnEl) {
+                pauseBtnEl.textContent = '⏸️ Pausa';
+                pauseBtnEl.title = 'Pausar';
+                pauseBtnEl.setAttribute('aria-label', 'Pausar');
+                pauseBtnEl.disabled = false;
+            }
             document.getElementById('scoreDisplay').textContent = '0';
             document.getElementById('livesDisplay').textContent = '❤️❤️❤️';
             paddle.x = W/2 - 50;
@@ -349,11 +526,13 @@
         }
 
         document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
         document.getElementById('startBtn').addEventListener('click', () => {
             if (gameRunning) return;
             document.getElementById('gameStart').classList.remove('show');
             gameRunning = true;
             paused = false;
+            document.getElementById('pauseBtn').disabled = false;
             update();
         });
         document.addEventListener('keydown', (e) => {
@@ -365,7 +544,7 @@
             if (document.hidden && gameRunning && !paused) {
                 paused = true;
                 const btn = document.getElementById('pauseBtn');
-                btn.textContent = '▶️';
+                btn.textContent = '▶️ Reanudar';
                 btn.title = 'Reanudar';
                 btn.setAttribute('aria-label', 'Reanudar');
             }
@@ -399,6 +578,7 @@
         document.getElementById('highScoreDisplay').textContent = highScore;
         // Espera al botón "Jugar" antes de arrancar
         gameRunning = false;
+        document.getElementById('pauseBtn').disabled = true;
         document.getElementById('gameStart').classList.add('show');
 
         window.resetGame = resetGame;

@@ -53,6 +53,90 @@
 }
 
 /* ==========================================
+   MOBILE TOP BAR — navegación nativa contextual
+   ========================================== */
+.mobile-topbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-topbar {
+    position: sticky;
+    top: 0;
+    z-index: calc(var(--z-sticky) - 1);
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-8);
+    min-height: var(--header-height);
+    padding: env(safe-area-inset-top, 0px) var(--sp-12) 0;
+    background: color-mix(in srgb, var(--theme-bg) 88%, transparent);
+    border-bottom: 1px solid transparent;
+    backdrop-filter: blur(var(--blur-nav));
+    -webkit-backdrop-filter: blur(var(--blur-nav));
+  }
+
+  .mobile-topbar.is-visible {
+    display: flex;
+    border-bottom-color: var(--theme-divider);
+  }
+
+  .mobile-topbar__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 76px;
+    min-height: 44px;
+    padding: 0 var(--sp-4);
+    border: 0;
+    border-radius: var(--r-full);
+    background: transparent;
+    color: var(--theme-accent);
+    font: 500 var(--fs-sm)/1 var(--font-body);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .mobile-topbar__back svg {
+    width: 22px;
+    height: 22px;
+    transition: transform var(--dur-fast);
+  }
+
+  .mobile-topbar__back:active {
+    background: var(--theme-accent-dim);
+    transform: scale(0.96);
+  }
+
+  .mobile-topbar__back:active svg {
+    transform: translateX(-2px);
+  }
+
+  .mobile-topbar__back:focus-visible {
+    outline: 2px solid var(--theme-accent);
+    outline-offset: -1px;
+  }
+
+  .mobile-topbar__title {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: var(--theme-text-primary);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-topbar__spacer {
+    width: 76px;
+    flex-shrink: 0;
+  }
+}
+
+/* ==========================================
    UMBRA SURFACES — Compatibilidad visual
    Algunas páginas todavía usan `glass-card` como
    nombre histórico. Se mantiene el contrato de la

@@ -12,39 +12,250 @@
     <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
     <style>
-        .canvas-wrap { max-width: 400px; }
-        canvas { width: 100%; max-width: 400px; border-radius: 18px; cursor: pointer; }
-        .controls-hint { margin: 10px 0 4px; }
+        /* Nonogramas: tablero protagonista, HUD compacto, móvil edge-to-edge */
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            width: min(100%, 640px);
+            padding: 18px 24px 34px;
+        }
+
+        .game-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "copy toolbar" "subtitle subtitle";
+            align-items: center;
+            gap: 4px 14px;
+            margin: 0 auto 15px;
+            text-align: left;
+        }
+
+        .game-header h1 {
+            grid-area: copy;
+            font-size: clamp(1.45rem, 2.8vw, 1.9rem);
+            line-height: 1.05;
+        }
+
+        .game-header .subtitle {
+            grid-area: subtitle;
+            width: auto;
+            margin: 0;
+            text-align: left;
+            font-size: 0.72rem;
+        }
+
+        .game-header__emoji {
+            display: none;
+        }
+
+        .toolbar {
+            grid-area: toolbar;
+            justify-self: end;
+        }
+
+        .icon-btn {
+            width: auto;
+            min-width: 42px;
+            min-height: 42px;
+            padding: 0 13px;
+            border-radius: 13px;
+            font-family: var(--font-body);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .score-display {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            width: min(100%, 520px);
+            margin: 0 auto 12px;
+        }
+
+        .score-item {
+            min-width: 0;
+            padding: 9px 10px 8px;
+            border-radius: 15px;
+            background: linear-gradient(145deg, var(--surface-2), var(--panel));
+            box-shadow: var(--elev-1);
+        }
+
+        .score-item .label {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .score-item .value {
+            font-size: 1.18rem;
+            line-height: 1.1;
+        }
+
+        .size-control {
+            width: min(100%, 520px);
+            margin: 0 auto 12px;
+        }
+
+        .canvas-wrap {
+            width: min(100%, 400px, calc(100dvh - 360px));
+            max-width: 400px;
+            padding: 6px;
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            background: linear-gradient(145deg, var(--surface-2), rgba(74, 222, 128, 0.07));
+            box-shadow: var(--elev-3), 0 0 38px rgba(74, 222, 128, 0.1);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            max-width: none;
+            height: auto;
+            border: 0;
+            border-radius: 18px;
+            outline: none;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .controls-hint {
+            width: min(100%, 520px);
+            margin: 10px auto 0;
+            padding: 8px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            background: var(--panel);
+            color: var(--ink-dim);
+            font-size: 0.66rem;
+            line-height: 1.45;
+        }
+
+        .mode-row {
+            width: min(100%, 520px);
+            margin: 10px auto 0;
+            text-align: center;
+        }
+
+        .mode-row .btn-ghost {
+            min-height: 42px;
+            padding: 0 18px;
+            font-size: 0.78rem;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                padding: max(14px, env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                grid-template-columns: 1fr auto;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            .game-header h1 {
+                grid-column: 1 / -1;
+                font-size: 1.3rem;
+            }
+
+            .game-header .subtitle {
+                text-align: center;
+                font-size: 0.68rem;
+            }
+
+            .score-display {
+                max-width: none;
+                gap: 5px;
+                margin-bottom: 9px;
+            }
+
+            .score-item {
+                padding: 7px 4px 6px;
+                border-radius: 13px;
+            }
+
+            .score-item .label {
+                font-size: 0.42rem;
+                letter-spacing: 0.05em;
+            }
+
+            .score-item .value {
+                font-size: 0.95rem;
+            }
+
+            .size-control {
+                margin-bottom: 9px;
+            }
+
+            .canvas-wrap {
+                width: min(100%, calc(100dvh - 360px));
+                max-width: none;
+                padding: 5px;
+                border-radius: 20px;
+            }
+
+            canvas {
+                border-radius: 15px;
+            }
+
+            .controls-hint {
+                margin: 8px auto 0;
+                font-size: 0.63rem;
+            }
+
+            .mode-row {
+                margin: 9px auto 0;
+            }
+
+            .mode-row .btn-ghost {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
         <div class="game-header">
             <h1>Nonogramas</h1>
-            <p class="subtitle">Píxeles con lógica · Descubre el dibujo</p>
-        </div>
-        <div class="top-bar">
-            <div class="stats">
-                <div class="stat"><span class="stat-label">⏱️ Tiempo</span><span class="stat-value gold" id="timeDisplay">0s</span></div>
-                <div class="stat"><span class="stat-label">🏆 Mejor</span><span class="stat-value green" id="bestDisplay">—</span></div>
-                <div class="stat"><span class="stat-label">❌ Errores</span><span class="stat-value red" id="errorsDisplay">0</span></div>
+            <div class="toolbar">
+                <button class="icon-btn" id="resetBtn" title="Reiniciar (R)" aria-label="Reiniciar puzle">🔄 Reiniciar</button>
             </div>
-            <div class="top-actions toolbar">
-                <button class="icon-btn" id="pauseBtn" title="Reiniciar (R)" aria-label="Reiniciar puzle">🔄</button>
-            </div>
+            <span class="subtitle">Píxeles con lógica · Descubre el dibujo</span>
         </div>
+
+        <div class="score-display">
+            <div class="score-item"><span class="label">Tiempo</span><span class="value gold" id="timeDisplay">0s</span></div>
+            <div class="score-item"><span class="label">Mejor</span><span class="value green" id="bestDisplay">—</span></div>
+            <div class="score-item"><span class="label">Errores</span><span class="value red" id="errorsDisplay">0</span></div>
+        </div>
+
         <div class="size-control">
             <button class="size-btn active" data-puzzle="0">Corazón</button>
             <button class="size-btn" data-puzzle="1">Diamante</button>
         </div>
+
         <div class="canvas-wrap">
-            <canvas id="gameCanvas" width="352" height="332"></canvas>
+            <canvas id="gameCanvas" width="352" height="332" tabindex="0" aria-label="Nonogramas. Toca para rellenar, botón para marcar X"></canvas>
         </div>
-        <div class="controls-hint">Clic = rellenar · Clic derecho = marcar X · Toca el botón abajo en móvil</div>
-        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:8px 0;">
+
+        <div class="controls-hint" aria-label="Controles">
+            <span>Clic = rellenar · Clic derecho = marcar X · En móvil usa el botón de modo</span>
+        </div>
+
+        <div class="mode-row">
             <button class="btn-ghost" id="modeBtn">✏️ Rellenar</button>
         </div>
-        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
     </div>
 
     <div class="game-message" id="gameMessage">
@@ -275,7 +486,7 @@
             applyPuzzleUI();
             startPuzzle();
         });
-        document.getElementById('pauseBtn').addEventListener('click', startPuzzle);
+        document.getElementById('resetBtn').addEventListener('click', startPuzzle);
         document.addEventListener('keydown', (e) => { if (e.key === 'r' || e.key === 'R') startPuzzle(); });
 
         applyPuzzleUI();

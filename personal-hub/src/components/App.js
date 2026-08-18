@@ -43,6 +43,13 @@ export function AppShell(router) {
   });
   app.appendChild(skipLink);
 
+  // Barra superior móvil: una flecha persistente y contextual se siente más
+  // nativa que obligar a buscar un enlace de vuelta al final de cada página.
+  const mobileTopBar = document.createElement('header');
+  mobileTopBar.className = 'mobile-topbar';
+  mobileTopBar.setAttribute('aria-label', 'Navegación de página');
+  app.appendChild(mobileTopBar);
+
   // Make the router render into a dedicated content area
   const contentEl = document.createElement('main');
   contentEl.className = 'app-content';
@@ -119,6 +126,54 @@ export function AppShell(router) {
     }
   });
 
+  const MOBILE_ROOT_ROUTES = new Set(['/', '/rincon', '/sentimientos', '/ositos', '/perfil']);
+  const MOBILE_ROUTE_LABELS = {
+    '/galeria': 'Galería y Memes',
+    '/memes': 'Memes',
+    '/audios': 'Audios',
+    '/curiosidades': 'Curiosidades',
+    '/juegos': 'Juegos',
+    '/calendario': 'Calendario',
+    '/razones': 'Razones',
+    '/openwhen': 'Open When',
+    '/maldia': 'Mal Día',
+    '/canciones': 'Canciones',
+    '/series': 'Series',
+    '/thoseeyes': 'Those Eyes'
+  };
+
+  function mobileBackTarget(path) {
+    if (path.startsWith('/juegos/online/')) return '/juegos';
+    if (['/galeria', '/memes', '/audios', '/curiosidades', '/juegos', '/canciones', '/series', '/thoseeyes'].includes(path.split('?')[0])) return '/rincon';
+    if (['/razones', '/openwhen', '/calendario', '/maldia'].includes(path.split('?')[0])) return '/sentimientos';
+    return '/';
+  }
+
+  function updateMobileTopBar(path) {
+    const basePath = path.split('?')[0];
+    const shouldShow = !NO_NAV_ROUTES.some(route => path === route || path.startsWith(route + '/'))
+      && !MOBILE_ROOT_ROUTES.has(basePath);
+
+    mobileTopBar.classList.toggle('is-visible', shouldShow);
+    if (!shouldShow) {
+      mobileTopBar.innerHTML = '';
+      return;
+    }
+
+    const label = MOBILE_ROUTE_LABELS[basePath] || 'Volver';
+    mobileTopBar.innerHTML = `
+      <button type="button" class="mobile-topbar__back" aria-label="Volver">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        <span>Volver</span>
+      </button>
+      <h1 class="mobile-topbar__title">${label}</h1>
+      <span class="mobile-topbar__spacer" aria-hidden="true"></span>
+    `;
+    mobileTopBar.querySelector('.mobile-topbar__back').addEventListener('click', () => {
+      router.back(mobileBackTarget(path));
+    });
+  }
+
   // Store ref to remove welcome overlay on route change
   let currentWelcomeOverlay = null;
   let moodTimer = null;
@@ -144,6 +199,7 @@ export function AppShell(router) {
 
     // Update navigation visibility
     updateNavigation(path);
+    updateMobileTopBar(path);
 
     // Remove any lingering welcome overlay
     if (currentWelcomeOverlay) {
@@ -185,6 +241,7 @@ export function AppShell(router) {
   // Update navigation on route change
   router.afterEach((path) => {
     updateNavigation(path);
+    updateMobileTopBar(path);
     scheduleMoodCheck();
     hideBootSplash();
     // Registro de actividad (analítica): con qué secciones pasa más tiempo
@@ -402,6 +459,7 @@ export function AppShell(router) {
 
   // Initial navigation state
   updateNavigation(router.getCurrentPath());
+  updateMobileTopBar(router.getCurrentPath());
 
   // ── Inicializar PWA ──
   // Pequeño delay para no bloquear la carga inicial

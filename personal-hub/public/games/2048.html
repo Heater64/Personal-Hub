@@ -12,39 +12,262 @@
     <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
     <style>
-        .canvas-wrap { max-width: 420px; }
-        canvas { width: 100%; max-width: 420px; aspect-ratio: 1/1; border-radius: 18px; }
-        .controls-hint { margin: 10px 0 4px; }
+        /* 2048: el tablero es el protagonista, HUD compacto, móvil edge-to-edge */
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            width: min(100%, 720px);
+            padding: 18px 24px 34px;
+        }
+
+        .game-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "copy toolbar" "subtitle subtitle";
+            align-items: center;
+            gap: 4px 14px;
+            margin: 0 auto 15px;
+            text-align: left;
+        }
+
+        .game-header h1 {
+            grid-area: copy;
+            font-size: clamp(1.45rem, 2.8vw, 1.9rem);
+            line-height: 1.05;
+        }
+
+        .game-header .subtitle {
+            grid-area: subtitle;
+            width: auto;
+            margin: 0;
+            text-align: left;
+            font-size: 0.72rem;
+        }
+
+        .game-header__emoji {
+            display: none;
+        }
+
+        .toolbar {
+            grid-area: toolbar;
+            justify-self: end;
+        }
+
+        .icon-btn {
+            width: auto;
+            min-width: 42px;
+            min-height: 42px;
+            padding: 0 13px;
+            border-radius: 13px;
+            font-family: var(--font-body);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .score-display {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            width: min(100%, 520px);
+            margin: 0 auto 14px;
+        }
+
+        .score-item {
+            min-width: 0;
+            padding: 9px 10px 8px;
+            border-radius: 15px;
+            background: linear-gradient(145deg, var(--surface-2), var(--panel));
+            box-shadow: var(--elev-1);
+        }
+
+        .score-item .label {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .score-item .value {
+            font-size: 1.18rem;
+            line-height: 1.1;
+        }
+
+        /* Selector de tamaño: centrado bajo el HUD */
+        .size-control {
+            display: inline-flex;
+            margin: 0 auto 12px;
+        }
+
+        .canvas-wrap {
+            width: min(100%, 420px, calc(100dvh - 330px));
+            max-width: 420px;
+            padding: 6px;
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            background: linear-gradient(145deg, var(--surface-2), rgba(232, 115, 90, 0.07));
+            box-shadow: var(--elev-3), 0 0 38px rgba(232, 115, 90, 0.1);
+        }
+
+        canvas {
+            width: 100%;
+            max-width: none;
+            aspect-ratio: 1 / 1;
+            border: 0;
+            border-radius: 18px;
+            outline: none;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+            touch-action: none;
+        }
+
+        .controls-hint {
+            width: min(100%, 520px);
+            margin: 10px auto 0;
+            padding: 8px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            background: var(--panel);
+            color: var(--ink-dim);
+            font-size: 0.66rem;
+            line-height: 1.45;
+        }
+
+        .mobile-hint { display: none; }
+
+        .actions {
+            width: min(100%, 520px);
+            margin: 12px auto 0;
+        }
+
+        .actions .btn-primary {
+            min-width: 170px;
+            min-height: 44px;
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                padding: max(14px, env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                grid-template-columns: 1fr auto;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            .game-header h1 {
+                grid-column: 1 / -1;
+                font-size: 1.3rem;
+            }
+
+            .game-header .subtitle {
+                text-align: center;
+                font-size: 0.68rem;
+            }
+
+            .score-display {
+                max-width: none;
+                gap: 5px;
+                margin-bottom: 10px;
+            }
+
+            .score-item {
+                padding: 7px 4px 6px;
+                border-radius: 13px;
+            }
+
+            .score-item .label {
+                font-size: 0.42rem;
+                letter-spacing: 0.05em;
+            }
+
+            .score-item .value {
+                font-size: 0.95rem;
+            }
+
+            .size-control {
+                margin: 0 auto 10px;
+            }
+
+            .canvas-wrap {
+                width: min(100%, calc(100dvh - 350px));
+                max-width: none;
+                padding: 5px;
+                border-radius: 20px;
+            }
+
+            canvas {
+                border-radius: 15px;
+            }
+
+            .controls-hint {
+                margin: 8px auto 0;
+                font-size: 0.63rem;
+            }
+
+            .desktop-hint { display: none; }
+            .mobile-hint { display: inline; }
+
+            .actions {
+                margin: 10px auto 0;
+            }
+
+            .actions .btn-primary {
+                width: 100%;
+                min-width: 0;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
         <div class="game-header">
             <h1>2048</h1>
-            <p class="subtitle">Fusiona las baldosas hasta llegar a 2048</p>
-        </div>
-        <div class="top-bar">
-            <div class="stats">
-                <div class="stat"><span class="stat-label">🍎 Puntuación</span><span class="stat-value gold" id="scoreDisplay">0</span></div>
-                <div class="stat"><span class="stat-label">🏆 Récord</span><span class="stat-value green" id="highScoreDisplay">0</span></div>
-                <div class="stat"><span class="stat-label">🧩 Mayor</span><span class="stat-value" id="bestTileDisplay">2</span></div>
+            <div class="toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa" aria-label="Pausar">⏸️ Pausa</button>
             </div>
-            <div class="top-actions toolbar">
-                <button class="icon-btn" id="pauseBtn" title="Pausa (P)" aria-label="Pausar o reanudar">⏸️</button>
-            </div>
+            <span class="subtitle">Fusiona las baldosas hasta llegar a 2048</span>
         </div>
+
+        <div class="score-display">
+            <div class="score-item"><span class="label">Puntuación</span><span class="value gold" id="scoreDisplay">0</span></div>
+            <div class="score-item"><span class="label">Récord</span><span class="value green" id="highScoreDisplay">0</span></div>
+            <div class="score-item"><span class="label">Mayor</span><span class="value red" id="bestTileDisplay">2</span></div>
+        </div>
+
         <!-- ===== TAMAÑO DEL TABLERO ===== -->
-        <div class="size-control">
+        <div class="size-control" aria-label="Tamaño del tablero">
             <button class="size-btn active" data-size="4">4×4</button>
             <button class="size-btn" data-size="5">5×5</button>
             <button class="size-btn" data-size="6">6×6</button>
         </div>
 
         <div class="canvas-wrap">
-            <canvas id="gameCanvas" width="420" height="420"></canvas>
+            <canvas id="gameCanvas" width="420" height="420" tabindex="0" aria-label="Tablero de 2048. Flechas o desliza para mover las fichas"></canvas>
         </div>
-        <div class="controls-hint">Flechas o WASD · Desliza en móvil · P pausa · R nueva partida</div>
-        <div class="game-back-nav"><a href="/#/juegos" class="back-btn">← Juegos</a></div>
+
+        <div class="controls-hint" aria-label="Controles">
+            <span class="desktop-hint">Flechas / WASD · P pausa · R nueva partida</span>
+            <span class="mobile-hint">Desliza para mover · P pausa · R nueva partida</span>
+        </div>
+
+        <div class="actions">
+            <button class="btn-primary" id="resetBtn">🔄 Reiniciar</button>
+        </div>
     </div>
 
     <div class="game-message" id="gameMessage">
@@ -78,12 +301,11 @@
             CELL = (S - PAD * 2 - GAP * (N - 1)) / N;
             canvas.width = S;
             canvas.height = S;
-            canvas.style.maxWidth = Math.min(S, 560) + 'px';
-            const wrap = document.querySelector('.canvas-wrap');
-            if (wrap) wrap.style.maxWidth = Math.min(S, 600) + 'px';
         }
 
         let grid, score, best, over, won, paused;
+
+        const pauseBtn = document.getElementById('pauseBtn');
 
         best = parseInt(localStorage.getItem('game2048Best') || '0', 10);
         document.getElementById('highScoreDisplay').textContent = best;
@@ -112,7 +334,9 @@
             applyBoard();
             grid = Array.from({ length: N }, () => Array(N).fill(0));
             score = 0; over = false; won = false; paused = false;
-            document.getElementById('pauseBtn').textContent = '⏸️';
+            pauseBtn.textContent = '⏸️ Pausa';
+            pauseBtn.setAttribute('aria-label', 'Pausar');
+            pauseBtn.disabled = false;
             addTile(); addTile();
             document.getElementById('gameMessage').classList.remove('show');
             updateUI();
@@ -167,7 +391,11 @@
             }
 
             grid = ng2;
-            if (JSON.stringify(grid) === before) return false;
+            if (JSON.stringify(grid) === before) {
+                // Sin movimiento posible: si además no quedan jugadas, la partida termina.
+                if (!movesLeft()) gameEnd();
+                return false;
+            }
             if (gained > 0) {
                 score += gained;
                 if (score > best) { best = score; localStorage.setItem('game2048Best', best); }
@@ -195,11 +423,12 @@
 
         function gameEnd() {
             over = true;
+            pauseBtn.disabled = true;
             SFX.lose();
             buzz([60, 40, 60]);
-            const record = score > 0 && score >= best && !(score === best && best === parseInt(localStorage.getItem('game2048Best') || '0', 10) && best > 0);
-            const rec = score > 0 && score >= best;
-            showMessage(rec && score === best ? '🏆' : '💀', rec && score === best ? '¡Nuevo récord!' : '¡Fin de la partida!', `Puntuación: ${score} · Mayor: ${maxTile()} · Récord: ${best}`);
+            const prevBest = parseInt(localStorage.getItem('game2048Best') || '0', 10);
+            const newRecord = score > 0 && score >= prevBest;
+            showMessage(newRecord ? '🏆' : '💀', newRecord ? '¡Nuevo récord!' : '¡Fin de la partida!', `Puntuación: ${score} · Mayor: ${maxTile()} · Récord: ${best}`);
         }
 
         function maxTile() { let m = 0; for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) m = Math.max(m, grid[r][c]); return m; }
@@ -219,8 +448,7 @@
         }
 
         function draw() {
-            ctx.clearRect(0, 0, S, S);
-            const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.clearRect(0, 0, S, S);            const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
             ctx.fillStyle = bg;
             ctx.fillRect(0, 0, S, S);
             // fondo del tablero
@@ -240,6 +468,17 @@
                     ctx.fillText(v, x + CELL / 2, y + CELL / 2 + 1);
                 }
             }
+
+            // Overlay de pausa
+            if (paused && !over) {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, S, S);
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.font = '700 26px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⏸️ Pausa', S / 2, S / 2);
+            }
         }
 
         function roundRect(x, y, w, h, r) {
@@ -255,12 +494,16 @@
         function togglePause() {
             if (over) return;
             paused = !paused;
-            document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+            pauseBtn.textContent = paused ? '▶️ Reanudar' : '⏸️ Pausa';
+            pauseBtn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
+            pauseBtn.title = paused ? 'Reanudar' : 'Pausar';
             SFX.pause();
+            draw();
         }
 
-        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        pauseBtn.addEventListener('click', togglePause);
         document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+        document.getElementById('resetBtn').addEventListener('click', () => { resetGame(); SFX.click(); });
 
         document.addEventListener('keydown', (e) => {
             const k = e.key;
@@ -309,7 +552,7 @@
 
         resetGame();
 
-        window.__2048 = { move, resetGame, get state() { return { score, best, over, grid, size: sizePref, n: N }; } };
+        window.__2048 = { move, resetGame, togglePause, get state() { return { score, best, over, paused, grid, size: sizePref, n: N }; } };
     })();
     </script>
     <script src="_interface.js"></script>

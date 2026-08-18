@@ -320,6 +320,310 @@
     </style>
     <link rel="stylesheet" href="_theme.css">
     <link rel="stylesheet" href="_game-ui.css">
+    <style id="archery-polish">
+        /* Tiro con arco: una cabina de práctica clara y táctil */
+        body {
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            width: min(100%, 760px);
+            max-width: 760px;
+            padding: 18px 24px 34px;
+        }
+
+        .game-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "copy toolbar" "subtitle subtitle";
+            align-items: center;
+            gap: 4px 14px;
+            margin: 0 auto 15px;
+            text-align: left;
+        }
+
+        .game-header h1 {
+            grid-area: copy;
+            font-size: clamp(1.45rem, 2.8vw, 1.9rem);
+            line-height: 1.05;
+        }
+
+        .game-header .subtitle {
+            grid-area: subtitle;
+            width: auto;
+            margin: 0;
+            text-align: left;
+            font-size: 0.72rem;
+        }
+
+        .game-header__emoji {
+            display: none;
+        }
+
+        .toolbar {
+            grid-area: toolbar;
+            justify-self: end;
+        }
+
+        .icon-btn {
+            width: auto;
+            min-width: 42px;
+            min-height: 42px;
+            padding: 0 13px;
+            border-radius: 13px;
+            font-family: var(--font-body);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .score-display {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 7px;
+            width: 100%;
+            margin: 0 auto 13px;
+        }
+
+        .score-item {
+            min-width: 0;
+            padding: 9px 6px 8px;
+            border-radius: 14px;
+            background: linear-gradient(145deg, var(--surface-2), var(--panel));
+            box-shadow: var(--elev-1);
+        }
+
+        .score-item .label {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.46rem;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+        }
+
+        .score-item .value {
+            font-size: 1.08rem;
+            line-height: 1.1;
+        }
+
+        .canvas-wrap {
+            width: 100%;
+            max-width: 700px;
+            padding: 6px;
+            border: 1px solid var(--panel-border);
+            border-radius: 23px;
+            background: linear-gradient(145deg, var(--surface-2), rgba(232, 115, 90, 0.08));
+            box-shadow: var(--elev-3), 0 0 38px rgba(232, 115, 90, 0.1);
+        }
+
+        canvas {
+            width: 100%;
+            max-width: none;
+            border: 0;
+            border-radius: 17px;
+            outline: none;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+        }
+
+        .wind-indicator {
+            top: 15px;
+            right: 17px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            background: rgba(5, 8, 15, 0.62);
+            font-size: 0.68rem;
+            font-weight: 700;
+            backdrop-filter: blur(8px);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+            margin: 12px auto 0;
+        }
+
+        .control-group {
+            position: relative;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+            padding: 11px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 14px;
+            background: var(--panel);
+            text-align: left;
+        }
+
+        .control-group label {
+            color: var(--ink-dim);
+            font-size: 0.65rem;
+            font-weight: 700;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            min-width: 0;
+            height: 5px;
+            accent-color: var(--coral);
+            cursor: pointer;
+        }
+
+        .control-group span {
+            min-width: 36px;
+            color: var(--coral);
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .controls-hint {
+            margin: 9px auto 0;
+            color: var(--ink-dim);
+            font-size: 0.66rem;
+            line-height: 1.35;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+            margin: 9px auto 0;
+        }
+
+        .actions button {
+            min-height: 44px;
+            border-radius: 13px;
+            font-weight: 700;
+        }
+
+        .actions .btn-primary,
+        .actions .btn-ghost {
+            width: 100%;
+            padding: 10px 14px;
+        }
+
+        .game-message-content .btn-primary {
+            min-height: 44px;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+                min-height: 100dvh;
+                padding: max(12px, env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                margin-bottom: 10px;
+            }
+
+            .game-header h1 {
+                font-size: 1.35rem;
+            }
+
+            .game-header .subtitle {
+                font-size: 0.64rem;
+            }
+
+            .icon-btn {
+                min-height: 40px;
+                padding: 0 10px;
+                font-size: 0.67rem;
+            }
+
+            .score-display {
+                gap: 4px;
+                margin-bottom: 9px;
+            }
+
+            .score-item {
+                padding: 7px 3px;
+                border-radius: 11px;
+            }
+
+            .score-item .label {
+                font-size: 0.38rem;
+                letter-spacing: 0.02em;
+            }
+
+            .score-item .value {
+                font-size: 0.92rem;
+            }
+
+            .canvas-wrap {
+                padding: 4px;
+                border-radius: 19px;
+            }
+
+            canvas {
+                border-radius: 15px;
+            }
+
+            .wind-indicator {
+                top: 10px;
+                right: 11px;
+                padding: 4px 7px;
+                font-size: 0.58rem;
+            }
+
+            .controls {
+                gap: 6px;
+                margin-top: 8px;
+            }
+
+            .control-group {
+                grid-template-columns: 1fr;
+                gap: 5px;
+                padding: 8px 9px;
+                border-radius: 12px;
+            }
+
+            .control-group label {
+                font-size: 0.58rem;
+            }
+
+            .control-group input[type="range"] {
+                width: 100%;
+            }
+
+            .control-group span {
+                position: absolute;
+                margin-top: -41px;
+                right: 9px;
+                font-size: 0.68rem;
+            }
+
+            .controls-hint {
+                margin-top: 7px;
+                font-size: 0.58rem;
+            }
+
+            .actions {
+                margin-top: 7px;
+            }
+
+            .actions button {
+                min-height: 44px;
+                font-size: 0.72rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .game-container {
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+
+            .score-item .label {
+                font-size: 0.34rem;
+            }
+        }
+    </style>
     <link rel="manifest" href="../manifest.json">
 
 <body>
@@ -327,7 +631,7 @@
         <div class="game-header">
             <h1>Tiro con Arco</h1>
             <div class="toolbar">
-                <button class="icon-btn" id="pauseBtn" title="Pausa">⏸️</button>
+                <button class="icon-btn" id="pauseBtn" title="Pausar" aria-label="Pausar">⏸️ Pausa</button>
             </div>
             <span class="subtitle">Ajusta ángulo y potencia · El viento afecta la flecha</span>
         </div>
@@ -341,22 +645,24 @@
         </div>
 
         <div class="canvas-wrap">
-            <canvas id="gameCanvas" width="640" height="360"></canvas>
+            <canvas id="gameCanvas" width="640" height="360" tabindex="0" role="application" aria-label="Campo de tiro con arco. Ajusta el ángulo y la potencia y pulsa Disparar."></canvas>
             <div class="wind-indicator" id="windDisplay">🌬️ 0.0</div>
         </div>
 
-        <div class="controls">
+        <div class="controls" aria-label="Ajustes del disparo">
             <div class="control-group">
-                <label>Ángulo</label>
-                <input type="range" id="angleSlider" min="10" max="80" value="45">
+                <label for="angleSlider">Ángulo</label>
+                <input type="range" id="angleSlider" min="10" max="80" value="45" aria-label="Ángulo de disparo">
                 <span id="angleValue">45°</span>
             </div>
             <div class="control-group">
-                <label>Potencia</label>
-                <input type="range" id="powerSlider" min="20" max="100" value="60">
+                <label for="powerSlider">Potencia</label>
+                <input type="range" id="powerSlider" min="20" max="100" value="60" aria-label="Potencia del disparo">
                 <span id="powerValue">60%</span>
             </div>
         </div>
+
+        <p class="controls-hint">🎯 Ajusta el tiro · Espacio dispara · P/Pausa · Flechas modifican los valores</p>
 
         <div class="actions">
             <button class="btn-primary" id="shootBtn">🎯 Disparar</button>
@@ -521,6 +827,12 @@
             // --- Animar flecha ---
             function animateArrow() {
                 if (!arrow) return;
+                // La flecha también debe respetar la pausa, incluso en pleno vuelo.
+                if (paused) {
+                    draw();
+                    requestAnimationFrame(animateArrow);
+                    return;
+                }
 
                 const dt = 0.5;
                 arrow.x += arrow.vx * dt;
@@ -578,6 +890,7 @@
 
                     if (roundShots >= SHOTS_PER_ROUND) {
                         gameRunning = false;
+                        document.getElementById('pauseBtn').disabled = true;
                         let recordBroken = false;
                         if (score > highScore) {
                             highScore = score;
@@ -818,6 +1131,7 @@
                 hideMessage();
                 level++;
                 gameRunning = true;
+                document.getElementById('pauseBtn').disabled = false;
                 initLevel();
                 updateUI();
                 draw();
@@ -855,7 +1169,11 @@
                 paused = false;
                 arrow = null;
                 particles = [];
-                document.getElementById('pauseBtn').textContent = '⏸️';
+                const pauseBtn = document.getElementById('pauseBtn');
+                pauseBtn.textContent = '⏸️ Pausa';
+                pauseBtn.title = 'Pausar';
+                pauseBtn.setAttribute('aria-label', 'Pausar');
+                pauseBtn.disabled = false;
                 initLevel();
                 updateUI();
                 draw();
@@ -865,7 +1183,10 @@
             function togglePause() {
                 if (!gameRunning) return;
                 paused = !paused;
-                document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+                const pauseBtn = document.getElementById('pauseBtn');
+                pauseBtn.textContent = paused ? '▶️ Reanudar' : '⏸️ Pausa';
+                pauseBtn.title = paused ? 'Reanudar' : 'Pausar';
+                pauseBtn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
                 draw();
             }
 
@@ -892,7 +1213,7 @@
             });
 
             document.addEventListener('keydown', (e) => {
-                if (e.key === ' ' || e.key === 'Space') {
+                if ((e.key === ' ' || e.key === 'Space') && !['INPUT', 'BUTTON'].includes(document.activeElement?.tagName)) {
                     e.preventDefault();
                     shootArrow();
                 }
@@ -941,7 +1262,10 @@
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden && gameRunning) {
                     paused = true;
-                    document.getElementById('pauseBtn').textContent = '▶️';
+                    const pauseBtn = document.getElementById('pauseBtn');
+                    pauseBtn.textContent = '▶️ Reanudar';
+                    pauseBtn.title = 'Reanudar';
+                    pauseBtn.setAttribute('aria-label', 'Reanudar');
                 }
             });
 

@@ -12,6 +12,10 @@
     <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
     <style>
+        body {
+            margin: 0;
+        }
+
         .game-header h1 {
             font-size: 1.7rem;
             margin: 0 0 2px;
@@ -123,10 +127,296 @@
 
         .controls-hint { margin: 10px 0 4px; }
 
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            z-index: 100;
+            max-width: min(92vw, 360px);
+            padding: 10px 16px;
+            border-radius: 999px;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 12px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
         .actions { margin-top: 14px; }
+
+        .msg-actions .msg-stay-btn {
+            min-width: 150px;
+        }
 
         .game-back-nav { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
         .game-back-nav .back-btn { margin-top: 0; }
+
+        /* Snake: tablero protagonista y HUD ligero */
+        .game-container {
+            max-width: 700px;
+            padding: 28px 24px 0;
+        }
+
+        .game-header {
+            margin-bottom: 18px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .stat {
+            min-width: 0;
+            padding: 8px 10px;
+            text-align: center;
+            background: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.58rem;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+        }
+
+        .combo-compact {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--gold);
+            font-size: 0.68rem;
+            white-space: nowrap;
+        }
+
+        .combo-compact strong {
+            font-size: 0.75rem;
+        }
+
+        .game-settings {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            width: fit-content;
+            margin: 0 auto 16px;
+            padding: 7px 9px;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+        }
+
+        .speed-label {
+            color: var(--ash);
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .size-control {
+            margin: 0;
+            padding: 3px;
+            border-radius: 12px;
+        }
+
+        .size-btn {
+            min-width: 86px;
+            padding: 8px 18px;
+            border-radius: 9px;
+        }
+
+        .canvas-wrap {
+            max-width: 520px;
+        }
+
+        canvas {
+            max-width: 520px;
+            border-radius: 20px;
+        }
+
+        .game-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            max-width: 520px;
+            margin: 12px auto 0;
+        }
+
+        .controls-hint {
+            flex: 1;
+            margin: 0;
+            font-size: 0.7rem;
+            line-height: 1.4;
+            text-align: left;
+        }
+
+        .game-footer .actions {
+            flex: 0 0 auto;
+            margin: 0;
+        }
+
+        .game-footer .actions .btn-primary {
+            min-width: 142px;
+            white-space: nowrap;
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                align-items: flex-start;
+                margin: 0;
+                padding: 0;
+            }
+
+            .game-container {
+                box-sizing: border-box;
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                margin: 0;
+                padding: max(16px, env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .game-header {
+                margin-bottom: 10px;
+            }
+
+            /* La barra contextual ya identifica el juego; en móvil
+               dejamos el encabezado en una sola línea visual para que
+               el tablero sea protagonista y quepa sin scroll vertical. */
+            .game-header__emoji {
+                display: none;
+            }
+
+            .game-header h1 {
+                font-size: 1.35rem;
+                line-height: 1.15;
+                margin-bottom: 2px;
+            }
+
+            .game-header .subtitle {
+                margin: 2px 0 0;
+                font-size: 0.7rem;
+            }
+
+            .top-bar {
+                display: block;
+                margin-bottom: 13px;
+            }
+
+            .stats {
+                gap: 6px;
+            }
+
+            .stat {
+                min-height: 42px;
+                padding: 6px 5px;
+                border-radius: 12px;
+            }
+
+            .stat-label {
+                font-size: 0.52rem;
+            }
+
+            .stat-value {
+                font-size: 0.94rem;
+            }
+
+            .top-actions {
+                justify-content: space-between;
+                min-height: 31px;
+                margin-top: 4px;
+                padding: 4px 2px 0;
+                border-top: 1px solid var(--panel-border);
+            }
+
+            .combo-compact {
+                font-size: 0.66rem;
+            }
+
+            .game-settings {
+                display: block;
+                width: auto;
+                margin-bottom: 14px;
+                padding: 0;
+                background: transparent;
+                border: 0;
+            }
+
+            .speed-label {
+                display: none;
+            }
+
+            .size-control {
+                display: flex;
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .size-btn {
+                flex: 1;
+                min-width: 0;
+                padding: 7px 8px;
+            }
+
+            .canvas-wrap,
+            canvas {
+                width: 100%;
+                max-width: none;
+            }
+
+            .canvas-wrap {
+                margin-top: 0;
+            }
+
+            canvas {
+                border-radius: clamp(12px, 4vw, 20px);
+            }
+
+            .game-footer {
+                display: block;
+                margin-top: 8px;
+            }
+
+            .controls-hint {
+                margin: 0 0 8px;
+                font-size: 0.68rem;
+                text-align: center;
+            }
+
+            .game-footer .actions {
+                margin: 0;
+            }
+
+            .game-footer .actions .btn-primary {
+                width: 100%;
+                min-width: 0;
+                min-height: 44px;
+            }
+
+            .msg-actions .msg-stay-btn {
+                width: 100%;
+                min-width: 0;
+                order: 2;
+            }
+        }
 
         .combo-display {
             position: fixed;
@@ -178,32 +468,33 @@
                     <span class="stat-label">🐍 Longitud</span>
                     <span class="stat-value" id="lengthDisplay">3</span>
                 </div>
-                <div class="stat">
-                    <span class="stat-label">🔥 Racha</span>
-                    <span class="stat-value red" id="comboDisplay">0</span>
-                </div>
             </div>
             <div class="top-actions">
+                <span class="combo-compact"><span aria-hidden="true">🔥</span><span>Racha</span><strong id="comboDisplay">0</strong></span>
                 <button class="icon-btn" id="soundBtn" title="Sonido (M)" aria-label="Activar o silenciar sonido">🔊</button>
-                <button class="icon-btn" id="pauseBtn" title="Pausa (Espacio)" aria-label="Pausar o reanudar">⏸️</button>
+                <button class="icon-btn" id="pauseBtn" title="Pausa (Espacio)" aria-label="Pausar">⏸️ Pausa</button>
             </div>
         </div>
 
         <!-- ===== VELOCIDAD ===== -->
-        <div class="size-control">
-            <button class="size-btn" data-speed="slow">Lento</button>
-            <button class="size-btn active" data-speed="normal">Normal</button>
-            <button class="size-btn" data-speed="fast">Rápido</button>
+        <div class="game-settings">
+            <span class="speed-label">Velocidad</span>
+            <div class="size-control" role="group" aria-label="Velocidad de la partida">
+                <button class="size-btn" data-speed="slow">Lento</button>
+                <button class="size-btn active" data-speed="normal">Medio</button>
+                <button class="size-btn" data-speed="fast">Rápido</button>
+            </div>
         </div>
 
         <div class="canvas-wrap">
-            <canvas id="gameCanvas" width="480" height="480"></canvas>
+            <canvas id="gameCanvas" width="480" height="480" tabindex="0" aria-label="Tablero de Snake. Usa las flechas, WASD o desliza para mover la serpiente"></canvas>
         </div>
 
-        <div class="controls-hint">⬆ ⬇ ⬅ ➡ · WASD · Espacio pausa · R reiniciar · M sonido · Toca y arrastra</div>
-
-        <div class="actions">
-            <button class="btn-primary" id="startBtn">▶ Jugar</button>
+        <div class="game-footer">
+            <div class="controls-hint" aria-label="Controles">Flechas / WASD · Espacio pausa · Toca y arrastra para mover</div>
+            <div class="actions">
+                <button class="btn-primary" id="startBtn">▶ Jugar</button>
+            </div>
         </div>
 
         <div class="game-back-nav">
@@ -220,6 +511,7 @@
             <h2 id="msgTitle">¡Game Over!</h2>
             <p id="msgText">Puntuación: 0 · Longitud: 3 · Récord: 0</p>
             <button class="btn-primary" id="msgBtn">Reintentar</button>
+            <button class="btn-ghost msg-stay-btn" id="msgStayBtn" type="button" data-postgame-stay>Seguir aquí</button>
         </div>
     </div>
 
@@ -379,7 +671,8 @@
                 spawnFood();
                 isPlaying = false;
                 paused = false;
-                pauseBtn.textContent = '⏸️';
+                pauseBtn.textContent = '⏸️ Pausa';
+                pauseBtn.setAttribute('aria-label', 'Pausar');
                 updateStartBtn();
                 updateUI();
                 syncTheme();
@@ -829,10 +1122,19 @@
                 setTimeout(startGame, 200);
             });
 
+            // Permite consultar el tablero y decidir qué hacer después de
+            // perder, sin obligar a iniciar otra partida.
+            document.getElementById('msgStayBtn').addEventListener('click', hideMessage);
+
             // --- Botón único: Jugar ⇄ Reiniciar ---
             function updateStartBtn() {
                 startBtn.textContent = isPlaying ? '🔄 Reiniciar' : '▶ Jugar';
                 startBtn.style.opacity = '1';
+                pauseBtn.disabled = !isPlaying;
+                if (!isPlaying) {
+                    pauseBtn.textContent = '⏸️ Pausa';
+                    pauseBtn.setAttribute('aria-label', 'Pausar');
+                }
             }
 
             function startGame() {
@@ -842,7 +1144,8 @@
                 isPlaying = true;
                 paused = false;
                 lerpFactor = 0;
-                pauseBtn.textContent = '⏸️';
+                pauseBtn.textContent = '⏸️ Pausa';
+                pauseBtn.setAttribute('aria-label', 'Pausar');
                 updateStartBtn();
                 prevPositions = snake.map(s => ({ ...s }));
                 syncTheme();
@@ -851,7 +1154,8 @@
             function resetGame() {
                 isPlaying = false;
                 paused = false;
-                pauseBtn.textContent = '⏸️';
+                pauseBtn.textContent = '⏸️ Pausa';
+                pauseBtn.setAttribute('aria-label', 'Pausar');
                 particles = [];
                 specialFood = null;
                 lerpFactor = 0;
@@ -860,14 +1164,19 @@
             }
 
             function playFresh() {
-                if (isPlaying) resetGame();
+                // Siempre parte de un tablero limpio: tras un Game Over
+                // la serpiente conserva su última posición para dibujarla
+                // en el modal, pero no debe reanudarse desde una colisión.
+                resetGame();
                 startGame();
             }
 
             function togglePause() {
                 if (!isPlaying) return;
                 paused = !paused;
-                pauseBtn.textContent = paused ? '▶️' : '⏸️';
+                pauseBtn.textContent = paused ? '▶️ Reanudar' : '⏸️ Pausa';
+                pauseBtn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
+                pauseBtn.title = paused ? 'Reanudar (Espacio)' : 'Pausa (Espacio)';
                 sfxPause();
                 if (!paused) {
                     lerpFactor = 0;
@@ -975,7 +1284,8 @@
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden && isPlaying) {
                     paused = true;
-                    pauseBtn.textContent = '▶️';
+                    pauseBtn.textContent = '▶️ Reanudar';
+                    pauseBtn.setAttribute('aria-label', 'Reanudar');
                 }
                 syncTheme();
             });

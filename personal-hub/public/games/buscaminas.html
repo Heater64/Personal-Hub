@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
     <style>
         :root {
             --bg-deep: #0a0a12;
@@ -36,19 +39,19 @@
         }
 
         .game-container {
-            max-width: 600px;
+            max-width: 680px;
             margin: 0 auto;
-            padding: 20px 16px 40px;
+            padding: 24px 24px 28px;
             text-align: center;
         }
 
         .game-header {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            flex-wrap: wrap;
-            gap: 6px;
+            margin-bottom: 14px;
+            gap: 4px 12px;
+            text-align: left;
         }
 
         .game-header h1 {
@@ -59,11 +62,15 @@
         }
 
         .game-header .subtitle {
+            grid-column: 1 / -1;
             color: var(--ash);
             font-size: 0.7rem;
             margin: 0;
-            width: 100%;
             text-align: center;
+        }
+
+        .game-header__emoji {
+            grid-row: 1 / span 2;
         }
 
         .toolbar {
@@ -89,23 +96,24 @@
         .icon-btn.active { border-color: var(--gold); color: var(--gold); }
 
         .score-display {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 8px;
-            justify-content: center;
-            margin: 10px 0 14px;
-            flex-wrap: wrap;
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto 14px;
         }
 
         .score-item {
-            background: var(--panel);
-            padding: 5px 12px;
-            border-radius: 12px;
-            border: 1px solid var(--panel-border);
-            min-width: 52px;
+            min-width: 0;
+            padding: 8px 6px;
+            border-radius: 14px;
+            text-align: center;
         }
 
         .score-item .label {
-            font-size: 0.45rem;
+            display: block;
+            font-size: 0.5rem;
             color: var(--ash);
             text-transform: uppercase;
             letter-spacing: 0.08em;
@@ -121,16 +129,39 @@
         .score-item .value.white { color: var(--ink); }
         .score-item .value.red { color: var(--red); }
 
+        /* _interface.js transforma .score-item en .stat; estas reglas
+           mantienen la fila compacta después de esa mejora compartida. */
+        .score-display .stat {
+            min-width: 0;
+            padding: 8px 6px;
+            text-align: center;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 14px;
+        }
+
+        .score-display .stat-label {
+            display: block;
+            font-size: 0.5rem;
+            letter-spacing: 0.04em;
+        }
+
+        .score-display .stat-value {
+            font-size: 1.05rem;
+        }
+
         .board-wrap {
             position: relative;
-            max-width: 480px;
+            width: 100%;
+            max-width: 520px;
             margin: 0 auto;
         }
 
         .board {
             display: grid;
             gap: 2px;
-            max-width: 480px;
+            width: 100%;
+            max-width: 520px;
             margin: 0 auto;
             aspect-ratio: 1/1;
             padding: 4px;
@@ -226,10 +257,13 @@
 
         .controls-hint {
             color: var(--ash);
-            font-size: 0.65rem;
-            margin: 10px 0;
-            opacity: 0.5;
+            font-size: 0.68rem;
+            line-height: 1.4;
+            margin: 12px 0 10px;
+            opacity: 0.72;
         }
+
+        .mobile-hint { display: none; }
 
         .actions {
             display: flex;
@@ -352,53 +386,155 @@
         .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
         .difficulty-selector {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 6px;
-            justify-content: center;
-            margin-bottom: 10px;
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto 14px;
+            padding: 5px;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
         }
 
         .diff-btn {
-            background: var(--panel);
-            border: 1px solid var(--panel-border);
-            padding: 4px 14px;
-            border-radius: 20px;
+            min-height: 36px;
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 6px 8px;
+            border-radius: 10px;
             color: var(--ash);
             cursor: pointer;
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             font-family: var(--font-body);
             transition: all 0.2s;
         }
         .diff-btn:hover { border-color: var(--coral); color: var(--ink); }
         .diff-btn.active {
-            border-color: var(--coral);
+            border-color: var(--border-accent);
             color: var(--coral);
-            background: rgba(198, 90, 58, 0.1);
+            background: var(--accent-dim);
+            box-shadow: var(--elev-1);
+        }
+
+        @media (max-width: 600px) {
+            body {
+                min-height: 100dvh;
+            }
+
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                padding: max(16px, env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                grid-template-columns: 1fr auto;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            .game-header__emoji {
+                display: none;
+            }
+
+            .game-header h1 {
+                grid-column: 1 / -1;
+                font-size: 1.35rem;
+                line-height: 1.15;
+            }
+
+            .game-header .subtitle {
+                font-size: 0.68rem;
+            }
+
+            .toolbar {
+                position: absolute;
+                top: max(62px, calc(16px + env(safe-area-inset-top)));
+                right: 12px;
+            }
+
+            .difficulty-selector {
+                max-width: none;
+                margin-bottom: 12px;
+            }
+
+            .diff-btn {
+                min-height: 38px;
+                padding: 6px 4px;
+                font-size: 0.68rem;
+            }
+
+            .score-display {
+                gap: 5px;
+                max-width: none;
+                margin-bottom: 12px;
+            }
+
+            .score-display .stat {
+                padding: 7px 3px;
+                border-radius: 11px;
+            }
+
+            .score-display .stat-label {
+                font-size: 0.43rem;
+                letter-spacing: 0.02em;
+            }
+
+            .score-display .stat-value {
+                font-size: 0.9rem;
+            }
+
+            .board-wrap,
+            .board {
+                max-width: none;
+            }
+
+            .board {
+                gap: 1.5px;
+                padding: 3px;
+                border-radius: 14px;
+            }
+
+            .cell {
+                font-size: 0.8rem;
+                border-radius: 3px;
+            }
+
+            .controls-hint {
+                margin: 9px 0 8px;
+                font-size: 0.66rem;
+            }
+
+            .desktop-hint { display: none; }
+            .mobile-hint { display: inline; }
+
+            .actions .btn-primary {
+                width: 100%;
+                min-height: 44px;
+            }
+
+            .game-back-nav { display: none; }
         }
 
         @media (max-width: 480px) {
             .game-message-content { padding: 24px 18px; }
-            .score-item { padding: 4px 8px; min-width: 44px; }
-            .score-item .value { font-size: 0.9rem; }
-            .game-header h1 { font-size: 1.2rem; }
-            .cell { font-size: 0.8rem; }
-            .board { gap: 1.5px; padding: 2px; }
         }
 
         @media (max-width: 380px) {
             .cell { font-size: 0.65rem; }
         }
     </style>
-    <link rel="stylesheet" href="_theme.css">
-    <link rel="stylesheet" href="_game-ui.css">
-    <link rel="manifest" href="../manifest.json">
+</head>
 
 <body>
     <div class="game-container">
         <div class="game-header">
             <h1>Buscaminas</h1>
             <div class="toolbar">
-                <button class="icon-btn" id="flagModeBtn" title="Modo bandera">🚩</button>
+                <button class="icon-btn" id="flagModeBtn" title="Activar modo bandera" aria-label="Activar modo bandera" aria-pressed="false">🚩</button>
             </div>
             <span class="subtitle">Click izquierdo para revelar · Derecho para bandera</span>
         </div>
@@ -421,7 +557,10 @@
             <div class="board" id="board"></div>
         </div>
 
-        <div class="controls-hint">🖱 Click izq: Revelar · Click der: Bandera · 🚩 Modo bandera</div>
+        <div class="controls-hint" aria-label="Controles">
+            <span class="desktop-hint">🖱 Click izquierdo: revelar · Click derecho: poner bandera</span>
+            <span class="mobile-hint">Toca para revelar · Activa 🚩 para marcar</span>
+        </div>
 
         <div class="actions">
             <button class="btn-primary" id="resetBtn">🔄 Nuevo juego</button>
@@ -799,7 +938,9 @@
             flagModeBtn.addEventListener('click', () => {
                 flagMode = !flagMode;
                 flagModeBtn.classList.toggle('active', flagMode);
-                flagModeBtn.textContent = flagMode ? '🚩 ON' : '🚩';
+                flagModeBtn.setAttribute('aria-pressed', String(flagMode));
+                flagModeBtn.setAttribute('aria-label', flagMode ? 'Desactivar modo bandera' : 'Activar modo bandera');
+                flagModeBtn.title = flagMode ? 'Modo bandera activado' : 'Activar modo bandera';
                 showToast(flagMode ? '🔴 Modo bandera activado' : '🟢 Modo revelar activado');
             });
 

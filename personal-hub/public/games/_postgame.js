@@ -3,7 +3,7 @@
    Shared by /games/*.html. Improves the post-game modal:
    - Parses #msgText "Etiqueta: valor · Etiqueta: valor" into
      stat chips (re-rendered on every show).
-   - Adds a "← Juegos" ghost button next to the primary action.
+   - Keeps the post-game action focused on replay; navigation lives in the game topbar.
    - Victory badge + confetti on wins (🏆 🎉 🌟 👑).
    - Applies the game accent from ?accent=HEX (set by the
      Juegos page so each game matches its cover color).
@@ -68,23 +68,19 @@
     }).join('');
   }
 
-  /* ---- Fila de acciones: botón principal + volver a Juegos ---- */
+  /* ---- Fila de acciones: solo repetir la partida ---- */
   function ensureActions(content) {
     if (content.querySelector('.msg-actions')) return;
+
     const btn = content.querySelector('#msgBtn');
-    if (!btn) return;
+    const stayBtn = content.querySelector('[data-postgame-stay]');
+    const actionNodes = [btn, stayBtn].filter(Boolean);
+    if (!actionNodes.length) return;
 
     const actions = document.createElement('div');
     actions.className = 'msg-actions';
-
-    const back = document.createElement('a');
-    back.className = 'msg-back';
-    back.href = '/#/juegos';
-    back.textContent = '← Juegos';
-
-    btn.parentNode.insertBefore(actions, btn);
-    actions.appendChild(btn);
-    actions.appendChild(back);
+    actionNodes[0].parentNode.insertBefore(actions, actionNodes[0]);
+    actionNodes.forEach(node => actions.appendChild(node));
   }
 
   /* ---- Insignia de victoria + confeti ---- */
@@ -124,6 +120,35 @@
       if (frag.parentNode) frag.parentNode.removeChild(frag);
     }, 4800);
   }
+
+  /* ---- Barra superior contextual de cada juego ---- */
+  function ensureGameTopbar() {
+    const container = document.querySelector('.game-container');
+    if (!container || container.querySelector('.game-topbar')) return;
+
+    // Los enlaces antiguos al pie dejan de duplicar la navegación.
+    container.querySelectorAll('.game-back-nav').forEach(el => el.remove());
+
+    const titleEl = container.querySelector('.game-header h1, .game-container > h1, .game-container > h2');
+    const title = titleEl ? titleEl.textContent.trim() : 'Juego';
+    const nav = document.createElement('nav');
+    nav.className = 'game-topbar';
+    nav.setAttribute('aria-label', 'Navegación del juego');
+    nav.innerHTML = `
+      <a class="game-topbar__link game-topbar__link--games" href="/#/juegos" aria-label="Volver a Juegos">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        <span>Juegos</span>
+      </a>
+      <span class="game-topbar__title">${esc(title)}</span>
+      <a class="game-topbar__link game-topbar__link--calendar" href="/#/calendario" aria-label="Volver al Calendario">
+        <span>Calendario</span>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/></svg>
+      </a>
+    `;
+    container.insertBefore(nav, container.firstChild);
+  }
+
+  ensureGameTopbar();
 
   /* ---- Observar el modal postjuego (#gameMessage) ---- */
   const modal = document.getElementById('gameMessage');

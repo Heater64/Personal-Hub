@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_theme.css">
+<link rel="stylesheet" href="_game-ui.css">
+<link rel="manifest" href="../manifest.json">
 <style>
     :root {
         --bg-deep: #0a0a12;
@@ -36,31 +39,51 @@
     }
 
     .game-container {
-        max-width: 560px;
+        max-width: 680px;
         margin: 0 auto;
-        padding: 28px 20px 40px;
+        padding: 24px 24px 28px;
         text-align: center;
+    }
+
+    .game-header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 4px 12px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
+
+    .game-header__emoji {
+        grid-row: 1 / span 2;
+        width: 54px;
+        height: 54px;
+        font-size: 1.55rem;
+        border-radius: 16px;
+        margin-bottom: 6px;
     }
 
     h1 {
         font-family: var(--font-display);
-        font-size: 1.7rem;
+        font-size: 1.6rem;
         font-weight: 700;
-        margin: 0 0 4px;
+        margin: 0;
         letter-spacing: 0.01em;
     }
 
     .subtitle {
+        grid-column: 1 / -1;
         color: var(--ash);
-        font-size: 0.85rem;
-        margin: 0 0 18px;
+        font-size: 0.7rem;
+        margin: 0;
+        text-align: center;
     }
 
     .toolbar {
         display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 14px;
+        justify-content: flex-end;
+        gap: 8px;
+        margin: 0;
     }
 
     .icon-btn {
@@ -79,13 +102,18 @@
     }
     .icon-btn:hover { border-color: var(--coral); color: var(--coral); }
     .icon-btn.active { color: var(--gold); border-color: var(--gold); }
+    .toolbar .icon-btn { width: auto; min-width: 38px; padding: 0 9px; border-radius: 12px; }
+    .toolbar .icon-btn:has(#pauseBtn) { min-width: 92px; }
+
+    .game-header .toolbar .icon-btn:last-child { min-width: 92px; }
 
     .score-display {
-        display: flex;
-        gap: 12px;
-        justify-content: center;
-        margin: 0 0 18px;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto 14px;
     }
     .score-item {
         background: var(--panel);
@@ -109,8 +137,24 @@
     .score-item .value.green { color: var(--green); }
     .score-item .value.red { color: var(--red); }
 
+    .score-display .stat {
+        min-width: 0;
+        padding: 8px 5px;
+        text-align: center;
+    }
+
+    .score-display .stat-label {
+        font-size: 0.48rem;
+        letter-spacing: 0.04em;
+    }
+
+    .score-display .stat-value {
+        font-size: 1rem;
+    }
+
     .canvas-wrap {
         position: relative;
+        width: 100%;
         max-width: 480px;
         margin: 0 auto;
     }
@@ -128,12 +172,20 @@
         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
 
+    .controls-hint {
+        color: var(--ash);
+        font-size: 0.68rem;
+        line-height: 1.4;
+        margin: 11px 0 9px;
+        opacity: 0.72;
+    }
+
     .actions {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         justify-content: center;
         flex-wrap: wrap;
-        margin-top: 16px;
+        margin-top: 10px;
     }
     .btn-ghost {
         background: var(--panel);
@@ -247,26 +299,102 @@
     }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+    @media (max-width: 600px) {
+        .game-container {
+            width: 100%;
+            max-width: none;
+            min-height: 100dvh;
+            padding: max(16px, env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
+        }
+
+        .game-header {
+            grid-template-columns: 1fr auto;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .game-header__emoji {
+            display: none;
+        }
+
+        h1 {
+            grid-column: 1 / -1;
+            font-size: 1.35rem;
+            line-height: 1.15;
+        }
+
+        .subtitle {
+            font-size: 0.68rem;
+        }
+
+        .game-header .toolbar {
+            grid-column: 1 / -1;
+            justify-content: center;
+            margin-top: 2px;
+        }
+
+        .score-display {
+            max-width: none;
+            gap: 5px;
+            margin-bottom: 12px;
+        }
+
+        .score-display .stat {
+            padding: 7px 2px;
+            border-radius: 11px;
+        }
+
+        .score-display .stat-label {
+            font-size: 0.39rem;
+            letter-spacing: 0.01em;
+        }
+
+        .score-display .stat-value {
+            font-size: 0.86rem;
+        }
+
+        .canvas-wrap,
+        canvas {
+            max-width: none;
+            width: 100%;
+        }
+
+        canvas {
+            border-radius: 16px;
+        }
+
+        .controls-hint {
+            margin: 9px 0 7px;
+            font-size: 0.66rem;
+        }
+
+        .actions {
+            margin-top: 8px;
+        }
+
+        .actions .btn-ghost {
+            width: 100%;
+            min-height: 44px;
+        }
+
+        .game-back-nav { display: none; }
+    }
+
     @media (max-width: 480px) {
         .game-message-content { padding: 30px 22px; }
-        .score-item { padding: 6px 12px; min-width: 62px; }
-        .score-item .value { font-size: 1.1rem; }
     }
 </style>
-    <link rel="stylesheet" href="_theme.css">
-    <link rel="stylesheet" href="_game-ui.css">
-    <link rel="manifest" href="../manifest.json">
+</head>
 
 <body>
 <div class="game-container">
     <div class="game-header">
         <h1>Lanza Cuchillos</h1>
         <p class="subtitle">Toca o pulsa Espacio para lanzar · Evita los cuchillos ya clavados</p>
-    </div>
-
-    <div class="toolbar">
-        <button class="icon-btn" id="soundBtn" title="Silenciar/activar sonido">🔊</button>
-        <button class="icon-btn" id="pauseBtn" title="Pausar">⏸️</button>
+        <div class="toolbar">
+            <button class="icon-btn" id="phSfxBtn" title="Silenciar/activar sonido" aria-label="Activar o silenciar sonido">🔊</button>
+            <button class="icon-btn" id="pauseBtn" title="Pausar" aria-label="Pausar">⏸️</button>
+        </div>
     </div>
 
     <div class="score-display">
@@ -278,8 +406,10 @@
     </div>
 
     <div class="canvas-wrap">
-        <canvas id="gameCanvas" width="480" height="480"></canvas>
+        <canvas id="gameCanvas" width="480" height="480" tabindex="0" aria-label="Diana de cuchillos. Toca, pulsa Espacio o haz clic para lanzar"></canvas>
     </div>
+
+    <div class="controls-hint">Toca o pulsa Espacio para lanzar · Evita los cuchillos clavados</div>
 
     <div class="actions">
         <button class="btn-ghost" id="resetBtn">🔄 Reiniciar</button>
@@ -786,23 +916,28 @@
 
     document.getElementById('resetBtn').addEventListener('click', resetGame);
 
-    document.getElementById('soundBtn').addEventListener('click', (e) => {
+    document.getElementById('phSfxBtn').addEventListener('click', (e) => {
         soundOn = !soundOn;
+        if (window.SFX) window.SFX.on = soundOn;
         e.currentTarget.textContent = soundOn ? '🔊' : '🔇';
         e.currentTarget.classList.toggle('active', soundOn);
+        e.currentTarget.setAttribute('aria-label', soundOn ? 'Silenciar sonido' : 'Activar sonido');
     });
 
     function togglePause() {
         if (!gameRunning) return;
         paused = !paused;
-        document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+        const pauseBtn = document.getElementById('pauseBtn');
+        pauseBtn.textContent = paused ? '▶️ Reanudar' : '⏸️ Pausa';
+        pauseBtn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
+        pauseBtn.title = paused ? 'Reanudar' : 'Pausar';
     }
     document.getElementById('pauseBtn').addEventListener('click', togglePause);
 
     document.addEventListener('visibilitychange', () => {
         if (document.hidden && gameRunning) {
             paused = true;
-            document.getElementById('pauseBtn').textContent = '▶️';
+            document.getElementById('pauseBtn').textContent = '▶️ Reanudar';
         }
     });
 
@@ -810,6 +945,15 @@
     initLevel(true);
     updateUI();
     loop();
+
+    window.__cuchillos = {
+        throwKnife,
+        reset: resetGame,
+        pause: togglePause,
+        get state() {
+            return { level, score, streak, misses, maxMisses, gameRunning, paused, knives: knives.length, flying: !!flyingKnife };
+        }
+    };
 })();
 </script>
     <script src="_interface.js"></script>

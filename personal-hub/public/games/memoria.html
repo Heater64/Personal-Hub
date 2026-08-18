@@ -5,6 +5,7 @@
     <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Memoria</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -380,6 +381,352 @@
     <link rel="stylesheet" href="_theme.css">
     <link rel="stylesheet" href="_game-ui.css">
     <link rel="manifest" href="../manifest.json">
+    <style id="memoria-polish">
+        /* La pantalla de juego prioriza el tablero: menos envoltorios,
+           controles compactos y una sola jerarquía visual. */
+        .game-container {
+            max-width: 700px;
+            padding: 28px 24px 24px;
+        }
+
+        .game-header {
+            margin-bottom: 18px;
+        }
+
+        .game-header__emoji {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            font-size: 1.55rem;
+            margin-bottom: 8px;
+        }
+
+        .top-bar {
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .stat {
+            min-width: 0;
+            padding: 8px 10px;
+            text-align: center;
+            background: transparent;
+            border-color: var(--panel-border);
+        }
+
+        .stat-label {
+            font-size: 0.58rem;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+        }
+
+        .top-actions {
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .record-compact {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--ink-dim);
+            font-size: 0.68rem;
+            white-space: nowrap;
+        }
+
+        .record-compact strong {
+            color: var(--gold);
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .record-compact__label {
+            color: var(--ash);
+        }
+
+        .categories-bar {
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding: 2px 2px 4px;
+            margin: 0 -2px 14px;
+        }
+
+        .categories-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .category-btn {
+            position: relative;
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 72px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 11px;
+            border-radius: 16px;
+            background: linear-gradient(145deg, var(--surface-2), var(--surface-1));
+            border: 1px solid var(--panel-border);
+            color: var(--ink-dim);
+            text-align: left;
+            overflow: hidden;
+        }
+
+        .category-btn::after {
+            content: '';
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 0;
+            height: 3px;
+            border-radius: 3px 3px 0 0;
+            background: var(--coral);
+            opacity: 0;
+            transform: scaleX(0.35);
+            transition: opacity 0.2s, transform 0.25s;
+        }
+
+        .category-btn__icon {
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            background: var(--accent-dim);
+            color: var(--coral);
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .category-btn__label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .category-btn:hover:not(.active) {
+            border-color: var(--border-accent);
+            color: var(--ink);
+            transform: translateY(-2px);
+        }
+
+        .category-btn.active {
+            background: linear-gradient(145deg, var(--accent-dim-strong), var(--surface-2));
+            border-color: var(--coral);
+            color: var(--coral);
+            box-shadow: var(--elev-1), 0 8px 22px color-mix(in srgb, var(--coral) 12%, transparent);
+        }
+
+        .category-btn.active::after {
+            opacity: 1;
+            transform: scaleX(1);
+        }
+
+        .size-control {
+            margin-bottom: 18px;
+        }
+
+        .game-grid {
+            gap: 9px;
+            margin-bottom: 18px;
+        }
+
+        .card-face--cover {
+            background: linear-gradient(145deg, var(--surface-2), var(--surface-1));
+        }
+
+        .card-face--cover .cover-mark {
+            opacity: 0.32;
+            font-size: 1.35rem;
+        }
+
+        .card-face--value {
+            background: linear-gradient(145deg, var(--surface-3), var(--surface-2));
+        }
+
+        .actions-row {
+            margin-top: 2px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                align-items: flex-start;
+                padding: 0;
+            }
+
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                margin: 0;
+                padding: max(16px, env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .game-header {
+                margin-bottom: 14px;
+            }
+
+            .game-header__emoji {
+                width: 46px;
+                height: 46px;
+                border-radius: 14px;
+                font-size: 1.4rem;
+                margin-bottom: 7px;
+            }
+
+            .game-header h1 {
+                font-size: 1.55rem;
+            }
+
+            .game-header .subtitle {
+                margin-bottom: 0;
+                font-size: 0.74rem;
+            }
+
+            .top-bar {
+                display: block;
+                margin-bottom: 14px;
+            }
+
+            .stats {
+                gap: 6px;
+            }
+
+            .stat {
+                min-height: 46px;
+                padding: 7px 5px;
+                border-radius: 12px;
+            }
+
+            .stat-label {
+                font-size: 0.52rem;
+            }
+
+            .stat-value {
+                font-size: 0.94rem;
+            }
+
+            .top-actions {
+                justify-content: space-between;
+                min-height: 36px;
+                margin-top: 7px;
+                padding: 6px 2px 0;
+                border-top: 1px solid var(--panel-border);
+            }
+
+            .record-compact {
+                font-size: 0.66rem;
+            }
+
+            .stars {
+                margin-left: auto;
+                font-size: 0.9rem;
+                letter-spacing: 1px;
+            }
+
+            .icon-btn {
+                width: 34px;
+                height: 34px;
+                min-height: 34px;
+            }
+
+            .categories-bar {
+                margin-bottom: 12px;
+            }
+
+            .category-btn {
+                flex: 0 0 104px;
+                min-height: 70px;
+                padding: 9px 10px;
+                font-size: 0.7rem;
+            }
+
+            .category-btn__icon {
+                width: 26px;
+                height: 26px;
+                font-size: 0.92rem;
+            }
+
+            .size-control {
+                width: 100%;
+                justify-content: space-between;
+                margin-bottom: 14px;
+            }
+
+            .size-btn {
+                flex: 1;
+                padding: 7px 8px;
+            }
+
+            .game-grid {
+                gap: clamp(5px, 2vw, 8px);
+                margin-bottom: 16px;
+            }
+
+            .card-face {
+                border-radius: clamp(8px, 2.5vw, 12px);
+            }
+
+            .card-face--value {
+                font-size: clamp(1.3rem, 6vw, 1.65rem);
+            }
+
+            .card-face--cover .cover-mark {
+                font-size: clamp(1rem, 5vw, 1.35rem);
+            }
+
+            .btn-ghost.primary {
+                width: 100%;
+                min-height: 44px;
+            }
+
+            .game-back-nav {
+                margin-top: 12px;
+            }
+
+            .game-back-nav .back-btn {
+                flex: 1;
+                justify-content: center;
+                padding: 9px 10px;
+                font-size: 0.72rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .game-container {
+                padding-left: 9px;
+                padding-right: 9px;
+            }
+
+            .game-grid {
+                gap: 4px;
+            }
+
+            .stat-label {
+                letter-spacing: 0;
+            }
+
+            .record-compact__label {
+                display: none;
+            }
+        }
+    </style>
 
 <body>
     <div class="game-container">
@@ -394,24 +741,21 @@
         <div class="top-bar">
             <div class="stats">
                 <div class="stat">
-                    <span class="stat-label">🎯 Movimientos</span>
+                    <span class="stat-label">Movimientos</span>
                     <span class="stat-value" id="moveCount">0</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">⏱️ Tiempo</span>
+                    <span class="stat-label">Tiempo</span>
                     <span class="stat-value" id="timerDisplay">0s</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">👫 Pares</span>
+                    <span class="stat-label">Parejas</span>
                     <span class="stat-value" id="pairCount">0/0</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">🏆 Récord</span>
-                    <span class="stat-value" id="recordDisplay">—</span>
                 </div>
             </div>
             <div class="top-actions">
-                <span class="stars" id="starsDisplay">★★★</span>
+                <span class="record-compact"><span aria-hidden="true">🏆</span><span class="record-compact__label">Récord</span><strong id="recordDisplay">—</strong></span>
+                <span class="stars" id="starsDisplay" aria-label="Tres estrellas">★★★</span>
                 <button class="icon-btn" id="soundBtn" title="Sonido" aria-label="Activar o silenciar sonido">🔊</button>
             </div>
         </div>
@@ -482,6 +826,23 @@
             let isLocked = false;
             let gameFinished = false;
             let paused = false;
+            // Timers de animación pendientes: se cancelan al iniciar otra partida
+            // para que una jugada vieja nunca pueda modificar el tablero nuevo.
+            const pendingTimeouts = new Set();
+
+            function schedule(callback, delay) {
+                const timeoutId = setTimeout(() => {
+                    pendingTimeouts.delete(timeoutId);
+                    callback();
+                }, delay);
+                pendingTimeouts.add(timeoutId);
+                return timeoutId;
+            }
+
+            function clearPendingTimeouts() {
+                pendingTimeouts.forEach(clearTimeout);
+                pendingTimeouts.clear();
+            }
 
             // ==========================================================
             // DOM
@@ -597,6 +958,7 @@
 
             function initGame() {
                 stopTimer();
+                clearPendingTimeouts();
                 paused = false;
                 gameFinished = false;
                 timerSeconds = 0;
@@ -625,6 +987,10 @@
                     const card = document.createElement('div');
                     card.className = 'card';
                     card.dataset.index = i;
+                    card.setAttribute('role', 'button');
+                    card.setAttribute('tabindex', '0');
+                    card.setAttribute('aria-label', 'Carta oculta');
+                    card.setAttribute('aria-pressed', 'false');
                     card.style.setProperty('--enter-delay', `${Math.min(i * 24, 400)}ms`);
                     card.innerHTML = `
                         <div class="card-inner">
@@ -632,6 +998,12 @@
                             <div class="card-face card-face--value">${item}</div>
                         </div>`;
                     card.addEventListener('click', () => flipCard(i));
+                    card.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            flipCard(i);
+                        }
+                    });
                     grid.appendChild(card);
                 });
             }
@@ -644,7 +1016,10 @@
                 if (moves === 0 && flipped.length === 0) startTimer();
 
                 flipped.push(index);
-                grid.children[index].classList.add('flipped');
+                const selectedCard = grid.children[index];
+                selectedCard.classList.add('flipped');
+                selectedCard.setAttribute('aria-pressed', 'true');
+                selectedCard.setAttribute('aria-label', `Carta ${cards[index]} descubierta`);
                 sfx.flip();
 
                 if (flipped.length === 2) {
@@ -660,9 +1035,12 @@
                         sfx.match();
                         if (navigator.vibrate) navigator.vibrate(15);
 
-                        setTimeout(() => {
+                        schedule(() => {
+                            if (!grid.children[i1] || !grid.children[i2]) return;
                             grid.children[i1].classList.add('matched');
                             grid.children[i2].classList.add('matched');
+                            grid.children[i1].setAttribute('aria-label', `Pareja encontrada: ${cards[i1]}`);
+                            grid.children[i2].setAttribute('aria-label', `Pareja encontrada: ${cards[i2]}`);
                         }, 280);
 
                         flipped = [];
@@ -670,7 +1048,7 @@
                         if (pairs === totalPairs) {
                             gameFinished = true;
                             stopTimer();
-                            setTimeout(showVictory, 480);
+                            schedule(showVictory, 480);
                         }
                     } else {
                         isLocked = true;
@@ -679,9 +1057,14 @@
                         sfx.wrong();
                         if (navigator.vibrate) navigator.vibrate(60);
 
-                        setTimeout(() => {
+                        schedule(() => {
+                            if (!grid.children[i1] || !grid.children[i2]) return;
                             grid.children[i1].classList.remove('flipped', 'wrong');
                             grid.children[i2].classList.remove('flipped', 'wrong');
+                            grid.children[i1].setAttribute('aria-pressed', 'false');
+                            grid.children[i2].setAttribute('aria-pressed', 'false');
+                            grid.children[i1].setAttribute('aria-label', 'Carta oculta');
+                            grid.children[i2].setAttribute('aria-label', 'Carta oculta');
                             flipped = [];
                             isLocked = false;
                         }, 650);
@@ -744,9 +1127,13 @@
             // CATEGORÍAS Y TAMAÑO
             // ==========================================================
             function renderCategories() {
+                const categoryIcons = {
+                    emojis: '✨', animales: '🐾', frutas: '🍓', formas: '◈', comida: '🍕', cultura: '🎨'
+                };
                 categoriesBar.innerHTML = Object.keys(categories).map(key => `
                     <button class="category-btn ${key === currentCategory ? 'active' : ''}" data-category="${key}">
-                        ${categories[key].label}
+                        <span class="category-btn__icon" aria-hidden="true">${categoryIcons[key]}</span>
+                        <span class="category-btn__label">${categories[key].label}</span>
                     </button>
                 `).join('');
 
@@ -803,7 +1190,7 @@
                             startTimer(false);
                         }
                         if (isLocked && flipped.length === 2) {
-                            setTimeout(() => {
+                            schedule(() => {
                                 flipped = [];
                                 isLocked = false;
                             }, 60);
