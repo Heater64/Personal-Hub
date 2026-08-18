@@ -44,15 +44,11 @@ test('cada juego listado en Juegos tiene su página pública', async () => {
   const source = await readFile(projectPath('personal-hub', 'src', 'pages', 'Juegos.js'), 'utf8');
   const hrefs = [...source.matchAll(/href:\s*'([^']+\.html)'/g)].map(match => match[1]);
 
-  assert.equal(hrefs.length, 19);
+  assert.equal(hrefs.length, 25);
   assert.equal(new Set(hrefs).size, hrefs.length);
   for (const href of hrefs) {
     const relativePath = href.replace(/^\//, '');
     assert.equal(existsSync(projectPath('personal-hub', 'public', relativePath)), true, href);
-  }
-  // Los juegos retirados del catálogo ya no deben aparecer.
-  for (const removed of ['dino', 'flappy', 'asteroides', 'nonogramas', 'doodle', 'match3']) {
-    assert.equal(source.includes(removed), false, `${removed} no debería seguir en Juegos.js`);
   }
 });
 

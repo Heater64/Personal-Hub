@@ -579,19 +579,19 @@
             }
 
             .game-header {
-                margin-bottom: 14px;
+                margin-bottom: 8px;
             }
 
             .game-header__emoji {
-                width: 46px;
-                height: 46px;
-                border-radius: 14px;
-                font-size: 1.4rem;
-                margin-bottom: 7px;
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                font-size: 1.25rem;
+                margin-bottom: 4px;
             }
 
             .game-header h1 {
-                font-size: 1.55rem;
+                font-size: 1.45rem;
             }
 
             .game-header .subtitle {
@@ -601,7 +601,7 @@
 
             .top-bar {
                 display: block;
-                margin-bottom: 14px;
+                margin-bottom: 10px;
             }
 
             .stats {
@@ -609,8 +609,8 @@
             }
 
             .stat {
-                min-height: 46px;
-                padding: 7px 5px;
+                min-height: 38px;
+                padding: 5px 5px;
                 border-radius: 12px;
             }
 
@@ -624,9 +624,9 @@
 
             .top-actions {
                 justify-content: space-between;
-                min-height: 36px;
-                margin-top: 7px;
-                padding: 6px 2px 0;
+                min-height: 32px;
+                margin-top: 4px;
+                padding: 4px 2px 0;
                 border-top: 1px solid var(--panel-border);
             }
 
@@ -647,13 +647,13 @@
             }
 
             .categories-bar {
-                margin-bottom: 12px;
+                margin-bottom: 8px;
             }
 
             .category-btn {
                 flex: 0 0 104px;
-                min-height: 70px;
-                padding: 9px 10px;
+                min-height: 62px;
+                padding: 8px 10px;
                 font-size: 0.7rem;
             }
 
@@ -666,7 +666,7 @@
             .size-control {
                 width: 100%;
                 justify-content: space-between;
-                margin-bottom: 14px;
+                margin-bottom: 10px;
             }
 
             .size-btn {
@@ -676,7 +676,7 @@
 
             .game-grid {
                 gap: clamp(5px, 2vw, 8px);
-                margin-bottom: 16px;
+                margin-bottom: 10px;
             }
 
             .card-face {
@@ -724,6 +724,18 @@
 
             .record-compact__label {
                 display: none;
+            }
+        }
+
+        /* Reducir movimiento: _theme.css anula la animación cardIn
+           (animation: none !important), pero la carta arranca con
+           opacity: 0. Sin la animación, las tarjetas quedarían
+           invisibles — se fuerzan visibles y sin desplazamiento. */
+        @media (prefers-reduced-motion: reduce) {
+            .card {
+                opacity: 1;
+                transform: none;
+                animation: none;
             }
         }
     </style>
@@ -1219,6 +1231,23 @@
       navigator.serviceWorker.register('../sw.js')
         .catch(function(err) { console.warn('SW error:', err); });
     }
+    </script>
+
+    <script>
+    (function () {
+      'use strict';
+      var params = new URLSearchParams(location.search);
+      if (params.get('online') === '1') return;
+      var btn = document.createElement('a');
+      btn.id = 'phOnlineBtn';
+      btn.className = 'icon-btn';
+      btn.href = '/#/juegos/online/memoria';
+      btn.title = 'Jugar online';
+      btn.setAttribute('aria-label', 'Jugar online contra alguien');
+      btn.textContent = '🎮 Online';
+      var host = document.querySelector('.top-actions');
+      if (host) host.appendChild(btn);
+    })();
     </script>
 
     <script src="_online.js"></script>

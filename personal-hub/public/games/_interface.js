@@ -113,6 +113,36 @@
   }
 
   /* ==========================================================
+     BOTÓN ONLINE — acceso al multijugador de ESTE juego
+     Enlaza al lobby de la sala (#/juegos/online/<id>) desde la
+     toolbar de cada juego. No aparece dentro de una sala (el
+     iframe usa el puente _online.js para enviar el resultado).
+     ========================================================== */
+  var ONLINE_GAME_IDS = new Set([
+    '2048', 'agujero-negro', 'ahorcado', 'asteroides', 'battleship',
+    'breakout', 'buscaminas', 'conecta4', 'cuchillos', 'dino', 'doodle',
+    'flappy', 'invaders', 'laberinto', 'match3', 'memoria', 'meteoritos',
+    'nonogramas', 'pong', 'simon', 'snake', 'tetris', 'tiroarco', 'torre',
+    'tresenraya'
+  ]);
+
+  function injectOnlineButton() {
+    if (document.getElementById('phOnlineBtn')) return;
+    var params = new URLSearchParams(location.search);
+    if (params.get('online') === '1') return; // dentro de una sala: lo gestiona _online.js
+    if (!ONLINE_GAME_IDS.has(gameId)) return;
+    var btn = document.createElement('a');
+    btn.id = 'phOnlineBtn';
+    btn.className = 'icon-btn';
+    btn.href = '/#/juegos/online/' + gameId;
+    btn.title = 'Jugar online';
+    btn.setAttribute('aria-label', 'Jugar online contra alguien');
+    btn.textContent = '🎮 Online';
+    var toolbar = document.querySelector('.toolbar');
+    if (toolbar) toolbar.appendChild(btn);
+  }
+
+  /* ==========================================================
      INSIGNIA DE EMOJI — identidad propia de cada juego
      Inyecta el emoji del juego como insignia en .game-header
      (estilada por _game-ui.css con el acento ?accent=HEX).
@@ -202,5 +232,6 @@
      ========================================================== */
   injectHeaderEmoji();
   injectSoundButton();
+  injectOnlineButton();
   upgradeChips();
 })();
