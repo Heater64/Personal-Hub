@@ -1317,22 +1317,5 @@
     }
     </script>
 
-    <script>
-    (function () {
-      'use strict';
-      var params = new URLSearchParams(location.search);
-      if (params.get('online') === '1') return;
-      var btn = document.createElement('a');
-      btn.id = 'phOnlineBtn';
-      btn.className = 'icon-btn';
-      btn.href = '/#/juegos/online/snake';
-      btn.title = 'Jugar online';
-      btn.setAttribute('aria-label', 'Jugar online contra alguien');
-      btn.textContent = '🎮 Online';
-      var host = document.querySelector('.top-actions');
-      if (host) host.appendChild(btn);
-    })();
-    </script>
-
     <script src="_online.js"></script>
 </html>
