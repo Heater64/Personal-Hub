@@ -12,6 +12,7 @@ import { db } from '../services/db.service.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { requestEnable, disable, isPushSupported } from '../services/notifications.service.js';
 import { escapeHtml } from '../utils/escape.js';
+import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/specialDates.js';
 
 // ==========================================
 // APP — versión y novedades
@@ -251,6 +252,34 @@ export function ProfilePage(router) {
       </div>
     </div>
 
+    <!-- ===== DÍAS ESPECIALES ===== -->
+    <div class="prof-group">
+      <div class="prof-group-label">Días especiales</div>
+      <div class="prof-card">
+        <div class="prof-days-head">
+          <span class="prof-days-sub">Nuestros días importantes y lo que viene ✨</span>
+          ${isUserAdmin ? `<button type="button" class="prof-days-edit" id="editDaysBtn" aria-label="Editar días especiales">${UI.edit} Editar</button>` : ''}
+        </div>
+        <div class="prof-days" id="profileSpecialDays"></div>
+        ${isUserAdmin ? `
+        <div class="prof-days-editor" id="profileDaysEditor" hidden>
+          <div class="prof-days-field"><span class="prof-days-emoji-label">🤍</span><div class="prof-days-inputs"><input type="text" id="pdAnniversaryTitle" maxlength="40" placeholder="Título" aria-label="Título del aniversario"><input type="date" id="pdAnniversary"></div><label class="prof-days-recur"><input type="checkbox" id="pdAnniversaryRecur"><span>Se repite cada año</span></label></div>
+          <div class="prof-days-field"><span class="prof-days-emoji-label">📅</span><div class="prof-days-inputs"><input type="text" id="pdHubStartTitle" maxlength="40" placeholder="Título" aria-label="Título del primer mensaje"><input type="date" id="pdHubStart"></div><label class="prof-days-recur"><input type="checkbox" id="pdHubStartRecur"><span>Se repite cada año</span></label></div>
+          <div class="prof-days-field"><span class="prof-days-emoji-label">🎁</span><div class="prof-days-inputs"><input type="text" id="pdBirthdayTitle" maxlength="40" placeholder="Título" aria-label="Título del cumpleaños"><input type="date" id="pdBirthday"></div><label class="prof-days-recur"><input type="checkbox" id="pdBirthdayRecur"><span>Se repite cada año</span></label></div>
+          <div class="prof-days-field"><span class="prof-days-emoji-label">🎂</span><div class="prof-days-inputs"><input type="text" id="pdUserBirthdayTitle" maxlength="40" placeholder="Título" aria-label="Título del cumpleaños del admin"><input type="date" id="pdUserBirthday"></div><label class="prof-days-recur"><input type="checkbox" id="pdUserBirthdayRecur"><span>Se repite cada año</span></label></div>
+          <div class="prof-days-events">
+            <span class="prof-days-events-title">✨ Próximas cosas <small>(marca ♻️ si se repite cada año)</small></span>
+            <div id="pdEventsList"></div>
+            <button type="button" class="prof-btn prof-btn--sm" id="pdAddEvent">+ Añadir evento</button>
+          </div>
+          <div class="prof-days-editor-actions">
+            <button type="button" class="prof-btn prof-btn--primary" id="pdSave">${UI.save} Guardar</button>
+            <button type="button" class="prof-btn" id="pdCancel">Cancelar</button>
+          </div>
+        </div>` : ''}
+      </div>
+    </div>
+
     <!-- ===== ALMACENAMIENTO ===== -->
     <div class="prof-group">
       <div class="prof-group-label">Almacenamiento</div>
@@ -419,6 +448,151 @@ export function ProfilePage(router) {
       saveMoodBtn.innerHTML = `${UI.save} Guardar estado`;
     }
   });
+
+  // ===== DÍAS ESPECIALES =====
+  function dayBadge(iso, recurring) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    let target;
+    if (recurring) {
+      // Se repite cada año: siempre hay una próxima vez (la de este año o la del siguiente).
+      const [y, m, d] = iso.split('-').map(Number);
+      target = new Date(now.getFullYear(), m - 1, d);
+      if (target < now) target = new Date(now.getFullYear() + 1, m - 1, d);
+    } else {
+      target = new Date(iso + 'T00:00:00');
+    }
+    const days = Math.round((target - now) / 864e5);
+    if (days === 0) return '<span class="prof-day-badge is-today">¡Hoy! 💫</span>';
+    if (days > 0) return `<span class="prof-day-badge is-future">En ${days} día${days === 1 ? '' : 's'}</span>`;
+    return '<span class="prof-day-badge is-past">Ya pasó</span>';
+  }
+
+  function renderSpecialDays() {
+    const el = page.querySelector('#profileSpecialDays');
+    if (!el) return;
+    const d = specialDates();
+    const t = d.titles || {};
+    const r = d.recurring || {};
+    const fmt = (iso) => new Date(iso + 'T00:00:00')
+      .toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+    const items = [
+      { emoji: '🤍', title: t.anniversary || 'Aniversario', date: d.anniversary, recurring: r.anniversary !== false },
+      { emoji: '🎁', title: t.birthday || 'Cumpleaños de dada', date: d.birthday, recurring: r.birthday !== false },
+      { emoji: '🎂', title: t.userBirthday || 'Tu cumpleaños', date: d.userBirthday, recurring: r.userBirthday !== false },
+      { emoji: '📅', title: t.hubStart || 'Primer mensaje', date: d.hubStart, recurring: r.hubStart === true },
+      ...(d.events || []).map(e => ({ emoji: '✨', title: e.title, date: e.date, recurring: e.recurring === true }))
+    ].filter(it => it.date);
+    if (!items.length) {
+      el.innerHTML = '<p class="prof-days-empty">Aún no hay días especiales 💭</p>';
+      return;
+    }
+    el.innerHTML = items.map(it => `
+      <div class="prof-day">
+        <span class="prof-day-emoji">${it.emoji}</span>
+        <div class="prof-day-body">
+          <span class="prof-day-title">${escapeHtml(it.title)}</span>
+          <span class="prof-day-date">${fmt(it.date)}${it.recurring ? '<span class="prof-day-note">· cada año</span>' : ''}</span>
+        </div>
+        ${dayBadge(it.date, it.recurring)}
+      </div>`).join('');
+  }
+
+  // Editor (solo admin): edita las 4 fechas principales y las próximas cosas.
+  const daysEditor = page.querySelector('#profileDaysEditor');
+  const editDaysBtn = page.querySelector('#editDaysBtn');
+  let editingDays = [];
+
+  const eventRowHTML = (e) => {
+    const uid = e.id || 'ev' + Math.random().toString(36).slice(2, 8);
+    return `
+      <div class="prof-days-event-row" data-ev-id="${uid}">
+        <input type="text" class="prof-days-event-title" placeholder="Qué es (p. ej. Viaje a la playa)" value="${escapeHtml(e.title || '')}" maxlength="60" aria-label="Nombre del evento">
+        <input type="date" class="prof-days-event-date" value="${escapeHtml(e.date || '')}" aria-label="Fecha del evento">
+        <label class="prof-days-event-recur" title="Se repite cada año"><input type="checkbox" class="prof-days-event-recur-cb" ${e.recurring === true ? 'checked' : ''}><span>♻️</span></label>
+        <button type="button" class="prof-days-event-del" aria-label="Quitar evento">✕</button>
+      </div>`;
+  };
+
+  const renderEventRows = () => {
+    const list = page.querySelector('#pdEventsList');
+    if (!list) return;
+    list.innerHTML = editingDays.map(eventRowHTML).join('');
+    list.querySelectorAll('.prof-days-event-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('.prof-days-event-row');
+        const idx = editingDays.findIndex(e => (e.id || '') === row.dataset.evId);
+        if (idx >= 0) { editingDays.splice(idx, 1); renderEventRows(); }
+      });
+    });
+  };
+
+  function openDaysEditor() {
+    const d = specialDates();
+    const t = d.titles || {};
+    const r = d.recurring || {};
+    editingDays = (d.events || []).map(e => ({ ...e }));
+    const set = (id, v) => { const el = page.querySelector(id); if (el) el.value = v || ''; };
+    const setCheck = (id, v) => { const el = page.querySelector(id); if (el) el.checked = !!v; };
+    set('#pdAnniversary', d.anniversary); set('#pdAnniversaryTitle', t.anniversary || ''); setCheck('#pdAnniversaryRecur', r.anniversary !== false);
+    set('#pdHubStart', d.hubStart); set('#pdHubStartTitle', t.hubStart || ''); setCheck('#pdHubStartRecur', r.hubStart === true);
+    set('#pdBirthday', d.birthday); set('#pdBirthdayTitle', t.birthday || ''); setCheck('#pdBirthdayRecur', r.birthday !== false);
+    set('#pdUserBirthday', d.userBirthday); set('#pdUserBirthdayTitle', t.userBirthday || ''); setCheck('#pdUserBirthdayRecur', r.userBirthday !== false);
+    renderEventRows();
+    daysEditor.hidden = false;
+    daysEditor.scrollIntoView({ block: 'nearest' });
+  }
+
+  editDaysBtn?.addEventListener('click', openDaysEditor);
+  page.querySelector('#pdAddEvent')?.addEventListener('click', () => {
+    editingDays.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '' });
+    renderEventRows();
+  });
+  page.querySelector('#pdSave')?.addEventListener('click', async () => {
+    const rows = [...page.querySelectorAll('.prof-days-event-row')].map(row => ({
+      id: row.dataset.evId,
+      title: row.querySelector('.prof-days-event-title').value.trim(),
+      date: row.querySelector('.prof-days-event-date').value,
+      recurring: row.querySelector('.prof-days-event-recur-cb')?.checked === true
+    }));
+    const payload = {
+      anniversary: page.querySelector('#pdAnniversary').value,
+      hubStart: page.querySelector('#pdHubStart').value,
+      birthday: page.querySelector('#pdBirthday').value,
+      userBirthday: page.querySelector('#pdUserBirthday').value,
+      titles: {
+        anniversary: page.querySelector('#pdAnniversaryTitle').value,
+        hubStart: page.querySelector('#pdHubStartTitle').value,
+        birthday: page.querySelector('#pdBirthdayTitle').value,
+        userBirthday: page.querySelector('#pdUserBirthdayTitle').value
+      },
+      recurring: {
+        anniversary: page.querySelector('#pdAnniversaryRecur')?.checked === true,
+        hubStart: page.querySelector('#pdHubStartRecur')?.checked === true,
+        birthday: page.querySelector('#pdBirthdayRecur')?.checked === true,
+        userBirthday: page.querySelector('#pdUserBirthdayRecur')?.checked === true
+      },
+      events: rows
+    };
+    if (!payload.anniversary || !payload.hubStart || !payload.birthday || !payload.userBirthday) {
+      showToast('Rellena las cuatro fechas principales', 'error');
+      return;
+    }
+    try {
+      await db.saveHubDates(payload);
+      await refreshSpecialDates().catch(() => {});
+      daysEditor.hidden = true;
+      renderSpecialDays();
+      showToast('Días especiales guardados', 'success');
+    } catch (err) {
+      console.error('[profile] fechas especiales:', err);
+      showToast(err?.message || 'No se pudieron guardar', 'error');
+    }
+  });
+  page.querySelector('#pdCancel')?.addEventListener('click', () => { daysEditor.hidden = true; });
+
+  renderSpecialDays();
+  loadSpecialDates().then(() => renderSpecialDays()).catch(() => {});
 
   // ===== STORAGE =====
   try {

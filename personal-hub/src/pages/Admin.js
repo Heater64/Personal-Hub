@@ -76,6 +76,14 @@ const UI = {
 const MOOD_EMOJIS = { great: '🤍🤍🤍', good: '😊', meh: '😕', bad: '😔', love: '❤️' };
 const MOOD_LABELS = { great: 'Muy bieeeen', good: 'Bien', meh: 'Un poquito mal', bad: 'Mal', love: 'Necesito cariño' };
 const MOOD_SCORES = { great: 4, good: 3, meh: 2, bad: 1, love: 0 };
+
+// El panel Admin muestra SOLO las estadísticas de este usuario (dada):
+// ánimos, visitas, dónde pasa el tiempo y últimas conexiones. El resto de
+// métricas (contenido, fechas…) son independientes del usuario, y el detalle
+// al tocar una tarjeta de usuario sigue mostrando sus datos individuales.
+// Cambia este id si quieres ver las de otra persona.
+const STATS_USER_ID = '6fadf968-f3e8-465c-816d-f41978e00704';
+const isStatsUser = (id) => id === STATS_USER_ID;
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ==========================================
@@ -379,14 +387,15 @@ export function AdminPage(router) {
     const birthdayISO = hubDates.birthday || '2012-09-03';
     const userBirthdayISO = hubDates.userBirthday || '2009-08-03';
 
-    const moods = arr(allMoods);
+    // Estadísticas SOLO de dada: se descartan ánimos y visitas del resto.
+    const moods = arr(allMoods).filter(m => isStatsUser(m.user_id));
     const reasonsList = arr(reasons);
     const songsList = arr(songs);
     const newsList = arr(news);
     const maldiaFrasesList = arr(maldiaFrases);
     const maldiaMensajesList = arr(maldiaMensajes);
     const owLettersList = arr(owLetters);
-    const visitsList = arr(visits);
+    const visitsList = arr(visits).filter(v => isStatsUser(v.user_id));
     const audiosList = arr(audios);
     const activityList = arr(activity);
     const giftsCount = (giftsData?.gifts || []).length;
@@ -586,14 +595,16 @@ export function AdminPage(router) {
     let userBd = new Date(todayDate.getFullYear(), ubd.getMonth(), ubd.getDate());
     if (userBd < todayStart) userBd = new Date(todayDate.getFullYear() + 1, ubd.getMonth(), ubd.getDate());
     const userBdDays = daysUntil(userBd);
+    const hubTitles = hubDates.titles || {};
+    const hubRecurring = hubDates.recurring || {};
     const fechas = [
-      { icon: '🤍', title: `${annivYears} año${annivYears === 1 ? '' : 's'} juntos`, date: fmtDate(anniv),
-        badge: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`, hot: annivDays <= 30 },
-      { icon: '🎁', title: 'Cumple de la persona especial', date: fmtDate(bd),
-        badge: birthdayDays === 0 ? '¡Hoy! 🎂' : `En ${birthdayDays} día${birthdayDays === 1 ? '' : 's'}`, hot: birthdayDays <= 30 },
-      { icon: '🎂', title: 'Tu cumpleaños', date: fmtDate(ubd),
-        badge: userBdDays === 0 ? '¡Hoy! 🎂' : `En ${userBdDays} día${userBdDays === 1 ? '' : 's'}`, hot: userBdDays <= 30 },
-      { icon: '📅', title: 'Nuestro primer mensaje', date: fmtDate(new Date(hubStartISO + 'T00:00:00')), badge: 'Ya pasó', muted: true }
+      { icon: '🤍', title: hubTitles.anniversary || `${annivYears} año${annivYears === 1 ? '' : 's'} juntos`, date: fmtDate(anniv),
+        badge: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`, hot: annivDays <= 30, recurring: hubRecurring.anniversary !== false },
+      { icon: '🎁', title: hubTitles.birthday || 'Cumpleaños de dada', date: fmtDate(bd),
+        badge: birthdayDays === 0 ? '¡Hoy! 🎂' : `En ${birthdayDays} día${birthdayDays === 1 ? '' : 's'}`, hot: birthdayDays <= 30, recurring: hubRecurring.birthday !== false },
+      { icon: '🎂', title: hubTitles.userBirthday || 'Tu cumpleaños', date: fmtDate(ubd),
+        badge: userBdDays === 0 ? '¡Hoy! 🎂' : `En ${userBdDays} día${userBdDays === 1 ? '' : 's'}`, hot: userBdDays <= 30, recurring: hubRecurring.userBirthday !== false },
+      { icon: '📅', title: hubTitles.hubStart || 'Primer mensaje', date: fmtDate(new Date(hubStartISO + 'T00:00:00')), badge: 'Ya pasó', muted: true, recurring: hubRecurring.hubStart === true }
     ];
 
     // ---- Actividad reciente ----
@@ -766,7 +777,7 @@ export function AdminPage(router) {
                   <div class="dash-fecha-icon">${f.icon}</div>
                   <div class="dash-fecha-body">
                     <div class="dash-fecha-title">${f.title}</div>
-                    <div class="dash-fecha-date">${f.date}</div>
+                    <div class="dash-fecha-date">${f.date}${f.recurring ? ' <span class="dash-fecha-note">· cada año</span>' : ''}</div>
                   </div>
                   <span class="dash-fecha-badge${f.hot ? ' hot' : ''}${f.muted ? ' muted' : ''}">${f.badge}</span>
                 </div>`).join('')}
@@ -919,6 +930,10 @@ export function AdminPage(router) {
 
     monthLabel.textContent = `${MONTHS[date.getMonth()]} ${year}`;
     const monthMoods = await db.getMoodMonth(year, month);
+    // Solo estadísticas de dada: descarta los ánimos del resto de usuarios.
+    Object.keys(monthMoods).forEach(ds => {
+      monthMoods[ds] = monthMoods[ds].filter(m => isStatsUser(m.user_id));
+    });
     if (token !== sectionToken || renderToken !== moodRenderToken) return; // sección o render obsoletos
     const daysInMonth = new Date(year, month, 0).getDate();
     const firstDay = new Date(year, month - 1, 1).getDay();
@@ -3009,21 +3024,34 @@ export function AdminPage(router) {
           <p class="muted-text">Estas fechas alimentan las métricas del dashboard: «Años juntos», «En el Hub», el cumpleaños y el primer mensaje.</p>
           <div class="dates-editor">
             <label class="dates-field">
-              <span>🤍 Aniversario</span>
+              <span class="dates-emoji-label">🤍</span>
+              <input type="text" id="dateAnniversaryTitle" value="${esc(hubDates.titles?.anniversary || 'Aniversario')}" maxlength="40" placeholder="Título" aria-label="Título del aniversario">
               <input type="date" id="dateAnniversary" value="${esc(hubDates.anniversary)}">
+              <label class="dates-recur"><input type="checkbox" id="dateAnniversaryRecur" ${hubDates.recurring?.anniversary !== false ? 'checked' : ''}><span>Se repite cada año</span></label>
             </label>
             <label class="dates-field">
-              <span>📅 Inicio del Hub / primer mensaje</span>
+              <span class="dates-emoji-label">📅</span>
+              <input type="text" id="dateHubStartTitle" value="${esc(hubDates.titles?.hubStart || 'Primer mensaje')}" maxlength="40" placeholder="Título" aria-label="Título del primer mensaje">
               <input type="date" id="dateHubStart" value="${esc(hubDates.hubStart)}">
+              <label class="dates-recur"><input type="checkbox" id="dateHubStartRecur" ${hubDates.recurring?.hubStart === true ? 'checked' : ''}><span>Se repite cada año</span></label>
             </label>
             <label class="dates-field">
-              <span>🎁 Cumpleaños de la persona especial</span>
+              <span class="dates-emoji-label">🎁</span>
+              <input type="text" id="dateBirthdayTitle" value="${esc(hubDates.titles?.birthday || 'Cumpleaños de dada')}" maxlength="40" placeholder="Título" aria-label="Título del cumpleaños">
               <input type="date" id="dateBirthday" value="${esc(hubDates.birthday)}">
+              <label class="dates-recur"><input type="checkbox" id="dateBirthdayRecur" ${hubDates.recurring?.birthday !== false ? 'checked' : ''}><span>Se repite cada año</span></label>
             </label>
             <label class="dates-field">
-              <span>🎂 Tu cumpleaños (admin)</span>
+              <span class="dates-emoji-label">🎂</span>
+              <input type="text" id="dateUserBirthdayTitle" value="${esc(hubDates.titles?.userBirthday || 'Tu cumpleaños')}" maxlength="40" placeholder="Título" aria-label="Título del cumpleaños del admin">
               <input type="date" id="dateUserBirthday" value="${esc(hubDates.userBirthday)}">
+              <label class="dates-recur"><input type="checkbox" id="dateUserBirthdayRecur" ${hubDates.recurring?.userBirthday !== false ? 'checked' : ''}><span>Se repite cada año</span></label>
             </label>
+          </div>
+          <div class="dates-events">
+            <span class="dates-events-title">✨ Próximas cosas (eventos futuros — se muestran en el Perfil; marca ♻️ si se repite cada año)</span>
+            <div id="datesEventsList"></div>
+            <button type="button" class="admin-btn admin-btn-ghost" id="addDatesEventBtn">+ Añadir evento</button>
           </div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:14px;">
             <button class="admin-btn admin-btn-primary" id="saveDatesBtn">${UI.check} Guardar fechas</button>
@@ -3066,6 +3094,35 @@ export function AdminPage(router) {
     });
 
     // ---- Fechas especiales ----
+    let editingDates = (hubDates.events || []).map(e => ({ ...e }));
+    const dateEventRow = (e) => {
+      const uid = e.id || 'ev' + Math.random().toString(36).slice(2, 8);
+      return `
+        <div class="dates-event-row" data-ev-id="${uid}">
+          <input type="text" class="dates-event-title" placeholder="Qué es (p. ej. Viaje a la playa)" value="${esc(e.title || '')}" maxlength="60" aria-label="Nombre del evento">
+          <input type="date" class="dates-event-date" value="${esc(e.date || '')}" aria-label="Fecha del evento">
+          <label class="dates-event-recur" title="Se repite cada año"><input type="checkbox" class="dates-event-recur-cb" ${e.recurring === true ? 'checked' : ''}><span>♻️</span></label>
+          <button type="button" class="dates-event-del" aria-label="Quitar evento">✕</button>
+        </div>`;
+    };
+    const renderDateEvents = () => {
+      const list = page.querySelector('#datesEventsList');
+      if (!list) return;
+      list.innerHTML = editingDates.map(dateEventRow).join('');
+      list.querySelectorAll('.dates-event-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const row = btn.closest('.dates-event-row');
+          const idx = editingDates.findIndex(e => (e.id || '') === row.dataset.evId);
+          if (idx >= 0) { editingDates.splice(idx, 1); renderDateEvents(); }
+        });
+      });
+    };
+    renderDateEvents();
+    page.querySelector('#addDatesEventBtn')?.addEventListener('click', () => {
+      editingDates.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '' });
+      renderDateEvents();
+    });
+
     page.querySelector('#saveDatesBtn')?.addEventListener('click', async () => {
       const anniversary = page.querySelector('#dateAnniversary').value;
       const hubStart = page.querySelector('#dateHubStart').value;
@@ -3075,15 +3132,32 @@ export function AdminPage(router) {
         showToast('Rellena las cuatro fechas', 'error');
         return;
       }
+      const events = [...page.querySelectorAll('.dates-event-row')].map(row => ({
+        id: row.dataset.evId,
+        title: row.querySelector('.dates-event-title').value.trim(),
+        date: row.querySelector('.dates-event-date').value,
+        recurring: row.querySelector('.dates-event-recur-cb')?.checked === true
+      }));
+      const titles = {
+        anniversary: page.querySelector('#dateAnniversaryTitle').value,
+        hubStart: page.querySelector('#dateHubStartTitle').value,
+        birthday: page.querySelector('#dateBirthdayTitle').value,
+        userBirthday: page.querySelector('#dateUserBirthdayTitle').value
+      };
+      const recurring = {
+        anniversary: page.querySelector('#dateAnniversaryRecur')?.checked === true,
+        hubStart: page.querySelector('#dateHubStartRecur')?.checked === true,
+        birthday: page.querySelector('#dateBirthdayRecur')?.checked === true,
+        userBirthday: page.querySelector('#dateUserBirthdayRecur')?.checked === true
+      };
       try {
-        const saved = await db.saveHubDates({ anniversary, hubStart, birthday, userBirthday });
-        // Refresca la caché de fechas: el inicio y la bienvenida reflejan el
-        // cambio al instante (antes se quedaban con el valor viejo hasta
-        // que la re-lectura asíncrona terminaba).
+        const saved = await db.saveHubDates({ anniversary, hubStart, birthday, userBirthday, events, titles, recurring });
+        // Refresca la caché de fechas: el inicio, la bienvenida y el Perfil
+        // reflejan el cambio al instante.
         refreshSpecialDates().catch(() => {});
         showToast('Fechas especiales guardadas', 'success');
         const hint = page.querySelector('#datesSavedHint');
-        if (hint) hint.textContent = `Aniversario ${saved.anniversary} · Hub ${saved.hubStart} · Cumple ${saved.birthday} · Tú ${saved.userBirthday}`;
+        if (hint) hint.textContent = `Aniversario ${saved.anniversary} · Hub ${saved.hubStart} · Cumple ${saved.birthday} · Tú ${saved.userBirthday}${saved.events?.length ? ` · ${saved.events.length} próximas` : ''}`;
       } catch (err) {
         console.error('[admin] No se pudieron guardar las fechas:', err);
         showToast(err?.message || 'No se pudieron guardar las fechas', 'error');

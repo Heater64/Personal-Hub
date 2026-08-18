@@ -13,7 +13,20 @@ const DEFAULTS = {
   anniversary: '2025-07-03',     // aniversario de pareja: 03/07/2025 (día/mes/año)
   hubStart: '2024-05-10',        // inicio del Hub / primer mensaje
   birthday: '2012-09-03',        // cumpleaños de dada: 03/09/2012
-  userBirthday: '2009-08-03'     // cumpleaños del admin: 03/08/2009
+  userBirthday: '2009-08-03',    // cumpleaños del admin: 03/08/2009
+  events: [],                    // próximas cosas: [{ id, title, date, recurring }]
+  titles: {                      // títulos editables de los 4 días principales
+    anniversary: 'Aniversario',
+    hubStart: 'Primer mensaje',
+    birthday: 'Cumpleaños de dada',
+    userBirthday: 'Tu cumpleaños'
+  },
+  recurring: {                   // ¿se repite cada año? (cumpleaños/aniversario sí; una boda/viaje no)
+    anniversary: true,
+    hubStart: false,
+    birthday: true,
+    userBirthday: true
+  }
 };
 
 let cached = null;

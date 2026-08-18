@@ -6,6 +6,7 @@
 import { supabase } from './supabase.js';
 import { auth } from './auth.service.js';
 import { escapeHtml } from '../utils/escape.js';
+import { userPrefKey } from '../utils/userStorage.js';
 
 // Storage keys for localStorage fallback
 const KEYS = {
@@ -35,6 +36,28 @@ function lsSet(key, data) {
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// ==========================================
+// TOMBSTONE DE USUARIOS ELIMINADOS
+// ==========================================
+// En dev (Vite) no existe /api/users: el borrado de Supabase Auth se omite y
+// listUsers() reconstruiría al usuario desde profiles/moods. Para que la
+// eliminación funcione también en local (y como red de seguridad en prod),
+// se guarda aquí el id de los usuarios eliminados y se filtran al listar.
+const deletedUsersKey = () => userPrefKey('deletedUsers');
+
+function getDeletedUserIds() {
+  const list = lsGet(deletedUsersKey(), []);
+  return Array.isArray(list) ? list : [];
+}
+
+function markUserDeleted(userId) {
+  const list = getDeletedUserIds();
+  if (!list.includes(userId)) {
+    list.push(userId);
+    lsSet(deletedUsersKey(), list);
+  }
 }
 
 // ==========================================
@@ -258,15 +281,32 @@ const DEFAULT_HUB_DATES = {
   anniversary: '2025-07-03',   // aniversario de pareja: 03/07/2025 (día/mes/año)
   hubStart: '2024-05-10',      // inicio del Hub / primer mensaje
   birthday: '2012-09-03',      // cumpleaños de dada: 03/09/2012
-  userBirthday: '2009-08-03'   // cumpleaños del admin: 03/08/2009
+  userBirthday: '2009-08-03',  // cumpleaños del admin: 03/08/2009
+  events: [],                  // próximas cosas: [{ id, title, date, recurring }]
+  titles: {                    // títulos editables de los 4 días principales
+    anniversary: 'Aniversario',
+    hubStart: 'Primer mensaje',
+    birthday: 'Cumpleaños de dada',
+    userBirthday: 'Tu cumpleaños'
+  },
+  recurring: {                 // ¿se repite cada año? (cumpleaños/aniversario sí; una boda/viaje no)
+    anniversary: true,
+    hubStart: false,
+    birthday: true,
+    userBirthday: true
+  }
 };
 
 async function getHubDates() {
   try {
     const data = await loadContent('hub_dates', {});
-    return { ...DEFAULT_HUB_DATES, ...(data && typeof data === 'object' ? data : {}) };
+    const merged = { ...DEFAULT_HUB_DATES, ...(data && typeof data === 'object' ? data : {}) };
+    merged.events = Array.isArray(merged.events) ? merged.events : [];
+    merged.titles = { ...DEFAULT_HUB_DATES.titles, ...(merged.titles && typeof merged.titles === 'object' ? merged.titles : {}) };
+    merged.recurring = { ...DEFAULT_HUB_DATES.recurring, ...(merged.recurring && typeof merged.recurring === 'object' ? merged.recurring : {}) };
+    return merged;
   } catch {
-    return { ...DEFAULT_HUB_DATES };
+    return { ...DEFAULT_HUB_DATES, titles: { ...DEFAULT_HUB_DATES.titles }, recurring: { ...DEFAULT_HUB_DATES.recurring } };
   }
 }
 
@@ -275,7 +315,22 @@ async function saveHubDates(dates) {
     anniversary: dates?.anniversary || DEFAULT_HUB_DATES.anniversary,
     hubStart: dates?.hubStart || DEFAULT_HUB_DATES.hubStart,
     birthday: dates?.birthday || DEFAULT_HUB_DATES.birthday,
-    userBirthday: dates?.userBirthday || DEFAULT_HUB_DATES.userBirthday
+    userBirthday: dates?.userBirthday || DEFAULT_HUB_DATES.userBirthday,
+    events: Array.isArray(dates?.events)
+      ? dates.events.filter(e => e && e.title && e.date).map(e => ({ ...e, recurring: e.recurring === true }))
+      : [],
+    titles: {
+      anniversary: (dates?.titles?.anniversary || '').trim() || DEFAULT_HUB_DATES.titles.anniversary,
+      hubStart: (dates?.titles?.hubStart || '').trim() || DEFAULT_HUB_DATES.titles.hubStart,
+      birthday: (dates?.titles?.birthday || '').trim() || DEFAULT_HUB_DATES.titles.birthday,
+      userBirthday: (dates?.titles?.userBirthday || '').trim() || DEFAULT_HUB_DATES.titles.userBirthday
+    },
+    recurring: {
+      anniversary: dates?.recurring?.anniversary !== false,
+      hubStart: dates?.recurring?.hubStart === true,
+      birthday: dates?.recurring?.birthday !== false,
+      userBirthday: dates?.recurring?.userBirthday !== false
+    }
   };
   await saveContent('hub_dates', clean);
   return clean;
@@ -870,9 +925,14 @@ async function listUsers() {
       }
     });
 
+    // 5. Excluye los usuarios eliminados (tombstone local): en dev /api/users
+    //    no existe, así que sin este filtro el usuario reaparecía al recargar.
+    const deletedIds = new Set(getDeletedUserIds());
+    const visibleUsers = mergedUsers.filter(u => !deletedIds.has(u.id));
+
     // Cache merged list
-    lsSet('ph.data.users', mergedUsers);
-    return mergedUsers;
+    lsSet('ph.data.users', visibleUsers);
+    return visibleUsers;
   })();
 
   try {
@@ -965,6 +1025,28 @@ async function deleteUser(userId) {
   const users = lsGet('ph.data.users', []);
   lsSet('ph.data.users', users.filter(u => u.id !== userId));
   logActivity('user_deleted', `Usuario eliminado: ${userId}`);
+  markUserDeleted(userId);
+
+  // Mejor esfuerzo en local: borra sus datos directamente (profiles, moods y
+  // analytics_visits) — las políticas RLS lo permiten al admin tras la
+  // migración 015_borrado_usuarios.sql. Sin esto, listUsers() reconstruiría
+  // al usuario desde esas tablas. Si la migración aún no se ha aplicado,
+  // cada borrado falla con un warn y el tombstone local lo sigue ocultando.
+  if (typeof userId === 'string' && isUuid(userId)) {
+    const cleanups = [
+      ['profiles', 'id'],
+      ['moods', 'user_id'],
+      ['analytics_visits', 'user_id']
+    ];
+    for (const [table, col] of cleanups) {
+      try {
+        const { error } = await supabase.from(table).delete().eq(col, userId);
+        if (error) console.warn(`[db] No se pudieron borrar ${table} en local:`, error.message);
+      } catch (err) {
+        console.warn(`[db] ${table} cleanup skipped:`, err.message);
+      }
+    }
+  }
 
   // Si es un usuario real de Supabase, elimínalo también en Auth
   if (typeof userId === 'string' && isUuid(userId)) {

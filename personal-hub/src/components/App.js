@@ -24,7 +24,7 @@ import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUse
 import { todayISO, spainMsOnDate, nextDayISO } from '../utils/format.js';
 
 // Rutas que NO deben mostrar navegación (sidebar ni bottom-nav)
-const NO_NAV_ROUTES = ['/login', '/ositos'];
+const NO_NAV_ROUTES = ['/login'];
 
 export function AppShell(router) {
   const app = document.getElementById('app');
@@ -131,6 +131,7 @@ export function AppShell(router) {
     '/galeria': 'Galería y Memes',
     '/memes': 'Memes',
     '/audios': 'Audios',
+    '/minecraft': 'Minecraft',
     '/curiosidades': 'Curiosidades',
     '/juegos': 'Juegos',
     '/calendario': 'Calendario',
@@ -144,7 +145,7 @@ export function AppShell(router) {
 
   function mobileBackTarget(path) {
     if (path.startsWith('/juegos/online/')) return '/juegos';
-    if (['/galeria', '/memes', '/audios', '/curiosidades', '/juegos', '/canciones', '/series', '/thoseeyes'].includes(path.split('?')[0])) return '/rincon';
+    if (['/galeria', '/memes', '/audios', '/minecraft', '/curiosidades', '/juegos', '/canciones', '/series', '/thoseeyes'].includes(path.split('?')[0])) return '/rincon';
     if (['/razones', '/openwhen', '/calendario', '/maldia'].includes(path.split('?')[0])) return '/sentimientos';
     return '/';
   }

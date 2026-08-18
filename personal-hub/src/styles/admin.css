@@ -2173,7 +2173,7 @@
 .dash-mood-sub { font-size: var(--fs-xs, 12px); color: var(--theme-text-tertiary); margin-top: 2px; }
 .dash-mood-face { font-size: 30px; line-height: 1; }
 .dash-week-chart {
-  display: flex; align-items: flex-end; gap: 8px;
+  display: flex; align-items: stretch; gap: 8px;
   height: 110px;
 }
 .dash-week-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
@@ -2584,4 +2584,102 @@
   .dash-use-label { flex-basis: 74px; }
   .dash-use-meta { font-size: 10px; }
   .dash-conn-meta { display: none; }
+}
+
+/* ---- Editor de próximas cosas (eventos futuros) ---- */
+.dates-events {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+.dates-events-title {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--theme-text-secondary);
+}
+.dates-event-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.dates-event-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface);
+  color: var(--theme-text-primary);
+  font: inherit;
+}
+.dates-event-row input[type="date"] {
+  width: 150px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface);
+  color: var(--theme-text-primary);
+  font: inherit;
+  color-scheme: dark;
+}
+.dates-event-del {
+  flex-shrink: 0;
+  width: 34px;
+  height: 40px;
+  border: 1px solid var(--theme-divider-strong);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--theme-error, #ff6b6b);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dates-emoji-label { font-size: 18px; line-height: 1; }
+.dates-field input[type="text"] {
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface);
+  color: var(--theme-text-primary);
+  font: inherit;
+}
+.dates-field input[type="text"]:focus-visible {
+  outline: 2px solid var(--theme-accent, #e8614f);
+  outline-offset: 1px;
+}
+.dates-recur {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 500;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.dates-recur input[type="checkbox"],
+.dates-event-recur input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--theme-accent, #e8614f);
+  cursor: pointer;
+}
+.dates-event-recur {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dates-event-recur span {
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.dash-fecha-note {
+  color: var(--theme-text-secondary);
+  font-size: var(--fs-xs, 11px);
+  opacity: 0.85;
 }

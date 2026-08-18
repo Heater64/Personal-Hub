@@ -16,12 +16,31 @@
 
 import { GALLERY_FOLDERS } from './rincon-data.js';
 import { userPrefKey } from '../utils/userStorage.js';
+import { createSyncStore } from './sync.service.js';
 
 const UPLOADS_KEY = () => userPrefKey('galleryUploads');
 const FAVS_KEY = () => userPrefKey('galleryFavs');
 const HIDDEN_KEY = () => userPrefKey('galleryHidden');
 const ALBUM_KEY = () => userPrefKey('galleryAlbum');
 const RATIO_KEY = () => userPrefKey('galleryRatios');
+
+// ==========================================
+// SYNC cross-device — las subidas de la galería son COMPARTIDAS:
+// el admin sube desde el móvil y aparecen en el PC (y viceversa).
+// Se espejan en la tabla `content` (fila 'gallery_uploads').
+// Favoritas y ocultas siguen siendo personales de cada cuenta.
+// ==========================================
+
+const sync = createSyncStore({
+  id: 'gallery_uploads',
+  readLocal: () => ({ uploads: userPhotos() }),
+  writeLocal: (data) => { if (Array.isArray(data?.uploads)) writeJson(UPLOADS_KEY, data.uploads); }
+});
+
+/** Sincroniza con el servidor (pull/push). Devuelve { changed, data }. */
+export function hydrateGallery() {
+  return sync.hydrate();
+}
 
 // ==========================================
 // STORAGE helpers (user-scoped)
@@ -58,11 +77,13 @@ export function userPhotos() {
 export function addUserPhotos(urls) {
   const list = userPhotos();
   writeJson(UPLOADS_KEY, [...urls.reverse(), ...list]);
+  sync.markDirty();
 }
 
 /** Eliminar una foto subida del usuario (por URL) */
 export function removeUserPhoto(url) {
   writeJson(UPLOADS_KEY, userPhotos().filter(u => u !== url));
+  sync.markDirty();
 }
 
 /**

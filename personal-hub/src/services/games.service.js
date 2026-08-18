@@ -22,12 +22,6 @@ export const MULTIPLAYER_GAMES = {
   '2048': { title: '2048', emoji: '🔢', href: '/games/2048.html', color: '#ffcf4d', accent: '#ffe59a' },
   'agujero-negro': { title: 'Agujero Negro', emoji: '🕳️', href: '/games/agujero-negro.html', color: '#b45309', accent: '#ffb347' },
   ahorcado: { title: 'Ahorcado', emoji: '💀', href: '/games/ahorcado.html', color: '#ffb347', accent: '#ffc96b' },
-  asteroides: { title: 'Asteroides', emoji: '🛸', href: '/games/asteroides.html', color: '#e8735a', accent: '#f7a180' },
-  dino: { title: 'Dino Run', emoji: '🦖', href: '/games/dino.html', color: '#5ad68f', accent: '#8ae8b3' },
-  doodle: { title: 'Doodle Jump', emoji: '🦘', href: '/games/doodle.html', color: '#7c9cff', accent: '#a5baff' },
-  flappy: { title: 'Flappy', emoji: '🐤', href: '/games/flappy.html', color: '#ffcf4d', accent: '#ffe59a' },
-  match3: { title: 'Match-3', emoji: '💎', href: '/games/match3.html', color: '#4ade80', accent: '#8ae8b3' },
-  nonogramas: { title: 'Nonogramas', emoji: '🧩', href: '/games/nonogramas.html', color: '#4ade80', accent: '#8ae8b3' },
   breakout: { title: 'Breakout', emoji: '🧱', href: '/games/breakout.html', color: '#d4624a', accent: '#e8735a' },
   buscaminas: { title: 'Buscaminas', emoji: '💣', href: '/games/buscaminas.html', color: '#f5a05e', accent: '#ffbd85' },
   cuchillos: { title: 'Cuchillos', emoji: '🔪', href: '/games/cuchillos.html', color: '#ff8aa1', accent: '#ffa9ba' },
@@ -45,9 +39,9 @@ export const MULTIPLAYER_GAMES = {
 
 /** Juegos de modo reto: cada jugador juega su turno y gana el de más puntos. */
 export const SCORE_GAME_IDS = new Set([
-  '2048', 'agujero-negro', 'ahorcado', 'asteroides', 'breakout', 'buscaminas',
-  'cuchillos', 'dino', 'doodle', 'flappy', 'invaders', 'laberinto',
-  'match3', 'memoria', 'meteoritos', 'nonogramas', 'pong', 'simon',
+  '2048', 'agujero-negro', 'ahorcado', 'breakout', 'buscaminas',
+  'cuchillos', 'invaders', 'laberinto',
+  'memoria', 'meteoritos', 'pong', 'simon',
   'snake', 'tetris', 'tiroarco', 'torre'
 ]);
 
@@ -59,7 +53,7 @@ export const SCORE_GAME_IDS = new Set([
 export const RACE_GAME_IDS = new Set(['memoria']);
 
 /** Juegos donde gana el que tenga MENOS puntos (p.ej. Memoria: menos movimientos). */
-export const LOWER_SCORE_WINS = new Set(['memoria', 'nonogramas']);
+export const LOWER_SCORE_WINS = new Set(['memoria']);
 
 /**
  * Modo online desactivado temporalmente: los juegos multijugador aún no

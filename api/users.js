@@ -19,8 +19,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     const action = req.body?.action || '';
-    const admin = await requireAdminCaller(req, res);
-    if (!admin) return; // ya respondió con el error
+    // authCtx ya verificó al llamador arriba (requireAdminCaller);
+    // no hace falta volver a comprobar el JWT en cada acción.
+    const admin = authCtx;
 
     if (action === 'update') {
       const { id, enabled } = req.body || {};

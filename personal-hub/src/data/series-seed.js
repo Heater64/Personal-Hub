@@ -19,6 +19,11 @@
    · Mascotas 1-2, Moana/Vaiana 1-2, Cars 1-3
    · El Señor de los Anillos (trilogía)
    · Obsesión, Cocina (Кухня), KiberSport, Sherlock
+
+   Destino de reproducción: cada título que no tenía un enlace
+   para verlo enlaza a su ficha en pelisflix2hd.pro (33 títulos).
+   Los que no están allí (Obsesión, Cocina, KiberSport, Sherlock)
+   conservan su enlace de referencia de TMDB.
    ========================================== */
 
 const EPISODE = (serie, season, total) =>
@@ -121,7 +126,7 @@ export const DEFAULT_CATALOG = [
     anio: 2012,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 91,
-    recurso: TMDB_PAGE(76492),
+    recurso: 'https://pelisflix2hd.pro/10816-hotel-transylvania-2012-online-pelisflix2',
     categoria: 'Hotel Transylvania',
     createdAt: 9
   },
@@ -134,7 +139,7 @@ export const DEFAULT_CATALOG = [
     anio: 2015,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 89,
-    recurso: TMDB_PAGE(159824),
+    recurso: 'https://pelisflix2hd.pro/10254-hotel-transylvania-2-2015-online-pelisflix2',
     categoria: 'Hotel Transylvania',
     createdAt: 10
   },
@@ -147,7 +152,7 @@ export const DEFAULT_CATALOG = [
     anio: 2018,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 97,
-    recurso: TMDB_PAGE(400155),
+    recurso: 'https://pelisflix2hd.pro/9142-hotel-transylvania-3-monstruos-de-vacaciones-2018-online-pelisflix2',
     categoria: 'Hotel Transylvania',
     createdAt: 11
   },
@@ -160,7 +165,7 @@ export const DEFAULT_CATALOG = [
     anio: 2022,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 87,
-    recurso: TMDB_PAGE(585083),
+    recurso: 'https://pelisflix2hd.pro/1492-hotel-transylvania-4-transformanna-2022-online-pelisflix2',
     categoria: 'Hotel Transylvania',
     createdAt: 12
   },
@@ -175,7 +180,7 @@ export const DEFAULT_CATALOG = [
     anio: 2013,
     generos: ['Animación', 'Fantasía', 'Musical', 'Familia'],
     duracion: 102,
-    recurso: TMDB_PAGE(109445),
+    recurso: 'https://pelisflix2hd.pro/10601-frozen-una-aventura-congelada-2013-online-pelisflix2',
     categoria: 'Disney',
     createdAt: 13
   },
@@ -188,7 +193,7 @@ export const DEFAULT_CATALOG = [
     anio: 2019,
     generos: ['Animación', 'Fantasía', 'Musical', 'Familia'],
     duracion: 103,
-    recurso: TMDB_PAGE(330457),
+    recurso: 'https://pelisflix2hd.pro/8408-frozen-2-2019-online-pelisflix2',
     categoria: 'Disney',
     createdAt: 14
   },
@@ -202,7 +207,7 @@ export const DEFAULT_CATALOG = [
     anio: 1959,
     generos: ['Animación', 'Fantasía', 'Familia', 'Romance'],
     duracion: 75,
-    recurso: TMDB_PAGE(11014),
+    recurso: 'https://pelisflix2hd.pro/15559-la-bella-durmiente-1959-online-pelisflix2',
     categoria: 'Disney',
     createdAt: 40
   },
@@ -217,7 +222,7 @@ export const DEFAULT_CATALOG = [
     anio: 2001,
     generos: ['Animación', 'Familia', 'Aventura', 'Comedia'],
     duracion: 92,
-    recurso: TMDB_PAGE(585),
+    recurso: 'https://pelisflix2hd.pro/7189-monsters-inc.-2001-online-pelisflix2',
     categoria: 'Pixar',
     createdAt: 31
   },
@@ -230,7 +235,7 @@ export const DEFAULT_CATALOG = [
     anio: 2015,
     generos: ['Animación', 'Familia', 'Comedia'],
     duracion: 95,
-    recurso: TMDB_PAGE(150540),
+    recurso: 'https://pelisflix2hd.pro/7162-intensa-mente-2015-online-pelisflix2',
     categoria: 'Pixar',
     createdAt: 36
   },
@@ -244,7 +249,7 @@ export const DEFAULT_CATALOG = [
     anio: 2024,
     generos: ['Animación', 'Familia', 'Comedia'],
     duracion: 96,
-    recurso: TMDB_PAGE(1022789),
+    recurso: 'https://pelisflix2hd.pro/4192-intensa-mente-2-2024-online-pelisflix2',
     categoria: 'Pixar',
     createdAt: 41
   },
@@ -260,7 +265,7 @@ export const DEFAULT_CATALOG = [
     anio: 2008,
     generos: ['Romance', 'Fantasía', 'Drama'],
     duracion: 122,
-    recurso: TMDB_PAGE(8963),
+    recurso: 'https://pelisflix2hd.pro/11578-crepsculo-2008-online-pelisflix2',
     categoria: 'Crepúsculo',
     createdAt: 42
   },
@@ -274,7 +279,7 @@ export const DEFAULT_CATALOG = [
     anio: 2009,
     generos: ['Romance', 'Fantasía', 'Drama'],
     duracion: 130,
-    recurso: TMDB_PAGE(18239),
+    recurso: 'https://pelisflix2hd.pro/11404-crepsculo-luna-nueva-2009-online-pelisflix2',
     categoria: 'Crepúsculo',
     createdAt: 43
   },
@@ -288,7 +293,7 @@ export const DEFAULT_CATALOG = [
     anio: 2010,
     generos: ['Romance', 'Fantasía', 'Drama'],
     duracion: 124,
-    recurso: TMDB_PAGE(24021),
+    recurso: 'https://pelisflix2hd.pro/11219-crepsculo-eclipse-2010-online-pelisflix2',
     categoria: 'Crepúsculo',
     createdAt: 44
   },
@@ -302,7 +307,7 @@ export const DEFAULT_CATALOG = [
     anio: 2011,
     generos: ['Romance', 'Fantasía', 'Drama'],
     duracion: 117,
-    recurso: TMDB_PAGE(50619),
+    recurso: 'https://pelisflix2hd.pro/11022-crepsculo-amanecer-parte-1-2011-online-pelisflix2',
     categoria: 'Crepúsculo',
     createdAt: 45
   },
@@ -316,7 +321,7 @@ export const DEFAULT_CATALOG = [
     anio: 2012,
     generos: ['Romance', 'Fantasía', 'Drama'],
     duracion: 115,
-    recurso: TMDB_PAGE(50620),
+    recurso: 'https://pelisflix2hd.pro/10813-crepsculo-amanecer-parte-2-2012-online-pelisflix2',
     categoria: 'Crepúsculo',
     createdAt: 46
   },
@@ -332,7 +337,7 @@ export const DEFAULT_CATALOG = [
     anio: 2018,
     generos: ['Animación', 'Acción', 'Aventura', 'Ciencia ficción'],
     duracion: 117,
-    recurso: TMDB_PAGE(324857),
+    recurso: 'https://pelisflix2hd.pro/7081-spider-man-un-nuevo-universo-2018-online-pelisflix2',
     categoria: 'Spider-Man',
     createdAt: 47
   },
@@ -345,7 +350,7 @@ export const DEFAULT_CATALOG = [
     anio: 2023,
     generos: ['Animación', 'Acción', 'Aventura', 'Ciencia ficción'],
     duracion: 140,
-    recurso: TMDB_PAGE(569094),
+    recurso: 'https://pelisflix2hd.pro/88-spider-man-cruzando-el-multiverso-2023-online-pelisflix2',
     categoria: 'Spider-Man',
     createdAt: 48
   },
@@ -361,7 +366,7 @@ export const DEFAULT_CATALOG = [
     anio: 2015,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 91,
-    recurso: TMDB_PAGE(211672),
+    recurso: 'https://pelisflix2hd.pro/10013-los-minions-2015-online-pelisflix2',
     categoria: 'Minions',
     createdAt: 49
   },
@@ -375,7 +380,7 @@ export const DEFAULT_CATALOG = [
     anio: 2022,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 87,
-    recurso: TMDB_PAGE(438148),
+    recurso: 'https://pelisflix2hd.pro/1501-minions-nace-un-villano-2022-online-pelisflix2',
     categoria: 'Minions',
     createdAt: 50
   },
@@ -391,7 +396,7 @@ export const DEFAULT_CATALOG = [
     anio: 2010,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 95,
-    recurso: TMDB_PAGE(20352),
+    recurso: 'https://pelisflix2hd.pro/11283-mi-villano-favorito-2010-online-pelisflix2',
     categoria: 'Mi Villano Favorito',
     createdAt: 51
   },
@@ -405,7 +410,7 @@ export const DEFAULT_CATALOG = [
     anio: 2013,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 98,
-    recurso: TMDB_PAGE(93456),
+    recurso: 'https://pelisflix2hd.pro/10630-mi-villano-favorito-2-2013-online-pelisflix2',
     categoria: 'Mi Villano Favorito',
     createdAt: 52
   },
@@ -419,7 +424,7 @@ export const DEFAULT_CATALOG = [
     anio: 2017,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 89,
-    recurso: TMDB_PAGE(324852),
+    recurso: 'https://pelisflix2hd.pro/9646-mi-villano-favorito-3-2017-online-pelisflix2',
     categoria: 'Mi Villano Favorito',
     createdAt: 53
   },
@@ -433,7 +438,7 @@ export const DEFAULT_CATALOG = [
     anio: 2024,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 94,
-    recurso: TMDB_PAGE(519182),
+    recurso: 'https://pelisflix2hd.pro/4850-mi-villano-favorito-4-2024-online-pelisflix2',
     categoria: 'Mi Villano Favorito',
     createdAt: 54
   },
@@ -449,7 +454,7 @@ export const DEFAULT_CATALOG = [
     anio: 2016,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 87,
-    recurso: TMDB_PAGE(328111),
+    recurso: 'https://pelisflix2hd.pro/9923-la-vida-secreta-de-tus-mascotas-2016-online-pelisflix2',
     categoria: 'Mascotas',
     createdAt: 55
   },
@@ -463,7 +468,7 @@ export const DEFAULT_CATALOG = [
     anio: 2019,
     generos: ['Animación', 'Comedia', 'Familia'],
     duracion: 86,
-    recurso: TMDB_PAGE(412117),
+    recurso: 'https://pelisflix2hd.pro/8416-la-vida-secreta-de-tus-mascotas-2-online-pelisflix2',
     categoria: 'Mascotas',
     createdAt: 56
   },
@@ -479,7 +484,7 @@ export const DEFAULT_CATALOG = [
     anio: 2016,
     generos: ['Animación', 'Aventura', 'Fantasía', 'Musical'],
     duracion: 107,
-    recurso: TMDB_PAGE(277834),
+    recurso: 'https://pelisflix2hd.pro/9805-moana-un-mar-de-aventuras-2016-online-pelisflix2',
     categoria: 'Moana',
     createdAt: 57
   },
@@ -493,7 +498,7 @@ export const DEFAULT_CATALOG = [
     anio: 2024,
     generos: ['Animación', 'Aventura', 'Fantasía', 'Musical'],
     duracion: 100,
-    recurso: TMDB_PAGE(744857),
+    recurso: 'https://pelisflix2hd.pro/5418-moana-2-2024-online-pelisflix2',
     categoria: 'Moana',
     createdAt: 58
   },
@@ -509,7 +514,7 @@ export const DEFAULT_CATALOG = [
     anio: 2006,
     generos: ['Animación', 'Familia', 'Aventura', 'Comedia'],
     duracion: 116,
-    recurso: TMDB_PAGE(920),
+    recurso: 'https://pelisflix2hd.pro/11974-cars-2006-online-pelisflix2',
     categoria: 'Cars',
     createdAt: 59
   },
@@ -523,7 +528,7 @@ export const DEFAULT_CATALOG = [
     anio: 2011,
     generos: ['Animación', 'Familia', 'Aventura', 'Comedia'],
     duracion: 106,
-    recurso: TMDB_PAGE(49013),
+    recurso: 'https://pelisflix2hd.pro/11147-cars-2-2011-online-pelisflix2',
     categoria: 'Cars',
     createdAt: 60
   },
@@ -537,7 +542,7 @@ export const DEFAULT_CATALOG = [
     anio: 2017,
     generos: ['Animación', 'Familia', 'Aventura', 'Comedia'],
     duracion: 102,
-    recurso: TMDB_PAGE(260514),
+    recurso: 'https://pelisflix2hd.pro/9712-cars-3-2017-online-pelisflix2',
     categoria: 'Cars',
     createdAt: 61
   },
@@ -553,7 +558,7 @@ export const DEFAULT_CATALOG = [
     anio: 2001,
     generos: ['Fantasía', 'Aventura', 'Acción'],
     duracion: 178,
-    recurso: TMDB_PAGE(120),
+    recurso: 'https://pelisflix2hd.pro/7029-el-sesor-de-los-anillos-la-comunidad-del-anillo-2001-online-pelisflix2',
     categoria: 'El Señor de los Anillos',
     createdAt: 62
   },
@@ -566,7 +571,7 @@ export const DEFAULT_CATALOG = [
     anio: 2002,
     generos: ['Fantasía', 'Aventura', 'Acción'],
     duracion: 179,
-    recurso: TMDB_PAGE(121),
+    recurso: 'https://pelisflix2hd.pro/7032-el-sesor-de-los-anillos-las-dos-torres-2002-online-pelisflix2',
     categoria: 'El Señor de los Anillos',
     createdAt: 63
   },
@@ -579,7 +584,7 @@ export const DEFAULT_CATALOG = [
     anio: 2003,
     generos: ['Fantasía', 'Aventura', 'Acción'],
     duracion: 201,
-    recurso: TMDB_PAGE(122),
+    recurso: 'https://pelisflix2hd.pro/7027-el-sesor-de-los-anillos-el-retorno-del-rey-2003-online-pelisflix2',
     categoria: 'El Señor de los Anillos',
     createdAt: 64
   },

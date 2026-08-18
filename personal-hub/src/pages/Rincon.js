@@ -21,13 +21,15 @@ import { gameCover } from '../utils/gameCovers.js';
 import {
   baseFolders, basePhotos, userPhotos, addUserPhotos,
   visiblePhotos, hiddenPhotos, hidePhoto, loadFavPhotos, saveFavPhotos, toggleFavPhoto,
-  albumMeta, saveAlbumMeta, knownRatio, rememberRatio, photoDate, photoTs, albumYear
+  albumMeta, saveAlbumMeta, knownRatio, rememberRatio, photoDate, photoTs, albumYear,
+  hydrateGallery
 } from '../services/galleryData.js';
 import {
   memeAlbums, memeItems, addMemesToAlbum, hideMeme, memePoster,
   albumMeta as memeMeta, saveAlbumMeta as saveMemeMeta, albumCover as memeAlbumCover,
   createMemeAlbum, renameMemeAlbum, deleteMemeAlbum,
-  loadMemeFavs, saveMemeFavs, toggleMemeFav, albumSummary, libraryStats
+  loadMemeFavs, saveMemeFavs, toggleMemeFav, albumSummary, libraryStats,
+  hydrateMemes
 } from '../services/memesData.js';
 import { userStore } from '../stores/user.store.js';
 import { userPrefKey } from '../utils/userStorage.js';
@@ -992,8 +994,9 @@ export function RinconPage(router) {
   // 2. GALERÍA + MEMES (PRESERVED)
   // ==========================================
   function renderGaleriaMemes() {
-    // Barra superior (Galería | Memes | Audios): navega entre las rutas
-    // independientes. En PC las mismas secciones aparecen también en la sidebar.
+    // Barra superior (Galería | Memes | Audios | Minecraft): navega entre
+    // las rutas independientes. En PC las mismas secciones aparecen también
+    // en la sidebar.
     const currentBase = (router.getCurrentPath() || '').split('?')[0];
     const activeTab = currentBase === '/memes' ? 'memes' : currentBase === '/audios' ? 'audios' : 'galeria';
     page.innerHTML = `
@@ -1011,6 +1014,9 @@ export function RinconPage(router) {
           <button class="rincon-subnav__btn${activeTab === 'audios' ? ' active' : ''}" data-sub="audios">
             <span class="rincon-subnav__icon-wrap">${ICON_SVGS['mic']}</span> Audios
           </button>
+          <button class="rincon-subnav__btn" data-sub="minecraft">
+            <span class="rincon-subnav__icon-wrap">⛏️</span> Minecraft
+          </button>
         </nav>
         <div id="galeriaMemesContent">${
           activeTab === 'memes' ? renderMemesContent() :
@@ -1025,6 +1031,7 @@ export function RinconPage(router) {
         const sub = btn.dataset.sub;
         if (sub === 'memes') router.navigate('/memes');
         else if (sub === 'audios') router.navigate('/audios');
+        else if (sub === 'minecraft') router.navigate('/minecraft');
         else router.navigate('/galeria');
       });
     });
@@ -3714,6 +3721,26 @@ export function RinconPage(router) {
   // Carga los audios del día 3 (una sola vez, se cachean en state)
   loadAudios().catch(() => {});
 
+  // Sincronización cross-device de la galería y los memes: al entrar se hace
+  // pull/push con Supabase (lo subido en el móvil aparece aquí) y los cambios
+  // en caliente llegan por el onContentChange de abajo.
+  const offGallery = onContentChange(['gallery_uploads'], (id) => {
+    hydrateGallery().then(res => {
+      if (res?.changed && (state.view === 'galeria-memes' || state.view === 'memes')) render();
+    }).catch(() => {});
+  });
+  const offMemes = onContentChange(['meme_data'], (id) => {
+    hydrateMemes().then(res => {
+      if (res?.changed && (state.view === 'galeria-memes' || state.view === 'memes')) render();
+    }).catch(() => {});
+  });
+  hydrateGallery().then(res => {
+    if (res?.changed && (state.view === 'galeria-memes' || state.view === 'memes')) render();
+  }).catch(() => {});
+  hydrateMemes().then(res => {
+    if (res?.changed && (state.view === 'galeria-memes' || state.view === 'memes')) render();
+  }).catch(() => {});
+
   // Tiempo real: cuando el Admin cambia una portada (o el catálogo de regalos
   // que alimenta la galería), se refleja al instante para todos los usuarios.
   const offContent = onContentChange(['rincon_covers', 'gifts', 'audios'], (id) => {
@@ -3752,6 +3779,8 @@ export function RinconPage(router) {
     stopAllRotations();
     offPlayerCard();
     offContent();
+    offGallery();
+    offMemes();
     // Pausa cualquier audio del Rincón que esté sonando
     page.querySelectorAll('.audios-player-card audio').forEach(a => a.pause());
     if (galleryHeroTimer) { clearInterval(galleryHeroTimer); galleryHeroTimer = null; }
@@ -3768,4 +3797,66 @@ export function RinconPage(router) {
   };
 
   return page;
+}
+
+// ==========================================
+// MODAL REUTILIZABLE — Añadir por enlace
+// (fotos/vídeos/audios desde una URL directa,
+//  varias a la vez, una por línea)
+// ==========================================
+
+/** Extrae URLs válidas de un texto pegado (una por línea o separadas por espacios/comas). */
+function extractLinkUrls(text) {
+  const raw = (text || '').split(/[\s,;]+/).filter(Boolean);
+  return [...new Set(raw.filter(u => /^https?:\/\//i.test(u)))];
+}
+
+/**
+ * Abre un modal para pegar URLs de fotos/vídeos/audios.
+ * @param {object} opts
+ *  - title: texto del título (p. ej. "Añadir por enlace")
+ *  - hint: texto de ayuda bajo el título
+ *  - placeholder: placeholder del textarea
+ *  - accept: qué tipo espera ("image" | "video" | "audio" | "image,audio" ...) para el texto del botón
+ *  - onAdd(urls): callback con el array de URLs extraídas
+ */
+function openLinkUrlsModal(opts) {
+  const {
+    title = 'Añadir por enlace',
+    hint = 'Pega las URLs (una por línea). Funcionan enlaces directos, p. ej. de Cloudinary.',
+    placeholder = 'https://...\nhttps://...',
+    accept = '',
+    onAdd
+  } = opts || {};
+  const overlay = document.createElement('div');
+  overlay.className = 'photo-menu-overlay mc-editor-overlay';
+  overlay.innerHTML = `
+    <div class="photo-menu-sheet mc-editor">
+      <div class="mc-editor-head">
+        <h3>🔗 ${escapeHtml(title)}</h3>
+        <button class="photo-menu-close" aria-label="Cerrar">✕</button>
+      </div>
+      <p class="mc-confirm-text">${escapeHtml(hint)}</p>
+      <label class="mc-field">
+        <span>URLs</span>
+        <textarea class="mc-link-textarea" rows="5" placeholder="${escapeHtml(placeholder)}" aria-label="URLs"></textarea>
+      </label>
+      <div class="mc-editor-actions">
+        <button class="mc-btn" data-mc-close>Cancelar</button>
+        <button class="mc-btn mc-btn--primary" data-mc-add>Añadir</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('.photo-menu-close').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('[data-mc-close]').addEventListener('click', close);
+  overlay.querySelector('[data-mc-add]').addEventListener('click', () => {
+    const urls = extractLinkUrls(overlay.querySelector('.mc-link-textarea').value);
+    if (!urls.length) { showToast('Pega al menos una URL válida (https://…)', 'error'); return; }
+    close();
+    onAdd?.(urls);
+  });
+  setTimeout(() => overlay.querySelector('.mc-link-textarea').focus(), 50);
 }

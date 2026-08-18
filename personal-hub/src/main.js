@@ -72,6 +72,12 @@ function init() {
     protected: true
   });
 
+  // Sección Minecraft: mundos de Minecraft con fotos/vídeos por categoría
+  router.addRoute('/minecraft', lazy(() => import('./pages/Minecraft.js').then(m => m.MinecraftPage)), {
+    title: 'Minecraft · Personal Hub',
+    protected: true
+  });
+
   router.addRoute('/curiosidades', lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)), {
     title: 'Curiosidades · Personal Hub',
     protected: true

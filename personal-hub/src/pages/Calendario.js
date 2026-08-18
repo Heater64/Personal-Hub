@@ -8,6 +8,13 @@ import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userPrefKey } from '../utils/userStorage.js';
 import { todayISO, dayOfMonthInSpain } from '../utils/format.js';
+import {
+  getCalendarOverrides,
+  applyCalendarDayOverride,
+  setCalendarOverrideMode,
+  setCalendarDayOverride,
+  clearCalendarOverrides
+} from '../utils/calendarOverrides.js';
 import { buildVideoPlayer } from '../components/MediaLightbox.js';
 import { loadGiftsCatalog } from '../services/gifts.service.js';
 import { onContentChange } from '../services/realtime.service.js';
@@ -144,6 +151,15 @@ async function loadGifts() {
 function getDayState(dateStr, ids) {
   if (!ids?.length) return 'empty';
   const today = getTodayStr();
+  // Overrides LOCALES (solo este navegador): permiten forzar el bloqueo de
+  // todos los días (o de días concretos) para testear en producción sin
+  // cambiar las fechas reales ni la BD. Gana sobre la lógica de fecha.
+  const override = applyCalendarDayOverride(dateStr);
+  if (override === 'locked') return 'locked';
+  if (override === 'open') {
+    if (ids.every(id => progressMap[id]?.opened)) return 'opened';
+    return dateStr === today ? 'today' : 'catchup';
+  }
   // Bloqueo por fecha: el día solo se abre cuando llega la fecha de su regalo.
   // Se comprueba ANTES del estado 'opened' para que los días futuros que se
   // abrieron con una versión anterior (cuando todo estaba disponible) queden
@@ -182,6 +198,9 @@ export function CalendarioPage(router) {
   // Modo temporal de revisión: permite abrir todos los regalos sin cambiar
   // sus fechas reales ni la distribución futura del calendario.
   previewAllGifts = router?.currentRoute?.query?.previewGifts === '1';
+  // El panel local de pruebas se recuerda abierto entre re-renders (cambiar
+  // el modo re-renderiza el calendario entero).
+  let devPanelOpen = false;
 
   // ===== ESTADO DE CARGA (skeleton) =====
   page.innerHTML = `
@@ -250,6 +269,38 @@ export function CalendarioPage(router) {
     }
   }
 
+  // ===== HERRAMIENTA LOCAL DE PRUEBAS =====
+  // Botón flotante + panel: bloquea/desbloquea todos los días del calendario
+  // SOLO en este navegador (localStorage). Sirve para hacer cambios y testear
+  // en producción sin tocar las fechas reales ni la BD.
+  function renderDevTools() {
+    const o = getCalendarOverrides();
+    const mode = o.mode;
+    const active = mode !== 'auto';
+    const modeLabel = mode === 'all-open' ? 'todo abierto'
+      : mode === 'all-locked' ? 'todo bloqueado' : 'auto';
+    return `
+      <button type="button" class="cal-dev-btn ${active ? 'is-active' : ''}" data-dev-toggle aria-expanded="${devPanelOpen}">
+        🧪 ${active ? modeLabel : 'Modo local'}
+      </button>
+      <div class="cal-dev-panel ${devPanelOpen ? 'is-open' : ''}" data-dev-panel role="dialog" aria-label="Overrides locales del calendario">
+        <p class="cal-dev-panel__title">
+          🧪 Calendario local
+          <small>solo este dispositivo</small>
+        </p>
+        <div class="cal-dev-mode" role="group" aria-label="Modo de prueba">
+          <button type="button" data-dev-mode="auto" class="${mode === 'auto' ? 'is-active' : ''}">Auto</button>
+          <button type="button" data-dev-mode="all-open" class="${mode === 'all-open' ? 'is-active' : ''}">Todo abierto</button>
+          <button type="button" data-dev-mode="all-locked" class="${mode === 'all-locked' ? 'is-active' : ''}">Todo bloqueado</button>
+        </div>
+        <div class="cal-dev-actions">
+          <button type="button" data-dev-clear>Limpiar overrides</button>
+        </div>
+        <p class="cal-dev-note">«Todo abierto» muestra los días desbloqueados como si hubiera llegado su fecha; «Todo bloqueado» los cierra todos. También afecta a la sala de juegos. Solo afecta a este navegador.</p>
+      </div>
+    `;
+  }
+
   // ===== RENDER PRINCIPAL =====
   function renderCalendar() {
     // (accesibilidad) título de página para lectores de pantalla — el mes se lee en el nav
@@ -310,6 +361,8 @@ export function CalendarioPage(router) {
           </div>
         </div>
       </div>
+
+      ${renderDevTools()}
     `;
 
     bindEvents();
@@ -499,6 +552,29 @@ export function CalendarioPage(router) {
     page.querySelector('#calSheetDone').onclick = handleDoneBtn;
     const sheet = page.querySelector('#calSheet');
     sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
+
+    // Overrides locales: botón flotante + panel de pruebas
+    const devToggle = page.querySelector('[data-dev-toggle]');
+    const devPanel = page.querySelector('[data-dev-panel]');
+    if (devToggle && devPanel) {
+      devToggle.addEventListener('click', () => {
+        devPanelOpen = !devPanelOpen;
+        devPanel.classList.toggle('is-open', devPanelOpen);
+        devToggle.setAttribute('aria-expanded', String(devPanelOpen));
+      });
+      devPanel.querySelectorAll('[data-dev-mode]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setCalendarOverrideMode(btn.dataset.devMode);
+          showToast('Modo local actualizado', 'success');
+          renderCalendar();
+        });
+      });
+      devPanel.querySelector('[data-dev-clear]')?.addEventListener('click', () => {
+        clearCalendarOverrides();
+        showToast('Overrides locales eliminados', 'info');
+        renderCalendar();
+      });
+    }
 
   }
 

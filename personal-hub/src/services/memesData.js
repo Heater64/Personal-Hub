@@ -13,12 +13,33 @@
 
 import { MEME_FOLDERS, isVideo, getVideoPoster } from './rincon-data.js';
 import { userPrefKey } from '../utils/userStorage.js';
+import { createSyncStore } from './sync.service.js';
 
 const USER_ALBUMS_KEY = () => userPrefKey('memeUserAlbums');
 const UPLOADS_KEY = () => userPrefKey('memeUploads');
 const META_KEY = () => userPrefKey('memeMeta');
 const HIDDEN_KEY = () => userPrefKey('memeHidden');
 const FAVS_KEY = () => userPrefKey('memeFavs');
+
+// ==========================================
+// SYNC cross-device — álbumes propios y subidas de memes COMPARTIDOS
+// (el admin los crea desde el móvil y aparecen en el PC). Se espejan en
+// la tabla `content` (fila 'meme_data'). Favoritas y ocultas personales.
+// ==========================================
+
+const sync = createSyncStore({
+  id: 'meme_data',
+  readLocal: () => ({ albums: userAlbums(), uploads: readJson(UPLOADS_KEY, {}) }),
+  writeLocal: (data) => {
+    if (Array.isArray(data?.albums)) writeJson(USER_ALBUMS_KEY, data.albums);
+    if (data?.uploads && typeof data.uploads === 'object') writeJson(UPLOADS_KEY, data.uploads);
+  }
+});
+
+/** Sincroniza con el servidor (pull/push). Devuelve { changed, data }. */
+export function hydrateMemes() {
+  return sync.hydrate();
+}
 
 // ==========================================
 // STORAGE helpers (user-scoped)
@@ -73,6 +94,7 @@ export function addMemesToAlbum(albumId, urls) {
   const list = all[albumId] || [];
   all[albumId] = [...urls, ...list]; // los nuevos primero
   writeJson(UPLOADS_KEY, all);
+  sync.markDirty();
 }
 
 /** Marcar un meme como oculto (borrado por el usuario) */
@@ -82,6 +104,7 @@ export function hideMeme(albumId, url) {
   if ((all[albumId] || []).includes(url)) {
     all[albumId] = (all[albumId] || []).filter(u => u !== url);
     writeJson(UPLOADS_KEY, all);
+    sync.markDirty();
     return;
   }
   // Si es contenido base, se oculta
@@ -122,6 +145,7 @@ export function createMemeAlbum(name, desc = '') {
   const album = { id: newAlbumId(), name: name.trim() || 'Nuevo álbum', desc: desc.trim(), createdAt: Date.now() };
   list.push(album);
   writeJson(USER_ALBUMS_KEY, list);
+  sync.markDirty();
   return album;
 }
 
@@ -132,6 +156,7 @@ export function renameMemeAlbum(id, name, desc) {
     return { ...a, name: name.trim() || a.name, desc: desc !== undefined ? desc.trim() : a.desc };
   });
   writeJson(USER_ALBUMS_KEY, list);
+  sync.markDirty();
 }
 
 /** Eliminar un álbum propio + sus subidas asociadas */
@@ -145,6 +170,7 @@ export function deleteMemeAlbum(id) {
     if (k.endsWith(`:${id}`)) { delete meta[k]; changed = true; }
   });
   if (changed) writeJson(META_KEY, meta);
+  sync.markDirty();
 }
 
 // ==========================================

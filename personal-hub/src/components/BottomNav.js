@@ -91,17 +91,14 @@ export function BottomNav(router) {
   // Re-render on auth change
   userStore.onChange(() => render());
 
-  // Listen to route changes
-  const originalNavigate = router.navigate.bind(router);
-  router.navigate = function(path) {
+  // Re-render al cambiar de ruta. Se usa router.afterEach en lugar de
+  // escuchar 'hashchange': router.navigate() usa history.pushState(), que
+  // NO dispara hashchange, así que con hashchange el resaltado de la sección
+  // activa se quedaba congelado en la primera ruta (parecía que siempre
+  // estabas en Inicio). afterEach cubre navigate, replace, popstate y
+  // hashchange por igual.
+  router.afterEach((path) => {
     currentPath = path;
-    originalNavigate(path);
-    // The hashchange event will trigger re-render
-  };
-
-  // Also listen to hash changes
-  window.addEventListener('hashchange', () => {
-    currentPath = router.getCurrentPath();
     render();
   });
 

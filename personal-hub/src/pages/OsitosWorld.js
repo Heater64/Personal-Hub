@@ -7,6 +7,7 @@
 import { escapeHtml } from '../utils/escape.js';
 import { CHARACTERS } from '../data/ositos-data.js';
 import { userPrefKey } from '../utils/userStorage.js';
+import { buildVideoPlayer } from '../components/MediaLightbox.js';
 
 // ==========================================
 // DATOS DEL MUNDO
@@ -19,6 +20,9 @@ const CHAPTERS = [];
 const PLACES = [];
 
 const NEWS = [];
+
+// Vídeo de introducción del mundo (Cloudinary).
+const INTRO_VIDEO_URL = 'https://res.cloudinary.com/dcsent4fs/video/upload/v1787071569/VID_20260802_150647_233_dcsau2.mp4';
 
 /**
  * ¿El valor es contenido real? Los placeholders de scaffolding ('.', vacío,
@@ -251,10 +255,19 @@ export function OsitosWorldPage(router) {
   }
 
   function closeDetail() {
+    // Detiene el reproductor de vídeo si el detalle era el de introducción
+    page.querySelectorAll('.os-detail-video-slot').forEach(slot => {
+      try { slot._osPlayer?.destroy?.(); } catch { /* ya destruido */ }
+      slot._osPlayer = null;
+    });
     showingDetail = null;
     detailData = null;
-    renderContent();
+    // Orden correcto: renderLayout() reconstruye page.innerHTML (incluido el
+    // #ositosContent vacío) y SOLO DESPUÉS renderContent() lo rellena. Antes
+    // se llamaban al revés, así que al cerrar cualquier detalle (personaje,
+    // capítulo, vídeo...) el contenido quedaba en blanco.
     renderLayout();
+    renderContent();
     bindLayoutEvents();
   }
 
@@ -409,9 +422,28 @@ export function OsitosWorldPage(router) {
           ${placeLinks ? `<div class="os-detail-section"><h4>🏰 Lugares</h4><div class="os-detail-chips">${placeLinks}</div></div>` : ''}
         </div>
       `;
+    } else if (showingDetail === 'video') {
+      const v = detailData;
+      const src = v?.url || INTRO_VIDEO_URL;
+      html = `
+        <div class="os-detail-video">
+          <button class="os-detail-back os-detail-back--video" id="osDetailBack">${I.arrowLeft}<span>Volver</span></button>
+          <div class="os-detail-video-slot" data-video-url="${escapeHtml(src)}"></div>
+          <p class="os-detail-video-caption">Bienvenida a Ositos World 🧸✨</p>
+        </div>
+      `;
     }
 
     body.innerHTML = html;
+
+    // Reproductor glass de la galería (misma barra de controles que los
+    // vídeos del Calendario y la Galería).
+    body.querySelectorAll('.os-detail-video-slot[data-video-url]').forEach(slot => {
+      const player = buildVideoPlayer({ src: slot.dataset.videoUrl, poster: '' });
+      slot.appendChild(player.wrap);
+      slot._osPlayer = player;
+    });
+
     bindDetailEvents();
   }
 
@@ -538,6 +570,7 @@ export function OsitosWorldPage(router) {
           <div class="ositos-hero-buttons">
             <button class="ositos-btn-primary" data-nav="historia">📖 Comenzar la aventura</button>
             <button class="ositos-btn-secondary" data-nav="personajes">🧸 Conocer personajes</button>
+            <button class="ositos-btn-video" data-open-intro>🎬 Ver vídeo de introducción</button>
           </div>
         </div>
 
@@ -1047,6 +1080,11 @@ export function OsitosWorldPage(router) {
       btn.addEventListener('click', () => navigateTo(btn.dataset.nav));
     });
 
+    // Vídeo de introducción
+    content.querySelectorAll('[data-open-intro]').forEach(btn => {
+      btn.addEventListener('click', () => openDetail('video', { url: INTRO_VIDEO_URL }));
+    });
+
     // Bind featured cards
     content.querySelectorAll('.ositos-featured-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -1139,8 +1177,8 @@ export function OsitosWorldPage(router) {
                 <input type="text" class="os-search-input" id="ositosSearchInput" placeholder="Buscar personajes, capítulos..." value="${escapeHtml(searchQuery)}" aria-label="Buscar personajes y capítulos">
                 ${searchQuery ? '<button class="os-search-clear" id="osSearchClear">✕</button>' : ''}
               </div>
-              <button class="ositos-hamburger" id="ositosHamburger" aria-label="Menú"><span></span><span></span><span></span></button>
             </div>
+            <button class="ositos-hamburger" id="ositosHamburger" aria-label="Menú"><span></span><span></span><span></span></button>
           </div>
 
           <nav class="ositos-nav-links" id="ositosNavLinks">
@@ -1164,12 +1202,14 @@ export function OsitosWorldPage(router) {
 
         <div class="ositos-body">
           <aside class="ositos-sidebar">
-            <h2 class="ositos-sidebar-title">🤍Reina🤍</h2>
-            <div class="ositos-sidebar-underline">~~~~~~</div>
-            <p class="ositos-sidebar-desc">Imagina tu mundo,<br>diseña a los personajes<br>y diviértete con su historia.</p>
-            <p class="ositos-sidebar-desc">El límite es tu imaginación.</p>
+            <div class="ositos-sidebar-brand">
+              <h2 class="ositos-sidebar-title">🤍Reina🤍</h2>
+              <div class="ositos-sidebar-underline">~~~~~~</div>
+              <p class="ositos-sidebar-desc">Imagina tu mundo,<br>diseña a los personajes<br>y diviértete con su historia.</p>
+              <p class="ositos-sidebar-desc">El límite es tu imaginación.</p>
+            </div>
 
-            <nav class="ositos-sidebar-filters">
+            <nav class="ositos-sidebar-filters" aria-label="Filtrar personajes">
               <button class="ositos-filter-btn ${activeFilter === 'todos' ? 'active' : ''}" data-filter="todos">${I.list}<span>TODOS</span><span class="ositos-filter-count">${CHARACTERS.length}</span></button>
               <button class="ositos-filter-btn ${activeFilter === 'heroe' ? 'active' : ''}" data-filter="heroe">${I.sword}<span>HÉROES</span><span class="ositos-filter-count">${heroes}</span></button>
               <button class="ositos-filter-btn ${activeFilter === 'villano' ? 'active' : ''}" data-filter="villano">${I.skull}<span>VILLANOS</span><span class="ositos-filter-count">${villanos}</span></button>
@@ -1178,7 +1218,7 @@ export function OsitosWorldPage(router) {
 
             <div class="ositos-sidebar-fav">
               <div class="ositos-fav-header">${I.heartFilled}<span>FAVORITOS</span></div>
-              <p class="ositos-fav-desc">Marca tus personajes favoritos<br>para verlos rápido siempre.</p>
+              <p class="ositos-fav-desc">Marca tus personajes favoritos para verlos rápido siempre.</p>
               <button class="ositos-fav-btn" id="showFavoritesBtn">❤️ ${favorites.size > 0 ? `FAVORITOS (${favorites.size})` : 'FAVORITOS'}</button>
             </div>
 

@@ -44,7 +44,7 @@ test('cada juego listado en Juegos tiene su página pública', async () => {
   const source = await readFile(projectPath('personal-hub', 'src', 'pages', 'Juegos.js'), 'utf8');
   const hrefs = [...source.matchAll(/href:\s*'([^']+\.html)'/g)].map(match => match[1]);
 
-  assert.equal(hrefs.length, 25);
+  assert.equal(hrefs.length, 19);
   assert.equal(new Set(hrefs).size, hrefs.length);
   for (const href of hrefs) {
     const relativePath = href.replace(/^\//, '');

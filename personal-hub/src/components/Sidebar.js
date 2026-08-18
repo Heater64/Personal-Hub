@@ -35,9 +35,10 @@ const RINCON_CARDS = [
 ];
 
 const GALERIA_ITEMS = [
-  { label: 'Galería', icon: 'image',     href: '/galeria' },
-  { label: 'Memes',   icon: 'smile',     href: '/memes' },
-  { label: 'Audios',  icon: 'mic',       href: '/audios' }
+  { label: 'Galería',   icon: 'image',     href: '/galeria' },
+  { label: 'Memes',     icon: 'smile',     href: '/memes' },
+  { label: 'Audios',    icon: 'mic',       href: '/audios' },
+  { label: 'Minecraft', icon: 'gamepad-2', href: '/minecraft' }
 ];
 
 const CURIOSIDADES_ITEMS = [
@@ -100,7 +101,7 @@ export function Sidebar(router) {
     // Grupos contextuales: cambian según la sección en la que estés
     const basePath = currentPath.split('?')[0];
     const onRinconLanding = basePath === '/rincon';
-    const onGaleria = ['/galeria', '/memes', '/audios'].includes(basePath);
+    const onGaleria = ['/galeria', '/memes', '/audios', '/minecraft'].includes(basePath);
     const onCuriosidades = basePath === '/curiosidades';
     const onSentimientos = basePath === '/sentimientos';
 
@@ -286,9 +287,12 @@ export function Sidebar(router) {
   // Re-render on auth change
   userStore.onChange(() => render());
 
-  // Re-render on route change
-  window.addEventListener('hashchange', () => {
-    currentPath = router.getCurrentPath();
+  // Re-render on route change. router.afterEach (no hashchange): navigate()
+  // usa history.pushState() que no dispara hashchange, así que con hashchange
+  // los grupos contextuales y el resaltado se quedaban congelados en la
+  // primera ruta (siempre parecía Inicio).
+  router.afterEach((path) => {
+    currentPath = path;
     render();
   });
 
