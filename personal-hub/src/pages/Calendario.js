@@ -20,6 +20,7 @@ import { loadGiftsCatalog } from '../services/gifts.service.js';
 import { onContentChange } from '../services/realtime.service.js';
 import { db } from '../services/db.service.js';
 import { gameCover } from '../utils/gameCovers.js';
+import { userStore } from '../stores/user.store.js';
 
 const PROGRESS_KEY = () => userPrefKey('giftProgress');
 
@@ -274,6 +275,8 @@ export function CalendarioPage(router) {
   // SOLO en este navegador (localStorage). Sirve para hacer cambios y testear
   // en producción sin tocar las fechas reales ni la BD.
   function renderDevTools() {
+    // Solo el admin puede usar los overrides locales de pruebas
+    if (!userStore.isAdmin) return '';
     const o = getCalendarOverrides();
     const mode = o.mode;
     const active = mode !== 'auto';
@@ -553,10 +556,10 @@ export function CalendarioPage(router) {
     const sheet = page.querySelector('#calSheet');
     sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
 
-    // Overrides locales: botón flotante + panel de pruebas
+    // Overrides locales: botón flotante + panel de pruebas (solo admin)
     const devToggle = page.querySelector('[data-dev-toggle]');
     const devPanel = page.querySelector('[data-dev-panel]');
-    if (devToggle && devPanel) {
+    if (devToggle && devPanel && userStore.isAdmin) {
       devToggle.addEventListener('click', () => {
         devPanelOpen = !devPanelOpen;
         devPanel.classList.toggle('is-open', devPanelOpen);
