@@ -1943,7 +1943,7 @@ export function AdminPage(router) {
         case 'relax':      return [['message', 'Instrucciones de desconexión', 'textarea']];
         case 'challenge':  return [['message', 'El reto', 'textarea']];
         case 'polaroid':   return [['image', 'URL de la foto', 'text'], ['caption', 'Pie de foto', 'text']];
-        case 'video':      return [['videoUrl', 'URL del vídeo', 'text'], ['caption', 'Descripción', 'text']];
+        case 'video':      return [['videoUrl', 'URL del vídeo', 'text'], ['caption', 'Descripción', 'text'], ['poster', 'URL de portada (opcional)', 'text']];
         case 'surprise':   return [['message', 'La sorpresa', 'textarea']];
         case 'offline':    return [['message', 'El reto', 'textarea'], ['instructions', 'Instrucciones', 'textarea']];
         case 'craft':      return [['message', 'Descripción', 'textarea'], ['pdfUrl', 'URL del PDF', 'text']];

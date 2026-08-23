@@ -548,9 +548,12 @@
 .cal-sheet__body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: visible;
   display: flex;
   justify-content: center;
   padding: var(--sp-4) 0;
+  padding-left: 24px;
+  padding-right: 24px;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1404,6 +1407,193 @@ body.sheet-locked { overflow: hidden; }
   flex-direction: column;
   align-items: center;
   width: 100%;
+}
+
+/* ==========================================
+   CARRUSEL MULTI-REGALO
+   Días con más de un regalo: tarjetas
+   independientes con flechas laterales.
+   ========================================== */
+.cal-carousel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  user-select: none;
+}
+
+.cal-carousel__viewport {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  position: relative;
+}
+
+.cal-carousel__track {
+  position: relative;
+  min-height: 200px;
+}
+
+.cal-carousel__slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.35s cubic-bezier(0.2, 0.9, 0.4, 1),
+              transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.cal-carousel__slide.is-active {
+  position: relative;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.cal-carousel__slide.is-exit-left {
+  transform: translateX(-40px);
+  opacity: 0;
+}
+
+.cal-carousel__slide.is-exit-right {
+  transform: translateX(40px);
+  opacity: 0;
+}
+
+.cal-carousel__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface);
+  box-shadow: var(--elevation-1);
+  width: 100%;
+}
+
+.cal-carousel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cal-carousel__chip {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 40px;
+  background: var(--accent-dim);
+  border: 1px solid var(--border-accent);
+  color: var(--theme-accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.cal-carousel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  line-height: 1.3;
+}
+
+.cal-carousel__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Flechas laterales */
+.cal-carousel__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  transition: all var(--dur-smooth);
+  box-shadow: var(--elevation-2);
+}
+
+.cal-carousel__arrow:hover:not(:disabled) {
+  background: var(--accent-dim);
+  border-color: var(--border-accent);
+  color: var(--theme-accent);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 0 16px rgba(232, 115, 90, 0.12);
+}
+
+.cal-carousel__arrow:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.94);
+}
+
+.cal-carousel__arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+  transform: translateY(-50%);
+}
+
+.cal-carousel__arrow--prev { left: -18px; }
+.cal-carousel__arrow--next { right: -18px; }
+
+/* Dots */
+.cal-carousel__dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cal-carousel__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--theme-divider);
+  cursor: pointer;
+  transition: all var(--dur-smooth);
+}
+
+.cal-carousel__dot:hover {
+  background: var(--theme-text-secondary);
+  transform: scale(1.25);
+}
+
+.cal-carousel__dot.is-active {
+  background: var(--theme-accent);
+  transform: scale(1.3);
+  box-shadow: 0 0 8px rgba(232, 115, 90, 0.35);
+}
+
+.cal-carousel:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 4px;
+  border-radius: var(--r-lg);
+}
+
+.cal-carousel:focus {
+  outline: none;
+}
+
+/* Responsive: flechas más grandes en desktop */
+@media (min-width: 700px) {
+  .cal-carousel__arrow { width: 40px; height: 40px; }
+  .cal-carousel__arrow--prev { left: -22px; }
+  .cal-carousel__arrow--next { right: -22px; }
+  .cal-carousel__card { padding: 20px; }
 }
 
 /* ==========================================

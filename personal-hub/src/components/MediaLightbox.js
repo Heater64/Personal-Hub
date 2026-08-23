@@ -208,7 +208,7 @@ export function buildVideoPlayer(opts = {}) {
   playOverlay.innerHTML = '<svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
   playOverlay.addEventListener('click', (e) => {
     e.stopPropagation();
-    video.play();
+    video.play().catch(() => {});
     playOverlay.classList.add('hidden');
   });
 
@@ -216,13 +216,42 @@ export function buildVideoPlayer(opts = {}) {
   wrap.appendChild(playOverlay);
   wrap.appendChild(ctrlBar);
 
+  // Mensaje de error si el vídeo no carga (formato no soportado, CORS, etc.)
+  const errorMsg = document.createElement('p');
+  errorMsg.className = 'ml-video-error';
+  errorMsg.textContent = 'No se pudo cargar el vídeo 😔';
+  errorMsg.style.cssText = 'display:none;text-align:center;color:rgba(255,255,255,.6);margin:12px 0;font-size:var(--fs-sm);';
+
+  video.addEventListener('error', () => {
+    // Solo mostrar si el source tiene un error real (no el estado inicial vacío)
+    if (video.error && video.error.code > 2) {
+      errorMsg.style.display = '';
+      playOverlay.classList.add('hidden');
+    }
+  });
+
+  // Cuando el vídeo carga, intenta mostrar su primer frame.
+  // Si el navegador bloqueó el autoplay, reintenta con sonido una vez
+  // el usuario haya interactuado (gesto ya registrado).
+  video.addEventListener('loadeddata', () => {
+    // Si el vídeo tiene dimensión pero sigue en negro/pausado,
+    // reintenta play (el gesto del usuario ya está registrado).
+    if (video.paused && autoplay) {
+      video.play().catch(() => {});
+    }
+  });
+
   // Reproducción inmediata con sonido (gesto del usuario que abrió el reproductor)
   if (autoplay) {
     const playPromise = video.play();
-    if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+    if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {
+      // Autoplay bloqueado por el navegador — el overlay de play sigue visible.
+      // El evento loadeddata reintentará play una vez el source esté listo.
+    });
   }
 
   bindVideoControls(video, ctrlBar, wrap, playOverlay);
+  wrap.appendChild(errorMsg);
 
   /** Libera el reproductor: pausa, suelta recursos y limpia listeners */
   function destroy() {

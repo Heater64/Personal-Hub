@@ -107,6 +107,7 @@ let lastFocusedEl = null;
 let onKey = null;
 let calVideoRefs = []; // vídeos del sheet activo (para pausarlos con suavidad)
 let calAudioRefs = []; // reproductores de audio del sheet activo (ídem)
+let calCarouselIdx = 0; // índice del regalo visible en carrusel multi-regalo
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -584,26 +585,41 @@ export function CalendarioPage(router) {
   // ===== APERTURA DEL DÍA (uno o varios contenidos) =====
   function renderDayContents(gifts) {
     const esc = escapeHtml;
-    // Con un solo contenido, la cabecera de la hoja ya muestra el chip y el
-    // título; no se repiten dentro de la tarjeta.
     const single = gifts.length === 1;
     if (single) {
       const g = gifts[0];
       return `<div class="cal-multi__item is-single">${renderContent(g)}${g?.data?.question ? renderAskBlock(g) : ''}</div>`;
     }
-    return `<div class="cal-multi">${gifts.map((g, i) => {
-      const meta = TYPE_META[g.type] || { label: 'Sorpresa', emoji: '✨' };
-      return `
-        <div class="cal-multi__item">
-          ${i > 0 ? '<div class="cal-multi__sep" aria-hidden="true"></div>' : ''}
-          <div class="cal-multi__head">
-            <span class="cal-multi__chip">${meta.emoji} ${meta.label}</span>
-            <h4 class="cal-multi__title">${esc(g.title || meta.label)}</h4>
+    // Carrusel: cada regalo es un slide independiente con flechas laterales
+    return `
+      <div class="cal-carousel" data-total="${gifts.length}" tabindex="0">
+        <button class="cal-carousel__arrow cal-carousel__arrow--prev" data-carousel-prev aria-label="Regalo anterior" disabled>${ICON_CHEV('left')}</button>
+        <div class="cal-carousel__viewport">
+          <div class="cal-carousel__track">
+            ${gifts.map((g, i) => {
+              const meta = TYPE_META[g.type] || { label: 'Sorpresa', emoji: '✨' };
+              return `
+              <div class="cal-carousel__slide${i === 0 ? ' is-active' : ''}" data-carousel-slide="${i}">
+                <div class="cal-carousel__card">
+                  <div class="cal-carousel__head">
+                    <span class="cal-carousel__chip">${meta.emoji} ${meta.label}</span>
+                    <h4 class="cal-carousel__title">${esc(g.title || meta.label)}</h4>
+                  </div>
+                  <div class="cal-carousel__body">${renderContent(g)}</div>
+                  ${g?.data?.question ? renderAskBlock(g) : ''}
+                </div>
+              </div>`;
+            }).join('')}
           </div>
-          <div class="cal-multi__body">${renderContent(g)}</div>
-          ${g?.data?.question ? renderAskBlock(g) : ''}
-        </div>`;
-    }).join('')}</div>`;
+        </div>
+        <button class="cal-carousel__arrow cal-carousel__arrow--next" data-carousel-next aria-label="Siguiente regalo">${ICON_CHEV('right')}</button>
+        <div class="cal-carousel__dots">
+          ${gifts.map((g, i) => {
+            const meta = TYPE_META[g.type] || { label: 'Sorpresa', emoji: '✨' };
+            return `<button class="cal-carousel__dot${i === 0 ? ' is-active' : ''}" data-carousel-dot="${i}" aria-label="Regalo ${i + 1}: ${esc(meta.label)}"></button>`;
+          }).join('')}
+        </div>
+      </div>`;
   }
 
   function openDay(dateStr, ids) {
@@ -668,6 +684,13 @@ export function CalendarioPage(router) {
 
     doneBtn.textContent = 'Hecho ❤';
     doneBtn.dataset.playUrl = '';
+
+    // Carrusel de multi-regalo: flechas, dots, swipe, teclado
+    const carousel = body.querySelector('.cal-carousel');
+    if (carousel) {
+      bindCarousel(carousel, gifts.length);
+      requestAnimationFrame(() => carousel.focus());
+    }
 
     // Quiz interactivo — tocar una opción responde con feedback inmediato
     bindQuiz(body);
@@ -880,6 +903,70 @@ export function CalendarioPage(router) {
           }
         });
       });
+    });
+  }
+
+  /** Carrusel de multi-regalo: flechas, dots, swipe y teclado. */
+  function bindCarousel(root, total) {
+    calCarouselIdx = 0;
+    const slides = root.querySelectorAll('[data-carousel-slide]');
+    const dots = root.querySelectorAll('[data-carousel-dot]');
+    const prevBtn = root.querySelector('[data-carousel-prev]');
+    const nextBtn = root.querySelector('[data-carousel-next]');
+    const viewport = root.querySelector('.cal-carousel__viewport');
+
+    function goTo(idx) {
+      if (idx < 0 || idx >= total || idx === calCarouselIdx) return;
+      const dir = idx > calCarouselIdx ? 1 : -1;
+      slides[calCarouselIdx]?.classList.remove('is-active');
+      slides[calCarouselIdx]?.classList.add(dir > 0 ? 'is-exit-left' : 'is-exit-right');
+      calCarouselIdx = idx;
+      slides[calCarouselIdx]?.classList.add('is-active');
+      dots.forEach((d, i) => d.classList.toggle('is-active', i === idx));
+      prevBtn.disabled = idx === 0;
+      nextBtn.disabled = idx === total - 1;
+      // Limpia clases de salida tras la transición
+      setTimeout(() => {
+        slides.forEach(s => { s.classList.remove('is-exit-left', 'is-exit-right'); });
+      }, 350);
+      // Reinicia audio/video del slide anterior si existía
+      const prevSlide = slides[idx - dir];
+      if (prevSlide) {
+        prevSlide.querySelectorAll('audio, video').forEach(el => { try { el.pause(); } catch(e) {} });
+      }
+    }
+
+    prevBtn.addEventListener('click', () => goTo(calCarouselIdx - 1));
+    nextBtn.addEventListener('click', () => goTo(calCarouselIdx + 1));
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => goTo(parseInt(dot.dataset.carouselDot, 10)));
+    });
+
+    // Swipe táctil
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let swiping = false;
+    viewport.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      swiping = false;
+    }, { passive: true });
+    viewport.addEventListener('touchmove', (e) => {
+      const dx = e.touches[0].clientX - touchStartX;
+      const dy = e.touches[0].clientY - touchStartY;
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) swiping = true;
+    }, { passive: true });
+    viewport.addEventListener('touchend', (e) => {
+      if (!swiping) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (dx < -40) goTo(calCarouselIdx + 1);
+      else if (dx > 40) goTo(calCarouselIdx - 1);
+    }, { passive: true });
+
+    // Teclado: flechas izquierda/derecha solo cuando el carrusel tiene foco
+    root.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(calCarouselIdx - 1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); goTo(calCarouselIdx + 1); }
     });
   }
 
