@@ -120,8 +120,8 @@ function preloadAround(idx) {
       v.preload = 'auto';
       v.muted = true;
       const s = document.createElement('source');
-      s.src = item.src;
-      s.type = detectMime(item.src);
+      s.src = browserVideoSrc(item.src);
+      s.type = detectMime(s.src);
       v.appendChild(s);
       try { v.load(); } catch (e) {}
       preloadPool.push(v);
@@ -147,6 +147,22 @@ function detectMime(src) {
   if (/\.webm(\?.*)?$/i.test(src)) return 'video/webm';
   if (/\.mov(\?.*)?$/i.test(src)) return 'video/quicktime';
   return 'video/mp4';
+}
+
+/**
+ * Asegura que una URL de vídeo de Cloudinary use H.264 (AVC) en vez de
+ * HEVC (H.265). Los navegadores desktop/android no decodifican HEVC
+ * por defecto, resultando en pantalla negra. Cloudinary sirve H.264
+ * al añadir la transformación /f_mp4,vc_h264/ en la URL.
+ * Solo se transforman URLs de Cloudinary; el resto se devuelve tal cual.
+ */
+function browserVideoSrc(src) {
+  if (!src) return src;
+  if (!src.includes('res.cloudinary.com') || !src.includes('/video/upload/')) return src;
+  // Si ya tiene la transformación de codec, no duplicar
+  if (/vc_h264|f_mp4/.test(src)) return src;
+  // Insertar f_mp4,vc_h264 justo después de /video/upload/
+  return src.replace('/video/upload/', '/video/upload/f_mp4,vc_h264/');
 }
 
 function getItem() { return state.items[state.currentIndex]; }
@@ -180,7 +196,8 @@ const VIDEO_CTRL_HTML = `
  * Devuelve { wrap, video, playOverlay }.
  */
 export function buildVideoPlayer(opts = {}) {
-  const { src = '', poster = '', autoplay = true, loop = true, className = 'ml-media' } = opts;
+  const { src: rawSrc = '', poster = '', autoplay = true, loop = true, className = 'ml-media' } = opts;
+  const src = browserVideoSrc(rawSrc);
   const wrap = document.createElement('div');
   wrap.className = 'ml-video-wrap';
 
