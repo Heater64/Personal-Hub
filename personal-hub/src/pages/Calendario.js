@@ -16,6 +16,7 @@ import {
   clearCalendarOverrides
 } from '../utils/calendarOverrides.js';
 import { buildVideoPlayer } from '../components/MediaLightbox.js';
+import { renderMathText } from '../utils/renderMath.js';
 import { loadGiftsCatalog } from '../services/gifts.service.js';
 import { onContentChange } from '../services/realtime.service.js';
 import { db } from '../services/db.service.js';
@@ -108,6 +109,23 @@ let onKey = null;
 let calVideoRefs = []; // vídeos del sheet activo (para pausarlos con suavidad)
 let calAudioRefs = []; // reproductores de audio del sheet activo (ídem)
 let calCarouselIdx = 0; // índice del regalo visible en carrusel multi-regalo
+let closeSheetTimer = null; // timeout pendiente de cierre de sheet (para cancelar si se reabre)
+
+// ===== AUTO-PLAY DE VÍDEOS =====
+// Persiste en localStorage. true = los vídeos se reproducen al abrir la hoja.
+const AUTOPLAY_KEY = () => userPrefKey('calAutoPlayVideos');
+let autoPlayVideos = (() => {
+  try {
+    const stored = localStorage.getItem(AUTOPLAY_KEY());
+    if (stored !== null) return JSON.parse(stored);
+  } catch { /* noop */ }
+  return true; // por defecto activado
+})();
+
+function saveAutoPlayVideos() {
+  try { localStorage.setItem(AUTOPLAY_KEY(), JSON.stringify(autoPlayVideos)); } catch { /* noop */ }
+}
+
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -338,6 +356,12 @@ export function CalendarioPage(router) {
           <span class="cal-section-chip">${ICON_CAL}</span>
           <h1 class="cal-section-title">Calendario de sorpresas</h1>
           <span class="cal-section-line"></span>
+          <button type="button" class="cal-autoplay-btn ${autoPlayVideos ? 'is-active' : ''}" data-cal-autoplay aria-label="${autoPlayVideos ? 'Desactivar reproducción automática de vídeos' : 'Activar reproducción automática de vídeos'}" title="${autoPlayVideos ? 'Reproducción automática ON' : 'Reproducción automática OFF'}">
+            ${autoPlayVideos
+              ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
+              : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/><line x1="4" y1="4" x2="20" y2="20"/></svg>'}
+            <span class="cal-autoplay-label">${autoPlayVideos ? 'Auto' : 'Manual'}</span>
+          </button>
         </div>
         ${previewAllGifts ? '<div class="cal-preview-banner" role="status">🧪 Modo revisión: todos los regalos están disponibles hoy. Las fechas reales no se han cambiado.</div>' : ''}
 
@@ -536,6 +560,17 @@ export function CalendarioPage(router) {
     const todayBtn = page.querySelector('#calTodayBtn');
     if (todayBtn) todayBtn.onclick = () => { currentMonthKey = todayMonthKey(); renderCalendar(); };
 
+    // Toggle global auto-play de vídeos
+    const autoplayBtn = page.querySelector('[data-cal-autoplay]');
+    if (autoplayBtn) {
+      autoplayBtn.addEventListener('click', () => {
+        autoPlayVideos = !autoPlayVideos;
+        saveAutoPlayVideos();
+        renderCalendar();
+        showToast(autoPlayVideos ? 'Reproducción automática activada 🎬' : 'Reproducción manual activada 🎬', 'info');
+      });
+    }
+
     const todayCta = page.querySelector('#calTodayCta');
     if (todayCta) todayCta.onclick = () => openDay(getTodayStr(), normalizeIds(todayCta.dataset.giftIds?.split(' ')));
 
@@ -650,12 +685,38 @@ export function CalendarioPage(router) {
     // Monta los reproductores de vídeo (varios posibles) con la barra glass
     body.querySelectorAll('.cal-video[data-video-url]').forEach(videoSlot => {
       if (!videoSlot.dataset.videoUrl) return;
+      const shouldAutoplay = videoSlot.dataset.autoplay !== '0';
       const player = buildVideoPlayer({
         src: videoSlot.dataset.videoUrl,
-        poster: videoSlot.dataset.poster || ''
+        poster: videoSlot.dataset.poster || '',
+        autoplay: shouldAutoplay
       });
       videoSlot.prepend(player.wrap);
       calVideoRefs.push(player);
+    });
+
+    // Enlaza los botones de toggle de auto-play por vídeo
+    body.querySelectorAll('[data-video-autoplay-toggle]').forEach(toggleBtn => {
+      const videoSlot = toggleBtn.closest('.cal-video');
+      if (!videoSlot) return;
+      const updateToggleUI = () => {
+        const isOn = videoSlot.dataset.autoplay !== '0';
+        toggleBtn.classList.toggle('is-on', isOn);
+        const label = toggleBtn.querySelector('.cal-video__toggle-label');
+        if (label) label.textContent = isOn ? 'Auto' : 'Manual';
+        toggleBtn.setAttribute('aria-label', isOn ? 'Desactivar reproducción automática de este vídeo' : 'Activar reproducción automática de este vídeo');
+      };
+      updateToggleUI();
+      toggleBtn.addEventListener('click', () => {
+        const isCurrentlyOn = videoSlot.dataset.autoplay !== '0';
+        videoSlot.dataset.autoplay = isCurrentlyOn ? '0' : '1';
+        updateToggleUI();
+        // Si se acaba de activar y el vídeo no se está reproduciendo, reproducirlo
+        if (videoSlot.dataset.autoplay !== '0') {
+          const videoEl = videoSlot.querySelector('video');
+          if (videoEl && videoEl.paused) videoEl.play().catch(() => {});
+        }
+      });
     });
 
     // Portadas de música: si la imagen falla, se muestra el fallback
@@ -982,6 +1043,9 @@ export function CalendarioPage(router) {
   function closeSheet() {
     const sheet = page.querySelector('#calSheet');
     if (!sheet || !sheet.classList.contains('is-open')) return;
+    // Cancela cualquier timeout de cierre previo (evita que destruya
+    // los reproductores de un sheet recién re-abierto)
+    if (closeSheetTimer) { clearTimeout(closeSheetTimer); closeSheetTimer = null; }
     sheet.classList.remove('is-visible');
     sheet.classList.remove('is-open');
     sheet.setAttribute('aria-hidden', 'true');
@@ -990,15 +1054,19 @@ export function CalendarioPage(router) {
     // Pausa suave antes de destruir los vídeos/audios (evita el corte brusco)
     calVideoRefs.forEach(v => { try { v.video.pause(); } catch (e) {} });
     calAudioRefs.forEach(a => { try { a.audio.pause(); } catch (e) {} });
+    // Guarda las referencias ANTES de vaciar los arrays para que el
+    // setTimeout de destrucción las pueda usar
+    const refsToDestroy = { videos: calVideoRefs, audios: calAudioRefs };
+    calVideoRefs = [];
+    calAudioRefs = [];
     // Deja que la animación de salida complete (el contenido se desliza
     // con el panel) antes de destruirlo — transición no brusca
     const calBody = page.querySelector('#calSheetBody');
-    setTimeout(() => {
+    closeSheetTimer = setTimeout(() => {
+      closeSheetTimer = null;
       if (!sheet.classList.contains('is-open')) {
-        calVideoRefs.forEach(v => { try { v.destroy(); } catch (e) {} });
-        calVideoRefs = [];
-        calAudioRefs.forEach(a => { try { a.destroy(); } catch (e) {} });
-        calAudioRefs = [];
+        refsToDestroy.videos.forEach(v => { try { v.destroy(); } catch (e) {} });
+        refsToDestroy.audios.forEach(a => { try { a.destroy(); } catch (e) {} });
         if (calBody) calBody.innerHTML = '';
       }
     }, 320);
@@ -1092,8 +1160,20 @@ export function CalendarioPage(router) {
         }
         // gifts.json usa `cover` como portada del vídeo; `poster` también se acepta
         const poster = data.poster || data.cover || '';
+        const videoAutoplay = autoPlayVideos ? '1' : '0';
         return `
-          <div class="cal-type cal-video" data-video-url="${esc(videoUrl)}"${poster ? ` data-poster="${esc(poster)}"` : ''}>
+          <div class="cal-type cal-video" data-video-url="${esc(videoUrl)}"${poster ? ` data-poster="${esc(poster)}"` : ''} data-autoplay="${videoAutoplay}">
+            <div class="cal-video__toggle-wrap">
+              <button type="button" class="cal-video__toggle" data-video-autoplay-toggle aria-label="Alternar reproducción automática de este vídeo">
+                <span class="cal-video__toggle-icon cal-video__toggle-icon--on" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </span>
+                <span class="cal-video__toggle-icon cal-video__toggle-icon--off" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/><line x1="4" y1="4" x2="20" y2="20"/></svg>
+                </span>
+                <span class="cal-video__toggle-label"></span>
+              </button>
+            </div>
             ${data.caption ? `<p class="cal-muted">${esc(data.caption)}</p>` : ''}
           </div>`;
       }
@@ -1220,10 +1300,10 @@ export function CalendarioPage(router) {
         const hasAnswer = !!data.answer;
         return `
           <div class="cal-type cal-riddle">
-            <p class="cal-riddle__q">${esc(question)}</p>
+            <div class="cal-riddle__q">${renderMathText(question)}</div>
             ${hasAnswer
               ? `<button type="button" class="cal-riddle__reveal btn-primary" data-riddle-reveal data-label="Mostrar respuesta">Mostrar respuesta</button>
-                 <p class="cal-riddle__a" data-riddle-answer hidden>${esc(data.answer)}</p>`
+                 <div class="cal-riddle__a" data-riddle-answer hidden>${renderMathText(data.answer)}</div>`
               : ''}
           </div>`;
       }
@@ -1266,13 +1346,14 @@ export function CalendarioPage(router) {
 
       case 'math': {
         const problem = data.problem || data.question || data.message || 'Problema de mates';
-        const hasAnswer = !!data.answer;
+        const solution = data.solution || data.answer || '';
+        const hasAnswer = !!solution;
         return `
           <div class="cal-type cal-math">
-            <p class="cal-math__problem">${esc(problem)}</p>
+            <div class="cal-math__problem">${renderMathText(problem)}</div>
             ${hasAnswer
               ? `<button type="button" class="cal-math__reveal btn-primary" data-riddle-reveal data-label="Ver solución">Ver solución</button>
-                 <p class="cal-math__a" data-riddle-answer hidden>${esc(data.answer)}</p>`
+                 <div class="cal-math__a" data-riddle-answer hidden>${renderMathText(solution)}</div>`
               : ''}
           </div>`;
       }

@@ -1,6 +1,6 @@
 # Supabase — Setup completo (SQL + variables)
 
-Todo el SQL que la web necesita está en **`supabase-schema.sql`** (único archivo SQL del proyecto).
+El esquema base está en **`supabase-schema.sql`**. Las migraciones incrementales de `sql/` deben aplicarse después cuando se indique, especialmente `sql/016_aislamiento_playlists.sql`.
 Si notas fallos tipo "RLS / row-level security" al guardar contenido, significa que este esquema
 NO se ha aplicado aún en tu proyecto de Supabase: las políticas no existen y la tabla queda
 en modo denegar-todo.
@@ -18,7 +18,7 @@ en modo denegar-todo.
 
 | Tipo | Elementos |
 |------|-----------|
-| Tablas | `content`, `moods`, `activity_log`, `profiles`, `user_progress`, `analytics_visits`, `analytics_events`, `admin_actions`, `game_rooms`, `game_invitations`, `game_room_players`, `playlists` (playlists de música compartidas de la pareja) |
+| Tablas | `content`, `moods`, `activity_log`, `profiles`, `user_progress`, `analytics_visits`, `analytics_events`, `admin_actions`, `game_rooms`, `game_invitations`, `game_room_players`, `playlists` (playlists personales aisladas por propietario) |
 | Funciones | `is_admin()`, `handle_new_user()`, `prevent_role_escalation()`, `get_game_invite_targets()`, `create_game_invitation()`, `respond_game_invitation()`, `cancel_game_room()`, `get_game_player_state()`, `submit_battleship_move()`, `submit_game_move()`, `request_game_rematch()`, `game_has_line()` |
 | Triggers | `on_auth_user_created` (crea perfil al registrarse), `profiles_prevent_role_change` (anti-escalada de rol) |
 | Buckets | `avatars`, `galeria`, `memes`, `audios` (+ políticas RLS: lectura pública, escritura admin/carpeta propia) |
@@ -48,7 +48,18 @@ SELECT id, email, role, enabled FROM public.profiles WHERE role = 'admin';
 ```
 
 > La primera vez que el admin (u otro usuario) inicia sesión, el trigger `on_auth_user_created`
-> crea su fila en `profiles`. El email `admin@personalhub.com` se marca como `admin` automáticamente.
+> crea su fila en `profiles`. El email `admin@personalhub.com` se marca como `admin` automáticamente, pero solo una cuenta con correo confirmado puede ejercer privilegios.
+
+### Migración de seguridad obligatoria
+
+Después de aplicar el esquema base, ejecuta `sql/016_aislamiento_playlists.sql`. Esta migración:
+
+- elimina las políticas `USING (true)` de playlists;
+- impide que un usuario lea, modifique o borre playlists de otro;
+- impide insertar actividad y analítica atribuidas a otro `user_id`;
+- protege `profiles.role` y `profiles.enabled` frente a cambios del propio usuario.
+
+Las playlists históricas con `created_by IS NULL` no se reasignan automáticamente. Debe hacerlo un administrador de forma explícita tras identificar al propietario real.
 
 ---
 
@@ -61,7 +72,7 @@ SELECT id, email, role, enabled FROM public.profiles WHERE role = 'admin';
 
 ### Vercel (Project → Settings → Environment Variables) — añade las mismas
 Además de las de arriba, **copia `CRON_SECRET` a Vercel** con el mismo valor: el cron
-`/api/push?action=send` (vercel.json, 06:00) se autentica con ese secret.
+`/api/push?action=send` (vercel.json) se ejecuta cada hora y el endpoint solo entrega a las 08:00 de Europe/Madrid, respetando horario de verano.
 
 ---
 

@@ -1938,7 +1938,7 @@ export function AdminPage(router) {
       switch (type) {
         case 'letter':     return [['content', 'Contenido de la carta', 'textarea']];
         case 'affirmation':return [['message', 'Mensaje', 'textarea']];
-        case 'riddle':     return [['question', 'Pregunta / acertijo', 'textarea'], ['answer', 'Respuesta', 'text']];
+        case 'riddle':     return [['question', 'Pregunta / acertijo (soporta LaTeX)', 'textarea'], ['answer', 'Respuesta (soporta LaTeX)', 'textarea']];
         case 'curiosity':  return [['fact', 'Dato curioso', 'textarea']];
         case 'relax':      return [['message', 'Instrucciones de desconexión', 'textarea']];
         case 'challenge':  return [['message', 'El reto', 'textarea']];
@@ -1949,7 +1949,7 @@ export function AdminPage(router) {
         case 'craft':      return [['message', 'Descripción', 'textarea'], ['pdfUrl', 'URL del PDF', 'text']];
         case 'giftBox':    return [['message', 'Mensaje', 'textarea'], ['image', 'URL de imagen (opcional)', 'text']];
         case 'game':       return [['redirectUrl', 'URL del juego', 'text'], ['message', 'Mensaje', 'textarea']];
-        case 'math':       return [['problem', 'Problema', 'textarea'], ['answer', 'Solución', 'text']];
+        case 'math':       return [['problem', 'Problema (soporta LaTeX: $inline$, $$bloque$$)', 'textarea'], ['solution', 'Solución paso a paso (usa LaTeX y markdown)', 'textarea'], ['answer', 'Resultado final (opcional)', 'text']];
         case 'cassette':   return [['message', 'Título / nota', 'text'], ['audioUrl', 'URL del audio', 'text']];
         case 'clickStar':  return [['message', 'Mensaje', 'textarea']];
         case 'quiz':       return [['message', 'Mensaje', 'textarea']];

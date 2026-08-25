@@ -1,9 +1,9 @@
 /* ==========================================
    playlists.service.js — Playlists de música compartidas
 
-   Las playlists son de la pareja: ambos usuarios pueden
-   crearlas, editarlas y eliminarlas (tabla `playlists` de
-   Supabase con RLS de lectura/escritura para authenticated).
+   Las playlists son personales por usuario. El aislamiento lo aplica
+   Supabase mediante `created_by` y RLS; compartir requiere una membresía
+   explícita futura, no acceso global implícito.
 
    · Cada playlist guarda nombre, icono y claves de canción
      ("título | artista" en minúsculas; los datos del tema
@@ -16,11 +16,13 @@
 
 import { supabase } from './supabase.js';
 import { db } from './db.service.js';
+import { getUserId } from '../utils/userStorage.js';
 
 const MIRROR_KEY = 'ph.playlists';
 const EMPTY = [];
 
 let cache = null;          // array de playlists en memoria
+let cacheUserId = null;
 let channel = null;
 let started = false;
 
@@ -35,15 +37,20 @@ export function songKeyOf(song) {
   return songKey(song?.title, song?.artist);
 }
 
+function mirrorKey() {
+  const userId = getUserId();
+  return userId ? `${MIRROR_KEY}.${userId}` : MIRROR_KEY;
+}
+
 function lsGet() {
   try {
-    const v = localStorage.getItem(MIRROR_KEY);
+    const v = localStorage.getItem(mirrorKey());
     return v ? JSON.parse(v) : EMPTY;
   } catch { return EMPTY; }
 }
 
 function lsSet(list) {
-  try { localStorage.setItem(MIRROR_KEY, JSON.stringify(list)); } catch { /* cuota llena */ }
+  try { localStorage.setItem(mirrorKey(), JSON.stringify(list)); } catch { /* cuota llena */ }
 }
 
 function generateId() {
@@ -73,25 +80,38 @@ function isSupabaseReady() {
 // ==========================================
 /** Devuelve las playlists (de Supabase si está disponible; si no, espejo local). */
 export async function loadPlaylists() {
+  const userId = getUserId();
+  if (cacheUserId !== userId) {
+    cache = null;
+    cacheUserId = userId;
+  }
   if (isSupabaseReady()) {
     try {
       const { data, error } = await supabase.from('playlists').select('*').order('created_at', { ascending: true });
       if (!error && Array.isArray(data)) {
         const list = data.map(normalize).filter(Boolean);
         cache = list;
+        cacheUserId = userId;
         lsSet(list); // refresca el espejo offline
         return list;
       }
     } catch { /* caído: usar espejo */ }
   }
-  if (cache) return cache;
+  if (cache && cacheUserId === userId) return cache;
   cache = lsGet().map(normalize).filter(Boolean);
+  cacheUserId = userId;
   return cache;
 }
 
 export function getCachedPlaylists() {
+  const userId = getUserId();
+  if (cacheUserId !== userId) {
+    cache = null;
+    cacheUserId = userId;
+  }
   if (cache) return cache;
   cache = lsGet().map(normalize).filter(Boolean);
+  cacheUserId = userId;
   return cache;
 }
 
@@ -100,21 +120,26 @@ export function getCachedPlaylists() {
 // ==========================================
 /** Escribe el estado local y lo sincroniza con Supabase (con fallback silencioso). */
 async function persist(list, opts = {}) {
+  const userId = getUserId();
   cache = list;
+  cacheUserId = userId;
   lsSet(list);
   window.dispatchEvent(new CustomEvent('ph:playlists-updated', { detail: { list } }));
   if (!isSupabaseReady() || opts.localOnly) return;
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id || null;
-    const rows = list.map(pl => ({
+    if (!user?.id) return;
+    const rows = list
+      .filter(pl => pl.createdBy === user.id)
+      .map(pl => ({
       id: pl.id,
       name: pl.name,
       icon: pl.icon,
       songs: pl.songs,
-      created_by: pl.createdBy || userId,
+      created_by: pl.createdBy || user.id,
       updated_at: new Date().toISOString()
     }));
+    if (!rows.length) return;
     const { error } = await supabase.from('playlists').upsert(rows, { onConflict: 'id' });
     if (error) console.warn('[playlists] No se pudo sincronizar:', error.message);
   } catch (err) {
@@ -132,7 +157,7 @@ export async function createPlaylist(name, icon = '❤️') {
     name: String(name || '').trim() || 'Mi playlist',
     icon: String(icon || '❤️'),
     songs: [],
-    createdBy: null,
+    createdBy: getUserId(),
     createdAt: null,
     updatedAt: null
   };
@@ -142,23 +167,31 @@ export async function createPlaylist(name, icon = '❤️') {
 }
 
 export async function updatePlaylist(pl) {
-  const list = getCachedPlaylists().map(p => p.id === pl.id ? { ...p, ...pl, songs: pl.songs || p.songs } : p);
+  const current = getCachedPlaylists().find(p => p.id === pl.id);
+  if (!current || current.createdBy !== getUserId()) return false;
+  const list = getCachedPlaylists().map(p => p.id === pl.id ? { ...p, ...pl, createdBy: current.createdBy || getUserId(), songs: pl.songs || p.songs } : p);
   await persist(list);
+  return true;
 }
 
 export async function deletePlaylist(id) {
+  const current = getCachedPlaylists().find(p => p.id === id);
+  if (!current || current.createdBy !== getUserId()) return false;
   const list = getCachedPlaylists().filter(p => p.id !== id);
   await persist(list);
   if (isSupabaseReady()) {
-    try { await supabase.from('playlists').delete().eq('id', id); } catch { /* ya local */ }
+    try {
+      await supabase.from('playlists').delete().eq('id', id).eq('created_by', getUserId());
+    } catch { /* ya local */ }
   }
+  return true;
 }
 
 /** Añade una canción (clave) a una playlist. */
 export async function addSongToPlaylist(playlistId, key) {
   const list = getCachedPlaylists();
   const pl = list.find(p => p.id === playlistId);
-  if (!pl) return false;
+  if (!pl || pl.createdBy !== getUserId()) return false;
   if (pl.songs.includes(key)) return false;
   pl.songs.push(key);
   await persist(list);
@@ -169,7 +202,7 @@ export async function addSongToPlaylist(playlistId, key) {
 export async function removeSongFromPlaylist(playlistId, key) {
   const list = getCachedPlaylists();
   const pl = list.find(p => p.id === playlistId);
-  if (!pl) return false;
+  if (!pl || pl.createdBy !== getUserId()) return false;
   const before = pl.songs.length;
   pl.songs = pl.songs.filter(k => k !== key);
   if (pl.songs.length === before) return false;
@@ -182,7 +215,7 @@ export async function moveSong(fromPlaylistId, toPlaylistId, key) {
   const list = getCachedPlaylists();
   const from = list.find(p => p.id === fromPlaylistId);
   const to = list.find(p => p.id === toPlaylistId);
-  if (!from || !to) return false;
+  if (!from || !to || from.createdBy !== getUserId() || to.createdBy !== getUserId()) return false;
   from.songs = from.songs.filter(k => k !== key);
   if (!to.songs.includes(key)) to.songs.push(key);
   await persist(list);

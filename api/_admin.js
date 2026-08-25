@@ -62,8 +62,11 @@ export async function requireAdminCaller(req, res) {
   const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
-  const adminByEmail = ADMIN_EMAILS.includes(user.email);
-  const adminByDb = adminByEmail ? true : await isAdminFromDb(supabaseAdmin, user.id);
+  const emailConfirmed = !!(user.email_confirmed_at || user.confirmed_at);
+  const adminByEmail = emailConfirmed && ADMIN_EMAILS.includes(String(user.email || '').toLowerCase());
+  const adminByDb = emailConfirmed && !adminByEmail
+    ? await isAdminFromDb(supabaseAdmin, user.id)
+    : false;
   if (!adminByEmail && !adminByDb) {
     res.status(403).json({ error: 'Forbidden: admin only' });
     return null;

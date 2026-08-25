@@ -33,20 +33,23 @@ CREATE POLICY "profiles_select_policy" ON profiles FOR SELECT
   USING (id::uuid = auth.uid() OR public.is_admin());
 
 CREATE POLICY "profiles_insert_policy" ON profiles FOR INSERT
-  WITH CHECK (id::uuid = auth.uid());
+  WITH CHECK (
+    public.is_admin()
+    OR (id::uuid = auth.uid() AND COALESCE(role, 'user') = 'user')
+  );
 
 CREATE POLICY "profiles_update_policy" ON profiles FOR UPDATE
-  USING (id::uuid = auth.uid() OR public.is_admin());
+  USING (id::uuid = auth.uid() OR public.is_admin())
+  WITH CHECK (id::uuid = auth.uid() OR public.is_admin());
 
 -- Trigger para evitar que un usuario no-admin cambie su propio rol a admin,
 -- y para evitar que el último administrador se quite su rol.
 CREATE OR REPLACE FUNCTION public.prevent_role_escalation()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.role IS DISTINCT FROM OLD.role THEN
-    -- Solo los administradores pueden cambiar roles
-    IF NOT public.is_admin() THEN
-      RAISE EXCEPTION 'Solo los administradores pueden cambiar el rol.';
+  IF NEW.role IS DISTINCT FROM OLD.role OR NEW.enabled IS DISTINCT FROM OLD.enabled THEN
+    IF auth.role() <> 'service_role' AND NOT public.is_admin() THEN
+      RAISE EXCEPTION 'Solo los administradores pueden cambiar role o enabled.';
     END IF;
 
     -- Evitar que el último admin se quite su propio rol
@@ -59,7 +62,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS profiles_prevent_role_change ON public.profiles;
 CREATE TRIGGER profiles_prevent_role_change
@@ -85,7 +88,7 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

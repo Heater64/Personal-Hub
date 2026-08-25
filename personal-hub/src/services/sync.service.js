@@ -137,7 +137,7 @@ export function createSyncStore({ id, readLocal, writeLocal, adminOnly = true, l
       // locales reales que existan desde antes de la sincronización.
       // Ej.: el PC lleva años con sus mundos en localStorage y el remoto
       // está vacío → subimos lo local en vez de borrarlo.
-      if (!hasData(remote.data) && hasData(local) && !ls.last) {
+      if (!hasData(remote.data) && hasData(readLocal()) && !ls.last) {
         ls.dirty = true;
         await push(true);
         return { changed: false, data: readLocal() };

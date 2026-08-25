@@ -46,12 +46,18 @@ CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id::uuid = auth.uid() AND role = 'admin'
+    SELECT 1
+    FROM public.profiles p
+    JOIN auth.users u ON u.id = p.id
+    WHERE p.id::uuid = auth.uid()
+      AND p.role = 'admin'
+      AND u.email_confirmed_at IS NOT NULL
   )
   OR EXISTS (
     SELECT 1 FROM auth.users
-    WHERE id = auth.uid() AND email = 'admin@personalhub.com'
+    WHERE id = auth.uid()
+      AND LOWER(email) = 'admin@personalhub.com'
+      AND email_confirmed_at IS NOT NULL
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

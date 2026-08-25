@@ -70,3 +70,36 @@ test('los directorios locales de herramientas quedan fuera del repositorio', asy
   assert.match(gitignore, /^\.agents\/$/m);
   assert.match(gitignore, /^\.freebuff\/$/m);
 });
+
+test('las políticas de playlists y telemetría aíslan al usuario autenticado', async () => {
+  const schema = await readFile(projectPath('supabase-schema.sql'), 'utf8');
+  const migration = await readFile(projectPath('sql', '016_aislamiento_playlists.sql'), 'utf8');
+
+  assert.doesNotMatch(schema, /CREATE POLICY "playlists_(read_all|write_all|update_all|delete_all)"/);
+  assert.match(schema, /playlists_select_owner/);
+  assert.match(schema, /created_by = auth\.uid\(\)/);
+  assert.match(schema, /activity_log_insert_own/);
+  assert.match(schema, /analytics_visits_insert_own/);
+  assert.match(schema, /analytics_events_insert_own/);
+  assert.match(schema, /NEW\.enabled IS DISTINCT FROM OLD\.enabled/);
+  assert.match(schema, /email_confirmed_at IS NOT NULL/);
+  assert.match(migration, /playlists_select_owner/);
+
+  const reglas = await readFile(projectPath('sql', '000_Reglas.sql'), 'utf8');
+  assert.match(reglas, /email_confirmed_at IS NOT NULL/);
+});
+
+test('la sincronización no referencia una variable local inexistente', async () => {
+  const source = await readFile(projectPath('personal-hub', 'src', 'services', 'sync.service.js'), 'utf8');
+  assert.doesNotMatch(source, /hasData\(local\)/);
+  assert.match(source, /hasData\(readLocal\(\)\)/);
+});
+
+test('la API de push exige sesión para desuscribirse y admite cron GET', async () => {
+  const pushApi = await readFile(projectPath('api', 'push.js'), 'utf8');
+  assert.match(pushApi, /action === 'send' && !\['GET', 'POST'\]\.includes\(req\.method\)/);
+  assert.match(pushApi, /if \(!token\) return res\.status\(401\)/);
+  assert.doesNotMatch(pushApi, /else if \(endpoint\)/);
+  assert.match(pushApi, /hourInSpain\(\) !== 8/);
+  assert.match(pushApi, /email_confirmed_at/);
+});

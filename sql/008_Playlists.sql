@@ -1,6 +1,6 @@
 -- ==========================================
--- 008_PLAYLISTS.SQL — Playlists de música compartidas
--- Ambos usuarios (pareja) pueden leer y escribir.
+-- 008_PLAYLISTS.SQL — Playlists personales aisladas por usuario.
+-- Compartir requiere una membresía explícita futura.
 -- ==========================================
 
 -- ==========================================
@@ -29,10 +29,19 @@ DROP POLICY IF EXISTS "playlists_read_all" ON playlists;
 DROP POLICY IF EXISTS "playlists_write_all" ON playlists;
 DROP POLICY IF EXISTS "playlists_update_all" ON playlists;
 DROP POLICY IF EXISTS "playlists_delete_all" ON playlists;
+DROP POLICY IF EXISTS "playlists_select_owner" ON playlists;
+DROP POLICY IF EXISTS "playlists_insert_owner" ON playlists;
+DROP POLICY IF EXISTS "playlists_update_owner" ON playlists;
+DROP POLICY IF EXISTS "playlists_delete_owner" ON playlists;
 
-CREATE POLICY "playlists_read_all" ON playlists FOR SELECT USING (true);
-CREATE POLICY "playlists_write_all" ON playlists FOR INSERT WITH CHECK (true);
-CREATE POLICY "playlists_update_all" ON playlists FOR UPDATE USING (true);
-CREATE POLICY "playlists_delete_all" ON playlists FOR DELETE USING (true);
+CREATE POLICY "playlists_select_owner" ON playlists FOR SELECT
+  USING (created_by = auth.uid() OR public.is_admin());
+CREATE POLICY "playlists_insert_owner" ON playlists FOR INSERT
+  WITH CHECK (created_by = auth.uid() OR public.is_admin());
+CREATE POLICY "playlists_update_owner" ON playlists FOR UPDATE
+  USING (created_by = auth.uid() OR public.is_admin())
+  WITH CHECK (created_by = auth.uid() OR public.is_admin());
+CREATE POLICY "playlists_delete_owner" ON playlists FOR DELETE
+  USING (created_by = auth.uid() OR public.is_admin());
 
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.playlists; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

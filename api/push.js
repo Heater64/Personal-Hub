@@ -37,9 +37,13 @@ const PUSH_ID = 'push_subscriptions';
 // CALENDARIO — payload diario consciente
 // ==========================================
 
-function todayServerStr() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+function todayServerStr(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
 }
 
 /**
@@ -115,25 +119,38 @@ async function saveSubscriptions(subscriptions) {
   if (error) throw error;
 }
 
+function hourInSpain(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Madrid',
+    hour: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(date);
+  return Number(parts.find(part => part.type === 'hour')?.value || 0);
+}
+
 // ==========================================
 // HANDLER
 // ==========================================
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  // Esta API se consume desde el mismo origen. No se habilita CORS abierto:
+  // una página externa no debe poder invocar sus operaciones con el token.
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
 
-  if (req.method !== 'POST') {
+  const action = req.query.action || '';
+  if (action === 'send' && !['GET', 'POST'].includes(req.method)) {
+    res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  const action = req.query.action || '';
+  if (action !== 'send' && req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
     switch (action) {
@@ -202,31 +219,22 @@ async function handleSubscribe(req, res) {
 // UNSUBSCRIBE
 // ==========================================
 async function handleUnsubscribe(req, res) {
-  const { endpoint } = req.body || {};
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace(/^Bearer\s*/i, '');
+  if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
 
   try {
     const supabase = getSupabase();
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) return res.status(401).json({ error: 'Invalid or expired session' });
 
     const subscriptions = await getSubscriptions();
-
-    if (user && !userError) {
-      // Remove by userId (preferred)
-      const filtered = subscriptions.filter(s => s.userId !== user.id);
-      await saveSubscriptions(filtered);
-    } else if (endpoint) {
-      // Remove by endpoint (fallback)
-      const filtered = subscriptions.filter(s => s.endpoint !== endpoint);
-      await saveSubscriptions(filtered);
-    } else {
-      return res.status(400).json({ error: 'Need either auth token or endpoint to unsubscribe' });
-    }
+    const filtered = subscriptions.filter(s => s.userId !== user.id);
+    await saveSubscriptions(filtered);
 
     return res.status(200).json({ success: true, message: 'Unsubscribed' });
   } catch {
-    return res.status(200).json({ success: true, message: 'Unsubscribed (best effort)' });
+    return res.status(500).json({ error: 'Could not unsubscribe' });
   }
 }
 
@@ -256,7 +264,8 @@ async function handleSend(req, res) {
           .select('role')
           .eq('id', user.id)
           .maybeSingle();
-        isAdmin = profile?.role === 'admin';
+        isAdmin = profile?.role === 'admin'
+          && !!(user.email_confirmed_at || user.confirmed_at);
       }
     } catch { /* not authenticated */ }
   }
@@ -270,6 +279,12 @@ async function handleSend(req, res) {
 
   if (cronSecret !== expectedSecret && !isAdmin) {
     return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  // Vercel Cron runs in UTC while the product promise is 08:00 Europe/Madrid.
+  // Schedule hourly and accept only the local 08:00 slot so DST is correct.
+  if (!isAdmin && hourInSpain() !== 8) {
+    return res.status(200).json({ success: true, skipped: true, reason: 'Outside delivery window' });
   }
 
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {

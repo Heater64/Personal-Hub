@@ -23,7 +23,8 @@ GRANT ALL ON activity_log TO authenticated;
 DROP POLICY IF EXISTS "activity_log_insert_all" ON activity_log;
 DROP POLICY IF EXISTS "activity_log_select_all" ON activity_log;
 DROP POLICY IF EXISTS "activity_log_select_admin" ON activity_log;
-CREATE POLICY "activity_log_insert_all" ON activity_log FOR INSERT WITH CHECK (true);
+CREATE POLICY "activity_log_insert_own" ON activity_log FOR INSERT
+  WITH CHECK (user_id = auth.uid()::text);
 CREATE POLICY "activity_log_select_admin" ON activity_log FOR SELECT USING (public.is_admin());
 
 -- ==========================================
@@ -47,7 +48,8 @@ GRANT ALL ON analytics_visits TO authenticated;
 DROP POLICY IF EXISTS "analytics_visits_insert_all" ON analytics_visits;
 DROP POLICY IF EXISTS "analytics_visits_select_all" ON analytics_visits;
 DROP POLICY IF EXISTS "analytics_visits_select_admin" ON analytics_visits;
-CREATE POLICY "analytics_visits_insert_all" ON analytics_visits FOR INSERT WITH CHECK (true);
+CREATE POLICY "analytics_visits_insert_own" ON analytics_visits FOR INSERT
+  WITH CHECK (user_id = auth.uid()::text);
 CREATE POLICY "analytics_visits_select_admin" ON analytics_visits FOR SELECT USING (public.is_admin());
 
 -- ==========================================
@@ -72,7 +74,8 @@ GRANT ALL ON analytics_events TO authenticated;
 DROP POLICY IF EXISTS "analytics_events_insert_all" ON analytics_events;
 DROP POLICY IF EXISTS "analytics_events_select_all" ON analytics_events;
 DROP POLICY IF EXISTS "analytics_events_select_admin" ON analytics_events;
-CREATE POLICY "analytics_events_insert_all" ON analytics_events FOR INSERT WITH CHECK (true);
+CREATE POLICY "analytics_events_insert_own" ON analytics_events FOR INSERT
+  WITH CHECK (user_id = auth.uid()::text);
 CREATE POLICY "analytics_events_select_admin" ON analytics_events FOR SELECT USING (public.is_admin());
 
 -- ==========================================

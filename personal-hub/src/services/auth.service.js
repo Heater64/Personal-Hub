@@ -141,7 +141,9 @@ class AuthService {
     if (!this.currentUser) return false;
     // Fuente primaria: rol en profiles (protegido en DB por trigger anti-escalación).
     // Respaldo: email verificado por Supabase Auth (inmutable en el JWT).
-    return this._profileRole === 'admin' || ADMIN_EMAILS.includes(this.currentUser.email);
+    const email = String(this.currentUser.email || '').toLowerCase();
+    const emailVerified = !!(this.currentUser.email_confirmed_at || this.currentUser.confirmed_at);
+    return emailVerified && (this._profileRole === 'admin' || ADMIN_EMAILS.includes(email));
   }
 
   onAuthChange(callback) {

@@ -57,6 +57,113 @@
 }
 
 /* ==========================================
+   AUTO-PLAY TOGGLE — botón global de vídeo automático
+   ========================================== */
+.cal-autoplay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  font: 600 var(--fs-caption)/1 var(--font-body);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cal-autoplay-btn:hover {
+  border-color: var(--theme-border-accent);
+  color: var(--theme-accent);
+  background: var(--accent-dim);
+}
+
+.cal-autoplay-btn:active {
+  transform: scale(0.95);
+}
+
+.cal-autoplay-btn.is-active {
+  color: var(--theme-accent);
+  border-color: var(--theme-border-accent);
+  background: var(--accent-dim);
+}
+
+.cal-autoplay-btn svg {
+  flex-shrink: 0;
+}
+
+.cal-autoplay-label {
+  white-space: nowrap;
+}
+
+/* ==========================================
+   PER-VIDEO TOGGLE — botón de auto-play por vídeo
+   ========================================== */
+.cal-video__toggle-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--sp-4);
+}
+
+.cal-video__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  font: 600 var(--fs-caption)/1 var(--font-body);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cal-video__toggle:hover {
+  border-color: var(--theme-border-accent);
+  color: var(--theme-accent);
+  background: var(--accent-dim);
+}
+
+.cal-video__toggle:active {
+  transform: scale(0.95);
+}
+
+.cal-video__toggle.is-on {
+  color: var(--theme-accent);
+  border-color: var(--theme-border-accent);
+  background: var(--accent-dim);
+}
+
+.cal-video__toggle-icon--off {
+  display: none;
+}
+
+.cal-video__toggle.is-on .cal-video__toggle-icon--on {
+  display: inline-flex;
+}
+
+.cal-video__toggle.is-on .cal-video__toggle-icon--off {
+  display: none;
+}
+
+.cal-video__toggle:not(.is-on) .cal-video__toggle-icon--on {
+  display: none;
+}
+
+.cal-video__toggle:not(.is-on) .cal-video__toggle-icon--off {
+  display: inline-flex;
+}
+
+.cal-video__toggle-label {
+  white-space: nowrap;
+}
+
+/* ==========================================
    HERO HOY — el protagonista
    ========================================== */ .cal-preview-banner {
    margin: calc(var(--sp-16) * -1) 0 var(--sp-20);
@@ -1611,7 +1718,12 @@ body.sheet-locked { overflow: hidden; }
   line-height: 1.7;
   color: var(--theme-text-primary);
   margin: 0;
+  text-align: left;
 }
+
+/* Cuando contiene KaTeX, quitamos italic para que se lea bien */
+.cal-riddle__q .katex-display,
+.cal-riddle__q .katex { font-style: normal; }
 
 .cal-riddle__reveal,
 .cal-math__reveal {
@@ -1622,9 +1734,85 @@ body.sheet-locked { overflow: hidden; }
 .cal-math__a {
   margin: 12px 0 0;
   color: var(--theme-accent);
-  font-weight: 700;
   font-size: var(--fs-md);
+  line-height: 1.7;
   animation: calReveal 0.4s var(--dur-decel) both;
+  text-align: left;
+}
+
+/* Cuando la respuesta contiene KaTeX, adaptamos el estilo */
+.cal-riddle__a .katex-display,
+.cal-math__a .katex-display {
+  margin: 12px 0;
+}
+
+.cal-riddle__a strong,
+.cal-math__a strong {
+  color: var(--theme-accent);
+  font-weight: 700;
+}
+
+/* ── MATH CONTENT — headings, listas, display math ── */
+.cal-math-heading {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  margin: 18px 0 8px;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.cal-math-display {
+  margin: 16px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0;
+}
+
+/* KaTeX display blocks: centrados y con aire */
+.cal-math-display .katex-display {
+  margin: 0;
+}
+
+.cal-math-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  text-align: left;
+}
+
+.cal-math-list li {
+  padding: 4px 0;
+  line-height: 1.6;
+  color: var(--theme-text-primary);
+}
+
+.cal-math-error {
+  color: var(--theme-danger, #dc2626);
+  font-family: monospace;
+  font-size: var(--fs-sm);
+  background: rgba(220, 38, 38, 0.08);
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+/* KaTeX dentro del calendario: ajustar tamaño y colores al tema */
+.cal-type .katex {
+  font-size: 1.05em;
+  color: var(--theme-text-primary);
+}
+
+.cal-type .katex-display > .katex {
+  font-size: 1.2em;
+}
+
+/* Negrita dentro de contenido matemático */
+.cal-type strong {
+  color: var(--theme-text-primary);
+  font-weight: 600;
 }
 
 .cal-curiosity {
@@ -1750,16 +1938,26 @@ body.sheet-locked { overflow: hidden; }
 }
 
 .cal-math {
-  text-align: center;
+  text-align: left;
 }
 
 .cal-math__problem {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: var(--fs-base);
-  font-style: italic;
   line-height: 1.7;
   color: var(--theme-text-primary);
   margin: 0;
+  text-align: left;
+}
+
+/* Cuando el problema tiene KaTeX display, centramos la fórmula */
+.cal-math__problem .katex-display {
+  text-align: center;
+}
+
+.cal-math__problem strong {
+  font-weight: 600;
+  color: var(--theme-text-primary);
 }
 
 /* ==========================================

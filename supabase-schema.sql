@@ -48,12 +48,18 @@ CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id::uuid = auth.uid() AND role = 'admin'
+    SELECT 1
+    FROM public.profiles p
+    JOIN auth.users u ON u.id = p.id
+    WHERE p.id::uuid = auth.uid()
+      AND p.role = 'admin'
+      AND u.email_confirmed_at IS NOT NULL
   )
   OR EXISTS (
     SELECT 1 FROM auth.users
-    WHERE id = auth.uid() AND email = 'admin@personalhub.com'
+    WHERE id = auth.uid()
+      AND LOWER(email) = 'admin@personalhub.com'
+      AND email_confirmed_at IS NOT NULL
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -163,7 +169,8 @@ GRANT ALL ON activity_log TO authenticated;
 DROP POLICY IF EXISTS "activity_log_insert_all" ON activity_log;
 DROP POLICY IF EXISTS "activity_log_select_all" ON activity_log;
 DROP POLICY IF EXISTS "activity_log_select_admin" ON activity_log;
-CREATE POLICY "activity_log_insert_all" ON activity_log FOR INSERT WITH CHECK (true);
+CREATE POLICY "activity_log_insert_own" ON activity_log FOR INSERT
+  WITH CHECK (user_id = auth.uid()::text);
 CREATE POLICY "activity_log_select_admin" ON activity_log FOR SELECT USING (public.is_admin());
 
 -- ==========================================
@@ -197,20 +204,24 @@ CREATE POLICY "profiles_select_policy" ON profiles FOR SELECT
   USING (id::uuid = auth.uid() OR public.is_admin());
 
 CREATE POLICY "profiles_insert_policy" ON profiles FOR INSERT
-  WITH CHECK (id::uuid = auth.uid());
+  WITH CHECK (
+    public.is_admin()
+    OR (id::uuid = auth.uid() AND COALESCE(role, 'user') = 'user')
+  );
 
 CREATE POLICY "profiles_update_policy" ON profiles FOR UPDATE
-  USING (id::uuid = auth.uid() OR public.is_admin());
+  USING (id::uuid = auth.uid() OR public.is_admin())
+  WITH CHECK (id::uuid = auth.uid() OR public.is_admin());
 
 -- Trigger para evitar que un usuario no-admin cambie su propio rol a admin,
 -- y para evitar que el último administrador se quite su rol.
 CREATE OR REPLACE FUNCTION public.prevent_role_escalation()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.role IS DISTINCT FROM OLD.role THEN
-    -- Solo los administradores pueden cambiar roles
-    IF NOT public.is_admin() THEN
-      RAISE EXCEPTION 'Solo los administradores pueden cambiar el rol.';
+  IF NEW.role IS DISTINCT FROM OLD.role OR NEW.enabled IS DISTINCT FROM OLD.enabled THEN
+    -- Solo administradores y service_role pueden cambiar campos protegidos.
+    IF auth.role() <> 'service_role' AND NOT public.is_admin() THEN
+      RAISE EXCEPTION 'Solo los administradores pueden cambiar role o enabled.';
     END IF;
 
     -- Evitar que el último admin se quite su propio rol
@@ -223,7 +234,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS profiles_prevent_role_change ON public.profiles;
 CREATE TRIGGER profiles_prevent_role_change
@@ -452,7 +463,8 @@ GRANT ALL ON analytics_visits TO authenticated;
 DROP POLICY IF EXISTS "analytics_visits_insert_all" ON analytics_visits;
 DROP POLICY IF EXISTS "analytics_visits_select_all" ON analytics_visits;
 DROP POLICY IF EXISTS "analytics_visits_select_admin" ON analytics_visits;
-CREATE POLICY "analytics_visits_insert_all" ON analytics_visits FOR INSERT WITH CHECK (true);
+CREATE POLICY "analytics_visits_insert_own" ON analytics_visits FOR INSERT
+  WITH CHECK (user_id = auth.uid()::text);
 CREATE POLICY "analytics_visits_select_admin" ON analytics_visits FOR SELECT USING (public.is_admin());
 
 -- ==========================================
@@ -477,7 +489,8 @@ GRANT ALL ON analytics_events TO authenticated;
 DROP POLICY IF EXISTS "analytics_events_insert_all" ON analytics_events;
 DROP POLICY IF EXISTS "analytics_events_select_all" ON analytics_events;
 DROP POLICY IF EXISTS "analytics_events_select_admin" ON analytics_events;
-CREATE POLICY "analytics_events_insert_all" ON analytics_events FOR INSERT WITH CHECK (true);
+CREATE POLICY "analytics_events_insert_own" ON analytics_events FOR INSERT
+  WITH CHECK (user_id = auth.uid()::text);
 CREATE POLICY "analytics_events_select_admin" ON analytics_events FOR SELECT USING (public.is_admin());
 
 -- ==========================================
@@ -1225,11 +1238,23 @@ DROP POLICY IF EXISTS "playlists_read_all" ON playlists;
 DROP POLICY IF EXISTS "playlists_write_all" ON playlists;
 DROP POLICY IF EXISTS "playlists_update_all" ON playlists;
 DROP POLICY IF EXISTS "playlists_delete_all" ON playlists;
+DROP POLICY IF EXISTS "playlists_select_owner" ON playlists;
+DROP POLICY IF EXISTS "playlists_insert_owner" ON playlists;
+DROP POLICY IF EXISTS "playlists_update_owner" ON playlists;
+DROP POLICY IF EXISTS "playlists_delete_owner" ON playlists;
 
-CREATE POLICY "playlists_read_all" ON playlists FOR SELECT USING (true);
-CREATE POLICY "playlists_write_all" ON playlists FOR INSERT WITH CHECK (true);
-CREATE POLICY "playlists_update_all" ON playlists FOR UPDATE USING (true);
-CREATE POLICY "playlists_delete_all" ON playlists FOR DELETE USING (true);
+-- Hasta que exista una relación explícita de miembros, una playlist solo
+-- puede verla y modificarla su creador. Evita el cruce de datos entre
+-- usuarios autenticados; compartir requiere una membresía posterior.
+CREATE POLICY "playlists_select_owner" ON playlists FOR SELECT
+  USING (created_by = auth.uid() OR public.is_admin());
+CREATE POLICY "playlists_insert_owner" ON playlists FOR INSERT
+  WITH CHECK (created_by = auth.uid() OR public.is_admin());
+CREATE POLICY "playlists_update_owner" ON playlists FOR UPDATE
+  USING (created_by = auth.uid() OR public.is_admin())
+  WITH CHECK (created_by = auth.uid() OR public.is_admin());
+CREATE POLICY "playlists_delete_owner" ON playlists FOR DELETE
+  USING (created_by = auth.uid() OR public.is_admin());
 
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.playlists; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 

@@ -33,7 +33,14 @@ export default async function handler(req, res) {
         const metadata = {};
         if (typeof enabled === 'boolean') metadata.enabled = enabled;
         if (metadata.enabled !== undefined) {
-          await admin.supabaseAdmin.auth.admin.updateUserById(id, { user_metadata: metadata });
+          const { error: authError } = await admin.supabaseAdmin.auth.admin.updateUserById(id, { user_metadata: metadata });
+          if (authError) throw authError;
+
+          const { error: profileError } = await admin.supabaseAdmin
+            .from('profiles')
+            .update({ enabled: metadata.enabled, updated_at: new Date().toISOString() })
+            .eq('id', id);
+          if (profileError) throw profileError;
         }
 
         return res.status(200).json({ success: true });
