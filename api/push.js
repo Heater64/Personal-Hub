@@ -281,9 +281,10 @@ async function handleSend(req, res) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  // Vercel Cron runs in UTC while the product promise is 08:00 Europe/Madrid.
-  // Schedule hourly and accept only the local 08:00 slot so DST is correct.
-  if (!isAdmin && hourInSpain() !== 8) {
+  // Vercel Hobby solo permite un cron diario. La ejecución está fijada a
+  // 06:00 UTC: equivale a 08:00 en verano y 07:00 en invierno en Madrid.
+  // Aceptamos ambas horas para que la notificación no se pierda por DST.
+  if (!isAdmin && ![7, 8].includes(hourInSpain())) {
     return res.status(200).json({ success: true, skipped: true, reason: 'Outside delivery window' });
   }
 

@@ -72,7 +72,7 @@ Las playlists históricas con `created_by IS NULL` no se reasignan automáticame
 
 ### Vercel (Project → Settings → Environment Variables) — añade las mismas
 Además de las de arriba, **copia `CRON_SECRET` a Vercel** con el mismo valor: el cron
-`/api/push?action=send` (vercel.json) se ejecuta cada hora y el endpoint solo entrega a las 08:00 de Europe/Madrid, respetando horario de verano.
+`/api/push?action=send` (vercel.json) se ejecuta una vez al día a las 06:00 UTC, compatible con Vercel Hobby. El endpoint acepta las 07:00/08:00 de Europe/Madrid para cubrir el cambio horario.
 
 ---
 

@@ -100,6 +100,6 @@ test('la API de push exige sesión para desuscribirse y admite cron GET', async 
   assert.match(pushApi, /action === 'send' && !\['GET', 'POST'\]\.includes\(req\.method\)/);
   assert.match(pushApi, /if \(!token\) return res\.status\(401\)/);
   assert.doesNotMatch(pushApi, /else if \(endpoint\)/);
-  assert.match(pushApi, /hourInSpain\(\) !== 8/);
+  assert.match(pushApi, /!\[7, 8\]\.includes\(hourInSpain\(\)\)/);
   assert.match(pushApi, /email_confirmed_at/);
 });

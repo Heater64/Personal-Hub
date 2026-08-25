@@ -44,8 +44,8 @@ El build emite además un warning `INEFFECTIVE_DYNAMIC_IMPORT`: `notifications.s
 - Exigido correo confirmado para privilegios de administrador en frontend, APIs y SQL base.
 - Corregido un `ReferenceError` en `sync.service.js` (`local` inexistente).
 - Corregido el endpoint de push para que la desuscripción requiera sesión y no permita eliminar la suscripción de otro usuario por `endpoint`.
-- Adaptado `/api/push?action=send` a `GET`/`POST` para Vercel Cron y añadido ventana horaria `08:00` de `Europe/Madrid`.
-- Cambiado Vercel Cron a ejecución horaria para respetar horario de verano.
+- Adaptado `/api/push?action=send` a `GET`/`POST` para Vercel Cron y añadido ventana `07:00–08:00` de `Europe/Madrid`.
+- Configurado Vercel Cron diario a las 06:00 UTC, compatible con el plan Hobby; la hora local es 08:00 en verano y 07:00 en invierno.
 - Corregido el cálculo de fecha del catálogo diario del push para usar `Europe/Madrid`.
 - Sincronizado el estado `enabled` de Auth y `profiles` en `/api/users`.
 - Añadidas cabeceras defensivas en `vercel.json`: `nosniff`, `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`.
