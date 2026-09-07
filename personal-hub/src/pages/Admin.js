@@ -2969,9 +2969,9 @@ export function AdminPage(router) {
           <div class="admin-panel">
             <div class="admin-panel-head"><h4>Apariencia</h4></div>
             <p class="muted-text">El tema se aplica en toda la web y se recuerda en este navegador.</p>
-            <div class="admin-seg" id="themeSeg">
-              ${[{ id: 'dark', label: '🌙 Oscuro' }, { id: 'light', label: '☀️ Claro' }, { id: 'auto', label: '🖥️ Auto' }]
-                .map(t => `<button type="button" class="admin-seg-btn${themeState === t.id ? ' active' : ''}" data-theme-set="${t.id}">${t.label}</button>`).join('')}
+            <div class="admin-seg" id="themeSeg" role="radiogroup" aria-label="Paleta de color">
+              ${[{ id: 'umbra-oscuro', label: '🌙 Umbra Oscuro' }, { id: 'umbra-claro', label: '☀️ Umbra Claro' }, { id: 'azul-claro', label: '💧 Azul Claro' }, { id: 'azul-oscuro', label: '🌊 Azul Oscuro' }, { id: 'auto', label: '🖥️ Auto' }]
+                .map(t => `<button type="button" role="radio" aria-checked="${themeState === t.id}" class="admin-seg-btn${themeState === t.id ? ' active' : ''}" data-theme-set="${t.id}" data-theme-label="${t.label}">${t.label}</button>`).join('')}
             </div>
           </div>
 
@@ -3067,8 +3067,11 @@ export function AdminPage(router) {
     page.querySelectorAll('[data-theme-set]').forEach(btn => {
       btn.addEventListener('click', () => {
         theme.setTheme(btn.dataset.themeSet);
-        page.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('active', b === btn));
-        showToast(`Tema: ${btn.dataset.themeSet}`, 'success');
+        page.querySelectorAll('[data-theme-set]').forEach(b => {
+          b.classList.toggle('active', b === btn);
+          b.setAttribute('aria-checked', String(b === btn));
+        });
+        showToast(`Tema: ${btn.dataset.themeLabel || btn.dataset.themeSet}`, 'success');
       });
     });
 

@@ -149,8 +149,15 @@ export function ProfilePage(router) {
 
   const themeOptions = theme.getAvailable();
   const currentTheme = theme.currentTheme;
-  const themeIcons = { dark: UI.moon, light: UI.sun, auto: UI.monitor };
-  const themeLabels = { dark: 'Oscuro', light: 'Claro', auto: 'Auto' };
+  // ponytail: previews ornamentales con hex reales de design-tokens.css + theme.service.js
+  const themeMeta = {
+    'umbra-oscuro': { label: '🌙 Umbra Oscuro', icon: UI.moon, preview: ['#0c0b0b', '#111114', '#e8735a'] },
+    'umbra-claro': { label: '☀️ Umbra Claro', icon: UI.sun, preview: ['#fdf4f6', '#ffffff', '#c2185b'] },
+    'azul-claro': { label: '💧 Azul Claro', icon: UI.sun, preview: ['#faf6f8', '#ffffff', '#2563EB'] },
+    'azul-oscuro': { label: '🌊 Azul Oscuro', icon: UI.moon, preview: ['#0B1020', '#111114', '#7DB7FF'] },
+    auto: { label: '🖥️ Auto', icon: UI.monitor, preview: null },
+  };
+  const themePalettes = themeOptions.filter(t => t !== 'auto');
   const isUserAdmin = userStore.isAdmin;
   const pushSupported = isPushSupported();
 
@@ -201,12 +208,18 @@ export function ProfilePage(router) {
             <span class="prof-row-sub">Modo de color</span>
           </div>
         </div>
-        <div class="prof-theme-opts" id="themeOptions">
-          ${themeOptions.map(t => `
-            <button type="button" class="prof-theme-btn ${t === currentTheme ? 'active' : ''}" data-theme="${t}">
-              ${themeIcons[t] || UI.sun} ${themeLabels[t] || t}
-            </button>
-          `).join('')}
+        <div id="themeOptions" role="radiogroup" aria-label="Paleta de color">
+          <div class="prof-theme-grid">
+            ${themePalettes.map(t => `
+              <button type="button" role="radio" aria-checked="${t === currentTheme}" class="prof-theme-btn ${t === currentTheme ? 'active' : ''}" data-theme="${t}">
+                <span class="prof-theme-preview" aria-hidden="true">${themeMeta[t].preview.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+                ${themeMeta[t].icon}<span>${themeMeta[t].label}</span>
+              </button>
+            `).join('')}
+          </div>
+          <button type="button" role="radio" aria-checked="${currentTheme === 'auto'}" class="prof-theme-btn prof-theme-btn--auto ${currentTheme === 'auto' ? 'active' : ''}" data-theme="auto">
+            ${themeMeta.auto.icon}<span>${themeMeta.auto.label}</span>
+          </button>
         </div>
 
         <div class="prof-divider"></div>
@@ -342,8 +355,12 @@ export function ProfilePage(router) {
   const themeOptsEl = page.querySelector('#themeOptions');
   themeOptsEl.querySelectorAll('.prof-theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      themeOptsEl.querySelectorAll('.prof-theme-btn').forEach(b => b.classList.remove('active'));
+      themeOptsEl.querySelectorAll('.prof-theme-btn').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-checked', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-checked', 'true');
       theme.setTheme(btn.dataset.theme);
     });
   });

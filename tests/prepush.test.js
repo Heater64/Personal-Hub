@@ -116,3 +116,10 @@ test('el servicio de temas maneja 4 paletas con escritura dual y legacy', async 
   const boot = await readFile(projectPath('personal-hub', 'index.html'), 'utf8');
   assert.ok(boot.includes('dataset.tema'));
 });
+
+test('perfil y admin ofrecen las 4 paletas + auto', async () => {
+  const profile = await readFile(projectPath('personal-hub', 'src', 'pages', 'Profile.js'), 'utf8');
+  for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(profile.includes(s));
+  const admin = await readFile(projectPath('personal-hub', 'src', 'pages', 'Admin.js'), 'utf8');
+  for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(admin.includes(s));
+});

@@ -281,25 +281,24 @@
 }
 
 /* ==========================================
-   THEME OPTIONS — chips
+   THEME OPTIONS — tarjetas 2x2 + auto
    ========================================== */
 
-.prof-theme-opts {
-  display: flex;
+.prof-theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--sp-8);
-  padding: 0 var(--sp-16) var(--sp-16);
-  flex-wrap: wrap;
+  padding: 0 var(--sp-16) var(--sp-8);
 }
 
 .prof-theme-btn {
-  flex: 1;
-  min-width: 90px;
-  display: inline-flex;
+  min-height: 48px;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   padding: var(--sp-12) var(--sp-16);
-  border-radius: var(--r-full);
+  border-radius: 22px;
   border: 1px solid var(--theme-divider-strong);
   background: var(--theme-surface);
   color: var(--theme-text-secondary);
@@ -324,6 +323,34 @@
   font-weight: 600;
   box-shadow: none;
   transform: none;
+}
+
+.prof-theme-btn--auto {
+  width: calc(100% - 2 * var(--sp-16));
+  margin: 0 var(--sp-16) var(--sp-16);
+}
+
+.prof-theme-preview {
+  display: inline-flex;
+  gap: 2px;
+  margin-right: 2px;
+}
+
+.prof-theme-preview i {
+  width: 10px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--theme-divider-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prof-theme-btn {
+    transition: none;
+  }
+
+  .prof-theme-btn:hover {
+    transform: none;
+  }
 }
 
 /* ==========================================
