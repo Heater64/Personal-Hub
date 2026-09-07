@@ -1,22 +1,36 @@
 /* ==========================================
    Personal Hub v2 — Theme Service
-   Gestión de temas (oscuro/claro/auto)
+   Gestión de temas (4 paletas + auto)
    ========================================== */
 
 const STORAGE_KEY = 'ph.theme';
 
+const THEMES = ['umbra-oscuro', 'umbra-claro', 'azul-oscuro', 'azul-claro'];
+
+const THEME_METAS = {
+  'umbra-oscuro': '#0c0b0b',
+  'umbra-claro': '#fdf4f6',
+  'azul-oscuro': '#0B1020',
+  'azul-claro': '#faf6f8'
+};
+
 class ThemeService {
   constructor() {
-    this.currentTheme = 'dark';
+    this.currentTheme = 'umbra-oscuro';
     this._listeners = [];
     this._init();
   }
 
+  normalize(id) {
+    if (id === 'auto' || THEMES.includes(id)) return id;
+    if (id === 'dark') return 'umbra-oscuro';
+    if (id === 'light') return 'umbra-claro';
+    return 'auto';
+  }
+
   _init() {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && ['dark', 'light', 'auto'].includes(saved)) {
-      this.currentTheme = saved;
-    }
+    this.currentTheme = this.normalize(saved);
     this.apply(this.currentTheme);
 
     // Listen to system changes
@@ -24,45 +38,58 @@ class ThemeService {
       const media = window.matchMedia('(prefers-color-scheme: light)');
       media.addEventListener('change', () => {
         if (this.currentTheme === 'auto') {
-          this._applyTheme(media.matches ? 'light' : 'dark');
+          this.apply('auto');
         }
       });
     }
   }
 
   getAvailable() {
-    return ['dark', 'light', 'auto'];
+    return [...THEMES, 'auto'];
   }
 
-  setTheme(theme) {
-    if (!['dark', 'light', 'auto'].includes(theme)) return;
-    this.currentTheme = theme;
-    localStorage.setItem(STORAGE_KEY, theme);
-    this.apply(theme);
-    this._notify(theme);
+  setTheme(id) {
+    const next = this.normalize(id);
+    this.currentTheme = next;
+    localStorage.setItem(STORAGE_KEY, next);
+    this.apply(next);
+    this._notify(next);
   }
 
-  apply(theme) {
-    let resolved = theme;
-    if (theme === 'auto') {
-      resolved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  apply(id) {
+    const palette = this.normalize(id);
+    let mode;
+    let metaKey = palette;
+    if (palette === 'auto') {
+      mode = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      metaKey = mode === 'light' ? 'umbra-claro' : 'umbra-oscuro';
+    } else {
+      mode = /-oscuro$/.test(palette) ? 'dark' : 'light';
     }
-    this._applyTheme(resolved);
+    this._applyTheme(mode, metaKey, palette);
   }
 
-  _applyTheme(resolved) {
-    document.documentElement.setAttribute('data-theme', resolved);
-    document.documentElement.style.colorScheme = resolved;
+  _applyTheme(mode, metaKey, palette) {
+    const el = document.documentElement;
+    el.dataset.theme = mode;
+    if (palette && palette.indexOf('azul-') === 0) {
+      el.dataset.tema = 'azul';
+    } else {
+      delete el.dataset.tema;
+    }
+    el.style.colorScheme = mode;
 
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.content = resolved === 'dark' ? '#0c0b0b' : '#fdf4f6';
+      meta.content = THEME_METAS[metaKey] || (mode === 'light' ? '#fdf4f6' : '#0c0b0b');
     }
   }
 
   isDark() {
-    return this.currentTheme === 'dark' ||
-      (this.currentTheme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (this.currentTheme === 'auto') {
+      return !window.matchMedia('(prefers-color-scheme: light)').matches;
+    }
+    return /-oscuro$/.test(this.currentTheme);
   }
 
   onChange(callback) {

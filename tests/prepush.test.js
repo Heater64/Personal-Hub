@@ -109,3 +109,10 @@ test('la familia azul existe como override por data-tema (modo intacto)', async 
   for (const s of ['[data-tema="azul"]', '#2563EB', '#7DB7FF']) assert.match(css, new RegExp(s.replace(/[[\]]/g, '\\$&')));
   assert.match(css, /\[data-theme="light"\]/);
 });
+
+test('el servicio de temas maneja 4 paletas con escritura dual y legacy', async () => {
+  const svc = await readFile(projectPath('personal-hub', 'src', 'services', 'theme.service.js'), 'utf8');
+  for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro', 'dataset.tema', 'dataset.theme']) assert.ok(svc.includes(s));
+  const boot = await readFile(projectPath('personal-hub', 'index.html'), 'utf8');
+  assert.ok(boot.includes('dataset.tema'));
+});

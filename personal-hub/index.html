@@ -6,16 +6,23 @@
     // Apply theme before render to prevent flash
     (function() {
       var t = localStorage.getItem('ph.theme');
-      if (t) {
-        if (t === 'auto') {
-          t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-        }
-        document.documentElement.setAttribute('data-theme', t);
-      }
-      // Sincroniza la meta theme-color con el tema resuelto: la statusbar del
+      if (!t) return;
+      if (t === 'dark') t = 'umbra-oscuro';
+      else if (t === 'light') t = 'umbra-claro';
+      else if (t !== 'umbra-oscuro' && t !== 'umbra-claro' && t !== 'azul-oscuro' && t !== 'azul-claro' && t !== 'auto') t = 'auto';
+      var mode = t === 'auto'
+        ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : (/-oscuro$/.test(t) ? 'dark' : 'light');
+      var el = document.documentElement;
+      el.dataset.theme = mode;
+      if (t.indexOf('azul-') === 0) el.dataset.tema = 'azul';
+      else delete el.dataset.tema;
+      // Sincroniza la meta theme-color con la paleta resuelta: la statusbar del
       // navegador/PWA coincide desde el primer frame (sin flash de color).
+      var metas = { 'umbra-oscuro': '#0c0b0b', 'umbra-claro': '#fdf4f6', 'azul-oscuro': '#0B1020', 'azul-claro': '#faf6f8' };
+      var key = t === 'auto' ? (mode === 'light' ? 'umbra-claro' : 'umbra-oscuro') : t;
       var meta = document.head.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', t === 'light' ? '#fdf4f6' : '#0c0b0b');
+      if (meta) meta.setAttribute('content', metas[key] || (mode === 'light' ? '#fdf4f6' : '#0c0b0b'));
     })();
   </script>
   <!-- ============================================================
