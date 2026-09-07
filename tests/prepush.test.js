@@ -117,6 +117,12 @@ test('el servicio de temas maneja 4 paletas con escritura dual y legacy', async 
   assert.ok(boot.includes('dataset.tema'));
 });
 
+test('el arranque resuelve el modo por SO cuando no hay tema guardado', async () => {
+  const boot = await readFile(projectPath('personal-hub', 'index.html'), 'utf8');
+  assert.ok(!boot.includes('if (!t) return'));
+  assert.ok(boot.includes('prefers-color-scheme'));
+});
+
 test('perfil y admin ofrecen las 4 paletas + auto', async () => {
   const profile = await readFile(projectPath('personal-hub', 'src', 'pages', 'Profile.js'), 'utf8');
   for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(profile.includes(s));

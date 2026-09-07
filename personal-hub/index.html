@@ -6,7 +6,7 @@
     // Apply theme before render to prevent flash
     (function() {
       var t = localStorage.getItem('ph.theme');
-      if (!t) return;
+      if (!t) t = 'auto';
       if (t === 'dark') t = 'umbra-oscuro';
       else if (t === 'light') t = 'umbra-claro';
       else if (t !== 'umbra-oscuro' && t !== 'umbra-claro' && t !== 'azul-oscuro' && t !== 'azul-claro' && t !== 'auto') t = 'auto';
