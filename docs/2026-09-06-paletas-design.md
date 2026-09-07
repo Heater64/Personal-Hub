@@ -28,7 +28,7 @@
 ## 3. Data flow y compat
 
 - Guardado: `ph.theme` ∈ {4 ids, `auto`}; `dark`→`umbra-oscuro`, `light`→`umbra-claro` al leer.
-- `isDark()` por modo resuelto; meta theme-color por paleta (umbra-oscuro `#0c0b0b`, umbra-claro `#fdf4f6`, azul-oscuro `#0B1020`, azul-claro `#faf6f8`).
+- `isDark()` por modo resuelto; meta theme-color por paleta (umbra-oscuro `#0c0b0b`, umbra-claro `#fdf4f6`, azul-oscuro `#0B1020`, azul-claro `#faf6f8`). Nota: las bases de fondo Umbra (`#0a0a0c` dark / porcelana light en §1) quedan intactas; estos valores son solo la meta del navegador.
 - Sin migración; `dist/` se regenera con el build.
 
 ## 4. Testing

@@ -125,7 +125,7 @@ function normalize(t) {
 ```
 `apply(id)`: `data-theme` = `/-oscuro$/.test(id) ? 'dark' : 'light'` (auto→SO por `prefers-color-scheme: light`); `data-tema` = id empieza por `azul-` ? `'azul'` : ausente. Meta por paleta: umbra-oscuro `#0c0b0b`, umbra-claro `#fdf4f6`, azul-oscuro `#0B1020`, azul-claro `#faf6f8`. `getAvailable()` → las 4 + `auto`. `setTheme` valida con `normalize`. `isDark()` por modo resuelto (incluye `azul-oscuro`).
 
-`index.html` inline: mismo `normalize` mínimo + escritura dual + meta por paleta; sin elección → no fija nada (el `data-theme="dark"` del `<html>` ya es el default).
+`index.html` inline: mismo `normalize` mínimo + escritura dual + meta por paleta; sin elección → se trata como `auto` y se resuelve por SO, igual que el servicio (evita flash contra el `data-theme="dark"` default del `<html>`).
 
 - [ ] **Step 4: Run test to verify it passes**
 
