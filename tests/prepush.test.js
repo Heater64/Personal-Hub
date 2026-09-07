@@ -103,3 +103,9 @@ test('la API de push exige sesión para desuscribirse y admite cron GET', async 
   assert.match(pushApi, /!\[7, 8\]\.includes\(hourInSpain\(\)\)/);
   assert.match(pushApi, /email_confirmed_at/);
 });
+
+test('la familia azul existe como override por data-tema (modo intacto)', async () => {
+  const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'design-tokens.css'), 'utf8');
+  for (const s of ['[data-tema="azul"]', '#2563EB', '#7DB7FF']) assert.match(css, new RegExp(s.replace(/[[\]]/g, '\\$&')));
+  assert.match(css, /\[data-theme="light"\]/);
+});

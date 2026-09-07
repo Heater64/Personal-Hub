@@ -433,3 +433,21 @@
     --dur-accel:   0.001s;
   }
 }
+
+/* ===== Familia AZUL (override sobre Umbra; el modo lo sigue dando data-theme) ===== */
+:root[data-tema="azul"] {
+  --accent: #7DB7FF;
+  --accent-hover: #A8D1FF;
+  --accent-pressed: #4B8BD8;
+  --accent-dim: rgba(125,183,255,.12);
+  --accent-dim-strong: rgba(125,183,255,.22);
+  --glow-accent: 0 0 20px rgba(125,183,255,.15);
+}
+:root[data-tema="azul"][data-theme="light"] {
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --accent-pressed: #1E40AF;
+  --accent-dim: rgba(37,99,235,.12);
+  --accent-dim-strong: rgba(37,99,235,.22);
+  --glow-accent: 0 0 20px rgba(37,99,235,.15);
+}
