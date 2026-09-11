@@ -68,23 +68,6 @@
   pointer-events: none;
 }
 
-/* Partículas flotantes muy sutiles */
-.home-hero__particle {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--hero-particle);
-  z-index: 0;
-  animation: heroFloat ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes heroFloat {
-  0%, 100% { transform: translateY(0) scale(1); opacity: 0.2; }
-  50%      { transform: translateY(-16px) scale(1.4); opacity: 0.7; }
-}
-
 .home-hero__content {
   position: relative;
   z-index: 1;
@@ -99,30 +82,7 @@
   margin-bottom: var(--sp-40);
 }
 
-/* Título principal — Bienvenida mi Princesa */
-.home-hero__title {
-  font-family: var(--font-display);
-  font-size: 40px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin: 0 0 var(--sp-8);
-}
-
-/* "Bienvenida mi" — blanco */
-.home-hero__title-white {
-  color: var(--theme-text-primary);
-}
-
-/* "Princesa" — itálica elegante, mismo naranja que las comillas de la frase */
-.home-hero__title-accent {
-  font-style: italic;
-  font-weight: 500;
-  color: var(--theme-accent);
-  text-shadow: 0 2px 24px var(--accent-dim-strong);
-}
-
-/* Saludo — bajo el título, centrado. Subrayado coral que crece al entrar. */
+/* Saludo — bajo la cabecera, centrado. Subrayado coral que crece al entrar. */
 .home-hero__greeting {
   position: relative;
   display: inline-block;
@@ -157,15 +117,7 @@
   to { transform: translateX(0) scaleX(1); }
 }
 
-.home-hero__sub {
-  font-size: var(--fs-base);
-  color: var(--theme-text-secondary);
-  line-height: 1.6;
-  margin: 0 auto;
-  max-width: 360px;
-}
-
-/* BLOQUE 2 — Momento (contador + frase, centrado) */
+/* BLOQUE 2 — Momento (contador, centrado) */
 .home-hero__center {
   display: flex;
   flex-direction: column;
@@ -270,39 +222,6 @@
   height: 1px;
   margin: var(--sp-8) 0 0;
   background: linear-gradient(90deg, transparent, var(--theme-divider-strong) 20%, var(--theme-divider-strong) 80%, transparent);
-}
-
-/* Frase — serif, elegante, con comilla decorativa (centrada) */
-.home-hero__phrase {
-  position: relative;
-  font-family: var(--font-display);
-  font-size: var(--fs-base);
-  color: var(--theme-text-secondary);
-  font-style: italic;
-  line-height: 1.6;
-  margin: 0 0 var(--sp-16);
-  max-width: 440px;
-  text-align: center;
-}
-
-/* Comilla decorativa grande */
-.home-hero__phrase::before {
-  content: '“';
-  display: block;
-  font-family: var(--font-display);
-  font-size: 2rem;
-  line-height: 1;
-  color: var(--theme-accent);
-  opacity: 0.5;
-  margin-bottom: var(--sp-4);
-}
-
-.home-hero__phrase-author {
-  font-size: var(--fs-caption);
-  color: var(--theme-text-tertiary);
-  margin: 0 0 var(--sp-16);
-  letter-spacing: 0.06em;
-  text-align: center;
 }
 
 /* ==========================================
@@ -493,24 +412,6 @@
 }
 
 /* ==========================================
-   FOOTER — susurro final
-   ========================================== */
-
-.home-footer {
-  text-align: center;
-  padding: var(--sp-8) 0 var(--sp-48);
-}
-
-.home-footer p {
-  font-size: var(--fs-caption);
-  color: var(--theme-text-disabled);
-  margin: 0;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-
-/* ==========================================
    DATOS CURIOSOS
    ========================================== */
 .home-facts {
@@ -527,6 +428,35 @@
   color: var(--theme-text-primary);
   margin: 0 0 var(--sp-16);
 }
+
+/* Encabezado de sección — icono + título + separador (tokens Umbra) */
+.home-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin: 0 0 var(--sp-16);
+}
+
+.home-section-head__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+  font-size: var(--fs-base);
+}
+
+.home-section-head__line {
+  flex: 1;
+  height: 1px;
+  background: var(--theme-divider-strong);
+}
+
+.home-section-head .home-facts__title { margin: 0; }
 
 .home-facts__list {
   display: flex;
@@ -581,7 +511,6 @@
     min-height: 260px;
     padding: var(--sp-48) 0 var(--sp-48);
   }
-  .home-hero__title { font-size: 48px; }
   .home-hero__greeting { font-size: var(--fs-xl); }
   .home-hero__days { font-size: 72px; }
   .home-hero__heart { font-size: 3rem; }
@@ -595,10 +524,8 @@
     min-height: 280px;
     padding: var(--sp-48) 0 var(--sp-48);
   }
-  .home-hero__title { font-size: 56px; }
   .home-hero__days { font-size: 80px; }
   .home-hero__heart { font-size: 3.4rem; }
-  .home-hero__phrase { font-size: var(--fs-md); }
 
   .home-grid { grid-template-columns: repeat(3, 1fr); gap: var(--sp-20); }
   /* Con 4 tarjetas (p. ej. al aparecer "Sigue escuchando") caben en una
@@ -635,12 +562,8 @@
     transform-origin: left;
     animation-name: heroGreetLineLeft;
   }
-  .home-hero__sub { margin-left: 0; }
-
-  /* Columna derecha — contador + frase */
+  /* Columna derecha — contador */
   .home-hero__center { align-items: flex-start; }
-  .home-hero__phrase,
-  .home-hero__phrase-author { text-align: left; }
 
   /* Divisor a ancho completo, cerrando las dos columnas.
      El row-gap del grid (48px) ya separa las columnas del divisor. */
@@ -661,9 +584,7 @@
   }
   .home-hero__days { font-size: 48px; }
   .home-hero__heart { font-size: 2rem; }
-  .home-hero__title { font-size: 32px; }
   .home-hero__greeting { font-size: var(--fs-md); }
-  .home-hero__sub { font-size: var(--fs-sm); }
   .home-hero__welcome { margin-bottom: var(--sp-28); }
   .home-hero__counter-box { padding: var(--sp-12) var(--sp-16); gap: var(--sp-16); }
   .home-hero__label { letter-spacing: 0.12em; }
@@ -683,7 +604,6 @@
 @media (max-width: 360px) {
   .home-hero__days { font-size: 42px; }
   .home-hero__heart { font-size: 1.7rem; }
-  .home-hero__title { font-size: 28px; }
   .home-hero__counter-box { padding: var(--sp-12) var(--sp-16); }
   .home-hero__welcome { margin-bottom: var(--sp-24); }
   .home-hero__label::before,
@@ -692,4 +612,20 @@
   .home-card__emoji { font-size: 2.2rem; }
   .home-card__chip { font-size: 9px; }
   .home-card__body { padding: var(--sp-8); padding-top: var(--sp-16); }
+}
+
+/* Movimiento reducido — congela entrada, destellos, latido y hovers */
+@media (prefers-reduced-motion: reduce) {
+  .home-page > * { animation: none; }
+  .home-hero__greeting::after { animation: none; transform: translateX(-50%) scaleX(1); }
+  .home-hero__counter-box::before { animation: none; }
+  .home-hero__heart { animation: none; }
+  .home-card,
+  .home-card__media img,
+  .home-card__emoji,
+  .home-card__play { transition: none; }
+  .home-card:hover { transform: none; }
+  .home-card:hover .home-card__media img,
+  .home-card:hover .home-card__emoji,
+  .home-card:hover .home-card__play { transform: none; }
 }

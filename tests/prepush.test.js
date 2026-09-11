@@ -152,3 +152,12 @@ test('bottomnav compacta a 390px y subnav con scroll horizontal', async () => {
   assert.ok(css.includes('390px'));
   assert.ok(css.includes('overflow-x'));
 });
+
+test('inicio usa pageheader y tarjeta de bienvenida sin frase ni particulas', async () => {
+  const home = await readFile(projectPath('personal-hub', 'src', 'pages', 'Home.js'), 'utf8');
+  assert.ok(home.includes('renderPageHeader'));
+  assert.ok(!home.includes('home-hero__phrase'));
+  assert.ok(!home.includes('home-hero__particle'));
+  assert.ok(home.includes('homeCounter'));
+  assert.ok(home.includes('Datos curiosos'));
+});

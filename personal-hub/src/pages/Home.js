@@ -8,6 +8,7 @@ import { MEME_FOLDERS, getVideoPoster } from '../services/rincon-data.js';
 import { LETTERS } from './OpenWhen.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userPrefKey, migrateUserPref } from '../utils/userStorage.js';
+import { renderPageHeader } from '../components/PageHeader.js';
 import { hourInSpain } from '../utils/format.js';
 import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
@@ -45,15 +46,6 @@ const GREETINGS = {
   evening:  ['Buenas noches 🌙<br>Espero que hayas tenido un bonito día.', 'Buenas noches 🌙<br>Descansa, mañana hay más sorpresas.', 'Buenas noches 🌙<br>Gracias por estar otro día más conmigo.'],
   night:    ['Buenas noches<br>Es tarde... pero nunca es tarde para decirte que te quiero.', 'Buenas noches<br>Que sueñes con cosas bonitas.', 'Buenas noches<br>Cierro los ojos y solo pienso en ti.'],
 };
-
-const PHRASES = [
-  '"El amor no se mira, se siente." — Pablo Neruda',
-  '"Eres mi lugar favorito al que ir cuando mi mente busca paz."',
-  '"Cada día a tu lado es un nuevo capítulo de mi historia favorita."',
-  '"Te elegiría a ti en todas las vidas."',
-  '"Contigo, hasta los días nublados son bonitos."',
-  '"Eres la casualidad más bonita que me ha pasado."',
-];
 
 // ==========================================
 // PORTADAS DE CANCIONES — fallback cuando no hay "seguir escuchando"
@@ -176,24 +168,13 @@ export function HomePage(router) {
 
   let timeKey = hour < 12 ? 'morning' : hour < 19 ? 'afternoon' : hour < 22 ? 'evening' : 'night';
   const greeting = GREETINGS[timeKey][seed % GREETINGS[timeKey].length];
-  const [gSaludo = 'Buenos días ☀️', gSub = 'Espero que tengas un bonito día.'] = greeting.split('<br>');
-  const phrase = PHRASES[seed % PHRASES.length];
-  // Separa la cita del autor para tipografía independiente
-  const phraseParts = phrase.split(/—/).map(s => s.trim());
-  const phraseQuote = (phraseParts[0] || phrase).replace(/^\"|\"$/g, '');
-  const phraseAuthor = phraseParts[1] || '';
+  const [gSaludo = 'Buenos días ☀️'] = greeting.split('<br>');
 
   // Gather data (sync)
   const meme = getMeme(rng);
   const song = getSong(rng);
   const continueList = getContinueWatching();
   const message = getMessage(rng);
-
-  // ── Hero particles (subtle, seeded) ──
-  let particlesHtml = '';
-  for (let i = 0; i < 4; i++) {
-    particlesHtml += `<span class="home-hero__particle" style="left:${12 + rng() * 76}%;top:${18 + rng() * 60}%;animation-delay:${(rng() * 4).toFixed(2)}s;animation-duration:${(5 + rng() * 5).toFixed(2)}s"></span>`;
-  }
 
   // ── GRID DE TARJETAS — todas cuadradas y del mismo tamaño ──
   const cards = [];
@@ -274,17 +255,13 @@ export function HomePage(router) {
 
   // ── RENDER ──
   page.innerHTML = `
-    <header class="home-hero">
+    ${renderPageHeader({ title: 'Inicio', icon: 'home' })}
+
+    <section class="home-hero" aria-label="Bienvenida">
       <div class="home-hero__bg"></div>
-      ${particlesHtml}
       <div class="home-hero__content">
         <div class="home-hero__welcome">
-          <h1 class="home-hero__title">
-            <span class="home-hero__title-white">Bienvenida mi</span>
-            <span class="home-hero__title-accent">Princesa</span>
-          </h1>
           <p class="home-hero__greeting">${gSaludo}</p>
-          <p class="home-hero__sub">${gSub}</p>
         </div>
 
         <div class="home-hero__center">
@@ -295,20 +272,22 @@ export function HomePage(router) {
               <div class="home-hero__label">días juntos</div>
             </div>
           </div>
-          <p class="home-hero__phrase">${escapeHtml(phraseQuote)}</p>
-          ${phraseAuthor ? `<p class="home-hero__phrase-author">— ${escapeHtml(phraseAuthor)}</p>` : ''}
         </div>
 
         <div class="home-hero__divider" aria-hidden="true"></div>
       </div>
-    </header>
+    </section>
 
     <div class="home-grid${cards.length >= 4 ? ' home-grid--four' : ''}">
       ${cards.join('')}
     </div>
 
     <section class="home-facts" aria-label="Datos curiosos">
-      <h2 class="home-facts__title">Datos curiosos</h2>
+      <div class="home-section-head">
+        <span class="home-section-head__icon" aria-hidden="true">✨</span>
+        <h2 class="home-facts__title">Datos curiosos</h2>
+        <span class="home-section-head__line" aria-hidden="true"></span>
+      </div>
       <div class="home-facts__list">
         ${FUN_FACTS.map(f => `
           <div class="home-fact">
@@ -321,17 +300,15 @@ export function HomePage(router) {
         `).join('')}
       </div>
     </section>
-
-    <footer class="home-footer">
-      <p>Hecho con amor</p>
-    </footer>
   `;
 
-  // ── Counter animation ──
+  // ── Counter animation (respeta reduced-motion) ──
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   requestAnimationFrame(() => {
     const el = page.querySelector('#homeCounter');
     if (!el) return;
     const target = daysSince;
+    if (reduceMotion) { el.textContent = String(target); return; }
     const start = performance.now();
     function tick(now) {
       const p = Math.min((now - start) / 1800, 1);
