@@ -138,7 +138,16 @@ test('rincon con cabecera y carrusel manual accesible', async () => {
   assert.ok(rincon.includes("renderPageHeader"));
   assert.ok(rincon.includes('El Rincón'));
   assert.ok(rincon.includes('aria-roledescription'));
-  assert.ok(!rincon.includes('setInterval'));
+  // Anti-autoplay acotado al carrusel "Descubre hoy" (getDescubreHoySet + renderLanding
+  // hasta el binding de tarjetas): un setInterval legítimo en otra vista no debe romperlo.
+  const start = rincon.indexOf('function getDescubreHoySet()');
+  const end = rincon.indexOf('// Bind section card clicks', start);
+  assert.notEqual(start, -1);
+  assert.ok(end > start);
+  const carousel = rincon.slice(start, end);
+  assert.ok(!carousel.includes('setInterval'));
+  const code = carousel.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\/[^\n]*/g, '');
+  assert.ok(!/autoplay/i.test(code));
   assert.ok(rincon.includes('rincon-hero-crown') === false);
 });
 ```
