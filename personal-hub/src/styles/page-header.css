@@ -1,0 +1,68 @@
+/* ==========================================
+   PAGE HEADER — cabecera Umbra compartida
+   Patrón: chip 34px + título + línea flexible.
+   Solo tokens var(--*). Un h1 por página (el título).
+   Sin movimiento: nada que desactivar en reduced-motion.
+   ========================================== */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  min-height: 56px;
+  margin: var(--sp-24) 0;
+  color: var(--theme-text-secondary);
+}
+
+.page-header__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 1px solid var(--theme-divider);
+  border-radius: var(--r-sm);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+}
+
+.page-header__icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+.page-header__title {
+  margin: 0;
+  color: var(--theme-text-primary);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.page-header__line {
+  flex: 1;
+  min-width: var(--sp-24);
+  height: 1px;
+  background: var(--theme-divider-strong);
+}
+
+@media (min-width: 769px) {
+  .page-header {
+    margin-top: var(--sp-32);
+    margin-bottom: var(--sp-28);
+  }
+
+  .page-header__title {
+    font-size: var(--fs-3xl);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header--mobile-hidden {
+    display: none;
+  }
+}

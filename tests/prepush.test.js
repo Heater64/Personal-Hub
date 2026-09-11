@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { expandCalendarCatalog } from '../personal-hub/src/data/calendar-expansion.js';
+import { selectDistinctSuggestions } from '../personal-hub/src/utils/discoverSuggestions.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -27,6 +28,24 @@ test('el catálogo expandido cubre del 15 de agosto al 31 de diciembre', () => {
   assert.equal(Math.min(...numericDates), Number('20260815'));
   assert.equal(Math.max(...numericDates), Number('20261231'));
   assert.equal(new Set(dates).size, dates.length);
+});
+
+test('el carrusel Descubre hoy no repite destinos y respeta el límite', () => {
+  const options = [
+    { title: 'Atardecer', internal: true, sectionId: 'galeria-memes' },
+    { title: 'Memes', internal: true, sectionId: 'galeria-memes' },
+    { title: 'Curiosidades', internal: true, sectionId: 'curiosidades' },
+    { title: 'Juegos', route: '/juegos' },
+    { title: 'Series', route: '/series' }
+  ];
+
+  const suggestions = selectDistinctSuggestions(options, 3, () => 0);
+
+  assert.deepEqual(suggestions.map(item => item.title), ['Atardecer', 'Curiosidades', 'Juegos']);
+  assert.equal(new Set(suggestions.map(item => item.sectionId || item.route)).size, 3);
+  assert.deepEqual(selectDistinctSuggestions(options, 8, () => 0).map(item => item.title), [
+    'Atardecer', 'Curiosidades', 'Juegos', 'Series'
+  ]);
 });
 
 test('los juegos del calendario apuntan a archivos existentes', () => {
@@ -128,4 +147,12 @@ test('perfil y admin ofrecen las 4 paletas + auto', async () => {
   for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(profile.includes(s));
   const admin = await readFile(projectPath('personal-hub', 'src', 'pages', 'Admin.js'), 'utf8');
   for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(admin.includes(s));
+});
+
+test('pageheader umbra con tokens y barra movil contextual', async () => {
+  const comp = await readFile(projectPath('personal-hub', 'src', 'components', 'PageHeader.js'), 'utf8');
+  assert.ok(comp.includes('renderPageHeader'));
+  assert.ok(comp.includes('<h1'));
+  const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'page-header.css'), 'utf8');
+  assert.ok(!css.includes('#') || css.includes('rgba('));
 });
