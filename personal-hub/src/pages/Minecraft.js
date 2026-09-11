@@ -12,6 +12,7 @@
    ========================================== */
 
 import { showToast } from '../components/Toast.js';
+import { renderPageHeader } from '../components/PageHeader.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userStore } from '../stores/user.store.js';
 import { createLightbox, openLightbox } from '../components/MediaLightbox.js';
@@ -73,6 +74,7 @@ function thumbOf(item) {
 function renderWorldsList() {
   const worlds = listWorlds();
   const isAdmin = userStore.isAdmin;
+  // El h1 de la página lo genera renderPageHeader (<h1 class="page-header__title">); aquí solo va el h2 de sección.
 
   return `
     <div class="mc-page">
@@ -82,10 +84,12 @@ function renderWorldsList() {
 
       ${subnavHTML()}
 
+      ${renderPageHeader({ title: 'Minecraft', icon: 'minecraft' })}
+
       <header class="mc-head">
         <div class="mc-head-titles">
           <span class="mc-kicker">Minecraft · Nuestros mundos</span>
-          <h2 class="mc-title">⛏️ Todos nuestros mundos</h2>
+          <h2 class="mc-title">⛏️ Nuestros mundos</h2>
           <p class="mc-sub">Cada mundo guarda sus fotos, vídeos y recuerdos por separado, con su semilla y descripción.</p>
         </div>
         ${isAdmin ? `<button class="mc-add-world" id="mcAddWorldBtn">${UI.plus} Nuevo mundo</button>` : ''}
@@ -153,6 +157,8 @@ function renderWorldDetail() {
       </button>
 
       ${subnavHTML()}
+
+      ${renderPageHeader({ title: 'Minecraft', icon: 'minecraft' })}
 
       <button class="rincon-back-btn" data-mc-back-world>
         ${UI.back} Mundos

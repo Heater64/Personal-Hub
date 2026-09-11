@@ -170,3 +170,11 @@ test('rincon con cabecera y carrusel manual accesible', async () => {
   assert.ok(!rincon.includes('setInterval'));
   assert.ok(rincon.includes('rincon-hero-crown') === false);
 });
+
+test('interiores con cabecera y minecraft con h1-h2', async () => {
+  const rincon = await readFile(projectPath('personal-hub', 'src', 'pages', 'Rincon.js'), 'utf8');
+  for (const t of ['Galería', 'Memes', 'Audios', 'Curiosidades']) assert.ok(rincon.includes(t));
+  const mc = await readFile(projectPath('personal-hub', 'src', 'pages', 'Minecraft.js'), 'utf8');
+  assert.ok(mc.includes('<h1'));
+  assert.ok(mc.includes('Nuestros mundos'));
+});

@@ -1187,6 +1187,7 @@ export function RinconPage(router) {
     const heroPhotos = photos.slice(0, 5).map(galleryThumb).filter(Boolean);
 
     return `<div class="gallery-app">
+      ${renderPageHeader({ title: 'Galería', icon: 'image' })}
       <!-- Añadir fotos (acción primaria, solo ADMIN) -->
       ${isAdmin ? `<div class="gallery-topbar">
         <button class="gallery-add-btn" id="galleryAddBtn">
@@ -1309,6 +1310,7 @@ export function RinconPage(router) {
     const albums = memeSortAlbums(memeAlbums().map(a => ({ ...a, items: memeItems(a.id) })));
     const stats = libraryStats();
     return `<div class="memes-immersive" id="memesRoot">
+      ${renderPageHeader({ title: 'Memes', icon: 'smile' })}
       <div class="memes-breadcrumb">
         <button class="memes-breadcrumb-item" data-nav="landing">El Rincón</button>
         <span class="memes-breadcrumb-sep">/</span>
@@ -2271,11 +2273,12 @@ export function RinconPage(router) {
         <span class="curio-crumb">El Rincón / Curiosidades</span>
         <button class="rincon-back-btn" data-back="landing">${ICON_SVGS['chevron-left']} Volver al Rincón</button>
       </div>
+      ${renderPageHeader({ title: 'Curiosidades', icon: 'compass' })}
 
       <header class="curio-hero">
         <div class="curio-hero-copy">
           <span class="curio-hero-eyebrow">${ICON_SVGS['sparkles']} Explora y aprende</span>
-          <h1 class="curio-hero-title">Curiosidades <span class="curio-hero-sparkles">${ICON_SVGS['sparkles']}${ICON_SVGS['sparkles']}</span></h1>
+          <h2 class="curio-hero-title">Curiosidades <span class="curio-hero-sparkles">${ICON_SVGS['sparkles']}${ICON_SVGS['sparkles']}</span></h2>
           <p class="curio-hero-sub">Descubre datos increíbles sobre lugares, historia, comida, animales y mucho más.</p>
         </div>
         <div class="curio-hero-art" aria-hidden="true">
@@ -2586,6 +2589,7 @@ export function RinconPage(router) {
         <span class="disco-breadcrumb-sep">/</span>
         <span class="disco-breadcrumb-current">${escapeHtml(item.title.slice(0, 34))}${item.title.length > 34 ? '…' : ''}</span>
       </div>
+      ${renderPageHeader({ title: 'Curiosidades', icon: 'compass' })}
 
       <header class="curio-detail-hero card">
         <div class="curio-detail-copy">
@@ -2668,6 +2672,7 @@ export function RinconPage(router) {
         <span class="disco-breadcrumb-current">${cat.title}</span>
         <span class="disco-breadcrumb-count">${cat.statsCount} datos</span>
       </div>
+      ${renderPageHeader({ title: 'Curiosidades', icon: 'compass' })}
       ${contentHTML}
       ${renderRecommendations(catId)}
     </div>`;
@@ -3358,9 +3363,10 @@ export function RinconPage(router) {
 
     return `
       <div class="audios-page">
+        ${renderPageHeader({ title: 'Audios', icon: 'mic' })}
         <header class="audios-hero">
           <div class="audios-hero-icon">${ICON_SVGS['mic']}</div>
-          <h1 class="audios-hero-title">Audios</h1>
+          <h2 class="audios-hero-title">Audios</h2>
           <p class="audios-hero-sub">Nuestros audios del día 3 🤍</p>
         </header>
 
@@ -3457,9 +3463,10 @@ export function RinconPage(router) {
     return `
       <div class="audios-page">
         <button class="rincon-back-btn" data-back="months">${ICON_SVGS['chevron-left']} Todos los meses</button>
+        ${renderPageHeader({ title: 'Audios', icon: 'mic' })}
         <header class="audios-detail-hero">
           <div class="audios-detail-icon">${ICON_SVGS['mic']}</div>
-          <h1 class="audios-hero-title">${name} ${year}</h1>
+          <h2 class="audios-hero-title">${name} ${year}</h2>
           <p class="audios-hero-sub">${list.length === 1 ? 'Audio del ' + (list[0].date ? formatAudioDate(list[0].date) : '3 de ' + name) : `${list.length} audios`}</p>
         </header>
         <div class="audios-list">
