@@ -38,10 +38,19 @@ test('pageheader umbra con tokens y barra movil contextual', async () => {
   const comp = await readFile(projectPath('personal-hub', 'src', 'components', 'PageHeader.js'), 'utf8');
   assert.ok(comp.includes('renderPageHeader'));
   assert.ok(comp.includes('<h1'));
+  assert.ok(comp.includes('mobileHidden'));
+  assert.ok(comp.includes('page-header__icon'));
+  assert.ok(comp.includes('page-header__line'));
   const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'page-header.css'), 'utf8');
   assert.ok(!css.includes('#') || css.includes('rgba('));
+  assert.ok(css.includes('--accent-dim'));
+  assert.ok(css.includes('--theme-divider-strong'));
+  const main = await readFile(projectPath('personal-hub', 'src', 'styles', 'main.css'), 'utf8');
+  assert.ok(main.includes('page-header'));
 });
 ```
+
+> I1 (barra móvil icono+título en App.js) pendiente de los cambios del otro worker; se verifica end-state en Task 6.
 
 - [ ] **Step 2: Run test to verify it fails**
 
