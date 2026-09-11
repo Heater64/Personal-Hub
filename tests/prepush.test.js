@@ -144,3 +144,11 @@ test('pageheader umbra con tokens y barra movil contextual', async () => {
   const main = await readFile(projectPath('personal-hub', 'src', 'styles', 'main.css'), 'utf8');
   assert.ok(main.includes('page-header'));
 });
+
+test('bottomnav compacta a 390px y subnav con scroll horizontal', async () => {
+  const cssFiles = ['bottom-nav.css', 'rincon.css'];
+  let css = '';
+  for (const f of cssFiles) { try { css += await readFile(projectPath('personal-hub', 'src', 'styles', f), 'utf8'); } catch (e) {} }
+  assert.ok(css.includes('390px'));
+  assert.ok(css.includes('overflow-x'));
+});
