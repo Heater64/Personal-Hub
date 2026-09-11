@@ -30,116 +30,116 @@
 }
 
 /* ==========================================
-   HERO — Panel atmosférico redondeado
+   DISCOVER — carrusel manual "Descubre hoy"
+   (sin autoplay; una tarjeta visible)
    ========================================== */
-.rincon-hero-v2 {
-  position: relative;
-  overflow: hidden;
+.rincon-discover {
   margin: 0 0 var(--sp-32);
-  padding: var(--sp-40) var(--sp-24) var(--sp-32);
-  isolation: isolate;
-  border-radius: var(--r-lg);
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-divider);
-  box-shadow: var(--elevation-2);
 }
 
-.rincon-hero-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.16;
-}
-
-.rincon-hero-bg img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: blur(28px) brightness(0.32);
-  transform: scale(1.15);
-}
-
-.rincon-hero-overlay {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 28% 20%, var(--accent-dim-strong) 0%, transparent 58%),
-    radial-gradient(ellipse at 75% 80%, var(--warm-amber-dim) 0%, transparent 48%),
-    radial-gradient(ellipse at 60% 40%, var(--warm-rose-dim) 0%, transparent 45%);
-  z-index: 1;
-}
-
-.rincon-hero-body {
-  position: relative;
-  z-index: 2;
-  text-align: center;
-  color: var(--theme-text-primary);
+.rincon-carousel {
   display: flex;
-  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-8);
+}
+
+.rincon-carousel-view {
+  flex: 1;
+  min-width: 0;
+}
+
+.rincon-carousel-view .rincon-featured {
+  margin-bottom: 0;
+}
+
+.rincon-featured[hidden] {
+  display: none;
+}
+
+.rincon-featured:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+.rincon-carousel-nav {
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
   align-items: center;
-}
-
-.rincon-hero-crown {
-  margin-bottom: var(--sp-12);
-  animation: rinconCrownFloat 4s ease-in-out infinite;
-}
-
-.rincon-hero-crown svg {
-  width: 36px; height: 36px;
-  stroke: var(--theme-accent); stroke-width: 1.5;
-  filter: drop-shadow(0 0 14px var(--accent-dim-strong));
-}
-
-@keyframes rinconCrownFloat {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
-}
-
-.rincon-hero-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl); font-weight: 600;
-  letter-spacing: -0.02em;
-  margin: 0 0 var(--sp-8);
-}
-
-.rincon-hero-sub {
-  font-size: var(--fs-base); color: var(--theme-text-secondary);
-  margin: 0 0 var(--sp-20); opacity: 0.9;
-}
-
-.rincon-hero-counter {
-  display: inline-flex; align-items: center; gap: var(--sp-8);
-  padding: var(--sp-8) var(--sp-20);
+  justify-content: center;
   border-radius: var(--r-full);
   background: var(--theme-surface-elevated);
   border: 1px solid var(--theme-divider);
-  font-size: var(--fs-sm); font-weight: 500;
   color: var(--theme-text-primary);
+  cursor: pointer;
 }
 
-.rincon-hero-counter svg {
-  width: 16px; height: 16px;
-  fill: var(--theme-accent); stroke: none;
-  animation: heartBeat 2.2s ease-in-out infinite;
+.rincon-carousel-nav:hover {
+  border-color: var(--theme-border-accent);
 }
 
-@keyframes heartBeat {
-  0%, 100% { transform: scale(1); }
-  12%      { transform: scale(1.3); }
-  24%      { transform: scale(1); }
+.rincon-carousel-nav:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
 }
 
-.rincon-hero-sparkles {
-  margin-top: var(--sp-16);
-  font-size: var(--fs-md);
-  letter-spacing: 0.35em;
-  opacity: 0.75;
-  animation: rinconSparkles 6s ease-in-out infinite;
+.rincon-carousel-nav svg {
+  width: 20px;
+  height: 20px;
 }
 
-@keyframes rinconSparkles {
-  0%, 100% { opacity: 0.45; transform: translateY(0); }
-  50%      { opacity: 0.9;  transform: translateY(-3px); }
+.rincon-carousel-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  margin-top: var(--sp-12);
+}
+
+.rincon-carousel-dot {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.rincon-carousel-dot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--theme-divider-strong);
+}
+
+.rincon-carousel-dot.is-active::before {
+  background: var(--theme-accent);
+}
+
+.rincon-carousel-dot:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: -6px;
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rincon-featured,
+  .rincon-featured-img,
+  .rincon-featured-action svg {
+    transition: none;
+  }
+  .rincon-featured:hover {
+    transform: none;
+  }
+  .rincon-featured:hover .rincon-featured-img {
+    transform: none;
+  }
 }
 
 /* ==========================================
@@ -203,17 +203,6 @@
 }
 
 .rincon-featured:active { transform: scale(0.98); }
-
-.rincon-featured-label {
-  display: inline-block;
-  font-size: var(--fs-caption); font-weight: 600;
-  color: var(--theme-accent); text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: var(--sp-12);
-  padding: var(--sp-4) var(--sp-12);
-  border-radius: var(--r-full);
-  background: var(--accent-dim);
-}
 
 .rincon-featured-card {
   display: flex;
@@ -2966,12 +2955,6 @@
 @media (min-width: 769px) {
   .rincon-page { max-width: 1100px; }
 
-  .rincon-hero-v2 {
-    margin-bottom: var(--sp-40);
-  }
-
-  .rincon-hero-body { padding: var(--sp-16) var(--sp-48); }
-
   .gallery-masonry { columns: 4 200px; }
   .meme-albums-grid { grid-template-columns: repeat(3, 1fr); }
   .meme-album-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
@@ -2983,11 +2966,6 @@
   .gallery-masonry { columns: 2 140px; }
   .meme-albums-grid { grid-template-columns: 1fr 1fr; }
   .meme-album-grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); }
-}
-
-@media (max-width: 480px) {
-  .rincon-hero-title { font-size: var(--fs-xl); }
-  .rincon-hero-sub { font-size: var(--fs-sm); }
 }
 
 /* ==========================================

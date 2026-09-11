@@ -161,3 +161,12 @@ test('inicio usa pageheader y tarjeta de bienvenida sin frase ni particulas', as
   assert.ok(home.includes('homeCounter'));
   assert.ok(home.includes('Datos curiosos'));
 });
+
+test('rincon con cabecera y carrusel manual accesible', async () => {
+  const rincon = await readFile(projectPath('personal-hub', 'src', 'pages', 'Rincon.js'), 'utf8');
+  assert.ok(rincon.includes('renderPageHeader'));
+  assert.ok(rincon.includes('El Rincón'));
+  assert.ok(rincon.includes('aria-roledescription'));
+  assert.ok(!rincon.includes('setInterval'));
+  assert.ok(rincon.includes('rincon-hero-crown') === false);
+});

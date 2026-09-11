@@ -10,10 +10,10 @@ import { loadGiftsCatalog, getGiftsCatalog, unlockedCalendarVideos } from '../se
 import { createLightbox, openLightbox, playSlideshow, pauseSlideshow } from '../components/MediaLightbox.js';
 import { db } from '../services/db.service.js';
 import { showToast } from '../components/Toast.js';
+import { renderPageHeader } from '../components/PageHeader.js';
 import { escapeHtml } from '../utils/escape.js';
 import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
-import { daysSinceAnniversary, loadSpecialDates } from '../utils/specialDates.js';
 import { player } from '../services/player.service.js';
 import { getAllSongs } from './Canciones.js';
 import { GAMES } from './Juegos.js';
@@ -392,14 +392,25 @@ export function RinconPage(router) {
     return options[Math.floor(Math.random() * options.length)];
   }
 
+  // Tres sugerencias distintas por render para el carrusel manual
+  // (reutiliza getDescubreHoy(); nada se persiste).
+  function getDescubreHoySet() {
+    const seen = new Set();
+    const picks = [];
+    for (let i = 0; i < 24 && picks.length < 3; i++) {
+      const item = getDescubreHoy();
+      if (!item || seen.has(item.title)) continue;
+      seen.add(item.title);
+      picks.push(item);
+    }
+    return picks;
+  }
+
   // ==========================================
   // 1. LANDING — Immersive, warm experience
   // ==========================================
   function renderLanding() {
-    const daysSince = daysSinceAnniversary();
-    const bgPhotos = GALLERY_FOLDERS?.['Atardeceres'] || [];
-    const bgImage = bgPhotos.length ? bgPhotos[Math.floor(Math.random() * bgPhotos.length)] : '';
-    const descubrir = getDescubreHoy();
+    const descubrir = getDescubreHoySet();
 
     // Pre-compute section previews
     const sectionPreviews = SECTIONS.map(s => {
@@ -411,25 +422,29 @@ export function RinconPage(router) {
     offPlayerCard();
 
     page.innerHTML = `
-      <!-- ===== HERO ===== -->
-      <header class="rincon-hero-v2">
-        ${bgImage ? `<div class="rincon-hero-bg"><img src="${bgImage}" alt="" loading="eager"></div>` : ''}
-        <div class="rincon-hero-overlay"></div>
-        <div class="rincon-hero-body">
-          <div class="rincon-hero-crown">${ICON_SVGS['crown']}</div>
-          <h1 class="rincon-hero-title">Tu rincón favorito 🤍</h1>
-          <p class="rincon-hero-sub">Donde cada día eres especial</p>
-          <div class="rincon-hero-counter">
-            ${ICON_SVGS['heart']}
-            <span id="rinconDaysCounter">${daysSince} días juntos</span>
-          </div>
-          <div class="rincon-hero-sparkles">🌸🐱</div>
-        </div>
-      </header>
+      ${renderPageHeader({ title: 'El Rincón', icon: 'heart' })}
 
-      <!-- ===== DESCUBRE HOY ===== -->
-      <section class="rincon-featured card" id="rinconFeatured" role="button" tabindex="0" aria-label="Descubre hoy: ${descubrir.title}">
-        ${renderFeaturedCard(descubrir)}
+      <!-- ===== DESCUBRE HOY (carrusel manual, sin autoplay) ===== -->
+      <section class="rincon-discover" aria-roledescription="carousel" aria-label="Descubre hoy">
+        <div class="rincon-section-header">
+          <span class="rincon-section-chip">${ICON_SVGS['sparkles']}</span>
+          <h2 class="rincon-section-title">Descubre hoy</h2>
+          <span class="rincon-section-line"></span>
+        </div>
+        <div class="rincon-carousel">
+          <button type="button" class="rincon-carousel-nav" id="rinconPrev" aria-label="Ver sugerencia anterior">${ICON_SVGS['chevron-left']}</button>
+          <div class="rincon-carousel-view" id="rinconCarouselView" aria-live="polite">
+            ${descubrir.map((item, i) => `
+              <article class="rincon-featured card${i === 0 ? ' is-active' : ''}" data-slide="${i}"${i === 0 ? '' : ' hidden'} role="button" tabindex="0" aria-label="${escapeHtml(item.title)}">
+                ${renderFeaturedCard(item)}
+              </article>`).join('')}
+          </div>
+          <button type="button" class="rincon-carousel-nav" id="rinconNext" aria-label="Ver sugerencia siguiente">${ICON_SVGS['chevron-right']}</button>
+        </div>
+        <div class="rincon-carousel-dots" role="group" aria-label="Elegir sugerencia">
+          ${descubrir.map((item, i) => `
+            <button type="button" class="rincon-carousel-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Ir a la sugerencia ${i + 1} de ${descubrir.length}: ${escapeHtml(item.title)}"${i === 0 ? ' aria-current="true"' : ''}></button>`).join('')}
+        </div>
       </section>
 
       <!-- ===== SECTION CARDS ===== -->
@@ -449,31 +464,62 @@ export function RinconPage(router) {
       page.querySelectorAll('.rincon-section-card-v2.animate-in').forEach(el => el.classList.add('visible'));
     });
 
-    // Contador dinámico: si las fechas configuradas llegan después del
-    // render (Supabase), actualiza el contador del hero en caliente.
-    loadSpecialDates().then(() => {
-      const el = page.querySelector('#rinconDaysCounter');
-      if (el) el.textContent = `${daysSinceAnniversary()} días juntos`;
-    });
-
-    // Bind featured card click + keyboard
-    const featuredCard = page.querySelector('#rinconFeatured');
-    if (featuredCard) {
-      const handleFeatured = () => {
-        if (descubrir.internal && descubrir.sectionId) {
-          const r = RINCON_SECTION_ROUTES[descubrir.sectionId];
-          if (r) { router.navigate(r); return; }
-          state.view = descubrir.sectionId;
-          if (descubrir.sectionId === 'curiosidades') state.curiosidadTab = 'landing';
-          render();
-        } else if (descubrir.route) {
-          router.navigate(descubrir.route);
-        }
-      };
-      featuredCard.addEventListener('click', handleFeatured);
-      featuredCard.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleFeatured(); }
+    // Carrusel manual "Descubre hoy": una tarjeta visible, sin autoplay.
+    const slides = [...page.querySelectorAll('#rinconCarouselView [data-slide]')];
+    const dots = [...page.querySelectorAll('.rincon-carousel-dot')];
+    let current = 0;
+    const showSlide = (i) => {
+      if (!slides.length) return;
+      current = (i + slides.length) % slides.length;
+      slides.forEach((s, idx) => {
+        const active = idx === current;
+        s.classList.toggle('is-active', active);
+        if (active) s.removeAttribute('hidden');
+        else s.setAttribute('hidden', '');
       });
+      dots.forEach((d, idx) => {
+        const active = idx === current;
+        d.classList.toggle('is-active', active);
+        if (active) d.setAttribute('aria-current', 'true');
+        else d.removeAttribute('aria-current');
+      });
+    };
+    const openSlide = (i) => {
+      const item = descubrir[i];
+      if (!item) return;
+      if (item.internal && item.sectionId) {
+        const r = RINCON_SECTION_ROUTES[item.sectionId];
+        if (r) { router.navigate(r); return; }
+        state.view = item.sectionId;
+        if (item.sectionId === 'curiosidades') state.curiosidadTab = 'landing';
+        render();
+      } else if (item.route) {
+        router.navigate(item.route);
+      }
+    };
+    page.querySelector('#rinconPrev')?.addEventListener('click', () => showSlide(current - 1));
+    page.querySelector('#rinconNext')?.addEventListener('click', () => showSlide(current + 1));
+    dots.forEach(d => d.addEventListener('click', () => showSlide(Number(d.dataset.dot))));
+    slides.forEach((s, idx) => {
+      s.addEventListener('click', () => openSlide(idx));
+      s.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSlide(idx); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); showSlide(current + 1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(current - 1); }
+      });
+    });
+    // Gesto táctil horizontal sobre la tarjeta visible
+    const carouselView = page.querySelector('#rinconCarouselView');
+    if (carouselView) {
+      let touchX = null;
+      carouselView.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+      carouselView.addEventListener('touchend', (e) => {
+        if (touchX === null) return;
+        const dx = e.changedTouches[0].clientX - touchX;
+        touchX = null;
+        if (dx <= -40) showSlide(current + 1);
+        else if (dx >= 40) showSlide(current - 1);
+      }, { passive: true });
     }
 
     // Bind section card clicks (clic + teclado) y modo edición de portadas
@@ -599,7 +645,6 @@ export function RinconPage(router) {
     const cover = item.cover || '';
     const icon = item.emoji || item.icon || '✨';
     return `
-      <div class="rincon-featured-label">Descubre hoy</div>
       <div class="rincon-featured-card">
         <div class="rincon-featured-visual">
           ${cover
@@ -1341,33 +1386,18 @@ export function RinconPage(router) {
   // Handler del visor de curiosidades — se guarda para poder limpiarlo al salir de la página
   let datoViewerKeyHandler = null;
 
-  // ----- Hero rotativo + indicadores -----
-  let galleryHeroTimer = null; // se limpia en cada re-render para no acumular intervalos
+  // ----- Hero manual + indicadores (sin autoplay) -----
   function bindGalleryHero(container, heroPhotos) {
-    if (galleryHeroTimer) { clearInterval(galleryHeroTimer); galleryHeroTimer = null; }
     if (!heroPhotos.length) return;
     const hero = container.querySelector('#galleryHero');
     if (!hero) return;
     const slides = hero.querySelectorAll('.gallery-hero-slide');
     const dots = hero.querySelectorAll('.gallery-hero-dot');
-    let current = 0;
     const show = (i) => {
-      current = i;
       slides.forEach((s, idx) => s.classList.toggle('is-active', idx === i));
       dots.forEach((d, idx) => d.classList.toggle('is-active', idx === i));
     };
     dots.forEach(d => d.addEventListener('click', () => show(Number(d.dataset.dot))));
-    // Rotación automática sutil (solo si hay varias)
-    if (slides.length > 1) {
-      galleryHeroTimer = setInterval(() => show((current + 1) % slides.length), 6000);
-    }
-    // Pausar al interactuar
-    const pause = () => { if (galleryHeroTimer) { clearInterval(galleryHeroTimer); galleryHeroTimer = null; } };
-    const resume = () => {
-      if (!galleryHeroTimer && slides.length > 1) galleryHeroTimer = setInterval(() => show((current + 1) % slides.length), 6000);
-    };
-    hero.addEventListener('pointerenter', pause);
-    hero.addEventListener('pointerleave', resume);
   }
 
   // ----- Masonry con proporciones reales -----
@@ -3774,7 +3804,7 @@ export function RinconPage(router) {
   };
   document.addEventListener('keydown', memeKeyHandler);
 
-  // Cleanup al salir de la página: timers del hero, slideshow y teclado
+  // Cleanup al salir de la página: rotaciones, slideshow y teclado
   page.cleanup = () => {
     stopAllRotations();
     offPlayerCard();
@@ -3783,7 +3813,6 @@ export function RinconPage(router) {
     offMemes();
     // Pausa cualquier audio del Rincón que esté sonando
     page.querySelectorAll('.audios-player-card audio').forEach(a => a.pause());
-    if (galleryHeroTimer) { clearInterval(galleryHeroTimer); galleryHeroTimer = null; }
     pauseSlideshow();
     document.removeEventListener('keydown', memeKeyHandler);
     if (datoViewerKeyHandler) {
