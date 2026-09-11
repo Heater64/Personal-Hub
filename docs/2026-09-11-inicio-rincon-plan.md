@@ -95,7 +95,7 @@ test('bottomnav compacta a 390px y subnav con scroll horizontal', async () => {
 });
 ```
 
-- [ ] **Step 2: Run** `npm test` → FAIL. **Step 3:** media query ≤390px que oculta `.bottom-nav__label` (botones 44px, `aria-label` y `aria-current` ya existen en `BottomNav.js`, no tocar JS); subnav con `overflow-x:auto`, `scrollbar-width:none`, items `flex-shrink:0` y área táctil ≥44px. Quitar en `Rincon.js` solo los “Volver a Rincón” que duplican la barra móvil.
+- [ ] **Step 2: Run** `npm test` → FAIL. **Step 3:** media query ≤390px que oculta `.bottom-nav__label` (botones 44px, `aria-label` y `aria-current` ya existen en `BottomNav.js`, no tocar JS); subnav con `overflow-x:auto`, `scrollbar-width:none`, items `flex-shrink:0` y área táctil ≥44px. Ocultar vía CSS (≤768px, `display:none`) los “Volver a Rincón” que duplican la barra móvil — NO borrarlos de `Rincon.js`: en desktop son la única vía de vuelta.
 - [ ] **Step 4: Run** `npm test && npm run build` → PASS. **Step 5: Commit** `feat(rincon): nav movil compacta y subnav con scroll`.
 
 ---
