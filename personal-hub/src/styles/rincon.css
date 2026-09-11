@@ -4904,9 +4904,10 @@
   }
   /* Los "Volver" in-page a /rincon duplican la barra móvil (visible ≤768px);
      se ocultan solo en móvil; en desktop siguen siendo la vía de vuelta.
-     [data-back="months"] no se toca: es navegación interna de Audios. */
+     [data-back="months"] y [data-mc-back-world] no se tocan: son navegación interna. */
   .rincon-back-btn[data-back="rincon"],
-  .rincon-back-btn[data-back="landing"] {
+  .rincon-back-btn[data-back="landing"],
+  .rincon-back-btn[data-mc-back] {
     display: none;
   }
 }

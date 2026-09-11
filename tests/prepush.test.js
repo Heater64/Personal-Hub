@@ -188,3 +188,10 @@ test('interiores con cabecera y minecraft con h1-h2', async () => {
   assert.ok(mc.includes("'Minecraft'"));
   assert.ok(mc.includes('Nuestros mundos'));
 });
+
+test('interiores ocultan cabecera en movil y minecraft simplifica backs', async () => {
+  const rincon = await readFile(projectPath('personal-hub', 'src', 'pages', 'Rincon.js'), 'utf8');
+  assert.ok(rincon.includes('mobileHidden'));
+  const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'rincon.css'), 'utf8');
+  assert.ok(css.includes('data-mc-back'));
+});

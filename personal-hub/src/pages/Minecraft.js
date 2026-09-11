@@ -84,7 +84,7 @@ function renderWorldsList() {
 
       ${subnavHTML()}
 
-      ${renderPageHeader({ title: 'Minecraft', icon: 'minecraft' })}
+      ${renderPageHeader({ title: 'Minecraft', icon: 'minecraft', mobileHidden: true })}
 
       <header class="mc-head">
         <div class="mc-head-titles">
@@ -158,7 +158,7 @@ function renderWorldDetail() {
 
       ${subnavHTML()}
 
-      ${renderPageHeader({ title: 'Minecraft', icon: 'minecraft' })}
+      ${renderPageHeader({ title: 'Minecraft', icon: 'minecraft', mobileHidden: true })}
 
       <button class="rincon-back-btn" data-mc-back-world>
         ${UI.back} Mundos
