@@ -74,7 +74,7 @@ function thumbOf(item) {
 function renderWorldsList() {
   const worlds = listWorlds();
   const isAdmin = userStore.isAdmin;
-  // El h1 de la página lo genera renderPageHeader (<h1 class="page-header__title">); aquí solo va el h2 de sección.
+  // El h1 de la página lo genera renderPageHeader en runtime; aquí solo va el h2.
 
   return `
     <div class="mc-page">
