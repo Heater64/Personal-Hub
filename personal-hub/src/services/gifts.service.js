@@ -14,6 +14,11 @@ const GIFTS_PATH = '/data/gifts.json';
 
 let catalog = null;
 let catalogPromise = null;
+// Sube con cada invalidación. Si una carga empieza con generation N y
+// alguien invalida mientras está en vuelo (el Admin acaba de guardar),
+// el resultado viejo se descarta: así un regalo recién añadido nunca
+// se queda "a medio camino" por culpa de una promesa cacheada.
+let generation = 0;
 
 /**
  * Carga el catálogo una sola vez y lo cachea.
@@ -25,6 +30,7 @@ let catalogPromise = null;
 export function loadGiftsCatalog() {
   if (catalog) return Promise.resolve(catalog);
   if (!catalogPromise) {
+    const myGeneration = generation;
     catalogPromise = (async () => {
       // 1. Datos guardados por el Admin (Supabase → localStorage fallback)
       let data = null;
@@ -63,6 +69,9 @@ export function loadGiftsCatalog() {
       }
 
       if (shouldExpandCalendar) expandCalendarCatalog(data);
+      // Si se invalidó mientras esperábamos a Supabase, estos datos ya son
+      // rancios: no los publicamos como caché (el siguiente load reintenta).
+      if (myGeneration !== generation) return null;
       catalog = data;
       catalog.giftsById = {};
       (catalog.gifts || []).forEach(g => { if (g.id) catalog.giftsById[g.id] = g; });
@@ -75,8 +84,13 @@ export function loadGiftsCatalog() {
   return catalogPromise;
 }
 
-/** Invalida la caché en memoria (tras guardar desde el Admin). */
+/**
+ * Invalida la caché en memoria (tras guardar desde el Admin).
+ * También sube la generación: cualquier carga en vuelo con datos viejos
+ * se descarta en vez de publicarse como "la verdad" del catálogo.
+ */
 export function invalidateGiftsCache() {
+  generation += 1;
   catalog = null;
   catalogPromise = null;
 }

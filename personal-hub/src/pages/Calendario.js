@@ -939,11 +939,24 @@ export function CalendarioPage(router) {
       // El Admin cambió el catálogo: recarga limpia y repinta.
       const { invalidateGiftsCache } = await import('../services/gifts.service.js');
       invalidateGiftsCache();
-      const data = await loadGiftsCatalog();
+      // loadGiftsCatalog puede devolver null si la carga se invalidó otra
+      // vez a mitad (guardado seguido de otro). Reintentamos una vez para no
+      // quedarnos con un calendario viejo.
+      let data = await loadGiftsCatalog();
+      if (!data) data = await loadGiftsCatalog();
       if (data) {
         catalog = data;
         catalog.giftsById = catalog.giftsById || {};
         (catalog.gifts || []).forEach(gift => { if (gift.id) catalog.giftsById[gift.id] = gift; });
+        // Si el día seleccionado sigue vacío tras el guardado (p. ej. se
+        // añadió contenido a otro día), saltamos al primero con contenido.
+        if (!dayIds(selectedDay.value).length) {
+          const next = nextDayWithContent();
+          if (next) {
+            selectedDay.value = next;
+            view.monthKey = monthKeyOf(next);
+          }
+        }
         paintAll();
       }
     });

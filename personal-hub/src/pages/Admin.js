@@ -1994,11 +1994,23 @@ export function AdminPage(router) {
         next.version = Math.max(Number(next.version) || 0, 5);
 
         if (isNew) {
-          // Id canónico por fecha + sufijo si el día ya tiene contenidos
+          // Id único garantizado. Antes sederivaba del nº de contenidos del
+          // día (base, _a, _b...), lo que colisionaba en cuanto se borraba un
+          // contenido o se reordenaba: el regalo nuevo pisaba a otro que ya
+          // estaba guardado y el día se quedaba como estaba. Ahora se busca
+          // el siguiente sufijo libre de verdad.
           const dayNum = dateStr.slice(8);
-          const existingIds = calToIds(next.months?.[dateStr.slice(0, 7)]?.calendarMapping?.[String(parseInt(dayNum, 10))]);
-          const n = existingIds.length;
-          const id = `${calGiftId(dateStr)}${n === 0 ? '' : `_${String.fromCharCode(96 + n)}`}`;
+          const dayKey = String(parseInt(dayNum, 10));
+          const monthKeySrc = dateStr.slice(0, 7);
+          const existingIds = calToIds(next.months?.[monthKeySrc]?.calendarMapping?.[dayKey]);
+          const taken = new Set((next.gifts || []).map(x => x?.id).filter(Boolean));
+          let suffix = '';
+          let seq = 0;
+          while (taken.has(`${calGiftId(dateStr)}${suffix}`)) {
+            seq += 1;
+            suffix = `_${String.fromCharCode(96 + seq)}`;
+          }
+          const id = `${calGiftId(dateStr)}${suffix}`;
           const g = { id, title, type, unlock: { mode: 'date', value: dateStr }, redirect: false, data: payloadData };
           next.gifts.push(g);
           const monthKey = dateStr.slice(0, 7);
