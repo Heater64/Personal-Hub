@@ -1352,15 +1352,32 @@ export function AdminPage(router) {
     series:    async () => ({ title: 'Series', items: await safe(loadCatalog(), []), save: saveCatalog }),
     regalos:   async () => {
       // Fuente unificada: lo guardado en Supabase, o gifts.json como semilla.
-      const cat = await safe(loadGiftsCatalog(), { gifts: [] });
+      // Si la carga falla, NO se devuelve un catálogo vacío: se propaga el
+      // error para que el panel muestre el fallo en vez de dejar una copia
+      // vacía lista para pisar el catálogo bueno al guardar.
+      const cat = await loadGiftsCatalog();
+      if (!cat || !Array.isArray(cat.gifts) || !cat.gifts.length) {
+        throw new Error('No se pudo cargar el catálogo de regalos. No se guardará nada para no perder el contenido existente.');
+      }
       return {
         title: 'Regalos',
         catalog: cat,
         items: cat?.gifts || [],
         // Guarda el catálogo completo (version + months + gifts) y refresca
-        // la caché compartida con el Calendario y la Galería
+        // la caché compartida con el Calendario y la Galería.
+        // Guarda de seguridad: si el catálogo que llega está claramente
+        // incompleto respecto a lo que había, se aborta en vez de sobrescribir.
         save: async (next) => {
+          const incoming = Array.isArray(next?.gifts) ? next.gifts.length : 0;
+          const current = Array.isArray(cat?.gifts) ? cat.gifts.length : 0;
+          if (current > 0 && incoming === 0) {
+            throw new Error('Guardado cancelado: el catálogo ha llegado vacío y habría borrado todo el calendario.');
+          }
           await db.saveGifts(next);
+          // Tras guardar, esta copia deja de ser la referencia: se sincroniza
+          // con lo guardado para que el siguiente guardado compare bien.
+          cat.gifts = next.gifts;
+          cat.months = next.months;
           invalidateGiftsCache();
         }
       };

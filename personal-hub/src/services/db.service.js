@@ -121,6 +121,25 @@ async function loadContent(id, fallback = null) {
 
 async function saveContent(id, data) {
   await requireAdmin(); // contenido global: solo ADMIN
+
+  // Salvaguarda del catálogo de regalos: si lo que llega tiene una caída
+  // drástica frente a lo que ya había, es un catálogo truncado (carga fallida
+  // o bug) y sobrescribirlo BORRARÍA meses de contenido de un plumazo.
+  // El panel ya avisa, pero esta es la red de seguridad definitiva.
+  if (id === 'gifts') {
+    const incoming = Array.isArray(data?.gifts) ? data.gifts.length : 0;
+    let current = 0;
+    try {
+      const prev = await loadContent('gifts', null);
+      current = Array.isArray(prev?.gifts) ? prev.gifts.length : 0;
+    } catch { /* si no se puede leer, no se bloquea el guardado */ }
+    if (current > 0 && incoming * 2 < current) {
+      throw new Error(
+        `Guardado cancelado para proteger el calendario: hay ${current} regalos guardados y se ha recibido un catálogo de ${incoming}.`
+      );
+    }
+  }
+
   try {
     const { error } = await supabase
       .from(CONTENT_TABLE)
