@@ -1036,3 +1036,85 @@
   font-size: var(--fs-xs);
   opacity: 0.85;
 }
+
+/* ==========================================
+   AJUSTES DE NOTIFICACIONES (bottom sheet)
+   Toggles por tipo, horario de silencio y prueba.
+   Reutiliza .prof-row / .prof-toggle del perfil.
+   ========================================== */
+.notif-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-14);
+  padding-bottom: var(--sp-8);
+}
+
+.notif-permnote {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  line-height: 1.55;
+  background: var(--warn-soft, rgba(255, 193, 7, 0.12));
+  border: 1px solid var(--warn-border, rgba(255, 193, 7, 0.35));
+  border-radius: var(--r-lg);
+  padding: var(--sp-12) var(--sp-14);
+}
+
+.notif-permnote[hidden] { display: none; }
+
+.notif-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+
+.notif-card .prof-row { margin: 0; }
+
+.notif-card__title {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.notif-card__hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+.notif-quiet {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+}
+
+.notif-quiet .prof-name-input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.notif-quiet__sep {
+  color: var(--text-3);
+  font-weight: 700;
+  flex: none;
+}
+
+/* Fila clicable de ajustes de notificaciones */
+.prof-row[role="button"] {
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+
+.prof-row[role="button"]:hover {
+  border-color: var(--theme-accent);
+}
+
+/* Botón de ancho completo dentro del sheet de ajustes */
+.prof-btn--block {
+  width: 100%;
+  justify-content: center;
+}

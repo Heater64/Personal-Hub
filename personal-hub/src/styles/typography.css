@@ -2,26 +2,29 @@
    TYPOGRAPHY
    ========================================== */
 
+/* Los títulos del sistema usan la tipografía de interfaz (Inter) con
+   tracking cerrado, como en habitos-web. Playfair Display queda como
+   acento puntual en .font-display (bienvenida, cartas, páginas íntimas). */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: var(--theme-text-primary);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
   line-height: 1.2;
 }
 
-h1 { font-size: var(--fs-3xl); letter-spacing: -0.02em; margin-bottom: var(--space-sm); }
-h2 { font-size: var(--fs-2xl); letter-spacing: -0.01em; margin-bottom: var(--space-sm); }
-h3 { font-size: var(--fs-xl); margin-bottom: var(--space-xs); }
-h4 { font-size: var(--fs-lg); margin-bottom: var(--space-xs); }
+h1 { font-size: var(--fs-2xl); letter-spacing: -0.03em; margin-bottom: var(--space-sm); }
+h2 { font-size: var(--fs-xl); margin-bottom: var(--space-sm); }
+h3 { font-size: var(--fs-lg); margin-bottom: var(--space-xs); }
+h4 { font-size: var(--fs-md); margin-bottom: var(--space-xs); }
 h5 { font-size: var(--fs-md); font-weight: 500; }
 h6 { font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
 
 p {
-  font-size: var(--fs-md);
-  line-height: 1.7;
+  font-size: var(--fs-base);
+  line-height: 1.65;
   margin-bottom: var(--space-sm);
-  color: var(--theme-text-secondary);
+  color: var(--text-2);
 }
 
 p:last-child { margin-bottom: 0; }

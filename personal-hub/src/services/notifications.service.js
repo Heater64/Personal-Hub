@@ -23,6 +23,54 @@ const OPENWHEN_ANNOUNCED_KEY = 'openwhen.announced';
 const DB_NAME = 'ph-notifications';
 const DB_STORE = 'state';
 
+// ==========================================
+// AJUSTES DE NOTIFICACIONES (estilo habitos-web)
+// - Toggles por tipo de aviso
+// - Horario de silencio: ninguna notificación local suena dentro
+// - Dedupe diario igual que antes
+// ==========================================
+const NOTIF_SETTINGS_KEY = 'notifSettings';
+const DEFAULT_NOTIF_SETTINGS = {
+  daily: true,       // recordatorio diario (bienvenida + novedades)
+  letters: true,     // cartas nuevas en Open When
+  quietFrom: '23:00', // silencio desde…
+  quietTo: '08:00'    // …hasta
+};
+
+export function getNotifSettings() {
+  try {
+    const raw = getUserPref(NOTIF_SETTINGS_KEY, '');
+    if (!raw) return { ...DEFAULT_NOTIF_SETTINGS };
+    return { ...DEFAULT_NOTIF_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_NOTIF_SETTINGS };
+  }
+}
+
+export function setNotifSettings(patch) {
+  const next = { ...getNotifSettings(), ...patch };
+  setUserPref(NOTIF_SETTINGS_KEY, JSON.stringify(next));
+  return next;
+}
+
+/** Permiso actual: 'granted' | 'denied' | 'default' | 'unsupported'. */
+export function notifPermission() {
+  return 'Notification' in window ? Notification.permission : 'unsupported';
+}
+
+/** ¿Estamos dentro del horario de silencio configurado? */
+export function inQuietHours(settings = getNotifSettings()) {
+  const { quietFrom, quietTo } = settings || {};
+  if (!quietFrom || !quietTo) return false;
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const from = Number(quietFrom.slice(0, 2)) * 60 + Number(quietFrom.slice(3));
+  const to = Number(quietTo.slice(0, 2)) * 60 + Number(quietTo.slice(3));
+  if (Number.isNaN(from) || Number.isNaN(to) || from === to) return false;
+  // Franja que cruza medianoche (23:00 → 8:00) también soportada.
+  return from < to ? minutes >= from && minutes < to : minutes >= from || minutes < to;
+}
+
 // Single-flight: evita duplicados si notifyTodayNovelties se invoca
 // a la vez desde login y desde scheduleMoodCheck.
 let noveltyCheckPromise = null;
@@ -250,7 +298,14 @@ export async function syncReminderState() {
   const enabled = isEnabled() && 'Notification' in window && Notification.permission === 'granted';
   const userId = getUserId();
   const prev = await getState();
-  const state = { enabled: enabled && !!userId, userId, lastShown: prev?.lastShown ?? null };
+  // El SW respeta el horario de silencio al lanzar el aviso diario.
+  const { quietFrom, quietTo } = getNotifSettings();
+  const state = {
+    enabled: enabled && !!userId,
+    userId,
+    lastShown: prev?.lastShown ?? null,
+    quiet: { from: quietFrom, to: quietTo }
+  };
   await setState(state);
 
   if (!('serviceWorker' in navigator)) return;
@@ -288,6 +343,9 @@ export async function showDailyNotification(title, body, url = '/', opts = {}) {
   if (!isEnabled()) return false;
   if (!('Notification' in window) || Notification.permission !== 'granted') return false;
   if (!('serviceWorker' in navigator)) return false;
+  // Horario de silencio: ninguna notificación local mientras dure
+  // (la prueba y otros avisos explícitos pueden saltárselo con ignoreQuiet).
+  if (!opts.ignoreQuiet && inQuietHours()) return false;
   try {
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, {
@@ -314,6 +372,12 @@ export async function notifyTodayNovelties() {
   if (!isEnabled() || !('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
   const userId = getUserId();
   if (!userId) return;
+
+  // Ajustes: tipo desactivado o horario de silencio → no consume el dedupe
+  // del día (si es silencio, el aviso puede salir más tarde ese mismo día).
+  const settings = getNotifSettings();
+  if (!settings.daily) return;
+  if (inQuietHours(settings)) return;
 
   // Solo a partir de las 8:00 (hora de España, península)
   if (hourInSpain() < 8) return;
@@ -369,6 +433,11 @@ export async function notifyNewOpenWhenLetters() {
   if (!userId) return;
   if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
 
+  // Ajustes: cartas desactivadas u horario de silencio → sin aviso.
+  const settings = getNotifSettings();
+  if (!settings.letters) return;
+  if (inQuietHours(settings)) return;
+
   // Cartas que la usuaria aún no ha abierto
   let seen = [];
   try {
@@ -395,10 +464,25 @@ export async function notifyNewOpenWhenLetters() {
     ? `«${fresh[0].title}» te está esperando.`
     : 'Te están esperando. ¿Qué necesitas ahora? 🤍';
 
-  await showDailyNotification(title, body, '/openwhen', { tag: OPENWHEN_TAG });
+  const shown = await showDailyNotification(title, body, '/openwhen', { tag: OPENWHEN_TAG });
 
   // Solo marca como anunciadas si la notificación pudo mostrarse
-  setUserPref(OPENWHEN_ANNOUNCED_KEY, JSON.stringify([...announced, ...fresh.map(l => l.id)]));
+  if (shown) {
+    setUserPref(OPENWHEN_ANNOUNCED_KEY, JSON.stringify([...announced, ...fresh.map(l => l.id)]));
+  }
+}
+
+/**
+ * Notificación de prueba desde los ajustes: siempre se muestra aunque
+ * estemos en horario de silencio (la usuaria la está pidiendo).
+ */
+export async function sendTestNotification() {
+  return showDailyNotification(
+    '🔔 Personal Hub',
+    'Las notificaciones funcionan correctamente ✨',
+    '/',
+    { tag: 'notif-test', ignoreQuiet: true }
+  );
 }
 
 /**

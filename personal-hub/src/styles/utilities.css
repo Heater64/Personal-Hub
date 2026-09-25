@@ -23,12 +23,12 @@
 .skip-link {
   position: fixed;
   top: -100%;
-  left: var(--sp-16, 16px);
-  z-index: var(--z-modal, 1000);
+  left: var(--sp-16);
+  z-index: var(--z-modal);
   padding: 12px 20px;
-  border-radius: var(--r-full, 999px);
-  background: var(--theme-accent-strong, #c14e3a);
-  color: #fff;
+  border-radius: var(--r-full);
+  background: var(--primary);
+  color: var(--on-accent, #fff);
   font-weight: 600;
   text-decoration: none;
   transition: top 0.2s ease;

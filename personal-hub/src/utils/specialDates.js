@@ -53,6 +53,60 @@ export function daysSinceAnniversary() {
   return Math.floor((Date.now() - new Date(specialDates().anniversary + 'T00:00:00').getTime()) / 86400000);
 }
 
+const MS_DAY = 86400000;
+
+/** Fecha local YYYY-MM-DD (sin desfase de UTC). */
+function toISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** Medianoche local de hoy, para comparar días sin horas. */
+function todayMidnight() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/**
+ * Próxima fecha especial (las 4 fijas + los eventos del Admin).
+ * Las recurrentes se proyectan al año en curso o al siguiente si ya pasaron.
+ * Devuelve { title, date, days } o null si no hay ninguna configurada.
+ */
+export function nextSpecialDate() {
+  const cfg = specialDates();
+  const titles = cfg.titles || {};
+  const recurring = cfg.recurring || {};
+  const today = todayMidnight();
+  const candidates = [];
+
+  for (const key of ['anniversary', 'hubStart', 'birthday', 'userBirthday']) {
+    const value = cfg[key];
+    if (!value) continue;
+    candidates.push({ title: titles[key] || key, value, repeats: recurring[key] !== false });
+  }
+  for (const event of cfg.events || []) {
+    if (event?.date) candidates.push({ title: event.title || 'Fecha especial', value: event.date, repeats: !!event.recurring });
+  }
+
+  let best = null;
+  for (const candidate of candidates) {
+    const [year, month, day] = String(candidate.value).split('-').map(Number);
+    if (!year || !month || !day) continue;
+
+    let date = new Date(year, month - 1, day);
+    if (candidate.repeats) {
+      date = new Date(today.getFullYear(), month - 1, day);
+      if (date < today) date = new Date(today.getFullYear() + 1, month - 1, day);
+    }
+    const days = Math.round((date - today) / MS_DAY);
+    if (days < 0) continue;
+    if (!best || days < best.days) {
+      best = { title: candidate.title, date: toISO(date), days };
+    }
+  }
+
+  return best;
+}
+
 /**
  * Invalida la caché y vuelve a cargar las fechas desde Supabase.
  * El Admin la llama tras guardar para que el inicio y la bienvenida

@@ -1,984 +1,431 @@
 /* ==========================================
-   MAL DÍA — Apoyo emocional + Galería inmersiva
-   Rediseño: hero con nube de lluvia, frases con favoritas,
-   mensaje para ti, ayuda rápida, recuerdos y respiración guiada.
+   MAL DÍA — consuelo
+   Cabecera del sistema, frase protagonista,
+   reproductor compacto, ayuda y respiración.
    ========================================== */
 
-.maldia-page {
-  max-width: 640px;
-  margin: 0 auto;
-  animation: fade-in var(--dur-normal);
-}
+.md-section { margin-bottom: var(--sp-22, 22px); }
 
-.maldia-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-24);
+.md-head-main { display: flex; align-items: flex-start; gap: var(--sp-10); min-width: 0; }
+.md-head-main > div { min-width: 0; }
+
+.md-back {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  margin-top: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
 }
 
 /* ==========================================
-   TOPBAR
+   FRASE
    ========================================== */
-.maldia-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 2px;
-}
-
-.maldia-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-xs);
-  color: var(--theme-text-secondary);
-  min-width: 0;
-}
-
-.maldia-breadcrumb-item {
-  background: none;
-  border: none;
-  padding: 4px 2px;
-  color: var(--theme-text-secondary);
-  font-size: inherit;
-  font-family: inherit;
-  cursor: pointer;
-  transition: color var(--dur-fast);
-}
-.maldia-breadcrumb-item:hover { color: var(--theme-accent); }
-
-.maldia-breadcrumb-sep { opacity: 0.5; }
-.maldia-breadcrumb-current { color: var(--theme-accent); font-weight: 500; }
-
-.maldia-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  color: var(--theme-text-primary);
-  font-size: var(--fs-xs);
-  font-family: inherit;
-  cursor: pointer;
-  transition: all var(--dur-fast);
-  white-space: nowrap;
-}
-.maldia-back-btn:hover {
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
-}
-
-/* ==========================================
-   HERO — atardecer con nube de lluvia y corazón
-   ========================================== */
-.maldia-hero {
+.md-quote {
   position: relative;
+  padding: var(--sp-24, 24px) var(--sp-20) var(--sp-16);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
   border-radius: var(--r-xl);
+  box-shadow: var(--sh-s);
   overflow: hidden;
-  padding: 34px 26px 30px;
-  background:
-    linear-gradient(180deg, #17131a 0%, #241722 38%, #3a1f28 66%, #57301f 100%);
-  border: 1px solid var(--theme-divider-strong);
-  animation: slide-up 0.5s ease backwards;
 }
 
-.maldia-hero-sky { position: absolute; inset: 0; pointer-events: none; }
-
-.maldia-hero-sun {
-  position: absolute;
-  right: -40px;
-  bottom: -60px;
-  width: 260px;
-  height: 260px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 179, 71, 0.55), rgba(255, 138, 161, 0.28) 55%, transparent 72%);
-  filter: blur(6px);
-  animation: maldiaSunPulse 5s ease-in-out infinite alternate;
-}
-
-@keyframes maldiaSunPulse {
-  0% { opacity: 0.7; transform: scale(1); }
-  100% { opacity: 1; transform: scale(1.08); }
-}
-
-.maldia-hero-cloud {
-  position: absolute;
-  border-radius: 999px;
-  background: rgba(20, 14, 18, 0.5);
-  filter: blur(10px);
-}
-.maldia-hero-cloud::before,
-.maldia-hero-cloud::after {
+/* Luz suave en la esquina, sin imágenes ni adornos */
+.md-quote::before {
   content: '';
   position: absolute;
+  top: -60px;
+  right: -40px;
+  width: 170px;
+  height: 170px;
   border-radius: 50%;
-  background: inherit;
-}
-.maldia-hero-cloud.cloud-a {
-  width: 150px; height: 34px; top: 18%; left: -20px;
-}
-.maldia-hero-cloud.cloud-a::before { width: 70px; height: 70px; top: -38px; left: 18px; }
-.maldia-hero-cloud.cloud-a::after  { width: 52px; height: 52px; top: -22px; left: 74px; }
-
-.maldia-hero-cloud.cloud-b {
-  width: 120px; height: 28px; top: 8%; right: 12%;
-  opacity: 0.7;
-}
-.maldia-hero-cloud.cloud-b::before { width: 54px; height: 54px; top: -30px; left: 16px; }
-.maldia-hero-cloud.cloud-b::after  { width: 40px; height: 40px; top: -16px; left: 60px; }
-
-.maldia-hero-cloud.cloud-c {
-  width: 170px; height: 36px; bottom: 12%; right: -30px;
-  opacity: 0.85;
-}
-.maldia-hero-cloud.cloud-c::before { width: 66px; height: 66px; top: -40px; left: 26px; }
-.maldia-hero-cloud.cloud-c::after  { width: 48px; height: 48px; top: -22px; left: 86px; }
-
-.maldia-hero-heart {
-  position: absolute;
-  right: 34px;
-  bottom: 34px;
-  width: 52px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--accent-dim);
-  color: var(--warm-rose);
-  box-shadow: 0 0 34px rgba(255, 138, 161, 0.45), 0 0 70px rgba(255, 138, 161, 0.25);
-  animation: maldiaFloat 3.4s ease-in-out infinite;
+  background: radial-gradient(circle, var(--primary-soft), transparent 70%);
   pointer-events: none;
 }
 
-@keyframes maldiaFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-.maldia-hero-content {
+.md-quote__text {
   position: relative;
-  z-index: 2;
-  max-width: 75%;
-}
-
-.maldia-hero-rain {
-  display: inline-flex;
-  width: 54px;
-  height: 54px;
-  border-radius: 16px;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--warm-amber);
-  margin-bottom: 16px;
-}
-
-.maldia-hero h1 {
   font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: 500;
-  margin: 0 0 8px;
-  color: #fff;
-  letter-spacing: 0.2px;
+  font-size: var(--fs-xl);
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  margin: 0 0 var(--sp-18, 18px);
 }
 
-.maldia-hero p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: var(--fs-sm);
-  line-height: 1.6;
-  max-width: 360px;
-}
-
-/* ==========================================
-   SECCIONES GENÉRICAS
-   ========================================== */
-.maldia-section {
-  animation: slide-up 0.5s ease 0.1s backwards;
-}
-
-.maldia-section-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: var(--sp-12);
-  flex-wrap: wrap;
-}
-
-.maldia-section-head h2 {
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: 500;
-  margin: 0;
-  color: var(--theme-text-primary);
-}
-
-.maldia-section-sub {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--theme-accent);
-}
-
-/* ==========================================
-   TARJETA DE FRASES — una frase a la vez con navegación
-   ========================================== */
-.maldia-quote-card {
-  padding: 18px 18px 10px;
-  border-radius: var(--r-lg);
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-divider);
-  transition: border-color var(--dur-smooth);
-  animation: maldiaQuoteIn 0.3s ease;
-}
-.maldia-quote-card:hover {
-  border-color: var(--theme-border-accent);
-}
-
-@keyframes maldiaQuoteIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.maldia-quote-mark {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  line-height: 1;
-  color: var(--theme-accent);
-  margin-bottom: 10px;
-  display: block;
-}
-
-.maldia-quote-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.maldia-quote-arrow {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface-elevated);
-  color: var(--theme-text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--dur-spring);
-}
-.maldia-quote-arrow:hover:not(:disabled) {
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
-  transform: scale(1.08);
-}
-.maldia-quote-arrow:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.maldia-quote-text {
-  flex: 1;
-  font-size: var(--fs-sm);
-  color: var(--theme-text-primary);
-  line-height: 1.6;
-}
-
-.maldia-quote-footer {
+.md-quote__foot {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--theme-divider);
+  gap: var(--sp-10);
 }
 
-.maldia-quote-count {
+.md-quote__nav { display: flex; align-items: center; gap: var(--sp-4); }
+
+.md-quote__nav .icon-btn {
+  width: 30px;
+  height: 30px;
+  background: var(--surface-2);
+}
+
+.md-quote__nav .icon-btn:disabled { opacity: 0.35; cursor: default; }
+
+.md-quote__count {
   font-size: var(--fs-xs);
-  color: var(--theme-text-tertiary);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+  min-width: 42px;
+  text-align: center;
 }
 
-.maldia-quote-fav {
-  flex-shrink: 0;
+.md-fav {
   width: 34px;
   height: 34px;
-  border-radius: 50%;
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface-elevated);
-  color: var(--theme-text-secondary);
-  cursor: pointer;
+  border-radius: var(--r-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--dur-spring);
-}
-.maldia-quote-fav:hover {
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
-  transform: scale(1.08);
-}
-.maldia-quote-fav.is-fav {
-  color: var(--warm-rose);
-  border-color: rgba(255, 138, 161, 0.4);
-  background: var(--warm-rose-dim);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast);
 }
 
-.maldia-quote-empty {
+.md-fav:hover { background: var(--surface-2); color: var(--primary); }
+.md-fav.is-on { color: var(--primary); }
+.md-fav.is-on svg { fill: currentColor; }
+
+.md-quote-empty {
+  padding: var(--sp-24, 24px);
+  text-align: center;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-xl);
   margin: 0;
-  padding: 6px 0 12px;
-  font-size: var(--fs-sm);
-  color: var(--theme-text-secondary);
 }
+
+.md-actions { display: flex; gap: var(--sp-10); margin-top: var(--sp-14); }
+.md-actions .btn { flex: 1; }
 
 /* ==========================================
-   ACTION BUTTONS
+   MÚSICA
    ========================================== */
-.maldia-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-
-.maldia-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 18px;
-  border-radius: 40px;
-  border: 1px solid var(--theme-divider-strong);
-  background: var(--theme-surface);
-  color: var(--theme-text-primary);
-  font-size: var(--fs-sm);
-  cursor: pointer;
-  transition: all var(--dur-fast);
-  font-family: inherit;
-}
-.maldia-action-btn:hover {
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-}
-.maldia-action-btn:active { transform: translateY(0); }
-
-.maldia-action-btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-.maldia-action-btn.primary:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  box-shadow: 0 0 22px var(--accent-dim-strong);
-  color: #fff;
-}
-
-/* ==========================================
-   MUSIC PLAYER
-   ========================================== */
-.maldia-music-player {
+.md-music {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  /* Empareja la barra con el hero: 24px (gap) − 8px = 16px */
-  margin-top: -8px;
-  padding: 12px 16px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  transition: border-color var(--dur-smooth);
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-14);
+  margin-bottom: var(--sp-22, 22px);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-s);
 }
 
-.maldia-music-icon { color: var(--theme-accent); display: flex; }
-.maldia-music-wave { display: flex; align-items: center; gap: 3px; }
-.maldia-wave-bar {
-  width: 3px;
-  border-radius: 2px;
-  background: var(--theme-accent);
-  opacity: 0.35;
-  height: 12px;
-  transition: opacity var(--dur-fast);
-}
-.maldia-wave-bar:nth-child(1) { height: 6px; }
-.maldia-wave-bar:nth-child(2) { height: 12px; }
-.maldia-wave-bar:nth-child(3) { height: 18px; }
-.maldia-wave-bar:nth-child(4) { height: 10px; }
-.maldia-wave-bar:nth-child(5) { height: 14px; }
-.maldia-wave-bar:nth-child(6) { height: 8px; }
-
-.maldia-music-wave.playing .maldia-wave-bar {
-  opacity: 0.85;
-  animation: maldiaBeat 1s ease-in-out infinite;
-}
-.maldia-music-wave.playing .maldia-wave-bar:nth-child(1) { animation-delay: 0s; }
-.maldia-music-wave.playing .maldia-wave-bar:nth-child(2) { animation-delay: 0.1s; }
-.maldia-music-wave.playing .maldia-wave-bar:nth-child(3) { animation-delay: 0.2s; }
-.maldia-music-wave.playing .maldia-wave-bar:nth-child(4) { animation-delay: 0.3s; }
-.maldia-music-wave.playing .maldia-wave-bar:nth-child(5) { animation-delay: 0.4s; }
-.maldia-music-wave.playing .maldia-wave-bar:nth-child(6) { animation-delay: 0.5s; }
-
-@keyframes maldiaBeat {
-  0%, 100% { transform: scaleY(0.4); }
-  50% { transform: scaleY(1); }
-}
-
-.maldia-music-label { font-size: var(--fs-xs); color: var(--theme-text-secondary); min-width: 52px; }
-
-.maldia-music-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Slider de volumen */
-.maldia-music-vol {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 74px;
-  height: 22px;
-  border-radius: var(--r-full);
-  background: linear-gradient(to right,
-    var(--accent) 0%,
-    var(--accent) var(--vol-fill, 100%),
-    var(--theme-divider-strong) var(--vol-fill, 100%),
-    var(--theme-divider-strong) 100%);
-  outline: none;
-  cursor: pointer;
-  transition: width var(--dur-smooth);
-  flex-shrink: 0;
-}
-
-.maldia-music-vol::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
+.md-music__play {
+  width: 40px;
+  height: 40px;
+  flex: none;
   border-radius: 50%;
-  background: #fff;
-  border: 2px solid var(--accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: var(--on-accent, #fff);
+  cursor: pointer;
   transition: transform var(--dur-fast);
 }
-.maldia-music-vol::-webkit-slider-thumb:hover { transform: scale(1.15); }
-.maldia-music-vol::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.2); }
 
-.maldia-music-vol::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid var(--accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  cursor: grab;
-}
-.maldia-music-vol::-moz-range-track {
-  background: transparent;
+.md-music__play:hover { transform: scale(1.06); }
+.md-music__play svg { margin-left: 2px; }
+
+.md-music__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.md-music__body b {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
 }
 
-@media (max-width: 400px) {
-  .maldia-music-vol { width: 56px; }
-}
-
-.maldia-music-ctrl {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  cursor: pointer;
+.md-music__wave {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--theme-text-secondary);
-  transition: all var(--dur-spring);
-}
-.maldia-music-ctrl:hover {
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
-  transform: scale(1.1);
-  box-shadow: 0 0 16px var(--accent-dim);
-}
-.maldia-music-ctrl.play {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-.maldia-music-ctrl.play:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  color: #fff;
-  box-shadow: 0 0 18px var(--accent-dim-strong);
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
 }
 
-/* ==========================================
-   MENSAJE PARA TI
-   ========================================== */
-.maldia-msg-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.maldia-msg-input {
+.md-music__wave i {
   flex: 1;
-  padding: 13px 16px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  color: var(--theme-text-primary);
-  font-size: var(--fs-sm);
-  font-family: inherit;
-  outline: none;
-  transition: all var(--dur-fast);
-  min-width: 0;
-}
-.maldia-msg-input::placeholder { color: var(--theme-text-tertiary); }
-.maldia-msg-input:focus {
-  border-color: var(--theme-accent);
-  box-shadow: 0 0 0 3px var(--accent-dim);
+  height: 30%;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background var(--dur-fast);
 }
 
-.maldia-msg-send {
-  flex-shrink: 0;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: none;
-  background: var(--accent);
-  color: #fff;
+.md-music__wave.playing i {
+  background: var(--primary-softer);
+  animation: md-wave 1.1s ease-in-out infinite;
+}
+
+.md-music__wave.playing i:nth-child(2n) { animation-delay: 0.18s; }
+.md-music__wave.playing i:nth-child(3n) { animation-delay: 0.36s; }
+.md-music__wave.playing i:nth-child(5n) { animation-delay: 0.52s; }
+
+@keyframes md-wave {
+  0%, 100% { height: 25%; }
+  50% { height: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-music__wave.playing i { animation: none; height: 60%; }
+}
+
+.md-music__ctrl { display: flex; align-items: center; gap: var(--sp-6); flex: none; }
+
+.md-music__vol {
+  width: 72px;
+  accent-color: var(--primary);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--dur-spring);
-}
-.maldia-msg-send:hover { background: var(--accent-hover); transform: scale(1.06); }
-.maldia-msg-send:active { transform: scale(0.96); }
-
-.maldia-msg-sent {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 12px 0 0;
-  padding: 12px 14px;
-  border-radius: var(--r-md);
-  background: var(--accent-dim);
-  border: 1px solid var(--border-accent);
-  font-size: var(--fs-sm);
-  color: var(--theme-text-primary);
-  animation: maldiaMsgSent 0.4s ease;
 }
 
-@keyframes maldiaMsgSent {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+.md-music__vol::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--border);
 }
 
-.maldia-msg-sent-icon {
-  flex-shrink: 0;
-  font-size: var(--fs-md);
+.md-music__vol::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: var(--sh-s);
 }
+
+.md-music__vol::-moz-range-track { height: 4px; border-radius: var(--r-full); background: var(--border); }
+.md-music__vol::-moz-range-thumb { width: 13px; height: 13px; border: none; border-radius: 50%; background: var(--primary); }
 
 /* ==========================================
-   COSAS QUE PUEDEN AYUDARTE AHORA
+   NOTA
    ========================================== */
-.maldia-help-head { align-items: center; }
+.md-note { display: flex; gap: var(--sp-8); }
+.md-note .input { flex: 1; min-width: 0; }
+.md-note .btn { flex: none; }
 
-.maldia-help-cheer {
+.md-note__sent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--sp-10) 0 0;
   font-size: var(--fs-sm);
-  color: var(--theme-accent);
-  font-weight: 500;
+  color: var(--ok);
+  font-weight: 600;
 }
 
-.maldia-help-grid {
+/* [hidden] debe ganarle al display:flex de arriba */
+.md-note__sent[hidden] { display: none; }
+
+/* ==========================================
+   AYUDA
+   ========================================== */
+.md-help {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-10);
 }
 
-.maldia-help-card {
+.md-help__card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  padding: 14px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  color: var(--theme-text-primary);
-  cursor: pointer;
+  gap: 3px;
+  padding: var(--sp-14);
   text-align: left;
-  font-family: inherit;
-  transition: all var(--dur-smooth);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-s);
+  cursor: pointer;
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
 }
 
-.maldia-help-card:hover {
-  border-color: var(--theme-accent);
-  background: var(--accent-dim);
-  transform: translateY(-2px);
-}
+.md-help__card:hover { transform: translateY(-2px); box-shadow: var(--sh-m); }
+.md-help__card:active { transform: translateY(0); }
 
-.maldia-help-icon {
-  display: inline-flex;
+.md-help__ic {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--theme-accent);
-  margin-bottom: 6px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  margin-bottom: var(--sp-6);
 }
 
-.maldia-help-card strong {
+.md-help__card b {
+  font-family: var(--font-ui);
   font-size: var(--fs-sm);
-  font-weight: 600;
-  line-height: 1.3;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
-.maldia-help-card small {
-  font-size: var(--fs-caption);
-  color: var(--theme-text-secondary);
-  line-height: 1.3;
-}
-
-/* (La galería de Mal Día se eliminó: sus fotos viven ahora en la Galería del Rincón.) */
+.md-help__card small { font-size: var(--fs-xs); color: var(--text-3); }
 
 /* ==========================================
-   RESPIRACIÓN GUIADA — desplegable
+   RESPIRACIÓN
    ========================================== */
-.maldia-breathe-toggle-head {
+.md-breathe {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  padding: 16px 18px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  color: var(--theme-text-primary);
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
-  transition: all var(--dur-smooth);
-}
-.maldia-breathe-toggle-head:hover {
-  border-color: var(--theme-border-accent);
-  background: var(--accent-dim);
+  gap: var(--sp-20);
+  padding: var(--sp-20) var(--sp-18);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-s);
 }
 
-.maldia-breathe-head-left {
+.md-breathe__main {
+  flex: 1;
+  min-width: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-}
-.maldia-breathe-head-left .maldia-help-icon {
-  margin: 0;
-  flex-shrink: 0;
-}
-.maldia-breathe-head-left strong {
-  display: block;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  line-height: 1.3;
-}
-.maldia-breathe-head-left small {
-  display: block;
-  font-size: var(--fs-caption);
-  color: var(--theme-text-secondary);
-  line-height: 1.3;
-  margin-top: 2px;
+  text-align: center;
+  gap: 2px;
 }
 
-.maldia-breathe-head-chevron {
-  flex-shrink: 0;
-  display: inline-flex;
-  color: var(--theme-text-secondary);
-  transition: transform var(--dur-smooth);
-}
-.maldia-breathe-head-chevron.open {
-  transform: rotate(180deg);
-  color: var(--theme-accent);
-}
+.md-breathe__main .section-title { width: 100%; text-align: center; }
 
-.maldia-breathe-body {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-top: var(--sp-10);
-  padding: 20px;
-  border-radius: var(--r-lg);
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-divider);
-  animation: maldiaQuoteIn 0.3s ease;
-}
-.maldia-breathe-body[hidden] {
-  display: none;
-}
+.md-breathe__sub { font-size: var(--fs-xs); color: var(--text-3); margin: 0 0 var(--sp-10); }
 
-.maldia-breathe-left { flex: 1; min-width: 0; }
-.maldia-breathe-left h3 {
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: 500;
-  margin: 0 0 4px;
-  color: var(--theme-text-primary);
-}
-.maldia-breathe-left p {
-  margin: 0 0 16px;
-  font-size: var(--fs-xs);
-  color: var(--theme-text-secondary);
-}
+.md-breathe__circle-wrap { position: relative; width: 148px; height: 148px; }
 
-.maldia-breathe-circle-wrap {
-  position: relative;
-  width: 150px;
-  height: 150px;
-  margin: 0 auto 16px;
-}
+.md-breathe__ring { width: 100%; height: 100%; transform: rotate(-90deg); }
 
-.maldia-breathe-ring {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-.maldia-breathe-ring-bg {
+.md-breathe__ring-bg { fill: none; stroke: var(--surface-2); stroke-width: 6; }
+.md-breathe__ring-fg {
   fill: none;
-  stroke: var(--theme-divider-strong);
-  stroke-width: 5;
-}
-.maldia-breathe-ring-fg {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 5;
+  stroke: var(--primary);
+  stroke-width: 6;
   stroke-linecap: round;
-  stroke-dasharray: 402.12;
-  stroke-dashoffset: 402.12;
-  transition: stroke-dashoffset 0.1s linear;
+  stroke-dasharray: 402;
+  stroke-dashoffset: 402;
+  transition: stroke-dashoffset 0.12s linear;
 }
 
-.maldia-breathe-circle {
+.md-breathe__circle {
   position: absolute;
-  inset: 16px;
+  inset: 22px;
   border-radius: 50%;
-  border: 2px solid var(--border-accent);
-  background: radial-gradient(circle at 30% 30%, var(--accent-dim), transparent 65%);
+  background: var(--primary-soft);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: transform 0.1s linear;
-  will-change: transform;
+  gap: 2px;
+  transition: transform 0.4s ease;
 }
 
-.maldia-breathe-phase {
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  color: var(--theme-accent);
-  font-weight: 500;
-}
-.maldia-breathe-timer {
-  font-size: var(--fs-sm);
-  color: var(--theme-text-secondary);
-  margin-top: 2px;
+.md-breathe__phase {
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--primary);
 }
 
-.maldia-breathe-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 12px;
-  border-radius: var(--r-full);
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  font-size: var(--fs-sm);
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--dur-fast);
+.md-breathe__timer {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
 }
-.maldia-breathe-toggle:hover { background: var(--accent-hover); }
 
-.maldia-breathe-steps {
-  flex: 1;
-  min-width: 0;
+.md-breathe__main .btn { margin-top: var(--sp-14); }
+
+.md-breathe__steps {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-8);
+  flex: none;
+  min-width: 150px;
 }
 
-.maldia-breathe-steps li {
+.md-breathe__steps li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface-elevated);
-  color: var(--theme-text-secondary);
+  gap: var(--sp-10);
   font-size: var(--fs-sm);
-  transition: all var(--dur-smooth);
+  color: var(--text-3);
+  transition: color var(--dur-fast);
 }
 
-.maldia-breathe-step-num {
-  width: 24px;
-  height: 24px;
+.md-breathe__steps li.active { color: var(--text); font-weight: 600; }
+
+.md-breathe__num {
+  width: 22px;
+  height: 22px;
+  flex: none;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--theme-surface-3);
-  color: var(--theme-text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  flex-shrink: 0;
-  transition: all var(--dur-smooth);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--text-3);
 }
 
-.maldia-breathe-steps li.active {
-  border-color: var(--theme-accent);
-  background: var(--accent-dim);
-  color: var(--theme-text-primary);
-}
-.maldia-breathe-steps li.active .maldia-breathe-step-num {
-  background: var(--accent);
-  color: #fff;
-}
+.md-breathe__steps li.active .md-breathe__num { background: var(--primary); color: var(--on-accent, #fff); }
 
 /* ==========================================
-   MODAL (gatito)
+   SHEET DEL GATITO
    ========================================== */
-.maldia-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 8, 10, 0.96);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 2100;
-  padding: 20px;
+.md-better { display: flex; flex-direction: column; gap: var(--sp-14); }
+
+.md-better video {
+  width: 100%;
+  border-radius: var(--r-lg);
+  background: #000;
+  display: block;
 }
 
-.maldia-modal-content {
-  position: relative;
-  width: min(400px, 92vw);
-  padding: 44px 24px 28px;
-  border-radius: 24px;
-  border: 1px solid var(--theme-border-accent);
-  text-align: center;
-  animation: maldiaModalIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  background: var(--theme-bg);
-}
-
-@keyframes maldiaModalIn {
-  from { opacity: 0; transform: scale(0.92) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.maldia-modal-close {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  cursor: pointer;
-  color: var(--theme-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--dur-spring);
-}
-.maldia-modal-close:hover {
-  background: var(--accent-dim);
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
-  transform: rotate(90deg);
-}
-
-/* Better modal — gatito + mensaje limpio */
-.better-content {
-  max-width: 480px;
-  overflow: hidden;
-  background: radial-gradient(circle at 50% 0%, #2b1a22 0%, var(--theme-bg) 70%);
-}
-
-.maldia-better-video {
-  position: relative;
-  border-radius: 20px;
-  overflow: hidden;
-  margin-bottom: 18px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
-  border: 1px solid var(--theme-divider-strong);
-}
-.maldia-better-video video { width: 100%; border-radius: 16px; display: block; }
-
-.maldia-better-message h2 {
+.md-better__msg {
   font-family: var(--font-display);
-  color: var(--theme-text-primary);
-  font-size: var(--fs-xl);
-  margin: 0 0 8px;
-}
-.maldia-better-message p {
-  font-size: var(--fs-sm);
-  color: var(--theme-text-secondary);
+  font-size: var(--fs-lg);
+  text-align: center;
+  color: var(--text);
   margin: 0;
 }
 
 /* ==========================================
-   RESPONSIVE
+   MÓVIL
    ========================================== */
-@media (min-width: 1025px) {
-  .maldia-page { max-width: 760px; }
-  .maldia-hero { padding: 44px 36px 40px; }
-  .maldia-hero h1 { font-size: var(--fs-3xl); }
-  .maldia-hero p { font-size: var(--fs-base); max-width: 420px; }
-  .maldia-hero-heart { width: 60px; height: 60px; right: 48px; bottom: 44px; }
-  .maldia-actions { gap: 12px; }
-  .maldia-breathe-body { padding: 26px; gap: 30px; }
-  .maldia-breathe-circle-wrap { width: 180px; height: 180px; }
+@media (max-width: 640px) {
+  .md-breathe { flex-direction: column; gap: var(--sp-16); }
+  .md-breathe__steps {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-width: 0;
+  }
+  .md-help { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@media (max-width: 480px) {
-  .maldia-page { padding: 0 2px; }
-  .maldia-hero { padding: 26px 18px 24px; }
-  .maldia-hero h1 { font-size: var(--fs-xl); }
-  .maldia-hero-content { max-width: 100%; }
-  .maldia-hero-heart { right: 18px; bottom: 18px; width: 44px; height: 44px; }
-  .maldia-hero-sun { width: 200px; height: 200px; right: -50px; bottom: -70px; }
-  .maldia-actions { flex-direction: column; align-items: stretch; }
-  .maldia-action-btn { justify-content: center; }
-  .maldia-breathe-body { flex-direction: column; align-items: stretch; padding: 18px; }
-  .maldia-breathe-steps { width: 100%; }
-  .maldia-topbar { padding: 2px 0; }
-  .maldia-back-btn { padding: 7px 12px; }
-}
-
-@media (max-width: 360px) {
-  .maldia-hero { padding: 20px 14px 20px; }
-  .maldia-hero h1 { font-size: var(--fs-lg); }
-  .maldia-hero p { font-size: var(--fs-xs); }
-  .maldia-quote-card { padding: 14px 12px 6px; }
-  .maldia-help-grid { grid-template-columns: repeat(2, 1fr); }
-  .maldia-breathe-circle-wrap { width: 130px; height: 130px; }
+@media (max-width: 420px) {
+  .md-music { flex-wrap: wrap; }
+  .md-music__ctrl { width: 100%; justify-content: flex-end; }
+  .md-actions { flex-direction: column; }
+  .md-quote__text { font-size: var(--fs-lg); }
 }

@@ -10,19 +10,27 @@ import { moodStore } from '../stores/mood.store.js';
 import { showToast } from '../components/Toast.js';
 import { db } from '../services/db.service.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
-import { requestEnable, disable, isPushSupported } from '../services/notifications.service.js';
+import { requestEnable, disable, isPushSupported, getNotifSettings, setNotifSettings, notifPermission, inQuietHours, sendTestNotification, syncReminderState } from '../services/notifications.service.js';
 import { escapeHtml } from '../utils/escape.js';
 import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/specialDates.js';
 
 // ==========================================
 // APP — versión y novedades
 // ==========================================
-const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.1.1';
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.0';
 
 // Changelog real: cada versión con sus novedades (semver: fix → patch,
 // función nueva → minor). Al subir una versión nueva solo hay que añadir
 // su entrada al principio de la lista y actualizar APP_VERSION.
 const WHATS_NEW = [
+  {
+    version: '1.2.0',
+    items: [
+      '🔔 Ajustes de notificaciones: elige qué avisos recibir (diario, cartas)',
+      '🌙 Horario de silencio: ninguna notificación entre las horas que elijas',
+      '📣 Notificación de prueba para comprobar que todo llega bien'
+    ]
+  },
   {
     version: '1.1.1',
     items: [
@@ -147,17 +155,22 @@ export function ProfilePage(router) {
   const page = document.createElement('div');
   page.className = 'profile-page';
 
-  const themeOptions = theme.getAvailable();
-  const currentTheme = theme.currentTheme;
-  // ponytail: previews ornamentales con hex reales de design-tokens.css + theme.service.js
-  const themeMeta = {
-    'umbra-oscuro': { label: '🌙 Umbra Oscuro', icon: UI.moon, preview: ['#0c0b0b', '#111114', '#e8735a'] },
-    'umbra-claro': { label: '☀️ Umbra Claro', icon: UI.sun, preview: ['#fdf4f6', '#ffffff', '#c2185b'] },
-    'azul-claro': { label: '💧 Azul Claro', icon: UI.sun, preview: ['#faf6f8', '#ffffff', '#2563EB'] },
-    'azul-oscuro': { label: '🌊 Azul Oscuro', icon: UI.moon, preview: ['#0B1020', '#111114', '#7DB7FF'] },
-    auto: { label: '🖥️ Auto', icon: UI.monitor, preview: null },
+  // Paletas del sistema nuevo: la misma estructura visual, tres identidades.
+  // Previews con los hex reales de design-tokens.css (fondo, superficie, acento).
+  const PALETA_PREVIEW = {
+    coral:     { dark: ['#0a0a0c', '#19191d', '#e8735a'], light: ['#f7f2ee', '#ffffff', '#b8432a'] },
+    frambuesa: { dark: ['#140a10', '#26151f', '#f06292'], light: ['#f8edf0', '#ffffff', '#c2185b'] },
+    azul:      { dark: ['#0b1220', '#16213a', '#3b82f6'], light: ['#f8fafc', '#ffffff', '#2563eb'] },
   };
-  const themePalettes = themeOptions.filter(t => t !== 'auto');
+  const MODOS_META = {
+    auto:  { label: 'Auto',   icon: UI.monitor },
+    dark:  { label: 'Oscuro', icon: UI.moon },
+    light: { label: 'Claro',  icon: UI.sun },
+  };
+  const paletas = theme.getPaletas();
+  const modos = theme.getModos();
+  const paletaActual = theme.getPaleta();
+  const modoActual = theme.getModo();
   const isUserAdmin = userStore.isAdmin;
   const pushSupported = isPushSupported();
 
@@ -208,18 +221,24 @@ export function ProfilePage(router) {
             <span class="prof-row-sub">Modo de color</span>
           </div>
         </div>
-        <div id="themeOptions" role="radiogroup" aria-label="Paleta de color">
+        <div id="paletaOptions" role="radiogroup" aria-label="Paleta de color">
           <div class="prof-theme-grid">
-            ${themePalettes.map(t => `
-              <button type="button" role="radio" aria-checked="${t === currentTheme}" class="prof-theme-btn ${t === currentTheme ? 'active' : ''}" data-theme="${t}">
-                <span class="prof-theme-preview" aria-hidden="true">${themeMeta[t].preview.map(c => `<i style="background:${c}"></i>`).join('')}</span>
-                ${themeMeta[t].icon}<span>${themeMeta[t].label}</span>
+            ${paletas.map(p => `
+              <button type="button" role="radio" aria-checked="${p.id === paletaActual}" class="prof-theme-btn ${p.id === paletaActual ? 'active' : ''}" data-paleta="${p.id}">
+                <span class="prof-theme-preview" aria-hidden="true">${(PALETA_PREVIEW[p.id]?.[theme.resolveModo() === 'light' ? 'light' : 'dark'] || []).map(c => `<i style="background:${c}"></i>`).join('')}</span>
+                ${UI.palette}<span>${p.label}</span>
               </button>
             `).join('')}
           </div>
-          <button type="button" role="radio" aria-checked="${currentTheme === 'auto'}" class="prof-theme-btn prof-theme-btn--auto ${currentTheme === 'auto' ? 'active' : ''}" data-theme="auto">
-            ${themeMeta.auto.icon}<span>${themeMeta.auto.label}</span>
-          </button>
+          <p class="prof-theme-hint" id="paletaHint">${escapeHtml(paletas.find(p => p.id === paletaActual)?.hint || '')}</p>
+        </div>
+
+        <div id="modoOptions" class="prof-seg" role="radiogroup" aria-label="Modo de color">
+          ${modos.map(m => `
+            <button type="button" role="radio" aria-checked="${m.id === modoActual}" class="prof-seg-btn${m.id === modoActual ? ' active' : ''}" data-modo="${m.id}">
+              ${MODOS_META[m.id]?.icon || ''}<span>${MODOS_META[m.id]?.label || m.id}</span>
+            </button>
+          `).join('')}
         </div>
 
         <div class="prof-divider"></div>
@@ -238,11 +257,18 @@ export function ProfilePage(router) {
 
         <div class="prof-divider"></div>
 
-        <!-- Notifications -->
-        <div class="prof-row">
+        <!-- Notifications: toggle maestro + botón a los ajustes finos -->
+        <div class="prof-row" id="notifSettingsRow" role="button" tabindex="0" aria-label="Ajustes de notificaciones">
           <div class="prof-row-text">
             <span class="prof-row-title">Notificaciones</span>
-            <span class="prof-row-sub">Recordatorio diario a las 8:00 AM <span id="pushStatus"></span></span>
+            <span class="prof-row-sub">Recordatorio diario, cartas y horario de silencio <span id="pushStatus"></span></span>
+          </div>
+          <span aria-hidden="true" style="margin-left:auto;color:var(--theme-text-tertiary);font-size:22px;line-height:1">›</span>
+        </div>
+        <div class="prof-row">
+          <div class="prof-row-text">
+            <span class="prof-row-title">Activar notificaciones</span>
+            <span class="prof-row-sub">Permiso y push de este dispositivo</span>
           </div>
           <label class="prof-toggle">
             <input type="checkbox" id="toggleNotifications">
@@ -351,17 +377,33 @@ export function ProfilePage(router) {
     </div>
   `;
 
-  // ===== THEME =====
-  const themeOptsEl = page.querySelector('#themeOptions');
-  themeOptsEl.querySelectorAll('.prof-theme-btn').forEach(btn => {
+  // ===== PALETA Y MODO =====
+  const paletaOptsEl = page.querySelector('#paletaOptions');
+  paletaOptsEl.querySelectorAll('.prof-theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      themeOptsEl.querySelectorAll('.prof-theme-btn').forEach(b => {
+      paletaOptsEl.querySelectorAll('.prof-theme-btn').forEach(b => {
         b.classList.remove('active');
         b.setAttribute('aria-checked', 'false');
       });
       btn.classList.add('active');
       btn.setAttribute('aria-checked', 'true');
-      theme.setTheme(btn.dataset.theme);
+      theme.setPaleta(btn.dataset.paleta);
+      const hint = page.querySelector('#paletaHint');
+      const chosen = theme.getPaletas().find(p => p.id === btn.dataset.paleta);
+      if (hint && chosen) hint.textContent = chosen.hint;
+    });
+  });
+
+  const modoOptsEl = page.querySelector('#modoOptions');
+  modoOptsEl.querySelectorAll('.prof-seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      modoOptsEl.querySelectorAll('.prof-seg-btn').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-checked', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-checked', 'true');
+      theme.setModo(btn.dataset.modo);
     });
   });
 
@@ -714,6 +756,8 @@ export function ProfilePage(router) {
             pushStatusEl.textContent = pushSupported ? '· Push activo' : '· fallback local';
             pushStatusEl.className = pushSupported ? 'prof-push-status prof-push--active' : 'prof-push-status prof-push--fallback';
           }
+          // Tras conceder el permiso, invitamos a configurar los avisos.
+          openNotifSettingsSheet();
         } else {
           e.target.checked = false;
           if (pushStatusEl) { pushStatusEl.textContent = ''; pushStatusEl.className = 'prof-push-status'; }
@@ -723,6 +767,131 @@ export function ProfilePage(router) {
         await disable();
         if (pushStatusEl) { pushStatusEl.textContent = ''; pushStatusEl.className = 'prof-push-status'; }
         showToast('🔕 Recordatorios desactivados', 'info');
+      }
+    });
+  }
+
+  // ===== AJUSTES DE NOTIFICACIONES (estilo habitos-web) =====
+  // Toggle por tipo (diario / cartas), horario de silencio y notificación
+  // de prueba. Vive en el perfil; la fila "Notificaciones" lo abre.
+  function openNotifSettingsSheet() {
+    const s = getNotifSettings();
+
+    const body = `
+      <div class="notif-settings">
+        <div class="notif-permnote" id="notifPermNote" hidden></div>
+
+        <div class="notif-card">
+          <div class="prof-row">
+            <div class="prof-row-text">
+              <span class="prof-row-title">Recordatorio diario</span>
+              <span class="prof-row-sub">Bienvenida y novedades cada mañana</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifDaily" ${s.daily ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-row">
+            <div class="prof-row-text">
+              <span class="prof-row-title">Cartas Open When</span>
+              <span class="prof-row-sub">Aviso cuando llegue una carta nueva</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifLetters" ${s.letters ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="notif-card">
+          <p class="notif-card__title">Horario de silencio</p>
+          <div class="notif-quiet">
+            <input type="time" id="notifQuietFrom" class="prof-name-input" value="${escapeHtml(s.quietFrom)}" aria-label="Silencio desde">
+            <span class="notif-quiet__sep">→</span>
+            <input type="time" id="notifQuietTo" class="prof-name-input" value="${escapeHtml(s.quietTo)}" aria-label="Silencio hasta">
+          </div>
+          <p class="notif-card__hint">Entre esas horas no recibirás ninguna notificación (soporta franjas que cruzan medianoche).</p>
+        </div>
+
+        <button type="button" class="prof-btn prof-btn--primary" id="notifTestBtn">Enviar notificación de prueba</button>
+      </div>
+    `;
+
+    openSheet({ title: 'Notificaciones', body });
+
+    const root = document.querySelector('.prof-sheet-overlay');
+    if (!root) return;
+    const $ = (sel) => root.querySelector(sel);
+
+    // Permiso: aviso contextual (bloqueado / sin conceder) o nada si está OK
+    const permNote = $('#notifPermNote');
+    const drawPerm = () => {
+      const p = notifPermission();
+      if (p === 'unsupported') {
+        permNote.hidden = false;
+        permNote.textContent = 'Tu navegador no soporta notificaciones. Prueba desde Chrome o Safari actualizado.';
+      } else if (p === 'denied') {
+        permNote.hidden = false;
+        permNote.textContent = 'Las notificaciones están bloqueadas. Actívalas en los ajustes del navegador para esta web.';
+      } else if (p === 'default') {
+        permNote.hidden = false;
+        permNote.textContent = 'Concede el permiso para recibir avisos en este dispositivo.';
+        const ask = document.createElement('button');
+        ask.type = 'button';
+        ask.className = 'prof-btn prof-btn--primary';
+        ask.style.marginTop = '10px';
+        ask.textContent = 'Permitir notificaciones en este navegador';
+        ask.addEventListener('click', async () => {
+          const ok = await requestEnable();
+          if (ok) {
+            showToast('🔔 Notificaciones activadas', 'success');
+            drawPerm();
+          } else {
+            showToast('Permiso denegado. Actívalo en el navegador', 'error');
+          }
+        });
+        permNote.append(ask);
+      } else {
+        permNote.hidden = true;
+      }
+    };
+    drawPerm();
+
+    $('#notifDaily').addEventListener('change', (e) => {
+      setNotifSettings({ daily: e.target.checked });
+      showToast(e.target.checked ? '🔔 Recordatorio diario activado' : '🔕 Recordatorio diario desactivado', 'success');
+    });
+
+    $('#notifLetters').addEventListener('change', (e) => {
+      setNotifSettings({ letters: e.target.checked });
+      showToast(e.target.checked ? '💌 Aviso de cartas activado' : '🔕 Aviso de cartas desactivado', 'success');
+    });
+
+    const saveQuiet = () => {
+      const next = setNotifSettings({
+        quietFrom: $('#notifQuietFrom').value || '23:00',
+        quietTo: $('#notifQuietTo').value || '08:00'
+      });
+      syncReminderState(); // el SW lee el silencio del IndexedDB
+      showToast(inQuietHours(next) ? '🌙 Silencio activo ahora' : '⏰ Horario de silencio guardado', 'success');
+    };
+    $('#notifQuietFrom').addEventListener('change', saveQuiet);
+    $('#notifQuietTo').addEventListener('change', saveQuiet);
+
+    $('#notifTestBtn').addEventListener('click', async () => {
+      const shown = await sendTestNotification();
+      showToast(shown ? '📣 Notificación enviada — búscala fuera de la app' : 'No se pudo mostrar (revisa el permiso)', shown ? 'success' : 'error');
+    });
+  }
+
+  const notifSettingsRow = page.querySelector('#notifSettingsRow');
+  if (notifSettingsRow) {
+    notifSettingsRow.addEventListener('click', openNotifSettingsSheet);
+    notifSettingsRow.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openNotifSettingsSheet();
       }
     });
   }

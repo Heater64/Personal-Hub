@@ -832,6 +832,7 @@ async function uploadAudios(files) {
 }
 
 async function listUsers() {
+  await requireAdmin(); // la lista de usuarios es dato de ADMIN (emails, roles)
   if (listUsersPromise) return listUsersPromise;
 
   listUsersPromise = (async () => {

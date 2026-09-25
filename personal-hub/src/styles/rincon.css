@@ -1,8 +1,7 @@
 /* ==========================================
-   RINCÓN — Estilo Umbra
-   Paneles redondeados, superficies, acento coral.
-   Misma app que el Inicio: hero panel, featured panel,
-   grid de tarjetas cuadradas 2→3 col.
+   RINCÓN — sistema nuevo
+   Cabecera + pestañas compactas, destacado del día y
+   rejilla de secciones sobre los componentes de ui.css.
    ========================================== */
 
 .rincon-page {
@@ -27,360 +26,422 @@
 .animate-in.visible {
   opacity: 1;
   transform: translateY(0) scale(1);
-}
 
+}
 /* ==========================================
-   DISCOVER — carrusel manual "Descubre hoy"
-   (sin autoplay; una tarjeta visible)
+   1 · DESTACADO DEL DÍA — "Descubre hoy"
+   Una sola tarjeta grande, sin carrusel de flechas
+   suelto por la página: la imagen manda y el texto va
+   encima, con degradado para que siempre se lea.
    ========================================== */
-.rincon-discover {
-  margin: 0 0 var(--sp-32);
+.rincon-feature {
+  position: relative;
+  margin-bottom: var(--sp-12);
 }
 
-.rincon-carousel {
+.rincon-feature-slides {
+  position: relative;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--sh-s);
+}
+
+.rincon-feature-slide {
+  position: relative;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rincon-feature-slide[hidden] { display: none; }
+
+.rincon-feature-slide:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -3px;
+}
+
+.rincon-feature-media {
+  aspect-ratio: 16 / 9;
+  max-height: 400px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.rincon-feature-media.is-icon {
   display: flex;
-  align-items: stretch;
-  gap: var(--sp-8);
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 120% at 20% 0%, var(--primary-softer) 0%, transparent 60%),
+    var(--surface-2);
 }
 
-.rincon-carousel-view {
-  flex: 1;
-  min-width: 0;
+.rincon-feature-glyph {
+  font-size: clamp(3.2rem, 13vw, 5.2rem);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.rincon-carousel-view .rincon-featured {
-  margin-bottom: 0;
+/* Los iconos SVG llegan con width/height fijos: aquí mandan sobre la fuente */
+.rincon-feature-glyph svg {
+  width: clamp(3.2rem, 12vw, 4.6rem);
+  height: clamp(3.2rem, 12vw, 4.6rem);
+  color: var(--primary);
+  opacity: 0.9;
 }
 
-.rincon-featured[hidden] {
-  display: none;
+.rincon-feature-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--dur-slower);
 }
 
-.rincon-featured:focus-visible {
-  outline: 2px solid var(--theme-accent);
-  outline-offset: 2px;
+.rincon-feature-slide:hover .rincon-feature-img { transform: scale(1.03); }
+
+.rincon-feature-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(6, 8, 14, 0.92) 0%,
+    rgba(6, 8, 14, 0.68) 40%,
+    rgba(6, 8, 14, 0.18) 72%,
+    rgba(6, 8, 14, 0) 100%
+  );
 }
 
-.rincon-carousel-nav {
-  flex-shrink: 0;
-  align-self: center;
-  min-width: 44px;
-  min-height: 44px;
+.rincon-feature-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-6);
+  padding: var(--sp-24) var(--sp-20) var(--sp-20);
+}
+
+.rincon-feature-tag {
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--r-full);
+  padding: 5px var(--sp-10);
+}
+
+.rincon-feature-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #fff;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.rincon-feature-desc {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+  max-width: 48ch;
+  margin: 0;
+}
+
+.rincon-feature-action {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: var(--sp-6);
+  margin-top: var(--sp-4);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: var(--r-full);
-  background: var(--theme-surface-elevated);
-  border: 1px solid var(--theme-divider);
-  color: var(--theme-text-primary);
-  cursor: pointer;
+  padding: 8px var(--sp-14);
+  transition: background var(--dur-fast), transform var(--dur-fast);
 }
 
-.rincon-carousel-nav:hover {
-  border-color: var(--theme-border-accent);
+.rincon-feature-slide:hover .rincon-feature-action {
+  background: rgba(255, 255, 255, 0.22);
 }
 
-.rincon-carousel-nav:focus-visible {
-  outline: 2px solid var(--theme-accent);
-  outline-offset: 2px;
-}
+.rincon-feature-action svg { transition: transform var(--dur-fast); }
+.rincon-feature-slide:hover .rincon-feature-action svg { transform: translateX(3px); }
 
-.rincon-carousel-nav svg {
-  width: 20px;
-  height: 20px;
-}
-
-.rincon-carousel-dots {
+.rincon-feature-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-4);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(10, 14, 24, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--dur-fast), transform var(--dur-fast);
+}
+
+.rincon-feature-nav:hover { background: rgba(10, 14, 24, 0.72); }
+.rincon-feature-nav:active { transform: translateY(-50%) scale(0.94); }
+.rincon-feature-nav:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.rincon-feature-nav svg { width: 18px; height: 18px; }
+#rinconPrev { left: var(--sp-12); }
+#rinconNext { right: var(--sp-12); }
+
+.rincon-feature-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
   margin-top: var(--sp-12);
 }
 
-.rincon-carousel-dot {
-  min-width: 44px;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
+.rincon-feature-dot {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
   border: none;
+  background: none;
   padding: 0;
   cursor: pointer;
+  border-radius: var(--r-full);
 }
 
-.rincon-carousel-dot::before {
-  content: "";
+.rincon-feature-dot::before {
+  content: '';
   width: 8px;
   height: 8px;
   border-radius: var(--r-full);
-  background: var(--theme-divider-strong);
+  background: var(--border);
+  transition: width var(--dur-mid), background var(--dur-mid);
 }
 
-.rincon-carousel-dot.is-active::before {
-  background: var(--theme-accent);
+.rincon-feature-dot.is-active::before {
+  width: 18px;
+  background: var(--primary);
 }
 
-.rincon-carousel-dot:focus-visible {
-  outline: 2px solid var(--theme-accent);
-  outline-offset: -6px;
-  border-radius: var(--r-sm);
-}
+.rincon-feature-dot:hover::before { background: var(--text-3); }
+.rincon-feature-dot.is-active:hover::before { background: var(--primary-2); }
+.rincon-feature-dot:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 
-@media (prefers-reduced-motion: reduce) {
-  .rincon-featured,
-  .rincon-featured-img,
-  .rincon-featured-action svg {
-    transition: none;
-  }
-  .rincon-featured:hover {
-    transform: none;
-  }
-  .rincon-featured:hover .rincon-featured-img {
-    transform: none;
-  }
-}
-
-/* ==========================================
-   SECTION HEADER — chip + título + línea flexible
-   ========================================== */
-.rincon-section-header {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-12);
-  margin: var(--sp-8) 0 var(--sp-20);
-}
-
-.rincon-section-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px; height: 34px;
-  border-radius: var(--r-sm);
-  background: var(--accent-dim);
-  color: var(--theme-accent);
-  flex-shrink: 0;
-}
-
-.rincon-section-chip svg { width: 17px; height: 17px; }
-
-.rincon-section-title {
-  font-size: var(--fs-caption);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--theme-text-secondary);
-  margin: 0;
-  white-space: nowrap;
-}
-
-.rincon-section-line {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, var(--theme-divider-strong), transparent);
-}
-
-/* ==========================================
-   FEATURED — "Descubre hoy" panel horizontal
-   ========================================== */
-.rincon-featured {
-  position: relative;
-  margin-bottom: var(--sp-32);
-  padding: var(--sp-20);
-  cursor: pointer;
-  border-radius: var(--r-lg);
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-divider);
-  transition: transform var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
-  text-align: left;
-}
-
-.rincon-featured:hover {
-  transform: translateY(-2px);
-  border-color: var(--theme-border-accent);
-  box-shadow: var(--elevation-2);
-}
-
-.rincon-featured:active { transform: scale(0.98); }
-
-.rincon-featured-card {
+/* Sin foto (curiosidades, juegos…) el destacado no finge una imagen:
+   icono en una caja + texto en los colores del sistema, en fila. */
+.rincon-feature-slide.is-icon {
   display: flex;
   align-items: center;
   gap: var(--sp-16);
+  padding: var(--sp-18) var(--sp-20);
+  background:
+    radial-gradient(120% 160% at 10% 0%, var(--primary-softer) 0%, transparent 55%),
+    var(--surface);
 }
 
-.rincon-featured-visual {
-  width: 84px; height: 84px;
+.rincon-feature-slide.is-icon .rincon-feature-shade { display: none; }
+
+.rincon-feature-slide.is-icon .rincon-feature-media {
+  width: 56px;
+  height: 56px;
+  aspect-ratio: auto;
+  flex: none;
   border-radius: var(--r-md);
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--theme-surface-elevated);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 2.5rem;
+  background: var(--surface-2);
 }
 
-.rincon-featured-img {
-  width: 100%; height: 100%; object-fit: cover;
-  transition: transform var(--dur-smooth);
+.rincon-feature-slide.is-icon .rincon-feature-glyph { font-size: 1.7rem; }
+.rincon-feature-slide.is-icon .rincon-feature-glyph svg { width: 26px; height: 26px; }
+.rincon-feature-slide.is-icon .rincon-feature-body { position: static; padding: 0; }
+.rincon-feature-slide.is-icon .rincon-feature-title { color: var(--text); }
+.rincon-feature-slide.is-icon .rincon-feature-desc { color: var(--text-2); }
+
+.rincon-feature-slide.is-icon .rincon-feature-tag {
+  background: var(--primary-soft);
+  border-color: transparent;
+  color: var(--primary);
 }
 
-.rincon-featured:hover .rincon-featured-img { transform: scale(1.05); }
-
-.rincon-featured-icon { font-size: 2.2rem; }
-
-.rincon-featured-info { flex: 1; min-width: 0; }
-
-.rincon-featured-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-lg); font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--theme-text-primary);
-  margin: 0 0 var(--sp-4);
+.rincon-feature-slide.is-icon .rincon-feature-action {
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--on-accent, #fff);
+  box-shadow: 0 4px 14px var(--primary-softer);
 }
 
-.rincon-featured-desc {
-  font-size: var(--fs-sm); color: var(--theme-text-tertiary);
-  line-height: 1.5; margin: 0 0 var(--sp-8);
+.rincon-feature-slide.is-icon:hover .rincon-feature-action { background: var(--primary-2); }
+
+/* Debe ganar a `display:flex` del modo icono: va después a propósito. */
+.rincon-feature-slide[hidden] { display: none; }
+
+@media (max-width: 560px) {
+  /* Las flechas se apartan: en el dedo ya están el gesto y los puntos */
+  .rincon-feature-nav { display: none; }
 }
 
-.rincon-featured-action {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-4);
-  color: var(--theme-accent);
-  font-size: var(--fs-sm);
-  font-weight: 500;
+@media (max-width: 520px) {
+  .rincon-feature-body { padding: var(--sp-20) var(--sp-16) var(--sp-16); }
+  .rincon-feature-title { font-size: var(--fs-lg); }
+  .rincon-feature-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 }
 
-.rincon-featured-action svg {
-  transition: transform var(--dur-fast);
-}
-
-.rincon-featured:hover .rincon-featured-action svg {
-  transform: translateX(3px);
+@media (prefers-reduced-motion: reduce) {
+  .rincon-feature-img,
+  .rincon-feature-action,
+  .rincon-feature-action svg { transition: none; }
+  .rincon-feature-slide:hover .rincon-feature-img { transform: none; }
+  .rincon-feature-slide:hover .rincon-feature-action svg { transform: none; }
 }
 
 /* ==========================================
-   SECTION GRID — paneles cuadrados 2→3 col
+   2 · REJILLA DE SECCIONES
+   El texto ya no va encima de la foto: imagen arriba,
+   cuerpo debajo. Se lee siempre y funciona igual en
+   móvil y escritorio.
    ========================================== */
 .rincon-cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-12);
 }
 
-.rincon-section-card-v2 {
+/* En escritorio mandan 3–4 columnas según el hueco real (con sidebar
+   el contenido es más estrecho que sin ella). */
+@media (min-width: 720px) {
+  .rincon-cards-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+
+.rincon-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  padding: 0;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--sh-s);
   cursor: pointer;
   text-align: left;
   font-family: inherit;
-  width: 100%;
-  aspect-ratio: 1/1;
-  color: var(--theme-text-primary);
-  border-radius: var(--r-lg);
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-divider);
-  overflow: hidden;
-  transition: transform var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
+  color: var(--text);
 }
 
-.rincon-section-card-v2:hover {
-  transform: translateY(-2px);
-  border-color: var(--theme-border-accent);
-  box-shadow: var(--elevation-2);
-}
+.rincon-card.is-editing { cursor: default; }
 
-.rincon-section-card-v2:active { transform: scale(0.97); }
-
-.rincon-section-card-v2:focus-visible {
-  outline: 2px solid var(--theme-accent);
-  outline-offset: 2px;
-}
-
-/* Media: cover, collage o emoji — siempre cuadrada a sangre */
+/* Media: portada, collage o emoji */
 .rincon-card-img-wrap,
 .rincon-card-icon-wrap {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rincon-card-img-wrap:has(.rincon-card-img-zoom) { overflow: hidden; }
+
+.rincon-card-img-zoom {
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--theme-surface-elevated);
-  display: flex; align-items: center; justify-content: center;
+  transform-origin: center;
 }
 
 .rincon-card-img {
-  width: 100%; height: 100%; object-fit: cover;
-  transition: transform var(--dur-smooth);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--dur-slow);
 }
 
-.rincon-section-card-v2:hover .rincon-card-img { transform: scale(1.05); }
+.rincon-card:hover .rincon-card-img { transform: scale(1.04); }
+
+.rincon-card-icon-wrap {
+  background:
+    radial-gradient(130% 130% at 25% 0%, var(--primary-softer) 0%, transparent 62%),
+    var(--surface-2);
+}
 
 .rincon-card-emoji {
-  font-size: 3rem;
+  font-size: 2.6rem;
+  line-height: 1;
   transition: transform var(--dur-spring);
 }
 
-.rincon-section-card-v2:hover .rincon-card-emoji {
-  transform: scale(1.12) rotate(-4deg);
-}
+.rincon-card:hover .rincon-card-emoji { transform: scale(1.1) rotate(-4deg); }
 
-/* Collage de 4 miniaturas (Memes) — cuadrada a sangre */
 .rincon-card-collage {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2px;
-  background: var(--theme-surface-elevated);
 }
 
-.rincon-card-collage-cell {
-  position: relative;
-  overflow: hidden;
-}
-
-.rincon-card-collage-cell img {
-  width: 100%; height: 100%; object-fit: cover;
-  transition: transform var(--dur-smooth);
-}
-
-.rincon-section-card-v2:hover .rincon-card-collage-cell img { transform: scale(1.06); }
+.rincon-card-collage-cell { position: relative; overflow: hidden; }
+.rincon-card-collage-cell img { width: 100%; height: 100%; object-fit: cover; }
+.rincon-card:hover .rincon-card-collage-cell img { transform: scale(1.05); }
 
 .rincon-card-collage-play {
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
-  width: 26px; height: 26px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: var(--r-full);
-  background: rgba(10,10,12,0.55);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(10, 14, 24, 0.55);
   backdrop-filter: blur(6px);
   color: #fff;
 }
 
 .rincon-card-collage-play svg { width: 13px; height: 13px; fill: #fff; stroke: none; }
 
-/* Body — superpuesto sobre la media con degradado inferior */
 .rincon-card-body {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  z-index: 2;
-  padding: var(--sp-40) var(--sp-16) var(--sp-16);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-6);
+  flex: 1;
   min-width: 0;
-  background: linear-gradient(to top, rgba(8, 8, 10, 0.82) 0%, rgba(8, 8, 10, 0.55) 55%, transparent 100%);
+  padding: var(--sp-12) var(--sp-14) var(--sp-14);
 }
 
 .rincon-card-header {
@@ -390,140 +451,127 @@
 }
 
 .rincon-card-icon-svg {
-  display: flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px;
-  color: var(--theme-accent);
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: var(--r-sm);
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .rincon-card-icon-svg svg { width: 15px; height: 15px; }
 
 .rincon-card-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-base); font-weight: 600;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--text);
   margin: 0;
-}
-
-.rincon-card-desc {
-  font-size: var(--fs-xs); color: var(--theme-text-secondary);
-  line-height: 1.5; margin: 0;
+  min-width: 0;
+  line-height: 1.25;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
+.rincon-card-chev { margin-left: auto; color: var(--text-3); display: flex; flex: none; }
+.rincon-card-chev svg { width: 16px; height: 16px; }
+
+.rincon-card-desc {
+  font-size: var(--fs-caption);
+  color: var(--text-2);
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rincon-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4) var(--sp-10);
+  margin-top: auto;
+  padding-top: var(--sp-4);
+}
+
 .rincon-card-stats {
-  font-size: var(--fs-caption); color: var(--theme-text-secondary);
-  margin-top: var(--sp-2);
-  opacity: 0.85;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--primary);
 }
 
 .rincon-card-hint {
-  font-size: var(--fs-xs); color: var(--theme-accent-hover);
-  font-style: italic;
-  opacity: 0.95;
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+.rincon-card-edit {
+  position: absolute;
+  top: var(--sp-8);
+  right: var(--sp-8);
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(10, 14, 24, 0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rincon-card-edit:hover { background: rgba(10, 14, 24, 0.78); }
+
+.rincon-edit-toggle.is-active { color: var(--ok); }
+
 /* ==========================================
-   SUB-PAGE
+   3 · CABECERA DE SUBCARPETA
+   Volver + título arriba, pestañas compactas debajo.
+   Sirve para Galería, Memes, Audios y Minecraft.
    ========================================== */
 .rincon-subpage { animation: fade-in var(--dur-fast); }
 
-.rincon-back-btn {
-  display: inline-flex; align-items: center; gap: var(--sp-4);
-  padding: var(--sp-12) var(--sp-16);
-  min-height: 40px;
-  margin-bottom: var(--sp-16);
-  border-radius: var(--r-full);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  color: var(--theme-text-secondary);
-  font-size: var(--fs-sm); cursor: pointer;
-  font-family: inherit;
-  transition: all var(--dur-fast);
-}
-
-.rincon-back-btn:hover {
-  border-color: var(--theme-border-accent);
-  color: var(--theme-accent);
-  background: var(--accent-dim);
-}
-
-.rincon-subnav {
+.rincon-subhead {
   display: flex;
-  gap: var(--sp-8);
-  margin-bottom: var(--sp-20);
-  padding: var(--sp-6);
-  border-radius: var(--r-lg);
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-divider);
-}
-
-.rincon-subnav__btn {
-  flex: 1;
-  min-height: 76px;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--sp-6);
-  padding: var(--sp-10) var(--sp-12);
-  border: none;
-  border-radius: var(--r-md);
-  background: transparent;
-  color: var(--theme-text-secondary);
-  font-size: var(--fs-sm);
-  font-weight: 600;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-14);
+}
+
+.rincon-subhead-copy { min-width: 0; }
+
+.rincon-subhead .scr-title {
+  font-size: var(--fs-xl);
   line-height: 1.15;
-  cursor: pointer;
-  text-align: center;
-  font-family: inherit;
-  transition: background var(--dur-smooth), color var(--dur-smooth), transform var(--dur-fast);
 }
 
-.rincon-subnav__icon-wrap {
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-sm);
-  background: var(--theme-surface-elevated);
-  color: var(--theme-text-tertiary);
-  transition: background var(--dur-smooth), color var(--dur-smooth), transform var(--dur-spring);
+.rincon-subhead .sub {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  margin-top: 3px;
 }
 
-.rincon-subnav__icon-wrap svg {
-  width: 25px;
-  height: 25px;
-}
+.rincon-tabs { margin-bottom: var(--sp-20); }
 
-.rincon-subnav__btn.active {
-  background: var(--accent-dim);
-  color: var(--theme-accent);
-}
-
-.rincon-subnav__btn.active .rincon-subnav__icon-wrap {
-  background: var(--theme-accent);
-  color: #fff;
-  transform: scale(1.06);
-}
-
-.rincon-subnav__btn:hover {
-  color: var(--theme-text-primary);
-  background: var(--theme-surface-elevated);
-}
-
-.rincon-subnav__btn.active:hover {
-  background: var(--accent-dim-strong);
-}
-
-.rincon-subnav__btn:active { transform: scale(0.98); }
-.rincon-subnav__btn:focus-visible {
-  outline: 2px solid var(--theme-accent);
-  outline-offset: -2px;
-}
+.rincon-tab-ic { display: flex; }
+.rincon-tab-ic svg { width: 16px; height: 16px; }
+.rincon-tab-emoji { font-size: 13px; line-height: 1; }
 
 /* ==========================================
    DISCOVERY SEARCH
@@ -1504,9 +1552,9 @@
 
 .gallery-hero-title {
   font-family: var(--font-display);
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-xl);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   margin: 0 0 var(--sp-6);
   text-shadow: 0 2px 18px rgba(0,0,0,0.45);
 }
@@ -1611,113 +1659,17 @@
 }
 .gallery-hero-dot:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
-/* ----- Encabezado de la colección ----- */
-.gallery-collection-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--sp-16);
-  padding: var(--sp-4) 2px 0;
-}
-
-.gallery-collection-kicker {
-  display: block;
-  margin-bottom: var(--sp-4);
-  color: var(--theme-text-tertiary);
-  font-size: var(--fs-caption);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.gallery-collection-title {
-  margin: 0;
-  color: var(--theme-text-primary);
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.gallery-collection-count {
-  flex-shrink: 0;
-  padding: 6px 10px;
-  border: 1px solid var(--theme-divider);
-  border-radius: var(--r-full);
-  background: var(--theme-surface);
-  color: var(--theme-text-tertiary);
-  font-size: var(--fs-caption);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* ----- Toolbar: filtros + ordenación ----- */
-.gallery-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-12);
-  flex-wrap: wrap;
-  padding-bottom: var(--sp-4);
-  border-bottom: 1px solid var(--theme-divider);
-}
-
-.gallery-filters {
-  display: flex;
-  gap: var(--sp-8);
-  overflow-x: auto;
-  flex-wrap: nowrap;
-  padding-bottom: 4px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.gallery-filters::-webkit-scrollbar { display: none; }
-
-.gallery-filter {
-  flex-shrink: 0;
-  padding: var(--sp-8) var(--sp-16);
-  border-radius: var(--r-full);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  color: var(--theme-text-secondary);
-  font-family: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--dur-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-.gallery-filter:hover {
-  border-color: var(--theme-border-accent);
-  color: var(--theme-text-primary);
-}
-.gallery-filter.is-active {
-  background: var(--accent-dim);
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
-  font-weight: 600;
-}
-.gallery-filter:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
-
-.gallery-sort-btn {
+/* ----- Filtros (chips del sistema) + ordenación ----- */
+.gallery-toolbar-actions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: var(--sp-8) var(--sp-14);
-  border-radius: var(--r-full);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
-  color: var(--theme-text-secondary);
-  font-family: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all var(--dur-fast);
+  gap: var(--sp-12);
+  text-transform: none;
+  letter-spacing: 0;
 }
-.gallery-sort-btn:hover { color: var(--theme-text-primary); border-color: var(--theme-border-accent); }
-.gallery-sort-btn:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
+
+.gallery-filters { margin-bottom: var(--sp-4); }
+.gallery-filter { flex: 0 0 auto; }
 
 /* ----- Masonry con proporciones reales ----- */
 .gallery-masonry {
@@ -2209,8 +2161,8 @@
    ========================================== */
 
 .memes-breadcrumb {
-  display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap;
-  margin-bottom: var(--sp-20); font-size: var(--fs-sm);
+  display: flex; align-items: center; gap: var(--sp-6); flex-wrap: wrap;
+  margin-bottom: var(--sp-14); font-size: var(--fs-xs);
 }
 
 .memes-breadcrumb-item {
@@ -2225,17 +2177,17 @@
 
 /* Cabecera de la biblioteca */
 .memes-library-head {
-  margin-bottom: var(--sp-24);
+  margin-bottom: var(--sp-20);
 }
 
 .memes-library-titles {
-  margin-bottom: var(--sp-16);
+  margin-bottom: var(--sp-14);
 }
 
 .memes-library-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: 700;
+  font-family: var(--font-ui);
+  font-size: var(--fs-lg);
+  font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0 0 var(--sp-4);
   color: var(--theme-text-primary);
@@ -2918,23 +2870,13 @@
   color: var(--theme-text-tertiary);
 }
 
-/* Empty state */
-.empty-state {
-  text-align: center;
-  padding: var(--sp-32);
-  color: var(--theme-text-tertiary);
-  font-size: var(--fs-base);
-}
+/* (.empty-state vive en ui.css: aquí había una copia legacy que competía
+   con la del sistema y ganaba por orden de importación.) */
 
 /* ==========================================
    RESPONSIVE
    ========================================== */
 @media (min-width: 600px) {
-  .rincon-cards-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--sp-16);
-  }
-
   .disco-cat-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2970,75 +2912,13 @@
 
 /* ==========================================
    EDITOR DE PORTADAS DE TARJETAS
+   El interruptor es un .link del sistema; solo cambia
+   de color cuando el modo edición está activo.
    ========================================== */
-.rincon-edit-toggle {
-  margin-left: auto;
-  flex-shrink: 0;
-  height: 40px;
-  padding: 0 var(--sp-16);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--theme-divider-strong);
-  background: var(--theme-surface);
-  color: var(--theme-text-secondary);
-  font-family: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--dur-fast);
-}
-
-.rincon-edit-toggle:hover {
-  border-color: var(--theme-border-accent);
-  color: var(--theme-accent);
-  background: var(--theme-accent-dim);
-}
-
-.rincon-edit-toggle.is-active {
-  background: var(--theme-accent);
-  border-color: var(--theme-accent);
-  color: #fff;
-}
-
-/* Tarjeta en modo edición: pista visual sutil */
-.rincon-section-card-v2.is-editing {
-  border-color: var(--theme-border-accent);
+.rincon-card.is-editing {
+  border-color: var(--primary);
   border-style: dashed;
   border-width: 1.5px;
-}
-
-.rincon-card-edit {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 5;
-  width: 38px;
-  height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: var(--r-full);
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #fff;
-  font-size: 1rem;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  transition: all var(--dur-spring);
-}
-
-.rincon-card-edit:hover {
-  background: var(--theme-accent);
-  transform: scale(1.08);
-}
-
-.rincon-card-edit:focus-visible {
-  outline: 2px solid var(--theme-accent);
-  outline-offset: 2px;
 }
 
 /* Modal del editor de portada */
@@ -3687,91 +3567,29 @@
 /* ==========================================
    AUDIOS — archivo cronológico del día 3
    Mobile-first: tarjetas táctiles, jerarquía clara
-   ========================================== */
-.audios-page { max-width: var(--content-max-width); margin: 0 auto; }
-
-.audios-hero { text-align: center; padding: var(--sp-24) var(--sp-20) var(--sp-20); }
-
-.audios-hero-icon {
-  width: 56px; height: 56px; margin: 0 auto var(--sp-12);
-  display: flex; align-items: center; justify-content: center;
-  border-radius: var(--r-lg);
-  background: var(--accent-dim); color: var(--theme-accent);
-  box-shadow: inset 0 0 0 1px var(--theme-border-accent);
-}
-
-.audios-hero-icon svg { width: 26px; height: 26px; }
-
-.audios-hero-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl); font-weight: 600;
-  letter-spacing: -0.02em;
-  margin: 0 0 var(--sp-4); color: var(--theme-text-primary);
-}
-
-.audios-hero-sub {
-  font-size: var(--fs-sm); color: var(--theme-text-secondary);
-  margin: 0 auto; max-width: 360px; line-height: 1.55;
-}
-
-/* Indicadores de meses del año actual (ENE ● FEB ○ …) */
-.audios-dots {
-  display: flex; flex-wrap: wrap; gap: var(--sp-6);
-  justify-content: center;
-  padding: var(--sp-12) var(--sp-8);
-  margin-bottom: var(--sp-16);
-  border-radius: var(--r-md);
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-divider);
-}
-
-.audios-dot {
-  width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: var(--r-full);
-  font-size: var(--fs-caption); font-weight: 700;
-  color: var(--theme-text-tertiary);
-  background: var(--theme-surface-elevated);
-}
-
-.audios-dot.is-on {
-  background: var(--accent-dim);
-  color: var(--theme-accent);
-  box-shadow: inset 0 0 0 1px var(--theme-border-accent);
-}
-
-.audios-count {
-  text-align: center;
-  font-size: var(--fs-xs); color: var(--theme-text-tertiary);
-  margin: 0 0 var(--sp-16);
-}
-
+   ========================================== */.audios-page { max-width: var(--content-max-width); margin: 0 auto; }
 /* Años */
 .audios-year { margin-bottom: var(--sp-24); }
 
 .audios-year-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-lg); font-weight: 600;
-  color: var(--theme-text-primary);
-  margin: 0 0 var(--sp-12);
-  display: flex; align-items: center; gap: var(--sp-8);
-}
-
-.audios-year-title::after {
-  content: '';
-  flex: 1; height: 1px;
-  background: var(--theme-divider);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-text-secondary);
+  margin: 0 0 var(--sp-10);
 }
 
 /* Rejilla de meses: 2 col móvil, más en desktop */
 .audios-month-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--sp-12);
+  gap: var(--sp-10);
 }
 
 @media (min-width: 560px) {
-  .audios-month-grid { grid-template-columns: repeat(3, 1fr); gap: var(--sp-16); }
+  .audios-month-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (min-width: 900px) {
@@ -3780,11 +3598,10 @@
 
 .audios-month {
   position: relative;
-  min-height: 150px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: var(--sp-8);
-  padding: var(--sp-16) var(--sp-12);
+  gap: var(--sp-6);
+  padding: var(--sp-16) var(--sp-10);
   border-radius: var(--r-lg);
   background: var(--theme-surface);
   border: 1px solid var(--theme-divider);
@@ -3794,18 +3611,18 @@
 }
 
 .audios-month-icon {
-  width: 44px; height: 44px;
+  width: 38px; height: 38px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: var(--r-full);
+  border-radius: var(--r-sm);
   background: var(--theme-surface-elevated);
   color: var(--theme-text-tertiary);
   font-weight: 700;
 }
 
-.audios-month-icon svg { width: 20px; height: 20px; }
+.audios-month-icon svg { width: 18px; height: 18px; }
 
 .audios-month-name {
-  font-size: var(--fs-sm); font-weight: 600;
+  font-size: var(--fs-sm); font-weight: 700;
   line-height: 1.2;
 }
 
@@ -3819,6 +3636,7 @@
   cursor: pointer;
   background: var(--theme-surface);
   border-color: var(--theme-border-accent);
+  box-shadow: var(--elevation-1);
   transition: transform var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
 }
 
@@ -3837,32 +3655,33 @@
 .audios-month--available .audios-month-icon {
   background: var(--accent-dim);
   color: var(--theme-accent);
-  box-shadow: inset 0 0 0 1px var(--theme-border-accent);
 }
 
 .audios-month-action {
   display: inline-flex; align-items: center; gap: var(--sp-6);
-  margin-top: var(--sp-4);
-  padding: var(--sp-8) var(--sp-14);
-  border-radius: var(--r-full);
-  background: var(--theme-accent);
-  color: var(--theme-text-inverse);
-  font-size: var(--fs-xs); font-weight: 600;
-  min-height: 36px;
+  margin-top: var(--sp-2);
+  font-size: var(--fs-caption); font-weight: 700;
+  color: var(--theme-accent);
 }
 
 .audios-month-action svg { width: 12px; height: 12px; fill: currentColor; stroke: none; }
 
 /* Futuro: bloqueado elegante, nunca roto */
-.audios-month--future { opacity: 0.55; }
-
+.audios-month--future { background: transparent; border-style: dashed; }
 .audios-month--future .audios-month-icon { background: var(--theme-surface-elevated); }
+.audios-month--future .audios-month-name,
+.audios-month--future .audios-month-meta { color: var(--theme-text-tertiary); }
 
 /* Sin audio: pasado sin contenido */
 .audios-month--empty {
-  opacity: 0.4;
-  border-style: dashed;
+  background: transparent;
+  border-color: var(--theme-divider);
 }
+.audios-month--empty .audios-month-name,
+.audios-month--empty .audios-month-meta { color: var(--theme-text-tertiary); }
+.audios-month--empty .audios-month-icon { background: transparent; opacity: 0.5; }
+
+.audios-back { margin-bottom: var(--sp-14); }
 
 /* Vacío total */
 .audios-empty {
@@ -3878,20 +3697,6 @@
 /* ==========================================
    DETALLE — reproductor
    ========================================== */
-.audios-detail-hero {
-  text-align: center; padding: var(--sp-24) var(--sp-20) var(--sp-20);
-}
-
-.audios-detail-icon {
-  width: 56px; height: 56px; margin: 0 auto var(--sp-12);
-  display: flex; align-items: center; justify-content: center;
-  border-radius: var(--r-lg);
-  background: var(--accent-dim); color: var(--theme-accent);
-  box-shadow: inset 0 0 0 1px var(--theme-border-accent);
-}
-
-.audios-detail-icon svg { width: 26px; height: 26px; }
-
 .audios-list { display: flex; flex-direction: column; gap: var(--sp-12); }
 
 .audios-player-card {
@@ -4162,48 +3967,8 @@
   flex-wrap: wrap;
 }
 
-.audios-upload-btn {
-  display: inline-flex; align-items: center; gap: var(--sp-6);
-  min-height: 44px;
-  padding: var(--sp-10) var(--sp-18);
-  border: none; cursor: pointer;
-  border-radius: var(--r-full);
-  background: var(--theme-accent);
-  color: var(--theme-text-inverse);
-  font-size: var(--fs-sm); font-weight: 600;
-  font-family: inherit;
-  transition: background var(--dur-fast), transform var(--dur-fast);
-}
-
-.audios-upload-btn:hover { background: var(--theme-accent-hover); }
-.audios-upload-btn:active { transform: scale(0.97); }
-.audios-upload-btn:focus-visible {
-  outline: 2px solid var(--theme-accent); outline-offset: 2px;
-}
-
-.audios-upload-btn:disabled { opacity: 0.6; cursor: default; }
-
-.audios-upload-month {
-  display: inline-flex; align-items: center; gap: var(--sp-8);
-  font-size: var(--fs-xs); color: var(--theme-text-secondary);
-  min-height: 44px;
-}
-
-.audios-upload-month select {
-  min-height: 40px;
-  padding: var(--sp-8) var(--sp-12);
-  border-radius: var(--r-sm);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface-elevated);
-  color: var(--theme-text-primary);
-  font-size: var(--fs-sm);
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.audios-upload-month select:focus-visible {
-  outline: 2px solid var(--theme-accent); outline-offset: 1px;
-}
+/* El botón y el select usan los componentes del sistema (.btn / .input) */
+.audios-upload-month select { min-width: 160px; cursor: pointer; }
 
 .audios-upload-hint {
   margin: var(--sp-12) 0 0;
@@ -4228,18 +3993,10 @@
 .curio-topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sp-12);
-  margin-bottom: var(--sp-20);
+  margin-bottom: var(--sp-14);
 }
-.curio-crumb {
-  font-size: var(--fs-xs);
-  color: var(--theme-text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.curio-topbar .rincon-back-btn { margin-bottom: 0; flex-shrink: 0; }
+.curio-crumb { display: none; }
 
 /* ---- Hero ---- */
 .curio-hero {
@@ -4277,13 +4034,6 @@
   gap: var(--sp-8);
   flex-wrap: wrap;
 }
-.curio-hero-sparkles {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  color: var(--warm-amber);
-}
-.curio-hero-sparkles svg { width: 16px; height: 16px; }
 .curio-hero-sub {
   font-size: var(--fs-sm);
   color: var(--theme-text-secondary);
@@ -4889,25 +4639,4 @@
 }
 .curio-detail-img.is-empty { background: var(--accent-dim); }
 
-/* Task 2: subnav desplazable en móvil para que los 4 botones no se aplasten. */
-@media (max-width: 768px) {
-  .rincon-subnav {
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .rincon-subnav::-webkit-scrollbar {
-    display: none;
-  }
-  .rincon-subnav__btn {
-    flex-shrink: 0;
-    min-width: 88px;
-  }
-  /* Los "Volver" in-page a /rincon duplican la barra móvil (visible ≤768px);
-     se ocultan solo en móvil; en desktop siguen siendo la vía de vuelta.
-     [data-back="months"] y [data-mc-back-world] no se tocan: son navegación interna. */
-  .rincon-back-btn[data-back="rincon"],
-  .rincon-back-btn[data-back="landing"],
-  .rincon-back-btn[data-mc-back] {
-    display: none;
-  }
-}
+/* El subnav de 4 bloques se sustituyó por las pestañas compactas del shell. */

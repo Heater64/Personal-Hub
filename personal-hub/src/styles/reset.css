@@ -22,18 +22,17 @@ html {
 }
 
 body {
-  min-height: 100vh;
-  min-height: 100dvh;
-  overflow-x: hidden;
+  height: 100dvh;
+  overflow: hidden;
   font-family: var(--font-body);
   font-size: var(--fs-base);
   font-weight: 400;
   line-height: 1.5;
   letter-spacing: 0.01em;
-  color: var(--theme-text-primary);
-  background: var(--theme-bg);
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  color: var(--text);
+  background: var(--bg);
+  /* Las zonas seguras las gestiona el shell (.content / .bottom-nav):
+     así el alto de la app sigue siendo exactamente 100dvh. */
 }
 
 a {

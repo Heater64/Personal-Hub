@@ -9,6 +9,8 @@ import { auth } from '../services/auth.service.js';
 import { db } from '../services/db.service.js';
 import { BottomNav } from './BottomNav.js';
 import { Sidebar } from './Sidebar.js';
+import { renderPageIcon } from './PageHeader.js';
+import { icon, quickAddMenu } from './ui.js';
 import { NowPlayingBar } from './NowPlayingBar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
 import { moodStore } from '../stores/mood.store.js';
@@ -50,23 +52,43 @@ export function AppShell(router) {
   mobileTopBar.setAttribute('aria-label', 'Navegación de página');
   app.appendChild(mobileTopBar);
 
-  // Make the router render into a dedicated content area
-  const contentEl = document.createElement('main');
-  contentEl.className = 'app-content';
+  // Contenido: el router monta dentro de .shell > .main > .content.
+  // Estructura del sistema nuevo (habitos-web): la sidebar ocupa su
+  // columna fija y el contenido scrollea por su cuenta en escritorio.
+  const shellEl = document.createElement('div');
+  shellEl.className = 'shell';
+
+  const mainEl = document.createElement('main');
+  mainEl.className = 'main';
+
+  const contentEl = document.createElement('div');
+  contentEl.className = 'content';
   contentEl.id = 'app-content';
   contentEl.tabIndex = -1;
-  app.appendChild(contentEl);
+
+  mainEl.appendChild(contentEl);
+  shellEl.appendChild(mainEl);
+  app.appendChild(shellEl);
 
   // Point the router at the content container
   router.setContainer(contentEl);
 
-  // Bottom nav
+  // Sidebar (escritorio) — dentro del shell, antes del contenido
+  const sidebar = Sidebar(router);
+  shellEl.prepend(sidebar);
+
+  // Bottom nav (móvil)
   const bottomNav = BottomNav(router);
   app.appendChild(bottomNav);
 
-  // Sidebar (desktop)
-  const sidebar = Sidebar(router);
-  app.appendChild(sidebar);
+  // Acción rápida flotante (móvil)
+  const fab = document.createElement('button');
+  fab.type = 'button';
+  fab.className = 'fab';
+  fab.setAttribute('aria-label', 'Acciones rápidas');
+  fab.innerHTML = icon('plus', 26);
+  fab.addEventListener('click', () => quickAddMenu(router));
+  app.appendChild(fab);
 
   // Reproductor global (tipo Spotify): barra persistente que sigue
   // sonando al navegar. Vive fuera de las páginas.
@@ -127,20 +149,20 @@ export function AppShell(router) {
   });
 
   const MOBILE_ROOT_ROUTES = new Set(['/', '/rincon', '/sentimientos', '/ositos', '/perfil']);
-  const MOBILE_ROUTE_LABELS = {
-    '/galeria': 'Galería y Memes',
-    '/memes': 'Memes',
-    '/audios': 'Audios',
-    '/minecraft': 'Minecraft',
-    '/curiosidades': 'Curiosidades',
-    '/juegos': 'Juegos',
-    '/calendario': 'Calendario',
-    '/razones': 'Razones',
-    '/openwhen': 'Open When',
-    '/maldia': 'Mal Día',
-    '/canciones': 'Canciones',
-    '/series': 'Series',
-    '/thoseeyes': 'Those Eyes'
+  const MOBILE_ROUTE_META = {
+    '/galeria': { label: 'Galería', icon: 'image' },
+    '/memes': { label: 'Memes', icon: 'smile' },
+    '/audios': { label: 'Audios', icon: 'mic' },
+    '/minecraft': { label: 'Minecraft', icon: 'minecraft' },
+    '/curiosidades': { label: 'Curiosidades', icon: 'compass' },
+    '/juegos': { label: 'Juegos', icon: 'minecraft' },
+    '/calendario': { label: 'Calendario', icon: 'home' },
+    '/razones': { label: 'Razones', icon: 'heart' },
+    '/openwhen': { label: 'Open When', icon: 'heart' },
+    '/maldia': { label: 'Mal Día', icon: 'heart' },
+    '/canciones': { label: 'Canciones', icon: 'mic' },
+    '/series': { label: 'Series', icon: 'image' },
+    '/thoseeyes': { label: 'Those Eyes', icon: 'heart' }
   };
 
   function mobileBackTarget(path) {
@@ -161,13 +183,16 @@ export function AppShell(router) {
       return;
     }
 
-    const label = MOBILE_ROUTE_LABELS[basePath] || 'Volver';
+    const meta = MOBILE_ROUTE_META[basePath] || { label: 'Volver', icon: 'home' };
     mobileTopBar.innerHTML = `
       <button type="button" class="mobile-topbar__back" aria-label="Volver">
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         <span>Volver</span>
       </button>
-      <h1 class="mobile-topbar__title">${label}</h1>
+      <h1 class="mobile-topbar__title">
+        <span class="mobile-topbar__icon">${renderPageIcon(meta.icon, 'mobile-topbar__icon-svg')}</span>
+        <span class="mobile-topbar__title-text">${meta.label}</span>
+      </h1>
       <span class="mobile-topbar__spacer" aria-hidden="true"></span>
     `;
     mobileTopBar.querySelector('.mobile-topbar__back').addEventListener('click', () => {
@@ -185,6 +210,8 @@ export function AppShell(router) {
   function updateNavigation(path) {
     const shouldHide = NO_NAV_ROUTES.some(route => path === route || path.startsWith(route + '/'));
     app.classList.toggle('no-nav', shouldHide);
+    // has-sidebar = hay navegación lateral visible (lo usan la barra del
+    // reproductor y las vistas inmersivas para alinearse al contenido).
     app.classList.toggle('has-sidebar', !shouldHide);
   }
 
@@ -231,9 +258,16 @@ export function AppShell(router) {
     }
 
     // Admin-only routes
-    if (route?.adminOnly && !userStore.isAdmin) {
-      router.replace('/');
-      return false;
+    if (route?.adminOnly) {
+      // El rol definitivo vive en la DB (profiles): con sesión fría aún no ha
+      // llegado y isAdmin se decide solo con la lista de emails de respaldo.
+      // Refréscalo antes de decidir para no expulsar a un admin real al
+      // recargar /admin (deep link o F5).
+      await auth.refreshRole();
+      if (!userStore.isAdmin) {
+        router.replace('/');
+        return false;
+      }
     }
 
     return true;

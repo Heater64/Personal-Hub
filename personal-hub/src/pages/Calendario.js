@@ -1,1555 +1,945 @@
 /* ==========================================
-   Personal Hub v3 — Calendario Page
-   Calendario de sorpresas y experiencias
-   Estilo Umbra — reescrito
+   Calendario — sorpresas día a día
+   Reconstruido sobre el sistema de diseño nuevo
+   (tarjeta de mes + agenda del día + bottom sheet).
+
+   Se conserva el contrato de datos completo:
+     · catálogo (Supabase → /data/gifts.json) con months.calendarMapping
+     · 20+ tipos de experiencia con su `data`
+     · progreso local por usuario (misma clave que antes)
+     · overrides locales para revisar el calendario sin tocar fechas
+     · respuestas de la usuaria (db.saveGiftResponse)
    ========================================== */
 
-import { showToast } from '../components/Toast.js';
-import { escapeHtml } from '../utils/escape.js';
-import { userPrefKey } from '../utils/userStorage.js';
-import { todayISO, dayOfMonthInSpain } from '../utils/format.js';
 import {
-  getCalendarOverrides,
+  h, icon, emptyState, openSheet, closeSheets, toast
+} from '../components/ui.js';
+import { buildVideoPlayer } from '../components/MediaLightbox.js';
+import { loadGiftsCatalog } from '../services/gifts.service.js';
+import { db } from '../services/db.service.js';
+import { onContentChange } from '../services/realtime.service.js';
+import { renderMathText } from '../utils/renderMath.js';
+import { escapeHtml } from '../utils/escape.js';
+import { todayISO } from '../utils/format.js';
+import { userPrefKey } from '../utils/userStorage.js';
+import {
   applyCalendarDayOverride,
   setCalendarOverrideMode,
-  setCalendarDayOverride,
+  getCalendarOverrides,
   clearCalendarOverrides
 } from '../utils/calendarOverrides.js';
-import { buildVideoPlayer } from '../components/MediaLightbox.js';
-import { renderMathText } from '../utils/renderMath.js';
-import { loadGiftsCatalog } from '../services/gifts.service.js';
-import { onContentChange } from '../services/realtime.service.js';
-import { db } from '../services/db.service.js';
-import { gameCover } from '../utils/gameCovers.js';
-import { userStore } from '../stores/user.store.js';
+
+/* ==========================================
+   CONSTANTES
+   ========================================== */
+const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const WEEKDAYS_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+/** Icono y etiqueta de cada tipo de experiencia. */
+const TYPE_META = {
+  letter:      { icon: 'mail',     label: 'Carta' },
+  affirmation: { icon: 'heart',    label: 'Mensaje' },
+  riddle:      { icon: 'info',     label: 'Acertijo' },
+  curiosity:   { icon: 'compass',  label: 'Curiosidad' },
+  relax:       { icon: 'flower',   label: 'Desconexión' },
+  challenge:   { icon: 'spark',    label: 'Reto' },
+  polaroid:    { icon: 'camera',   label: 'Foto' },
+  video:       { icon: 'video',    label: 'Vídeo' },
+  surprise:    { icon: 'star',     label: 'Sorpresa' },
+  offline:     { icon: 'external', label: 'Reto real' },
+  craft:       { icon: 'pencil',   label: 'Manualidad' },
+  giftBox:     { icon: 'gift',     label: 'Regalo' },
+  game:        { icon: 'game',     label: 'Juego' },
+  cassette:    { icon: 'music',    label: 'Música' },
+  clickStar:   { icon: 'star',     label: 'Mini juego' },
+  wishlist:    { icon: 'checksq',  label: 'Lista' },
+  quiz:        { icon: 'info',     label: 'Quiz' },
+  memory:      { icon: 'image',    label: 'Recuerdo' },
+  plan:        { icon: 'calendar', label: 'Plan' },
+  coupon:      { icon: 'tag',      label: 'Vale' },
+  math:        { icon: 'pencil',   label: 'Mates' }
+};
+
+const metaOf = (type) => TYPE_META[type] || TYPE_META.affirmation;
+
+/** Tono de color por tipo: la rejilla y las tarjetas se distinguen de un vistazo. */
+const TYPE_TONES = {
+  letter: 'rose', affirmation: 'rose', riddle: 'amber', curiosity: 'green',
+  relax: 'green', challenge: 'amber', polaroid: 'rose', video: 'violet',
+  surprise: 'amber', offline: 'green', craft: 'amber', giftBox: 'rose',
+  game: 'violet', cassette: 'violet', clickStar: 'amber', wishlist: 'rose',
+  quiz: 'green', memory: 'rose', plan: 'green', coupon: 'amber', math: 'blue'
+};
+const toneOf = (type) => TYPE_TONES[type] || 'rose';
 
 const PROGRESS_KEY = () => userPrefKey('giftProgress');
 
-const WEEKDAYS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
-const MONTHS_ES = ['', 'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
-const MONTHS_SHORT = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
-const TYPE_META = {
-  letter:    { label: 'Carta',    emoji: '✉️' },
-  cassette:  { label: 'Música',   emoji: '🎵' },
-  giftBox:   { label: 'Regalo',   emoji: '🎁' },
-  polaroid:  { label: 'Foto',     emoji: '📸' },
-  clickStar: { label: 'Estrella', emoji: '⭐' },
-  game:      { label: 'Juego',    emoji: '🎮' },
-  surprise:  { label: 'Sorpresa', emoji: '🎉' },
-  video:     { label: 'Vídeo',    emoji: '🎬' },
-  quiz:      { label: 'Quiz',     emoji: '🧠' },
-  wishlist:  { label: 'Lista',    emoji: '📝' },
-  challenge: { label: 'Reto',     emoji: '🎯' },
-  coupon:    { label: 'Vale',     emoji: '🎟️' },
-  memory:    { label: 'Recuerdo', emoji: '🫶' },
-  plan:      { label: 'Plan',     emoji: '🗓️' },
-  affirmation:{ label: 'Mensaje', emoji: '💌' },
-  riddle:     { label: 'Acertijo',   emoji: '🧩' },
-  curiosity:  { label: 'Curiosidad', emoji: '💡' },
-  relax:      { label: 'Desconexión', emoji: '🧘' },
-  craft:      { label: 'Manualidad', emoji: '🎨' },
-  offline:    { label: 'Reto real',  emoji: '🔗' },
-  math:       { label: 'Mates',      emoji: '➗' },
-};
-
-// Portadas de los juegos del calendario (mismos colores que la sala de juegos)
-const GAME_COVERS = {
-  'agujero-negro': { color: '#b45309', accent: '#ffb347' },
-  'tetris':        { color: '#7c9cff', accent: '#a5baff' },
-  '2048':          { color: '#ffcf4d', accent: '#ffe59a' },
-  'conecta4':      { color: '#ff8a5e', accent: '#ffb08f' },
-  'tresenraya':    { color: '#9ad1ff', accent: '#bce3ff' },
-  'flappy':        { color: '#7ee0a3', accent: '#a5f0bf' },
-  'invaders':      { color: '#5ed6d0', accent: '#8ae8e3' },
-  'pong':          { color: '#ff9f6e', accent: '#ffc08f' },
-  'asteroides':    { color: '#b39bff', accent: '#cdbfff' },
-  'simon':         { color: '#ffcf6e', accent: '#ffdf9e' },
-  'nonogramas':    { color: '#ffb347', accent: '#ffcf8a' },
-  'dino':          { color: '#8be06e', accent: '#a8f08a' },
-  'doodle':        { color: '#f5a05e', accent: '#ffc58a' },
-  'match3':        { color: '#f87171', accent: '#ff9d9d' },
-  'battleship':    { color: '#5aa0ff', accent: '#8ac0ff' }
-};
-
-const typeIconMap = {
-  letter: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
-  cassette: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-  giftBox: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
-  polaroid: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
-  clickStar: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-  game: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4"/><path d="M8 10v4"/><line x1="15" y1="13" x2="15.01" y2="13"/><line x1="18" y1="11" x2="18.01" y2="11"/></svg>',
-  surprise: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
-  video: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
-  quiz: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-  wishlist: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
-  challenge: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>',
-  coupon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V5Z"/><path d="M12 7v10"/></svg>',
-  memory: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 8.6c0 5.4-8.8 11-8.8 11s-8.8-5.6-8.8-11A4.6 4.6 0 0 1 12 6a4.6 4.6 0 0 1 8.8 2.6Z"/></svg>',
-  plan: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h3M8 17h6"/></svg>',
-  affirmation: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11.5a8 8 0 0 1-8 8 8.7 8.7 0 0 1-3.4-.7L4 20l1.2-3.6A8 8 0 1 1 20 11.5Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>',
-  riddle: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2h4a2 2 0 0 1 2 2v1h2a2 2 0 0 1 2 2v2h1a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1v2a2 2 0 0 1-2 2h-2v1a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-1H6a2 2 0 0 1-2-2v-2H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1V9a2 2 0 0 1 2-2h2V4a2 2 0 0 1 2-2Z"/><circle cx="12" cy="12" r="2.5"/></svg>',
-  curiosity: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg>',
-  relax: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c2.5 3 2.5 6 0 9-2.5-3-2.5-6 0-9Z"/><path d="M12 12c2.5-1 4.5 0 4.5 3s-2 4-4.5 4-4.5-1-4.5-4 2-4 4.5-3Z"/><path d="M12 19c2 2 4.5 2 6.5 1 0 1.5-2.5 2.5-4 1.5M12 19c-2 2-4.5 2-6.5 1 0 1.5 2.5 2.5 4 1.5"/></svg>',
-  craft: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/></svg>',
-  offline: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
-  math: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>'
-};
-
-const ICON_CAL = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
-const ICON_X = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-const ICON_CHEV = (dir) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="${dir === 'left' ? '15 18 9 12 15 6' : '9 18 15 12 9 6'}"/></svg>`;
-
+/* ==========================================
+   ESTADO (módulo: sobrevive entre renders del router)
+   ========================================== */
 let catalog = null;
-let previewAllGifts = false; // modo revisión ?previewGifts=1 (ignora los bloqueos por fecha)
-let currentMonthKey = null;
 let progressMap = {};
-let lastFocusedEl = null;
-let onKey = null;
-let calVideoRefs = []; // vídeos del sheet activo (para pausarlos con suavidad)
-let calAudioRefs = []; // reproductores de audio del sheet activo (ídem)
-let calCarouselIdx = 0; // índice del regalo visible en carrusel multi-regalo
-let closeSheetTimer = null; // timeout pendiente de cierre de sheet (para cancelar si se reabre)
-
-// ===== AUTO-PLAY DE VÍDEOS =====
-// Persiste en localStorage. true = los vídeos se reproducen al abrir la hoja.
-const AUTOPLAY_KEY = () => userPrefKey('calAutoPlayVideos');
-let autoPlayVideos = (() => {
-  try {
-    const stored = localStorage.getItem(AUTOPLAY_KEY());
-    if (stored !== null) return JSON.parse(stored);
-  } catch { /* noop */ }
-  return true; // por defecto activado
-})();
-
-function saveAutoPlayVideos() {
-  try { localStorage.setItem(AUTOPLAY_KEY(), JSON.stringify(autoPlayVideos)); } catch { /* noop */ }
-}
-
-
-function pad(n) { return String(n).padStart(2, '0'); }
-
-/** Normaliza la asignación de un día: string → [string], array → array limpia. */
-function normalizeIds(value) {
-  if (Array.isArray(value)) return value.filter(Boolean);
-  return value ? [value] : [];
-}
-
-// Fecha local (evita el desfase de UTC de toISOString)
-// El día del calendario cambia a las 00:00 de España (península)
-function getTodayStr() {
-  return todayISO();
-}
-function todayMonthKey() { return getTodayStr().slice(0, 7); }
 
 function loadProgress() {
   try { progressMap = JSON.parse(localStorage.getItem(PROGRESS_KEY()) || '{}'); } catch { progressMap = {}; }
 }
 
 function saveProgress() {
-  try { localStorage.setItem(PROGRESS_KEY(), JSON.stringify(progressMap)); } catch { /* noop */ }
+  try { localStorage.setItem(PROGRESS_KEY(), JSON.stringify(progressMap)); } catch { /* cuota llena */ }
 }
 
-async function loadGifts() {
-  try {
-    // Fuente unificada con el Admin y la Galería (Supabase → gifts.json semilla)
-    const data = await loadGiftsCatalog();
-    if (!data) {
-      showToast('Error cargando el calendario', 'error');
-      return null;
-    }
-    catalog = data;
-    catalog.giftsById = {};
-    (catalog.gifts || []).forEach(g => { if (g.id) catalog.giftsById[g.id] = g; });
-    return catalog;
-  } catch {
-    showToast('Error cargando el calendario', 'error');
-    return null;
-  }
+/* ==========================================
+   HELPERS DE FECHA
+   ========================================== */
+const pad = (n) => String(n).padStart(2, '0');
+
+/** Normaliza la asignación de un día: string → [id], array → array limpia. */
+function dayIds(dateStr) {
+  if (!dateStr) return [];
+  const [year, month, day] = dateStr.split('-');
+  const mapping = catalog?.months?.[`${year}-${month}`]?.calendarMapping || {};
+  const value = mapping[String(parseInt(day, 10))];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value ? [value] : [];
 }
 
-function getDayState(dateStr, ids) {
-  if (!ids?.length) return 'empty';
-  const today = getTodayStr();
-  // Overrides LOCALES (solo este navegador): permiten forzar el bloqueo de
-  // todos los días (o de días concretos) para testear en producción sin
-  // cambiar las fechas reales ni la BD. Gana sobre la lógica de fecha.
-  const override = applyCalendarDayOverride(dateStr);
-  if (override === 'locked') return 'locked';
-  if (override === 'open') {
-    if (ids.every(id => progressMap[id]?.opened)) return 'opened';
-    return dateStr === today ? 'today' : 'catchup';
-  }
-  // Bloqueo por fecha: el día solo se abre cuando llega la fecha de su regalo.
-  // Se comprueba ANTES del estado 'opened' para que los días futuros que se
-  // abrieron con una versión anterior (cuando todo estaba disponible) queden
-  // bloqueados de nuevo hasta su fecha.
-  // Un regalo sin fecha se considera siempre disponible (no bloquea).
-  if (!previewAllGifts) {
-    const anyUnlocked = ids.some(id => {
-      const unlock = catalog?.giftsById?.[id]?.unlock?.value;
-      if (!unlock) return true;
-      return today >= unlock;
-    });
-    if (!anyUnlocked) return 'locked';
-  }
-  if (ids.every(id => progressMap[id]?.opened)) return 'opened';
-  return dateStr === today ? 'today' : 'catchup';
-}
+const giftOf = (id) => catalog?.giftsById?.[id] || null;
 
-function resolveInitialMonth() {
-  const months = Object.keys(catalog?.months || {}).sort();
-  if (!months.length) return null;
-  const t = todayMonthKey();
-  if (months.includes(t)) return t;
-  const past = months.filter(m => m <= t);
-  return past.length ? past[past.length - 1] : months[0];
-}
+function monthKeyOf(dateStr) { return dateStr.slice(0, 7); }
 
 function monthLabel(key) {
   if (catalog?.months?.[key]?.label) return catalog.months[key].label;
-  const [y, m] = key.split('-').map(Number);
-  return `${MONTHS_SHORT[m] || m} ${y}`;
+  const [year, month] = key.split('-').map(Number);
+  return `${MONTHS[month - 1] || month} ${year}`;
 }
 
+function prettyDate(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const weekday = new Date(year, month - 1, day).getDay();
+  return `${WEEKDAYS_FULL[weekday]} ${day} de ${MONTHS[month - 1].toLowerCase()}`;
+}
+
+const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
+
+/** Primer día de la semana en formato lunes=0. */
+const mondayIndex = (year, month, day) => (new Date(year, month - 1, day).getDay() + 6) % 7;
+
+/* ==========================================
+   ESTADO DEL DÍA
+   ========================================== */
+const allOpened = (ids) => ids.length > 0 && ids.every(id => progressMap[id]?.opened);
+
+/** Progreso real de la app: nº de regalos abiertos / total. */
+function overallProgress() {
+  const entries = Object.keys(catalog?.giftsById || {});
+  const total = entries.length;
+  const opened = entries.filter(id => progressMap[id]?.opened).length;
+  return { total, opened };
+}
+
+function dayState(dateStr, ids) {
+  if (!ids.length) return 'empty';
+
+  // Overrides locales (solo este navegador): permiten revisar el calendario
+  // sin esperar a las fechas. Ganan sobre la lógica de fecha.
+  const override = applyCalendarDayOverride(dateStr);
+  if (override === 'locked') return 'locked';
+  if (override === 'open') {
+    if (allOpened(ids)) return 'opened';
+    return dateStr === todayISO() ? 'today' : 'open';
+  }
+
+  // Bloqueado por fecha: se comprueba antes de "opened" para que los días
+  // futuros abiertos con versiones antiguas vuelvan a bloquearse.
+  const today = todayISO();
+  const anyUnlocked = ids.some(id => {
+    const unlock = giftOf(id)?.unlock?.value;
+    return !unlock || today >= unlock;
+  });
+  if (!anyUnlocked) return 'locked';
+
+  if (allOpened(ids)) return 'opened';
+  return dateStr === today ? 'today' : 'open';
+}
+
+/** Siguiente día con contenido a partir de hoy (inclusive). */
+function nextDayWithContent(from = todayISO()) {
+  const [year, month, day] = from.split('-').map(Number);
+  let cursor = new Date(year, month - 1, day);
+  for (let i = 0; i < 400; i++) {
+    const key = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(cursor.getDate())}`;
+    if (dayIds(key).length) return key;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return null;
+}
+
+function countdownText(dateStr) {
+  const today = todayISO();
+  if (!dateStr) return 'Sin sorpresas programadas';
+  if (dateStr === today) return '¡Hoy hay sorpresa!';
+  const diff = Math.round((new Date(`${dateStr}T12:00:00`) - new Date(`${today}T12:00:00`)) / 86400000);
+  if (diff === 1) return 'Mañana llega una sorpresa';
+  return `Próxima sorpresa en ${diff} días`;
+}
+
+/* ==========================================
+   PÁGINA
+   ========================================== */
 export function CalendarioPage(router) {
   const page = document.createElement('div');
   page.className = 'calendario-page';
-  // Modo temporal de revisión: permite abrir todos los regalos sin cambiar
-  // sus fechas reales ni la distribución futura del calendario.
-  previewAllGifts = router?.currentRoute?.query?.previewGifts === '1';
-  // El panel local de pruebas se recuerda abierto entre re-renders (cambiar
-  // el modo re-renderiza el calendario entero).
-  let devPanelOpen = false;
 
-  // ===== ESTADO DE CARGA (skeleton) =====
+  const previewAll = new URLSearchParams(location.search).get('previewGifts') === '1';
+  const selectedDay = { value: todayISO() };
+  const view = { monthKey: monthKeyOf(todayISO()) };
+
+  // Rotación del regalo destacado: si el día tiene varios, van pasando
+  // solos. `index` es la posición dentro de los regalos del día en curso.
+  const SPOT_ROTATE_MS = 5000;
+  const spotRot = { date: null, index: 0, timer: null };
+  function stopSpotRotation() {
+    if (spotRot.timer) {
+      clearInterval(spotRot.timer);
+      spotRot.timer = null;
+    }
+  }
+
   page.innerHTML = `
-    <div class="cal-skeleton">
-      <div class="cal-section-header">
-        <span class="cal-section-chip">${ICON_CAL}</span>
-        <h1 class="cal-section-title">Calendario de sorpresas</h1>
-        <span class="cal-section-line"></span>
-      </div>
-      <div class="cal-skeleton__hero"></div>
-      <div class="cal-skeleton__grid">
-        ${Array.from({ length: 35 }, () => '<span class="cal-skeleton__cell"></span>').join('')}
-      </div>
-    </div>
+    ${renderHead()}
+    <div id="calSpot"></div>
+    <div id="calMonth"></div>
+    <section id="calDay" aria-live="polite"></section>
   `;
 
-  loadProgress();
-  loadGifts().then(() => {
-    if (!catalog) {
-      page.innerHTML = `<div class="cal-end"><p class="cal-end__title">No se pudo cargar el calendario</p><p class="cal-end__sub">Inténtalo de nuevo más tarde ❤️</p></div>`;
-      return;
-    }
-    renderCalendar();
-    handleDeepLink();
-  });
-
-  // Tiempo real: si el Admin edita el catálogo de regalos (portadas,
-  // contenido, fechas…), los usuarios lo ven al instante sin recargar.
-  const offContent = onContentChange(['gifts'], () => {
-    const sheet = page.querySelector('#calSheet');
-    if (sheet && sheet.classList.contains('is-open')) closeSheet();
-    loadGifts().then(() => {
-      if (!catalog) return;
-      renderCalendar();
-    });
-  });
-
-  /**
-   * Deep-link desde el Inicio: /calendario?day=YYYY-MM-DD
-   * Cambia al mes correspondiente y abre directamente el regalo de ese día.
-   */
-  function handleDeepLink() {
-    const day = router?.currentRoute?.query?.day || '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
-    const monthKey = day.slice(0, 7);
-    const dayNum = String(parseInt(day.slice(8), 10));
-
-    if (!catalog?.months?.[monthKey]) {
-      showToast('Ese día no está en el calendario', 'info');
-      return;
-    }
-    if (currentMonthKey !== monthKey) {
-      currentMonthKey = monthKey;
-      renderCalendar();
-    }
-    const ids = normalizeIds(catalog.months[monthKey]?.calendarMapping?.[dayNum]).filter(id => catalog.giftsById?.[id]);
-    if (!ids.length) {
-      showToast('Ese día no tiene sorpresa ❤️', 'info');
-      return;
-    }
-    const state = getDayState(day, ids);
-    if (state === 'today' || state === 'catchup' || state === 'opened') {
-      openDay(day, ids);
-    } else {
-      showToast('Ese día aún no está disponible', 'info');
-    }
-  }
-
-  // ===== HERRAMIENTA LOCAL DE PRUEBAS =====
-  // Botón flotante + panel: bloquea/desbloquea todos los días del calendario
-  // SOLO en este navegador (localStorage). Sirve para hacer cambios y testear
-  // en producción sin tocar las fechas reales ni la BD.
-  function renderDevTools() {
-    // Solo el admin puede usar los overrides locales de pruebas
-    if (!userStore.isAdmin) return '';
-    const o = getCalendarOverrides();
-    const mode = o.mode;
-    const active = mode !== 'auto';
-    const modeLabel = mode === 'all-open' ? 'todo abierto'
-      : mode === 'all-locked' ? 'todo bloqueado' : 'auto';
+  function renderHead() {
     return `
-      <button type="button" class="cal-dev-btn ${active ? 'is-active' : ''}" data-dev-toggle aria-expanded="${devPanelOpen}">
-        🧪 ${active ? modeLabel : 'Modo local'}
-      </button>
-      <div class="cal-dev-panel ${devPanelOpen ? 'is-open' : ''}" data-dev-panel role="dialog" aria-label="Overrides locales del calendario">
-        <p class="cal-dev-panel__title">
-          🧪 Calendario local
-          <small>solo este dispositivo</small>
-        </p>
-        <div class="cal-dev-mode" role="group" aria-label="Modo de prueba">
-          <button type="button" data-dev-mode="auto" class="${mode === 'auto' ? 'is-active' : ''}">Auto</button>
-          <button type="button" data-dev-mode="all-open" class="${mode === 'all-open' ? 'is-active' : ''}">Todo abierto</button>
-          <button type="button" data-dev-mode="all-locked" class="${mode === 'all-locked' ? 'is-active' : ''}">Todo bloqueado</button>
+      <div class="scr-head">
+        <div>
+          <h1 class="scr-title">Calendario</h1>
+          <p class="sub">Un regalo cada día, pensado para ti</p>
         </div>
-        <div class="cal-dev-actions">
-          <button type="button" data-dev-clear>Limpiar overrides</button>
+        <div class="head-actions">
+          <button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>
         </div>
-        <p class="cal-dev-note">«Todo abierto» muestra los días desbloqueados como si hubiera llegado su fecha; «Todo bloqueado» los cierra todos. También afecta a la sala de juegos. Solo afecta a este navegador.</p>
       </div>
     `;
   }
 
-  // ===== RENDER PRINCIPAL =====
-  function renderCalendar() {
-    // (accesibilidad) título de página para lectores de pantalla — el mes se lee en el nav
-    if (!catalog) return;
-    if (!currentMonthKey) currentMonthKey = resolveInitialMonth();
-    if (!currentMonthKey) {
-      page.innerHTML = `<div class="cal-end"><p class="cal-end__title">El calendario aún se está preparando</p><p class="cal-end__sub">Vuelve pronto ❤️</p></div>`;
+  /* ===== CABECERA DE MES ===== */
+  function paintMonth() {
+    const host = page.querySelector('#calMonth');
+    if (!host) return;
+
+    const months = Object.keys(catalog?.months || {}).sort();
+    if (!months.length) {
+      host.innerHTML = '';
       return;
     }
-
-    const [y, m] = currentMonthKey.split('-').map(Number);
-    const monthData = catalog?.months?.[currentMonthKey];
-    const mapping = (monthData && monthData.calendarMapping) || {};
-    const daysInMonth = new Date(y, m, 0).getDate();
-    const firstWeekday = new Date(y, m - 1, 1).getDay(); // 0 = Domingo
-    const hasAnyGift = Object.values(mapping).some(Boolean);
-
-    let cells = '';
-    let idx = 0;
-    for (let i = 0; i < firstWeekday; i++) {
-      cells += '<span class="cal-day is-offset" aria-hidden="true"></span>';
-    }
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${currentMonthKey}-${pad(day)}`;
-      cells += renderDayCell(day, dateStr, mapping[String(day)], idx++);
+    if (!months.includes(view.monthKey)) {
+      const past = months.filter(m => m <= monthKeyOf(todayISO()));
+      view.monthKey = past.length ? past[past.length - 1] : months[0];
     }
 
-    page.innerHTML = `
-      <div class="calendario-content">
-        <div class="cal-section-header">
-          <span class="cal-section-chip">${ICON_CAL}</span>
-          <h1 class="cal-section-title">Calendario de sorpresas</h1>
-          <span class="cal-section-line"></span>
-          <button type="button" class="cal-autoplay-btn ${autoPlayVideos ? 'is-active' : ''}" data-cal-autoplay aria-label="${autoPlayVideos ? 'Desactivar reproducción automática de vídeos' : 'Activar reproducción automática de vídeos'}" title="${autoPlayVideos ? 'Reproducción automática ON' : 'Reproducción automática OFF'}">
-            ${autoPlayVideos
-              ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
-              : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/><line x1="4" y1="4" x2="20" y2="20"/></svg>'}
-            <span class="cal-autoplay-label">${autoPlayVideos ? 'Auto' : 'Manual'}</span>
-          </button>
-        </div>
-        ${previewAllGifts ? '<div class="cal-preview-banner" role="status">🧪 Modo revisión: todos los regalos están disponibles hoy. Las fechas reales no se han cambiado.</div>' : ''}
+    const [year, month] = view.monthKey.split('-').map(Number);
+    const total = daysInMonth(year, month);
+    const offset = mondayIndex(year, month, 1);
+    const today = todayISO();
+    const selected = selectedDay.value;
 
-        ${renderTodayHero()}
-        ${renderProgress()}
+    // Nº de regalos por día (para el punto que indica "hay algo aquí").
+    const counts = {};
+    for (let day = 1; day <= total; day++) {
+      const dateStr = `${year}-${pad(month)}-${pad(day)}`;
+      const ids = dayIds(dateStr);
+      if (!ids.length) continue;
+      counts[dateStr] = ids.length;
+    }
 
-        <div class="cal-month-block">
-          ${renderMonthNav()}
-          ${hasAnyGift ? `
-            <div class="cal-weekdays">${WEEKDAYS.map(w => `<span class="cal-weekday">${w}</span>`).join('')}</div>
-            <div class="cal-grid">${cells}</div>
-          ` : renderEmptyMonth()}
-        </div>
-      </div>
+    const cells = [];
+    const prevMonthTotal = daysInMonth(month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1);
+    for (let i = offset - 1; i >= 0; i--) {
+      cells.push(`<span class="cal-day is-dim is-empty" aria-hidden="true">${prevMonthTotal - i}</span>`);
+    }
+    for (let day = 1; day <= total; day++) {
+      const dateStr = `${year}-${pad(month)}-${pad(day)}`;
+      const ids = dayIds(dateStr);
+      const state = dayState(dateStr, ids);
+      const classes = ['cal-day'];
+      if (state === 'empty') classes.push('is-empty');
+      if (state === 'locked') classes.push('is-locked');
+      if (state === 'opened') classes.push('is-opened');
+      if (dateStr === today) classes.push('is-today');
+      if (dateStr === selected) classes.push('is-sel');
 
-      <div class="cal-sheet" id="calSheet" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Sorpresa del día">
-        <div class="cal-sheet__panel">
-          <span class="cal-sheet__handle" aria-hidden="true"></span>
-          <button class="cal-sheet__close" id="calSheetClose" aria-label="Cerrar">${ICON_X}</button>
-          <span class="cal-sheet__chip" id="calSheetChip"></span>
-          <h3 class="cal-sheet__title" id="calSheetTitle"></h3>
-          <div class="cal-sheet__body" id="calSheetBody"></div>
-          <div class="cal-sheet__footer">
-            <button class="btn-primary" id="calSheetDone">Hecho ❤</button>
+      // Bloqueado: candado pequeño. Abierto: check. Pendiente: punto de
+      // color que indica que ese día hay regalo esperando.
+      const count = counts[dateStr] || 0;
+      const mark = state === 'opened' ? `<span class="cal-day__ok" aria-hidden="true">${icon('check', 11)}</span>`
+        : state === 'locked' ? `<span class="cal-day__lock" aria-hidden="true">${icon('lock', 10)}</span>`
+        : count > 0 ? `<span class="cal-day__dot" aria-hidden="true"></span>` : '';
+
+      const label = state === 'empty' ? `${day} — sin regalo`
+        : state === 'locked' ? `${day} — sorpresa por llegar`
+        : state === 'opened' ? `${day} — regalo abierto`
+        : `${day} — ${count} ${count === 1 ? 'regalo' : 'regalos'}`;
+      cells.push(`<button type="button" class="${classes.join(' ')}" data-day="${day}" aria-label="${escapeHtml(label)}" aria-pressed="${dateStr === selected}"><span class="cal-day__n">${day}</span>${mark}</button>`);
+    }
+    while (cells.length % 7 !== 0) cells.push('<span class="cal-day is-dim is-empty" aria-hidden="true"></span>');
+
+    const [vy, vm] = view.monthKey.split('-').map(Number);
+    let mTotal = 0, mOpened = 0;
+    for (let day = 1; day <= daysInMonth(vy, vm); day++) {
+      const ids = dayIds(`${vy}-${pad(vm)}-${pad(day)}`);
+      if (!ids.length) continue;
+      mTotal++;
+      if (allOpened(ids)) mOpened++;
+    }
+
+    // Progreso global real: cada regalo abierto cuenta (no cada día).
+    const global = overallProgress();
+    const pct = global.total ? Math.round((global.opened / global.total) * 100) : 0;
+
+    host.innerHTML = `
+      <div class="cal">
+        <div class="cal-head">
+          <div>
+            <b>${escapeHtml(monthLabel(view.monthKey))}</b>
+            <span class="cal-head__sub">${mTotal ? `${mOpened} de ${mTotal} ${mTotal === 1 ? 'regalo abierto' : 'regalos abiertos'}` : 'Sin regalos este mes'}</span>
+          </div>
+          <div class="cal-nav">
+            <button type="button" class="icon-btn" data-month="-1" aria-label="Mes anterior">${icon('back', 18)}</button>
+            <button type="button" class="cal-today-btn" data-today>Hoy</button>
+            <button type="button" class="icon-btn" data-month="1" aria-label="Mes siguiente">${icon('chev', 18)}</button>
           </div>
         </div>
+        <div class="cal-grid">
+          ${WEEKDAYS.map(w => `<span class="wd">${w}</span>`).join('')}
+          ${cells.join('')}
+        </div>
+        ${global.total ? `
+        <div class="cal-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${global.total}" aria-valuenow="${global.opened}" aria-label="Regalos abiertos">
+          <div class="cal-progress__text">
+            <span>Regalos abiertos</span>
+            <b>${global.opened} / ${global.total}</b>
+          </div>
+          <div class="cal-progress__bar"><span style="width:${pct}%"></span></div>
+        </div>` : ''}
       </div>
-
-      ${renderDevTools()}
     `;
 
-    bindEvents();
-    requestAnimationFrame(() => {
-      page.querySelectorAll('.cal-day.animate-in').forEach(el => el.classList.add('visible'));
-    });
-  }
-
-  // ===== CELDA DE DÍA =====
-  function renderDayCell(day, dateStr, dayIds, index) {
-    const ids = normalizeIds(dayIds).filter(id => catalog?.giftsById?.[id]);
-    const state = getDayState(dateStr, ids);
-    const first = ids.length ? catalog?.giftsById?.[ids[0]] : null;
-    const isSpecial = !!(first && first.special);
-    const count = ids.length;
-
-    if (state === 'empty') {
-      return `<span class="cal-day is-empty" style="--enter-delay:${index * 10}ms" aria-hidden="true"><span class="cal-day__num">${day}</span></span>`;
-    }
-
-    const cls = state === 'today' ? 'is-today' : state === 'catchup' ? 'is-catchup' : state === 'opened' ? 'is-opened' : 'is-locked';
-    const label = `${day} de ${MONTHS_ES[Number(dateStr.slice(5, 7))]}${isSpecial ? ' · día especial' : ''}${count > 1 ? ` · ${count} contenidos` : ''} — ${state === 'opened' ? 'ya descubierto' : state === 'today' ? 'disponible hoy' : state === 'catchup' ? 'disponible' : 'próximamente'}`;
-    const icon = state !== 'locked' && first?.type && typeIconMap[first.type]
-      ? `<span class="cal-day__icon" aria-hidden="true">${typeIconMap[first.type]}</span>` : '';
-    const mark = isSpecial
-      ? '<span class="cal-day__special" aria-hidden="true">★</span>'
-      : state === 'opened'
-        ? '<span class="cal-day__heart" aria-hidden="true">♥</span>'
-        : state === 'today'
-          ? '<span class="cal-day__dot" aria-hidden="true"></span>'
-          : '';
-
-    return `
-      <button class="cal-day ${cls} animate-in" style="--enter-delay:${index * 14}ms"
-              data-day="${day}" data-gift-ids="${escapeHtml(ids.join(' '))}" aria-label="${escapeHtml(label)}" aria-pressed="${state === 'opened'}">
-        <span class="cal-day__num">${day}</span>
-        ${icon}${mark}${count > 1 ? `<span class="cal-day__count" aria-hidden="true">+${count - 1}</span>` : ''}
-      </button>`;
-  }
-
-  // ===== HERO HOY =====
-  function renderTodayHero() {
-    return `<section class="cal-today" id="calTodayWrap">${renderTodayHeroInner()}</section>`;
-  }
-
-  function renderTodayHeroInner() {
-    const todayStr = getTodayStr();
-    const [y, m, d] = todayStr.split('-').map(Number);
-    const monthData = catalog?.months?.[todayStr.slice(0, 7)];
-    const ids = normalizeIds(monthData?.calendarMapping?.[String(d)]).filter(id => catalog?.giftsById?.[id]);
-    const gift = ids.length ? catalog?.giftsById?.[ids[0]] : null;
-    const state = ids.length ? getDayState(todayStr, ids) : 'empty';
-
-    const dateLabel = `HOY · ${d} DE ${MONTHS_ES[m]}`;
-    let title;
-    let sub;
-    let ctaLabel = '';
-
-    if (state === 'today') {
-      const ctx = gift?.context;
-      if (ctx === 'exam') {
-        title = 'Hoy tienes examen ❤️';
-        sub = 'No necesitas hacer nada aquí. Solo quería recordarte que puedes con todo. Estoy orgulloso de ti, pase lo que pase.';
-        ctaLabel = 'Ver tu sorpresa';
-      } else if (ctx === 'study') {
-        title = 'Día de estudio';
-        sub = 'Toca concentrarse, pero nunca está de más una pequeña pausa para ti.';
-        ctaLabel = 'Abrir sorpresa';
-      } else {
-        const meta = TYPE_META[gift?.type];
-        title = 'Tengo algo para ti';
-        sub = ids.length > 1
-          ? `Hoy tienes ${ids.length} sorpresas esperándote.`
-          : meta ? `Te espera ${meta.emoji} ${meta.label.toLowerCase()}.` : 'Cada día esconde algo diferente.';
-        ctaLabel = 'Abrir sorpresa';
-      }
-    } else if (state === 'opened') {
-      title = 'Ya lo descubriste ❤️';
-      sub = '¿Quieres revivir el momento de hoy?';
-      ctaLabel = 'Volver a abrirlo';
-    } else if (state === 'catchup' || state === 'locked') {
-      title = state === 'catchup' ? 'Te quedó una sorpresa por abrir' : 'Muy pronto…';
-      sub = state === 'catchup'
-        ? 'Algún día de este mes sigue esperándote. Búscalo abajo y ábrelo cuando quieras.'
-        : `Algo especial te espera el día ${d}. Vuelve entonces.`;
-      ctaLabel = state === 'catchup' ? 'Ver tu sorpresa' : '';
-    } else {
-      title = 'Hoy no hay sorpresa preparada';
-      sub = 'Pero mañana puede haber una. ❤️';
-    }
-
-    const hasCta = state === 'today' || state === 'opened' || state === 'catchup';
-    return `
-      <span class="cal-today__chip">${dateLabel}</span>
-      <h2 class="cal-today__title">${title}</h2>
-      <p class="cal-today__sub">${sub}</p>
-      ${hasCta && ids.length ? `<button class="cal-today__cta btn-primary" id="calTodayCta" data-gift-ids="${escapeHtml(ids.join(' '))}">${ctaLabel} →</button>` : ''}
-    `;
-  }
-
-  // ===== PROGRESO =====
-  function renderProgress() {
-    const gifts = catalog?.gifts || [];
-    if (!gifts.length) return '';
-    return `<div class="cal-progress">${renderProgressInner()}</div>`;
-  }
-
-  /** Días con contenido (uno por día, con sus ids). */
-  function collectMappedDays() {
-    const out = [];
-    Object.keys(catalog?.months || {}).forEach(mk => {
-      Object.entries(catalog.months[mk].calendarMapping || {}).forEach(([day, v]) => {
-        const ids = normalizeIds(v).filter(id => catalog?.giftsById?.[id]);
-        if (ids.length) out.push({ day: `${mk}-${pad(day)}`, ids });
+    host.querySelectorAll('.cal-day[data-day]').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const day = Number(cell.dataset.day);
+        selectedDay.value = `${year}-${pad(month)}-${pad(day)}`;
+        paintMonth();
+        paintDay();
       });
     });
-    return out;
-  }
-
-  function renderProgressInner() {
-    const days = collectMappedDays();
-    const opened = days.filter(({ ids }) => ids.every(id => progressMap[id]?.opened)).length;
-    const pct = days.length ? Math.round((opened / days.length) * 100) : 0;
-    return `
-      <div class="cal-progress__row">
-        <span>Días descubiertos</span>
-        <span>${opened} de ${days.length}</span>
-      </div>
-      <div class="cal-progress__bar" role="progressbar" aria-valuenow="${opened}" aria-valuemin="0" aria-valuemax="${days.length}" aria-label="Progreso del calendario">
-        <span class="cal-progress__fill" style="width:${pct}%"></span>
-      </div>`;
-  }
-
-  // ===== NAVEGACIÓN DE MESES =====
-  function renderMonthNav() {
-    const isTodayMonth = currentMonthKey === todayMonthKey();
-    return `
-      <div class="cal-monthnav">
-        <button class="cal-monthnav__arrow" id="calPrev" aria-label="Mes anterior">${ICON_CHEV('left')}</button>
-        <div class="cal-monthnav__label">${escapeHtml(monthLabel(currentMonthKey))}</div>
-        <button class="cal-monthnav__arrow" id="calNext" aria-label="Mes siguiente">${ICON_CHEV('right')}</button>
-        ${isTodayMonth ? '' : '<button class="cal-monthnav__today" id="calTodayBtn">Ir a hoy</button>'}
-      </div>`;
+    host.querySelectorAll('[data-month]').forEach(btn => {
+      btn.addEventListener('click', () => shiftMonth(Number(btn.dataset.month)));
+    });
+    const todayBtn = host.querySelector('[data-today]');
+    if (todayBtn) {
+      todayBtn.addEventListener('click', () => {
+        selectedDay.value = todayISO();
+        view.monthKey = monthKeyOf(todayISO());
+        paintMonth();
+        paintDay();
+      });
+    }
   }
 
   function shiftMonth(delta) {
-    const [y, m] = currentMonthKey.split('-').map(Number);
-    const d = new Date(y, m - 1 + delta, 1);
-    currentMonthKey = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-    renderCalendar();
+    const months = Object.keys(catalog?.months || {}).sort();
+    if (!months.length) return;
+    const index = months.indexOf(view.monthKey);
+    const next = months[Math.min(months.length - 1, Math.max(0, (index === -1 ? 0 : index) + delta))];
+    if (next === view.monthKey) return;
+    view.monthKey = next;
+    paintMonth();
   }
 
-  // ===== ESTADO VACÍO DE MES =====
-  function renderEmptyMonth() {
-    return `
-      <div class="cal-empty">
-        <div class="cal-empty__icon" aria-hidden="true">✨</div>
-        <p class="cal-empty__title">Este mes aún no tiene sorpresas</p>
-        <p class="cal-empty__sub">Vuelve pronto o explora otro mes.</p>
-      </div>`;
-  }
+  /* ===== REGALO DESTACADO ===== */
+  function paintSpot() {
+    const host = page.querySelector('#calSpot');
+    if (!host) return;
 
-  // ===== EVENTOS =====
-  function bindEvents() {
-    page.querySelector('#calPrev').onclick = () => shiftMonth(-1);
-    page.querySelector('#calNext').onclick = () => shiftMonth(1);
-    const todayBtn = page.querySelector('#calTodayBtn');
-    if (todayBtn) todayBtn.onclick = () => { currentMonthKey = todayMonthKey(); renderCalendar(); };
+    stopSpotRotation();
 
-    // Toggle global auto-play de vídeos
-    const autoplayBtn = page.querySelector('[data-cal-autoplay]');
-    if (autoplayBtn) {
-      autoplayBtn.addEventListener('click', () => {
-        autoPlayVideos = !autoPlayVideos;
-        saveAutoPlayVideos();
-        renderCalendar();
-        showToast(autoPlayVideos ? 'Reproducción automática activada 🎬' : 'Reproducción manual activada 🎬', 'info');
-      });
-    }
+    const today = todayISO();
+    const todayIds = dayIds(today);
+    // nextDayWithContent puede devolver null mientras el catálogo aún no ha
+    // llegado: en ese caso nos quedamos en hoy y se repinta al cargar.
+    const next = todayIds.length ? today : (nextDayWithContent(today) || today);
+    const nextIds = dayIds(next);
+    const state = dayState(next, nextIds);
 
-    const todayCta = page.querySelector('#calTodayCta');
-    if (todayCta) todayCta.onclick = () => openDay(getTodayStr(), normalizeIds(todayCta.dataset.giftIds?.split(' ')));
-
-    page.querySelectorAll('.cal-day.is-today, .cal-day.is-catchup, .cal-day.is-opened').forEach(cell => {
-      cell.addEventListener('click', () => openDay(`${currentMonthKey}-${pad(cell.dataset.day)}`, normalizeIds(cell.dataset.giftIds?.split(' '))));
-    });
-    page.querySelectorAll('.cal-day.is-locked').forEach(cell => {
-      cell.addEventListener('click', () => {
-        const ids = normalizeIds(cell.dataset.giftIds?.split(' '));
-        if (!ids.length) { showToast('Este día no tiene sorpresa', 'info'); return; }
-        const [, m, d] = `${currentMonthKey}-${pad(cell.dataset.day)}`.split('-').map(Number);
-        showToast(`Disponible el ${d} de ${MONTHS_ES[m]} 🗓️`, 'info');
-      });
-    });
-
-    // Sheet
-    page.querySelector('#calSheetClose').onclick = closeSheet;
-    page.querySelector('#calSheetDone').onclick = handleDoneBtn;
-    const sheet = page.querySelector('#calSheet');
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
-
-    // Overrides locales: botón flotante + panel de pruebas (solo admin)
-    const devToggle = page.querySelector('[data-dev-toggle]');
-    const devPanel = page.querySelector('[data-dev-panel]');
-    if (devToggle && devPanel && userStore.isAdmin) {
-      devToggle.addEventListener('click', () => {
-        devPanelOpen = !devPanelOpen;
-        devPanel.classList.toggle('is-open', devPanelOpen);
-        devToggle.setAttribute('aria-expanded', String(devPanelOpen));
-      });
-      devPanel.querySelectorAll('[data-dev-mode]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          setCalendarOverrideMode(btn.dataset.devMode);
-          showToast('Modo local actualizado', 'success');
-          renderCalendar();
-        });
-      });
-      devPanel.querySelector('[data-dev-clear]')?.addEventListener('click', () => {
-        clearCalendarOverrides();
-        showToast('Overrides locales eliminados', 'info');
-        renderCalendar();
-      });
-    }
-
-  }
-
-  // ===== APERTURA DEL DÍA (uno o varios contenidos) =====
-  function renderDayContents(gifts) {
-    const esc = escapeHtml;
-    const single = gifts.length === 1;
-    if (single) {
-      const g = gifts[0];
-      return `<div class="cal-multi__item is-single">${renderContent(g)}${g?.data?.question ? renderAskBlock(g) : ''}</div>`;
-    }
-    // Carrusel: cada regalo es un slide independiente con flechas laterales
-    return `
-      <div class="cal-carousel" data-total="${gifts.length}" tabindex="0">
-        <button class="cal-carousel__arrow cal-carousel__arrow--prev" data-carousel-prev aria-label="Regalo anterior" disabled>${ICON_CHEV('left')}</button>
-        <div class="cal-carousel__viewport">
-          <div class="cal-carousel__track">
-            ${gifts.map((g, i) => {
-              const meta = TYPE_META[g.type] || { label: 'Sorpresa', emoji: '✨' };
-              return `
-              <div class="cal-carousel__slide${i === 0 ? ' is-active' : ''}" data-carousel-slide="${i}">
-                <div class="cal-carousel__card">
-                  <div class="cal-carousel__head">
-                    <span class="cal-carousel__chip">${meta.emoji} ${meta.label}</span>
-                    <h4 class="cal-carousel__title">${esc(g.title || meta.label)}</h4>
-                  </div>
-                  <div class="cal-carousel__body">${renderContent(g)}</div>
-                  ${g?.data?.question ? renderAskBlock(g) : ''}
-                </div>
-              </div>`;
-            }).join('')}
+    if (!nextIds.length) {
+      host.innerHTML = `
+        <article class="cal-spot">
+          <span class="cal-spot__icon">${icon('calendar', 22)}</span>
+          <div class="cal-spot__body">
+            <b>Aún no hay regalos</b>
+            <span>En cuanto se programe contenido aparecerá aquí.</span>
           </div>
-        </div>
-        <button class="cal-carousel__arrow cal-carousel__arrow--next" data-carousel-next aria-label="Siguiente regalo">${ICON_CHEV('right')}</button>
-        <div class="cal-carousel__dots">
-          ${gifts.map((g, i) => {
-            const meta = TYPE_META[g.type] || { label: 'Sorpresa', emoji: '✨' };
-            return `<button class="cal-carousel__dot${i === 0 ? ' is-active' : ''}" data-carousel-dot="${i}" aria-label="Regalo ${i + 1}: ${esc(meta.label)}"></button>`;
-          }).join('')}
-        </div>
-      </div>`;
-  }
-
-  function openDay(dateStr, ids) {
-    const gifts = ids.map(id => catalog?.giftsById?.[id]).filter(Boolean);
-    if (!gifts.length) return;
-
-    // Evita doble apertura / fuga de listeners del teclado
-    const openSheet = page.querySelector('#calSheet');
-    if (openSheet && openSheet.classList.contains('is-open')) closeSheet();
-
-    markOpened(dateStr, ids);
-
-    const sheet = page.querySelector('#calSheet');
-    const chip = page.querySelector('#calSheetChip');
-    const title = page.querySelector('#calSheetTitle');
-    const body = page.querySelector('#calSheetBody');
-    const doneBtn = page.querySelector('#calSheetDone');
-
-    const single = gifts.length === 1;
-    const meta = TYPE_META[gifts[0].type] || { label: 'Sorpresa', emoji: '✨' };
-    chip.textContent = single ? `${meta.emoji} ${meta.label}` : `🎁 ${gifts.length} sorpresas hoy`;
-    chip.classList.toggle('is-special', gifts.some(g => g.special));
-    // En días múltiples la cabecera es genérica: cada tarjeta lleva su propio
-    // chip y título, así no se repite el de la primera.
-    title.textContent = single ? (gifts[0].title || 'Sorpresa') : 'Sorpresas del día';
-    body.innerHTML = `<div class="cal-reveal">${renderDayContents(gifts)}</div>`;
-
-    // Monta los reproductores de vídeo (varios posibles) con la barra glass
-    body.querySelectorAll('.cal-video[data-video-url]').forEach(videoSlot => {
-      if (!videoSlot.dataset.videoUrl) return;
-      const shouldAutoplay = videoSlot.dataset.autoplay !== '0';
-      const player = buildVideoPlayer({
-        src: videoSlot.dataset.videoUrl,
-        poster: videoSlot.dataset.poster || '',
-        autoplay: shouldAutoplay
-      });
-      videoSlot.prepend(player.wrap);
-      calVideoRefs.push(player);
-    });
-
-    // Enlaza los botones de toggle de auto-play por vídeo
-    body.querySelectorAll('[data-video-autoplay-toggle]').forEach(toggleBtn => {
-      const videoSlot = toggleBtn.closest('.cal-video');
-      if (!videoSlot) return;
-      const updateToggleUI = () => {
-        const isOn = videoSlot.dataset.autoplay !== '0';
-        toggleBtn.classList.toggle('is-on', isOn);
-        const label = toggleBtn.querySelector('.cal-video__toggle-label');
-        if (label) label.textContent = isOn ? 'Auto' : 'Manual';
-        toggleBtn.setAttribute('aria-label', isOn ? 'Desactivar reproducción automática de este vídeo' : 'Activar reproducción automática de este vídeo');
-      };
-      updateToggleUI();
-      toggleBtn.addEventListener('click', () => {
-        const isCurrentlyOn = videoSlot.dataset.autoplay !== '0';
-        videoSlot.dataset.autoplay = isCurrentlyOn ? '0' : '1';
-        updateToggleUI();
-        // Si se acaba de activar y el vídeo no se está reproduciendo, reproducirlo
-        if (videoSlot.dataset.autoplay !== '0') {
-          const videoEl = videoSlot.querySelector('video');
-          if (videoEl && videoEl.paused) videoEl.play().catch(() => {});
-        }
-      });
-    });
-
-    // Portadas de música: si la imagen falla, se muestra el fallback
-    body.querySelectorAll('.cal-media__cover-img').forEach(img => {
-      if (img.complete && img.naturalWidth === 0) { img.remove(); return; }
-      img.addEventListener('error', () => img.remove(), { once: true });
-    });
-
-    // Monta los reproductores de audio (varios posibles) con la barra glass
-    body.querySelectorAll('.cal-media__player[data-audio-url]').forEach(audioSlot => {
-      if (!audioSlot.dataset.audioUrl) return;
-      const player = buildAudioPlayer({ src: audioSlot.dataset.audioUrl });
-      audioSlot.appendChild(player.wrap);
-      const cover = audioSlot.closest('.cal-media')?.querySelector('.cal-media__cover');
-      if (cover) {
-        // Tocar la portada reproduce/pausa; el botón grande flota sobre ella
-        cover.classList.add('is-player');
-        cover.appendChild(player.overlay);
-        cover.addEventListener('click', () => {
-          if (player.audio.paused) player.audio.play();
-          else player.audio.pause();
-        });
-      }
-      calAudioRefs.push(player);
-    });
-
-    doneBtn.textContent = 'Hecho ❤';
-    doneBtn.dataset.playUrl = '';
-
-    // Carrusel de multi-regalo: flechas, dots, swipe, teclado
-    const carousel = body.querySelector('.cal-carousel');
-    if (carousel) {
-      bindCarousel(carousel, gifts.length);
-      requestAnimationFrame(() => carousel.focus());
-    }
-
-    // Quiz interactivo — tocar una opción responde con feedback inmediato
-    bindQuiz(body);
-
-    // Cajitas de respuesta de los regalos interactivos (si existen)
-    body.querySelectorAll('.cal-ask[data-gift-id]').forEach(ask => bindAsk(ask));
-
-    // Acertijos y mates: botón "mostrar respuesta"
-    bindReveals(body);
-
-    // Minijuego de estrellas (tipo clickStar) — todo dentro de la tarjeta
-    body.querySelectorAll('.cal-star[data-stars]').forEach(bindStarGame);
-
-    lastFocusedEl = document.activeElement;
-    sheet.classList.add('is-open');
-    sheet.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('sheet-locked');
-    requestAnimationFrame(() => {
-      sheet.classList.add('is-visible');
-      page.querySelector('#calSheetClose').focus();
-    });
-
-    onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); closeSheet(); }
-      if (e.key === 'Tab') {
-        const focusables = Array.from(sheet.querySelectorAll('button'));
-        if (!focusables.length) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-      }
-    };
-    document.addEventListener('keydown', onKey);
-  }
-
-  /** Botones "mostrar respuesta" de acertijos y problemas de mates. */
-  function bindReveals(body) {
-    body.querySelectorAll('[data-riddle-reveal]').forEach(btn => {
-      const label = btn.dataset.label || 'Mostrar respuesta';
-      btn.addEventListener('click', () => {
-        const answer = btn.parentElement?.querySelector('[data-riddle-answer]');
-        if (!answer) return;
-        const show = answer.hidden;
-        answer.hidden = !show;
-        btn.textContent = show ? 'Ocultar respuesta' : label;
-      });
-    });
-  }
-
-  /** Minijuego de tocar estrellas (tipo clickStar): una estrella aparece en
-   *  un punto aleatorio del campo; al tocarla salta ✨ y aparece la siguiente.
-   *  Al completar todas, muestra el estado de victoria. Todo dentro de la tarjeta. */
-  function bindStarGame(root) {
-    if (!root) return;
-    const field = root.querySelector('.cal-star-game__field');
-    const star = root.querySelector('.cal-star-game__star');
-    const puff = root.querySelector('.cal-star-game__puff');
-    const win = root.querySelector('.cal-star-game__win');
-    const countEl = root.querySelector('.cal-star-game__count');
-    const total = parseInt(root.dataset.stars, 10) || 8;
-    if (!field || !star) return;
-
-    let got = 0;
-    let pending = false;
-
-    function placeStar() {
-      if (!root.isConnected) return;
-      const w = field.clientWidth;
-      const h = field.clientHeight;
-      const size = 56; // espacio que ocupa la estrella + padding
-      const x = Math.max(0, Math.min(w - size, Math.random() * (w - size)));
-      const y = Math.max(0, Math.min(h - size, Math.random() * (h - size)));
-      star.style.left = x + 'px';
-      star.style.top = y + 'px';
-      star.classList.remove('is-popped');
-      star.style.opacity = '';
-      star.style.transform = '';
-    }
-
-    function burst(x, y) {
-      if (!puff) return;
-      puff.style.left = x + 'px';
-      puff.style.top = y + 'px';
-      puff.classList.remove('is-burst');
-      void puff.offsetWidth; // reinicia la animación
-      puff.classList.add('is-burst');
-    }
-
-    function finish() {
-      if (!root.isConnected) return;
-      star.style.opacity = '0';
-      win.classList.add('is-show');
-      countEl.textContent = total;
-      // Pequeña lluvia de chispas para celebrar
-      for (let i = 0; i < 6; i++) {
-        setTimeout(() => {
-          if (!root.isConnected) return;
-          burst(
-            14 + Math.random() * Math.max(10, field.clientWidth - 28),
-            14 + Math.random() * Math.max(10, field.clientHeight - 28)
-          );
-        }, 90 * i);
-      }
-    }
-
-    star.addEventListener('click', () => {
-      if (pending) return;
-      pending = true;
-      got++;
-      countEl.textContent = got;
-
-      const sr = star.getBoundingClientRect();
-      const fr = field.getBoundingClientRect();
-      burst(sr.left - fr.left + sr.width / 2 - 12, sr.top - fr.top + sr.height / 2 - 12);
-      star.classList.add('is-popped');
-
-      if (got >= total) {
-        setTimeout(finish, 200);
-      } else {
-        setTimeout(() => { pending = false; placeStar(); }, 240);
-      }
-    });
-
-    placeStar();
-  }
-
-  /** Cajita de respuesta de un regalo interactivo (pregunta del Admin) */
-  function renderAskBlock(gift) {
-    const question = gift?.data?.question || '';
-    if (!question) return '';
-    return `
-      <div class="cal-ask" data-gift-id="${escapeHtml(gift.id)}">
-        <div class="cal-ask__heading">
-          <span class="cal-ask__icon" aria-hidden="true">💌</span>
-          <span class="cal-ask__label">Responder</span>
-        </div>
-        <p class="cal-ask__question">${escapeHtml(question)}</p>
-        <textarea class="cal-ask__input" rows="3" maxlength="1000" placeholder="Escribe aquí tu respuesta…"></textarea>
-        <button type="button" class="cal-ask__send btn-primary">Enviar respuesta</button>
-        <p class="cal-ask__status" role="status" aria-live="polite"></p>
-      </div>`;
-  }
-
-  /** Enlaza la cajita: carga la respuesta previa y gestiona el envío */
-  function bindAsk(ask) {
-    if (!ask) return;
-    const giftId = ask.dataset.giftId;
-    const input = ask.querySelector('.cal-ask__input');
-    const sendBtn = ask.querySelector('.cal-ask__send');
-    const status = ask.querySelector('.cal-ask__status');
-
-    // Carga la respuesta anterior de este usuario (si existe)
-    db.getMyGiftResponses().then(responses => {
-      const prev = responses?.[giftId];
-      if (!prev?.text) return;
-      input.value = prev.text;
-      input.disabled = true;
-      sendBtn.disabled = true;
-      sendBtn.textContent = 'Respondida ❤';
-      status.textContent = 'Ya respondiste a esta sorpresa. Gracias 💌';
-      status.classList.add('is-done');
-    }).catch(() => {});
-
-    sendBtn.addEventListener('click', async () => {
-      const text = input.value.trim();
-      if (!text) {
-        status.textContent = 'Escribe una respuesta antes de enviar.';
-        status.classList.add('is-error');
-        return;
-      }
-      sendBtn.disabled = true;
-      sendBtn.textContent = 'Enviando…';
-      try {
-        await db.saveGiftResponse(giftId, text);
-        input.disabled = true;
-        sendBtn.textContent = 'Respondida ❤';
-        status.textContent = '¡Enviada! El Admin la verá en el panel.';
-        status.classList.remove('is-error');
-        status.classList.add('is-done');
-        showToast('Respuesta enviada 💌', 'success');
-      } catch (err) {
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Enviar respuesta';
-        status.textContent = err?.message || 'No se pudo enviar. Inténtalo de nuevo.';
-        status.classList.add('is-error');
-      }
-    });
-  }
-
-  /** Enlaza las opciones del quiz (el contenido se inyecta al abrir la sorpresa) */
-  function bindQuiz(body) {
-    body.querySelectorAll('.cal-quiz__q').forEach(qBlock => {
-      const hint = qBlock.querySelector('.cal-quiz__hint');
-      // Si ninguna opción marca una respuesta definida, no hay acierto/fallo
-      const hasAnswer = qBlock.querySelectorAll('.cal-quiz__opt[data-correct="1"]').length > 0;
-      qBlock.querySelectorAll('.cal-quiz__opt').forEach(opt => {
-        opt.addEventListener('click', () => {
-          if (qBlock.classList.contains('is-answered')) return;
-          qBlock.classList.add('is-answered');
-          qBlock.querySelectorAll('.cal-quiz__opt').forEach(o => { o.disabled = true; o.classList.add('is-disabled'); });
-          opt.classList.add('is-selected');
-          if (hasAnswer) {
-            const isCorrect = opt.dataset.correct === '1';
-            opt.classList.add(isCorrect ? 'is-correct' : 'is-wrong');
-            if (hint) hint.textContent = isCorrect ? '¡Correcto! ❤️' : 'Mmm… casi ❤️';
-          } else if (hint) {
-            opt.classList.add('is-neutral');
-            hint.textContent = '¡Respondido! ❤️';
-          }
-        });
-      });
-    });
-  }
-
-  /** Carrusel de multi-regalo: flechas, dots, swipe y teclado. */
-  function bindCarousel(root, total) {
-    calCarouselIdx = 0;
-    const slides = root.querySelectorAll('[data-carousel-slide]');
-    const dots = root.querySelectorAll('[data-carousel-dot]');
-    const prevBtn = root.querySelector('[data-carousel-prev]');
-    const nextBtn = root.querySelector('[data-carousel-next]');
-    const viewport = root.querySelector('.cal-carousel__viewport');
-
-    function goTo(idx) {
-      if (idx < 0 || idx >= total || idx === calCarouselIdx) return;
-      const dir = idx > calCarouselIdx ? 1 : -1;
-      slides[calCarouselIdx]?.classList.remove('is-active');
-      slides[calCarouselIdx]?.classList.add(dir > 0 ? 'is-exit-left' : 'is-exit-right');
-      calCarouselIdx = idx;
-      slides[calCarouselIdx]?.classList.add('is-active');
-      dots.forEach((d, i) => d.classList.toggle('is-active', i === idx));
-      prevBtn.disabled = idx === 0;
-      nextBtn.disabled = idx === total - 1;
-      // Limpia clases de salida tras la transición
-      setTimeout(() => {
-        slides.forEach(s => { s.classList.remove('is-exit-left', 'is-exit-right'); });
-      }, 350);
-      // Reinicia audio/video del slide anterior si existía
-      const prevSlide = slides[idx - dir];
-      if (prevSlide) {
-        prevSlide.querySelectorAll('audio, video').forEach(el => { try { el.pause(); } catch(e) {} });
-      }
-    }
-
-    prevBtn.addEventListener('click', () => goTo(calCarouselIdx - 1));
-    nextBtn.addEventListener('click', () => goTo(calCarouselIdx + 1));
-    dots.forEach(dot => {
-      dot.addEventListener('click', () => goTo(parseInt(dot.dataset.carouselDot, 10)));
-    });
-
-    // Swipe táctil
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let swiping = false;
-    viewport.addEventListener('touchstart', (e) => {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-      swiping = false;
-    }, { passive: true });
-    viewport.addEventListener('touchmove', (e) => {
-      const dx = e.touches[0].clientX - touchStartX;
-      const dy = e.touches[0].clientY - touchStartY;
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) swiping = true;
-    }, { passive: true });
-    viewport.addEventListener('touchend', (e) => {
-      if (!swiping) return;
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      if (dx < -40) goTo(calCarouselIdx + 1);
-      else if (dx > 40) goTo(calCarouselIdx - 1);
-    }, { passive: true });
-
-    // Teclado: flechas izquierda/derecha solo cuando el carrusel tiene foco
-    root.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(calCarouselIdx - 1); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); goTo(calCarouselIdx + 1); }
-    });
-  }
-
-  function handleDoneBtn() {
-    const btn = page.querySelector('#calSheetDone');
-    if (btn?.dataset?.playUrl) {
-      window.location.href = btn.dataset.playUrl;
+        </article>
+      `;
       return;
     }
-    closeSheet();
-  }
 
-  function closeSheet() {
-    const sheet = page.querySelector('#calSheet');
-    if (!sheet || !sheet.classList.contains('is-open')) return;
-    // Cancela cualquier timeout de cierre previo (evita que destruya
-    // los reproductores de un sheet recién re-abierto)
-    if (closeSheetTimer) { clearTimeout(closeSheetTimer); closeSheetTimer = null; }
-    sheet.classList.remove('is-visible');
-    sheet.classList.remove('is-open');
-    sheet.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('sheet-locked');
-    if (onKey) { document.removeEventListener('keydown', onKey); onKey = null; }
-    // Pausa suave antes de destruir los vídeos/audios (evita el corte brusco)
-    calVideoRefs.forEach(v => { try { v.video.pause(); } catch (e) {} });
-    calAudioRefs.forEach(a => { try { a.audio.pause(); } catch (e) {} });
-    // Guarda las referencias ANTES de vaciar los arrays para que el
-    // setTimeout de destrucción las pueda usar
-    const refsToDestroy = { videos: calVideoRefs, audios: calAudioRefs };
-    calVideoRefs = [];
-    calAudioRefs = [];
-    // Deja que la animación de salida complete (el contenido se desliza
-    // con el panel) antes de destruirlo — transición no brusca
-    const calBody = page.querySelector('#calSheetBody');
-    closeSheetTimer = setTimeout(() => {
-      closeSheetTimer = null;
-      if (!sheet.classList.contains('is-open')) {
-        refsToDestroy.videos.forEach(v => { try { v.destroy(); } catch (e) {} });
-        refsToDestroy.audios.forEach(a => { try { a.destroy(); } catch (e) {} });
-        if (calBody) calBody.innerHTML = '';
-      }
-    }, 320);
-    if (lastFocusedEl && lastFocusedEl.focus) lastFocusedEl.focus();
-    lastFocusedEl = null;
-  }
+    // El regalo destacado es el primero del día que aún no se ha abierto;
+    // si están todos abiertos, el último para volver a verlo.
+    // El destacado rota entre los regalos del día. Al repintar (p. ej. tras
+    // abrir uno) se conserva la posición; solo se reinicia si cambia el día
+    // o el índice quedó fuera de rango.
+    if (spotRot.date !== next || spotRot.index >= nextIds.length) {
+      spotRot.date = next;
+      // Empezamos por el primer regalo pendiente; si están todos abiertos, 0.
+      spotRot.index = Math.max(0, nextIds.findIndex(id => !progressMap[id]?.opened));
+    }
+    const focusId = nextIds[spotRot.index];
+    const gift = giftOf(focusId) || giftOf(nextIds[0]);
+    const meta = metaOf(gift?.type);
+    const isOpen = !!progressMap[focusId]?.opened;
+    const when = next === today ? 'Tu regalo de hoy' : countdownText(next);
 
-  // ===== MARCADO DE ABIERTO (actualiza celda + hero + progreso en sitio) =====
-  function markOpened(dateStr, ids) {
-    ids.forEach(id => {
-      if (!progressMap[id]?.opened) {
-        progressMap[id] = { opened: true, openedAt: new Date().toISOString() };
-      }
+    const art = `<div class="cal-spot__art cal-spot__art--tone is-${toneOf(gift?.type)}">${icon(meta.icon, 30)}</div>`;
+
+    const dots = nextIds.length > 1
+      ? `<span class="cal-spot__dots">
+          ${nextIds.map((id, i) => `<button type="button" class="cal-spot__dot${i === spotRot.index ? ' is-on' : ''}" data-dot="${i}" aria-label="Regalo ${i + 1} de ${nextIds.length}"></button>`).join('')}
+        </span>`
+      : '';
+
+    host.innerHTML = `
+      <article class="cal-spot${isOpen ? ' is-open' : ''}">
+        <button type="button" class="cal-spot__hit" data-gift="${escapeHtml(focusId)}" aria-label="${escapeHtml(`Abrir ${gift?.title || meta.label}`)}"></button>
+        ${art}
+        <div class="cal-spot__body">
+          <span class="cal-spot__when">${escapeHtml(when)}</span>
+          <b class="cal-spot__title">${escapeHtml(gift?.title || meta.label)}</b>
+          <span class="cal-spot__type">${escapeHtml(meta.label)}${nextIds.length > 1 ? ` · ${spotRot.index + 1} de ${nextIds.length}` : ''}</span>
+          ${dots}
+        </div>
+        <span class="cal-spot__go">${isOpen ? 'Ver' : 'Abrir'} ${icon('chev', 16)}</span>
+      </article>
+    `;
+
+    const hit = host.querySelector('[data-gift]');
+    if (hit) hit.addEventListener('click', () => openExperience(gift, next));
+
+    host.querySelectorAll('[data-dot]').forEach(dot => {
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        spotRot.index = Number(dot.dataset.dot);
+        paintSpot(); // repinta y reinicia el temporizador
+      });
     });
-    saveProgress();
 
-    const dayNum = String(parseInt(dateStr.slice(8), 10));
-    const cell = page.querySelector(`.cal-day[data-day="${dayNum}"]`);
-    if (cell) {
-      const firstId = ids[0];
-      const gift = firstId ? catalog?.giftsById?.[firstId] : null;
-      cell.classList.remove('is-today', 'is-catchup', 'is-locked');
-      cell.classList.add('is-opened');
-      cell.setAttribute('aria-pressed', 'true');
-      const oldLabel = cell.getAttribute('aria-label') || '';
-      cell.setAttribute('aria-label', oldLabel.replace(/— (disponible hoy|disponible|ya descubierto|próximamente)$/, '— ya descubierto'));
-      const icon = gift?.type && typeIconMap[gift.type] ? `<span class="cal-day__icon" aria-hidden="true">${typeIconMap[gift.type]}</span>` : '';
-      const specialMark = gift?.special ? '<span class="cal-day__special" aria-hidden="true">★</span>' : '';
-      const countMark = ids.length > 1 ? `<span class="cal-day__count" aria-hidden="true">+${ids.length - 1}</span>` : '';
-      cell.innerHTML = `<span class="cal-day__num">${cell.dataset.day}</span>${icon}${specialMark}<span class="cal-day__heart" aria-hidden="true">♥</span>${countMark}`;
+    // Rotación automática: pasa al siguiente regalo cada 5s (si hay varios).
+    if (nextIds.length > 1) {
+      spotRot.timer = setInterval(() => {
+        if (document.hidden) return; // pestaña en segundo plano: no gasta
+        spotRot.index = (spotRot.index + 1) % nextIds.length;
+        paintSpot();
+      }, SPOT_ROTATE_MS);
     }
-    const hero = page.querySelector('#calTodayWrap');
-    const todayIds = normalizeIds(catalog?.months?.[todayMonthKey()]?.calendarMapping?.[String(dayOfMonthInSpain())]);
-    if (hero && todayIds.length === ids.length && todayIds.every((id, i) => id === ids[i])) {
-      hero.innerHTML = renderTodayHeroInner();
-      const cta = page.querySelector('#calTodayCta');
-      if (cta) cta.onclick = () => openDay(getTodayStr(), todayIds);
-    }
-    const prog = page.querySelector('.cal-progress');
-    if (prog) prog.innerHTML = renderProgressInner();
   }
 
-  // ===== CONTENIDO POR TIPO =====
+  /* ===== REGALOS DEL DÍA ===== */
+  function paintDay() {
+    const host = page.querySelector('#calDay');
+    if (!host) return;
+
+    const dateStr = selectedDay.value;
+    const ids = dayIds(dateStr);
+    const state = dayState(dateStr, ids);
+    const isToday = dateStr === todayISO();
+
+    if (!ids.length) {
+      host.innerHTML = `
+        <p class="section-title">${escapeHtml(prettyDate(dateStr))}</p>
+        ${emptyState('gift', 'Ese día no tiene regalo', isToday ? 'Hoy no hay nada programado.' : 'Este día todavía no tiene nada asignado.', isToday ? 'Ver el primer regalo' : 'Ir al siguiente', () => {
+          const target = nextDayWithContent(dateStr) || nextDayWithContent(todayISO());
+          if (!target) return;
+          selectedDay.value = target;
+          view.monthKey = monthKeyOf(target);
+          paintMonth();
+          paintDay();
+          page.querySelector('#calDay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }).outerHTML}
+      `;
+      return;
+    }
+
+    if (state === 'locked') {
+      const unlock = giftOf(ids[0])?.unlock?.value;
+      host.innerHTML = `
+        <p class="section-title">${escapeHtml(prettyDate(dateStr))}</p>
+        <div class="cal-locked">
+          <span class="e-ic">${icon('lock', 22)}</span>
+          <b>Todavía no</b>
+          <p>${unlock ? `Se abre el ${escapeHtml(prettyDate(unlock))}.` : 'Este regalo aún no está disponible.'}</p>
+        </div>
+      `;
+      return;
+    }
+
+    const openedCount = ids.filter(id => progressMap[id]?.opened).length;
+    const dayPct = Math.round((openedCount / ids.length) * 100);
+    host.innerHTML = `
+      <p class="section-title">${escapeHtml(prettyDate(dateStr))}
+        <span class="section-title__aside">${openedCount === ids.length ? 'Todo abierto ✓' : `${openedCount} de ${ids.length}`}</span>
+      </p>
+      <div class="cal-dayprogress${openedCount === ids.length ? ' is-done' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${ids.length}" aria-valuenow="${openedCount}">
+        <div class="cal-dayprogress__bar"><span style="width:${dayPct}%"></span></div>
+      </div>
+    `;
+
+    const grid = h('div', { class: `cal-gifts${isToday ? ' is-today' : ''}` });
+    for (const id of ids) {
+      const gift = giftOf(id);
+      if (!gift) continue;
+      const meta = metaOf(gift.type);
+      const isOpen = !!progressMap[id]?.opened;
+      const tone = toneOf(gift.type);
+      const caption = gift.data?.caption || gift.data?.message || '';
+
+      const card = h('button', {
+        class: `cal-gift${isOpen ? ' is-open' : ''}`,
+        type: 'button',
+        'aria-label': `${gift.title || meta.label}${isOpen ? ', ya abierto' : ''}`,
+        onclick: () => openExperience(gift, dateStr)
+      },
+        h('div', { class: 'cal-gift__media' },
+          h('div', { class: `cal-gift__art cal-gift__art--tone is-${tone}` }, h('span', { html: icon(meta.icon, 30) })),
+          h('span', { class: 'cal-gift__tag' }, meta.label),
+          isOpen ? h('span', { class: 'cal-gift__ok', html: icon('check', 13) }) : null
+        ),
+        h('div', { class: 'cal-gift__body' },
+          h('b', null, gift.title || meta.label),
+          caption ? h('span', { class: 'cal-gift__cap' }, caption) : null
+        )
+      );
+      grid.append(card);
+    }
+    host.append(grid);
+  }
+
+  function paintAll() {
+    paintSpot();
+    paintMonth();
+    paintDay();
+  }
+
+  /* ==========================================
+     EXPERIENCIAS
+     ========================================== */
+  function openExperience(gift, dateStr) {
+    const meta = metaOf(gift.type);
+    const wasOpened = !!progressMap[gift.id]?.opened;
+
+    openSheet(gift.title || meta.label, () => {
+      const body = document.createElement('div');
+      body.className = 'exp';
+
+      const content = renderContent(gift);
+      if (content) body.append(content);
+
+      const ask = renderAsk(gift);
+      if (ask) body.append(ask);
+
+      body.append(h('button', {
+        class: 'btn btn--block',
+        type: 'button',
+        onclick: () => { closeSheets(); }
+      }, 'Cerrar'));
+
+      return body;
+    });
+
+    markGiftSeen(gift.id, wasOpened);
+  }
+
+  /** Marca solo el regalo abierto como visto (cada regalo es independiente). */
+  function markGiftSeen(giftId, alreadySeen) {
+    if (!progressMap[giftId]?.opened) {
+      progressMap[giftId] = { opened: true, openedAt: new Date().toISOString() };
+      saveProgress();
+    }
+    paintAll();
+
+    if (!alreadySeen) {
+      toast('Regalo visto ✨', {
+        label: 'Deshacer',
+        fn: () => {
+          delete progressMap[giftId];
+          saveProgress();
+          paintAll();
+        }
+      });
+    }
+  }
+
+  /** Contenido de la sorpresa según su tipo. */
   function renderContent(gift) {
     const data = gift.data || {};
-    const esc = escapeHtml;
+    const type = gift.type;
 
-    switch (gift.type) {
-      case 'letter':
-        return `
-          <div class="cal-type cal-letter">
-            <span class="cal-letter__orn" aria-hidden="true">“</span>
-            <div class="cal-letter__text">${esc(data.content || 'Mensaje vacío').replace(/\n/g, '<br>')}</div>
-            <span class="cal-letter__sigil" aria-hidden="true">❤</span>
-          </div>`;
+    const textBlock = (text, className = 'exp-text') => {
+      const p = document.createElement('div');
+      p.className = className;
+      p.innerHTML = type === 'letter' ? escapeHtml(text).replace(/\n/g, '<br>') : escapeHtml(text);
+      return p;
+    };
+
+    switch (type) {
+      case 'letter': {
+        // Sin título dentro: la cabecera del sheet ya lo muestra.
+        const wrap = h('div', { class: 'exp' });
+        wrap.append(textBlock(data.content || data.message || '', 'exp-text'));
+        return wrap;
+      }
 
       case 'cassette': {
+        const wrap = h('div', { class: 'exp exp-audio' });
         const cover = data.coverImage || data.cover || '';
-        const audioUrl = data.audioUrl || '';
-        // Tarjeta de música: portada en grande con fallback, mensaje y reproductor
-        // de audio propio (barra glass acorde a la web) montado en openDay.
-        return `
-          <div class="cal-type cal-media">
-            <div class="cal-media__cover${cover ? '' : ' is-fallback'}"${audioUrl ? ` data-audio-url="${esc(audioUrl)}"` : ''}>
-              <span class="cal-media__cover-fallback" aria-hidden="true">🎵</span>
-              ${cover ? `<img class="cal-media__cover-img" src="${esc(cover)}" alt="Portada de la canción" loading="lazy">` : ''}
-            </div>
-            ${data.message ? `<p class="cal-media__msg">${esc(data.message)}</p>` : ''}
-            ${audioUrl ? '<div class="cal-media__player" data-audio-url="' + esc(audioUrl) + '"></div>' : '<p class="cal-muted">No hay audio disponible aún</p>'}
-          </div>`;
+        if (cover) {
+          wrap.append(h('div', { class: 'exp-cover' }, h('img', { src: cover, alt: 'Portada', loading: 'lazy' })));
+        }
+        if (data.message) wrap.append(textBlock(data.message, 'exp-note'));
+        if (data.audioUrl) {
+          wrap.append(h('audio', { controls: true, preload: 'metadata', src: data.audioUrl }));
+        } else {
+          wrap.append(h('p', { class: 'exp-note' }, 'El audio todavía no está disponible.'));
+        }
+        return wrap;
       }
 
       case 'giftBox':
-        return `
-          <div class="cal-type cal-photo">
-            ${data.image
-              ? `<img class="cal-photo__img" src="${esc(data.image)}" alt="Regalo" loading="lazy">`
-              : '<span class="cal-photo__fallback" aria-hidden="true">🎁</span>'}
-            ${data.message ? `<p class="cal-photo__msg">${esc(data.message)}</p>` : ''}
-          </div>`;
+      case 'polaroid': {
+        const wrap = h('div', { class: 'exp' });
+        const src = data.image || '';
+        if (src) {
+          wrap.append(h('div', { class: 'exp-media' }, h('img', { src, alt: gift.title || 'Sorpresa', loading: 'lazy' })));
+        } else {
+          wrap.append(h('div', { class: 'exp-media exp-media--placeholder' },
+            h('span', { html: icon(type === 'polaroid' ? 'camera' : 'gift', 26) }),
+            h('span', null, type === 'polaroid' ? 'La foto llegará pronto' : 'El regalo llegará pronto')
+          ));
+        }
+        const caption = data.caption || data.message || '';
+        if (caption) wrap.append(textBlock(caption, 'exp-note'));
+        return wrap;
+      }
 
       case 'video': {
-        // El reproductor (misma barra glass que la galería) se monta en openGift
-        const videoUrl = data.videoUrl || data.url || '';
-        if (!videoUrl) {
-          return `
-            <div class="cal-type cal-video">
-              <span class="cal-video__fallback" aria-hidden="true">🎬</span>
-              <p class="cal-muted">${esc(data.caption || 'El vídeo aún no está disponible ❤️')}</p>
-            </div>`;
-        }
-        // gifts.json usa `cover` como portada del vídeo; `poster` también se acepta
+        const wrap = h('div', { class: 'exp' });
+        const src = data.videoUrl || data.url || '';
         const poster = data.poster || data.cover || '';
-        const videoAutoplay = autoPlayVideos ? '1' : '0';
-        return `
-          <div class="cal-type cal-video" data-video-url="${esc(videoUrl)}"${poster ? ` data-poster="${esc(poster)}"` : ''} data-autoplay="${videoAutoplay}">
-            <div class="cal-video__toggle-wrap">
-              <button type="button" class="cal-video__toggle" data-video-autoplay-toggle aria-label="Alternar reproducción automática de este vídeo">
-                <span class="cal-video__toggle-icon cal-video__toggle-icon--on" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                </span>
-                <span class="cal-video__toggle-icon cal-video__toggle-icon--off" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/><line x1="4" y1="4" x2="20" y2="20"/></svg>
-                </span>
-                <span class="cal-video__toggle-label"></span>
-              </button>
-            </div>
-            ${data.caption ? `<p class="cal-muted">${esc(data.caption)}</p>` : ''}
-          </div>`;
+        if (src) {
+          // buildVideoPlayer devuelve { wrap, video, ... }; hay que montar
+          // `wrap`, no el objeto (insertaba "[object Object]").
+          const player = buildVideoPlayer({ src, poster, autoplay: false, loop: false, className: 'exp-video' });
+          const media = h('div', { class: 'exp-media' });
+          media.append(player.wrap);
+          wrap.append(media);
+        } else {
+          wrap.append(h('div', { class: 'exp-media exp-media--placeholder' },
+            h('span', { html: icon('video', 26) }),
+            h('span', null, 'El vídeo aún no está disponible')
+          ));
+        }
+        if (data.caption) wrap.append(textBlock(data.caption, 'exp-note'));
+        return wrap;
       }
 
-      case 'surprise':
-        return `
-          <div class="cal-type cal-surprise">
-            <div class="cal-surprise__emoji" aria-hidden="true">🎉</div>
-            <p>${esc(data.message || '¡Sorpresa!')}</p>
-          </div>`;
+      case 'surprise': {
+        const wrap = h('div', { class: 'exp' });
+        wrap.append(h('div', { class: 'exp-surprise' },
+          h('span', { class: 'e-emoji' }, '🎉'),
+          h('p', { class: 'exp-text' }, data.message || '¡Sorpresa!')
+        ));
+        return wrap;
+      }
 
       case 'wishlist': {
-        const items = data.items || [];
-        return `
-          <div class="cal-type cal-wishlist">
-            <h4 class="cal-wishlist__title">Lista de deseos</h4>
-            ${items.length
-              ? `<ul class="cal-wishlist__list">${items.map((item, i) => `<li><span class="cal-wishlist__num">${i + 1}</span>${esc(item)}</li>`).join('')}</ul>`
-              : `<p class="cal-muted">${esc(data.message || 'La lista está vacía por ahora')}</p>`}
-          </div>`;
-      }
-
-      case 'challenge':
-      case 'coupon':
-      case 'memory':
-      case 'plan':
-      case 'affirmation': {
-        const meta = TYPE_META[gift.type] || TYPE_META.affirmation;
-        return `
-          <div class="cal-type cal-new-gift cal-new-gift--${esc(gift.type)}">
-            <div class="cal-new-gift__emoji" aria-hidden="true">${meta.emoji}</div>
-            <h4 class="cal-new-gift__title">${esc(gift.title || meta.label)}</h4>
-            <p class="cal-new-gift__message">${esc(data.message || 'Un detalle pensado para ti.')}</p>
-          </div>`;
+        const wrap = h('div', { class: 'exp' });
+        wrap.append(h('p', { class: 'exp-title' }, 'Lista de deseos'));
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (items.length) {
+          const list = h('ul', { class: 'exp-list' });
+          items.forEach(item => {
+            list.append(h('li', null, h('span', { html: icon('heart', 15) }), h('span', null, String(item))));
+          });
+          wrap.append(list);
+        } else {
+          wrap.append(h('p', { class: 'exp-note' }, data.message || 'La lista está vacía por ahora.'));
+        }
+        return wrap;
       }
 
       case 'clickStar': {
-        // Minijuego de tocar estrellas, todo dentro de la tarjeta.
         const total = Math.max(3, Math.min(20, parseInt(data.stars, 10) || 8));
-        return `
-          <div class="cal-type cal-star" data-stars="${total}">
-            <div class="cal-star-game__field">
-              <button class="cal-star-game__star" type="button" aria-label="Toca la estrella"><span aria-hidden="true">⭐</span></button>
-              <span class="cal-star-game__puff" aria-hidden="true">✨</span>
-              <div class="cal-star-game__win">
-                <span class="cal-star-game__win-star" aria-hidden="true">⭐</span>
-                <span class="cal-star-game__win-text">¡Lo conseguiste!</span>
-              </div>
-            </div>
-            <p class="cal-star-game__counter">★ <span class="cal-star-game__count">0</span> / ${total}</p>
-            <p class="cal-star-game__msg">${esc(data.message || 'Toca las estrellas que aparecen ✧')}</p>
-          </div>`;
+        const wrap = h('div', { class: 'exp' });
+        wrap.append(h('p', { class: 'exp-note' }, data.message || 'Toca todas las estrellas ✨'));
+        const grid = h('div', { class: 'exp-stars' });
+        const counter = h('p', { class: 'exp-note' });
+        let found = 0;
+        const update = () => {
+          counter.textContent = found === total ? '¡Lo conseguiste! ⭐' : `${found} de ${total} estrellas`;
+        };
+        for (let i = 0; i < total; i++) {
+          const btn = h('button', { class: 'exp-star', type: 'button', 'aria-label': 'Estrella', html: icon('star', 22) });
+          btn.addEventListener('click', () => {
+            if (btn.classList.contains('is-on')) return;
+            btn.classList.add('is-on');
+            found++;
+            update();
+          });
+          grid.append(btn);
+        }
+        update();
+        wrap.append(grid, counter);
+        return wrap;
       }
 
       case 'game': {
-        // Los juegos clásicos (julio) guardan redirectUrl a nivel de regalo;
-        // los generados por calendar-expansion lo guardan dentro de data.
-        const redirectUrl = data.redirectUrl || gift.redirectUrl;
-        const playUrl = redirectUrl ? normalizePlayUrl(redirectUrl) : '';
-        const gameId = redirectUrl
-          ? redirectUrl.split('/').pop().replace(/\.html$/, '')
-          : '';
-        const cover = GAME_COVERS[gameId] || { color: '#7c9cff', accent: '#a5baff' };
-        const gameName = (gift.title || '').replace(/^🎮\s*/, '') || 'Juego';
-        return `
-          <div class="cal-type cal-game">
-            <div class="cal-game__cover">
-              <img src="${gameCover(gameId, cover.color, cover.accent)}" alt="Portada de ${esc(gameName)}" loading="lazy">
-            </div>
-            <h4 class="cal-game__name">${esc(gameName)}</h4>
-            <p class="cal-game__msg">${esc(data.message || '¡A jugar!')}</p>
-            ${playUrl ? `<a class="cal-game__play btn-primary" href="${playUrl}">Jugar 🎮</a>` : ''}
-          </div>`;
+        const wrap = h('div', { class: 'exp' });
+        const redirectUrl = data.redirectUrl || gift.redirectUrl || '';
+        if (data.message) wrap.append(textBlock(data.message, 'exp-note'));
+        if (redirectUrl) {
+          const playUrl = /^https?:\/\//i.test(redirectUrl)
+            ? redirectUrl
+            : (redirectUrl.startsWith('/') ? redirectUrl : `/${redirectUrl}`);
+          wrap.append(h('div', { class: 'exp-actions' },
+            h('a', { class: 'btn', href: playUrl, target: '_blank', rel: 'noopener' }, 'Jugar 🎮')
+          ));
+        }
+        return wrap;
+      }
+
+      case 'riddle':
+      case 'math': {
+        const wrap = h('div', { class: 'exp' });
+        const question = data.question || data.problem || data.content || data.message || 'Adivina, adivinanza…';
+        const answer = data.answer || data.solution || '';
+        const block = h('div', { class: 'exp-riddle' });
+        block.append(h('b', null, type === 'math' ? 'Resuelve' : (gift.title || 'Acertijo')));
+        block.append(h('p', { html: renderMathText(question) }));
+        wrap.append(block);
+        if (answer) {
+          const answerEl = h('div', { class: 'exp-answer', html: renderMathText(answer) });
+          answerEl.hidden = true;
+          const btn = h('button', { class: 'btn btn-secondary', type: 'button' }, 'Mostrar respuesta');
+          btn.addEventListener('click', () => {
+            answerEl.hidden = false;
+            btn.remove();
+          });
+          wrap.append(btn, answerEl);
+        }
+        return wrap;
       }
 
       case 'quiz': {
-        const questions = data.questions || [];
+        const wrap = h('div', { class: 'exp' });
+        const questions = Array.isArray(data.questions) ? data.questions : [];
         if (!questions.length) {
-          return `<div class="cal-type cal-quiz"><p class="cal-muted">${esc(data.message || 'Quiz interactivo')}</p></div>`;
+          wrap.append(h('p', { class: 'exp-note' }, data.message || 'Quiz interactivo'));
+          return wrap;
         }
-        // Quiz interactivo: toca una opción para responder.
-        // Contrato de datos: `options` (o `answers`) + opcional `correct` (índice)
-        // o `answer` (valor) para dar feedback inmediato de acierto/fallo.
-        return `
-          <div class="cal-type cal-quiz">
-            ${questions.map((q, qi) => {
-              const opts = q.options || q.answers || [];
-              const correctIdx = Number.isInteger(q.correct)
-                ? q.correct
-                : (q.correctIndex !== undefined && q.correctIndex !== null ? Number(q.correctIndex) : -1);
-              const correctVal = (q.answer !== undefined && q.answer !== null) ? String(q.answer) : null;
-              // Solo hay feedback de acierto/fallo si la pregunta define la respuesta
-              const hasAnswer = correctIdx >= 0 || correctVal !== null;
-              return `
-              <div class="cal-quiz__q" data-qid="${qi}">
-                <p class="cal-quiz__prompt"><span class="cal-quiz__n">${qi + 1}</span>${esc(q.q || q.question || 'Pregunta')}</p>
-                <div class="cal-quiz__opts" role="group" aria-label="Pregunta ${qi + 1}">
-                  ${opts.map((o, oi) => {
-                    const isRight = hasAnswer && (correctIdx === oi || (correctVal !== null && String(o) === correctVal));
-                    return `
-                    <button type="button" class="cal-quiz__opt" data-oi="${oi}"
-                      data-correct="${isRight ? '1' : hasAnswer ? '0' : ''}">
-                      ${esc(o)}
-                    </button>`;
-                  }).join('')}
-                </div>
-                ${opts.length ? '<p class="cal-quiz__hint" aria-live="polite"></p>' : ''}
-              </div>`;
-            }).join('')}
-          </div>`;
+        questions.forEach((question, qi) => {
+          const options = question.options || question.answers || [];
+          const correctIndex = Number.isInteger(question.correct)
+            ? question.correct
+            : (question.correctIndex !== undefined && question.correctIndex !== null ? Number(question.correctIndex) : -1);
+          const correctValue = (question.answer !== undefined && question.answer !== null) ? String(question.answer) : null;
+          const hasAnswer = correctIndex >= 0 || correctValue !== null;
+
+          const block = h('div', { class: 'exp' });
+          block.append(h('p', { class: 'exp-note' }, `${qi + 1}. ${question.q || question.question || 'Pregunta'}`));
+          const hint = h('p', { class: 'exp-note' });
+          options.forEach((option, oi) => {
+            const isRight = hasAnswer && (correctIndex === oi || (correctValue !== null && String(option) === correctValue));
+            const btn = h('button', { class: 'btn-soft btn--block', type: 'button', style: 'justify-content:flex-start;text-align:left' }, String(option));
+            btn.addEventListener('click', () => {
+              if (!hasAnswer) return;
+              hint.textContent = isRight ? '¡Correcto! 🎉' : 'No era esa, prueba otra vez.';
+              hint.style.color = isRight ? 'var(--ok)' : 'var(--danger-c)';
+            });
+            block.append(btn);
+          });
+          if (options.length) block.append(hint);
+          wrap.append(block);
+        });
+        return wrap;
       }
 
-      case 'polaroid':
-        return `
-          <div class="cal-type cal-polaroid">
-            ${data.image
-              ? `<img class="cal-polaroid__img" src="${esc(data.image)}" alt="Foto" loading="lazy">`
-              : '<span class="cal-polaroid__fallback" aria-hidden="true">📸</span>'}
-            <p class="cal-polaroid__cap">${esc(data.caption || data.message || 'Un momento especial')}</p>
-          </div>`;
-
-      case 'riddle': {
-        const question = data.question || data.content || data.message || 'Adivina, adivinanza…';
-        const hasAnswer = !!data.answer;
-        return `
-          <div class="cal-type cal-riddle">
-            <div class="cal-riddle__q">${renderMathText(question)}</div>
-            ${hasAnswer
-              ? `<button type="button" class="cal-riddle__reveal btn-primary" data-riddle-reveal data-label="Mostrar respuesta">Mostrar respuesta</button>
-                 <div class="cal-riddle__a" data-riddle-answer hidden>${renderMathText(data.answer)}</div>`
-              : ''}
-          </div>`;
+      default: {
+        // affirmation, curiosity, relax, challenge, coupon, memory, plan,
+        // offline, craft y cualquier tipo nuevo: tarjeta de mensaje.
+        // Sin título dentro: la cabecera del sheet ya lo muestra.
+        const wrap = h('div', { class: 'exp' });
+        wrap.append(textBlock(data.message || 'Un detalle pensado para ti.', 'exp-text'));
+        if (data.pdfUrl) {
+          wrap.append(h('div', { class: 'exp-actions' },
+            h('a', { class: 'btn btn-secondary', href: data.pdfUrl, target: '_blank', rel: 'noopener' }, 'Abrir manualidad')
+          ));
+        }
+        return wrap;
       }
-
-      case 'curiosity':
-        return `
-          <div class="cal-type cal-curiosity">
-            <span class="cal-curiosity__icon" aria-hidden="true">💡</span>
-            <p>${esc(data.fact || data.message || 'Curiosidad del día')}</p>
-          </div>`;
-
-      case 'relax':
-        return `
-          <div class="cal-type cal-relax">
-            <div class="cal-relax__orb" aria-hidden="true"></div>
-            <p>${esc(data.message || 'Respira y suelta.')}</p>
-          </div>`;
-
-      case 'craft': {
-        const pdfUrl = data.pdfUrl || data.url || '';
-        return `
-          <div class="cal-type cal-craft">
-            <p>${esc(data.message || 'Manualidad para imprimir y hacer')}</p>
-            ${pdfUrl
-              ? `<div class="cal-craft__actions">
-                   <a class="cal-craft__btn cal-craft__btn--primary" href="${esc(pdfUrl)}" target="_blank" rel="noopener">Ver PDF 🎨</a>
-                   <a class="cal-craft__btn" href="${esc(pdfUrl)}" download>Descargar ⬇</a>
-                 </div>`
-              : '<p class="cal-muted">El PDF estará disponible pronto.</p>'}
-          </div>`;
-      }
-
-      case 'offline':
-        return `
-          <div class="cal-type cal-offline">
-            <span class="cal-offline__icon" aria-hidden="true">🔗</span>
-            <p>${esc(data.message || 'Un reto para hacer fuera de la web')}</p>
-            ${data.instructions ? `<p class="cal-muted">${esc(data.instructions)}</p>` : ''}
-          </div>`;
-
-      case 'math': {
-        const problem = data.problem || data.question || data.message || 'Problema de mates';
-        const solution = data.solution || data.answer || '';
-        const hasAnswer = !!solution;
-        return `
-          <div class="cal-type cal-math">
-            <div class="cal-math__problem">${renderMathText(problem)}</div>
-            ${hasAnswer
-              ? `<button type="button" class="cal-math__reveal btn-primary" data-riddle-reveal data-label="Ver solución">Ver solución</button>
-                 <div class="cal-math__a" data-riddle-answer hidden>${renderMathText(solution)}</div>`
-              : ''}
-          </div>`;
-      }
-
-      default:
-        return `
-          <div class="cal-type cal-default">
-            <p>${esc(gift.title || 'Sorpresa')}</p>
-            <p class="cal-muted">${esc(data.message || 'Disfruta de este regalo.')}</p>
-          </div>`;
     }
   }
 
-  /** Normaliza una URL de juego/enlace: absoluta o relativa a la raíz. */
-  function normalizePlayUrl(url) {
-    if (!url) return '';
-    if (/^https?:\/\//i.test(url)) return url;
-    return url.startsWith('/') ? url : `/${url}`;
+  /** Cajita de respuesta (si la sorpresa plantea una pregunta). */
+  function renderAsk(gift) {
+    const question = gift?.data?.question;
+    if (!question || gift.type === 'riddle' || gift.type === 'math') return null;
+
+    const wrap = h('div', { class: 'exp' });
+    wrap.append(h('p', { class: 'exp-note' }, question));
+
+    const input = h('textarea', { class: 'input', rows: 3, maxlength: 1000, placeholder: 'Escribe aquí tu respuesta…' });
+    const status = h('p', { class: 'exp-note' });
+    const send = h('button', { class: 'btn', type: 'button' }, 'Enviar respuesta');
+
+    const disable = (text) => {
+      input.disabled = true;
+      send.disabled = true;
+      send.textContent = 'Respondida ❤';
+      status.textContent = text;
+    };
+
+    db.getMyGiftResponses()
+      .then(responses => {
+        const previous = responses?.[gift.id];
+        if (previous?.text) {
+          input.value = previous.text;
+          disable('Ya respondiste a esta sorpresa. Gracias 💌');
+        }
+      })
+      .catch(() => {});
+
+    send.addEventListener('click', async () => {
+      const text = input.value.trim();
+      if (!text) {
+        status.textContent = 'Escribe una respuesta antes de enviar.';
+        return;
+      }
+      send.disabled = true;
+      send.textContent = 'Enviando…';
+      try {
+        await db.saveGiftResponse(gift.id, text);
+        disable('¡Enviada! Gracias 💌');
+        toast('Respuesta enviada 💌');
+      } catch (error) {
+        send.disabled = false;
+        send.textContent = 'Enviar respuesta';
+        status.textContent = error?.message || 'No se pudo enviar. Inténtalo de nuevo.';
+      }
+    });
+
+    wrap.append(input, send, status);
+    return wrap;
   }
 
-  // ===== LIMPIEZA (router) =====
+  /* ==========================================
+     MODO REVISIÓN (overrides locales)
+     ========================================== */
+  function openDevSheet() {
+    const current = getCalendarOverrides();
+    const modes = [
+      { id: 'auto', label: 'Normal', hint: 'Los días se abren con su fecha real' },
+      { id: 'all-open', label: 'Todo abierto', hint: 'Revisa el contenido sin esperar' },
+      { id: 'all-locked', label: 'Todo bloqueado', hint: 'Comprueba cómo se ve antes de tiempo' }
+    ];
+
+    openSheet('Modo revisión', () => {
+      const list = h('div', { class: 'exp' });
+      list.append(h('p', { class: 'exp-note' }, 'Estos ajustes solo afectan a este navegador: no cambian las fechas ni la base de datos.'));
+
+      for (const mode of modes) {
+        const row = h('button', { class: 'row', type: 'button' },
+          h('span', { class: 'r-ic', html: icon(mode.id === 'auto' ? 'clock' : mode.id === 'all-open' ? 'lock' : 'calendar', 19) }),
+          h('span', { class: 'r-body' },
+            h('b', null, mode.label),
+            h('span', { class: 'r-sub' }, mode.hint)
+          ),
+          h('span', { class: 'r-end' }, h('span', { class: 'row-check' + (current.mode === mode.id ? ' is-done' : '') }))
+        );
+        row.addEventListener('click', () => {
+          setCalendarOverrideMode(mode.id);
+          closeSheets();
+          paintAll();
+          toast(`Modo revisión: ${mode.label}`);
+        });
+        list.append(row);
+      }
+
+      list.append(h('button', {
+        class: 'btn-soft btn--block',
+        type: 'button',
+        onclick: () => {
+          clearCalendarOverrides();
+          closeSheets();
+          paintAll();
+          toast('Modo revisión restablecido');
+        }
+      }, 'Restablecer todo'));
+
+      return list;
+    });
+  }
+
+  /* ==========================================
+     ARRANQUE
+     ========================================== */
+  const devBtn = page.querySelector('#calDevBtn');
+  if (devBtn) devBtn.addEventListener('click', openDevSheet);
+
+  loadProgress();
+  paintAll();
+
+  loadGiftsCatalog().then(data => {
+    if (data) {
+      catalog = data;
+      catalog.giftsById = catalog.giftsById || {};
+      (catalog.gifts || []).forEach(gift => { if (gift.id) catalog.giftsById[gift.id] = gift; });
+    }
+    // Solo saltamos a un mes con contenido si el actual está vacío
+    if (catalog && !dayIds(selectedDay.value).length) {
+      const next = nextDayWithContent();
+      if (next) {
+        selectedDay.value = next;
+        view.monthKey = monthKeyOf(next);
+      }
+    }
+    paintAll();
+  });
+
+  const offContent = previewAll
+    ? () => {}
+    : onContentChange(['gifts'], async () => {
+      // El Admin cambió el catálogo: recarga limpia y repinta.
+      const { invalidateGiftsCache } = await import('../services/gifts.service.js');
+      invalidateGiftsCache();
+      const data = await loadGiftsCatalog();
+      if (data) {
+        catalog = data;
+        catalog.giftsById = catalog.giftsById || {};
+        (catalog.gifts || []).forEach(gift => { if (gift.id) catalog.giftsById[gift.id] = gift; });
+        paintAll();
+      }
+    });
+
   page.cleanup = () => {
-    offContent();
-    if (onKey) { document.removeEventListener('keydown', onKey); onKey = null; }
-    calVideoRefs.forEach(v => { try { v.destroy(); } catch (e) {} });
-    calVideoRefs = [];
-    calAudioRefs.forEach(a => { try { a.destroy(); } catch (e) {} });
-    calAudioRefs = [];
-    document.body.classList.remove('sheet-locked');
+    stopSpotRotation();
+    try { offContent(); } catch { /* noop */ }
+    closeSheets();
   };
 
   return page;
-}
-
-// ==========================================
-// REPRODUCTOR DE AUDIO — barra glass acorde a la web (tarjeta de música)
-// Misma familia visual que el reproductor de vídeo de la galería, pero
-// adaptada a la superficie clara del calendario.
-// ==========================================
-function audioMime(url) {
-  const ext = (url.split('?')[0].split('.').pop() || '').toLowerCase();
-  if (ext === 'mp3') return 'audio/mpeg';
-  if (ext === 'm4a' || ext === 'm4b' || ext === 'aac') return 'audio/mp4';
-  if (ext === 'wav') return 'audio/wav';
-  if (ext === 'ogg' || ext === 'oga') return 'audio/ogg';
-  return '';
-}
-
-const AUDIO_CTRL_HTML = `
-  <button class="cal-audio__btn cal-audio__play" type="button" title="Reproducir / Pausar" aria-label="Reproducir">
-    <svg class="cal-audio__play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    <svg class="cal-audio__pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-  </button>
-  <span class="cal-audio__time">0:00</span>
-  <div class="cal-audio__progress">
-    <div class="cal-audio__track">
-      <div class="cal-audio__fill"></div>
-      <div class="cal-audio__thumb"></div>
-    </div>
-  </div>
-  <span class="cal-audio__time cal-audio__time--total">0:00</span>
-  <button class="cal-audio__btn cal-audio__vol" type="button" title="Silenciar" aria-label="Silenciar">
-    <svg class="cal-audio__vol-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-    <svg class="cal-audio__vol-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-  </button>
-`;
-
-/** Construye el reproductor de audio de la tarjeta de música.
- *  Devuelve { wrap, audio, overlay, destroy }. */
-function buildAudioPlayer(opts = {}) {
-  const { src = '' } = opts;
-  const wrap = document.createElement('div');
-  wrap.className = 'cal-audio';
-
-  const audio = document.createElement('audio');
-  audio.preload = 'metadata';
-  const source = document.createElement('source');
-  source.src = src;
-  const mime = audioMime(src);
-  if (mime) source.type = mime;
-  audio.appendChild(source);
-
-  // Gran botón de play flotante sobre la portada (solo visible en pausa)
-  const overlay = document.createElement('button');
-  overlay.className = 'cal-audio__overlay';
-  overlay.type = 'button';
-  overlay.title = 'Reproducir';
-  overlay.setAttribute('aria-label', 'Reproducir canción');
-  overlay.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-  overlay.addEventListener('click', (e) => {
-    e.stopPropagation(); // evita el toggle del cover
-    audio.play();
-  });
-
-  const ctrlBar = document.createElement('div');
-  ctrlBar.className = 'cal-audio__controls';
-  ctrlBar.innerHTML = AUDIO_CTRL_HTML;
-
-  wrap.appendChild(audio);
-  wrap.appendChild(ctrlBar);
-  bindAudioControls(audio, ctrlBar, overlay);
-
-  function destroy() {
-    try {
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
-    } catch (e) {}
-    try { ctrlBar._calAudioCleanup?.(); } catch (e) {}
-  }
-
-  return { wrap, audio, overlay, destroy };
-}
-
-/** Conecta la barra glass al <audio>: play/pausa, progreso (clic + arrastre),
- *  tiempos y volumen. Actualiza el botón flotante de la portada. */
-function bindAudioControls(audio, ctrlBar, overlay) {
-  const playBtn = ctrlBar.querySelector('.cal-audio__play');
-  const playIcon = ctrlBar.querySelector('.cal-audio__play-icon');
-  const pauseIcon = ctrlBar.querySelector('.cal-audio__pause-icon');
-  const progress = ctrlBar.querySelector('.cal-audio__progress');
-  const track = ctrlBar.querySelector('.cal-audio__track');
-  const fill = ctrlBar.querySelector('.cal-audio__fill');
-  const thumb = ctrlBar.querySelector('.cal-audio__thumb');
-  const timeEl = ctrlBar.querySelector('.cal-audio__time');
-  const totalEl = ctrlBar.querySelector('.cal-audio__time--total');
-  const volBtn = ctrlBar.querySelector('.cal-audio__vol');
-  const volOn = ctrlBar.querySelector('.cal-audio__vol-on');
-  const volOff = ctrlBar.querySelector('.cal-audio__vol-off');
-
-  let isDragging = false;
-
-  const fmt = s => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec < 10 ? '0' : ''}${sec}`;
-  };
-
-  function setPlaying(paused) {
-    playIcon.style.display = paused ? '' : 'none';
-    pauseIcon.style.display = paused ? 'none' : '';
-    playBtn.setAttribute('aria-label', paused ? 'Reproducir' : 'Pausar');
-    if (overlay) overlay.classList.toggle('is-hidden', !paused);
-  }
-
-  function updateProgress() {
-    if (!audio.duration || isDragging) return;
-    const pct = (audio.currentTime / audio.duration) * 100;
-    fill.style.width = pct + '%';
-    thumb.style.left = pct + '%';
-    timeEl.textContent = fmt(audio.currentTime);
-  }
-
-  function seekTo(e) {
-    const rect = track.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    if (audio.duration) audio.currentTime = pct * audio.duration;
-  }
-
-  playBtn.addEventListener('click', () => {
-    if (audio.paused) audio.play();
-    else audio.pause();
-  });
-
-  // Progreso: clic + arrastre (ratón y táctil)
-  progress.addEventListener('click', (e) => { seekTo(e); updateProgress(); });
-  progress.addEventListener('mousedown', (e) => { isDragging = true; seekTo(e); updateProgress(); });
-  progress.addEventListener('touchstart', (e) => { isDragging = true; seekTo(e.touches[0]); updateProgress(); }, { passive: true });
-  const onMove = (e) => { if (isDragging) { seekTo(e); updateProgress(); } };
-  const onUp = () => { isDragging = false; };
-  const onTouchMove = (e) => { if (isDragging) { seekTo(e.touches[0]); updateProgress(); } };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-  document.addEventListener('touchmove', onTouchMove, { passive: true });
-  document.addEventListener('touchend', onUp);
-
-  // Volumen
-  volBtn.addEventListener('click', () => {
-    audio.muted = !audio.muted;
-    volOn.style.display = audio.muted ? 'none' : '';
-    volOff.style.display = audio.muted ? '' : 'none';
-    volBtn.setAttribute('aria-label', audio.muted ? 'Activar sonido' : 'Silenciar');
-  });
-
-  audio.addEventListener('timeupdate', updateProgress);
-  audio.addEventListener('play', () => setPlaying(false));
-  audio.addEventListener('pause', () => setPlaying(true));
-  audio.addEventListener('loadedmetadata', () => {
-    totalEl.textContent = fmt(audio.duration || 0);
-    updateProgress();
-  });
-
-  ctrlBar._calAudioCleanup = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.removeEventListener('touchmove', onTouchMove);
-    document.removeEventListener('touchend', onUp);
-  };
 }

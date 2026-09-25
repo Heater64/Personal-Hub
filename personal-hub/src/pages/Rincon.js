@@ -121,6 +121,22 @@ const SECTIONS = [
     }
   },
   {
+    id: 'audios',
+    icon: 'mic',
+    emoji: '🎙️',
+    title: 'Audios',
+    desc: 'Nuestra cápsula del día 3: un audio guardado cada mes.',
+    href: '/audios'
+  },
+  {
+    id: 'minecraft',
+    icon: 'pickaxe',
+    emoji: '⛏️',
+    title: 'Minecraft',
+    desc: 'Los mundos que construimos, foto a foto.',
+    href: '/minecraft'
+  },
+  {
     id: 'juegos',
     icon: 'gamepad-2',
     emoji: '🎮',
@@ -264,6 +280,7 @@ const ICON_SVGS = {
   'leaf': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>',
   'bookmark': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
   'compass': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>',
+  'pickaxe': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m13 3 8 8-3.5 3.5-8-8L13 3Z"/><path d="M9.5 6.5 3 13l2.5 2.5 6.5-6.5"/><path d="M3 21 8 16"/></svg>',
 };
 
 // ==========================================
@@ -421,39 +438,32 @@ export function RinconPage(router) {
     stopAllRotations();
     offPlayerCard();
 
+    const fotoCount = Object.values(GALLERY_FOLDERS || {}).flat().length;
+    const memeCount = Object.values(MEME_FOLDERS || {}).flat().length;
+
     page.innerHTML = `
-      ${renderPageHeader({ title: 'El Rincón', icon: 'heart' })}
+      ${renderPageHeader({ title: 'El Rincón', subtitle: `${fotoCount} recuerdos · ${memeCount} memes · y mucho más` })}
 
       <!-- ===== DESCUBRE HOY (carrusel manual, sin autoplay) ===== -->
-      <section class="rincon-discover" aria-roledescription="carousel" aria-label="Descubre hoy">
-        <div class="rincon-section-header">
-          <span class="rincon-section-chip">${ICON_SVGS['sparkles']}</span>
-          <h2 class="rincon-section-title">Descubre hoy</h2>
-          <span class="rincon-section-line"></span>
-        </div>
-        <div class="rincon-carousel">
-          <button type="button" class="rincon-carousel-nav" id="rinconPrev" aria-label="Ver sugerencia anterior">${ICON_SVGS['chevron-left']}</button>
-          <div class="rincon-carousel-view" id="rinconCarouselView" aria-live="polite">
-            ${descubrir.map((item, i) => `
-              <article class="rincon-featured card${i === 0 ? ' is-active' : ''}" data-slide="${i}"${i === 0 ? '' : ' hidden'} role="button" tabindex="0" aria-label="${escapeHtml(item.title)}">
-                ${renderFeaturedCard(item)}
-              </article>`).join('')}
-          </div>
-          <button type="button" class="rincon-carousel-nav" id="rinconNext" aria-label="Ver sugerencia siguiente">${ICON_SVGS['chevron-right']}</button>
-        </div>
-        <div class="rincon-carousel-dots" role="group" aria-label="Elegir sugerencia">
+      <section class="rincon-feature" aria-roledescription="carousel" aria-label="Descubre hoy">
+        <div class="rincon-feature-slides" id="rinconCarouselView" aria-live="polite">
           ${descubrir.map((item, i) => `
-            <button type="button" class="rincon-carousel-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Ir a la sugerencia ${i + 1} de ${descubrir.length}: ${escapeHtml(item.title)}"${i === 0 ? ' aria-current="true"' : ''}></button>`).join('')}
+            <article class="rincon-feature-slide${i === 0 ? ' is-active' : ''}${item.cover ? '' : ' is-icon'}" data-slide="${i}"${i === 0 ? '' : ' hidden'} role="button" tabindex="0" aria-label="${escapeHtml(item.title)}">
+              ${renderFeaturedCard(item)}
+            </article>`).join('')}
+        </div>
+        <button type="button" class="rincon-feature-nav" id="rinconPrev" aria-label="Ver sugerencia anterior">${ICON_SVGS['chevron-left']}</button>
+        <button type="button" class="rincon-feature-nav" id="rinconNext" aria-label="Ver sugerencia siguiente">${ICON_SVGS['chevron-right']}</button>
+        <div class="rincon-feature-dots" role="group" aria-label="Elegir sugerencia">
+          ${descubrir.map((item, i) => `
+            <button type="button" class="rincon-feature-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Ir a la sugerencia ${i + 1} de ${descubrir.length}: ${escapeHtml(item.title)}"${i === 0 ? ' aria-current="true"' : ''}></button>`).join('')}
         </div>
       </section>
 
-      <!-- ===== SECTION CARDS ===== -->
-      <div class="rincon-section-header">
-        <span class="rincon-section-chip">${ICON_SVGS['sparkles']}</span>
-        <h2 class="rincon-section-title">Explora el Rincón</h2>
-        <span class="rincon-section-line"></span>
-        ${isAdmin ? `<button type="button" class="rincon-edit-toggle${state.editMode ? ' is-active' : ''}" id="rinconEditToggle" aria-pressed="${state.editMode}">${state.editMode ? '✓ Listo' : 'Editar portadas'}</button>` : ''}
-      </div>
+      <!-- ===== TARJETAS DE SECCIÓN ===== -->
+      <h2 class="section-title">Explora el Rincón
+        ${isAdmin ? `<button type="button" class="link rincon-edit-toggle${state.editMode ? ' is-active' : ''}" id="rinconEditToggle" aria-pressed="${state.editMode}">${state.editMode ? '✓ Listo' : 'Editar portadas'}</button>` : ''}
+      </h2>
       <section class="rincon-cards-grid">
         ${SECTIONS.map((s, i) => renderSectionCard(s, i, sectionPreviews[i])).join('')}
       </section>
@@ -461,12 +471,12 @@ export function RinconPage(router) {
 
     // Animate section cards (staggered entrance)
     requestAnimationFrame(() => {
-      page.querySelectorAll('.rincon-section-card-v2.animate-in').forEach(el => el.classList.add('visible'));
+      page.querySelectorAll('.rincon-card.animate-in').forEach(el => el.classList.add('visible'));
     });
 
     // Carrusel manual "Descubre hoy": una tarjeta visible, sin autoplay.
     const slides = [...page.querySelectorAll('#rinconCarouselView [data-slide]')];
-    const dots = [...page.querySelectorAll('.rincon-carousel-dot')];
+    const dots = [...page.querySelectorAll('.rincon-feature-dot')];
     let current = 0;
     const showSlide = (i) => {
       if (!slides.length) return;
@@ -523,7 +533,7 @@ export function RinconPage(router) {
     }
 
     // Bind section card clicks (clic + teclado) y modo edición de portadas
-    page.querySelectorAll('.rincon-section-card-v2').forEach(card => {
+    page.querySelectorAll('.rincon-card').forEach(card => {
       const handler = () => {
         const id = card.dataset.section;
         const section = SECTIONS.find(s => s.id === id);
@@ -579,7 +589,7 @@ export function RinconPage(router) {
     SECTIONS.map((s, i) => ({ section: s, preview: sectionPreviews[i] }))
       .filter(x => x.preview?.posters?.length)
       .forEach(({ section, preview }) => {
-        const el = page.querySelector(`.rincon-section-card-v2[data-section="${section.id}"]`);
+        const el = page.querySelector(`.rincon-card[data-section="${section.id}"]`);
         if (!el) return;
         const locked = preview.locked || preview.continueList?.[0] || null;
         if (preview.posters.length > 1) {
@@ -602,7 +612,7 @@ export function RinconPage(router) {
     // Canciones se queda con su portada; si se cierra (info → null), vuelve a rotar.
     offPlayerCard = player.subscribe((e) => {
       if (e.type !== 'change') return;
-      const card = page.querySelector('.rincon-section-card-v2[data-section="canciones"]');
+      const card = page.querySelector('.rincon-card[data-section="canciones"]');
       const img = card?.querySelector('img.sr-rotating-poster');
       if (!card || !img) return;
       const cover = e.info?.cover;
@@ -616,10 +626,16 @@ export function RinconPage(router) {
         if (!card.querySelector('.rincon-card-stats')) {
           const body = card.querySelector('.rincon-card-body');
           if (body) {
+            let foot = card.querySelector('.rincon-card-foot');
+            if (!foot) {
+              foot = document.createElement('div');
+              foot.className = 'rincon-card-foot';
+              body.appendChild(foot);
+            }
             const chip = document.createElement('span');
             chip.className = 'rincon-card-stats';
             chip.textContent = '♪ Sonando ahora';
-            body.appendChild(chip);
+            foot.appendChild(chip);
           }
         }
       } else if (e.info === null) {
@@ -637,6 +653,8 @@ export function RinconPage(router) {
         if (t) t.textContent = 'Canciones';
         if (d) d.textContent = SONG_DESC;
         if (st) st.remove();
+        const foot = card.querySelector('.rincon-card-foot');
+        if (foot && !foot.children.length) foot.remove();
       }
     });
   }
@@ -645,20 +663,18 @@ export function RinconPage(router) {
     const cover = item.cover || '';
     const icon = item.emoji || item.icon || '✨';
     return `
-      <div class="rincon-featured-card">
-        <div class="rincon-featured-visual">
-          ${cover
-            ? `<img src="${cover}" alt="" class="rincon-featured-img" loading="eager">`
-            : `<div class="rincon-featured-icon">${icon}</div>`
-          }
-        </div>
-        <div class="rincon-featured-info">
-          <h3 class="rincon-featured-title">${item.title}</h3>
-          <p class="rincon-featured-desc">${item.desc}</p>
-          <span class="rincon-featured-action">
-            ${item.action} ${ICON_SVGS['arrow-right']}
-          </span>
-        </div>
+      <div class="rincon-feature-media${cover ? '' : ' is-icon'}">
+        ${cover
+          ? `<img src="${escapeHtml(cover)}" alt="" class="rincon-feature-img" loading="eager">`
+          : `<span class="rincon-feature-glyph">${icon}</span>`
+        }
+      </div>
+      <div class="rincon-feature-shade"></div>
+      <div class="rincon-feature-body">
+        <span class="rincon-feature-tag">✨ Descubre hoy</span>
+        <h2 class="rincon-feature-title">${escapeHtml(item.title)}</h2>
+        ${item.desc ? `<p class="rincon-feature-desc">${escapeHtml(item.desc)}</p>` : ''}
+        <span class="rincon-feature-action">${escapeHtml(item.action || 'Abrir')} ${ICON_SVGS['arrow-right']}</span>
       </div>
     `;
   }
@@ -725,17 +741,20 @@ export function RinconPage(router) {
     // botón-dentro-de-botón): el 📷 real es la única acción interactiva.
     const a11yAttrs = state.editMode ? '' : 'role="button" tabindex="0" aria-label="' + escapeHtml(section.title) + '"';
     return `
-      <div class="rincon-section-card-v2 card animate-in${state.editMode ? ' is-editing' : ''}" data-section="${section.id}" data-href="${section.href ? escapeHtml(section.href) : ''}" ${a11yAttrs} style="--enter-delay:${delay}s">
+      <div class="rincon-card lift animate-in${state.editMode ? ' is-editing' : ''}" data-section="${section.id}" data-href="${section.href ? escapeHtml(section.href) : ''}" ${a11yAttrs} style="--enter-delay:${delay}s">
         ${state.editMode ? `<button type="button" class="rincon-card-edit" data-edit-cover="${section.id}" aria-label="Cambiar portada de ${escapeHtml(section.title)}" title="Cambiar portada">📷</button>` : ''}
         ${visualHTML}
         <div class="rincon-card-body">
           <div class="rincon-card-header">
             <span class="rincon-card-icon-svg">${ICON_SVGS[section.icon] || ''}</span>
-            <h3 class="rincon-card-title">${section.title}</h3>
+            <h3 class="rincon-card-title">${escapeHtml(section.title)}</h3>
+            <span class="rincon-card-chev">${ICON_SVGS['chevron-right']}</span>
           </div>
-          <p class="rincon-card-desc">${section.desc}</p>
-          ${stats ? `<span class="rincon-card-stats">${stats}</span>` : ''}
-          ${section.dataHint ? `<span class="rincon-card-hint">${section.dataHint}</span>` : ''}
+          <p class="rincon-card-desc">${escapeHtml(section.desc)}</p>
+          ${stats || section.dataHint ? `<div class="rincon-card-foot">
+            ${stats ? `<span class="rincon-card-stats">${escapeHtml(stats)}</span>` : ''}
+            ${section.dataHint ? `<span class="rincon-card-hint">${escapeHtml(section.dataHint)}</span>` : ''}
+          </div>` : ''}
         </div>
       </div>
     `;
@@ -1039,39 +1058,38 @@ export function RinconPage(router) {
   // 2. GALERÍA + MEMES (PRESERVED)
   // ==========================================
   function renderGaleriaMemes() {
-    // Barra superior (Galería | Memes | Audios | Minecraft): navega entre
-    // las rutas independientes. En PC las mismas secciones aparecen también
-    // en la sidebar.
+    // Cabecera única (volver + título) y pestañas compactas: las cuatro
+    // secciones (Galería, Memes, Audios, Minecraft) son rutas independientes.
     const currentBase = (router.getCurrentPath() || '').split('?')[0];
     const activeTab = currentBase === '/memes' ? 'memes' : currentBase === '/audios' ? 'audios' : 'galeria';
+    const TABS = [
+      { id: 'galeria', label: 'Galería', icon: 'image', sub: 'Cada foto guarda un recuerdo' },
+      { id: 'memes', label: 'Memes', icon: 'smile', sub: 'Tu colección de Humor' },
+      { id: 'audios', label: 'Audios', icon: 'mic', sub: 'Nuestra cápsula del día 3' },
+      { id: 'minecraft', label: 'Minecraft', emoji: '⛏️', sub: 'Los mundos que construimos' }
+    ];
+    const current = TABS.find(t => t.id === activeTab) || TABS[0];
     page.innerHTML = `
-      <div class="rincon-subpage">
-        <button class="rincon-back-btn" data-back="rincon">
-          ${ICON_SVGS['chevron-left']} Rincón
-        </button>
-        <nav class="rincon-subnav" aria-label="Secciones">
-          <button class="rincon-subnav__btn${activeTab === 'galeria' ? ' active' : ''}" data-sub="galeria">
-            <span class="rincon-subnav__icon-wrap">${ICON_SVGS['image']}</span> Galería
-          </button>
-          <button class="rincon-subnav__btn${activeTab === 'memes' ? ' active' : ''}" data-sub="memes">
-            <span class="rincon-subnav__icon-wrap">${ICON_SVGS['smile']}</span> Memes
-          </button>
-          <button class="rincon-subnav__btn${activeTab === 'audios' ? ' active' : ''}" data-sub="audios">
-            <span class="rincon-subnav__icon-wrap">${ICON_SVGS['mic']}</span> Audios
-          </button>
-          <button class="rincon-subnav__btn" data-sub="minecraft">
-            <span class="rincon-subnav__icon-wrap">⛏️</span> Minecraft
-          </button>
-        </nav>
-        <div id="galeriaMemesContent">${
-          activeTab === 'memes' ? renderMemesContent() :
-          activeTab === 'audios' ? renderAudiosTabContent() : renderGaleriaContent()
-        }</div>
-      </div>
+      <header class="rincon-subhead">
+        <button class="icon-btn" type="button" data-back="rincon" aria-label="Volver al Rincón">${ICON_SVGS['chevron-left']}</button>
+        <div class="rincon-subhead-copy">
+          <h1 class="scr-title">${current.label}</h1>
+          <p class="sub">${current.sub}</p>
+        </div>
+      </header>
+      <nav class="chips rincon-tabs" aria-label="Secciones">
+        ${TABS.map(t => `<button class="chip${t.id === activeTab ? ' chip--active' : ''}" data-sub="${t.id}"${t.id === activeTab ? ' aria-current="page"' : ''}>
+          ${t.emoji ? `<span class="rincon-tab-emoji">${t.emoji}</span>` : `<span class="rincon-tab-ic">${ICON_SVGS[t.icon]}</span>`}${t.label}
+        </button>`).join('')}
+      </nav>
+      <div id="galeriaMemesContent">${
+        activeTab === 'memes' ? renderMemesContent() :
+        activeTab === 'audios' ? renderAudiosTabContent() : renderGaleriaContent()
+      }</div>
     `;
 
     page.querySelector('[data-back="rincon"]').addEventListener('click', () => router.navigate('/rincon'));
-    page.querySelectorAll('.rincon-subnav__btn').forEach(btn => {
+    page.querySelectorAll('[data-sub]').forEach(btn => {
       btn.addEventListener('click', () => {
         const sub = btn.dataset.sub;
         if (sub === 'memes') router.navigate('/memes');
@@ -1187,7 +1205,6 @@ export function RinconPage(router) {
     const heroPhotos = photos.slice(0, 5).map(galleryThumb).filter(Boolean);
 
     return `<div class="gallery-app">
-      ${renderPageHeader({ title: 'Galería', icon: 'image', mobileHidden: true })}
       <!-- Añadir fotos (acción primaria, solo ADMIN) -->
       ${isAdmin ? `<div class="gallery-topbar">
         <button class="gallery-add-btn" id="galleryAddBtn">
@@ -1238,28 +1255,22 @@ export function RinconPage(router) {
         ` : ''}
       </div>
 
-      <div class="gallery-collection-head">
-        <div>
-          <span class="gallery-collection-kicker">Tu colección</span>
-          <h2 class="gallery-collection-title">Explora tus recuerdos</h2>
-        </div>
-        <span class="gallery-collection-count">${photos.length} ${photos.length === 1 ? 'momento' : 'momentos'}</span>
-      </div>
-
-      <!-- Filtros + ordenación -->
-      <div class="gallery-toolbar">
-        <div class="gallery-filters" id="galleryFilters">
-          <button class="gallery-filter ${state.galeriaFilter === 'todas' ? 'is-active' : ''}" data-filter="todas">Todas</button>
-          ${filterFolders.map(f => `<button class="gallery-filter ${state.galeriaFilter === f ? 'is-active' : ''}" data-filter="${escapeHtml(f)}">${escapeHtml(filterLabel(f))}</button>`).join('')}
-          <button class="gallery-filter ${state.galeriaFilter === 'favoritas' ? 'is-active' : ''}" data-filter="favoritas">❤ Favoritas${favCount ? ` (${favCount})` : ''}</button>
-        </div>
-        <div class="gallery-sort">
-          <button class="gallery-sort-btn" id="gallerySortBtn" aria-haspopup="listbox" aria-expanded="false">
+      <h2 class="section-title">Tu colección
+        <span class="gallery-toolbar-actions">
+          <span class="text-3" style="text-transform:none;letter-spacing:0">${photos.length} ${photos.length === 1 ? 'momento' : 'momentos'}</span>
+          <button class="btn-soft btn--sm gallery-sort-btn" id="gallerySortBtn" title="Cambiar el orden de los recuerdos">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
             <span id="gallerySortLabel">${state.galeriaSort === 'antiguas' ? 'Más antiguas' : 'Más recientes'}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-        </div>
+        </span>
+      </h2>
+
+      <!-- Filtros -->
+      <div class="chips gallery-filters" id="galleryFilters">
+        <button class="chip gallery-filter ${state.galeriaFilter === 'todas' ? 'is-active' : ''}" data-filter="todas"${state.galeriaFilter === 'todas' ? ' aria-current="page"' : ''}>Todas</button>
+        ${filterFolders.map(f => `<button class="chip gallery-filter ${state.galeriaFilter === f ? 'is-active' : ''}" data-filter="${escapeHtml(f)}"${state.galeriaFilter === f ? ' aria-current="page"' : ''}>${escapeHtml(filterLabel(f))}</button>`).join('')}
+        <button class="chip gallery-filter ${state.galeriaFilter === 'favoritas' ? 'is-active' : ''}" data-filter="favoritas"${state.galeriaFilter === 'favoritas' ? ' aria-current="page"' : ''}>❤ Favoritas${favCount ? ` (${favCount})` : ''}</button>
       </div>
 
       <div class="gallery-masonry" id="galeriaGrid"></div>
@@ -1310,12 +1321,6 @@ export function RinconPage(router) {
     const albums = memeSortAlbums(memeAlbums().map(a => ({ ...a, items: memeItems(a.id) })));
     const stats = libraryStats();
     return `<div class="memes-immersive" id="memesRoot">
-      ${renderPageHeader({ title: 'Memes', icon: 'smile', mobileHidden: true })}
-      <div class="memes-breadcrumb">
-        <button class="memes-breadcrumb-item" data-nav="landing">El Rincón</button>
-        <span class="memes-breadcrumb-sep">/</span>
-        <span class="memes-breadcrumb-current">Memes</span>
-      </div>
       <header class="memes-library-head">
         <div class="memes-library-titles">
           <h2 class="memes-library-title">Mis álbumes de memes ❤️</h2>
@@ -2270,15 +2275,14 @@ export function RinconPage(router) {
 
     page.innerHTML = `<div class="rincon-subpage">
       <div class="curio-topbar">
-        <span class="curio-crumb">El Rincón / Curiosidades</span>
-        <button class="rincon-back-btn" data-back="landing">${ICON_SVGS['chevron-left']} Volver al Rincón</button>
+        <button class="icon-btn" type="button" data-back="landing" aria-label="Volver al Rincón">${ICON_SVGS['chevron-left']}</button>
+        <h1 class="scr-title">Curiosidades</h1>
       </div>
-      ${renderPageHeader({ title: 'Curiosidades', icon: 'compass', mobileHidden: true })}
 
       <header class="curio-hero">
         <div class="curio-hero-copy">
           <span class="curio-hero-eyebrow">${ICON_SVGS['sparkles']} Explora y aprende</span>
-          <h2 class="curio-hero-title">Curiosidades <span class="curio-hero-sparkles">${ICON_SVGS['sparkles']}${ICON_SVGS['sparkles']}</span></h2>
+          <h2 class="curio-hero-title">Cada lugar tiene una historia</h2>
           <p class="curio-hero-sub">Descubre datos increíbles sobre lugares, historia, comida, animales y mucho más.</p>
         </div>
         <div class="curio-hero-art" aria-hidden="true">
@@ -2672,7 +2676,6 @@ export function RinconPage(router) {
         <span class="disco-breadcrumb-current">${cat.title}</span>
         <span class="disco-breadcrumb-count">${cat.statsCount} datos</span>
       </div>
-      ${renderPageHeader({ title: 'Curiosidades', icon: 'compass', mobileHidden: true })}
       ${contentHTML}
       ${renderRecommendations(catId)}
     </div>`;
@@ -3223,7 +3226,6 @@ export function RinconPage(router) {
   // ==========================================
 
   const AUDIO_MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  const AUDIO_MONTHS_SHORT = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
   /** Carga los audios una sola vez y los cachea en state. */
   async function loadAudios(force = false) {
@@ -3318,13 +3320,7 @@ export function RinconPage(router) {
     const map = audiosByMonth();
     const total = state.audios.length;
 
-    // Indicadores del año actual: cada mes del archivo un punto (● disponible, ○ otro)
-    const dots = (yearMonths[curYear] || []).map(m => {
-      const label = AUDIO_MONTHS_SHORT[m - 1] || '';
-      const has = map[`${curYear}-${m}`]?.length > 0;
-      return `<span class="audios-dot${has ? ' is-on' : ''}" title="${label} ${curYear}${has ? ' · audio disponible' : ''}">${label.slice(0, 1)}</span>`;
-    }).join('');
-
+    // Un bloque por año, con sus meses en estado (disponible / vacío / futuro)
     const yearBlocks = years.map(y => {
       const months = (yearMonths[y] || []).map(m => {
         const name = AUDIO_MONTHS[m - 1] || 'Mes';
@@ -3363,26 +3359,19 @@ export function RinconPage(router) {
 
     return `
       <div class="audios-page">
-        ${renderPageHeader({ title: 'Audios', icon: 'mic', mobileHidden: true })}
-        <header class="audios-hero">
-          <div class="audios-hero-icon">${ICON_SVGS['mic']}</div>
-          <h2 class="audios-hero-title">Audios</h2>
-          <p class="audios-hero-sub">Nuestros audios del día 3 🤍</p>
-        </header>
-
-        ${years.length > 1 ? `<div class="audios-dots" role="img" aria-label="Meses de ${curYear} con audio">${dots}</div>` : ''}
-
-        ${total > 0 ? `<p class="audios-count">${total} audio${total === 1 ? '' : 's'} guardado${total === 1 ? '' : 's'} en nuestra cápsula del tiempo</p>` : ''}
+        ${total > 0 ? `<h2 class="section-title">Nuestra cápsula
+          <span class="text-3" style="text-transform:none;letter-spacing:0">${total} audio${total === 1 ? '' : 's'}</span>
+        </h2>` : ''}
 
         ${yearBlocks || '<div class="audios-empty"><p>Aquí guardaremos los audios que grabemos juntos cada día 3.</p></div>'}
 
         ${isAdmin ? `
           <div class="audios-upload">
             <div class="audios-upload-head">
-              <button type="button" class="audios-upload-btn" id="audiosUploadBtn">＋ Subir audio</button>
+              <button type="button" class="btn btn--sm" id="audiosUploadBtn">＋ Subir audio</button>
               <label class="audios-upload-month">
                 Mes
-                <select id="audiosUploadMonth">${uploadOptions.join('')}</select>
+                <select class="input" id="audiosUploadMonth">${uploadOptions.join('')}</select>
               </label>
             </div>
             <p class="audios-upload-hint">Sube el audio grabado el día 3. Puedes añadir varios audios al mismo mes (voz de Darwin, voz de ella…). Se guarda en la web para todos.</p>
@@ -3462,13 +3451,10 @@ export function RinconPage(router) {
 
     return `
       <div class="audios-page">
-        <button class="rincon-back-btn" data-back="months">${ICON_SVGS['chevron-left']} Todos los meses</button>
-        ${renderPageHeader({ title: 'Audios', icon: 'mic', mobileHidden: true })}
-        <header class="audios-detail-hero">
-          <div class="audios-detail-icon">${ICON_SVGS['mic']}</div>
-          <h2 class="audios-hero-title">${name} ${year}</h2>
-          <p class="audios-hero-sub">${list.length === 1 ? 'Audio del ' + (list[0].date ? formatAudioDate(list[0].date) : '3 de ' + name) : `${list.length} audios`}</p>
-        </header>
+        <button class="btn-soft btn--sm audios-back" data-back="months">${ICON_SVGS['chevron-left']} Todos los meses</button>
+        <h2 class="section-title">${name} ${year}
+          <span class="text-3" style="text-transform:none;letter-spacing:0">${list.length === 1 ? escapeHtml(list[0].date ? formatAudioDate(list[0].date) : '3 de ' + name) : `${list.length} audios`}</span>
+        </h2>
         <div class="audios-list">
           ${list.length ? audioCards : `<div class="audios-error"><p>Este mes no tiene audio guardado.</p></div>`}
         </div>

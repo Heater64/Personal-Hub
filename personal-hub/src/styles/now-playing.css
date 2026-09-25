@@ -188,7 +188,7 @@
 }
 
 /* Espacio bajo el contenido para que la barra no tape nada */
-.app-shell.has-player .app-content {
+.app-shell.has-player .content {
   padding-bottom: calc(var(--bottom-nav-height) + 84px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -220,7 +220,7 @@
     border-top: 1px solid var(--theme-divider);
   }
 
-  .app-shell.has-sidebar.has-player .app-content {
+  .app-shell.has-sidebar.has-player .content {
     padding-bottom: 92px;
   }
 }

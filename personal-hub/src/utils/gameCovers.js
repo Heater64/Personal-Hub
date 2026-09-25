@@ -339,3 +339,17 @@ export function gameCover(id, color, accent) {
   const body = ART[id] ? ART[id](color, accent) : '';
   return svg(body);
 }
+
+/**
+ * Igual que gameCover pero sin el fondo negro: el arte se apoya en el
+ * color del juego sobre el fondo que le ponga el contenedor. Necesario en
+ * el calendario, donde las miniaturas van sobre superficies claras y el
+ * negro puro se leía como un agujero.
+ */
+export function gameCoverTransparent(id, color, accent) {
+  if (!ART[id]) return gameCover(id, color, accent);
+  const body = ART[id](color || '#e8735a', accent || '#f7a180');
+  return 'data:image/svg+xml,' + encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'>` + body + `</svg>`
+  );
+}

@@ -1,453 +1,545 @@
 /* ==========================================
-   DESIGN TOKENS — Personal Hub v3 (Native)
-   Superficies planas, sin glassmorphism, sin cards.
-   Inspirado en apps nativas premium (Spotify, Photos, Apple Music).
+   DESIGN TOKENS — Personal Hub
+   Estructura del sistema (idéntica a habitos-web):
+   1. Capa semántica: nombres cortos y estables (--bg, --surface, --primary…).
+   2. Capa de paleta: cambia SOLO valores de color según [data-paleta][data-theme].
+   3. Capa de alias: los nombres históricos (--theme-*, --surface-N, --accent…)
+      apuntan a la capa semántica, así las páginas antiguas siguen funcionando
+      pero heredan la paleta nueva sin tocar su CSS.
+
+   Paletas: coral (cálida) · frambuesa (romántica) · azul (habitos-web)
+   Modos:   dark · light  ·  auto (resuelve el modo por sistema)
    ========================================== */
 
+/* ==========================================
+   1 · CAPA SEMÁNTICA — estructura, no color
+   ========================================== */
 :root {
-  /* ==========================================
-     PALETA — Superficies planas, 3 niveles de elevación
-     ========================================== */
-  --surface-0: #0a0a0c;          /* Fondo raíz — el más oscuro */
-  --surface-1: #111114;          /* Superficie elevada (listas, secciones) */
-  --surface-2: #19191d;          /* Superficie más elevada (modals, bottom sheets) */
-  --surface-3: #222228;          /* Superficie activa/presionada */
+  /* Espaciado */
+  --sp-2: 2px;   --sp-4: 4px;   --sp-6: 6px;   --sp-8: 8px;
+  --sp-10: 10px; --sp-12: 12px; --sp-14: 14px; --sp-16: 16px;
+  --sp-18: 18px; --sp-20: 20px; --sp-24: 24px; --sp-28: 28px;
+  --sp-32: 32px; --sp-40: 40px; --sp-48: 48px; --sp-64: 64px;
 
-  /* Overlays */
+  /* Radios — escala única, la del sistema nuevo */
+  --r-xs: 8px;  --r-sm: 12px; --r-md: 16px; --r-lg: 20px; --r-xl: 24px; --r-full: 999px;
+  --r-s: var(--r-sm); --r-m: var(--r-md); --r-l: var(--r-lg);
+
+  /* Tipografía */
+  --font-body:    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-ui:      'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+
+  --fs-caption: 0.6875rem; --fs-xs: 0.75rem;  --fs-sm: 0.8125rem;
+  --fs-base: 0.9375rem;    --fs-md: 1.0625rem; --fs-lg: 1.25rem;
+  --fs-xl: 1.5rem;         --fs-2xl: 2rem;     --fs-3xl: 2.5rem; --fs-4xl: 3rem;
+
+  /* Duraciones */
+  --dur-instant: 0.08s ease; --dur-fast: 0.15s ease;  --dur-mid: 0.25s ease;
+  --dur-normal: 0.25s ease;  --dur-main: 0.35s ease;  --dur-slow: 0.4s ease;
+  --dur-slower: 0.6s ease;   --dur-spring: 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-bounce: 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-smooth: 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-smooth-out: 0.35s cubic-bezier(0.83, 0, 0.17, 1);
+  --dur-decel: 0.35s cubic-bezier(0, 0, 0.2, 1);
+  --dur-accel: 0.2s cubic-bezier(0.4, 0, 1, 1);
+
+  /* Z-index */
+  --z-base: 1; --z-dropdown: 100; --z-sticky: 200; --z-overlay: 500;
+  --z-modal: 1000; --z-toast: 1100; --z-tooltip: 1200; --z-sidebar: 200;
+
+  /* Layout */
+  --nav-h: 62px;
+  --bottom-nav-height: 62px;
+  --header-height: 56px;
+  --sidebar-w: 250px;
+  --sidebar-width: 250px;
+  --content-max: 880px;
+  --content-max-width: 880px;
+  --content-padding-x: 16px;
+
+  /* Blur */
+  --blur-sm: 8px; --blur-md: 16px; --blur-lg: 24px;
+  --blur-nav: 20px; --blur-overlay: 12px;
+
+  /* Aliases de espacio (heredados, siguen usándose) */
+  --space-xs: var(--sp-8);  --space-sm: var(--sp-16);
+  --space-md: var(--sp-32); --space-lg: var(--sp-64);
+  --space-xl: var(--sp-48); --space-xxl: var(--sp-64);
+
+  /* Aliases de radio (heredados) */
+  --radius-sm: var(--r-sm); --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg); --radius-xl: var(--r-xl); --radius-pill: var(--r-full);
+}
+
+/* ==========================================
+   2a · PALETA CORAL — cálida, por defecto
+   ========================================== */
+:root {
+  color-scheme: dark;
+
+  --surface-0: #0a0a0c;
+  --surface-1: #111114;
+  --surface-2: #19191d;
+  --surface-3: #222228;
+
   --overlay-light: rgba(0, 0, 0, 0.5);
   --overlay-heavy: rgba(0, 0, 0, 0.85);
 
-  /* ==========================================
-     ACENTOS — Coral refinado (menos saturado, más premium)
-     ========================================== */
-  --accent:            #e8735a;
-  --accent-hover:      #f0806a;
-  --accent-pressed:    #d4624a;
-  --accent-strong:     #c14e3a; /* variante oscura para texto blanco AA sobre coral */
-  --accent-strong-hover: #c5523c; /* hover AA sobre la variante fuerte */
-  --accent-dim:        rgba(232, 115, 90, 0.12);
-  --accent-dim-strong: rgba(232, 115, 90, 0.22);
+  --accent:               #e8735a;
+  --accent-hover:         #f0806a;
+  --accent-pressed:       #d4624a;
+  --accent-strong:        #c14e3a;
+  --accent-strong-hover:  #c5523c;
+  --accent-dim:           rgba(232, 115, 90, 0.12);
+  --accent-dim-strong:    rgba(232, 115, 90, 0.22);
+  --on-accent:            #ffffff;
 
-  /* Acentos secundarios */
-  --warm-amber:        #ffb347;
-  --warm-amber-dim:    rgba(255, 179, 71, 0.15);
-  --warm-rose:         #ff8aa1;
-  --warm-rose-dim:     rgba(255, 138, 161, 0.12);
+  --warm-amber:     #ffb347;  --warm-amber-dim: rgba(255, 179, 71, 0.15);
+  --warm-rose:      #ff8aa1;  --warm-rose-dim:  rgba(255, 138, 161, 0.12);
 
-  /* Hero — iluminación ambiental sutil (profundidad, no decoración) */
-  --hero-glow-1:       rgba(232, 115, 90, 0.10);
-  --hero-glow-2:       rgba(255, 179, 71, 0.06);
-  --hero-glow-3:       rgba(255, 138, 161, 0.05);
-  --hero-noise:        0.028;
-  --hero-particle:     rgba(255, 138, 161, 0.35);
+  --hero-glow-1: rgba(232, 115, 90, 0.10);
+  --hero-glow-2: rgba(255, 179, 71, 0.06);
+  --hero-glow-3: rgba(255, 138, 161, 0.05);
+  --hero-noise: 0.028;
+  --hero-particle: rgba(255, 138, 161, 0.35);
 
-  /* Estados semánticos */
-  --green:             #4ade80;
-  --green-dim:         rgba(74, 222, 128, 0.12);
-  --red:               #f87171;
-  --red-dim:           rgba(248, 113, 113, 0.12);
-  --blue:              #60a5fa;
-  --blue-dim:          rgba(96, 165, 250, 0.12);
-  --yellow:            #fbbf24;
-  --yellow-dim:        rgba(251, 191, 36, 0.12);
+  --green: #4ade80;  --green-dim: rgba(74, 222, 128, 0.12);
+  --red:   #f87171;  --red-dim:   rgba(248, 113, 113, 0.12);
+  --blue:  #60a5fa;  --blue-dim:  rgba(96, 165, 250, 0.12);
+  --yellow:#fbbf24;  --yellow-dim:rgba(251, 191, 36, 0.12);
+  --violet:#a78bfa;  --violet-dim:rgba(167, 139, 250, 0.14);
 
-  /* ==========================================
-     TEXTO — Jerarquía clara con pesos
-     ========================================== */
-  --text-primary:      rgba(255, 255, 255, 0.93);
-  --text-secondary:    rgba(255, 255, 255, 0.65);
-  --text-tertiary:     rgba(255, 255, 255, 0.38);
-  --text-disabled:     rgba(255, 255, 255, 0.22);
-  --text-inverse:      #0a0a0c;
-  --text-accent:       var(--accent);
+  --text-primary:   rgba(255, 255, 255, 0.93);
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-tertiary:  rgba(255, 255, 255, 0.38);
+  --text-disabled:  rgba(255, 255, 255, 0.22);
+  --text-inverse:   #0a0a0c;
 
-  /* ==========================================
-     BORDES — Sutiles, casi invisibles, solo para separación
-     ========================================== */
-  --divider:           rgba(255, 255, 255, 0.06);
-  --divider-strong:    rgba(255, 255, 255, 0.10);
-  --border-accent:     rgba(232, 115, 90, 0.30);
+  --divider:        rgba(255, 255, 255, 0.06);
+  --divider-strong: rgba(255, 255, 255, 0.10);
+  --border-accent:  rgba(232, 115, 90, 0.30);
 
-  /* ==========================================
-     ESPACIADO — Escala consistente (múltiplos de 4)
-     ========================================== */
-  --sp-2:   2px;
-  --sp-4:   4px;
-  --sp-6:   6px;
-  --sp-8:   8px;
-  --sp-10:  10px;
-  --sp-12:  12px;
-  --sp-14:  14px;
-  --sp-16:  16px;
-  --sp-18:  18px;
-  --sp-20:  20px;
-  --sp-24:  24px;
-  --sp-28:  28px;
-  --sp-32:  32px;
-  --sp-40:  40px;
-  --sp-48:  48px;
-  --sp-64:  64px;
-
-  /* ==========================================
-     RADIOS — Sistema unificado
-     ========================================== */
-  --r-xs:    6px;
-  --r-sm:    10px;
-  --r-md:    16px;
-  --r-lg:    22px;
-  --r-xl:    28px;
-  --r-full:  9999px;
-
-  /* ==========================================
-     TIPOGRAFÍA — Display + Body
-     ========================================== */
-  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Playfair Display', Georgia, serif;
-
-  /* Escala tipográfica */
-  --fs-caption:  0.6875rem;  /* 11px */
-  --fs-xs:       0.75rem;    /* 12px */
-  --fs-sm:       0.8125rem;  /* 13px */
-  --fs-base:     0.9375rem;  /* 15px */
-  --fs-md:       1.0625rem;  /* 17px */
-  --fs-lg:       1.25rem;    /* 20px */
-  --fs-xl:       1.5rem;     /* 24px */
-  --fs-2xl:      2rem;       /* 32px */
-  --fs-3xl:      2.5rem;     /* 40px */
-  --fs-4xl:      3rem;       /* 48px */
-
-  /* ==========================================
-     DURACIONES — Animaciones nativas
-     ========================================== */
-  --dur-instant: 0.05s ease;
-  --dur-fast:    0.15s ease;
-  --dur-main:    0.35s ease;
-  --dur-normal:  0.25s ease;
-  --dur-slow:    0.35s ease;
-  --dur-slower:  0.5s ease;
-  --dur-spring:  0.4s cubic-bezier(0.22, 0.9, 0.3, 1.1);
-  --dur-smooth:  0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --dur-decel:   0.35s cubic-bezier(0, 0, 0.2, 1);
-  --dur-accel:   0.2s cubic-bezier(0.4, 0, 1, 1);
-
-  /* ==========================================
-     SOMBRAS — Solo para elementos flotantes reales
-     (modals, bottom sheets, tooltips). NO para cards.
-     ========================================== */
   --elevation-1: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
   --elevation-2: 0 3px 6px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
   --elevation-3: 0 10px 20px rgba(0,0,0,0.5), 0 6px 6px rgba(0,0,0,0.4);
   --elevation-4: 0 14px 28px rgba(0,0,0,0.6), 0 10px 10px rgba(0,0,0,0.5);
-
-  /* Glow sutil solo para el acento */
   --glow-accent: 0 0 20px rgba(232, 115, 90, 0.15);
 
-  /* ==========================================
-     BLUR — Solo para overlays y bottom nav
-     ========================================== */
-  --blur-nav:    20px;
-  --blur-overlay: 12px;
+  --theme-scrollbar-track: transparent;
+  --theme-scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.16);
+}
 
-  /* ==========================================
-     Z-INDEX
-     ========================================== */
-  --z-base:      1;
-  --z-dropdown:  100;
-  --z-sticky:    200;
-  --z-overlay:   500;
-  --z-modal:     1000;
-  --z-toast:     1100;
-  --z-tooltip:   1200;
+/* Coral · claro — porcelana cálida */
+:root[data-theme="light"] {
+  color-scheme: light;
 
-  /* ==========================================
-     LAYOUT CONSTANTS
-     ========================================== */
-  --bottom-nav-height: 64px;
-  --header-height: 56px;
-  --content-max-width: 720px;
-  --content-padding-x: 16px;
+  --surface-0: #f7f2ee;
+  --surface-1: #ffffff;
+  --surface-2: #fdf8f5;
+  --surface-3: #f6ebe4;
 
-  /* ==========================================
-     TOKENS SEMÁNTICOS — Theme System
-     Mapean a las variables de superficie plana.
-     ========================================== */
+  --overlay-light: rgba(41, 24, 18, 0.32);
+  --overlay-heavy: rgba(41, 24, 18, 0.72);
 
-  /* Fondos */
-  --theme-bg:              var(--surface-0);
-  --theme-surface:         var(--surface-1);
+  --accent:              #b8432a;
+  --accent-hover:        #c95236;
+  --accent-pressed:      #9d3822;
+  --accent-strong:       #a83a23;
+  --accent-strong-hover: #c95236;
+  --accent-dim:          rgba(184, 67, 42, 0.10);
+  --accent-dim-strong:   rgba(184, 67, 42, 0.18);
+
+  --warm-amber: #b45309;  --warm-amber-dim: rgba(180, 83, 9, 0.14);
+  --warm-rose:  #b3506d;  --warm-rose-dim:  rgba(179, 80, 109, 0.12);
+
+  --hero-glow-1: rgba(184, 67, 42, 0.10);
+  --hero-glow-2: rgba(180, 83, 9, 0.08);
+  --hero-glow-3: rgba(179, 80, 109, 0.08);
+  --hero-noise: 0.018;
+  --hero-particle: rgba(184, 67, 42, 0.28);
+
+  --green: #15803d; --green-dim: rgba(21, 128, 61, 0.12);
+  --red:   #dc2626; --red-dim:   rgba(220, 38, 38, 0.12);
+  --blue:  #2563eb; --blue-dim:  rgba(37, 99, 235, 0.12);
+  --yellow:#b45309; --yellow-dim:rgba(180, 83, 9, 0.14);
+  --violet:#6d28d9; --violet-dim:rgba(109, 40, 217, 0.12);
+
+  --text-primary:   rgba(41, 24, 18, 0.94);
+  --text-secondary: rgba(41, 24, 18, 0.62);
+  --text-tertiary:  rgba(41, 24, 18, 0.40);
+  --text-disabled:  rgba(41, 24, 18, 0.24);
+  --text-inverse:   #ffffff;
+
+  --divider:        rgba(41, 24, 18, 0.07);
+  --divider-strong: rgba(41, 24, 18, 0.12);
+  --border-accent:  rgba(184, 67, 42, 0.30);
+
+  --elevation-1: 0 1px 3px rgba(90, 50, 30, 0.10), 0 1px 1px rgba(90, 50, 30, 0.06);
+  --elevation-2: 0 4px 10px rgba(90, 50, 30, 0.10), 0 2px 4px rgba(90, 50, 30, 0.07);
+  --elevation-3: 0 12px 24px rgba(90, 50, 30, 0.14), 0 6px 8px rgba(90, 50, 30, 0.09);
+  --elevation-4: 0 18px 36px rgba(90, 50, 30, 0.18), 0 10px 12px rgba(90, 50, 30, 0.12);
+  --glow-accent: 0 0 24px rgba(184, 67, 42, 0.18);
+
+  --theme-scrollbar-thumb: rgba(90, 50, 30, 0.12);
+  --theme-scrollbar-thumb-hover: rgba(90, 50, 30, 0.22);
+}
+
+/* ==========================================
+   2b · PALETA FRAMBUESA — romántica
+   ========================================== */
+:root[data-paleta="frambuesa"] {
+  color-scheme: dark;
+
+  --surface-0: #140a10;
+  --surface-1: #1d1018;
+  --surface-2: #26151f;
+  --surface-3: #331c29;
+
+  --overlay-light: rgba(0, 0, 0, 0.5);
+  --overlay-heavy: rgba(0, 0, 0, 0.85);
+
+  --accent:              #f06292;
+  --accent-hover:        #f47fa8;
+  --accent-pressed:      #d94d7e;
+  --accent-strong:       #c2185b;
+  --accent-strong-hover: #d63068;
+  --accent-dim:          rgba(240, 98, 146, 0.14);
+  --accent-dim-strong:   rgba(240, 98, 146, 0.24);
+
+  --warm-amber: #ffb347;  --warm-amber-dim: rgba(255, 179, 71, 0.15);
+  --warm-rose:  #ff8aa1;  --warm-rose-dim:  rgba(255, 138, 161, 0.14);
+
+  --hero-glow-1: rgba(240, 98, 146, 0.12);
+  --hero-glow-2: rgba(255, 179, 71, 0.06);
+  --hero-glow-3: rgba(255, 138, 161, 0.07);
+  --hero-noise: 0.028;
+  --hero-particle: rgba(255, 138, 161, 0.35);
+
+  --green: #4ade80;  --green-dim: rgba(74, 222, 128, 0.12);
+  --red:   #f87171;  --red-dim:   rgba(248, 113, 113, 0.12);
+  --blue:  #60a5fa;  --blue-dim:  rgba(96, 165, 250, 0.12);
+  --yellow:#fbbf24;  --yellow-dim:rgba(251, 191, 36, 0.12);
+  --violet:#c4b5fd;  --violet-dim:rgba(196, 181, 253, 0.14);
+
+  --text-primary:   rgba(255, 240, 246, 0.94);
+  --text-secondary: rgba(255, 240, 246, 0.64);
+  --text-tertiary:  rgba(255, 240, 246, 0.38);
+  --text-disabled:  rgba(255, 240, 246, 0.22);
+  --text-inverse:   #140a10;
+
+  --divider:        rgba(255, 240, 246, 0.07);
+  --divider-strong: rgba(255, 240, 246, 0.12);
+  --border-accent:  rgba(240, 98, 146, 0.30);
+
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --elevation-2: 0 3px 6px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
+  --elevation-3: 0 10px 20px rgba(0,0,0,0.5), 0 6px 6px rgba(0,0,0,0.4);
+  --elevation-4: 0 14px 28px rgba(0,0,0,0.6), 0 10px 10px rgba(0,0,0,0.5);
+  --glow-accent: 0 0 20px rgba(240, 98, 146, 0.18);
+
+  --theme-scrollbar-thumb: rgba(255, 240, 246, 0.09);
+  --theme-scrollbar-thumb-hover: rgba(255, 240, 246, 0.18);
+}
+
+/* Frambuesa · claro — porcelana rosa */
+:root[data-paleta="frambuesa"][data-theme="light"] {
+  color-scheme: light;
+
+  --surface-0: #f8edf0;
+  --surface-1: #ffffff;
+  --surface-2: #fdf3f6;
+  --surface-3: #f8e7ee;
+
+  --overlay-light: rgba(74, 20, 45, 0.32);
+  --overlay-heavy: rgba(74, 20, 45, 0.72);
+
+  --accent:              #c2185b;
+  --accent-hover:        #d63068;
+  --accent-pressed:      #a5124b;
+  --accent-strong:       #b00f4e;
+  --accent-strong-hover: #d63068;
+  --accent-dim:          rgba(194, 24, 91, 0.10);
+  --accent-dim-strong:   rgba(194, 24, 91, 0.18);
+
+  --warm-amber: #b45309;  --warm-amber-dim: rgba(180, 83, 9, 0.14);
+  --warm-rose:  #c94076;  --warm-rose-dim:  rgba(201, 64, 118, 0.12);
+
+  --hero-glow-1: rgba(194, 24, 91, 0.10);
+  --hero-glow-2: rgba(180, 83, 9, 0.08);
+  --hero-glow-3: rgba(214, 71, 125, 0.08);
+  --hero-noise: 0.018;
+  --hero-particle: rgba(194, 24, 91, 0.28);
+
+  --green: #15803d; --green-dim: rgba(21, 128, 61, 0.12);
+  --red:   #dc2626; --red-dim:   rgba(220, 38, 38, 0.12);
+  --blue:  #2563eb; --blue-dim:  rgba(37, 99, 235, 0.12);
+  --yellow:#b45309; --yellow-dim:rgba(180, 83, 9, 0.14);
+  --violet:#6d28d9; --violet-dim:rgba(109, 40, 217, 0.12);
+
+  --text-primary:   rgba(50, 16, 32, 0.94);
+  --text-secondary: rgba(50, 16, 32, 0.62);
+  --text-tertiary:  rgba(50, 16, 32, 0.40);
+  --text-disabled:  rgba(50, 16, 32, 0.24);
+  --text-inverse:   #ffffff;
+
+  --divider:        rgba(50, 16, 32, 0.07);
+  --divider-strong: rgba(50, 16, 32, 0.12);
+  --border-accent:  rgba(194, 24, 91, 0.30);
+
+  --elevation-1: 0 1px 3px rgba(90, 30, 55, 0.10), 0 1px 1px rgba(90, 30, 55, 0.06);
+  --elevation-2: 0 4px 10px rgba(90, 30, 55, 0.10), 0 2px 4px rgba(90, 30, 55, 0.07);
+  --elevation-3: 0 12px 24px rgba(90, 30, 55, 0.14), 0 6px 8px rgba(90, 30, 55, 0.09);
+  --elevation-4: 0 18px 36px rgba(90, 30, 55, 0.18), 0 10px 12px rgba(90, 30, 55, 0.12);
+  --glow-accent: 0 0 24px rgba(194, 24, 91, 0.18);
+
+  --theme-scrollbar-thumb: rgba(90, 30, 55, 0.12);
+  --theme-scrollbar-thumb-hover: rgba(90, 30, 55, 0.22);
+}
+
+/* ==========================================
+   2c · PALETA AZUL — estructura habitos-web
+   ========================================== */
+:root[data-paleta="azul"] {
+  color-scheme: dark;
+
+  --surface-0: #0b1220;
+  --surface-1: #111a2c;
+  --surface-2: #16213a;
+  --surface-3: #1e2b47;
+
+  --accent:              #3b82f6;
+  --accent-hover:        #60a5fa;
+  --accent-pressed:      #2563eb;
+  --accent-strong:       #2563eb;
+  --accent-strong-hover: #3b82f6;
+  --accent-dim:          rgba(59, 130, 246, 0.14);
+  --accent-dim-strong:   rgba(59, 130, 246, 0.24);
+
+  --warm-amber: #fbbf24;  --warm-amber-dim: rgba(245, 158, 11, 0.14);
+  --warm-rose:  #fb7185;  --warm-rose-dim:  rgba(251, 113, 133, 0.14);
+
+  --hero-glow-1: rgba(59, 130, 246, 0.12);
+  --hero-glow-2: rgba(96, 165, 250, 0.08);
+  --hero-glow-3: rgba(167, 139, 250, 0.07);
+  --hero-noise: 0.022;
+  --hero-particle: rgba(147, 197, 253, 0.35);
+
+  --green: #4ade80;   --green-dim: rgba(34, 197, 94, 0.12);
+  --red:   #f87171;   --red-dim:   rgba(239, 68, 68, 0.13);
+  --blue:  #60a5fa;   --blue-dim:  rgba(96, 165, 250, 0.14);
+  --yellow:#fbbf24;   --yellow-dim:rgba(245, 158, 11, 0.12);
+  --violet:#a78bfa;   --violet-dim:rgba(139, 92, 246, 0.15);
+
+  --text-primary:   #e6edf7;
+  --text-secondary: #94a3b8;
+  --text-tertiary:  #64748b;
+  --text-disabled:  rgba(230, 237, 247, 0.28);
+  --text-inverse:   #0b1220;
+
+  --divider:        #1b2740;
+  --divider-strong: #243149;
+  --border-accent:  rgba(59, 130, 246, 0.32);
+
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elevation-2: 0 6px 20px rgba(0, 0, 0, 0.45);
+  --elevation-3: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --elevation-4: 0 20px 48px rgba(0, 0, 0, 0.55);
+  --glow-accent: 0 0 20px rgba(59, 130, 246, 0.18);
+
+  --theme-scrollbar-thumb: rgba(230, 237, 247, 0.10);
+  --theme-scrollbar-thumb-hover: rgba(230, 237, 247, 0.20);
+}
+
+/* Azul · claro — la paleta exacta de habitos-web */
+:root[data-paleta="azul"][data-theme="light"] {
+  color-scheme: light;
+
+  --surface-0: #f8fafc;
+  --surface-1: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #e2e8f0;
+
+  --overlay-light: rgba(15, 23, 42, 0.4);
+  --overlay-heavy: rgba(15, 23, 42, 0.8);
+
+  --accent:              #2563eb;
+  --accent-hover:        #3b82f6;
+  --accent-pressed:      #1d4ed8;
+  --accent-strong:       #1d4ed8;
+  --accent-strong-hover: #2563eb;
+  --accent-dim:          #eff6ff;
+  --accent-dim-strong:   #dbeafe;
+
+  --warm-amber: #b45309;  --warm-amber-dim: #fffbeb;
+  --warm-rose:  #be123c;  --warm-rose-dim:  #fff1f2;
+
+  --hero-glow-1: rgba(37, 99, 235, 0.10);
+  --hero-glow-2: rgba(59, 130, 246, 0.07);
+  --hero-glow-3: rgba(167, 139, 250, 0.06);
+  --hero-noise: 0.014;
+  --hero-particle: rgba(37, 99, 235, 0.25);
+
+  --green: #15803d;   --green-dim: #f0fdf4;
+  --red:   #dc2626;   --red-dim:   #fef2f2;
+  --blue:  #2563eb;   --blue-dim:  #eff6ff;
+  --yellow:#b45309;   --yellow-dim:#fffbeb;
+  --violet:#6d28d9;   --violet-dim:#f5f3ff;
+
+  --text-primary:   #0f172a;
+  --text-secondary: #64748b;
+  --text-tertiary:  #94a3b8;
+  --text-disabled:  #cbd5e1;
+  --text-inverse:   #ffffff;
+
+  --divider:        #eef2f7;
+  --divider-strong: #e2e8f0;
+  --border-accent:  rgba(37, 99, 235, 0.30);
+
+  --elevation-1: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --elevation-2: 0 6px 20px rgba(15, 23, 42, 0.06);
+  --elevation-3: 0 12px 40px rgba(15, 23, 42, 0.12);
+  --elevation-4: 0 18px 50px rgba(15, 23, 42, 0.16);
+  --glow-accent: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+/* ==========================================
+   3 · ALIASES SEMÁNTICOS CORTOS (habitos-web)
+   Lo que usan los componentes nuevos.
+   ========================================== */
+:root {
+  --bg:            var(--surface-0);
+  --surface:       var(--surface-1);
+  --surface-soft:  var(--surface-2);
+  --hairline:      var(--divider);
+
+  --primary:        var(--accent);
+  --primary-2:      var(--accent-hover);
+  --primary-strong: var(--accent-strong);
+  --primary-soft:   var(--accent-dim);
+  --primary-softer: var(--accent-dim-strong);
+  --primary-border: var(--border-accent);
+
+  --text:     var(--text-primary);
+  --text-2:   var(--text-secondary);
+  --text-3:   var(--text-tertiary);
+  --text-4:   var(--text-disabled);
+
+  --border:      var(--divider-strong);
+  --border-soft: var(--divider);
+
+  --ok:          var(--green);
+  --ok-soft:     var(--green-dim);
+  --ok-border:   color-mix(in srgb, var(--green) 34%, transparent);
+
+  --warn:        var(--yellow);
+  --warn-soft:   var(--yellow-dim);
+  --warn-border: color-mix(in srgb, var(--yellow) 34%, transparent);
+
+  --violet-c:        var(--violet);
+  --violet-soft:     var(--violet-dim);
+  --violet-border:   color-mix(in srgb, var(--violet) 34%, transparent);
+
+  --danger-c:        var(--red);
+  --danger-soft:     var(--red-dim);
+  --danger-border:   color-mix(in srgb, var(--red) 34%, transparent);
+
+  /* Sombra — la de habitos-web, derivada de la elevación real del tema */
+  --sh-s: var(--elevation-1);
+  --sh-m: var(--elevation-2);
+  --sh-l: var(--elevation-3);
+
+  /* Léxico histórico → capa semántica (nada nuevo debe usarlo, pero sigue vivo) */
+  --theme-bg:               var(--surface-0);
+  --theme-surface:          var(--surface-1);
   --theme-surface-elevated: var(--surface-2);
   --theme-surface-pressed:  var(--surface-3);
-
-  /* Texto */
-  --theme-text-primary:    var(--text-primary);
-  --theme-text-secondary:  var(--text-secondary);
-  --theme-text-tertiary:   var(--text-tertiary);
-  --theme-text-disabled:   var(--text-disabled);
-  --theme-text-inverse:    var(--text-inverse);
-
-  /* Acentos */
+  --theme-text-primary:     var(--text-primary);
+  --theme-text-secondary:   var(--text-secondary);
+  --theme-text-tertiary:    var(--text-tertiary);
+  --theme-text-disabled:    var(--text-disabled);
+  --theme-text-inverse:     var(--text-inverse);
   --theme-accent:           var(--accent);
   --theme-accent-hover:     var(--accent-hover);
   --theme-accent-pressed:   var(--accent-pressed);
   --theme-accent-strong:    var(--accent-strong);
   --theme-accent-strong-hover: var(--accent-strong-hover);
   --theme-accent-dim:       var(--accent-dim);
-  --theme-accent-dim-strong: var(--accent-dim-strong);
+  --theme-accent-dim-strong:var(--accent-dim-strong);
   --theme-accent-glow:      var(--glow-accent);
-
-  /* Estados */
-  --theme-success:   var(--green);
-  --theme-success-dim: var(--green-dim);
-  --theme-error:     var(--red);
-  --theme-error-dim: var(--red-dim);
-  --theme-info:      var(--blue);
-  --theme-info-dim:  var(--blue-dim);
-  --theme-warning:   var(--yellow);
-  --theme-warning-dim: var(--yellow-dim);
-
-  /* Divisores */
-  --theme-divider:        var(--divider);
-  --theme-divider-strong: var(--divider-strong);
-  --theme-border-accent:  var(--border-accent);
-
-  /* Aliases semánticos Umbra para componentes heredados */
-  --theme-border:         var(--divider-strong);
-  --theme-primary:        var(--accent);
-  --theme-danger:         var(--red);
-  --theme-text-muted:     var(--text-tertiary);
-  --theme-surface-soft:   var(--surface-1);
-  --theme-surface-2:      var(--surface-2);
-  --theme-bg-hover:       var(--surface-2);
-  --theme-text:           var(--text-primary);
-  --accent-coral-hover:   var(--accent-hover);
-
-  /* Scrollbar */
-  --theme-scrollbar-track: transparent;
-  --theme-scrollbar-thumb: rgba(255, 255, 255, 0.08);
-  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.16);
-
-  /* Sidebar (desktop only) */
-  --sidebar-width: 240px;
-
-  /* ==========================================
-     LEGACY ALIASES — Compatibilidad con CSS existente
-     Mapean tokens antiguos a los nuevos.
-     Se irán eliminando conforme se migren las páginas.
-     ========================================== */
-  --theme-bg-primary:       var(--surface-0);
-  --theme-bg-secondary:     var(--surface-1);
-  --theme-bg-tertiary:      var(--surface-2);
-  --theme-bg-card:          var(--surface-1);
-  --theme-bg-card-hover:    var(--surface-2);
-  --theme-bg-overlay:       var(--overlay-heavy);
-  --theme-bg-input:         var(--surface-2);
-  --theme-bg-glass:         var(--surface-1);
-  --theme-bg-glass-hover:   var(--surface-2);
-
-  --theme-accent-primary:   var(--accent);
-  --theme-accent-secondary: var(--accent-hover);
-  --theme-accent-strong:    var(--accent-strong);
-  --theme-accent-strong-hover: var(--accent-strong-hover);
-  --theme-accent-dim:       var(--accent-dim);
-  --theme-accent-border:    var(--border-accent);
-  --theme-accent-glow:      var(--glow-accent);
-
-  --theme-border-subtle:    1px solid var(--divider);
-  --theme-border-visible:   1px solid var(--divider-strong);
+  --theme-success:          var(--green);
+  --theme-success-dim:      var(--green-dim);
+  --theme-error:            var(--red);
+  --theme-error-dim:        var(--red-dim);
+  --theme-info:             var(--blue);
+  --theme-info-dim:         var(--blue-dim);
+  --theme-warning:          var(--yellow);
+  --theme-warning-dim:      var(--yellow-dim);
+  --theme-divider:          var(--divider);
+  --theme-divider-strong:   var(--divider-strong);
   --theme-border-accent:    var(--border-accent);
-
-  --theme-shadow-sm:        var(--elevation-1);
-  --theme-shadow-md:        var(--elevation-2);
-  --theme-shadow-lg:        var(--elevation-3);
-  --theme-shadow-xl:        var(--elevation-4);
-  --theme-shadow-glow:      var(--glow-accent);
-  --theme-shadow-glow-strong: var(--glow-accent);
-  --theme-shadow-inner-top: inset 0 1px 0 var(--divider);
-  --theme-shadow-glass:     var(--elevation-1);
-
-  --theme-scrollbar-track:  transparent;
-  --theme-scrollbar-thumb:  rgba(255, 255, 255, 0.08);
-  --theme-scrollbar-thumb-hover: rgba(255, 255, 255, 0.16);
-
+  --theme-border:           var(--divider-strong);
+  --theme-primary:          var(--accent);
+  --theme-danger:           var(--red);
+  --theme-text-muted:       var(--text-tertiary);
+  --theme-surface-soft:     var(--surface-1);
+  --theme-surface-2:        var(--surface-2);
+  --theme-surface-3:        var(--surface-3);
+  --theme-card:             var(--surface-1);
+  --theme-danger-dim:       var(--red-dim);
+  --radius:                 var(--r-md);
+  --theme-bg-hover:         var(--surface-2);
+  --theme-text:             var(--text-primary);
+  --accent-coral-hover:     var(--accent-hover);
   --theme-sidebar-bg:       var(--surface-1);
   --theme-sidebar-border:   1px solid var(--divider);
 
-  --shadow-sm:              var(--elevation-1);
-  --shadow-md:              var(--elevation-2);
-  --shadow-lg:              var(--elevation-3);
-  --shadow-xl:              var(--elevation-4);
-  --shadow-glow:            var(--glow-accent);
-  --shadow-glow-strong:     var(--glow-accent);
-  --shadow-inner-top:       inset 0 1px 0 var(--divider);
-  --shadow-glass:           var(--elevation-1);
-
-  --blur-sm:                8px;
-  --blur-md:                16px;
-  --blur-lg:                24px;
-
-  --radius-sm:              var(--r-xs);
-  --radius-md:              var(--r-sm);
-  --radius-lg:              var(--r-md);
-  --radius-xl:              var(--r-lg);
-  --radius-pill:            var(--r-full);
-
-  --space-xs:               var(--sp-8);
-  --space-sm:               var(--sp-16);
-  --space-md:               var(--sp-32);
-  --space-lg:               var(--sp-64);
-  --space-xl:               var(--sp-48);
-  --space-xxl:              var(--sp-64);
-
-  /* NOTA: la escala tipográfica moderna (--fs-xs … --fs-4xl, definida arriba)
-     es la fuente de verdad. Los antiguos aliases legacy que re-mapeaban
-     --fs-md/--fs-lg/--fs-xl/--fs-2xl/--fs-3xl → 15px se ELIMINARON porque
-     colapsaban todos los títulos de página a tamaño de cuerpo, haciendo que
-     secciones que usan tokens (Series, Sentimientos, Canciones, Rincón,
-     Juegos, Calendario) se vieran sin jerarquía frente a las que usan clamp().
-     Las páginas deben usar la escala moderna (--fs-base para cuerpo 15px,
-     --fs-md 17px, --fs-xl 24px, --fs-2xl 32px, --fs-3xl 40px). */
-
-  --dur-instant: 0.08s ease;
-  --dur-fast:    0.15s ease;
-  --dur-mid:     0.25s ease;
-  --dur-slow:    0.4s ease;
-  --dur-slower:  0.6s ease;
-  --dur-spring:  0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-bounce:  0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-smooth:  0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-smooth-out: 0.35s cubic-bezier(0.83, 0, 0.17, 1);
-
-  --bottom-nav-height: 64px;
-  --z-sidebar: var(--z-sticky);
+  --theme-bg-primary:   var(--surface-0);
+  --theme-bg-secondary: var(--surface-1);
+  --theme-bg-tertiary:  var(--surface-2);
+  --theme-bg-card:      var(--surface-1);
+  --theme-bg-card-hover:var(--surface-2);
+  --theme-bg-overlay:   var(--overlay-heavy);
+  --theme-bg-input:     var(--surface-2);
+  --theme-bg-glass:     var(--surface-1);
+  --theme-bg-glass-hover:var(--surface-2);
+  --theme-accent-primary:  var(--accent);
+  --theme-accent-secondary:var(--accent-hover);
+  --theme-accent-border:   var(--border-accent);
+  --theme-border-subtle:   1px solid var(--divider);
+  --theme-border-visible:  1px solid var(--divider-strong);
+  --theme-shadow-sm: var(--elevation-1);
+  --theme-shadow-md: var(--elevation-2);
+  --theme-shadow-lg: var(--elevation-3);
+  --theme-shadow-xl: var(--elevation-4);
+  --theme-shadow-glow: var(--glow-accent);
+  --theme-shadow-glow-strong: var(--glow-accent);
+  --theme-shadow-inner-top: inset 0 1px 0 var(--divider);
+  --theme-shadow-glass: var(--elevation-1);
+  --shadow-sm: var(--elevation-1);
+  --shadow-md: var(--elevation-2);
+  --shadow-lg: var(--elevation-3);
+  --shadow-xl: var(--elevation-4);
+  --shadow-glow: var(--glow-accent);
+  --shadow-glass: var(--elevation-1);
 }
 
 /* ==========================================
-   LIGHT THEME — Porcelana rosa, frambuesa con
-   peso visual. Espejo del dark: misma jerarquía,
-   mismos radios, misma elegancia. El acento se
-   oscurece para cumplir WCAG AA sobre claro.
-   ========================================== */
-[data-theme="light"] {
-  /* Superficies — porcelana rosa cálida, 4 niveles */
-  --surface-0: #f8edf0;          /* Fondo raíz — rosa porcelana visible (cards blancas destacan) */
-  --surface-1: #ffffff;          /* Panel — blanco puro */
-  --surface-2: #fdf3f6;          /* Elevada — rosa pálido */
-  --surface-3: #f8e7ee;          /* Activa/presionada — rosa visible */
-
-  --overlay-light: rgba(74, 20, 45, 0.32);
-  --overlay-heavy: rgba(74, 20, 45, 0.72);
-
-  /* ==========================================
-     ACENTO — Frambuesa refinada (contraste AA sobre blanco)
-     ========================================== */
-  --accent:            #c2185b;
-  --accent-hover:      #d63068;
-  --accent-pressed:    #a5124b;
-  --accent-strong:     #b00f4e; /* variante oscura para texto blanco AA sobre frambuesa */
-  --accent-strong-hover: #d63068; /* hover AA sobre la variante fuerte */
-  --accent-dim:        rgba(194, 24, 91, 0.10);
-  --accent-dim-strong: rgba(194, 24, 91, 0.18);
-
-  /* Acentos secundarios — versión legible sobre claro */
-  --warm-amber:        #b45309;
-  --warm-amber-dim:    rgba(180, 83, 9, 0.14);
-  --warm-rose:         #c94076;
-  --warm-rose-dim:     rgba(201, 64, 118, 0.12);
-
-  /* Hero — iluminación ambiental rosa (profundidad suave) */
-  --hero-glow-1:       rgba(194, 24, 91, 0.10);
-  --hero-glow-2:       rgba(180, 83, 9, 0.08);
-  --hero-glow-3:       rgba(214, 71, 125, 0.08);
-  --hero-noise:        0.018;
-  --hero-particle:     rgba(194, 24, 91, 0.28);
-
-  /* Estados semánticos — oscurecidos para contraste AA sobre claro */
-  --green:             #15803d;
-  --green-dim:         rgba(21, 128, 61, 0.12);
-  --red:               #dc2626;
-  --red-dim:           rgba(220, 38, 38, 0.12);
-  --blue:              #2563eb;
-  --blue-dim:          rgba(37, 99, 235, 0.12);
-  --yellow:            #b45309;
-  --yellow-dim:        rgba(180, 83, 9, 0.14);
-
-  /* ==========================================
-     TEXTO — Ciruela profunda, nunca negro puro
-     ========================================== */
-  --text-primary:      rgba(50, 16, 32, 0.94);
-  --text-secondary:    rgba(50, 16, 32, 0.62);
-  --text-tertiary:     rgba(50, 16, 32, 0.40);
-  --text-disabled:     rgba(50, 16, 32, 0.24);
-  --text-inverse:      #ffffff;
-
-  /* Divisores — sutiles con tinte cálido */
-  --divider:           rgba(50, 16, 32, 0.07);
-  --divider-strong:    rgba(50, 16, 32, 0.12);
-  --border-accent:     rgba(194, 24, 91, 0.30);
-
-  /* ==========================================
-     SOMBRAS — Elevación con tinte rosa, más
-     presentes que en dark (el claro lo necesita)
-     ========================================== */
-  --elevation-1: 0 1px 3px rgba(90, 30, 55, 0.10), 0 1px 1px rgba(90, 30, 55, 0.06);
-  --elevation-2: 0 4px 10px rgba(90, 30, 55, 0.10), 0 2px 4px rgba(90, 30, 55, 0.07);
-  --elevation-3: 0 12px 24px rgba(90, 30, 55, 0.14), 0 6px 8px rgba(90, 30, 55, 0.09);
-  --elevation-4: 0 18px 36px rgba(90, 30, 55, 0.18), 0 10px 12px rgba(90, 30, 55, 0.12);
-
-  --glow-accent: 0 0 24px rgba(194, 24, 91, 0.18);
-
-  --theme-scrollbar-track: transparent;
-  --theme-scrollbar-thumb: rgba(90, 30, 55, 0.12);
-  --theme-scrollbar-thumb-hover: rgba(90, 30, 55, 0.22);
-}
-
-/* ==========================================
-   LARGE TEXT (Accesibilidad)
+   ACCESIBILIDAD
    ========================================== */
 [data-large-text="true"] {
-  --fs-caption: 0.8125rem;
-  --fs-xs:      0.875rem;
-  --fs-sm:      0.9375rem;
-  --fs-base:    1.0625rem;
-  --fs-md:      1.1875rem;
-  --fs-lg:      1.375rem;
-  --fs-xl:      1.75rem;
-  --fs-2xl:     2.25rem;
-  --fs-3xl:     2.75rem;
-  --fs-4xl:     3.25rem;
+  --fs-caption: 0.8125rem; --fs-xs: 0.875rem; --fs-sm: 0.9375rem;
+  --fs-base: 1.0625rem;    --fs-md: 1.1875rem; --fs-lg: 1.375rem;
+  --fs-xl: 1.75rem;        --fs-2xl: 2.25rem;  --fs-3xl: 2.75rem; --fs-4xl: 3.25rem;
 }
 
-/* ==========================================
-   REDUCED MOTION
-   ========================================== */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --dur-instant: 0.001s;
-    --dur-fast:    0.001s;
-    --dur-normal:  0.001s;
-    --dur-slow:    0.001s;
-    --dur-slower:  0.001s;
-    --dur-spring:  0.001s;
-    --dur-smooth:  0.001s;
-    --dur-decel:   0.001s;
-    --dur-accel:   0.001s;
+    --dur-instant: 0.001s; --dur-fast: 0.001s; --dur-mid: 0.001s;
+    --dur-normal: 0.001s;  --dur-main: 0.001s; --dur-slow: 0.001s;
+    --dur-slower: 0.001s;  --dur-spring: 0.001s; --dur-bounce: 0.001s;
+    --dur-smooth: 0.001s;  --dur-smooth-out: 0.001s;
+    --dur-decel: 0.001s;   --dur-accel: 0.001s;
   }
-}
-
-/* ===== Familia AZUL (override sobre Umbra; el modo lo sigue dando data-theme) ===== */
-:root[data-tema="azul"] {
-  --accent: #7DB7FF;
-  --accent-hover: #A8D1FF;
-  --accent-pressed: #4B8BD8;
-  --accent-dim: rgba(125,183,255,.12);
-  --accent-dim-strong: rgba(125,183,255,.22);
-  --glow-accent: 0 0 20px rgba(125,183,255,.15);
-}
-:root[data-tema="azul"][data-theme="light"] {
-  --accent: #2563EB;
-  --accent-hover: #1D4ED8;
-  --accent-pressed: #1E40AF;
-  --accent-dim: rgba(37,99,235,.12);
-  --accent-dim-strong: rgba(37,99,235,.22);
-  --glow-accent: 0 0 20px rgba(37,99,235,.15);
 }

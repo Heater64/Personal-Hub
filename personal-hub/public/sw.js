@@ -350,6 +350,18 @@ self.addEventListener('periodicsync', event => {
   }
 });
 
+// Horario de silencio (mismo cálculo que notifications.service.js):
+// dentro de la franja el aviso diario no sale, y como no se marca
+// lastShown podrá salir en la siguiente sincronización.
+function isQuietHour(now, quiet) {
+  if (!quiet || !quiet.from || !quiet.to) return false;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const from = Number(quiet.from.slice(0, 2)) * 60 + Number(quiet.from.slice(3));
+  const to = Number(quiet.to.slice(0, 2)) * 60 + Number(quiet.to.slice(3));
+  if (Number.isNaN(from) || Number.isNaN(to) || from === to) return false;
+  return from < to ? minutes >= from && minutes < to : minutes >= from || minutes < to;
+}
+
 async function handleDailyWelcome() {
   const state = await idbGet('reminder');
   if (!state || !state.enabled || !state.userId) return;
@@ -359,6 +371,7 @@ async function handleDailyWelcome() {
 
   if (state.lastShown === today) return;
   if (hourSpain(now) < 8) return; // 8:00 hora de España
+  if (isQuietHour(now, state.quiet)) return;
 
   await self.registration.showNotification('¡Buenos días! ☀️', {
     body: 'Es hora de tu check-in diario de estado de ánimo.',

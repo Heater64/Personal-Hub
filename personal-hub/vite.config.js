@@ -34,6 +34,6 @@ export default defineConfig({
     open: true
   },
   define: {
-    __APP_VERSION__: JSON.stringify('1.1.1')
+    __APP_VERSION__: JSON.stringify('1.2.0')
   }
 });

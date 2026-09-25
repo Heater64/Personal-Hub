@@ -4,6 +4,8 @@
    y estado nuevo/visto persistente por usuaria
    ========================================== */
 
+import { icon, openSheet, closeSheets } from '../components/ui.js';
+import { createLightbox, openLightbox, closeLightbox } from '../components/MediaLightbox.js';
 import { escapeHtml } from '../utils/escape.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { db } from '../services/db.service.js';
@@ -522,11 +524,6 @@ export function OpenWhenPage(router) {
   }
 
   /* ---------- tarjetas ---------- */
-  function typeChip(type) {
-    const meta = TYPE_META[type] || TYPE_META.carta;
-    return `<span class="ow-type-chip" title="${meta.label}">${meta.emoji}</span>`;
-  }
-
   function mediaWidget(letter) {
     if (!letter.media) return '';
     if (letter.media.kind === 'album') {
@@ -553,61 +550,60 @@ export function OpenWhenPage(router) {
       </div>`;
   }
 
+  const OPEN_LABEL = { nota: 'Escuchar', cancion: 'Escuchar', album: 'Ver fotos' };
+
   function letterCard(letter) {
     const meta = TYPE_META[letter.type] || TYPE_META.carta;
-    const seenMark = isNew(letter)
-      ? '<span class="ow-badge ow-badge--new">NUEVO</span>'
-      : '<span class="ow-seen-mark">✓ Visto</span>';
-    const openLabel = { nota: 'Escuchar', cancion: 'Escuchar', album: 'Ver fotos' }[letter.type] || 'Abrir';
+    const fresh = isNew(letter);
+    const album = letter.media?.kind === 'album' ? letter.media.urls : null;
+
+    const media = album
+      ? `<div class="ow-album">${album.slice(0, 3).map((u, i) => `
+          <button class="ow-album-thumb" data-photo="${letter.id}" data-idx="${i}" aria-label="Ver foto ${i + 1}">
+            <img src="${escapeHtml(u)}" alt="" loading="lazy">
+          </button>`).join('')}${album.length > 3 ? `<span class="ow-album-more">+${album.length - 3}</span>` : ''}</div>`
+      : '';
+
     return `
-      <div class="ow-letter" data-letter-id="${letter.id}">
-        <div class="ow-letter-head">
-          <span class="ow-letter-type">${meta.emoji}</span>
-          <h3>${escapeHtml(letter.title)}</h3>
-          ${seenMark}
-        </div>
-        <p class="ow-letter-note">${escapeHtml(letter.note)}</p>
-        <button class="ow-open-btn" data-open="${letter.id}">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
-          ${openLabel}
-        </button>
-        <div class="ow-letter-content">
-          <div class="ow-message">${escapeHtml(letter.message).replace(/\n/g, '<br>')}</div>
-          ${mediaWidget(letter)}
-          <div class="ow-signature">— Con todo mi cariño: Peluchito</div>
-          <button class="ow-close-btn" data-close="${letter.id}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Cerrar sobre
-          </button>
-        </div>
-      </div>`;
+      <button class="ow-card${fresh ? ' is-new' : ''}" data-open="${letter.id}">
+        <span class="ow-card__ic">${meta.emoji}</span>
+        <span class="ow-card__body">
+          <span class="ow-card__top">
+            <b>${escapeHtml(letter.title)}</b>
+            ${fresh ? '<span class="ow-card__badge">Nueva</span>' : `<span class="ow-card__seen" aria-label="Vista">${icon('check', 13)}</span>`}
+          </span>
+          <span class="ow-card__note">${escapeHtml(letter.note)}</span>
+        </span>
+        ${media}
+        <span class="ow-card__go">${OPEN_LABEL[letter.type] || 'Abrir'} ${icon('chev', 14)}</span>
+      </button>`;
   }
 
   function catCard(cat) {
     const n = newOf(cat.id).length;
     return `
-      <div class="ow-cat-card" data-cat="${cat.id}" role="button" tabindex="0">
-        <div class="ow-cat-emoji">${cat.emoji}</div>
-        <div class="ow-cat-body">
-          <h3>${escapeHtml(cat.title)}</h3>
-          <p class="ow-cat-count" data-cat-count="${cat.id}">${countText(cat.id)}</p>
-        </div>
-        ${n > 0 ? `<span class="ow-cat-dot"></span>` : ''}
-        <span class="ow-cat-arrow" aria-hidden="true">→</span>
-      </div>`;
+      <button class="ow-cat" data-cat="${cat.id}">
+        <span class="ow-cat__ic">${cat.emoji}</span>
+        <span class="ow-cat__body">
+          <b>${escapeHtml(cat.title)}</b>
+          <span class="ow-cat__count" data-cat-count="${cat.id}">${countText(cat.id)}</span>
+        </span>
+        ${n > 0 ? `<span class="ow-cat__dot" aria-label="${plural(n, 'cosa nueva', 'cosas nuevas')}"></span>` : ''}
+        <span class="ow-cat__go" aria-hidden="true">${icon('chev', 15)}</span>
+      </button>`;
   }
 
   function paraTiCard(letter) {
     const meta = TYPE_META[letter.type] || TYPE_META.carta;
     const cat = CATEGORIES.find(c => c.id === letter.category);
     return `
-      <button class="ow-pt-card" data-pt="${letter.id}">
-        <span class="ow-pt-icon">${meta.emoji}</span>
-        <span class="ow-pt-text">
-          <span class="ow-pt-title">${escapeHtml(letter.title)}</span>
-          <span class="ow-pt-cat">${cat ? cat.emoji + ' ' + escapeHtml(cat.title) : ''}</span>
+      <button class="ow-pt" data-pt="${letter.id}">
+        <span class="ow-pt__ic">${meta.emoji}</span>
+        <span class="ow-pt__body">
+          <b>${escapeHtml(letter.title)}</b>
+          <span>${cat ? `${cat.emoji} ${escapeHtml(cat.title)}` : meta.label}</span>
         </span>
-        <span class="ow-pt-open" aria-hidden="true">→</span>
+        <span class="ow-pt__go" aria-hidden="true">${icon('chev', 15)}</span>
       </button>`;
   }
 
@@ -615,35 +611,32 @@ export function OpenWhenPage(router) {
   function landingHTML() {
     const fresh = letters.filter(isNew).slice(0, 5);
     const cats = CATEGORIES.filter(c => totalOf(c.id) > 0);
+    const n = letters.filter(isNew).length;
+    const sub = n > 0
+      ? `${letters.length} cartas · ${n} ${n === 1 ? 'sin ver' : 'sin ver'}`
+      : `${letters.length} ${letters.length === 1 ? 'carta' : 'cartas'} · todo visto`;
+
     return `
-      <div class="openwhen-container">
-        <header class="ow-hero">
-          <h1>Open When</h1>
-          <p class="ow-hero-sub">¿Qué necesitas ahora? 🤍</p>
-        </header>
+      <header class="scr-head">
+        <div>
+          <h1 class="scr-title">Open When</h1>
+          <p class="sub">${escapeHtml(sub)}</p>
+        </div>
+      </header>
 
-        <section class="ow-for-you">
-          <div class="ow-section-head">
-            <h2>Para ti</h2>
-            ${fresh.length
-              ? `<span class="ow-section-sub">Tienes ${plural(fresh.length, 'cosa nueva', 'cosas nuevas')} esperándote</span>`
-              : `<span class="ow-section-sub">Todo visto por aquí 🤍</span>`}
-          </div>
-          ${fresh.length
-            ? `<div class="ow-pt-grid">${fresh.map(paraTiCard).join('')}</div>`
-            : `<div class="ow-all-seen">🤍 Todo visto por aquí. Vuelve cuando lo necesites</div>`}
-        </section>
+      ${fresh.length ? `
+        <section class="ow-section">
+          <p class="section-title">Para ti
+            <span class="section-title__aside">${plural(fresh.length, 'nueva', 'nuevas')}</span>
+          </p>
+          <div class="card card--none ow-pt-box">${fresh.map(paraTiCard).join('')}</div>
+        </section>` : `
+        <div class="ow-all-seen">Todo visto por aquí. Vuelve cuando lo necesites.</div>`}
 
-        <section class="ow-categories">
-          <div class="ow-section-head">
-            <h2>¿Qué necesitas?</h2>
-            <span class="ow-section-sub">Elige según cómo te sientas</span>
-          </div>
-          <div class="ow-cat-grid">
-            ${cats.map(catCard).join('')}
-          </div>
-        </section>
-      </div>`;
+      <section class="ow-section">
+        <p class="section-title">¿Qué necesitas?</p>
+        <div class="ow-cats">${cats.map(catCard).join('')}</div>
+      </section>`;
   }
 
   function categoryHTML(catId) {
@@ -652,83 +645,39 @@ export function OpenWhenPage(router) {
     const all = lettersOf(catId);
     const news = all.filter(isNew);
     const olds = all.filter(l => !isNew(l));
-    const n = news.length;
 
     return `
-      <div class="openwhen-container ow-cat-view">
-        <button class="ow-back-btn" data-back>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-          Open When
-        </button>
+      <header class="scr-head">
+        <div class="ow-head-main">
+          <button type="button" class="icon-btn ow-back" data-back aria-label="Volver a Open When">${icon('back', 18)}</button>
+          <div>
+            <h1 class="scr-title">${cat.emoji} ${escapeHtml(cat.title)}</h1>
+            <p class="sub">${escapeHtml(cat.tagline)}</p>
+          </div>
+        </div>
+      </header>
 
-        <header class="ow-cat-hero">
-          <div class="ow-cat-hero-emoji">${cat.emoji}</div>
-          <h1>${escapeHtml(cat.title)}</h1>
-          <p>${escapeHtml(cat.tagline)}</p>
-          <span class="ow-cat-hero-count" data-cat-count="${cat.id}">
-            ${n > 0 ? `${plural(n, 'cosa nueva', 'cosas nuevas')}` : 'Todo visto por aquí 🤍'}
-          </span>
-        </header>
+      ${news.length ? `
+        <section class="ow-section">
+          <p class="section-title">Nuevas <span class="section-title__aside">${news.length}</span></p>
+          <div class="ow-grid">${news.map(letterCard).join('')}</div>
+        </section>` : ''}
 
-        ${news.length ? `
-          <section class="ow-group">
-            <h2 class="ow-group-title">Nuevas</h2>
-            <div class="ow-letter-grid ow-nuevas-grid">${news.map(letterCard).join('')}</div>
-          </section>` : ''}
+      ${olds.length ? `
+        <section class="ow-section">
+          <p class="section-title">Vistas <span class="section-title__aside">${olds.length}</span></p>
+          <div class="ow-grid">${olds.map(letterCard).join('')}</div>
+        </section>` : ''}
 
-        ${olds.length ? `
-          <section class="ow-group">
-            <h2 class="ow-group-title">Vistas</h2>
-            <div class="ow-letter-grid ow-vistas-grid">${olds.map(letterCard).join('')}</div>
-          </section>` : ''}
-      </div>`;
+      ${!all.length ? `<div class="ow-all-seen">Aquí todavía no hay cartas.</div>` : ''}`;
   }
 
-  let lbOverlay = null;
-
-  function closeLightbox() {
-    if (lbOverlay) {
-      lbOverlay.remove();
-      lbOverlay = null;
-      document.body.style.overflow = '';
-    }
-  }
-
-  function openLightbox(letterId, idx) {
+  /* ---------- visor de fotos (el compartido de la app) ---------- */
+  function openAlbum(letterId, idx) {
     const letter = letterById(letterId);
     if (!letter?.media || letter.media.kind !== 'album') return;
-    const urls = letter.media.urls;
-    closeLightbox();
-    const overlay = document.createElement('div');
-    overlay.className = 'ow-lightbox';
-    overlay.innerHTML = `
-      <div class="ow-lb-backdrop" data-lb-close></div>
-      <div class="ow-lb-stage">
-        <button class="ow-lb-btn ow-lb-close" data-lb-close aria-label="Cerrar">✕</button>
-        ${urls.length > 1 ? `<button class="ow-lb-btn ow-lb-prev" data-lb-prev aria-label="Anterior">‹</button>` : ''}
-        <figure class="ow-lb-figure">
-          <img src="${urls[idx]}" alt="">
-          <figcaption class="ow-lb-caption"></figcaption>
-        </figure>
-        ${urls.length > 1 ? `<button class="ow-lb-btn ow-lb-next" data-lb-next aria-label="Siguiente">›</button>` : ''}
-      </div>`;
-    page.appendChild(overlay);
-    lbOverlay = overlay;
-    document.body.style.overflow = 'hidden';
-    const img = overlay.querySelector('img');
-    const cap = overlay.querySelector('.ow-lb-caption');
-    let cur = idx;
-    const show = (i) => {
-      cur = (i + urls.length) % urls.length;
-      img.src = urls[cur];
-      cap.textContent = `${cur + 1} de ${urls.length}`;
-    };
-    show(idx);
-    overlay.addEventListener('click', (e) => {
-      if (e.target.closest('[data-lb-close]')) { closeLightbox(); return; }
-      if (e.target.closest('[data-lb-prev]')) { show(cur - 1); return; }
-      if (e.target.closest('[data-lb-next]')) { show(cur + 1); return; }
-    });
+    createLightbox();
+    openLightbox(letter.media.urls.map(src => ({ src, type: 'image' })), idx);
   }
 
   function toggleAudio(letterId) {
@@ -747,7 +696,8 @@ export function OpenWhenPage(router) {
       : startMusicBox(letter.media.melody);
     if (!player) return;
 
-    const bubble = page.querySelector(`[data-audio="${letterId}"]`);
+    // El reproductor puede vivir en la página o en el sheet abierto.
+    const bubble = document.querySelector(`[data-audio="${letterId}"]`);
     bubble?.classList.add('playing');
     const btn = bubble?.querySelector('.ow-play-btn');
     if (btn) btn.innerHTML = STOP_ICON;
@@ -770,77 +720,57 @@ export function OpenWhenPage(router) {
 
   function render() {
     stopAllMedia();
-    closeLightbox();
     page.innerHTML = view === 'landing' ? landingHTML() : categoryHTML(view);
   }
 
   /* ---------- acciones ---------- */
   function updateCounts() {
     page.querySelectorAll('[data-cat-count]').forEach(el => {
-      const catId = el.dataset.catCount;
-      const n = newOf(catId).length;
-      const isHero = el.classList.contains('ow-cat-hero-count');
-      el.textContent = n > 0
-        ? plural(n, 'cosa nueva', 'cosas nuevas')
-        : 'Todo visto por aquí 🤍';
-      if (isHero) el.classList.toggle('ow-count-zero', n === 0);
+      const n = newOf(el.dataset.catCount).length;
+      el.textContent = countText(el.dataset.catCount);
     });
   }
 
-  function openLetter(id, opts = {}) {
+  /** Abre una carta en el bottom sheet del sistema. */
+  function openLetter(id) {
     const letter = letterById(id);
     if (!letter) return;
 
-    // Marcar como visto
-    if (!seen.includes(id)) {
+    const wasNew = !seen.includes(id);
+    if (wasNew) {
       seen.push(id);
       persist();
+      // Repinta antes de abrir el sheet: así la carta pasa sola a "Vistas"
+      // y los contadores de las categorías quedan al día.
+      render();
     }
 
-    const card = page.querySelector(`[data-letter-id="${id}"]`);
-    if (card) {
-      card.classList.add('open');
-      const badge = card.querySelector('.ow-badge--new');
-      if (badge) {
-        const mark = document.createElement('span');
-        mark.className = 'ow-seen-mark';
-        mark.textContent = '✓ Visto';
-        badge.replaceWith(mark);
-      }
-      // La carta se queda en su sitio mientras esté abierta;
-      // al cerrarla (o al recargar) pasará a "Vistas".
-      updateCounts();
-    }
+    const meta = TYPE_META[letter.type] || TYPE_META.carta;
+    openSheet(letter.title, () => {
+      const body = document.createElement('div');
+      body.className = 'ow-sheet';
 
-    if (opts.scroll) {
-      card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }
+      const msg = document.createElement('p');
+      msg.className = 'ow-sheet__msg';
+      msg.innerHTML = escapeHtml(letter.message).replace(/\n/g, '<br>');
+      body.appendChild(msg);
 
-  // Mueve una carta ya cerrada de la sección "Nuevas" a "Vistas"
-  function moveToVistas(card) {
-    const nuevasGrid = page.querySelector('.ow-nuevas-grid');
-    if (!nuevasGrid || !nuevasGrid.contains(card)) return;
-    let vistasGrid = page.querySelector('.ow-vistas-grid');
-    if (!vistasGrid) {
-      const catView = page.querySelector('.ow-cat-view');
-      if (!catView) return;
-      const wrap = document.createElement('section');
-      wrap.className = 'ow-group';
-      wrap.innerHTML = '<h2 class="ow-group-title">Vistas</h2><div class="ow-letter-grid ow-vistas-grid"></div>';
-      catView.appendChild(wrap);
-      vistasGrid = wrap.querySelector('.ow-vistas-grid');
-    }
-    vistasGrid.appendChild(card);
-    if (!nuevasGrid.children.length) {
-      nuevasGrid.closest('.ow-group')?.remove();
-    }
+      if (letter.media) body.appendChild(mediaWidget(letter));
+
+      const sign = document.createElement('p');
+      sign.className = 'ow-sheet__sign';
+      sign.textContent = '— Con todo mi cariño: Peluchito';
+      body.appendChild(sign);
+
+      return body;
+    });
   }
 
   function goToCategory(catId) {
     if (!CATEGORIES.find(c => c.id === catId)) return;
     view = catId;
     render();
+    page.scrollTop = 0;
   }
 
   /* ---------- eventos ---------- */
@@ -849,6 +779,7 @@ export function OpenWhenPage(router) {
     if (back) {
       view = 'landing';
       render();
+      page.scrollTop = 0;
       return;
     }
 
@@ -858,55 +789,34 @@ export function OpenWhenPage(router) {
       return;
     }
 
+    // "Para ti": abrir la carta directamente, sin pasar por su categoría.
     const pt = e.target.closest('[data-pt]');
     if (pt) {
-      const letter = letterById(pt.dataset.pt);
-      if (!letter) return;
-      goToCategory(letter.category);
-      requestAnimationFrame(() => openLetter(letter.id, { scroll: true }));
-      return;
-    }
-
-    const open = e.target.closest('[data-open]');
-    if (open) {
-      openLetter(open.dataset.open);
-      return;
-    }
-
-    const play = e.target.closest('[data-play]');
-    if (play) {
-      toggleAudio(play.dataset.play);
+      openLetter(pt.dataset.pt);
       return;
     }
 
     const photo = e.target.closest('[data-photo]');
     if (photo) {
-      openLightbox(photo.dataset.photo, parseInt(photo.dataset.idx, 10) || 0);
+      e.stopPropagation();
+      openAlbum(photo.dataset.photo, parseInt(photo.dataset.idx, 10) || 0);
       return;
     }
 
-    const close = e.target.closest('[data-close]');
-    if (close) {
-      const card = page.querySelector(`[data-letter-id="${close.dataset.close}"]`);
-      if (card) {
-        card.classList.remove('open');
-        moveToVistas(card);
-      }
-      stopAllMedia();
+    const play = e.target.closest('[data-play]');
+    if (play) {
+      e.stopPropagation();
+      toggleAudio(play.dataset.play);
+      return;
     }
+
+    const open = e.target.closest('[data-open]');
+    if (open) openLetter(open.dataset.open);
   });
 
-  // Teclado: Enter en categorías (accesible) y Esc cierra el visor de fotos
+  // Esc cierra el visor de fotos (el sheet y el lightbox ya lo hacen solos)
   page.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeLightbox();
-      return;
-    }
-    if (e.key !== 'Enter') return;
-    const cat = e.target.closest('[data-cat]');
-    if (cat) {
-      goToCategory(cat.dataset.cat);
-    }
+    if (e.key === 'Escape') closeLightbox();
   });
 
   render();
@@ -918,6 +828,14 @@ export function OpenWhenPage(router) {
     letters = all;
     render();
   });
+
+  // Antes no había cleanup: el audio seguía sonando al salir de la página
+  // y el visor de fotos se quedaba abierto en el DOM.
+  page.cleanup = () => {
+    stopAllMedia();
+    closeLightbox();
+    closeSheets();
+  };
 
   return page;
 }

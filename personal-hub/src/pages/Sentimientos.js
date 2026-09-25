@@ -1,54 +1,28 @@
 /* ==========================================
-   Personal Hub v2 — Sentimientos Page
-   Emotional hub: mood tracking + navigation
+   SENTIMIENTOS — el día y el mes en una mirada
+   Cabecera del sistema + registro de ánimo + historial
+   mensual + accesos. Sin hero propio ni decoración:
+   el saludo es el título y el ánimo manda.
    ========================================== */
 
 import { moodStore } from '../stores/mood.store.js';
 import { userStore } from '../stores/user.store.js';
-import { showToast } from '../components/Toast.js';
+import { renderPageHeader } from '../components/PageHeader.js';
+import { icon, toast } from '../components/ui.js';
 import { todayISO, hourInSpain } from '../utils/format.js';
 
 const CARDS = [
-  {
-    id: 'razones',
-    icon: 'sparkles',
-    emoji: '💝',
-    title: 'Razones',
-    href: '/razones',
-    colorVar: '--sent-color-razones'
-  },
-  {
-    id: 'openwhen',
-    icon: 'mail',
-    emoji: '💌',
-    title: 'Open When',
-    href: '/openwhen',
-    colorVar: '--sent-color-openwhen'
-  },
-  {
-    id: 'calendario',
-    icon: 'calendar',
-    emoji: '📅',
-    title: 'Calendario',
-    href: '/calendario',
-    colorVar: '--sent-color-calendario'
-  },
-  {
-    id: 'maldia',
-    icon: 'sun',
-    emoji: '🌤️',
-    title: 'Mal Día',
-    href: '/maldia',
-    colorVar: '--sent-color-maldia'
-  }
+  { id: 'razones', icon: 'spark', title: 'Razones', desc: 'Una razón nueva para quererte', href: '/razones', color: 'var(--violet-c)' },
+  { id: 'openwhen', icon: 'mail', title: 'Open When', desc: 'Cartas para cuando las necesites', href: '/openwhen', color: 'var(--primary)' },
+  { id: 'calendario', icon: 'calendar', title: 'Calendario', desc: 'Sorpresas y días especiales', href: '/calendario', color: 'var(--ok)' },
+  { id: 'maldia', icon: 'sun', title: 'Mal Día', desc: 'Un abrazo para el mal día', href: '/maldia', color: 'var(--warn)' }
 ];
 
-const ICON_SVGS = {
-  'sparkles': `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/><path d="M19 2l.5 2L21 4.5l-1.5.5L19 7l-.5-2L17 4.5l1.5-.5z"/><path d="M5 20l.5 1.5L7 22l-1.5.5L5 24l-.5-1.5L3 22l1.5-.5z"/></svg>`,
-  'mail': `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>`,
-  'calendar': `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
-  'sun': `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`
-};
+const HIST_MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+// La semana empieza en lunes (como el resto de calendarios de la app)
+const HIST_WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+const pad2 = (n) => String(n).padStart(2, '0');
 
 function getGreeting() {
   const h = hourInSpain();
@@ -57,312 +31,165 @@ function getGreeting() {
   return 'Buenas noches';
 }
 
-const HIST_MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-const HIST_WEEKDAYS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
-
-function pad2(n) { return String(n).padStart(2, '0'); }
-
-function createFloatingParticles() {
-  const shapes = [
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
-    '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/></svg>',
-    '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>',
-    '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'
-  ];
-  let html = '';
-  for (let i = 0; i < 20; i++) {
-    const shape = shapes[i % shapes.length];
-    const size = 8 + Math.random() * 16;
-    const left = Math.random() * 100;
-    const delay = Math.random() * 6;
-    const duration = 5 + Math.random() * 5;
-    const opacity = 0.06 + Math.random() * 0.1;
-    html += `<span class="sent-float" style="left:${left}%;width:${size}px;height:${size}px;animation-delay:${delay}s;animation-duration:${duration}s;opacity:${opacity};color:var(--theme-accent)">${shape}</span>`;
-  }
-  return html;
-}
-
-function getMoodStats() {
-  const history = moodStore.getHistory() || [];
-  const today = todayISO();
-
-  // Count days this month
-  const now = new Date();
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const daysThisMonth = history.filter(h => h.date?.startsWith(thisMonth)).length;
-
-  // Count total days tracked
-  const totalDays = history.length;
-
-  // Find most common mood
-  const counts = {};
-  history.forEach(h => { counts[h.moodId] = (counts[h.moodId] || 0) + 1; });
-  let mostCommonId = null;
-  let mostCommonCount = 0;
-  Object.entries(counts).forEach(([id, count]) => {
-    if (count > mostCommonCount) { mostCommonId = id; mostCommonCount = count; }
-  });
-  const mostCommon = mostCommonId ? moodStore.getMoodById(mostCommonId) : null;
-
-  // Current streak
-  let streak = 0;
-  const sortedDates = [...new Set(history.map(h => h.date))].sort().reverse();
-  if (sortedDates.length) {
-    const checkDate = new Date(today);
-    for (let i = 0; i < sortedDates.length; i++) {
-      const expected = new Date(checkDate);
-      expected.setDate(expected.getDate() - i);
-      const expectedStr = todayISO(expected);
-      if (sortedDates[i] === expectedStr) streak++;
-      else break;
-    }
-  }
-
-  return { totalDays, daysThisMonth, mostCommon, streak };
+function longDate(date = new Date()) {
+  const s = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(date);
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export function SentimientosPage(router) {
   const page = document.createElement('div');
   page.className = 'sentimientos-page';
 
-  const todayMood = moodStore.getTodayMood();
   const allMoods = moodStore.getMoods();
-  const stats = getMoodStats();
-  const greeting = getGreeting();
+  let todayMood = moodStore.getTodayMood();
 
-  // Async sync for cross-device moods
-  moodStore.fetchTodayMood().then(remoteMood => {
-    if (remoteMood && remoteMood.id !== todayMood?.id) {
-      const grid = page.querySelector('#moodGrid');
-      const feedback = page.querySelector('#moodFeedback');
-      const saved = page.querySelector('.sent-mood-saved');
-      if (grid) {
-        grid.querySelectorAll('.sent-mood-btn').forEach(b => {
-          b.classList.toggle('is-active', b.dataset.mood === remoteMood.id);
-        });
-      }
-      if (feedback) {
-        feedback.style.display = 'flex';
-        feedback.querySelector('.sent-mood-feedback-icon').textContent = remoteMood.emoji;
-        feedback.querySelector('.sent-mood-feedback-text').textContent = `Hoy te sientes: ${remoteMood.label}`;
-      }
-      if (saved) saved.textContent = `Guardado · ${remoteMood.emoji}`;
-      else {
-        const header = page.querySelector('.sent-mood-header');
-        if (header) {
-          const span = document.createElement('span');
-          span.className = 'sent-mood-saved';
-          span.textContent = `Guardado · ${remoteMood.emoji}`;
-          header.appendChild(span);
-        }
-      }
+  /* ==========================================
+     HISTORIAL — una sola fuente para el mes y las cifras
+     date → moodId. Se siembra con el historial local y se
+     completa con Supabase (una consulta) para que las
+     estadísticas sean las reales también en otro dispositivo.
+     ========================================== */
+  const historyMap = {};
+  let histMonth = new Date();
+  for (const entry of moodStore.getHistory() || []) {
+    if (entry?.date && entry.moodId) historyMap[entry.date] = entry.moodId;
+  }
+  if (todayMood?.id) historyMap[todayISO()] = todayMood.id;
+
+  function computeStats() {
+    const dates = Object.keys(historyMap);
+    const thisMonth = todayISO().slice(0, 7);
+
+    // Racha: cuenta desde hoy y, si hoy todavía no hay estado, sigue desde
+    // ayer (si no, saltaría a 0 cada mañana hasta que se marcara el día).
+    let streak = 0;
+    const cursor = new Date();
+    if (!historyMap[todayISO(cursor)]) cursor.setDate(cursor.getDate() - 1);
+    while (historyMap[todayISO(cursor)]) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
     }
-  });
+
+    const counts = {};
+    dates.forEach(date => { const id = historyMap[date]; counts[id] = (counts[id] || 0) + 1; });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+
+    return {
+      totalDays: dates.length,
+      daysThisMonth: dates.filter(date => date.startsWith(thisMonth)).length,
+      streak,
+      mostCommon: top ? moodStore.getMoodById(top[0]) : null
+    };
+  }
 
   page.innerHTML = `
-    <!-- Calming Hero -->
-    <div class="sent-hero">
-      <div class="sent-hero-particles">${createFloatingParticles()}</div>
-      <div class="sent-hero-glow"></div>
-      <div class="sent-hero-content">
-        <span class="sent-hero-eyebrow">${greeting}, princesa</span>
-        <h1 class="sent-hero-title">
-          Tu espacio de sentimientos
-          <span class="sent-hero-heart">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-          </span>
-        </h1>
-        <p class="sent-hero-sub">Un lugar tranquilo donde guardamos cómo nos sentimos, lo que nos hace felices y todo lo bonito que compartimos.</p>
-      </div>
-    </div>
+    ${renderPageHeader({ title: `${getGreeting()}, princesa`, subtitle: longDate() })}
 
-    <!-- Mood Tracker -->
-    <div class="sent-mood">
-      <div class="sent-mood-header">
-        <h3 class="sent-mood-title">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-          ¿Cómo te sientes hoy?
-        </h3>
-        ${todayMood ? `<span class="sent-mood-saved">Guardado · ${todayMood.emoji}</span>` : ''}
+    <!-- ===== ÁNIMO DE HOY ===== -->
+    <section class="card sent-mood" aria-labelledby="sentMoodTitle">
+      <div class="sent-mood-head">
+        <h2 class="sent-mood-title" id="sentMoodTitle">¿Cómo te sientes hoy?</h2>
+        <span class="sent-mood-saved" id="moodSaved" hidden></span>
       </div>
-      <div class="sent-mood-grid" id="moodGrid">
+      <div class="sent-mood-grid" id="moodGrid" role="group" aria-label="Elige cómo te sientes hoy">
         ${allMoods.map(m => `
-          <button class="sent-mood-btn ${todayMood?.id === m.id ? 'is-active' : ''}" data-mood="${m.id}">
-            <span class="sent-mood-emoji">${m.emoji}</span>
+          <button type="button" class="sent-mood-btn${todayMood?.id === m.id ? ' is-active' : ''}" data-mood="${m.id}" aria-pressed="${todayMood?.id === m.id}">
+            <span class="sent-mood-emoji" aria-hidden="true">${m.emoji}</span>
             <span class="sent-mood-label">${m.label}</span>
           </button>
         `).join('')}
       </div>
-      <div class="sent-mood-feedback" id="moodFeedback" style="display:${todayMood ? 'flex' : 'none'}">
-        <span class="sent-mood-feedback-icon">${todayMood?.emoji || '🤍'}</span>
-        <span class="sent-mood-feedback-text">${todayMood ? `Hoy te sientes: ${todayMood.label}` : ''}</span>
-      </div>
+      <p class="sent-mood-feedback" id="moodFeedback" hidden>
+        <span class="sent-mood-feedback-icon" aria-hidden="true"></span>
+        <span class="sent-mood-feedback-text"></span>
+      </p>
+    </section>
 
-      <!-- Mood Stats Mini -->
-      ${stats.totalDays > 0 ? `
-      <div class="sent-mood-stats">
-        <div class="sent-stat">
-          <span class="sent-stat-value">${stats.totalDays}</span>
-          <span class="sent-stat-label">días registrados</span>
-        </div>
-        <div class="sent-stat">
-          <span class="sent-stat-value">${stats.streak}</span>
-          <span class="sent-stat-label">días seguidos</span>
-        </div>
-        ${stats.mostCommon ? `
-        <div class="sent-stat">
-          <span class="sent-stat-value">${stats.mostCommon.emoji}</span>
-          <span class="sent-stat-label">más frecuente</span>
-        </div>
-        ` : ''}
-        <div class="sent-stat">
-          <span class="sent-stat-value">${stats.daysThisMonth}</span>
-          <span class="sent-stat-label">este mes</span>
-        </div>
-      </div>
-      ` : ''}
-    </div>
+    <div class="sent-stats" id="sentStats" hidden></div>
 
-    <!-- Historial de ánimos — tu mes en una mirada -->
-    <div class="sent-history">
+    <!-- ===== TU MES DE ÁNIMOS ===== -->
+    <section class="card sent-history" aria-labelledby="sentHistoryTitle">
       <div class="sent-history-head">
-        <div class="sent-history-title-wrap">
-          <span class="sent-history-icon" aria-hidden="true">📖</span>
-          <div>
-            <h3 class="sent-history-title">Tu mes de ánimos</h3>
-            <p class="sent-history-sub" id="sentHistorySub">Así te has sentido últimamente</p>
-          </div>
+        <div class="sent-history-copy">
+          <h2 class="sent-history-title" id="sentHistoryTitle">Tu mes de ánimos</h2>
+          <p class="sent-history-sub" id="sentHistorySub"></p>
         </div>
         <div class="sent-history-nav">
-          <button type="button" class="sent-history-nav-btn" id="histPrev" aria-label="Mes anterior">‹</button>
+          <button type="button" class="icon-btn" id="histPrev" aria-label="Mes anterior">${icon('back', 18)}</button>
           <span class="sent-history-label" id="histLabel"></span>
-          <button type="button" class="sent-history-nav-btn" id="histNext" aria-label="Mes siguiente">›</button>
+          <button type="button" class="icon-btn" id="histNext" aria-label="Mes siguiente">${icon('chev', 18)}</button>
         </div>
       </div>
-      <div class="sent-hist-cal" id="histCal">
-        <div class="sent-hist-skeleton" aria-hidden="true"></div>
-      </div>
+      <div class="sent-hist-cal" id="histCal"></div>
       <div class="sent-history-legend" id="histLegend"></div>
-    </div>
+    </section>
 
-    <!-- Navigation Cards -->
-    <div class="sent-cards-label">
-      <span class="sent-cards-label-line"></span>
-      <span class="sent-cards-label-text">Explorar</span>
-      <span class="sent-cards-label-line"></span>
-    </div>
-
+    <!-- ===== EXPLORAR ===== -->
+    <h2 class="section-title">Explorar</h2>
     <div class="sent-cards-grid">
-      ${CARDS.map((card, i) => `
-        <button type="button" class="sent-card" data-href="${card.href}" style="--card-color:var(${card.colorVar});--enter-delay:${i * 0.08}s">
-          <div class="sent-card-glow"></div>
-          <div class="sent-card-cover">
-            <span class="sent-card-icon">${ICON_SVGS[card.icon] || ''}</span>
-            <span class="sent-card-emoji" aria-hidden="true">${card.emoji}</span>
-          </div>
-          <div class="sent-card-body">
-            <h3 class="sent-card-title">${card.title}</h3>
-          </div>
+      ${CARDS.map(card => `
+        <button type="button" class="sent-card lift" data-href="${card.href}" style="--card-color:${card.color}">
+          <span class="sent-card-cover">${icon(card.icon, 24)}</span>
+          <span class="sent-card-body">
+            <span class="sent-card-title">${card.title}</span>
+            <span class="sent-card-desc">${card.desc}</span>
+          </span>
         </button>
       `).join('')}
     </div>
   `;
 
-  // Bind card clicks
-  page.querySelectorAll('.sent-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const href = card.dataset.href;
-      if (href) router.navigate(href);
-    });
-  });
-
-  // Bind mood buttons
-  // Aplica a la UI el ánimo activo (o "sin ánimo" si mood es null)
+  // ==========================================
+  // ÁNIMO — pintar el estado guardado
+  // ==========================================
   function applyMoodUI(mood) {
-    page.querySelectorAll('.sent-mood-btn').forEach(b => b.classList.remove('is-active'));
+    todayMood = mood;
+    const today = todayISO();
+    if (mood) historyMap[today] = mood.id;
+    else delete historyMap[today];
+
+    page.querySelectorAll('.sent-mood-btn').forEach(btn => {
+      const active = btn.dataset.mood === mood?.id;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+
+    const saved = page.querySelector('#moodSaved');
     const feedback = page.querySelector('#moodFeedback');
-    const saved = page.querySelector('.sent-mood-saved');
     if (mood) {
-      const activeBtn = page.querySelector(`.sent-mood-btn[data-mood="${mood.id}"]`);
-      if (activeBtn) activeBtn.classList.add('is-active');
+      if (saved) { saved.textContent = `Guardado · ${mood.emoji}`; saved.hidden = false; }
       if (feedback) {
-        feedback.style.display = 'flex';
         feedback.querySelector('.sent-mood-feedback-icon').textContent = mood.emoji;
         feedback.querySelector('.sent-mood-feedback-text').textContent = `Hoy te sientes: ${mood.label}`;
-      }
-      if (saved) {
-        saved.textContent = `Guardado · ${mood.emoji}`;
-      } else {
-        const header = page.querySelector('.sent-mood-header');
-        if (header) {
-          const span = document.createElement('span');
-          span.className = 'sent-mood-saved';
-          span.textContent = `Guardado · ${mood.emoji}`;
-          header.appendChild(span);
-        }
+        feedback.hidden = false;
       }
     } else {
-      if (feedback) feedback.style.display = 'none';
-      if (saved) saved.remove();
+      if (saved) saved.hidden = true;
+      if (feedback) feedback.hidden = true;
     }
   }
 
-  // Refresca historial del mes + estadísticas tras guardar/eliminar
-  function refreshMoodSide() {
-    renderHistory();
-    const newStats = getMoodStats();
-    const statsEl = page.querySelector('.sent-mood-stats');
-    if (statsEl) {
-      statsEl.innerHTML = `
-        <div class="sent-stat"><span class="sent-stat-value">${newStats.totalDays}</span><span class="sent-stat-label">días registrados</span></div>
-        <div class="sent-stat"><span class="sent-stat-value">${newStats.streak}</span><span class="sent-stat-label">días seguidos</span></div>
-        ${newStats.mostCommon ? `<div class="sent-stat"><span class="sent-stat-value">${newStats.mostCommon.emoji}</span><span class="sent-stat-label">más frecuente</span></div>` : ''}
-        <div class="sent-stat"><span class="sent-stat-value">${newStats.daysThisMonth}</span><span class="sent-stat-label">este mes</span></div>
-      `;
-    }
-  }
-
-  page.querySelectorAll('.sent-mood-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const moodId = btn.dataset.mood;
-      btn.classList.add('is-loading');
-
-      // Tocar la emoción YA activa la ELIMINA: no tiene que haber una emoción
-      // puesta sí o sí. Si el estado lleva más de 5 min, quedó bloqueado.
-      if (btn.classList.contains('is-active')) {
-        try {
-          const res = await moodStore.removeTodayMood();
-          if (res.locked) {
-            showToast('Este ánimo ya quedó registrado 🤍', 'info');
-          } else {
-            applyMoodUI(res.mood);
-            refreshMoodSide();
-            showToast(res.mood ? 'Ánimo actualizado' : 'Ánimo eliminado · hoy sin emoción', 'info');
-          }
-        } catch (err) { /* silent */ }
-        btn.classList.remove('is-loading');
-        return;
-      }
-
-      try {
-        await moodStore.saveMood(moodId);
-        applyMoodUI(moodStore.getMoodById(moodId));
-        refreshMoodSide();
-      } catch (err) { /* silent */ }
-      btn.classList.remove('is-loading');
-    });
-  });
-
   // ==========================================
-  // HISTORIAL — Tu mes de ánimos
+  // CIFRAS
   // ==========================================
-  let histMonth = new Date();
-  let histToken = 0; // guard de carrera: un render obsoleto se descarta
-
-  // La fecha "hoy" del calendario usa la MISMA convención que el moodStore:
-  // el día cambia a las 00:00 de España (península).
-  function moodTodayStr() {
-    return todayISO();
+  function renderStats() {
+    const box = page.querySelector('#sentStats');
+    if (!box) return;
+    const stats = computeStats();
+    if (!stats.totalDays) { box.hidden = true; box.innerHTML = ''; return; }
+    const items = [
+      { value: stats.totalDays, label: stats.totalDays === 1 ? 'día registrado' : 'días registrados' },
+      { value: stats.streak, label: stats.streak === 1 ? 'día seguido' : 'días seguidos' },
+      { value: stats.mostCommon?.emoji || '—', label: 'más frecuente', emoji: !!stats.mostCommon },
+      { value: stats.daysThisMonth, label: 'este mes' }
+    ];
+    box.innerHTML = items.map(item => `
+      <div class="sent-stat">
+        <span class="sent-stat-value${item.emoji ? ' sent-stat-value--emoji' : ''}">${item.value}</span>
+        <span class="sent-stat-label">${item.label}</span>
+      </div>
+    `).join('');
+    box.hidden = false;
   }
 
   function renderHistory() {
@@ -372,87 +199,111 @@ export function SentimientosPage(router) {
     const sub = page.querySelector('#sentHistorySub');
     if (!cal || !label) return;
 
-    const token = ++histToken;
     const year = histMonth.getFullYear();
     const month = histMonth.getMonth() + 1;
     const monthKey = `${year}-${pad2(month)}`;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const todayStr = todayISO();
     label.textContent = `${HIST_MONTHS[month - 1]} ${year}`;
 
-    // Mapa fecha → moodId (local primero, servidor después)
-    const map = {};
-    (moodStore.getHistory() || []).forEach(h => {
-      if (h.date && h.moodId) map[h.date] = h.moodId;
-    });
+    const monthEntries = Object.keys(historyMap).filter(date => date.startsWith(monthKey));
+    const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7; // lunes = 0
 
-    // Rellena el mes desde Supabase (multi-dispositivo) sin bloquear el render
-    const user = userStore.getUser();
-    const daysInMonth = new Date(year, month, 0).getDate();
-    if (user) {
-      moodStore.getMoodHistory(user.id, `${monthKey}-01`, `${monthKey}-${pad2(daysInMonth)}`)
-        .then(rows => {
-          if (token !== histToken) return; // mes obsoleto: descartar merge
-          if (!rows || !rows.length) return;
-          let changed = false;
-          rows.forEach(r => {
-            if (r.date && r.mood && !map[r.date]) { map[r.date] = r.mood; changed = true; }
-          });
-          if (changed) drawCalendar();
-        })
-        .catch(() => { /* silencioso: queda el historial local */ });
+    let cells = '';
+    for (let i = 0; i < firstWeekday; i++) cells += '<span class="sent-hist-cell is-offset" aria-hidden="true"></span>';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${monthKey}-${pad2(day)}`;
+      const mood = historyMap[dateStr] ? moodStore.getMoodById(historyMap[dateStr]) : null;
+      const isToday = dateStr === todayStr;
+      const isFuture = dateStr > todayStr;
+      cells += `
+        <div class="sent-hist-cell${mood ? ' has-mood' : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}"
+             ${mood ? `title="${mood.label}" aria-label="${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}"` : ''}>
+          <span class="sent-hist-day">${day}</span>
+          ${mood ? `<span class="sent-hist-emoji" aria-hidden="true">${mood.emoji}</span>` : ''}
+        </div>`;
     }
 
-    function drawCalendar() {
-      if (token !== histToken) return; // el usuario ya navegó a otro mes
-      const firstWeekday = new Date(year, month - 1, 1).getDay();
-      const todayStr = moodTodayStr();
-      const thisMonthEntries = Object.keys(map).filter(d => d.startsWith(monthKey)).length;
+    cal.innerHTML = `
+      <div class="sent-hist-grid">
+        ${HIST_WEEKDAYS.map(day => `<span class="sent-hist-hd">${day}</span>`).join('')}
+        ${cells}
+      </div>
+      ${monthEntries.length ? '' : `<p class="sent-hist-empty">Aún no hay ánimos este mes.<br><small>Cada día que lo cuentas queda guardado aquí.</small></p>`}
+    `;
 
-      let cells = '';
-      for (let i = 0; i < firstWeekday; i++) {
-        cells += '<span class="sent-hist-cell is-offset" aria-hidden="true"></span>';
-      }
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${monthKey}-${pad2(day)}`;
-        const moodId = map[dateStr];
-        const mood = moodId ? moodStore.getMoodById(moodId) : null;
-        const isToday = dateStr === todayStr;
-        const isFuture = dateStr > todayStr;
-        cells += `
-          <div class="sent-hist-cell${mood ? ' has-mood' : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}"
-               ${mood ? `title="${mood.label}" aria-label="${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}"` : ''}>
-            <span class="sent-hist-day">${day}</span>
-            ${mood ? `<span class="sent-hist-emoji" aria-hidden="true">${mood.emoji}</span>` : ''}
-          </div>`;
-      }
-
-      const todayLabel = monthKey === moodTodayStr().slice(0, 7);
-      const emptyHint = thisMonthEntries === 0
-        ? `<p class="sent-hist-empty">Aún no has registrado cómo te sentías este mes 💭<br><small>Cada día que lo cuentas queda guardado aquí.</small></p>`
-        : '';
-
-      cal.innerHTML = `
-        <div class="sent-hist-grid">
-          ${HIST_WEEKDAYS.map(w => `<span class="sent-hist-hd">${w}</span>`).join('')}
-          ${cells}
-        </div>
-        ${emptyHint}
-      `;
-
-      // Leyenda: solo los ánimos presentes en el mes visible
-      const present = [...new Set(Object.keys(map).filter(d => d.startsWith(monthKey)).map(d => map[d]))]
+    if (legend) {
+      const present = [...new Set(monthEntries.map(date => historyMap[date]))]
         .map(id => moodStore.getMoodById(id))
         .filter(Boolean);
-      if (legend) {
-        legend.innerHTML = present.length
-          ? present.map(m => `<span class="sent-hist-legend-item"><span class="sent-hist-legend-emoji">${m.emoji}</span>${m.label}</span>`).join('')
-          : '';
-      }
-      if (sub) sub.textContent = todayLabel ? 'Así te has sentido últimamente' : `Cómo te sentías en ${HIST_MONTHS[month - 1].toLowerCase()}`;
+      legend.innerHTML = present.length
+        ? present.map(mood => `<span class="sent-hist-legend-item"><span aria-hidden="true">${mood.emoji}</span>${mood.label}</span>`).join('')
+        : '';
     }
-
-    drawCalendar();
+    if (sub) sub.textContent = monthEntries.length
+      ? `${monthEntries.length} ${monthEntries.length === 1 ? 'día guardado' : 'días guardados'} este mes`
+      : 'Todavía sin registros este mes';
   }
 
+  // Historial completo desde el servidor: una sola consulta para toda la vida
+  // del usuario (un estado por día, poco peso) y las cifras ya son las reales.
+  async function loadRemoteHistory() {
+    const user = userStore.getUser();
+    if (!user) return;
+    try {
+      const rows = await moodStore.getMoodHistory(user.id, '2000-01-01', todayISO());
+      if (!rows?.length) return;
+      let changed = false;
+      for (const row of rows) {
+        // Vienen de la más reciente a la más antigua: el primer estado de cada
+        // día es el último que se guardó, que es el que cuenta.
+        if (!row?.date || !row.mood || historyMap[row.date]) continue;
+        historyMap[row.date] = row.mood;
+        changed = true;
+      }
+      if (changed) { renderStats(); renderHistory(); }
+    } catch { /* sin conexión: vale el historial local */ }
+  }
+
+  page.querySelectorAll('.sent-card').forEach(card => {
+    card.addEventListener('click', () => router.navigate(card.dataset.href));
+  });
+
+  page.querySelectorAll('.sent-mood-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const moodId = btn.dataset.mood;
+      btn.classList.add('is-loading');
+
+      // Tocar la emoción ya activa la quita: no tiene que haber una puesta
+      // sí o sí. Si el estado lleva más de 5 min, quedó bloqueado.
+      const removing = btn.classList.contains('is-active');
+      try {
+        if (removing) {
+          const res = await moodStore.removeTodayMood();
+          if (res.locked) {
+            toast('Este ánimo ya quedó registrado 🤍');
+          } else {
+            applyMoodUI(res.mood);
+            refreshMoodSide();
+            toast(res.mood ? 'Ánimo actualizado' : 'Ánimo eliminado · hoy sin emoción');
+          }
+        } else {
+          await moodStore.saveMood(moodId);
+          applyMoodUI(moodStore.getMoodById(moodId));
+          refreshMoodSide();
+        }
+      } catch { /* offline: se reintenta al volver */ }
+
+      btn.classList.remove('is-loading');
+    });
+  });
+
+  function refreshMoodSide() {
+    renderStats();
+    renderHistory();
+  }
+
+  // Meses del historial
   page.querySelector('#histPrev')?.addEventListener('click', () => {
     histMonth = new Date(histMonth.getFullYear(), histMonth.getMonth() - 1, 1);
     renderHistory();
@@ -462,7 +313,17 @@ export function SentimientosPage(router) {
     renderHistory();
   });
 
+  // Estado inicial
+  applyMoodUI(todayMood);
+  renderStats();
   renderHistory();
+  loadRemoteHistory();
+
+  // El ánimo puede haber cambiado en otro dispositivo mientras mirábamos
+  moodStore.fetchTodayMood().then(remoteMood => {
+    if (!page.isConnected) return;
+    if ((remoteMood?.id || null) !== (todayMood?.id || null)) applyMoodUI(remoteMood);
+  });
 
   return page;
 }
