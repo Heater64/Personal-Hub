@@ -127,6 +127,7 @@ async function saveContent(id, data) {
       .upsert({ id, data, updated_at: new Date().toISOString() }, { onConflict: 'id' });
     if (error) throw error;
     lsSet('ph.config.' + id, data);
+    notifyLocalSave(id, data);
     return true;
   } catch (err) {
     if (isSupabaseConfigured()) {
@@ -134,8 +135,34 @@ async function saveContent(id, data) {
       throw new Error(`No se pudo guardar en Supabase: ${err.message}`);
     }
     lsSet('ph.config.' + id, data);
+    notifyLocalSave(id, data);
     return true;
   }
+}
+
+/**
+ * Tras guardar desde el propio panel: refresca el espejo local e invalida
+ * cachés en memoria + avisa a las páginas montadas.
+ * Sin esto, la usuaria que acaba de añadir un regalo en el Admin no lo ve
+ * hasta recargar: el catálogo de regalos se cachea en memoria y la página
+ * ya montada solo se repinta si alguien dispara el evento de cambio.
+ * (El Realtime/polling de realtime.service.js cubre a OTROS dispositivos;
+ * este camino cubre la misma sesión.)
+ */
+function notifyLocalSave(id, data) {
+  try {
+    if (data !== undefined) localStorage.setItem('ph.config.' + id, JSON.stringify(data));
+  } catch { /* cuota llena: ignorar */ }
+
+  if (id === 'gifts') {
+    // Import diferido: gifts.service usa db.service, así que una importación
+    // estática aquí crearía un ciclo.
+    import('./gifts.service.js')
+      .then(mod => mod.invalidateGiftsCache())
+      .catch(() => {});
+  }
+
+  window.dispatchEvent(new CustomEvent('ph:content-updated', { detail: { id } }));
 }
 
 async function checkConnection() {

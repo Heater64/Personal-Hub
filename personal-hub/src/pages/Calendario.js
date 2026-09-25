@@ -17,6 +17,7 @@ import {
 import { buildVideoPlayer } from '../components/MediaLightbox.js';
 import { loadGiftsCatalog } from '../services/gifts.service.js';
 import { db } from '../services/db.service.js';
+import { userStore } from '../stores/user.store.js';
 import { onContentChange } from '../services/realtime.service.js';
 import { renderMathText } from '../utils/renderMath.js';
 import { escapeHtml } from '../utils/escape.js';
@@ -215,15 +216,19 @@ export function CalendarioPage(router) {
   `;
 
   function renderHead() {
+    // El modo revisión (abrir/bloquear días artificialmente) es una
+    // herramienta de revisión del Admin, no un ajuste de la usuaria:
+    // solo se muestra si quien entra es admin.
     return `
       <div class="scr-head">
         <div>
           <h1 class="scr-title">Calendario</h1>
           <p class="sub">Un regalo cada día, pensado para ti</p>
         </div>
+        ${userStore.isAdmin ? `
         <div class="head-actions">
           <button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>
-        </div>
+        </div>` : ''}
       </div>
     `;
   }
@@ -901,6 +906,14 @@ export function CalendarioPage(router) {
   if (devBtn) devBtn.addEventListener('click', openDevSheet);
 
   loadProgress();
+
+  // Un override creado antes (p. ej. como admin) no debe seguir alterando
+  // el calendario en una cuenta de usuaria: se limpia al detectar que ya
+  // no somos admin y había algo forzado.
+  if (!userStore.isAdmin && getCalendarOverrides().mode !== 'auto') {
+    clearCalendarOverrides();
+  }
+
   paintAll();
 
   loadGiftsCatalog().then(data => {
