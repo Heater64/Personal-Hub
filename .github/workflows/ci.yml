@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Cancela la ejecución anterior si llega una commit nueva a la misma rama.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-build-audit:
+    name: Tests, build y auditoría
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Valores de mentira: el build solo necesita que existan para no
+      # emitir "undefined" en el bundle. Las reales viven en Vercel.
+      - name: Variables de build
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+          VITE_CLOUDINARY_CLOUD_NAME: placeholder
+          VITE_CLOUDINARY_UPLOAD_PRESET: placeholder
+
+      - name: Tests de contrato
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # El informe de auditoría bloqueaba el lanzamiento por nanoid < 3.3.18.
+      - name: Auditoría de dependencias
+        run: npm audit --audit-level=high
+
+      - name: Comprobar que el build no arrastra secretos
+        run: |
+          if grep -rIl --exclude-dir=assets --exclude-dir=games \
+               -E 'eyJ[A-Za-z0-9_-]{20,}\.|service_role' personal-hub/dist; then
+            echo "::error::El bundle contiene algo con pinta de clave de Supabase"
+            exit 1
+          fi
+          echo "Sin claves en el bundle."

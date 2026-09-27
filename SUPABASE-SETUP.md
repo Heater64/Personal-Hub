@@ -1,6 +1,9 @@
 # Supabase — Setup completo (SQL + variables)
 
-El esquema base está en **`supabase-schema.sql`**. Las migraciones incrementales de `sql/` deben aplicarse después cuando se indique, especialmente `sql/016_aislamiento_playlists.sql`.
+El esquema se aplica desde la carpeta **`sql/`**, archivo por archivo, en orden
+numérico (ver `sql/README.md`). `supabase-schema.sql` es el monolítico
+histórico: úsalo solo para una base vacía de verdad, no para actualizar una
+que ya tiene `sql/` aplicado.
 Si notas fallos tipo "RLS / row-level security" al guardar contenido, significa que este esquema
 NO se ha aplicado aún en tu proyecto de Supabase: las políticas no existen y la tabla queda
 en modo denegar-todo.
@@ -10,9 +13,11 @@ en modo denegar-todo.
 ## 1. Aplicar el esquema (hacerlo UNA vez)
 
 1. Abre [Supabase Dashboard](https://supabase.com/dashboard) → tu proyecto → **SQL Editor**.
-2. Pega **TODO** el contenido de `supabase-schema.sql`.
-3. Ejecuta (`Run`). Es **idempotente**: puedes volver a ejecutarlo sin romper nada
+2. Ejecuta los archivos de `sql/` en orden: `000` → `018`. Cada uno es
+   **idempotente**: puedes volver a ejecutarlo sin romper nada
    (`IF NOT EXISTS`, `DROP POLICY IF EXISTS`, `ON CONFLICT DO NOTHING`).
+3. Para una base que ya está en marcha, sube **solo los que falten**
+   (los últimos son `017` y `018`; ver `sql/README.md`).
 
 ### Qué crea
 
@@ -50,9 +55,11 @@ SELECT id, email, role, enabled FROM public.profiles WHERE role = 'admin';
 > La primera vez que el admin (u otro usuario) inicia sesión, el trigger `on_auth_user_created`
 > crea su fila en `profiles`. El email `admin@personalhub.com` se marca como `admin` automáticamente, pero solo una cuenta con correo confirmado puede ejercer privilegios.
 
-### Migración de seguridad obligatoria
+### Migraciones de seguridad obligatorias
 
-Después de aplicar el esquema base, ejecuta `sql/016_aislamiento_playlists.sql`. Esta migración:
+Después del esquema base, ejecuta `sql/016` a `sql/018` en orden:
+
+**`sql/016_aislamiento_playlists.sql`**
 
 - elimina las políticas `USING (true)` de playlists;
 - impide que un usuario lea, modifique o borre playlists de otro;
@@ -60,6 +67,24 @@ Después de aplicar el esquema base, ejecuta `sql/016_aislamiento_playlists.sql`
 - protege `profiles.role` y `profiles.enabled` frente a cambios del propio usuario.
 
 Las playlists históricas con `created_by IS NULL` no se reasignan automáticamente. Debe hacerlo un administrador de forma explícita tras identificar al propietario real.
+
+**`sql/017_enabled_autoritativo.sql`**
+
+- `profiles.enabled` pasa a ser la **única** fuente de verdad: el login, las
+  rutas protegidas, las APIs y las RLS consultan `public.is_enabled()`.
+- Impide que un usuario se auto-habilite o se auto-asigne el rol `admin`
+  editando su propio `user_metadata` (antes solo se protegía `profiles`).
+- Un administrador deshabilitado pierde el acceso en el acto, aunque tenga
+  la sesión abierta.
+- Cierra las cuentas que el panel ya tenía marcadas como deshabilitadas.
+
+**`sql/018_push_subscriptions.sql`**
+
+- Saca las suscripciones de push de la fila global de `content` —que era
+  legible por **cualquier** usuario autenticado, con su endpoint y claves de
+  cifrado— a una tabla `push_subscriptions` con RLS por usuario.
+- Copia los datos existentes y solo borra la fila antigua cuando el recuento
+  coincide. Hay copia de seguridad en `push_subscriptions_legacy_backup`.
 
 ---
 

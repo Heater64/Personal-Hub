@@ -7,6 +7,7 @@
    paleta azul/dorado y fuente propias.)
    ========================================== */
 
+import '../styles/ositos.css';
 import { h, icon, openSheet, closeSheets, toast, emptyState } from '../components/ui.js';
 import { buildVideoPlayer } from '../components/MediaLightbox.js';
 import { escapeHtml } from '../utils/escape.js';

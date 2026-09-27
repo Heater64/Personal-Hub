@@ -11,6 +11,7 @@
 
    ========================================== */
 
+import '../styles/minecraft.css';
 import { showToast } from '../components/Toast.js';
 import { renderPageHeader } from '../components/PageHeader.js';
 import { escapeHtml } from '../utils/escape.js';

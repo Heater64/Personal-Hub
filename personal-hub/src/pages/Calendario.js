@@ -11,6 +11,7 @@
      · respuestas de la usuaria (db.saveGiftResponse)
    ========================================== */
 
+import '../styles/calendario.css';
 import {
   h, icon, emptyState, openSheet, closeSheets, toast
 } from '../components/ui.js';
@@ -49,7 +50,6 @@ const TYPE_META = {
   polaroid:    { icon: 'camera',   label: 'Foto' },
   video:       { icon: 'video',    label: 'Vídeo' },
   surprise:    { icon: 'star',     label: 'Sorpresa' },
-  offline:     { icon: 'external', label: 'Reto real' },
   craft:       { icon: 'pencil',   label: 'Manualidad' },
   giftBox:     { icon: 'gift',     label: 'Regalo' },
   game:        { icon: 'game',     label: 'Juego' },
@@ -69,7 +69,7 @@ const metaOf = (type) => TYPE_META[type] || TYPE_META.affirmation;
 const TYPE_TONES = {
   letter: 'rose', affirmation: 'rose', riddle: 'amber', curiosity: 'green',
   relax: 'green', challenge: 'amber', polaroid: 'rose', video: 'violet',
-  surprise: 'amber', offline: 'green', craft: 'amber', giftBox: 'rose',
+  surprise: 'amber', craft: 'amber', giftBox: 'rose',
   game: 'violet', cassette: 'violet', clickStar: 'amber', wishlist: 'rose',
   quiz: 'green', memory: 'rose', plan: 'green', coupon: 'amber', math: 'blue'
 };
@@ -83,12 +83,71 @@ const PROGRESS_KEY = () => userPrefKey('giftProgress');
 let catalog = null;
 let progressMap = {};
 
+// Respuestas de la usuaria, indexadas por giftId. Vive a nivel de módulo
+// porque el calendario necesita saber, al pintar, si un regalo tiene una
+// pregunta pendiente de contestar o ya está respondida.
+let responsesMap = {};
+
+/**
+ * Si un regalo abre la cajita de respuesta: basta con que tenga `question`.
+ *
+ * Se incluye riddle a proposito: en agosto se responderon 9 acertijos desde
+ * aqui, asi que ese historico es real y debe seguir siendo visible. Ademas
+ * al abrir un acertijo queda el "adivina y luego descubre la respuesta", que
+ * encaja con escribir la propia.
+ *
+ * math no entra porque sus retos usan `problem`, no `question`: no hay nada
+ * que preguntar y la comprobacion ya lo resuelve sin una lista de tipos.
+ */
+function hasAskBox(gift) {
+  return !!gift?.data?.question;
+}
+
+/**
+ * Único punto por el que se escribe una respuesta. Actualiza la caché en
+ * memoria ANTES de repintar: si solo se guardara en Supabase/localStorage, el
+ * calendario seguiría mostrando el sobre y el contador de pendientes, porque
+ * `pendingAnswer` lee de aquí.
+ */
+function setResponse(giftId, text, extra = {}) {
+  responsesMap = { ...responsesMap, [giftId]: { text, respondedAt: new Date().toISOString(), ...extra } };
+  paintAll();
+}
+
+/** Regalos que tienen pregunta y aún no se han contestado. */
+const pendingAnswer = (gift) => hasAskBox(gift) && !responsesMap[gift.id]?.text;
+
+/** Regalos con pregunta ya respondida. */
+const alreadyAnswered = (gift) => hasAskBox(gift) && !!responsesMap[gift.id]?.text;
+
+/** Cuántas preguntas quedan sin contestar en todo el catálogo. */
+function pendingAnswerCount() {
+  if (!catalog?.gifts) return 0;
+  return catalog.gifts.filter(pendingAnswer).length;
+}
+
 function loadProgress() {
   try { progressMap = JSON.parse(localStorage.getItem(PROGRESS_KEY()) || '{}'); } catch { progressMap = {}; }
 }
 
 function saveProgress() {
   try { localStorage.setItem(PROGRESS_KEY(), JSON.stringify(progressMap)); } catch { /* cuota llena */ }
+}
+
+/**
+ * Carga las respuestas de la usuaria una vez, para poder marcar en el
+ * calendario qué preguntas quedan. No bloquea el pintado: si falla, el
+ * calendario se ve igual y solo se pierde el distintivo.
+ *
+ * Devuelve la promesa para que quien la llame repinte. Esta función es de
+ * módulo y NO puede llamar a paintAll(), que vive dentro del cierre de la
+ * página: si lo hiciera, la promesa rechazaría al no encontrarlo y el catch
+ * dejaria la cache vacia.
+ */
+function loadMyResponses() {
+  return db.getMyGiftResponses()
+    .then((data) => { responsesMap = data || {}; return responsesMap; })
+    .catch(() => { /* se conserva lo que hubiera: el distintivo es lo de menos */ });
 }
 
 /* ==========================================
@@ -107,6 +166,63 @@ function dayIds(dateStr) {
 }
 
 const giftOf = (id) => catalog?.giftsById?.[id] || null;
+
+/* ==========================================
+   BUSCADOR
+   Con 393 regalos repartidos por un año, la única forma de llegar a uno
+   era recorrer día a día. El indice se calcula UNA vez por cada carga del
+   catálogo (recorrer los 393 regalos por cada tecla seria tonto) y se
+   reutiliza en cada pulsación.
+   ========================================== */
+
+/** Índice de búsqueda: regalo + fecha + texto en minúsculas. */
+let searchIndex = null;
+let searchIndexFor = null;
+
+function getSearchIndex() {
+  if (searchIndex && searchIndexFor === catalog) return searchIndex;
+  const dateById = {};
+  for (const key of Object.keys(catalog?.months || {})) {
+    const mapping = catalog.months[key]?.calendarMapping || {};
+    for (const day of Object.keys(mapping)) {
+      const value = mapping[day];
+      const ids = Array.isArray(value) ? value : value ? [value] : [];
+      for (const id of ids) dateById[id] = `${key}-${pad(day)}`;
+    }
+  }
+  searchIndex = (catalog?.gifts || [])
+    .filter((gift) => gift?.id)
+    .map((gift) => {
+      const data = gift.data || {};
+      const dateStr = dateById[gift.id] || '';
+      // El nombre del mes entra en el indice: buscar "diciembre" tiene que
+      // devolver los regalos de diciembre, no cero resultados.
+      const mes = dateStr ? monthLabel(monthKeyOf(dateStr)) : '';
+      const texto = [
+        gift.title,
+        metaOf(gift.type).label,
+        mes,
+        data.message, data.content, data.fact, data.caption,
+        data.question, data.instructions, data.problem, data.redirectUrl,
+      ].filter(Boolean).join(' ');
+      return { gift, dateStr, texto: texto.toLowerCase() };
+    });
+  searchIndexFor = catalog;
+  return searchIndex;
+}
+
+/** Regalos que casan con la búsqueda, ordenados por fecha. */
+function searchGifts(query, limit = 60) {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return [];
+  // Varias palabras: tienen que aparecer todas. Asi "carta playa" encuentra
+  // la carta que habla de la playa.
+  const terms = q.split(/\s+/).filter(Boolean);
+  return getSearchIndex()
+    .filter((entry) => terms.every((term) => entry.texto.includes(term)))
+    .sort((a, b) => (a.dateStr || '').localeCompare(b.dateStr || ''))
+    .slice(0, limit);
+}
 
 function monthKeyOf(dateStr) { return dateStr.slice(0, 7); }
 
@@ -132,6 +248,19 @@ const mondayIndex = (year, month, day) => (new Date(year, month - 1, day).getDay
    ========================================== */
 const allOpened = (ids) => ids.length > 0 && ids.every(id => progressMap[id]?.opened);
 
+/** Cuántos de los regalos del día están abiertos. */
+const openedCount = (ids) => ids.filter(id => progressMap[id]?.opened).length;
+
+/**
+ * Un día con 2 de 3 abierta no es lo mismo que uno sin abrir nada, y antes
+ * ambos salían con el mismo puntito. `partial` distingue ese caso para que
+ * de un vistazo se vea cuánto queda.
+ */
+const isPartial = (ids) => {
+  const n = openedCount(ids);
+  return n > 0 && n < ids.length;
+};
+
 /** Progreso real de la app: nº de regalos abiertos / total. */
 function overallProgress() {
   const entries = Object.keys(catalog?.giftsById || {});
@@ -147,10 +276,7 @@ function dayState(dateStr, ids) {
   // sin esperar a las fechas. Ganan sobre la lógica de fecha.
   const override = applyCalendarDayOverride(dateStr);
   if (override === 'locked') return 'locked';
-  if (override === 'open') {
-    if (allOpened(ids)) return 'opened';
-    return dateStr === todayISO() ? 'today' : 'open';
-  }
+  if (override === 'open') return openState(dateStr, ids);
 
   // Bloqueado por fecha: se comprueba antes de "opened" para que los días
   // futuros abiertos con versiones antiguas vuelvan a bloquearse.
@@ -161,8 +287,14 @@ function dayState(dateStr, ids) {
   });
   if (!anyUnlocked) return 'locked';
 
+  return openState(dateStr, ids);
+}
+
+/** Estado de un día que ya se puede abrir: abierto, a medias o pendiente. */
+function openState(dateStr, ids) {
   if (allOpened(ids)) return 'opened';
-  return dateStr === today ? 'today' : 'open';
+  if (isPartial(ids)) return 'partial';
+  return dateStr === todayISO() ? 'today' : 'open';
 }
 
 /** Siguiente día con contenido a partir de hoy (inclusive). */
@@ -212,23 +344,33 @@ export function CalendarioPage(router) {
     ${renderHead()}
     <div id="calSpot"></div>
     <div id="calMonth"></div>
-    <section id="calDay" aria-live="polite"></section>
+    <section id="calDay"></section>
+    <!-- Anuncia SOLO el cambio de día, no cada repintado. Con aria-live en el
+         panel entero, moverse con las flechas entre regalos lo reponia todo
+         (el panel se repinta porque navegar marca el regalo como visto) y un
+         lector de pantalla lo leia entero en cada pulsación. -->
+    <p class="sr-only" id="calAnnounce" aria-live="polite"></p>
   `;
 
   function renderHead() {
     // El modo revisión (abrir/bloquear días artificialmente) es una
     // herramienta de revisión del Admin, no un ajuste de la usuaria:
     // solo se muestra si quien entra es admin.
+    const pendientes = pendingAnswerCount();
     return `
       <div class="scr-head">
         <div>
           <h1 class="scr-title">Calendario</h1>
           <p class="sub">Un regalo cada día, pensado para ti</p>
         </div>
-        ${userStore.isAdmin ? `
         <div class="head-actions">
-          <button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>
-        </div>` : ''}
+          <button type="button" class="icon-btn" id="calSearchBtn" aria-label="Buscar regalos" title="Buscar regalos">${icon('search', 19)}</button>
+          <button type="button" class="icon-btn" id="calAnswersBtn" aria-label="Tus respuestas" title="Tus respuestas">
+            ${icon('mail', 19)}${pendientes ? `<span class="icon-btn__badge">${pendientes}</span>` : ''}
+          </button>
+          ${userStore.isAdmin ? `
+          <button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>` : ''}
+        </div>
       </div>
     `;
   }
@@ -276,19 +418,23 @@ export function CalendarioPage(router) {
       if (state === 'empty') classes.push('is-empty');
       if (state === 'locked') classes.push('is-locked');
       if (state === 'opened') classes.push('is-opened');
+      if (state === 'partial') classes.push('is-partial');
       if (dateStr === today) classes.push('is-today');
       if (dateStr === selected) classes.push('is-sel');
 
-      // Bloqueado: candado pequeño. Abierto: check. Pendiente: punto de
-      // color que indica que ese día hay regalo esperando.
+      // Bloqueado: candado pequeño. Abierto del todo: check. A medias: un
+      // anillo con lo que falta dentro. Pendiente: punto de color.
       const count = counts[dateStr] || 0;
+      const abiertos = openedCount(ids);
       const mark = state === 'opened' ? `<span class="cal-day__ok" aria-hidden="true">${icon('check', 11)}</span>`
         : state === 'locked' ? `<span class="cal-day__lock" aria-hidden="true">${icon('lock', 10)}</span>`
+        : state === 'partial' ? `<span class="cal-day__part" aria-hidden="true">${abiertos}/${count}</span>`
         : count > 0 ? `<span class="cal-day__dot" aria-hidden="true"></span>` : '';
 
       const label = state === 'empty' ? `${day} — sin regalo`
         : state === 'locked' ? `${day} — sorpresa por llegar`
         : state === 'opened' ? `${day} — regalo abierto`
+        : state === 'partial' ? `${day} — ${abiertos} de ${count} regalos abiertos`
         : `${day} — ${count} ${count === 1 ? 'regalo' : 'regalos'}`;
       cells.push(`<button type="button" class="${classes.join(' ')}" data-day="${day}" aria-label="${escapeHtml(label)}" aria-pressed="${dateStr === selected}"><span class="cal-day__n">${day}</span>${mark}</button>`);
     }
@@ -464,6 +610,9 @@ export function CalendarioPage(router) {
     const state = dayState(dateStr, ids);
     const isToday = dateStr === todayISO();
 
+    // Aviso para lectores de pantalla, solo si el día ha cambiado de verdad.
+    announceDay(dateStr, ids);
+
     if (!ids.length) {
       host.innerHTML = `
         <p class="section-title">${escapeHtml(prettyDate(dateStr))}</p>
@@ -493,15 +642,23 @@ export function CalendarioPage(router) {
       return;
     }
 
-    const openedCount = ids.filter(id => progressMap[id]?.opened).length;
-    const dayPct = Math.round((openedCount / ids.length) * 100);
+    const abiertos = openedCount(ids);
+    const dayPct = Math.round((abiertos / ids.length) * 100);
+    const contestadas = ids.filter(id => alreadyAnswered(giftOf(id))).length;
+    const sinResponder = ids.filter(id => pendingAnswer(giftOf(id))).length;
+    const resumen = sinResponder
+      ? ` · ${sinResponder} ${sinResponder === 1 ? 'pregunta' : 'preguntas'} sin contestar`
+      : '';
     host.innerHTML = `
       <p class="section-title">${escapeHtml(prettyDate(dateStr))}
-        <span class="section-title__aside">${openedCount === ids.length ? 'Todo abierto ✓' : `${openedCount} de ${ids.length}`}</span>
+        <span class="section-title__aside">${abiertos === ids.length ? 'Todo abierto ✓' : `${abiertos} de ${ids.length}`}</span>
       </p>
-      <div class="cal-dayprogress${openedCount === ids.length ? ' is-done' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${ids.length}" aria-valuenow="${openedCount}">
+      <div class="cal-dayprogress${abiertos === ids.length ? ' is-done' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${ids.length}" aria-valuenow="${abiertos}">
         <div class="cal-dayprogress__bar"><span style="width:${dayPct}%"></span></div>
       </div>
+      ${contestadas || sinResponder ? `<p class="cal-dayask">${sinResponder
+        ? `💌 ${sinResponder === 1 ? 'Te queda 1 por responder' : `Te quedan ${sinResponder} por responder`}`
+        : `💌 ${contestadas === 1 ? '1 respuesta guardada' : `${contestadas} respuestas guardadas`}`}</p>` : ''}
     `;
 
     const grid = h('div', { class: `cal-gifts${isToday ? ' is-today' : ''}` });
@@ -510,19 +667,25 @@ export function CalendarioPage(router) {
       if (!gift) continue;
       const meta = metaOf(gift.type);
       const isOpen = !!progressMap[id]?.opened;
+      const pendiente = pendingAnswer(gift);
+      const contestada = alreadyAnswered(gift);
       const tone = toneOf(gift.type);
       const caption = gift.data?.caption || gift.data?.message || '';
+      const extraLabel = isOpen ? ', ya abierto' : '';
+      const askLabel = pendiente ? ', tiene una pregunta sin contestar' : contestada ? ', pregunta respondida' : '';
 
       const card = h('button', {
-        class: `cal-gift${isOpen ? ' is-open' : ''}`,
+        class: `cal-gift${isOpen ? ' is-open' : ''}${pendiente ? ' is-ask' : ''}`,
         type: 'button',
-        'aria-label': `${gift.title || meta.label}${isOpen ? ', ya abierto' : ''}`,
+        'aria-label': `${gift.title || meta.label}${extraLabel}${askLabel}`,
         onclick: () => openExperience(gift, dateStr)
       },
         h('div', { class: 'cal-gift__media' },
           h('div', { class: `cal-gift__art cal-gift__art--tone is-${tone}` }, h('span', { html: icon(meta.icon, 30) })),
           h('span', { class: 'cal-gift__tag' }, meta.label),
-          isOpen ? h('span', { class: 'cal-gift__ok', html: icon('check', 13) }) : null
+          isOpen ? h('span', { class: 'cal-gift__ok', html: icon('check', 13) }) : null,
+          // El sobre avisa de que hay algo que responder sin abrir el regalo.
+          pendiente ? h('span', { class: 'cal-gift__ask', html: icon('mail', 12) }) : null
         ),
         h('div', { class: 'cal-gift__body' },
           h('b', null, gift.title || meta.label),
@@ -534,59 +697,216 @@ export function CalendarioPage(router) {
     host.append(grid);
   }
 
+  /**
+   * Anuncia el cambio de día a los lectores de pantalla. Solo habla cuando el
+   * día seleccionado es otro: repintar el mismo día (por ejemplo al navegar
+   * entre sus regalos, que marca cada uno como visto) no dice nada, porque si
+   * no el lector repite el panel entero en cada flecha.
+   */
+  let lastAnnouncedDay = null;
+  function announceDay(dateStr, ids) {
+    // Antes de que llegue el catálogo el día parece vacío: si se anunciara
+    // eso, se quedaría marcado como ya dicho y al cargar los regalos seguiría
+    // diciendo "sin regalo".
+    if (!catalog) return;
+    if (dateStr === lastAnnouncedDay) return;
+    lastAnnouncedDay = dateStr;
+    const live = page.querySelector('#calAnnounce');
+    if (!live) return;
+    const abiertos = openedCount(ids);
+    live.textContent = ids.length
+      ? `${prettyDate(dateStr)}. ${ids.length} ${ids.length === 1 ? 'regalo' : 'regalos'}, ${abiertos} abierto${abiertos === 1 ? '' : 's'}.`
+      : `${prettyDate(dateStr)}. Sin regalo.`;
+  }
+
+  /** El catálogo (re)cargado: el día actual vuelve a merecer anuncio. */
+  function resetAnnouncement() { lastAnnouncedDay = null; }
+
   function paintAll() {
+    paintHeadBadge();
     paintSpot();
     paintMonth();
     paintDay();
+  }
+
+  /** El contador de preguntas pendientes vive en la cabecera: se actualiza solo. */
+  function paintHeadBadge() {
+    const btn = page.querySelector('#calAnswersBtn');
+    if (!btn) return;
+    const pendientes = pendingAnswerCount();
+    btn.title = pendientes ? `Tus respuestas · ${pendientes} sin contestar` : 'Tus respuestas';
+    btn.setAttribute('aria-label', btn.title);
+    btn.querySelector('.icon-btn__badge')?.remove();
+    if (pendientes) {
+      btn.append(h('span', { class: 'icon-btn__badge' }, String(pendientes)));
+    }
   }
 
   /* ==========================================
      EXPERIENCIAS
      ========================================== */
   function openExperience(gift, dateStr) {
-    const meta = metaOf(gift.type);
-    const wasOpened = !!progressMap[gift.id]?.opened;
+    // Solo los regalos DEL DÍA: las flechas recorren lo que hay para hoy sin
+    // salir, en vez de llevar a cualquier fecha del calendario.
+    const list = dayIds(dateStr)
+      .map(id => ({ gift: giftOf(id), dateStr }))
+      .filter(entry => entry.gift);
+    let index = list.findIndex(e => e.gift.id === gift.id);
+    if (index < 0) index = 0;
 
-    openSheet(gift.title || meta.label, () => {
+    // Estado de la navegación en curso, para poder desmontarla al cerrar.
+    const nav = { handler: null, alive: true };
+
+    const overlay = openSheet(gift.title || metaOf(gift.type).label, () => {
       const body = document.createElement('div');
-      body.className = 'exp';
-
-      const content = renderContent(gift);
-      if (content) body.append(content);
-
-      const ask = renderAsk(gift);
-      if (ask) body.append(ask);
-
-      body.append(h('button', {
-        class: 'btn btn--block',
-        type: 'button',
-        onclick: () => { closeSheets(); }
-      }, 'Cerrar'));
-
+      body.className = 'exp exp--browse';
+      body.append(
+        h('div', { class: 'exp-browse__bar' },
+          h('span', { class: 'exp-browse__date' }),
+          h('span', { class: 'exp-browse__count' })
+        ),
+        h('div', { class: 'exp-kind' },
+          h('span', { class: 'exp-kind__icon' }),
+          h('span', { class: 'exp-kind__label' })
+        ),
+        h('div', { class: 'exp-browse__stage' }),
+        h('div', { class: 'exp-browse__nav' },
+          h('button', { class: 'exp-browse__arrow exp-browse__arrow--prev', type: 'button', 'aria-label': 'Regalo anterior' },
+            h('span', { html: icon('chevron-left', 20) })),
+          h('button', { class: 'exp-browse__arrow exp-browse__arrow--next', type: 'button', 'aria-label': 'Regalo siguiente' },
+            h('span', { html: icon('chevron-right', 20) })),
+        ),
+        h('button', { class: 'btn btn--block exp-browse__close', type: 'button', onclick: () => closeSheets() }, 'Cerrar')
+      );
       return body;
     });
 
-    markGiftSeen(gift.id, wasOpened);
+    const sheet = overlay.querySelector('.sheet');
+    const head = overlay.querySelector('.sheet-head h2');
+    const bar = overlay.querySelector('.exp-browse__bar');
+    const stage = overlay.querySelector('.exp-browse__stage');
+    const kind = overlay.querySelector('.exp-kind');
+    const kindIcon = kind.querySelector('.exp-kind__icon');
+    const kindLabel = kind.querySelector('.exp-kind__label');
+    const btnPrev = overlay.querySelector('.exp-browse__arrow--prev');
+    const btnNext = overlay.querySelector('.exp-browse__arrow--next');
+    const navEl = overlay.querySelector('.exp-browse__nav');
+    const dateOut = bar.querySelector('.exp-browse__date');
+    const countOut = bar.querySelector('.exp-browse__count');
+
+    const go = (delta) => {
+      const next = index + delta;
+      // No es cíclico: en los extremos la flecha se desactiva. Envolver de
+      // un día a otro confunde más que ayuda.
+      if (next < 0 || next >= list.length) return;
+      index = next;
+      paint();
+      // Moverse con las flechas ES mirar el regalo, asi que cuenta como
+      // visto: si no, se podrian recorrer los cuatro del dia sin que
+      // ninguno quedara marcado.
+      markGiftSeen(list[index].gift.id);
+    };
+
+    function paint() {
+      const actual = list[index];
+      if (!actual) return;
+      const meta = metaOf(actual.gift.type);
+      const tone = toneOf(actual.gift.type);
+
+      if (head) head.textContent = actual.gift.title || meta.label;
+      dateOut.textContent = prettyDate(actual.dateStr);
+      countOut.textContent = `${index + 1} de ${list.length}`;
+
+      // La identidad visual: cada tipo de regalo lleva su propio icono, su
+      // tono y su clase, para que una carta no se parezca a un mensaje ni un
+      // acertijo a una curiosidad.
+      kind.className = `exp-kind is-${tone} exp-kind--${actual.gift.type}`;
+      kindIcon.innerHTML = icon(meta.icon, 15);
+      kindLabel.textContent = meta.label;
+      stage.className = `exp-browse__stage exp--${actual.gift.type}`;
+
+      // Cambio de regalo con altura animada. Antes el contenido se
+      // sustitua de golpe: de un mensaje corto a un video largo, todo lo de
+      // abajo (y las flechas, que van al 50%) daba un tirón. Se fija la altura
+      // vieja, se pinta el contenido nuevo y se deja que el navegador la
+      // interpole.
+      const alturaVieja = stage.offsetHeight;
+      stage.style.transition = 'none';
+      // Recortar solo mientras dura la animación: si se dejara puesto, el
+      // polaroid (que va rotado) perdería las esquinas.
+      stage.style.overflow = 'hidden';
+      stage.style.height = `${alturaVieja}px`;
+
+      stage.replaceChildren();
+      const content = renderContent(actual.gift);
+      if (content) stage.append(content);
+      const ask = renderAsk(actual.gift);
+      if (ask) stage.append(ask);
+
+      // La altura nueva es la del contenido, no la del bloque: si no, el
+      // growth se queda bloqueado en la altura anterior.
+      const alturaNueva = stage.scrollHeight;
+      stage.style.transition = '';
+      if (alturaNueva !== alturaVieja) {
+        // reflow para que el navegador vea el punto de partida de la transición
+        void stage.offsetHeight;
+        stage.style.height = `${alturaNueva}px`;
+      } else {
+        stage.style.height = '';
+      }
+      stage.addEventListener('transitionend', function alTerminar(ev) {
+        if (ev.propertyName !== 'height') return;
+        stage.removeEventListener('transitionend', alTerminar);
+        stage.style.height = '';      // vuelve a crecer con el contenido
+        stage.style.overflow = '';
+      });
+
+      btnPrev.disabled = index === 0;
+      btnNext.disabled = index === list.length - 1;
+      btnPrev.setAttribute('aria-label', `Regalo anterior: ${(list[index - 1]?.gift.title) || 'ninguno'}`);
+      btnNext.setAttribute('aria-label', `Regalo siguiente: ${(list[index + 1]?.gift.title) || 'ninguno'}`);
+      if (list.length < 2) navEl.hidden = true;
+
+      // Al cambiar de regalo, arriba del todo: si no, se hereda el scroll
+      // del anterior y parece que no ha cambiado nada.
+      sheet.scrollTop = 0;
+    }
+
+    btnPrev.addEventListener('click', () => go(-1));
+    btnNext.addEventListener('click', () => go(1));
+
+    // Flechas del teclado. Se anula al escribir en un campo de texto, para
+    // que las flechas sigan moviendo el cursor y no cambien de regalo.
+    nav.handler = event => {
+      if (!nav.alive || !overlay.isConnected) {
+        // El sheet se ha cerrado por otra via (Escape, fondo, ruta): el
+        // listener se retira solo, sin depender de un unmount explicito.
+        nav.alive = false;
+        document.removeEventListener('keydown', nav.handler);
+        return;
+      }
+      const typing = event.target.closest?.('input,textarea,select,[contenteditable]');
+      if (typing) return;
+      if (event.key === 'ArrowLeft') { event.preventDefault(); go(-1); }
+      else if (event.key === 'ArrowRight') { event.preventDefault(); go(1); }
+    };
+    document.addEventListener('keydown', nav.handler);
+
+    paint();
+    markGiftSeen(gift.id);
   }
 
-  /** Marca solo el regalo abierto como visto (cada regalo es independiente). */
-  function markGiftSeen(giftId, alreadySeen) {
+  /**
+   * Marca solo el regalo abierto como visto (cada regalo es independiente).
+   * Sin aviso: el regalo ya se ve marcado con el check en la tarjeta y el
+   * progreso avanza solo, así que el aviso solo tapaba la pantalla.
+   */
+  function markGiftSeen(giftId) {
     if (!progressMap[giftId]?.opened) {
       progressMap[giftId] = { opened: true, openedAt: new Date().toISOString() };
       saveProgress();
     }
     paintAll();
-
-    if (!alreadySeen) {
-      toast('Regalo visto ✨', {
-        label: 'Deshacer',
-        fn: () => {
-          delete progressMap[giftId];
-          saveProgress();
-          paintAll();
-        }
-      });
-    }
   }
 
   /** Contenido de la sorpresa según su tipo. */
@@ -785,7 +1105,7 @@ export function CalendarioPage(router) {
 
       default: {
         // affirmation, curiosity, relax, challenge, coupon, memory, plan,
-        // offline, craft y cualquier tipo nuevo: tarjeta de mensaje.
+        // craft, plan y cualquier tipo nuevo: tarjeta de mensaje.
         // Sin título dentro: la cabecera del sheet ya lo muestra.
         const wrap = h('div', { class: 'exp' });
         wrap.append(textBlock(data.message || 'Un detalle pensado para ti.', 'exp-text'));
@@ -799,32 +1119,270 @@ export function CalendarioPage(router) {
     }
   }
 
-  /** Cajita de respuesta (si la sorpresa plantea una pregunta). */
+  /* ==========================================
+     TUS RESPUESTAS
+     ========================================== */
+
+  /** Fecha de un regalo, buscándola en el mapeo del catálogo. */
+  function dateOfGiftId(giftId) {
+    for (const key of Object.keys(catalog?.months || {})) {
+      const mapping = catalog.months[key]?.calendarMapping || {};
+      for (const day of Object.keys(mapping)) {
+        const value = mapping[day];
+        const ids = Array.isArray(value) ? value : value ? [value] : [];
+        if (ids.includes(giftId)) return `${key}-${pad(day)}`;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Lo que ha escrito, en orden de fecha, y lo que le queda por contestar.
+   * Sin esto las respuestas se guardaban pero no se podian volver a leer:
+   * solo las veía el Admin.
+   */
+  function openMyAnswers() {
+    const preguntas = (catalog?.gifts || []).filter(hasAskBox);
+    const conFecha = preguntas
+      .map((gift) => ({ gift, date: dateOfGiftId(gift.id) }))
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    openSheet('Tus respuestas', () => {
+      const body = h('div', { class: 'exp' });
+
+      if (!preguntas.length) {
+        body.append(h('p', { class: 'exp-note' },
+          'Ahora mismo ningun regalo trae una pregunta. Cuando haya una, aparecerá aquí.'));
+        return body;
+      }
+
+      const pendientes = conFecha.filter((e) => !responsesMap[e.gift.id]?.text);
+      const contestadas = conFecha.filter((e) => responsesMap[e.gift.id]?.text);
+
+      if (pendientes.length) {
+        body.append(h('p', { class: 'exp-title' }, pendientes.length === 1
+          ? 'Te queda 1 por responder'
+          : `Te quedan ${pendientes.length} por responder`));
+        const lista = h('ul', { class: 'exp-list' });
+        for (const { gift, date } of pendientes) {
+          lista.append(h('li', null,
+            h('span', { class: 'exp-answers__q' }, gift.data.question),
+            h('span', { class: 'exp-answers__meta' },
+              `${date ? prettyDate(date) + ' · ' : ''}${gift.title || metaOf(gift.type).label}`)
+          ));
+        }
+        body.append(lista);
+      }
+
+      if (contestadas.length) {
+        body.append(h('p', { class: 'exp-title' }, `Lo que ya has escrito (${contestadas.length})`));
+        const lista = h('ul', { class: 'exp-list' });
+        for (const { gift, date } of contestadas) {
+          const entry = responsesMap[gift.id];
+          lista.append(h('li', null,
+            h('span', { class: 'exp-answers__q' }, gift.data.question),
+            h('span', { class: 'exp-answers__text' }, entry.text),
+            h('span', { class: 'exp-answers__meta' },
+              `${date ? prettyDate(date) + ' · ' : ''}${gift.title || metaOf(gift.type).label}`)
+          ));
+        }
+        body.append(lista);
+      }
+
+      body.append(h('p', { class: 'exp-note' },
+        'Para cambiar lo que escribiste, abre el regalo otra vez.'));
+      body.append(h('button', {
+        class: 'btn btn--block', type: 'button', onclick: () => closeSheets(),
+      }, 'Cerrar'));
+      return body;
+    });
+  }
+
+  /**
+   * Palabras que se ofrecen para empezar, sacadas de los propios datos: los
+   * tipos que mas regalos tienen y el mes que esta a la vista. Sugerir lo que
+   * existe de verdad es mejor que inventar una lista fija que se queda corta.
+   */
+  function searchSuggestions() {
+    const count = {};
+    for (const gift of catalog?.gifts || []) {
+      const label = metaOf(gift.type).label;
+      count[label] = (count[label] || 0) + 1;
+    }
+    const tipos = Object.entries(count)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([label]) => label.toLowerCase());
+    const mes = monthLabel(view.monthKey).toLowerCase();
+    return [...new Set([mes, ...tipos])];
+  }
+
+  /**
+   * Buscador. Busca por titulo, tipo y contenido, en los 393 regalos.
+   * Un dia bloqueado NO se abre: se dice cuando se desbloquea, para no
+   * gastar la sorpresa buscándola.
+   */
+  function openSearch() {
+    const results = h('div', { class: 'cal-search__results' });
+    const resumen = h('p', { class: 'cal-search__count' });
+    const suggestions = h('div', { class: 'cal-search__chips', hidden: true });
+    // El campo se declara aquí y se rellena dentro del builder del sheet:
+    // las sugerencias lo necesitan para rellenarlo al pulsarlas.
+    let searchInput = null;
+
+    const pintar = (query) => {
+      const encontrados = query.trim().length >= 2 ? searchGifts(query) : [];
+      results.replaceChildren();
+      resumen.textContent = '';
+
+      // Sin consulta no hay resultados, pero tampoco un panel mudo: se
+      // ofrecen palabras que si devuelven algo.
+      if (query.trim().length < 2) {
+        resumen.textContent = query.trim().length
+          ? 'Escribe al menos dos letras.'
+          : 'Busca por título, tipo o texto, o prueba con una de estas.';
+        suggestions.replaceChildren(...searchSuggestions().map((word) => h('button', {
+          class: 'chip cal-search__chip', type: 'button',
+          onclick: () => { searchInput.value = word; searchInput.focus(); pintar(word); },
+        }, word)));
+        suggestions.hidden = false;
+        return;
+      }
+      suggestions.hidden = true;
+      if (!encontrados.length) {
+        resumen.textContent = `Nada con «${query.trim()}». Prueba con otra palabra.`;
+        return;
+      }
+      const total = getSearchIndex().filter((e) => query.trim().toLowerCase().split(/\s+/)
+        .filter(Boolean).every((t) => e.texto.includes(t))).length;
+      resumen.textContent = total > encontrados.length
+        ? `Mostrando ${encontrados.length} de ${total} coincidencias.`
+        : `${encontrados.length} ${encontrados.length === 1 ? 'coincidencia' : 'coincidencias'}.`;
+
+      for (const { gift, dateStr } of encontrados) {
+        const meta = metaOf(gift.type);
+        const state = dateStr ? dayState(dateStr, dayIds(dateStr)) : 'empty';
+        const bloqueado = state === 'locked';
+        const item = h('button', {
+          class: `cal-search__item${bloqueado ? ' is-locked' : ''}`,
+          type: 'button',
+          onclick: () => {
+            if (bloqueado) {
+              const unlock = gift.unlock?.value;
+              // Sin el día de la semana: "se abre el Martes 1 de diciembre"
+              // suena a día de la semana en vez de fecha.
+              const cuando = unlock ? prettyDate(unlock).replace(/^[^ ]+\s+/, '') : '';
+              toast(cuando ? `Se abre el ${cuando} 🔒` : 'Ese regalo aún no está disponible 🔒');
+              return;
+            }
+            // Lleva al día y abre el regalo: el buscador se cierra antes para
+            // que el sheet del regalo quede por encima.
+            if (dateStr) {
+              selectedDay.value = dateStr;
+              view.monthKey = monthKeyOf(dateStr);
+              paintMonth();
+              paintDay();
+            }
+            closeSheets();
+            openExperience(gift, dateStr);
+          },
+        },
+          h('span', { class: `cal-search__art is-${toneOf(gift.type)}`, html: icon(meta.icon, 16) }),
+          h('span', { class: 'cal-search__body' },
+            h('b', null, gift.title || meta.label),
+            h('span', { class: 'cal-search__meta' },
+              `${dateStr ? prettyDate(dateStr) + ' · ' : ''}${meta.label}`),
+            h('span', { class: 'cal-search__snip' }, (gift.data?.message || gift.data?.content || gift.data?.fact || '').slice(0, 90))
+          ),
+          bloqueado ? h('span', { class: 'cal-search__lock', html: icon('lock', 13) }) : null
+        );
+        results.append(item);
+      }
+    };
+
+    openSheet('Buscar regalos', () => {
+      const body = h('div', { class: 'cal-search' });
+      const input = h('input', {
+        class: 'cal-search__input', type: 'search', autocomplete: 'off',
+        placeholder: 'Busca por título, tipo o texto…', 'aria-label': 'Buscar regalos',
+      });
+      searchInput = input;
+      const wrap = h('div', { class: 'cal-search__field' },
+        h('span', { class: 'cal-search__icon', html: icon('search', 16) }),
+        input
+      );
+      body.append(wrap, resumen, suggestions, results);
+      input.addEventListener('input', () => pintar(input.value));
+
+      // Con teclado se recorre la lista sin ratón: desde el campo, la flecha
+      // baja al primer resultado y de ahí salta de uno en uno. Los resultados
+      // son botones, así que Enter los abre y el lector de pantalla los lee
+      // como lo que son.
+      body.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        const items = [...results.querySelectorAll('.cal-search__item')];
+        if (!items.length || !searchInput) return;
+        event.preventDefault();
+        const pos = items.indexOf(document.activeElement);
+        if (event.key === 'ArrowDown') {
+          items[pos + 1 < items.length ? pos + 1 : 0].focus();
+        } else if (pos <= 0) {
+          // Arriba del primero se vuelve al campo, no se sale de la lista.
+          searchInput.focus();
+        } else {
+          items[pos - 1].focus();
+        }
+      });
+
+      // Se pinta al abrir para que no salga un panel vacio sin explicación.
+      setTimeout(() => { input.focus(); pintar(''); }, 0);
+      return body;
+    });
+  }
+
+  /**
+   * Cajita de respuesta. Antes era inalcanzable: solo se activaba con
+   * data.question, y el unico sitio donde el Admin podia escribir una
+   * pregunta era el esquema de riddle, que aqui se excluye. Ahora cualquier
+   * tipo de regalo puede llevar una, y se puede volver a editar lo escrito
+   * (antes el textarea se bloqueaba para siempre en cuanto enviabas).
+   */
   function renderAsk(gift) {
     const question = gift?.data?.question;
-    if (!question || gift.type === 'riddle' || gift.type === 'math') return null;
+    if (!hasAskBox(gift)) return null;
 
-    const wrap = h('div', { class: 'exp' });
-    wrap.append(h('p', { class: 'exp-note' }, question));
+    const wrap = h('div', { class: 'exp exp-ask' });
+    wrap.append(
+      h('p', { class: 'exp-ask__q' },
+        h('span', { class: 'exp-ask__icon', html: icon('mail', 15) }),
+        h('span', null, question)
+      )
+    );
 
-    const input = h('textarea', { class: 'input', rows: 3, maxlength: 1000, placeholder: 'Escribe aquí tu respuesta…' });
-    const status = h('p', { class: 'exp-note' });
+    const input = h('textarea', {
+      class: 'input', rows: 3, maxlength: 1000,
+      placeholder: 'Escribe aquí tu respuesta…',
+    });
+    const status = h('p', { class: 'exp-note exp-ask__status' });
     const send = h('button', { class: 'btn', type: 'button' }, 'Enviar respuesta');
 
-    const disable = (text) => {
-      input.disabled = true;
-      send.disabled = true;
-      send.textContent = 'Respondida ❤';
-      status.textContent = text;
+    // Guardar el estado de "¿esta respondida?" para poder marcar la tarjeta
+    // del regalo y el dia, sin tener que releer el servidor.
+    let respondida = false;
+
+    const pintarEstado = (texto) => {
+      respondida = !!texto;
+      send.textContent = respondida ? 'Guardar cambios' : 'Enviar respuesta';
+      status.textContent = texto
+        ? 'Guardada. Puedes cambiarla cuando quieras.'
+        : '';
     };
 
     db.getMyGiftResponses()
-      .then(responses => {
+      .then((responses) => {
         const previous = responses?.[gift.id];
-        if (previous?.text) {
-          input.value = previous.text;
-          disable('Ya respondiste a esta sorpresa. Gracias 💌');
-        }
+        if (previous?.text) input.value = previous.text;
+        pintarEstado(previous?.text);
       })
       .catch(() => {});
 
@@ -837,13 +1395,15 @@ export function CalendarioPage(router) {
       send.disabled = true;
       send.textContent = 'Enviando…';
       try {
-        await db.saveGiftResponse(gift.id, text);
-        disable('¡Enviada! Gracias 💌');
-        toast('Respuesta enviada 💌');
+        const saved = await db.saveGiftResponse(gift.id, text);
+        setResponse(gift.id, text, { respondedAt: saved?.respondedAt });
+        pintarEstado(text);
+        toast('Respuesta guardada 💌');
       } catch (error) {
-        send.disabled = false;
-        send.textContent = 'Enviar respuesta';
         status.textContent = error?.message || 'No se pudo enviar. Inténtalo de nuevo.';
+      } finally {
+        send.disabled = false;
+        send.textContent = respondida ? 'Guardar cambios' : 'Enviar respuesta';
       }
     });
 
@@ -904,8 +1464,27 @@ export function CalendarioPage(router) {
      ========================================== */
   const devBtn = page.querySelector('#calDevBtn');
   if (devBtn) devBtn.addEventListener('click', openDevSheet);
+  const answersBtn = page.querySelector('#calAnswersBtn');
+  if (answersBtn) answersBtn.addEventListener('click', openMyAnswers);
+  const searchBtn = page.querySelector('#calSearchBtn');
+  if (searchBtn) searchBtn.addEventListener('click', openSearch);
+
+  // Atajo para llegar al buscador sin tener que ir a por el boton: Ctrl/⌘+K,
+  // que es lo que ya espera cualquiera, y «/» como alternativa. Se ignoran si
+  // se esta escribiendo en un campo o si ya hay un sheet abierto.
+  const onShortcut = (event) => {
+    const enCampo = /^(input|textarea|select)$/i.test(event.target?.tagName || '') || event.target?.isContentEditable;
+    if (enCampo) return;
+    const esK = event.key?.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
+    if (!esK && event.key !== '/') return;
+    if (document.querySelector('#overlays .overlay')) return;
+    event.preventDefault();
+    openSearch();
+  };
+  document.addEventListener('keydown', onShortcut);
 
   loadProgress();
+  loadMyResponses().then(paintAll);
 
   // Un override creado antes (p. ej. como admin) no debe seguir alterando
   // el calendario en una cuenta de usuaria: se limpia al detectar que ya
@@ -918,7 +1497,7 @@ export function CalendarioPage(router) {
 
   loadGiftsCatalog().then(data => {
     if (data) {
-      catalog = data;
+      catalog = data; resetAnnouncement();
       catalog.giftsById = catalog.giftsById || {};
       (catalog.gifts || []).forEach(gift => { if (gift.id) catalog.giftsById[gift.id] = gift; });
     }
@@ -946,6 +1525,7 @@ export function CalendarioPage(router) {
       if (!data) data = await loadGiftsCatalog();
       if (data) {
         catalog = data;
+        resetAnnouncement();
         catalog.giftsById = catalog.giftsById || {};
         (catalog.gifts || []).forEach(gift => { if (gift.id) catalog.giftsById[gift.id] = gift; });
         // Si el día seleccionado sigue vacío tras el guardado (p. ej. se
@@ -963,6 +1543,7 @@ export function CalendarioPage(router) {
 
   page.cleanup = () => {
     stopSpotRotation();
+    document.removeEventListener('keydown', onShortcut);
     try { offContent(); } catch { /* noop */ }
     closeSheets();
   };

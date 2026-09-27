@@ -1,12 +1,73 @@
 # Auditoría de readiness — Personal Hub
 
 Fecha de revisión: 2026-08-25
+Última actualización: 2026-09-27
+
+## 0. Estado a 2026-09-27
+
+Desde esta revisión se cerró lo que era deuda interna del código **y** el aislamiento entre
+cuentas, que era el P0 que quedaba. Las migraciones `017`, `018`, `019` y `020` ya están
+aplicadas en Supabase y el resultado está comprobado con las dos cuentas reales.
+
+### Aislamiento entre cuentas — cerrado
+
+| Comprobación | Resultado |
+|---|---|
+| Lecturas cruzadas entre `admin` y `dada` | **Ninguna** en 11 tablas |
+| Escritura en nombre del otro | **Rechazada por RLS** |
+| Auto-promoción a admin / cambiar `enabled` | **Rechazada** (trigger) |
+| `role` en `user_metadata` | **Descartado por la base** |
+| Políticas `USING (true)` | **Ninguna** |
+
+> Los dos scripts se ejecutan con las credenciales en variables de entorno, sin dejar
+> ninguna en el repo: `scripts/verificar-aislamiento.mjs` y `scripts/verificar-escalada.mjs`.
+> El segundo revierte con `service_role` cualquier cambio que se colara.
+
+**Lo que queda pendiente ya no es de seguridad en el código**: backup/restauración, correo y
+DNS (SPF/DKIM/DMARC), decidir si los buckets de Storage son públicos y probar la PWA en un
+móvil físico.
+
+### Deuda técnica cerrada
+
+Resuelto en código (verificado con `npm test` = 35/35 y `npm run build` limpio):
+
+| Hallazgo previo | Estado |
+|---|---|
+| `npm audit`: high en `nanoid` < 3.3.18 | **Resuelto** — 3.3.19, `0 vulnerabilities` |
+| Sin workflow de CI | **Resuelto** — `.github/workflows/ci.yml`: test + build + audit + gate de secretos |
+| Sin README operativo | **Resuelto** — `README.md` con migraciones, deploy, rollback y seguridad |
+| `INEFFECTIVE_DYNAMIC_IMPORT` en el build | **Resuelto** — import estático; el catálogo de Open When se movió a `src/data/` |
+| JS inicial ~447 KB sin comprimir | **Resuelto** — 263 kB (gzip 79), con Admin y Open When en chunks propios |
+| CSS inicial ~518 KB sin comprimir | **Resuelto** — 141 kB (gzip 25), un CSS por página dentro de su chunk |
+| Sin captura de errores ni Web Vitals | **Resuelto** — `src/services/telemetry.js`, opt-in y saneado |
+
+Correcciones de seguridad aplicadas: `sql/017_enabled_autoritativo.sql` y
+`sql/018_push_subscriptions.sql` **ya se ejecutaron** en la base de datos real.
+
+**El aislamiento multiusuario por fin se comprobó con las dos cuentas reales**, y no salió
+limpio: `dada` veía los estados de ánimo de `admin`. La causa era una policy permisiva extra
+en `moods` que ninguna migración crea, así que se corrige en `sql/019_aislamiento_verificado.sql`
+sin depender de su nombre. **Falta aplicar 019** y reejecutar `scripts/verificar-aislamiento.mjs`.
+
+Los hallazgos P1/P2 sobre backups, correo/DNS, monitorización y dispositivos móviles reales
+siguen **sin verificar**: requieren staging, un dominio y personas, no código.
 
 ## 1. Veredicto
 
-**Estado: no listo para usuarios reales sin tareas externas pendientes.**
+**Estado: el aislamiento entre usuarios está comprobado y cerrado. Listo para las dos
+cuentas que existen, pero no para público general.**
 
-El código local compila y los tests disponibles pasan. No se puede afirmar todavía que el producto esté listo para público general porque no se han podido comprobar con servicios reales y datos de staging el aislamiento entre dos usuarios, la restauración de backups, la entrega de correo/push, la configuración de DNS, la monitorización ni el comportamiento en dispositivos móviles reales.
+Lo que bloqueaba el lanzamiento era que nadie había comprobado si una cuenta podía ver o
+tocar los datos de la otra. Eso ya se ha hecho con `admin@personalhub.com` y
+`dada@personalhub.com`, y está cerrado: cero lecturas cruzadas, escrituras en nombre del
+otro rechazadas y el modelo de roles verificado. Se encontraron y corrigieron dos fugas
+reales por el camino (`moods` y `playlists`), ambas por políticas permisivas que nadie
+había revisado.
+
+El código local compila y los tests pasan. Sigue sin poder afirmarse que esté listo para
+público general, pero ya no por seguridad en el código: falta probar la restauración de
+backups, la entrega de correo/push, la configuración de DNS, la monitorización y el
+comportamiento en dispositivos móviles reales. Eso requiere staging, un dominio y personas.
 
 ## 2. Arquitectura encontrada
 
@@ -24,14 +85,14 @@ El código local compila y los tests disponibles pasan. No se puede afirmar toda
 
 | Comando | Resultado |
 |---|---|
-| `npm test` | **8 tests pasados, 0 fallos** |
-| `npm run build` | **Correcto** |
+| `npm test` | **35 tests pasados, 0 fallos** |
+| `npm run build` | **Correcto, sin warnings** |
 | `node --check` sobre APIs y servicios modificados | **Correcto** |
 | `git diff --check` | **Correcto** |
-| `npm audit --audit-level=high` | **Falla: 1 vulnerabilidad high en `nanoid` 3.3.16** |
-| Preview HTML fuente/dist | **No válido como prueba de app: el servidor seguro devuelve 404 para módulos Vite y deja el splash** |
+| `npm audit --audit-level=high` | **Sin vulnerabilidades** |
+| Recorrido de rutas diferidas en navegador | **Correcto**: Open When, Admin, Rincón, Canciones, Juegos, Calendario y Series cargan su chunk y su CSS |
 
-El build emite además un warning `INEFFECTIVE_DYNAMIC_IMPORT`: `notifications.service.js` se importa de forma estática y dinámica, por lo que no se separa en otro chunk.
+El build emitía además un warning `INEFFECTIVE_DYNAMIC_IMPORT`: `notifications.service.js` se importaba de forma estática y dinámica, por lo que no se separaba en otro chunk. **Resuelto el 2026-09-27.**
 
 ## 4. Correcciones realizadas
 
@@ -56,9 +117,17 @@ El build emite además un warning `INEFFECTIVE_DYNAMIC_IMPORT`: `notifications.s
 
 ### P0 — bloqueadores
 
-- **Aislamiento real no probado en staging.** El repositorio contiene políticas endurecidas, pero no se ha podido crear dos usuarios reales ni manipular IDs/payloads desde dos sesiones. Debe probarse contra Supabase antes de release.
+- **Aislamiento real probado el 2026-09-27: dos fugas encontradas.** Se entró de verdad con `admin@personalhub.com` y `dada@personalhub.com` y se comparó qué ve cada una con su propio token (`scripts/verificar-aislamiento.mjs`).
+  1. **`moods`: RESUELTA.** `dada` leía 7 filas de `admin` siendo `is_admin() = false`. El `INSERT` sí estaba bloqueado, contraste que delata una **policy permisiva extra de solo SELECT** (las permisivas se combinan con OR). Corregida en `sql/019`, ya aplicada: la sonda vuelve a dar **63 filas propias, 0 ajenas**.
+  2. **`playlists`: RESUELTA.** Tenia vivas `playlists_read_all`, `playlists_write_all`, `playlists_update_all` y `playlists_delete_all`, las cuatro con `USING (true)`: cualquier cuenta autenticada podía leer, modificar y borrar playlists ajenas. Comprobado con una sonda de escritura, no solo leyendo: `dada` conseguia crear una playlist a nombre de `admin`. La causa raíz era que **`sql/016` nunca se aplicó** a esta base de datos. Corregida en `sql/020`, ya aplicada: quedan solo las cuatro `_owner` y la sonda ahora la rechaza el RLS.
+  3. **Modelo de roles: verificado.** `scripts/verificar-escalada.mjs` comprueba con la cuenta real que `dada` no puede: ponerse `role = 'admin'`, desactivarse a sí misma, tocar el `role` o el `enabled` de `admin`, modificar `content`, ni escribir `role` en su `user_metadata`. Las seis se rechazan. La de metadata es curiosa: `updateUser` no da error pero la base descarta la clave `role` en silencio.
+  - El mismo patrón, más sutil, en telemetría: `activity_log_insert_all`, `analytics_visits_insert_all` y `analytics_events_insert_all` convivían con sus versiones `_own`. Por lo mismo, 020 las elimina.
+  - Lección de método: **leer no detecta una policy `USING (true)` si la tabla está vacía.** Por eso la sonda del script escribe una fila de prueba en nombre del otro y la borra al instante; sin eso, playlists habría pasado la revisión con 0 filas de 0.
+  - Segundo falso positivo, este en la consulta de auditoría: marcaba «REVISAR» en todo `UPDATE` con `with_check` nulo. En PostgreSQL, si una policy de UPDATE no define WITH CHECK, **se reutiliza el USING**: no es un agujero. Quedaba pendiente comprobarlo de otra forma, y se comprobó con las cuentas reales (`content` y `profiles` rechazan a `dada`).
 - **Restauración de backup no probada.** No hay evidencia ejecutada de backup cifrado, retención ni restauración en staging.
-- **Dependencias con vulnerabilidad alta.** `npm audit --audit-level=high` reporta `nanoid < 3.3.18`, dependencia de desarrollo transitiva de PostCSS. Actualizar con `npm audit fix`/upgrade compatible y repetir build/test antes de publicar.
+- **Alta de push rota desde 018.** `sql/018_push_subscriptions.sql` concedió permisos a `authenticated` pero no a `service_role`, y `api/push.js` se autentica con `service_role`: hasta la service role recibía `permission denied for table push_subscriptions`. Se corrige en 019 con `GRANT ALL … TO service_role`.
+- ~~**Dependencias con vulnerabilidad alta.**~~ **Resuelto** el 2026-09-27: `nanoid` subido a 3.3.19 y `npm audit --audit-level=high` sin resultados. El CI lo bloquea si vuelve a aparecer.
+- ~~**Migraciones 017/018 sin aplicar.**~~ **Aplicadas** el 2026-09-27: `is_enabled()`, `is_admin()`, `profiles.enabled` y la tabla `push_subscriptions` existen en la base de datos real, y las dos cuentas están `enabled = true`.
 
 ### P1 — importantes
 
@@ -70,12 +139,13 @@ El build emite además un warning `INEFFECTIVE_DYNAMIC_IMPORT`: `notifications.s
 
 ### P2 — deuda técnica
 
-- Bundle CSS principal de aproximadamente 518 KB sin comprimir.
-- Bundle inicial JavaScript de aproximadamente 447 KB sin comprimir.
-- Import dinámico inefectivo de notificaciones.
-- Service Worker usa caché compleja de media y fallback offline, pero no se ha probado con desconexión real, Range requests y actualización entre versiones.
-- No hay workflow CI/CD en `.github/` ni scripts separados para E2E, typecheck, lint, staging isolation, backups u operations.
-- No existe README operativo completo en la raíz.
+- ~~Bundle CSS principal de aproximadamente 518 KB sin comprimir.~~ **Resuelto** (2026-09-27): 141 kB / gzip 25 mediante un CSS por página cargado con su chunk.
+- ~~Bundle inicial JavaScript de aproximadamente 447 KB sin comprimir.~~ **Resuelto** (2026-09-27): 263 kB / gzip 79 con Admin y Open When diferidos.
+- ~~Import dinámico inefectivo de notificaciones.~~ **Resuelto** (2026-09-27): import estático y catálogo extraído a `src/data/openwhen.data.js`.
+- Service Worker usa caché compleja de media y fallback offline, pero no se ha probado con desconexión real, Range requests y actualización entre versiones. **Sigue pendiente.** Fuera de la v10 ya no cachea `/api/*` ni peticiones autenticadas.
+- ~~No hay workflow CI/CD en `.github/`.~~ **Resuelto** (2026-09-27): `.github/workflows/ci.yml`.
+- ~~No existe README operativo completo en la raíz.~~ **Resuelto** (2026-09-27): `README.md`.
+- ~~Sin captura de errores ni Web Vitals.~~ **Resuelto** (2026-09-27): `src/services/telemetry.js`, inactivo salvo que se defina `VITE_TELEMETRY_URL`.
 
 ### P3 — mejoras
 
@@ -128,9 +198,9 @@ No guardar dumps con datos personales en Git.
 
 ## 10. Tareas manuales obligatorias
 
-1. Aplicar `supabase-schema.sql`.
-2. Aplicar `sql/016_aislamiento_playlists.sql`.
-3. Revisar y reasignar playlists antiguas sin `created_by`.
+1. ~~Aplicar `supabase-schema.sql`.~~ Hecho: el esquema ya existe en Supabase.
+2. ~~Aplicar `sql/016_aislamiento_playlists.sql`.~~ **No se aplica**: es anterior a 017/018 y revertiría el endurecimiento de `role`/`enabled`. Lo que hacía ya está cubierto por `sql/020`, y el motivo está escrito en `sql/README.md`.
+3. Revisar y reasignar playlists antiguas sin `created_by` (hoy la tabla está vacía, así que no hay ninguna).
 4. Configurar y comprobar `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, claves VAPID, `CRON_SECRET` y Cloudinary solo en sus entornos correctos.
 5. Rotar cualquier secreto que haya estado expuesto fuera del gestor de secretos.
 6. Configurar SPF, DKIM y DMARC del proveedor de correo.
@@ -138,16 +208,17 @@ No guardar dumps con datos personales en Git.
 8. Ejecutar las pruebas de aislamiento y restauración en staging.
 9. Probar PWA en al menos un dispositivo Android y uno iOS.
 10. Revisar legalmente privacidad, cookies, menores, analítica, licencias de música, imágenes, audios y vídeos.
-11. Actualizar `nanoid`/PostCSS hasta eliminar el resultado high de `npm audit`.
+11. ~~Actualizar `nanoid`/PostCSS hasta eliminar el resultado high de `npm audit`.~~ **Hecho** (2026-09-27); el CI lo vigila.
 
 ## 11. Bloqueadores de lanzamiento
 
-- Vulnerabilidad high de `npm audit` sin resolver.
-- Falta de prueba real de aislamiento multiusuario.
+- ~~Migraciones `sql/017` y `sql/018` pendientes de aplicar en Supabase.~~ **Resuelto** el 2026-09-27.
+- ~~Falta de prueba real de aislamiento multiusuario.~~ **Resuelto** el 2026-09-27 con las dos cuentas reales, tras corregir dos fugas (`moods`, `playlists`) con `sql/019` y `sql/020`.
 - Falta de prueba de backup/restauración.
 - Falta de validación real de correo/DNS y monitorización.
 - Falta de pruebas en dispositivos móviles reales.
-- Migración de Supabase pendiente de aplicar.
+
+Resuelto desde la revisión anterior: la vulnerabilidad high de `npm audit` (nanoid).
 
 ## 12. Archivos modificados durante la auditoría
 

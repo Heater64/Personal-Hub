@@ -261,7 +261,7 @@ export function ProfilePage(router) {
         <div class="prof-row" id="notifSettingsRow" role="button" tabindex="0" aria-label="Ajustes de notificaciones">
           <div class="prof-row-text">
             <span class="prof-row-title">Notificaciones</span>
-            <span class="prof-row-sub">Recordatorio diario, cartas y horario de silencio <span id="pushStatus"></span></span>
+            <span class="prof-row-sub">Recordatorio diario, cartas, ánimo y horario de silencio <span id="pushStatus"></span></span>
           </div>
           <span aria-hidden="true" style="margin-left:auto;color:var(--theme-text-tertiary);font-size:22px;line-height:1">›</span>
         </div>
@@ -772,7 +772,7 @@ export function ProfilePage(router) {
   }
 
   // ===== AJUSTES DE NOTIFICACIONES (estilo habitos-web) =====
-  // Toggle por tipo (diario / cartas), horario de silencio y notificación
+  // Toggle por tipo (diario / cartas / ánimo), horario de silencio y notificación
   // de prueba. Vive en el perfil; la fila "Notificaciones" lo abre.
   function openNotifSettingsSheet() {
     const s = getNotifSettings();
@@ -802,6 +802,16 @@ export function ProfilePage(router) {
               <span class="prof-toggle-slider"></span>
             </label>
           </div>
+          <div class="prof-row">
+            <div class="prof-row-text">
+              <span class="prof-row-title">Avisos de estado de ánimo</span>
+              <span class="prof-row-sub">Cada vez que registres cómo te sientes</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifMoods" ${s.moods ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
         </div>
 
         <div class="notif-card">
@@ -811,7 +821,7 @@ export function ProfilePage(router) {
             <span class="notif-quiet__sep">→</span>
             <input type="time" id="notifQuietTo" class="prof-name-input" value="${escapeHtml(s.quietTo)}" aria-label="Silencio hasta">
           </div>
-          <p class="notif-card__hint">Entre esas horas no recibirás ninguna notificación (soporta franjas que cruzan medianoche).</p>
+          <p class="notif-card__hint">Entre esas horas no recibirás avisos automáticos (soporta franjas que cruzan medianoche). El de tu estado de ánimo sale siempre: es la respuesta a lo que acabas de hacer.</p>
         </div>
 
         <button type="button" class="prof-btn prof-btn--primary" id="notifTestBtn">Enviar notificación de prueba</button>
@@ -866,6 +876,11 @@ export function ProfilePage(router) {
     $('#notifLetters').addEventListener('change', (e) => {
       setNotifSettings({ letters: e.target.checked });
       showToast(e.target.checked ? '💌 Aviso de cartas activado' : '🔕 Aviso de cartas desactivado', 'success');
+    });
+
+    $('#notifMoods').addEventListener('change', (e) => {
+      setNotifSettings({ moods: e.target.checked });
+      showToast(e.target.checked ? '💗 Aviso de ánimo activado' : '🔕 Aviso de ánimo desactivado', 'success');
     });
 
     const saveQuiet = () => {

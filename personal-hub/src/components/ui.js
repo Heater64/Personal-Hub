@@ -32,6 +32,8 @@ export const ICONS = {
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
   back: '<path d="m15 18-6-6 6-6"/>',
   chev: '<path d="m9 18 6-6-6-6"/>',
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
   more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
   calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/>',
@@ -200,12 +202,47 @@ export function openSheet(title, build) {
   lastFocused = document.activeElement;
   overlayRoot().append(overlay);
   if (!sheetEsc) {
-    sheetEsc = event => { if (event.key === 'Escape') closeSheets(); };
+    // Escape cierra, y Tab queda atrapado dentro del sheet. Sin esto, al
+    // abrir un regalo el Tab se iba a los botones de la página que hay detrás
+    // y el foco se iba a un sitio invisible bajo el overlay.
+    sheetEsc = event => {
+      if (event.key === 'Escape') { closeSheets(); return; }
+      if (event.key !== 'Tab') return;
+      const root = overlayRoot();
+      const sheetEl = root.querySelector('.sheet');
+      if (!sheetEl) return;
+      const items = focusablesIn(sheetEl);
+      if (!items.length) { event.preventDefault(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const actual = document.activeElement;
+      // El foco se ha quedado fuera (o en un elemento que ya no existe):
+      // se devuelve al principio.
+      if (!sheetEl.contains(actual)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus({ preventScroll: true });
+        return;
+      }
+      if (event.shiftKey && actual === first) {
+        event.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!event.shiftKey && actual === last) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    };
     document.addEventListener('keydown', sheetEsc);
   }
-  const focusable = sheet.querySelector('input,select,textarea,button');
+  const focusable = focusablesIn(sheet)[0];
   if (focusable) focusable.focus({ preventScroll: true });
   return overlay;
+}
+
+/** Elementos enfocables de un sheet, en el orden en que se recorren con Tab. */
+function focusablesIn(sheet) {
+  return [...sheet.querySelectorAll(
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+  )].filter((el) => el.offsetParent !== null || el === document.activeElement);
 }
 
 export function closeSheets() {

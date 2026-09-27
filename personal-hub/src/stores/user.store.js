@@ -41,14 +41,31 @@ class UserStore {
       };
       this.isAdmin = admin;
       this.isLoggedIn = true;
-      // Rol definitivo desde la DB (profiles): cuando llegue, refresca isAdmin
-      auth.refreshRole();
     } else {
       this.user = null;
       this.isAdmin = false;
       this.isLoggedIn = false;
-      auth.refreshRole();
     }
+    this._notify();
+
+    // Rol y estado de cuenta definitivos: viven en la tabla `profiles`, no
+    // en user_metadata (que el usuario puede editar por su cuenta).
+    // refreshAccount() además cierra la sesión si la cuenta fue
+    // deshabilitada con la pestaña ya abierta, y en ese caso deja el
+    // store vacío a través de onAuthChange.
+    this._syncFromDatabase();
+  }
+
+  /**
+   * Refleja en el store lo que devuelve profiles (role + enabled).
+   * Es una foto del estado, no una espera: si la red falla, se conserva el
+   * último estado conocido (auth.refreshAccount no lanza).
+   */
+  async _syncFromDatabase() {
+    await auth.refreshAccount();
+    if (!auth.isLoggedIn()) return; // sesión cerrada: el store ya está limpio
+    this.isAdmin = auth.isAdmin();
+    if (this.user) this.user.role = this.isAdmin ? 'admin' : 'user';
     this._notify();
   }
 
@@ -57,20 +74,25 @@ class UserStore {
   }
 
   updateProfile(updates, persist = true) {
-    if (this.user) {
-      Object.assign(this.user, updates);
-      // Persist name/avatar to Supabase metadata only when explicitly requested.
-      // Some callers (e.g. avatar upload) already update metadata server-side.
-      if (persist) {
-        const data = {};
-        if (updates.name) data.name = updates.name;
-        if (updates.avatar) data.avatar_url = updates.avatar;
-        if (Object.keys(data).length > 0) {
-          supabase.auth.updateUser({ data });
-        }
+    if (!this.user) return;
+    Object.assign(this.user, updates);
+
+    // Persist name/avatar to Supabase metadata only when explicitly requested.
+    // Some callers (e.g. avatar upload) already update metadata server-side.
+    // NUNCA se envían enabled ni role: el usuario podría auto-habilitarse o
+    // auto-ascenderse. La DB (017) lo bloquea, y ni siquiera lo intentamos.
+    if (persist) {
+      const data = {};
+      if (updates.name) data.name = updates.name;
+      if (updates.avatar) data.avatar_url = updates.avatar;
+      delete data.enabled;
+      delete data.role;
+      if (Object.keys(data).length > 0) {
+        supabase.auth.updateUser({ data });
       }
-      this._notify();
     }
+
+    this._notify();
   }
 
   onChange(callback) {

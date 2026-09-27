@@ -1038,6 +1038,14 @@
 .moods-bar-fill.mood-bad   { background: linear-gradient(90deg, #42a5f5, #64b5f6); }
 .moods-bar-fill.mood-love  { background: linear-gradient(90deg, #e91e63, #f06292); }
 
+/* Catálogo actual de ánimos (score 4 → 0, en el mismo orden de color que
+   el anterior para que las gráficas históricas sigan siendo legibles). */
+.moods-bar-fill.mood-bien       { background: linear-gradient(90deg, #4caf50, #66bb6a); }
+.moods-bar-fill.mood-carino     { background: linear-gradient(90deg, #e91e63, #f06292); }
+.moods-bar-fill.mood-triste     { background: linear-gradient(90deg, #ff9800, #ffb74d); }
+.moods-bar-fill.mood-preocupada { background: linear-gradient(90deg, #42a5f5, #64b5f6); }
+.moods-bar-fill.mood-enfadada   { background: linear-gradient(90deg, #e53935, #ef5350); }
+
 .moods-bar-pct {
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   min-width: 40px; text-align: right;

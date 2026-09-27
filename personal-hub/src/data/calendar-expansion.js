@@ -78,11 +78,16 @@ const RELAX = [
   ['Mimos', 'Ponte tu canción favorita, una mantita y no hagas nada más por un rato. Te lo mereces.']
 ];
 
+// "Reto real" se fusionó aquí: sus textos siguen vivos, ahora como Reto.
 const CHALLENGES = [
   ['Reto pequeño', 'Mándame una nota de voz con tu mejor imitación de alguien famoso.'],
   ['Reto de hoy', 'Encuentra algo bonito en tu casa y cuéntame por qué lo elegiste.'],
   ['Misión', 'Haz una foto de algo que te haga feliz hoy y enséñamela.'],
-  ['Reto rápido', 'Escribe 3 cosas por las que darías las gracias hoy.']
+  ['Reto rápido', 'Escribe 3 cosas por las que darías las gracias hoy.'],
+  ['Reto fuera de la web', 'Sal a la calle y mira el cielo. Si ves algo bonito, piensa en mí.'],
+  ['Reto real', 'Hazle un cumplido sincero a alguien hoy. Luego cuéntame qué pasó.'],
+  ['Reto fuera de la web', 'Bebe un vaso de agua, estira el cuello y da un mini paseo por casa.'],
+  ['Reto real', 'Escribe una nota con un deseo y guárdala en un libro. Dentro de un año, ábrela.']
 ];
 
 const PHOTOS = [
@@ -99,13 +104,6 @@ const VIDEOS = [
 const SURPRISES = [
   ['Sorpresa', 'Algo bueno se acerca. Mantén los ojos abiertos 😉'],
   ['Sorpresita', 'Hoy el universo te tiene reservado un momentito bonito. Búscalo.']
-];
-
-const OFFLINE = [
-  ['Reto fuera de la web', 'Sal a la calle y mira el cielo. Si ves algo bonito, piensa en mí.'],
-  ['Reto real', 'Hazle un cumplido sincero a alguien hoy. Luego cuéntame qué pasó.'],
-  ['Reto fuera de la web', 'Bebe un vaso de agua, estira el cuello y da un mini paseo por casa.'],
-  ['Reto real', 'Escribe una nota con un deseo y guárdala en un libro. Dentro de un año, ábrela.']
 ];
 
 const CRAFTS = [
@@ -193,7 +191,6 @@ function buildDayPlan(dateStr, dayIndex, extraSeq) {
       { type: 'polaroid', pool: PHOTOS },
       { type: 'video', pool: VIDEOS },
       { type: 'surprise', pool: SURPRISES },
-      { type: 'offline', pool: OFFLINE },
       { type: 'craft', pool: CRAFTS },
       { type: 'giftBox', pool: GIFTBOXES }
     ];

@@ -305,24 +305,21 @@
 
 /* ==========================================
    4 · EXPLORAR
+   Una sola tarjeta por fila (apiladas), no una rejilla de 2×2:
+   al ocupar el ancho completo la portada pasa a un cuadro a la izquierda
+   y el texto a la derecha, para que no quede una banda de color estirada.
    ========================================== */
 .sent-cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-12);
-}
-
-@media (min-width: 1000px) {
-  .sent-cards-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-10);
 }
 
 .sent-card {
   display: flex;
-  flex-direction: column;
-  /* Los <button> traen align-items:flex-start del navegador: sin esto la
-     portada no ocupa el ancho de la tarjeta. */
-  align-items: stretch;
-  gap: var(--sp-10);
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-14);
   padding: 0;
   overflow: hidden;
   border-radius: var(--r-lg);
@@ -339,13 +336,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 78px;
+  width: 84px;
+  height: 84px;
   flex: none;
+  align-self: stretch;
   color: var(--card-color);
   background:
     radial-gradient(120% 130% at 25% 0%, color-mix(in srgb, var(--card-color) 18%, transparent) 0%, transparent 62%),
     var(--surface-2);
-  border-bottom: 1px solid var(--border-soft);
+  border-right: 1px solid var(--border-soft);
   transition: background var(--dur-fast);
 }
 
@@ -354,21 +353,22 @@
 .sent-card-body {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 3px;
-  padding: 0 var(--sp-14) var(--sp-14);
+  padding: var(--sp-12) var(--sp-14) var(--sp-12) 0;
   min-width: 0;
-  margin-top: auto;
+  flex: 1;
 }
 
 .sent-card-title {
   font-family: var(--font-ui);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text);
 }
 
 .sent-card-desc {
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   color: var(--text-3);
   line-height: 1.4;
   overflow: hidden;
@@ -394,8 +394,10 @@
   .sent-hist-cell { min-height: 40px; }
   .sent-hist-emoji { font-size: 15px; }
   .sent-history { padding: var(--sp-14); }
-  .sent-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sent-card-cover { height: 64px; }
+  /* Sigue siendo una tarjeta por fila, solo con la portada más pequeña. */
+  .sent-card { gap: var(--sp-10); }
+  .sent-card-cover { width: 62px; height: 62px; }
+  .sent-card-body { padding-right: var(--sp-12); }
 }
 
 @media (prefers-reduced-motion: reduce) {

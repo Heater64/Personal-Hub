@@ -101,6 +101,28 @@
   color: var(--text-2);
 }
 
+/* Saludo con apodo: va arriba de todo en la tarjeta de días, antes del
+   contador. El apodo sale del rol de la sesión (admin / mi princesa). */
+.home-hero__greet {
+  position: relative;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.home-hero__greet-name {
+  color: var(--primary);
+  font-family: var(--font-display, Georgia, serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding-inline: 0.06em;
+}
+
 /* ==========================================
    2 · DOS DATOS RÁPIDOS
    ========================================== */

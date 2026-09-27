@@ -1,3 +1,4 @@
+import '../styles/thoseeyes.css';
 /* ==========================================
    Personal Hub — Those Eyes Page
    Experiencia romántica: solo la canción con

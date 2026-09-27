@@ -4,6 +4,7 @@
    Contenido · Actividad
    ========================================== */
 
+import '../styles/admin.css';
 import { db } from '../services/db.service.js';
 import {
   loadCatalog, saveCatalog, loadFavorites,
@@ -11,6 +12,7 @@ import {
 } from '../services/seriesData.js';
 import { seasonEditorHTML, collectSeasons, emptySeasonHTML, bindSeasonEditorEvents } from '../services/seriesEditor.js';
 import { userStore } from '../stores/user.store.js';
+import { moodStore } from '../stores/mood.store.js';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
 import { isValidUrlField, todayISO, hourInSpain } from '../utils/format.js';
@@ -19,7 +21,7 @@ import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disab
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { expandCalendarCatalog } from '../data/calendar-expansion.js';
 import { theme } from '../services/theme.service.js';
-import { CATEGORIES, TYPE_META, LETTERS } from './OpenWhen.js';
+import { CATEGORIES, TYPE_META, LETTERS } from '../data/openwhen.data.js';
 import {
   fileKind, kindLabel, formatBytes
 } from '../services/cloudinary.service.js';
@@ -72,10 +74,13 @@ const UI = {
 
 // ==========================================
 // MOOD CONSTANTS
+// El catálogo vive en mood.store (actual + antiguo). Este archivo no
+// vuelve a declararlo: si se duplica, las gráficas se desincronizan del
+// historial en cuanto se añade un estado nuevo.
 // ==========================================
-const MOOD_EMOJIS = { great: '🤍🤍🤍', good: '😊', meh: '😕', bad: '😔', love: '❤️' };
-const MOOD_LABELS = { great: 'Muy bieeeen', good: 'Bien', meh: 'Un poquito mal', bad: 'Mal', love: 'Necesito cariño' };
-const MOOD_SCORES = { great: 4, good: 3, meh: 2, bad: 1, love: 0 };
+// Orden de las barras: primero el catálogo vigente, detrás el histórico.
+const MOOD_ORDER = [...moodStore.getMoods(), ...(moodStore.getLegacyMoods() || [])].map(m => m.id);
+const moodInfo = (id) => moodStore.resolveMood({ mood: id }) || { emoji: '—', label: String(id || '—'), score: 0 };
 
 // El panel Admin muestra SOLO las estadísticas de este usuario (dada):
 // ánimos, visitas, dónde pasa el tiempo y últimas conexiones. El resto de
@@ -561,7 +566,7 @@ export function AdminPage(router) {
     const dominant = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
     const domKey = dominant ? dominant[0] : 'good';
     const avgScore = moods.length
-      ? moods.reduce((s, m) => s + (MOOD_SCORES[m.mood || m.status] ?? 2), 0) / moods.length
+      ? moods.reduce((s, m) => s + (moodInfo(m.mood || m.status).score ?? 2), 0) / moods.length
       : 2;
     const WEEK_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const weekCounts = [0, 0, 0, 0, 0, 0, 0];
@@ -952,10 +957,10 @@ export function AdminPage(router) {
       let emojiHtml = '';
       let titleText = `${ds}: Sin registro`;
       if (hasMood) {
-        const emojis = dailyMoods.slice(0, 3).map(m => m.emoji || MOOD_EMOJIS[m.mood] || '—').join('');
+        const emojis = dailyMoods.slice(0, 3).map(m => esc(m.emoji || moodInfo(m.mood).emoji)).join('');
         const extra = dailyMoods.length > 3 ? `<span style="font-size:0.6rem;opacity:0.8">+${dailyMoods.length - 3}</span>` : '';
         emojiHtml = `<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:1px;font-size:0.8rem;line-height:1">${emojis}${extra}</div>`;
-        const labels = dailyMoods.map(m => esc(m.label || MOOD_LABELS[m.mood] || m.mood)).join(', ');
+        const labels = dailyMoods.map(m => esc(m.label || moodInfo(m.mood).label)).join(', ');
         titleText = `${esc(ds)}: ${labels}`;
       }
 
@@ -978,7 +983,7 @@ export function AdminPage(router) {
     entries.forEach((m) => {
       const k = m.mood || 'unknown';
       counts[k] = (counts[k] || 0) + 1;
-      totalScore += MOOD_SCORES[m.mood] !== undefined ? MOOD_SCORES[m.mood] : 1;
+      totalScore += moodInfo(m.mood).score;
     });
     const avg = totalScore / entries.length;
     const avgEmoji = avg >= 3.5 ? '🤍🤍🤍' : avg >= 2.5 ? '😊' : avg >= 1.5 ? '😕' : avg >= 0.5 ? '😔' : '❤️';
@@ -988,16 +993,17 @@ export function AdminPage(router) {
 
     stats.innerHTML = `<div class="moods-stats-row">
       <div class="moods-stat"><span class="moods-stat-num">${entries.length}</span><span class="moods-stat-label">registros totales</span></div>
-      <div class="moods-stat"><span class="moods-stat-num">${MOOD_EMOJIS[bestMood]||'—'}</span><span class="moods-stat-label">más frecuente</span></div>
+      <div class="moods-stat"><span class="moods-stat-num">${esc(moodInfo(bestMood).emoji)}</span><span class="moods-stat-label">más frecuente</span></div>
       <div class="moods-stat"><span class="moods-stat-num">${avgEmoji}</span><span class="moods-stat-label">media del mes</span></div>
     </div>`;
 
-    const order = ['great','good','meh','bad','love'];
+    const order = MOOD_ORDER;
     breakdown.innerHTML = '<h4>Desglose</h4>' + order.map(k => {
       const count = counts[k] || 0;
       const pct = entries.length > 0 ? Math.round(count / entries.length * 100) : 0;
+      const info = moodInfo(k);
       return `<div class="moods-bar-row">
-        <span class="moods-bar-label">${MOOD_EMOJIS[k]||k} ${MOOD_LABELS[k]||k}</span>
+        <span class="moods-bar-label">${esc(info.emoji)} ${esc(info.label)}</span>
         <div class="moods-bar-track"><div class="moods-bar-fill mood-${k}" style="width:${pct}%"></div></div>
         <span class="moods-bar-pct">${pct}%</span>
       </div>`;
@@ -1176,7 +1182,7 @@ export function AdminPage(router) {
   function getMoodSummaryBadge(stats) {
     if (!stats || stats.total === 0) return '';
     const best = Object.entries(stats.moods).sort((a, b) => b[1] - a[1])[0];
-    const emoji = MOOD_EMOJIS[best[0]] || '—';
+    const emoji = esc(moodInfo(best[0]).emoji);
     const pct = Math.round(best[1] / stats.total * 100);
     const lastDate = stats.lastDate ? new Date(stats.lastDate + 'T12:00:00').toLocaleDateString('es') : '—';
     return `
@@ -1219,19 +1225,20 @@ export function AdminPage(router) {
 
     let moodHtml = '<p style="color:var(--theme-text-secondary);font-size:0.82rem;margin-bottom:12px;">Sin registros de ánimo</p>';
     if (stats && stats.total > 0) {
-      const order = ['great','good','meh','bad','love'];
+      const order = MOOD_ORDER;
       const rows = order.map(k => {
         const count = stats.moods[k] || 0;
         const pct = Math.round(count / stats.total * 100);
         if (count === 0) return '';
+        const info = moodInfo(k);
         return `<div class="moods-bar-row">
-          <span class="moods-bar-label" style="min-width:140px">${MOOD_EMOJIS[k]} ${MOOD_LABELS[k]}</span>
+          <span class="moods-bar-label" style="min-width:140px">${esc(info.emoji)} ${esc(info.label)}</span>
           <div class="moods-bar-track"><div class="moods-bar-fill mood-${k}" style="width:${pct}%"></div></div>
           <span class="moods-bar-pct">${count} (${pct}%)</span>
         </div>`;
       }).filter(Boolean).join('');
 
-      const avgScore = order.reduce((sum, k) => sum + (MOOD_SCORES[k] || 0) * (stats.moods[k] || 0), 0) / stats.total;
+      const avgScore = order.reduce((sum, k) => sum + (moodInfo(k).score || 0) * (stats.moods[k] || 0), 0) / stats.total;
       const avgEmoji = avgScore >= 3.5 ? '🤍🤍🤍' : avgScore >= 2.5 ? '😊' : avgScore >= 1.5 ? '😕' : '😔';
 
       moodHtml = `
@@ -1263,8 +1270,9 @@ export function AdminPage(router) {
     } else {
       const rows = history.map(m => {
         const dateStr = new Date(m.date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
-        const emoji = m.emoji || MOOD_EMOJIS[m.mood] || '—';
-        const label = m.label || MOOD_LABELS[m.mood] || m.mood;
+        const info = moodInfo(m.mood);
+        const emoji = esc(m.emoji || info.emoji);
+        const label = esc(m.label || info.label);
         return `<div class="moods-bar-row" style="margin-bottom:6px;">
           <span class="moods-bar-label" style="min-width:120px">${dateStr}</span>
           <span style="margin-right:8px;">${emoji}</span>
@@ -1729,7 +1737,6 @@ export function AdminPage(router) {
     polaroid:   { label: 'Foto',         emoji: '📸' },
     video:      { label: 'Vídeo',        emoji: '🎬' },
     surprise:   { label: 'Sorpresa',     emoji: '🎉' },
-    offline:    { label: 'Reto real',    emoji: '🔗' },
     craft:      { label: 'Manualidad',   emoji: '🎨' },
     giftBox:    { label: 'Regalo',       emoji: '🎁' },
     game:       { label: 'Juego',        emoji: '🎮' },
@@ -1952,17 +1959,24 @@ export function AdminPage(router) {
 
     // Campos por tipo: título común + data según tipo
     const fieldByType = (type) => {
+      // math usa `problem`, no `question`: no hay pregunta que hacerle. riddle
+      // si la tiene y su historico de respuestas debe seguir editandose.
+      if (type === 'math') return baseFields(type);
+      return [...baseFields(type), ['question', 'Pregunta para ella (opcional) 💌', 'textarea']];
+    };
+
+    const baseFields = (type) => {
       switch (type) {
-        case 'letter':     return [['content', 'Contenido de la carta', 'textarea']];
+        case 'letter':     return [['message', 'Contenido de la carta', 'textarea']];
         case 'affirmation':return [['message', 'Mensaje', 'textarea']];
         case 'riddle':     return [['question', 'Pregunta / acertijo (soporta LaTeX)', 'textarea'], ['answer', 'Respuesta (soporta LaTeX)', 'textarea']];
         case 'curiosity':  return [['fact', 'Dato curioso', 'textarea']];
         case 'relax':      return [['message', 'Instrucciones de desconexión', 'textarea']];
-        case 'challenge':  return [['message', 'El reto', 'textarea']];
+        case 'challenge':  return [['message', 'El reto', 'textarea'], ['instructions', 'Instrucciones', 'textarea']];
+
         case 'polaroid':   return [['image', 'URL de la foto', 'text'], ['caption', 'Pie de foto', 'text']];
         case 'video':      return [['videoUrl', 'URL del vídeo', 'text'], ['caption', 'Descripción', 'text'], ['poster', 'URL de portada (opcional)', 'text']];
         case 'surprise':   return [['message', 'La sorpresa', 'textarea']];
-        case 'offline':    return [['message', 'El reto', 'textarea'], ['instructions', 'Instrucciones', 'textarea']];
         case 'craft':      return [['message', 'Descripción', 'textarea'], ['pdfUrl', 'URL del PDF', 'text']];
         case 'giftBox':    return [['message', 'Mensaje', 'textarea'], ['image', 'URL de imagen (opcional)', 'text']];
         case 'game':       return [['redirectUrl', 'URL del juego', 'text'], ['message', 'Mensaje', 'textarea']];
@@ -1998,8 +2012,15 @@ export function AdminPage(router) {
         const title = page.querySelector('#calEditTitle').value.trim();
         if (!title) throw new Error('El título es obligatorio');
 
-        // Recoge los campos según el tipo elegido (no el original)
-        const payloadData = {};
+        // Se parte de los datos que YA había y se sobrescriben solo los campos
+        // del tipo. Antes se construía desde cero y cualquier clave que el
+        // formulario no conociera se perdía al guardar: las cartas tienen su
+        // texto en `message` y el formulario ofrecía `content`, así que abrir
+        // una carta en el panel y guardar le vaciaba el texto. Si cambia el
+        // tipo, en cambio, se empieza de cero, que es lo que quiere.
+        const payloadData = (!isNew && gift && type === gift.type && gift.data)
+          ? { ...gift.data }
+          : {};
         fieldByType(type).forEach(([key]) => {
           const el = page.querySelector(`#calEditF_${key}`);
           if (el) payloadData[key] = el.value.trim();
@@ -2056,7 +2077,10 @@ export function AdminPage(router) {
 
   function renderCalFields(fields, data0) {
     return fields.map(([key, label, kind]) => {
-      const val = data0[key] || '';
+      // Las tres cartas escritas a mano guardan su texto en `content` y las 43
+      // generadas en `message`. Se leen las dos para que salir a editarlas no
+      // aparezca en blanco.
+      const val = data0[key] || (key === 'message' ? data0.content : '') || '';
       return `<div class="admin-field">
         <label>${esc(label)}</label>
         ${kind === 'textarea'
@@ -3000,12 +3024,12 @@ export function AdminPage(router) {
             <div class="admin-panel-head"><h4>Apariencia</h4></div>
             <p class="muted-text">El tema se aplica en toda la web y se recuerda en este navegador.</p>
             <div class="admin-seg" id="themeSeg" role="radiogroup" aria-label="Paleta de color">
-              ${[{ id: 'coral', label: 'Coral' }, { id: 'frambuesa', label: 'Frambuesa' }, { id: 'azul', label: 'Azul' }]
-                .map(t => `<button type="button" role="radio" aria-checked="${paletaActiva === t.id}" class="admin-seg-btn${paletaActiva === t.id ? ' active' : ''}" data-theme-set="${t.id}" data-theme-label="${t.label}">${t.label}</button>`).join('')}
+              ${theme.getPaletas()
+                .map(t => `<button type="button" role="radio" aria-checked="${paletaActiva === t.id}" class="admin-seg-btn${paletaActiva === t.id ? ' active' : ''}" data-theme-set="paleta" data-theme-id="${t.id}" data-theme-label="${t.label}">${t.label}</button>`).join('')}
             </div>
             <div class="admin-seg" id="modeSeg" role="radiogroup" aria-label="Modo de color" style="margin-top:8px">
               ${[{ id: 'auto', label: '🖥️ Auto' }, { id: 'dark', label: '🌙 Oscuro' }, { id: 'light', label: '☀️ Claro' }]
-                .map(t => `<button type="button" role="radio" aria-checked="${modoActivo === t.id}" class="admin-seg-btn${modoActivo === t.id ? ' active' : ''}" data-theme-set="${t.id}" data-theme-label="${t.label}">${t.label}</button>`).join('')}
+                .map(t => `<button type="button" role="radio" aria-checked="${modoActivo === t.id}" class="admin-seg-btn${modoActivo === t.id ? ' active' : ''}" data-theme-set="modo" data-theme-id="${t.id}" data-theme-label="${t.label}">${t.label}</button>`).join('')}
             </div>
           </div>
 
@@ -3098,9 +3122,14 @@ export function AdminPage(router) {
     if (token !== sectionToken) return;
 
     // ---- Tema ----
+    // El catálogo de paletas sale de theme.service (una sola fuente), no de
+    // una lista literal aquí: si mañana se añade una paleta, aparece sola
+    // en Perfil y en Admin.
     page.querySelectorAll('[data-theme-set]').forEach(btn => {
       btn.addEventListener('click', () => {
-        theme.setTheme(btn.dataset.themeSet);
+        const id = btn.dataset.themeId;
+        if (btn.dataset.themeSet === 'paleta') theme.setPaleta(id);
+        else theme.setModo(id);
         // Solo se desmarcan los botones del mismo grupo (paleta o modo)
         const group = btn.parentElement;
         if (group) {
@@ -3109,7 +3138,7 @@ export function AdminPage(router) {
             b.setAttribute('aria-checked', String(b === btn));
           });
         }
-        showToast(`Tema: ${btn.dataset.themeLabel || btn.dataset.themeSet}`, 'success');
+        showToast(`${btn.dataset.themeSet === 'paleta' ? 'Paleta' : 'Modo'}: ${btn.dataset.themeLabel || id}`, 'success');
       });
     });
 

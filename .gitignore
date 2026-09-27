@@ -41,6 +41,11 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Salida de servidores de desarrollo locales
+vite-*.out
+vite-*.err
+vite-dev.pid
+
 # Repos de referencia descargados
 /external/
 obscura/

@@ -3,8 +3,9 @@
    Premium Music App: playlists, search, queue, continue listening
    ========================================== */
 
+import '../styles/canciones.css';
 import { showToast } from '../components/Toast.js';
-import { escapeHtml } from '../utils/escape.js';
+import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { formatTime, todayISO, hourInSpain } from '../utils/format.js';
 import { userPrefKey, migrateUserPref } from '../utils/userStorage.js';
 import { db } from '../services/db.service.js';
@@ -892,10 +893,14 @@ export function CancionesPage(router) {
   }
 
   function renderCoverCard(sg) {
+    // La portada viene de `content.canciones` (la escribe el admin desde el
+    // panel): se valida el esquema para que un `javascript:` o unas comillas
+    // no puedan cerrar el atributo src.
+    const cover = safeUrl(sg.cover);
     return `<button class="music-cover-card" data-title="${escapeHtml(sg.title)}" data-artist="${escapeHtml(sg.artist || '')}" type="button">
       <span class="music-cover-art">
-        ${sg.cover
-          ? `<img src="${sg.cover}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${coverFallback(sg.title)}`
+        ${cover
+          ? `<img src="${cover}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${coverFallback(sg.title)}`
           : coverFallback(sg.title)}
         <span class="music-cover-play">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -956,7 +961,7 @@ export function CancionesPage(router) {
             : i + 1}</span>
           <div class="music-fav-tit">
             <span class="music-fav-cover">
-              ${sg.cover ? `<img src="${sg.cover}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${coverFallback(sg.title)}` : coverFallback(sg.title)}
+              ${safeUrl(sg.cover) ? `<img src="${safeUrl(sg.cover)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${coverFallback(sg.title)}` : coverFallback(sg.title)}
             </span>
             <strong>${escapeHtml(sg.title)}${sg.experience ? ` <span class="music-track-badge">${MUSIC_ICONS.sparkles(12)}</span>` : ''}</strong>
           </div>
@@ -2078,7 +2083,7 @@ export function CancionesPage(router) {
       const open = queueMenuPos === i;
       return `<div class="music-queue-item ${open ? 'is-open' : ''}" data-qpos="${i}" role="button" tabindex="0" aria-label="Reproducir ${escapeHtml(s.title)}">
         <span class="music-queue-num">${i + 1}</span>
-        <img src="${s.cover}" alt="" class="music-queue-cover" loading="lazy">
+        ${safeUrl(s.cover) ? `<img src="${safeUrl(s.cover)}" alt="" class="music-queue-cover" loading="lazy">` : ''}
         <div class="music-queue-info">
           <strong>${escapeHtml(s.title)}</strong>
           <span>${escapeHtml(s.artist)}</span>

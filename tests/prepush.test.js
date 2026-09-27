@@ -13,6 +13,8 @@ function projectPath(...parts) {
   return path.join(ROOT, ...parts);
 }
 
+const hub = (...parts) => projectPath('personal-hub', ...parts);
+
 test('el catálogo expandido cubre del 15 de agosto al 31 de diciembre', () => {
   const catalog = expandCalendarCatalog({});
   const dates = [];
@@ -36,19 +38,19 @@ test('los juegos del calendario apuntan a archivos existentes', () => {
   assert.equal(gameGifts.length, 9);
   for (const gift of gameGifts) {
     assert.match(gift.redirectUrl, /^games\/[\w-]+\.html$/);
-    assert.equal(existsSync(projectPath('personal-hub', 'public', gift.redirectUrl)), true, gift.redirectUrl);
+    assert.equal(existsSync(hub('public', gift.redirectUrl)), true, gift.redirectUrl);
   }
 });
 
 test('cada juego listado en Juegos tiene su página pública', async () => {
-  const source = await readFile(projectPath('personal-hub', 'src', 'pages', 'Juegos.js'), 'utf8');
+  const source = await readFile(hub('src', 'pages', 'Juegos.js'), 'utf8');
   const hrefs = [...source.matchAll(/href:\s*'([^']+\.html)'/g)].map(match => match[1]);
 
   assert.equal(hrefs.length, 19);
   assert.equal(new Set(hrefs).size, hrefs.length);
   for (const href of hrefs) {
     const relativePath = href.replace(/^\//, '');
-    assert.equal(existsSync(projectPath('personal-hub', 'public', relativePath)), true, href);
+    assert.equal(existsSync(hub('public', relativePath)), true, href);
   }
 });
 
@@ -90,80 +92,180 @@ test('las políticas de playlists y telemetría aíslan al usuario autenticado',
 });
 
 test('la sincronización no referencia una variable local inexistente', async () => {
-  const source = await readFile(projectPath('personal-hub', 'src', 'services', 'sync.service.js'), 'utf8');
+  const source = await readFile(hub('src', 'services', 'sync.service.js'), 'utf8');
   assert.doesNotMatch(source, /hasData\(local\)/);
   assert.match(source, /hasData\(readLocal\(\)\)/);
 });
 
-test('la API de push exige sesión para desuscribirse y admite cron GET', async () => {
+test('la API de push valida sesión y enabled, y usa la tabla dedicada', async () => {
   const pushApi = await readFile(projectPath('api', 'push.js'), 'utf8');
+
+  // Suscripciones en tabla propia, no dentro de `content`.
+  assert.match(pushApi, /const PUSH_TABLE = 'push_subscriptions';/);
+  // Fallback legacy si la migración 018 todavía no está aplicada.
+  assert.match(pushApi, /42P01/);
+  assert.match(pushApi, /getLegacySubscriptions/);
+  // Autenticación unificada: token + profiles.enabled.
+  assert.match(pushApi, /async function authenticate\(req, res\)/);
+  assert.match(pushApi, /enabled !== false/);
+  // El envío diario sigue siendo exclusivo de admin y con cron GET/POST.
   assert.match(pushApi, /action === 'send' && !\['GET', 'POST'\]\.includes\(req\.method\)/);
-  assert.match(pushApi, /if \(!token\) return res\.status\(401\)/);
-  assert.doesNotMatch(pushApi, /else if \(endpoint\)/);
-  assert.match(pushApi, /!\[7, 8\]\.includes\(hourInSpain\(\)\)/);
+  assert.match(pushApi, /process\.env\.CRON_SECRET/);
   assert.match(pushApi, /email_confirmed_at/);
+  // La baja se hace por endpoint concreto, no borra la de otra persona.
+  assert.doesNotMatch(pushApi, /else if \(endpoint\)/);
 });
 
-test('la familia azul existe como override por data-tema (modo intacto)', async () => {
-  const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'design-tokens.css'), 'utf8');
-  for (const s of ['[data-tema="azul"]', '#2563EB', '#7DB7FF']) assert.match(css, new RegExp(s.replace(/[[\]]/g, '\\$&')));
-  assert.match(css, /\[data-theme="light"\]/);
+test('la familia azul existe como override por data-paleta (modo intacto)', async () => {
+  const css = await readFile(hub('src', 'styles', 'design-tokens.css'), 'utf8');
+
+  // La paleta se selecciona con data-paleta; el modo (claro/oscuro) con data-theme.
+  assert.match(css, /:root\[data-paleta="azul"\]/);
+  assert.match(css, /:root\[data-paleta="azul"\]\[data-theme="light"\]/);
+  assert.match(css, /:root\[data-theme="light"\]/);
+  // El override no pisa tokens estructurales, solo color/acento.
+  const bloque = css.slice(css.indexOf(':root[data-paleta="azul"]'), css.indexOf(':root[data-paleta="azul"][data-theme="light"]'));
+  assert.ok(bloque.includes('--accent'), 'la paleta azul debe redefinir el acento');
+  assert.ok(!/--sp-|--fs-|--nav-h|--blur-/.test(bloque), 'la paleta no debe tocar tokens de espaciado/tipografía');
 });
 
-test('el servicio de temas maneja 4 paletas con escritura dual y legacy', async () => {
-  const svc = await readFile(projectPath('personal-hub', 'src', 'services', 'theme.service.js'), 'utf8');
-  for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro', 'dataset.tema', 'dataset.theme']) assert.ok(svc.includes(s));
-  const boot = await readFile(projectPath('personal-hub', 'index.html'), 'utf8');
-  assert.ok(boot.includes('dataset.tema'));
+test('el servicio de temas expone 3 paletas y 3 modos con escritura dual y legacy', async () => {
+  const svc = await readFile(hub('src', 'services', 'theme.service.js'), 'utf8');
+
+  // Escritura dual: data-paleta + data-theme, y el atributo legacy data-tema.
+  for (const s of ['dataset.paleta', 'dataset.theme', 'dataset.tema', 'getPaletas()', 'getModos()']) {
+    assert.ok(svc.includes(s), `theme.service.js debe usar ${s}`);
+  }
+  // 3 paletas x 2 modos, más 'auto' como resolución automática.
+  const linea = svc.split(/\r?\n/).find(l => l.includes('return [') && l.includes('coral-oscuro'));
+  assert.ok(linea, 'getAvailable() debe devolver la lista de combinaciones');
+  const disponibles = [...linea.matchAll(/'([a-z-]+)'/g)].map(m => m[1]);
+  assert.equal(disponibles.length, 7, 'getAvailable() debe listar 6 combinaciones + auto');
+  assert.equal(new Set(disponibles).size, disponibles.length, 'sin ids duplicados');
+  assert.deepEqual(disponibles, [
+    'coral-oscuro', 'coral-claro', 'frambuesa-oscuro', 'frambuesa-claro',
+    'azul-oscuro', 'azul-claro', 'auto'
+  ]);
+
+  const boot = await readFile(hub('index.html'), 'utf8');
+  for (const s of ['dataset.paleta', 'dataset.theme', 'dataset.tema']) {
+    assert.ok(boot.includes(s), `index.html debe aplicar ${s} antes del primer pintado`);
+  }
 });
 
 test('el arranque resuelve el modo por SO cuando no hay tema guardado', async () => {
-  const boot = await readFile(projectPath('personal-hub', 'index.html'), 'utf8');
+  const boot = await readFile(hub('index.html'), 'utf8');
   assert.ok(!boot.includes('if (!t) return'));
   assert.ok(boot.includes('prefers-color-scheme'));
 });
 
-test('perfil y admin ofrecen las 4 paletas + auto', async () => {
-  const profile = await readFile(projectPath('personal-hub', 'src', 'pages', 'Profile.js'), 'utf8');
-  for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(profile.includes(s));
-  const admin = await readFile(projectPath('personal-hub', 'src', 'pages', 'Admin.js'), 'utf8');
-  for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(admin.includes(s));
+test('perfil y admin ofrecen el catálogo de paletas sin re-declararlo', async () => {
+  const svc = await readFile(hub('src', 'services', 'theme.service.js'), 'utf8');
+  // La fuente de verdad es theme.service: 3 paletas y 3 modos, nada más.
+  const paletaCount = (svc.match(/\{\s*id:\s*'(?:coral|frambuesa|azul)'/g) || []).length;
+  assert.equal(paletaCount, 3, 'theme.service debe definir 3 paletas');
+  assert.ok(svc.includes("export const MODOS = ["), 'y 3 modos (auto/dark/light)');
+
+  for (const file of ['Profile.js', 'Admin.js']) {
+    const source = await readFile(hub('src', 'pages', file), 'utf8');
+    assert.ok(source.includes('theme.getPaletas()'), `${file} debe enumerar theme.getPaletas()`);
+    // Nada de catálogos duplicados a mano: si alguien los re-declara, se desincronizan.
+    assert.doesNotMatch(source, /id:\s*'coral'/, `${file} no debe re-declarar la paleta coral`);
+  }
+
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  assert.ok(admin.includes('data-theme-set="paleta"'));
+  assert.ok(admin.includes('data-theme-set="modo"'));
+  assert.ok(admin.includes('setPaleta'), 'el handler debe usar setPaleta');
+  assert.ok(admin.includes('setModo'), 'el handler debe usar setModo');
 });
 
-test('pageheader umbra con tokens y barra movil contextual', async () => {
-  const comp = await readFile(projectPath('personal-hub', 'src', 'components', 'PageHeader.js'), 'utf8');
+test('pageheader con tokens y barra movil contextual', async () => {
+  const comp = await readFile(hub('src', 'components', 'PageHeader.js'), 'utf8');
   assert.ok(comp.includes('renderPageHeader'));
-  assert.ok(comp.includes('<h1'));
+  assert.ok(comp.includes('<h1 class="scr-title">'));
   assert.ok(comp.includes('mobileHidden'));
-  assert.ok(comp.includes('page-header__icon'));
-  assert.ok(comp.includes('page-header__line'));
-  const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'page-header.css'), 'utf8');
-  assert.ok(!css.includes('#') || css.includes('rgba('));
-  assert.ok(css.includes('--accent-dim'));
-  assert.ok(css.includes('--theme-divider-strong'));
-  const main = await readFile(projectPath('personal-hub', 'src', 'styles', 'main.css'), 'utf8');
-  assert.ok(main.includes('page-header'));
+  assert.ok(comp.includes('escapeHtml(title'), 'el título se escapa');
+
+  // La clase que emite para móvil tiene que existir en el CSS, o la bandera es decorativa.
+  const ui = await readFile(hub('src', 'styles', 'ui.css'), 'utf8');
+  const pos = ui.indexOf('.scr-head--mobile-hidden');
+  assert.notEqual(pos, -1, 'ui.css debe estilizar .scr-head--mobile-hidden');
+  const bloque = ui.slice(Math.max(0, pos - 200), pos + 60);
+  assert.match(bloque, /@media\s*\(max-width:\s*768px\)/, 'la regla debe vivir dentro del breakpoint móvil');
+  assert.match(bloque, /\.scr-head--mobile-hidden\s*\{\s*display:\s*none;\s*\}/);
+
+  // Clases del marcado con estilo basado en tokens.
+  assert.ok(ui.includes('.scr-title'));
+  assert.ok(ui.includes('.head-actions'));
+  assert.ok(ui.includes('var(--'), 'ui.css debe usar tokens, no colores sueltos');
 });
 
-test('bottomnav compacta a 390px y subnav con scroll horizontal', async () => {
-  const cssFiles = ['bottom-nav.css', 'rincon.css'];
-  let css = '';
-  for (const f of cssFiles) { try { css += await readFile(projectPath('personal-hub', 'src', 'styles', f), 'utf8'); } catch (e) {} }
-  assert.ok(css.includes('390px'));
-  assert.ok(css.includes('overflow-x'));
+test('bottomnav mobile-first y compacta con etiquetas recortadas', async () => {
+  const nav = await readFile(hub('src', 'styles', 'nav.css'), 'utf8');
+
+  assert.ok(nav.includes('.bottom-nav'), 'debe existir la barra inferior');
+  // Mobile-first: se oculta a partir de 768px (donde aparece el sidebar).
+  const ocultar = nav.slice(nav.indexOf('.bottom-nav { display: none;') - 60, nav.indexOf('.bottom-nav { display: none;'));
+  assert.match(ocultar, /@media\s*\(min-width:\s*768px\)/);
+  // Compacta: etiquetas recortadas y safe-area para el gesto inferior del iPhone.
+  assert.match(nav, /text-overflow:\s*ellipsis|overflow:\s*hidden/);
+  assert.match(nav, /env\(safe-area-inset-bottom/);
 });
 
-test('inicio usa pageheader y tarjeta de bienvenida sin frase ni particulas', async () => {
-  const home = await readFile(projectPath('personal-hub', 'src', 'pages', 'Home.js'), 'utf8');
-  assert.ok(home.includes('renderPageHeader'));
+test('inicio arranca por la tarjeta de días, sin cabecera ni frases viejas', async () => {
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+  // La pantalla ya no lleva cabecera: el saludo de la tarjeta hace de encabezado.
+  assert.ok(!home.includes('renderPageHeader'), 'Inicio no debe montar la cabecera de página');
+  assert.ok(!home.includes('longDate'), 'la fecha larga solo alimentaba esa cabecera');
   assert.ok(!home.includes('home-hero__phrase'));
   assert.ok(!home.includes('home-hero__particle'));
   assert.ok(home.includes('homeCounter'));
   assert.ok(home.includes('Datos curiosos'));
+  // Pero sigue habiendo un único h1 en la pantalla, para lectores de pantalla.
+  assert.equal([...home.matchAll(/<h1/g)].length, 1, 'Inicio debe tener exactamente un h1');
+  assert.ok(home.includes('class="sr-only"'), 'ese h1 es solo para lectores de pantalla');
+  // Las fechas del día salen de la zona horaria de España, no de la del navegador.
+  assert.ok(home.includes('todayISO()'));
+});
+
+test('el saludo de inicio va en la tarjeta de días, con apodo y sin duplicarse', async () => {
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+
+  // Apodo según el rol de la sesión: admin vs. la otra cuenta.
+  assert.ok(
+    home.includes("userStore.isAdmin ? 'admin' : 'mi princesa'"),
+    'el apodo debe salir de userStore.isAdmin'
+  );
+  assert.ok(home.includes("from '../stores/user.store.js'"), 'Home debe importar el userStore');
+
+  // El saludo se pinta dentro de la tarjeta de días.
+  const tarjeta = home.slice(home.indexOf('<section class="home-hero"'));
+  const posSaludo = tarjeta.indexOf('home-hero__greet');
+  const posContador = tarjeta.indexOf('home-hero__main');
+  assert.notEqual(posSaludo, -1, 'debe existir home-hero__greet');
+  assert.ok(posSaludo < posContador, 'el saludo va ANTES del contador de días');
+
+  // Y el título de la pantalla ya no repite el saludo: la tarjeta es lo primero.
+  assert.ok(!home.includes('renderPageHeader'), 'no debe quedar cabecera con otro saludo');
+
+  // Las tres franjas del día, en hora de España.
+  for (const s of ['Buenos días', 'Buenas tardes', 'Buenas noches']) {
+    assert.ok(home.includes(s), `falta el saludo «${s}»`);
+  }
+  assert.ok(home.includes('TIME_GREETING[timeKey]'));
+  assert.ok(home.includes('hourInSpain()'), 'la franja horaria debe ser la de España');
+
+  // Y está estilizado con tokens, no con colores sueltos.
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+  assert.ok(css.includes('.home-hero__greet'), 'home.css debe estilizar .home-hero__greet');
+  const regla = css.slice(css.indexOf('.home-hero__greet {'), css.indexOf('.home-hero__greet-name'));
+  assert.match(regla, /var\(--/);
+  assert.ok(css.includes('.home-hero__greet-name'));
 });
 
 test('rincon con cabecera y carrusel manual accesible', async () => {
-  const rincon = await readFile(projectPath('personal-hub', 'src', 'pages', 'Rincon.js'), 'utf8');
+  const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
   assert.ok(rincon.includes('renderPageHeader'));
   assert.ok(rincon.includes('El Rincón'));
   assert.ok(rincon.includes('aria-roledescription'));
@@ -181,17 +283,673 @@ test('rincon con cabecera y carrusel manual accesible', async () => {
 });
 
 test('interiores con cabecera y minecraft con h1-h2', async () => {
-  const rincon = await readFile(projectPath('personal-hub', 'src', 'pages', 'Rincon.js'), 'utf8');
+  const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
   for (const t of ['Galería', 'Memes', 'Audios', 'Curiosidades']) assert.ok(rincon.includes(t));
-  const mc = await readFile(projectPath('personal-hub', 'src', 'pages', 'Minecraft.js'), 'utf8');
+  const mc = await readFile(hub('src', 'pages', 'Minecraft.js'), 'utf8');
   assert.ok(mc.includes('renderPageHeader'));
   assert.ok(mc.includes("'Minecraft'"));
   assert.ok(mc.includes('Nuestros mundos'));
 });
 
 test('interiores ocultan cabecera en movil y minecraft simplifica backs', async () => {
-  const rincon = await readFile(projectPath('personal-hub', 'src', 'pages', 'Rincon.js'), 'utf8');
+  const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
   assert.ok(rincon.includes('mobileHidden'));
-  const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'rincon.css'), 'utf8');
-  assert.ok(css.includes('data-mc-back'));
+  const mc = await readFile(hub('src', 'pages', 'Minecraft.js'), 'utf8');
+  assert.ok(mc.includes('mobileHidden'), 'Minecraft también oculta su cabecera en móvil');
+  assert.ok(mc.includes('data-mc-back'), 'Minecraft debe tener botón de vuelta');
+  // El botón de vuelta se usa en el marcado: tiene que estar estilizado.
+  const css = await readFile(hub('src', 'styles', 'minecraft.css'), 'utf8');
+  assert.ok(css.includes('.rincon-back-btn'), 'minecraft.css debe estilizar .rincon-back-btn');
+  // Y con tokens, no con colores sueltos.
+  const rule = css.slice(css.indexOf('.rincon-back-btn'), css.indexOf('.mc-head'));
+  assert.match(rule, /var\(--/);
+});
+
+test('las páginas de carga diferida se enrutan con el helper lazy', async () => {
+  const main = await readFile(hub('src', 'main.js'), 'utf8');
+
+  assert.ok(main.includes('const lazy = (loader)'), 'debe existir el helper lazy');
+  for (const ruta of ['/openwhen', '/admin', '/rincon', '/canciones', '/juegos', '/calendario', '/series']) {
+    const idx = main.indexOf(`router.addRoute('${ruta}'`);
+    assert.notEqual(idx, -1, `falta la ruta ${ruta}`);
+    const linea = main.slice(idx, main.indexOf('\n', idx));
+    assert.ok(linea.includes('lazy('), `${ruta} debería cargarse con lazy()`);
+  }
+  // Y las ligeras se pueden seguir importando de forma estática.
+  for (const page of ['Login', 'Home', 'Profile', 'Razones', 'MalDia']) {
+    assert.ok(main.includes(`from './pages/${page}.js'`), `${page} debería seguir siendo estático`);
+  }
+});
+
+test('cada página diferida importa su propio CSS y main.css solo trae lo compartido', async () => {
+  const main = await readFile(hub('src', 'styles', 'main.css'), 'utf8');
+  const diferidas = {
+    'Admin.js': 'admin.css', 'Rincon.js': 'rincon.css', 'Minecraft.js': 'minecraft.css',
+    'Canciones.js': 'canciones.css', 'Sentimientos.js': 'sentimientos.css',
+    'Juegos.js': 'juegos.css', 'OnlineGame.js': 'online-games.css',
+    'Calendario.js': 'calendario.css', 'OpenWhen.js': 'openwhen.css',
+    'Series.js': 'series.css', 'ThoseEyes.js': 'thoseeyes.css',
+    'JustTheWayYouAre.js': 'justthewayyouare.css', 'OsitosWorld.js': 'ositos.css'
+  };
+
+  for (const [page, css] of Object.entries(diferidas)) {
+    const source = await readFile(hub('src', 'pages', page), 'utf8');
+    assert.ok(
+      source.includes(`import '../styles/${css}';`),
+      `${page} debe importar ../styles/${css} para que viaje en su chunk`
+    );
+    // Si además se importa en main.css, el CSS vuelve al bundle inicial.
+    assert.ok(!main.includes(css), `main.css no debe importar ${css}: pesa ${css} en el bundle inicial`);
+    assert.equal(existsSync(hub('src', 'styles', css)), true, css);
+  }
+
+  // Lo transversal (tokens, reset, componentes, shell) sí sigue en el bundle inicial.
+  for (const compartido of ['design-tokens.css', 'reset.css', 'typography.css', 'ui.css', 'nav.css', 'lightbox.css']) {
+    assert.ok(main.includes(compartido), `main.css debe conservar ${compartido}`);
+  }
+});
+
+test('el catálogo de Open When vive en un módulo sin dependencias de UI', async () => {
+  const data = await readFile(hub('src', 'data', 'openwhen.data.js'), 'utf8');
+  const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
+
+  // El módulo de datos no puede arrastrar componentes: si los importara, Home.js
+  // y el service de notificaciones voltarían a traer la página entera.
+  assert.doesNotMatch(data, /from '\.\.\/components\//);
+  assert.doesNotMatch(data, /from '\.\.\/pages\//);
+  assert.ok(data.includes('export const LETTERS = ['));
+  assert.ok(data.includes('export const CATEGORIES = ['));
+  assert.ok(data.includes('export const TYPE_META = {'));
+  assert.ok(data.includes('export async function loadAllOpenWhenLetters()'));
+
+  // 29 cartas de fábrica, con id único.
+  const ids = [...data.slice(data.indexOf('export const LETTERS = [')).matchAll(/^\s{4}id: '([^']+)'/gm)].map(m => m[1]);
+  assert.equal(ids.length, 29);
+  assert.equal(new Set(ids).size, ids.length, 'las cartas de fábrica necesitan id único');
+
+  // La página reexporta para no romper a quien importaba desde ahí.
+  assert.ok(page.includes("from '../data/openwhen.data.js'"));
+  assert.ok(page.includes('export { CATEGORIES, TYPE_META, LETTERS, loadAllOpenWhenLetters };'));
+
+  // Y nadie del chunk inicial importa ya la página Open When.
+  for (const [file, rel] of [['Home.js', '../data/openwhen.data.js'], ['Admin.js', '../data/openwhen.data.js']]) {
+    const source = await readFile(hub('src', 'pages', file), 'utf8');
+    assert.ok(source.includes(rel), `${file} debe leer el catálogo del módulo de datos`);
+  }
+  const notif = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
+  assert.ok(notif.includes("from '../data/openwhen.data.js'"));
+  assert.doesNotMatch(notif, /from '\.\.\/pages\//, 'un servicio no debe importar páginas');
+});
+
+test('la telemetría es opt-in y sanea antes de enviar', async () => {
+  const telemetry = await readFile(hub('src', 'services', 'telemetry.js'), 'utf8');
+
+  // Opt-in de verdad: sin endpoint no hay fetch ni sendBeacon en el arranque.
+  assert.match(telemetry, /const ENDPOINT = import\.meta\.env\.VITE_TELEMETRY_URL;/);
+  const antesDeFlush = telemetry.slice(0, telemetry.indexOf('function flush()'));
+  for (const bloqueado of ['sendBeacon', 'fetch']) {
+    // Solo pueden aparecer dentro de flush(), nunca al importar el módulo.
+    assert.doesNotMatch(
+      antesDeFlush,
+      new RegExp(`\\b${bloqueado}\\s*\\(`),
+      `no debe llamarse a ${bloqueado}() antes de flush()`
+    );
+  }
+  assert.ok(telemetry.includes('function flush()'), 'debe existir un envío explícito');
+  assert.ok(telemetry.includes('if (!ENDPOINT || buffer.length === 0) return;'), 'flush() aborta sin endpoint');
+
+  // Saneado: nada de correos, tokens ni URLs con credenciales salen nunca.
+  assert.match(telemetry, /sanitizeMessage/);
+  assert.match(telemetry, /@\[\\w-\]/, 'debe detectar correos');
+  assert.match(telemetry, /parece un token/);
+  assert.match(telemetry, /credenciales/);
+  assert.ok(telemetry.includes('MAX_EVENTS'), 'el buffer debe estar acotado');
+
+  // Y se arranca antes de montar la app para no perder fallos de arranque.
+  const main = await readFile(hub('src', 'main.js'), 'utf8');
+  assert.ok(main.includes("from './services/telemetry.js'"));
+  const posInit = main.indexOf('initTelemetry();');
+  const posRouter = main.indexOf('new Router(');
+  assert.ok(posInit !== -1 && posInit < posRouter, 'initTelemetry() debe ir antes de crear el Router');
+});
+
+test('el README documenta el orden de migraciones y el rollback', async () => {
+  const readme = await readFile(projectPath('README.md'), 'utf8');
+
+  for (const s of ['sql/', '017_enabled_autoritativo.sql', '018_push_subscriptions.sql']) {
+    assert.ok(readme.includes(s), `el README debe mencionar ${s}`);
+  }
+  // sql/ es la fuente de verdad; supabase-schema.sql es histórico.
+  assert.match(readme, /FUENTE DE VERDAD/i);
+  assert.match(readme, /HIST[ÓO]RICA/i);
+  // Y no puede recomendar el orden viejo.
+  assert.doesNotMatch(readme, /aplicar `supabase-schema\.sql`/i);
+
+  for (const v of ['VITE_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'CRON_SECRET', 'VAPID_PRIVATE_KEY']) {
+    assert.ok(readme.includes(v), `el README debe documentar ${v}`);
+  }
+  assert.ok(/nunca.*cliente|Nunca.*cliente/i.test(readme), 'debe advertir contra filtrar secretos al cliente');
+});
+
+test('el catálogo de ánimos es el nuevo y el histórico conserva el antiguo', async () => {
+  const { MOODS, LEGACY_MOODS, ALL_MOODS, findMood } = await import('../personal-hub/src/data/moods.data.js');
+
+  // Lo que se puede registrar AHORA: los cinco nuevos, en el orden pedido.
+  assert.deepEqual(MOODS.map(m => m.id), ['preocupada', 'enfadada', 'triste', 'bien', 'carino']);
+  assert.deepEqual(MOODS.map(m => m.emoji), ['😟', '😡', '🥹', '😊', '🤍']);
+  assert.deepEqual(MOODS.map(m => m.label), ['Preocupada', 'Enfadada', 'Triste', 'Bien', 'Necesito cariño']);
+
+  // Escala 0..4 (4 = mejor) para que las medias sigan siendo comparables.
+  const scores = MOODS.map(m => m.score);
+  assert.equal(Math.max(...scores), 4);
+  assert.equal(Math.min(...scores), 0);
+  assert.equal(new Set(scores).size, scores.length, 'cada estado tiene su score');
+
+  // El catálogo anterior se conserva para LEER, no para ofrecer.
+  assert.equal(LEGACY_MOODS.length, 5);
+  for (const legacy of LEGACY_MOODS) {
+    assert.ok(legacy.legacy, `${legacy.id} debe ir marcado como antiguo`);
+    assert.equal(findMood(legacy.id), null, `${legacy.id} no se puede volver a registrar`);
+    assert.equal(MOODS.some(m => m.id === legacy.id), false);
+  }
+  // Ningún id nuevo pisa a un id antiguo.
+  const idsAntiguos = new Set(LEGACY_MOODS.map(m => m.id));
+  for (const m of MOODS) assert.ok(!idsAntiguos.has(m.id), `${m.id} colisiona con el catálogo antiguo`);
+
+  // Unificado: primero el vigente, detrás el histórico (orden de las barras).
+  assert.equal(ALL_MOODS.length, 10);
+  assert.deepEqual(ALL_MOODS.slice(0, 5).map(m => m.id), MOODS.map(m => m.id));
+  assert.deepEqual(ALL_MOODS.slice(5).map(m => m.id), LEGACY_MOODS.map(m => m.id));
+});
+
+test('un estado ya registrado se sigue viendo tal cual se puso', async () => {
+  const { resolveMood, moodEmoji } = await import('../personal-hub/src/data/moods.data.js');
+
+  // 1. Fila con etiqueta propia (lo que guarda la tabla moods): manda la fila.
+  const conDatos = resolveMood({ mood: 'great', label: 'Muy bieeeen', emoji: '🤍', score: 4 });
+  assert.equal(conDatos.label, 'Muy bieeeen');
+  assert.equal(conDatos.emoji, '🤍');
+  assert.equal(conDatos.legacy, true);
+
+  // 2. Fila sin etiqueta (p.ej. creada por una versión vieja): cae al catálogo
+  //    anterior, y NUNCA devuelve null aunque el id ya no exista en MOODS.
+  const sinDatos = resolveMood({ mood: 'meh' });
+  assert.equal(sinDatos.label, 'Un poquito mal');
+  assert.ok(sinDatos.emoji);
+
+  // 3. Id desconocido de verdad: null, no una etiqueta inventada.
+  assert.equal(resolveMood({ mood: 'no-existe' }), null);
+  assert.equal(resolveMood(null), null);
+
+  // 4. Un estado nuevo se resuelve con el catálogo vigente.
+  assert.equal(resolveMood({ mood: 'triste' }).label, 'Triste');
+  // Y el emoji nunca sale vacío, que es lo que se pinta en las celdas.
+  assert.ok(moodEmoji({ mood: 'love' }));
+  assert.equal(moodEmoji(null), '');
+
+  // 5. Si algún día se toca una etiqueta antigua, la fila gana: el histórico
+  //    no cambia por retocar el catálogo.
+  assert.equal(resolveMood({ mood: 'meh', label: 'Era "un poco mal"' }).label, 'Era "un poco mal"');
+});
+
+test('el store de ánimos delega en el módulo de datos', async () => {
+  const store = await readFile(hub('src', 'stores', 'mood.store.js'), 'utf8');
+
+  // El catálogo no puede volver a declararse dentro del store.
+  assert.ok(store.includes("from '../data/moods.data.js'"));
+  assert.doesNotMatch(store, /^const MOODS = \[/m);
+  assert.doesNotMatch(store, /^const LEGACY_MOODS = \[/m);
+  assert.ok(store.includes('return findMood(id);'), 'getMoodById usa el catálogo vigente');
+  assert.ok(store.includes('return resolveMood(entry);'), 'resolveMood delega en la lógica pura');
+});
+
+test('el historial guarda la etiqueta, no solo el id, y acepta el formato viejo', async () => {
+  const store = await readFile(hub('src', 'stores', 'mood.store.js'), 'utf8');
+
+  // Si se guardara solo el id, cambiar el catálogo dejaría el pasado mudo.
+  assert.match(store, /const entry = \{ moodId: mood\.id, date: today, label: mood\.label, emoji: mood\.emoji, score: mood\.score \};/);
+  assert.match(store, /e\.moodId \|\| e\.mood/, 'getHistory debe aceptar mood y moodId');
+});
+
+test('el admin no vuelve a declarar el catálogo de ánimos', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // Los tres mapas duplicados que se desincronizaban del store.
+  assert.doesNotMatch(admin, /MOOD_EMOJIS/, 'el admin debe leer los emoji del store');
+  assert.doesNotMatch(admin, /MOOD_LABELS/, 'el admin debe leer las etiquetas del store');
+  assert.doesNotMatch(admin, /MOOD_SCORES/, 'el admin debe leer los scores del store');
+  assert.doesNotMatch(admin, /\['great','good','meh','bad','love'\]/, 'el orden fijo de barras quedó obsoleto');
+
+  assert.ok(admin.includes('moodStore.resolveMood'), 'debe usar resolveMood');
+  assert.ok(admin.includes('getLegacyMoods()'), 'las barras deben incluir el histórico');
+
+  // Y el CSS tiene una clase por cada estado, para que las barras lleven color.
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+  for (const id of ['bien', 'carino', 'triste', 'preocupada', 'enfadada']) {
+    assert.ok(css.includes(`.moods-bar-fill.mood-${id}`), `falta el color de la barra .mood-${id}`);
+  }
+});
+
+test('las tarjetas de Explorar en Sentimientos van de una en una', async () => {
+  const css = await readFile(hub('src', 'styles', 'sentimientos.css'), 'utf8');
+
+  // Una sola columna en TODOS los tamaños: ni 2×2 ni 4 en paralelo.
+  const rejilla = css.slice(css.indexOf('.sent-cards-grid {'), css.indexOf('.sent-card {'));
+  assert.match(rejilla, /grid-template-columns:\s*minmax\(0, 1fr\)/, 'la rejilla es de una columna');
+  assert.doesNotMatch(css, /\.sent-cards-grid\s*\{[^}]*repeat\(/, 'no debe volver a una rejilla de varias columnas');
+
+  // Al ocupar el ancho completo, la portada pasa a un cuadro a la izquierda.
+  const card = css.slice(css.indexOf('.sent-card {'), css.indexOf('.sent-card-body'));
+  assert.match(card, /flex-direction:\s*row/);
+  const cover = css.slice(css.indexOf('.sent-card-cover {'), css.indexOf('.sent-card:hover'));
+  assert.match(cover, /width:\s*84px/);
+  assert.match(cover, /height:\s*84px/);
+  assert.match(cover, /border-right:/, 'la separación va ahora en vertical');
+
+  // Ni el icono se queda pequeño en una portada más grande.
+  const sent = await readFile(hub('src', 'pages', 'Sentimientos.js'), 'utf8');
+  assert.match(sent, /sent-card-cover">\$\{icon\(card\.icon, 30\)\}/);
+});
+
+test('el historial de sentimientos escapa lo que viene de la base de datos', async () => {
+  const sent = await readFile(hub('src', 'pages', 'Sentimientos.js'), 'utf8');
+
+  assert.ok(sent.includes("from '../utils/escape.js'"), 'Sentimientos debe importar escapeHtml');
+  // La etiqueta y el emoji del historial vienen de Supabase ahora, no del catálogo.
+  assert.ok(sent.includes('escapeHtml(mood.label)'), 'la etiqueta del calendario va escapada');
+  assert.ok(sent.includes('escapeHtml(mood.emoji)'), 'el emoji del calendario va escapado');
+  // Y se resuelve, no se busca por catálogo: así el pasado no depende del actual.
+  assert.ok(sent.includes('moodStore.resolveMood(historyMap[dateStr])'));
+  assert.equal((sent.match(/getMoodById/g) || []).length, 1, 'getMoodById solo para el estado recién elegido');
+});
+
+test('el apodo del saludo va en letra elegante, no en la de la interfaz', async () => {
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+  const nombre = css.slice(css.indexOf('.home-hero__greet-name {'));
+
+  // Playfair Display es la serif que el proyecto ya carga: sin descargas nuevas.
+  assert.match(nombre, /font-family:\s*var\(--font-display/, 'el apodo usa la fuente display');
+  assert.match(nombre, /font-style:\s*italic/, 'y en cursiva, que es lo que la hace elegante');
+  assert.ok(!nombre.slice(0, nombre.indexOf('}')).includes('--font-ui'), 'no debe caer en la fuente de la interfaz');
+
+  // La fuente elegante solo para el apodo: el resto del saludo sigue siendo Inter.
+  const saludo = css.slice(css.indexOf('.home-hero__greet {'), css.indexOf('.home-hero__greet-name {'));
+  assert.match(saludo, /font-family:\s*var\(--font-ui\)/, 'el saludo conserva la tipografía de la interfaz');
+});
+
+test('la migracion 019 cierra la fuga de moods sin poder borrar datos', async () => {
+  const sql = await readFile(projectPath('sql', '019_aislamiento_verificado.sql'), 'utf8');
+
+  // La fuga medida: dada (is_admin=false) leia 7 filas de moods de admin.
+  // Se corrige sin depender del nombre de la politica sobrante, que no
+  // aparece en ningun fichero del repo.
+  assert.match(sql, /FROM pg_policies/, 'busca las politicas reales de la tabla');
+  assert.match(
+    sql,
+    /policyname NOT IN \([\s\S]*?'moods_select_policy'[\s\S]*?'moods_delete_policy'/,
+    'descarta cualquier politica que no sea una de las cuatro previstas',
+  );
+  assert.match(sql, /DROP POLICY %I ON public\.moods/, 'borra la sobrante por nombre, en tiempo de ejecucion');
+
+  // Y deja moods con las cuatro correctas, mirando al dueno.
+  for (const p of ['select', 'insert', 'update', 'delete']) {
+    assert.match(sql, new RegExp(`CREATE POLICY "moods_${p}_policy"`), `moods_${p}_policy debe recrearse`);
+  }
+  assert.match(sql, /USING \(public\.is_enabled\(\) AND \(user_id::uuid = auth\.uid\(\) OR public\.is_admin\(\)\)\)/);
+
+  // push: api/push.js usa service_role y 018 no le dio permiso. Sin esto
+  // el alta de suscripciones push estaba rota.
+  assert.match(sql, /GRANT ALL ON public\.push_subscriptions TO service_role/);
+
+  // Guarantee dura: una migracion de seguridad no puede destruir datos.
+  const sinComentario = sql
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('--'))
+    .join('\n');
+  assert.doesNotMatch(sinComentario, /\bDROP\s+TABLE\b/i, 'no puede tirar ninguna tabla');
+  assert.doesNotMatch(sinComentario, /\bTRUNCATE\b/i, 'no puede vaciar ninguna tabla');
+  assert.doesNotMatch(sinComentario, /\bDELETE\s+FROM\b/i, 'no puede borrar filas');
+  assert.doesNotMatch(sinComentario, /\bDROP\s+(COLUMN|FUNCTION)\b/i, 'no puede quitar columnas ni funciones');
+});
+
+test('los regalos del calendario se recorren con flechas sin cerrar', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const ui = await readFile(hub('src', 'components', 'ui.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  // Solo los regalos DEL DÍA: las flechas nosaltan a otra fecha.
+  assert.doesNotMatch(cal, /function browseList/, 'la lista era de todo el catálogo y ya no debe existir');
+  const open = cal.slice(cal.indexOf('function openExperience'), cal.indexOf('function markGiftSeen'));
+  assert.match(open, /const list = dayIds\(dateStr\)/, 'la lista sale de los regalos del día');
+  assert.match(open, /\.map\(id => \(\{ gift: giftOf\(id\), dateStr \}\)\)/, 'con el regalo resuelto');
+  assert.doesNotMatch(open, /catalog\?\.months|catalog\.months/, 'no debe construir la lista desde los meses');
+
+  // Moverse con las flechas ES mirar el regalo: tiene que quedar como visto.
+  const go = open.slice(open.indexOf('const go = (delta)'), open.indexOf('function paint()'));
+  assert.match(go, /markGiftSeen\(list\[index\]\.gift\.id\)/, 'navegar marca el regalo como visto');
+
+  // Flechas laterales: dos botones y un contador de posicion.
+  assert.match(cal, /exp-browse__arrow--prev/);
+  assert.match(cal, /exp-browse__arrow--next/);
+  assert.match(cal, /\$\{index \+ 1\} de \$\{list\.length\}/, 'indica en cual de los regalos va');
+  assert.match(open, /if \(list\.length < 2\) navEl\.hidden = true/, 'con un solo regalo no hay flechas');
+
+  // Y se puede con el teclado, que es lo que hace comodo recorrerlos.
+  assert.match(cal, /event\.key === 'ArrowLeft'/, 'flecha izquierda');
+  assert.match(cal, /event\.key === 'ArrowRight'/, 'flecha derecha');
+  // Sin secuestrar las flechas mientras se escribe una respuesta.
+  assert.match(cal, /const typing = event\.target\.closest\?\.\('input,textarea,select,\[contenteditable\]'\)/);
+
+  // No es ciclico y en los extremos la flecha se desactiva: dar la vuelta
+  // de diciembre a agosto confunde mas que ayuda.
+  assert.match(cal, /if \(next < 0 \|\| next >= list\.length\) return;/, 'no da la vuelta');
+  assert.match(cal, /btnPrev\.disabled = index === 0/);
+  assert.match(cal, /btnNext\.disabled = index === list\.length - 1/);
+
+  // Redibuja en el sitio: si cerrara el sheet al cambiar, seria un "_exit"
+  // y habria que volver a abrir cada regalo.
+  assert.doesNotMatch(cal.slice(cal.indexOf('function openExperience'), cal.indexOf('/** Marca solo el regalo abierto')), /closeSheets\(\)[^)]*\)\s*;\s*\}\s*$/m, 'no cierra el sheet al navegar');
+
+  // El icono de flecha tiene que existir de verdad: icon() cae en silencio
+  // a una estrella si el nombre no esta en ICONS.
+  for (const name of ['chevron-left', 'chevron-right']) {
+    assert.ok(ui.includes(`'${name}':`), `falta el icono ${name} en ICONS`);
+  }
+
+  // En movil las flechas bajan a una fila (pulgar); en ancho, a los lados.
+  assert.match(css, /\.exp-browse__nav \{ display: flex/, 'fila de flechas en movil');
+  assert.match(css, /\.exp-browse__nav \{ display: contents/, 'flechas laterales en ancho');
+  assert.match(css, /\.exp-browse__stage \{ padding-inline: 56px/, 'el texto no puede quedar debajo de la flecha');
+});
+
+test('cada tipo de regalo se ve distinto, no solo con un color', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  // 21 tipos con solo 5 tonos: sin una clase por tipo, una carta y un
+  // mensaje se ven iguales. La chapa lleva tono + tipo, y el contenido el tipo.
+  assert.match(cal, /kind\.className = `exp-kind is-\$\{tone\} exp-kind--\$\{actual\.gift\.type\}`/);
+  assert.match(cal, /stage\.className = `exp-browse__stage exp--\$\{actual\.gift\.type\}`/);
+  assert.match(cal, /kindLabel\.textContent = meta\.label/, 'la chapa nombra el tipo');
+  assert.match(cal, /kindIcon\.innerHTML = icon\(meta\.icon, 15\)/, 'con su icono');
+
+  // El tono se activa con is-*, que es como los define el fichero: con
+  // exp-kind--rose, --tone no resolveria y la chapa saldria gris.
+  assert.match(css, /\.is-rose\s*\{ --tone:/, 'los tonos existen como .is-*');
+  assert.match(css, /\.exp-kind \{[\s\S]*?var\(--tone-soft/, 'la chapa usa los tokens de tono');
+
+  // Y cada familia tiene forma propia, no solo un color distinto.
+  const familias = [
+    ['letter', /--font-display/, 'la carta va en tipografia de imprenta'],
+    ['riddle', /border: 2px solid var\(--tone/, 'el acertijo va enmarcado'],
+    ['polaroid', /rotate\(-0\.7deg\)/, 'la foto va como polaroid'],
+    ['memory', /rotate\(0\.7deg\)/, 'el recuerdo va al otro lado'],
+    ['video', /background: #000/, 'el video va en negro de cine'],
+    ['coupon', /border: 2px dashed/, 'el vale va troceado'],
+    ['wishlist', /border: 1px dashed/, 'la lista va con guiones'],
+    ['affirmation', /text-align: center/, 'el mensaje va centrado'],
+    ['relax', /\.exp--relax \.exp-text \{/, 'la desconexion tiene estilo propio'],
+    ['surprise', /\.exp--surprise \.exp-surprise \{/, 'la sorpresa tiene estilo propio'],
+    ['craft', /\.exp--craft \.exp-text/, 'la manualidad tiene estilo propio'],
+  ];
+  for (const [tipo, patron, motivo] of familias) {
+    assert.ok(new RegExp(`\\.exp--${tipo}[ ,{]`).test(css), `falta el estilo de ${tipo}`);
+    assert.match(css, patron, motivo);
+  }
+});
+
+test('el sistema de respuestas es alcanzable y el día avisa de lo que falta', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // El fallo de origen: renderAsk exigia data.question, pero el unico campo
+  // question del Admin era el de riddle, que renderAsk excluia. Sistema muerto.
+  // Ahora la regla es una sola y compartida por todos: tiene question.
+  assert.match(cal, /function hasAskBox\(gift\) \{\s*return !!gift\?\.data\?\.question;/,
+    'la caja se abre con tener question, sin listas de tipos');
+  assert.doesNotMatch(cal, /if \(!question \|\| gift\.type === 'riddle'/, 'ya no se excluye por tipo');
+  // Y el que decide si sale la caja es el mismo que decide el sobre y el
+  // contador: si se desincronizan, promete una caja que no aparece.
+  assert.match(cal, /if \(!hasAskBox\(gift\)\) return null;/);
+  assert.match(cal, /const pendingAnswer = \(gift\) => hasAskBox\(gift\)/);
+  assert.match(cal, /const preguntas = \(catalog\?\.gifts \|\| \[\]\)\.filter\(hasAskBox\);/);
+  assert.match(cal, /\.filter\(hasAskBox\)/);
+
+  // El Admin debe ofrecer el campo en todos los tipos salvo math, que usa
+  // `problem` y no pregunta nada.
+  assert.match(admin, /if \(type === 'math'\) return baseFields\(type\);/);
+  assert.match(admin, /\['question', 'Pregunta para ella \(opcional\) 💌', 'textarea'\]/);
+
+  // loadMyResponses era de modulo y llamaba a paintAll, que vive en el cierre
+  // de la pagina: la promesa rechazaba y el catch dejaba la cache vacia, asi
+  // que el calendario volvía a decir que habia 65 preguntas pendientes.
+  assert.match(cal, /function loadMyResponses\(\) \{\s*return db\.getMyGiftResponses\(\)/,
+    'devuelve la promesa y no repinta por su cuenta');
+  assert.doesNotMatch(cal.slice(cal.indexOf('function loadMyResponses()'), cal.indexOf('HELPERS DE FECHA')), /paintAll/, 'no puede llamar a paintAll desde el modulo');
+  assert.match(cal, /loadMyResponses\(\)\.then\(paintAll\);/, 'quien la llama se encarga de repintar');
+
+  // Y guardar una respuesta tiene que actualizar la cache: si solo se guarda
+  // en Supabase, el sobre y el contador seguirian diciendo que falta.
+  assert.match(cal, /function setResponse\(/, 'unico punto de escritura');
+  assert.match(cal, /setResponse\(gift\.id, text,/, 'renderAsk lo usa');
+
+  // Editable: antes el textarea se bloqueaba para siempre en cuanto enviabas.
+  assert.doesNotMatch(cal, /disable\('Respondida ❤'\)/);
+  assert.match(cal, /Guardar cambios/, 'el boton pasa a guardar cambios');
+});
+
+test('un día a medias se distingue de uno sin abrir', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  assert.match(cal, /const isPartial = \(ids\) => \{[\s\S]*?n > 0 && n < ids\.length/, 'parcial = alguno abierto y alguno no');
+  assert.match(cal, /function openState\(dateStr, ids\) \{[\s\S]*?if \(isPartial\(ids\)\) return 'partial';/);
+  // El estado se decide en un sitio unico para que la marca y el aria-label
+  // no puedan contradecirse.
+  assert.match(cal, /return openState\(dateStr, ids\);/, 'ambos caminos pasan por openState');
+  assert.match(cal, /if \(state === 'partial'\) classes\.push\('is-partial'\)/);
+  assert.match(cal, /\$\{day\} — \$\{abiertos\} de \$\{count\} regalos abiertos/, 'y lo dice con palabras');
+  assert.match(css, /\.cal-day__part \{/, 'con su propia marca, no un punto más');
+});
+
+test('el Admin ya no destruye el texto de las cartas al guardar', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // Las cartas guardan su texto en `message` (43 de 47); el formulario pedía
+  // `content`, así que al guardar se perdía. El texto se leía de las dos
+  // claves y se escribe en la buena.
+  assert.match(admin, /case 'letter':\s*return \[\['message', 'Contenido de la carta'/,
+    'la carta se edita sobre la clave que usan los datos');
+  assert.match(admin, /data0\[key\] \|\| \(key === 'message' \? data0\.content : ''\)/,
+    'y si viene en content, también se muestra');
+
+  // El fallo de raiz: payloadData se armaba desde cero, con lo que el
+  // formulario no conociera se perdia. Ahora parte de lo que ya habia.
+  assert.match(admin, /const payloadData = \(!isNew && gift && type === gift\.type && gift\.data\)/,
+    'parte de los datos existentes en vez de reconstruirlos');
+  assert.match(admin, /\? \{ \.\.\.gift\.data \}/, 'copiandolos');
+  assert.match(admin, /: \{\};/, 'y si cambia el tipo, empieza de cero');
+});
+
+test('la categoría "Reto real" está fusionada con "Reto" y no puede volver', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const expansion = await readFile(hub('src', 'data', 'calendar-expansion.js'), 'utf8');
+  const gifts = await readFile(hub('src', 'services', 'gifts.service.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  // El tipo desaparece del catalogo, del panel y del generador. Si alguien
+  // lo reintroduce, la categoria vuelve a existir y se pueden volver a crear
+  // regalos de un tipo que ya no existe en los datos.
+  assert.doesNotMatch(cal, /offline:\s*\{ icon:/, 'Calendario no debe declarar el tipo offline');
+  assert.doesNotMatch(cal, /offline: '/, 'ni su tono');
+  assert.doesNotMatch(admin, /label: 'Reto real'/, 'el Admin no debe ofrecerlo en el desplegable');
+  assert.doesNotMatch(admin, /case 'offline'/, 'ni su esquema de campos');
+  assert.doesNotMatch(expansion, /type: 'offline'/, 'el generador no debe crearlo');
+  assert.doesNotMatch(css, /\.exp--offline/, 'ni sus estilos');
+
+  // Pero los textos no se pierden: viven ahora dentro de los retos.
+  assert.match(expansion, /\['Reto real',/, 'los textos de reto real siguen vivos como Reto');
+  assert.match(expansion, /\['Reto fuera de la web',/, 'y los de reto fuera de la web');
+
+  // El campo instructions venía del esquema de offline: si disappears al
+  // fusionar, abrir y guardar uno de esos retos en el Admin lo borraría.
+  assert.match(admin, /case 'challenge':[\s\S]*?'instructions'/, 'Reto conserva el campo instructions');
+
+  // Las copias ya guardadas en el cliente (localStorage, service worker, un
+  // movil sin abrir desde el cambio) siguen trayendo type: 'offline'. Sin
+  // normalizar al cargar, esos regalos cairian en el tipo por defecto.
+  assert.match(gifts, /const LEGACY_TYPES = \{ offline: 'challenge' \}/);
+  assert.match(gifts, /normalizeLegacyTypes\(data\);/, 'y se aplica al cargar el catalogo');
+});
+
+test('la migracion 020 cierra las politicas permisivas sin romper el panel de admin', async () => {
+  const sql = await readFile(projectPath('sql', '020_policies_permisivas.sql'), 'utf8');
+
+  // El fallo era el mismo que en moods: politicas PERMISIVAS que se
+  // combinan con OR y anulan las restrictivas. Se barean por pg_policies,
+  // sin fiarse del nombre, que es lo que fallo con 016.
+  assert.match(sql, /FROM pg_policies/, 'busca las politicas reales de cada tabla');
+  assert.match(sql, /policyname NOT IN/, 'solo conserva las de la lista blanca');
+  assert.match(sql, /DROP POLICY %I ON public\.%I/, 'las elimina en tiempo de ejecucion');
+
+  // playlists era la fuga grave: read/update/delete con USING (true).
+  for (const mala of ['playlists_read_all', 'playlists_write_all', 'playlists_update_all', 'playlists_delete_all']) {
+    assert.ok(!new RegExp(`CREATE POLICY "${mala}"`).test(sql), `${mala} no debe recrearse nunca`);
+  }
+  for (const buena of ['select', 'insert', 'update', 'delete']) {
+    assert.match(sql, new RegExp(`CREATE POLICY "playlists_${buena}_owner"`), `playlists_${buena}_owner debe recrearse`);
+  }
+  assert.match(sql, /WITH CHECK \(public\.is_enabled\(\) AND \(created_by = auth\.uid\(\) OR public\.is_admin\(\)\)\)/);
+
+  // lists blancos completas: si se olvidara una de lectura del admin, el
+  // panel se quedaria sin ver la actividad.
+  for (const p of ['activity_log_select_admin', 'analytics_visits_select_admin', 'analytics_events_select_admin']) {
+    assert.ok(sql.includes(`"${p}"`), `${p} debe seguir en la lista blanca`);
+  }
+  assert.match(sql, /user_id = auth\.uid\(\)::text/, 'la telemetria se escribe en nombre propio');
+
+  // La auditoria de 019 solo miraba USING y salia null en los INSERT, que
+  // se deciden con WITH CHECK. Esta tiene que mirar las dos.
+  assert.match(sql, /with_check/, 'la auditoria debe incluir WITH CHECK');
+  // Ni una gota de datos.
+  const sinComentario = sql.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  assert.doesNotMatch(sinComentario, /\bDROP\s+TABLE\b/i);
+  assert.doesNotMatch(sinComentario, /\bTRUNCATE\b/i);
+  assert.doesNotMatch(sinComentario, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(sinComentario, /\bUPDATE\s+public\./i, 'esta migracion es solo de politicas');
+});
+
+test('se puede encontrar un regalo sin recorrer el calendario dia a dia', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  // El indice se construye una vez por catalogo, no en cada pulsacion: con
+  // 393 regalos, rehacerlo por tecla se notaba.
+  assert.match(cal, /if \(searchIndex && searchIndexFor === catalog\) return searchIndex;/);
+  assert.match(cal, /searchIndexFor = catalog;/);
+
+  // Se indexa lo que de verdad se busca: titulo, tipo, mes y el texto del
+  // regalo. Sin el mes, "diciembre" no encontraba nada.
+  for (const campo of ['gift.title', 'metaOf(gift.type).label', 'const mes =', 'data.message', 'data.fact', 'data.question']) {
+    assert.match(cal, new RegExp(campo.replace(/[().]/g, (c) => `\\${c}`)), `el indice debe incluir ${campo}`);
+  }
+
+  // Varias palabras: todas tienen que aparecer ("carta playa").
+  assert.match(cal, /terms\.every\(\(term\) => entry\.texto\.includes\(term\)\)/);
+  assert.match(cal, /limit = 60/, 'el resultado se acota para no pintar 393 nodos');
+  assert.match(cal, /Mostrando \$\{encontrados\.length\} de \$\{total\} coincidencias\./);
+
+  // Un dia bloqueado NO se abre: la sorpresa no se gasta buscandola. Y el
+  // candado va antes de abrir nada, no despues.
+  const bloqueado = cal.slice(cal.indexOf('function openSearch'));
+  assert.match(bloqueado, /if \(bloqueado\) \{[\s\S]*?toast\([\s\S]*?return;[\s\S]*?\}/,
+    'un regalo bloqueado avisa y no se abre');
+  assert.ok(
+    bloqueado.indexOf('if (bloqueado) {') < bloqueado.indexOf('openExperience(gift, dateStr)'),
+    'el bloqueo se comprueba antes de abrir el regalo',
+  );
+
+  // Facil de llegar y de usar sin raton.
+  assert.match(cal, /event\.key\?\.toLowerCase\(\) === 'k' && \(event\.metaKey \|\| event\.ctrlKey\)/, 'atajo Ctrl/⌘+K');
+  assert.match(cal, /event\.key !== '\/'\) return;/, 'atajo "/"');
+  assert.match(cal, /if \(enCampo\) return;/, 'no pisa lo que se esta escribiendo');
+  assert.match(cal, /document\.addEventListener\('keydown', onShortcut\)/);
+  assert.match(cal, /document\.removeEventListener\('keydown', onShortcut\)/, 'y se quita al salir de la pagina');
+  assert.match(cal, /if \(event\.key !== 'ArrowDown' && event\.key !== 'ArrowUp'\) return;/, 'se recorre con flechas');
+  assert.match(cal, /function searchSuggestions\(\)/, 'ofrece palabras que si devuelven algo');
+  assert.match(cal, /onclick: \(\) => \{ searchInput\.value = word;/, 'al pulsar una sugerencia se busca');
+  assert.match(css, /\.cal-search__chips\[hidden\] \{ display: none; \}/);
+});
+
+test('los tres detalles finos del visor de regalos estan resueltos', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const ui = await readFile(hub('src', 'components', 'ui.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  // 1) El tirón al cambiar de regalo. Se fija la altura vieja, se pinta y se
+  //    deja interpolar; al terminar se sueltan altura y overflow, porque si
+  //    el recorte se quedara, el polaroid rotado perderia las esquinas.
+  assert.match(cal, /const alturaVieja = stage\.offsetHeight;/);
+  assert.match(cal, /stage\.style\.overflow = 'hidden';/);
+  assert.match(cal, /const alturaNueva = stage\.scrollHeight;/);
+  assert.match(cal, /if \(ev\.propertyName !== 'height'\) return;/);
+  assert.match(cal, /stage\.style\.height = '';      \/\/ vuelve a crecer con el contenido/);
+  assert.match(css, /transition: height 0\.22s/);
+  // Y si el sistema pide menos movimiento, no se interpola.
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.exp-browse__stage \{ transition: none; \}/);
+
+  // 2) El foco se salia del sheet. Ahora Tab queda dentro, en los dos
+  //    sentidos, y al cerrar vuelve donde estaba.
+  assert.match(ui, /if \(event\.key !== 'Tab'\) return;/);
+  assert.match(ui, /if \(event\.shiftKey && actual === first\) \{[\s\S]*?last\.focus/);
+  assert.match(ui, /\} else if \(!event\.shiftKey && actual === last\) \{[\s\S]*?first\.focus/);
+  assert.match(ui, /if \(!sheetEl\.contains\(actual\)\)/, 'el foco se devuelve si se ha quedado fuera');
+  assert.match(ui, /if \(lastFocused && typeof lastFocused\.focus === 'function'\)/, 'al cerrar se recupera el foco');
+
+  // 3) El aria-live esta en el panel entero, que se repinta en cada flecha
+  //    (navegar marca el regalo como visto). Ahora solo habla el dia.
+  assert.match(cal, /<p class="sr-only" id="calAnnounce" aria-live="polite">/);
+  assert.match(cal, /if \(dateStr === lastAnnouncedDay\) return;/, 'no re-anuncia el mismo dia');
+  assert.doesNotMatch(cal, /<section id="calDay" aria-live/, 'el panel entero no debe ser region viva');
+  // Y solo cuando ya hay catalogo: si no, se quedaria marcado como dicho
+  // mientras decia "sin regalo".
+  assert.match(cal, /if \(!catalog\) return;/);
+});
+
+test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async () => {
+  const notif = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
+  const store = await readFile(hub('src', 'stores', 'mood.store.js'), 'utf8');
+  const profile = await readFile(hub('src', 'pages', 'Profile.js'), 'utf8');
+  const sw = await readFile(hub('public', 'sw.js'), 'utf8');
+
+  // El aviso va en el STORE, no en las pantallas: es el unico punto por el
+  // que se escribe un estado, asi que se avisa igual desde Sentimientos, desde
+  // el perfil y desde la pantalla de bienvenida.
+  assert.match(store, /_notifyMood\(mood\);/, 'saveMood avisa');
+  assert.match(store, /this\._notifyMood\(prev\);/, 'y quitarlo tambien avisa del estado que queda');
+  assert.match(store, /import \{ notifyMoodSaved \} from '\.\.\/services\/notifications\.service\.js';/, 'import estatico: el modulo ya esta en el bundle');
+  assert.match(store, /notifyMoodSaved\(mood\)\.catch\(\(\) => \{ \/\* sin notificaciones/, 'un fallo del aviso no rompe el guardado');
+
+  // Interruptor propio: es un aviso mas y se apaga sin apagar los demas.
+  assert.match(notif, /moods: true,\s+\/\/ aviso cada vez/);
+  assert.match(notif, /if \(!getNotifSettings\(\)\.moods\) return false;/);
+  assert.match(profile, /id="notifMoods" \$\{s\.moods \? 'checked' : ''\}/, 'el interruptor existe en el perfil');
+  assert.match(profile, /setNotifSettings\(\{ moods: e\.target\.checked \}\)/);
+
+  // Aviso con contenido util: como se siente y donde pulsar.
+  assert.match(notif, /const title = mood \? `\$\{mood\.emoji\} \$\{mood\.label\}`/);
+  assert.match(notif, /'\/sentimientos', \{ tag: MOOD_TAG, ignoreQuiet: true \}/, 'enlace a Sentimientos y tag propio');
+  // Tag propio = los avisos se reemplazan en vez de apilarse.
+  assert.match(notif, /const MOOD_TAG = 'mood';/);
+  // Una frase por animo, y distinta cada dia pero fija dentro del dia.
+  for (const id of ['preocupada', 'enfadada', 'triste', 'bien', 'carino']) {
+    assert.match(notif, new RegExp('^  ' + id + ':', 'm'), 'debe haber frases para ' + id);
+  }
+  assert.match(notif, /const day = Number\(String\(todayISO\(\)\)\.replace/, 'la frase varia con el dia');
+  assert.match(notif, /return pool\[day % pool\.length\];/);
+
+  // Y no se promete en el horario de silencio algo que luego no ocurre.
+  assert.match(profile, /El de tu estado de ánimo sale siempre/, 'el texto del silencio no puede mentir');
+  assert.match(sw, /clients\.openWindow\('\/#'/, 'el aviso abre la ruta hash');
 });

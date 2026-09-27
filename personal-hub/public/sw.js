@@ -10,11 +10,12 @@
    · Imágenes externas     → stale-while-revalidate (instantáneas + frescas)
    · Audio/Vídeo           → cache-first con PRESUPUESTO EN BYTES (~220 MB)
    · Supabase (content)    → network-first con fallback offline (lecturas públicas)
-   · /api/*                → network-first con fallback offline
+   · /api/*                → NUNCA se cachea (respuestas con datos de usuario)
+   · Supabase autenticado  → NUNCA se cachea (moods, profiles, push…)
    · Resto                 → network-first
    ========================================== */
 
-const CACHE_VERSION = '9';
+const CACHE_VERSION = '10';
 const CACHE = `personal-hub-v${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `personal-hub-dynamic-v${CACHE_VERSION}`;
 const MEDIA_CACHE = `personal-hub-media-v${CACHE_VERSION}`;
@@ -101,6 +102,9 @@ self.addEventListener('message', event => {
       });
       break;
     case 'CLEAR_CACHES':
+      // Al cerrar sesión: se vacían TODAS las cachés. En un ordenador
+      // compartido, lo cacheado por la sesión anterior no debe quedar
+      // disponible para la siguiente.
       event.waitUntil(
         caches.keys().then(keys =>
           Promise.all(keys.map(k => caches.delete(k)))
@@ -183,23 +187,33 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ── Supabase: solo la tabla `content` (lecturas públicas compartidas)
-  // se guarda como fallback offline. El resto (moods, profiles, auth)
-  // contiene datos personales: nunca se cachea.
-  if (url.hostname.includes('supabase.co')) {
-    if (url.pathname.includes('/rest/v1/content')) {
-      event.respondWith(networkFirstWithFallback(request));
-    }
-    return;
+  // ── API del servidor: SIEMPRE en red, nunca en caché ──
+  // /api/users devuelve la lista completa de cuentas (emails, roles,
+  // estado) y /api/push expone material de suscripción. Cachearlas
+  // dejaba esos datos disponibles sin conexión para cualquiera que
+  // usara el mismo navegador, incluida otra persona tras cerrar sesión.
+  if (url.pathname.startsWith('/api/')) {
+    return; // sin respondWith: el service worker se queda al margen
   }
 
-  // ── API del servidor: network-first con fallback offline ──
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirstWithFallback(request));
-    return;
+  // ── Supabase ──
+  // La Cache API no particiona por usuario: una entrada servida a la
+  // cuenta A en un ordenador compartido la vería también la cuenta B.
+  // Solo `content` es contenido compartido de la app (razones, canciones,
+  // regalos…), y la política `content_read_all` lo abre a cualquier
+  // autenticado, así que cachearlo no filtra nada que no sea ya público
+  // para quien está dentro de la app.
+  if (url.hostname.includes('supabase.co')) {
+    if (url.pathname.includes('/rest/v1/content') && !isAuthenticated(request)) {
+      event.respondWith(networkFirstWithFallback(request));
+    }
+    return; // moods, profiles, auth, realtime: nunca
   }
 
   // ── Default: network-first ──
+  // Cualquier cosa con cabecera Authorization se queda fuera de la caché
+  // (mismo motivo que /api/*: la Cache API no separa por usuario).
+  if (isAuthenticated(request)) return;
   event.respondWith(networkFirstWithFallback(request));
 });
 
@@ -385,6 +399,18 @@ async function handleDailyWelcome() {
 }
 
 // ─── STRATEGIES ────────────────────────────────
+
+/**
+ * ¿La petición lleva credenciales de usuario?
+ *
+ * La Cache API indexa por URL, no por Authorization: si se cachea una
+ * respuesta obtenida con el JWT de una persona, se le sirve a quien use
+ * ese mismo navegador después. Las peticiones con cabecera Authorization
+ * (o con la apikey de Supabase junto a un token) quedan fuera de caché.
+ */
+function isAuthenticated(request) {
+  return !!(request.headers && request.headers.get('authorization'));
+}
 
 /**
  * Network-first: intenta fetch, guarda en caché dinámica.

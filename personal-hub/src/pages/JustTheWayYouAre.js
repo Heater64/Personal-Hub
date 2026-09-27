@@ -4,6 +4,7 @@
    Traducción línea a línea · Tema coherente
    ========================================== */
 
+import '../styles/justthewayyouare.css';
 import { escapeHtml } from '../utils/escape.js';
 
 const SONG_DATA = {

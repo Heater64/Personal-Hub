@@ -27,6 +27,27 @@ let generation = 0;
  * como catálogo semilla. Así Admin y Calendario/Galería comparten datos.
  * Devuelve una promesa que resuelve al catálogo (o null si falla).
  */
+// "Reto real" (offline) se fusionó con "Reto" (challenge). Los catálogos
+// ya guardados en localStorage, en la caché del service worker o en un móvil
+// que no se ha abierto desde el cambio siguen trayendo type: 'offline'. Sin
+// esta normalización, esos regalos se pintarían con el tipo desconocido y
+// caerían en el "Mensaje" por defecto. La base de datos ya está migrada; esto
+// solo limpia lo que quedó guardado en el cliente.
+const LEGACY_TYPES = { offline: 'challenge' };
+
+function normalizeLegacyTypes(data) {
+  if (!data || !Array.isArray(data.gifts)) return data;
+  let changed = 0;
+  for (const gift of data.gifts) {
+    const nuevo = gift?.type ? LEGACY_TYPES[gift.type] : null;
+    if (nuevo) { gift.type = nuevo; changed++; }
+  }
+  // giftsById se reconstruye justo después, pero si el catálogo venía con él
+  // ya montado, sus valores son los mismos objetos: no hay nada más que hacer.
+  if (changed) console.info(`[gifts] ${changed} regalo(s) de tipo heredado normalizados`);
+  return data;
+}
+
 export function loadGiftsCatalog() {
   if (catalog) return Promise.resolve(catalog);
   if (!catalogPromise) {
@@ -70,8 +91,9 @@ export function loadGiftsCatalog() {
 
       if (shouldExpandCalendar) expandCalendarCatalog(data);
       // Si se invalidó mientras esperábamos a Supabase, estos datos ya son
-      // rancios: no los publicamos como caché (el siguiente load reintenta).
+      // rancios: no los publicamos como caché (el siguiente load reintrea).
       if (myGeneration !== generation) return null;
+      normalizeLegacyTypes(data);
       catalog = data;
       catalog.giftsById = {};
       (catalog.gifts || []).forEach(g => { if (g.id) catalog.giftsById[g.id] = g; });

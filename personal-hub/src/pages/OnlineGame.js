@@ -1,3 +1,4 @@
+import '../styles/online-games.css';
 import { userStore } from '../stores/user.store.js';
 import { showToast } from '../components/Toast.js';
 import {

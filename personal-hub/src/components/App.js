@@ -218,10 +218,27 @@ export function AppShell(router) {
   // Wait for auth restoration before guarding routes
   const authReady = auth.isReady();
 
+  // Techo entre revalidaciones de la cuenta (rol + enabled) en el guard.
+  const ACCOUNT_CHECK_TTL_MS = 60_000;
+  let lastAccountCheck = 0;
+
   // Redirect to login if not authenticated
   router.beforeEach(async (path, currentRoute) => {
     // Make sure auth state has been restored before deciding
     await authReady;
+
+    // Revalida el estado de la cuenta (profiles.role + profiles.enabled)
+    // con un techo de 60 s. Así una cuenta deshabilitada con la pestaña
+    // abierta pierde el acceso en la siguiente navegación, en vez de
+    // mantenerlo hasta que caduque el JWT. La decisión real de seguridad
+    // está en la RLS (is_enabled) y en /api/*; esto es la capa de UX.
+    if (userStore.isLoggedIn) {
+      const last = lastAccountCheck;
+      if (!last || Date.now() - last > ACCOUNT_CHECK_TTL_MS) {
+        lastAccountCheck = Date.now();
+        await auth.refreshAccount();
+      }
+    }
 
     const isLoggedIn = userStore.isLoggedIn;
 
@@ -263,7 +280,7 @@ export function AppShell(router) {
       // llegado y isAdmin se decide solo con la lista de emails de respaldo.
       // Refréscalo antes de decidir para no expulsar a un admin real al
       // recargar /admin (deep link o F5).
-      await auth.refreshRole();
+      await auth.refreshAccount();
       if (!userStore.isAdmin) {
         router.replace('/');
         return false;

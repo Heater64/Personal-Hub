@@ -4,6 +4,8 @@
    indicador de conexión y sincronización offline
    ========================================== */
 
+import { resyncPushSubscription } from './notifications.service.js';
+
 const STORAGE_KEYS = {
   INSTALL_DISMISSED: 'ph.pwa.installDismissed',
   VERSION: 'ph.pwa.version',
@@ -194,7 +196,9 @@ async function initUpdateDetection() {
       setTimeout(() => window.location.reload(), 1500);
     } else if (data.type === 'PUSH_SUBSCRIPTION_CHANGED' && data.subscription) {
       // El SW renovó la suscripción push: sincronizarla con el servidor
-      import('./notifications.service.js').then(ns => ns.resyncPushSubscription()).catch(() => {});
+      Promise.resolve()
+        .then(() => resyncPushSubscription())
+        .catch(() => {});
     }
   });
 

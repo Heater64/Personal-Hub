@@ -32,6 +32,15 @@
   margin-bottom: var(--sp-20);
 }
 
+/* Cabecera de página en una vista "interior" (Minecraft, Curiosidades):
+   en móvil el título ya lo pone la barra contextual de arriba, así que
+   aquí se oculta para no repetir el mismo encabezado dos veces. Sin esta
+   regla la clase que emite renderPageHeader({ mobileHidden: true }) no
+   hacía nada. */
+@media (max-width: 768px) {
+  .scr-head--mobile-hidden { display: none; }
+}
+
 .scr-head h1,
 .scr-head h2,
 .scr-title {

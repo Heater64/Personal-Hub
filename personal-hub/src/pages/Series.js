@@ -6,6 +6,7 @@
    Admin completo en la propia sección
    ========================================== */
 
+import '../styles/series.css';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userStore } from '../stores/user.store.js';

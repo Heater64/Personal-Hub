@@ -1,3 +1,5 @@
+import { safeUrl } from '../utils/escape.js';
+
 /* ==========================================
    Personal Hub v2 — Media Lightbox Pro
    Zoom · Fullscreen · Thumbnail strip · Desktop-optimized
@@ -467,7 +469,7 @@ function render() {
         ? (it.src.includes('cloudinary') ? it.src.replace('/video/upload/', '/video/upload/f_jpg,so_auto,c_thumb,w_120/').replace(/\.\w+(\?.*)?$/, '.jpg') : '')
         : (it.src.includes('cloudinary') ? it.src.replace('/image/upload/', '/image/upload/c_thumb,w_120/') : it.src);
       return `<button class="ml-thumb ${i === state.currentIndex ? 'active' : ''}" data-index="${i}" title="${it.caption || ''}">
-        ${thumbSrc ? `<img src="${thumbSrc}" alt="" loading="lazy">` : `<span class="ml-thumb-placeholder">${it.type === 'video' ? '▶' : '🖼'}</span>`}
+        ${thumbSrc ? `<img src="${safeUrl(thumbSrc)}" alt="" loading="lazy">` : `<span class="ml-thumb-placeholder">${it.type === 'video' ? '▶' : '🖼'}</span>`}
       </button>`;
     }).join('');
 

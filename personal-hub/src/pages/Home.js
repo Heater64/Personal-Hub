@@ -1,30 +1,34 @@
 /* ==========================================
    INICIO — resumen del día
-   Sin tarjeta de "buenos días": el saludo es el título
-   de la pantalla, y lo primero que se ve es el contador
-   de días juntos. Debajo: dos datos rápidos, cuatro
-   destacados visuales y los detalles de la web.
-   Todo sobre los componentes compartidos (ui.css).
+   Arranca directamente por la tarjeta de días, sin cabecera:
+   el saludo con apodo (admin / mi princesa) ya dice dónde
+   estás y hace de encabezado. Debajo: dos datos rápidos,
+   cuatro destacados visuales y los detalles de la web.
    ========================================== */
 
 import { MEME_FOLDERS, getVideoPoster } from '../services/rincon-data.js';
-import { LETTERS } from './OpenWhen.js';
+import { LETTERS } from '../data/openwhen.data.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userPrefKey, migrateUserPref } from '../utils/userStorage.js';
-import { renderPageHeader } from '../components/PageHeader.js';
-import { hourInSpain } from '../utils/format.js';
+import { hourInSpain, todayISO } from '../utils/format.js';
 import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
 import { daysSinceAnniversary, loadSpecialDates, nextSpecialDate } from '../utils/specialDates.js';
 import { moodStore } from '../stores/mood.store.js';
+import { userStore } from '../stores/user.store.js';
 import { icon } from '../components/ui.js';
 
 // ==========================================
 // SEED — contenido que cambia cada día
 // ==========================================
+// El "día" es el de España (Europe/Madrid), no el del dispositivo: el
+// calendario, las notificaciones y los ánimos ya cuentan el cambio de día
+// a las 00:00 españolas. Con la fecha local, un móvil en otro huso (o
+// justo alrededor de medianoche) vería un "hoy" distinto al del resto
+// de la app y el contenido diario no cuadraría con el calendario.
 function dailySeed() {
-  const d = new Date();
-  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  const iso = todayISO();
+  return Number(iso.slice(0, 4)) * 10000 + Number(iso.slice(5, 7)) * 100 + Number(iso.slice(8, 10));
 }
 
 function seededRandom(seed) {
@@ -46,6 +50,15 @@ const GREETINGS = {
   afternoon: ['Buenas tardes 🌤️<br>Espero que estés teniendo un lindo día.', 'Buenas tardes 🌤️<br>¿Ya comiste? Cuídate mucho.', 'Buenas tardes 🌤️<br>Cada tarde es mejor si estás tú.'],
   evening:   ['Buenas noches 🌙<br>Espero que hayas tenido un bonito día.', 'Buenas noches 🌙<br>Descansa, mañana hay más sorpresas.', 'Buenas noches 🌙<br>Gracias por estar otro día más conmigo.'],
   night:     ['Buenas noches 🌙<br>Es tarde... pero nunca es tarde para decirte que te quiero.', 'Buenas noches 🌙<br>Que sueñes con cosas bonitas.', 'Buenas noches 🌙<br>Cierro los ojos y solo pienso en ti.']
+};
+
+// Saludo base por franja horaria (España). El apodo va aparte para poder
+// escribirlo con otro color en el marcado.
+const TIME_GREETING = {
+  morning:   'Buenos días ☀️',
+  afternoon: 'Buenas tardes 🌤️',
+  evening:   'Buenas noches 🌙',
+  night:     'Buenas noches 🌙'
 };
 
 // Portadas de canciones — fallback cuando aún no hay "seguir escuchando"
@@ -75,12 +88,6 @@ const FUN_FACTS = [
 // HELPERS
 // ==========================================
 const nf = new Intl.NumberFormat('es-ES');
-
-const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-
-function longDate(date = new Date()) {
-  return capitalize(new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(date));
-}
 
 function shortDate(iso) {
   const [y, m, d] = String(iso).split('-').map(Number);
@@ -264,7 +271,12 @@ export function HomePage(router) {
 
   const timeKey = hour < 12 ? 'morning' : hour < 19 ? 'afternoon' : hour < 22 ? 'evening' : 'night';
   const greeting = GREETINGS[timeKey][seed % GREETINGS[timeKey].length];
-  const [saludo, frase = ''] = greeting.split('<br>');
+  // De GREETINGS solo interesa la frase del día: el saludo lo pone TIME_GREETING
+  // con el apodo de quien esté mirando, para que no salga dos veces en pantalla.
+  const frase = greeting.split('<br>')[1] || '';
+  // El apodo sale del rol guardado en profiles (DB), no de metadata del cliente.
+  const apodo = userStore.isAdmin ? 'admin' : 'mi princesa';
+  const saludo = TIME_GREETING[timeKey];
 
   // Datos (síncronos)
   const meme = getMeme(rng);
@@ -279,9 +291,10 @@ export function HomePage(router) {
   const continueFirst = continueList[0];
 
   page.innerHTML = `
-    ${renderPageHeader({ title: saludo, subtitle: longDate() })}
+    <h1 class="sr-only">Inicio</h1>
 
     <section class="home-hero" aria-label="Tiempo juntos">
+      <p class="home-hero__greet">${escapeHtml(saludo)}, <span class="home-hero__greet-name">${escapeHtml(apodo)}</span></p>
       <div class="home-hero__main">
         <span class="home-hero__badge" aria-hidden="true">🤍</span>
         <div>
@@ -401,10 +414,11 @@ export function HomePage(router) {
  * Devuelve { total, pending } (pending = aún sin abrir en este navegador).
  */
 function todaySurprises(catalog) {
-  const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // Mismo "hoy" que el Calendario y que el push del servidor (Europe/Madrid).
+  const iso = todayISO();
+  const monthKey = iso.slice(0, 7);
   const mapping = catalog?.months?.[monthKey]?.calendarMapping || {};
-  const value = mapping[String(now.getDate())];
+  const value = mapping[String(Number(iso.slice(8, 10)))];
   const ids = Array.isArray(value) ? value.filter(Boolean) : (value ? [value] : []);
   if (!ids.length) return { total: 0, pending: 0 };
 

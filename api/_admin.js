@@ -11,19 +11,25 @@ import { createClient } from '@supabase/supabase-js';
 // Identidad admin de referencia: email verificado en el JWT de Supabase Auth.
 const ADMIN_EMAILS = ['admin@personalhub.com'];
 
-// Verifica el rol contra la tabla profiles (fuente de verdad en DB)
+/**
+ * Verifica el rol contra la tabla profiles (fuente de verdad en DB).
+ * `enabled` se lee en la MISMA consulta: una cuenta deshabilitada no
+ * puede ser admin aunque conserve el rol. Nunca se mira
+ * user_metadata (editable por el propio usuario).
+ */
 export async function isAdminFromDb(supabaseAdmin, userId) {
   try {
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, enabled')
       .eq('id', userId)
       .maybeSingle();
     if (error) {
       console.error('[api/_admin] profiles query error:', error.message);
       return false;
     }
-    return data?.role === 'admin';
+    if (!data) return false;
+    return data.role === 'admin' && data.enabled !== false;
   } catch (err) {
     console.error('[api/_admin] profiles query threw:', err.message);
     return false;
@@ -69,6 +75,19 @@ export async function requireAdminCaller(req, res) {
     : false;
   if (!adminByEmail && !adminByDb) {
     res.status(403).json({ error: 'Forbidden: admin only' });
+    return null;
+  }
+
+  // Un admin deshabilitado pierde el acceso a las APIs aunque su sesión
+  // siga viva en el navegador: se comprueba el estado de la cuenta, no
+  // los claims del JWT (que no cambian hasta que expira).
+  const { data: callerProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('enabled')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (callerProfile && callerProfile.enabled === false) {
+    res.status(403).json({ error: 'Forbidden: account disabled' });
     return null;
   }
 

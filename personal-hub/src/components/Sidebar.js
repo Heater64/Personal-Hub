@@ -7,6 +7,7 @@
 import { userStore } from '../stores/user.store.js';
 import { auth } from '../services/auth.service.js';
 import { icon } from './ui.js';
+import { escapeHtml, safeUrl } from '../utils/escape.js';
 
 const NAV_ITEMS = [
   { id: 'home',         label: 'Inicio',       icon: 'home',            href: '/' },
@@ -94,8 +95,12 @@ export function Sidebar(router) {
     else if (SENTIMIENTOS_PATHS.includes(base)) contextual = group('Sentimientos', SENTIMIENTOS_ITEMS);
 
     const initial = user ? (user.name || 'U').charAt(0).toUpperCase() : '?';
-    const avatar = user && user.avatar
-      ? `<img src="${user.avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.replaceWith(document.createTextNode('${initial}'))">`
+    // El avatar viene de user_metadata.avatar_url, que el usuario puede
+    // editar por su cuenta: se valida el esquema y se escapa el atributo
+    // para que no pueda cerrar la etiqueta ni inyectar un onerror.
+    const avatarUrl = user ? safeUrl(user.avatar) : '';
+    const avatar = avatarUrl
+      ? `<img src="${avatarUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.replaceWith(document.createTextNode(this.dataset.fallback))" data-fallback="${escapeHtml(initial)}">`
       : initial;
 
     aside.innerHTML = `
@@ -120,7 +125,7 @@ export function Sidebar(router) {
           <button type="button" class="side-user" id="sidebarUser">
             <span class="avatar" style="width:36px;height:36px;font-size:15px">${avatar}</span>
             <span style="min-width:0">
-              <b>${user.name || ''}</b>
+              <b>${escapeHtml(user.name || '')}</b>
               <span>${isAdmin ? 'Admin' : 'Tu perfil'}</span>
             </span>
           </button>

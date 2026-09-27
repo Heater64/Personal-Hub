@@ -65,4 +65,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- ==========================================
 -- LIMPIEZA DE TABLAS ANTIGUAS
 -- ==========================================
-DROP TABLE IF EXISTS user_profiles CASCADE;
+-- `user_profiles` era la tabla de perfiles del esquema previo a Supabase
+-- (la app ya usa `profiles`). El DROP lleva CASCADE: si la tabla existe
+-- y tiene filas, se lleva por delante lo que dependa de ella.
+--
+-- Por eso solo se borra si está VACÍA. Si tiene datos, el script avisa y
+-- no toca nada: la decisión de borrar datos reales es del admin, y en
+-- ese caso basta con renombrarla (ALTER TABLE ... RENAME TO
+-- user_profiles_old) en lugar de DROP.
+DO $$
+DECLARE
+  n_rows BIGINT;
+BEGIN
+  IF to_regclass('public.user_profiles') IS NULL THEN
+    RETURN; -- no existe: nada que hacer
+  END IF;
+
+  EXECUTE 'SELECT count(*) FROM public.user_profiles' INTO n_rows;
+
+  IF n_rows = 0 THEN
+    EXECUTE 'DROP TABLE public.user_profiles CASCADE';
+    RAISE NOTICE 'user_profiles: tabla vacía, eliminada.';
+  ELSE
+    RAISE WARNING 'user_profiles: existe con % filas. NO se borra. Si quieres retirarla, renómbrala primero: ALTER TABLE public.user_profiles RENAME TO user_profiles_old;', n_rows;
+  END IF;
+END $$;

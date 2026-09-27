@@ -11,7 +11,7 @@ import { getUserPref, setUserPref, getUserId } from '../utils/userStorage.js';
 import { todayISO, hourInSpain } from '../utils/format.js';
 import { supabase } from './supabase.js';
 import { getTodayNovelties } from './novelties.service.js';
-import { loadAllOpenWhenLetters } from '../pages/OpenWhen.js';
+import { loadAllOpenWhenLetters } from '../data/openwhen.data.js';
 
 // VAPID public key — debe coincidir con VAPID_PUBLIC_KEY en el servidor
 const VAPID_PUBLIC_KEY = 'BO_qmnZrQT4twbo24CGDk-bpJWcJyfGFQoBVqf24B0jkUKKHNOEyhkZQZ2nPc1Q4BHSSEpcVq71Xcb3FYKz7gIA';
@@ -19,6 +19,7 @@ const VAPID_PUBLIC_KEY = 'BO_qmnZrQT4twbo24CGDk-bpJWcJyfGFQoBVqf24B0jkUKKHNOEyhk
 const SYNC_TAG = 'daily-welcome';
 const NOVELTIES_TAG = 'daily-novelties';
 const OPENWHEN_TAG = 'openwhen-new';
+const MOOD_TAG = 'mood';
 const OPENWHEN_ANNOUNCED_KEY = 'openwhen.announced';
 const DB_NAME = 'ph-notifications';
 const DB_STORE = 'state';
@@ -33,6 +34,7 @@ const NOTIF_SETTINGS_KEY = 'notifSettings';
 const DEFAULT_NOTIF_SETTINGS = {
   daily: true,       // recordatorio diario (bienvenida + novedades)
   letters: true,     // cartas nuevas en Open When
+  moods: true,       // aviso cada vez que registra su estado de ánimo
   quietFrom: '23:00', // silencio desde…
   quietTo: '08:00'    // …hasta
 };
@@ -470,6 +472,72 @@ export async function notifyNewOpenWhenLetters() {
   if (shown) {
     setUserPref(OPENWHEN_ANNOUNCED_KEY, JSON.stringify([...announced, ...fresh.map(l => l.id)]));
   }
+}
+
+/* ==========================================
+   ESTADO DE ÁNIMO
+   Cada vez que registra cómo está le llega el aviso: es la respuesta a lo
+   que acaba de hacer, no un recordatorio. Silenciarlo a ella misma sería
+   raro (y ella lo ha pedido), así que este aviso NO respeta el horario de
+   silencio: el resto de avisos, sí.
+   ========================================== */
+
+const MOOD_LINES = {
+  preocupada: [
+    'Algo te rondaba la cabeza. Aquí me quedo por si quieres soltarlo 🤍',
+    'Guardado. No hace falta arreglarlo ahora, solo cuenta con que lo tienes.',
+    'Hoy te has apoyado en alguien. En mí también vale.'
+  ],
+  enfadada: [
+    'Guardado. Que te sea leve, que mañana será otro día.',
+    'Lo de hoy ha sido mucho. Tienes derecho a estar enfadada.',
+    'Registrado. Mañana ya vemos; hoy no tienes que hacer nada con esto.'
+  ],
+  triste: [
+    'Aquí estoy. No hace falta que hagas nada más hoy.',
+    'Guardado 🤍 Los días malos también cuentan como días.',
+    'Te leo. Con esto me basta para saber cómo estás.'
+  ],
+  bien: [
+    'Qué bien. Me alegra leerte así hoy.',
+    'Guardado. Este ánimo te lo guardo para los días malos.',
+    'Me gusta verte así ✨'
+  ],
+  carino: [
+    'Aquí estoy, como siempre que me necesites 🤍',
+    'Guardado. Pídelo sin vergüenza, que para eso estoy.',
+    'Te mando un abrazo de los que funcionan ❤️'
+  ]
+};
+
+/**
+ * Frase del aviso. Cambia de día, pero dentro del mismo día es fija: si
+ * toca el mismo ánimo dos veces, no ve dos textos distintos.
+ */
+function moodLine(mood) {
+  const pool = MOOD_LINES[mood?.id] || ['Guardado 🤍'];
+  const day = Number(String(todayISO()).replace(/-/g, '')) || 0;
+  return pool[day % pool.length];
+}
+
+/**
+ * Aviso de que su estado de ánimo queda registrado. Se llama desde el store
+ * (el único punto por el que se escribe un ánimo), así que vale desde
+ * Sentimientos, desde el perfil y desde la pantalla de bienvenida.
+ *
+ * `mood = null` significa que el día se queda sin ánimo.
+ */
+export async function notifyMoodSaved(mood) {
+  if (!isEnabled()) return false;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  if (!getNotifSettings().moods) return false;
+
+  const title = mood ? `${mood.emoji} ${mood.label}` : '🫧 Ánimo de hoy';
+  const body = mood
+    ? moodLine(mood)
+    : 'Se ha quitado el estado de este día. Si cambias de idea, puedes volver a ponerlo.';
+  // Tag propio: los avisos del mismo tipo se reemplazan en vez de apilarse.
+  return showDailyNotification(title, body, '/sentimientos', { tag: MOOD_TAG, ignoreQuiet: true });
 }
 
 /**

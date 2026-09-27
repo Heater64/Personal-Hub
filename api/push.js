@@ -30,8 +30,115 @@ function getSupabase() {
   });
 }
 
-const PUSH_TABLE = 'content'; // stored under id = 'push_subscriptions'
-const PUSH_ID = 'push_subscriptions';
+// ==========================================
+// ALMACENAMIENTO DE SUSCRIPCIONES
+// ==========================================
+// Las suscripciones vivían en la fila id='push_subscriptions' de la tabla
+// `content`, cuya policy es USING (true): cualquier usuario autenticado
+// podía leer el endpoint de push de todos los demás y sus claves de
+// cifrado. 018_push_subscriptions.sql lo mueve a una tabla propia con RLS
+// por usuario.
+//
+// MIGRACIÓN SEGURA: se usa la tabla nueva si existe y, si todavía no,
+// se cae al almacenamiento anterior. Así la API se puede desplegar antes
+// o después del SQL sin dejar a nadie sin notificaciones. Cuando la tabla
+// esté disponible y no haya nada legacy, el DELETE de la fila antigua
+// ya lo hace la migración; la escritura legacy solo se usa en ese
+// periodo transitorio.
+const PUSH_TABLE = 'push_subscriptions';
+const LEGACY_TABLE = 'content';
+const LEGACY_ID = 'push_subscriptions';
+
+// Fuente de verdad por persona: la tabla dedicada.
+async function getSubscriptions() {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from(PUSH_TABLE)
+    .select('user_id, endpoint, p256dh, auth, created_at')
+    .order('created_at', { ascending: true });
+
+  if (!error) {
+    return (data || []).map(row => ({
+      userId: row.user_id,
+      endpoint: row.endpoint,
+      keys: { p256dh: row.p256dh, auth: row.auth },
+      createdAt: row.created_at
+    }));
+  }
+
+  // 42P01 =relation does not exist. La migración 018 aún no se ha aplicado.
+  if (error.code !== '42P01') throw error;
+  return getLegacySubscriptions();
+}
+
+async function getLegacySubscriptions() {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from(LEGACY_TABLE)
+    .select('data')
+    .eq('id', LEGACY_ID)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.data?.subscriptions || [];
+}
+
+async function saveSubscriptions(subscriptions) {
+  const supabase = getSupabase();
+  const rows = (subscriptions || []).map(sub => ({
+    user_id: sub.userId,
+    endpoint: sub.endpoint,
+    p256dh: sub.keys?.p256dh || '',
+    auth: sub.keys?.auth || '',
+    created_at: sub.createdAt || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }));
+
+  // Solo hay algo que hacer si la lista no está vacía: un DELETE sin
+  // filtro borraría la tabla entera.
+  if (rows.length > 0) {
+    const { error: upsertError } = await supabase
+      .from(PUSH_TABLE)
+      .upsert(rows, { onConflict: 'endpoint' });
+    if (upsertError && upsertError.code === '42P01') {
+      return saveLegacySubscriptions(subscriptions);
+    }
+    if (upsertError) throw upsertError;
+  }
+
+  // Endpoints que ya no están en la lista (410/404 del push service, o el
+  // propio unsubscribe) se eliminan aquí. Sin esto se acumularían filas
+  // muertas para siempre.
+  const keep = new Set(rows.map(r => r.endpoint));
+  const { data: current, error: readError } = await supabase
+    .from(PUSH_TABLE)
+    .select('endpoint');
+  if (!readError && current) {
+    const stale = current.filter(row => !keep.has(row.endpoint)).map(row => row.endpoint);
+    if (stale.length > 0) {
+      const { error: delError } = await supabase
+        .from(PUSH_TABLE)
+        .delete()
+        .in('endpoint', stale);
+      if (delError && delError.code === '42P01') {
+        return saveLegacySubscriptions(subscriptions);
+      }
+      if (delError) throw delError;
+    }
+  }
+}
+
+async function saveLegacySubscriptions(subscriptions) {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from(LEGACY_TABLE)
+    .upsert(
+      { id: LEGACY_ID, data: { subscriptions }, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+
+  if (error) throw error;
+}
 
 // ==========================================
 // CALENDARIO — payload diario consciente
@@ -95,30 +202,6 @@ function calendarPayloadForToday() {
 // HELPERS
 // ==========================================
 
-async function getSubscriptions() {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from(PUSH_TABLE)
-    .select('data')
-    .eq('id', PUSH_ID)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data?.data?.subscriptions || [];
-}
-
-async function saveSubscriptions(subscriptions) {
-  const supabase = getSupabase();
-  const { error } = await supabase
-    .from(PUSH_TABLE)
-    .upsert(
-      { id: PUSH_ID, data: { subscriptions }, updated_at: new Date().toISOString() },
-      { onConflict: 'id' }
-    );
-
-  if (error) throw error;
-}
-
 function hourInSpain(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Madrid',
@@ -170,6 +253,43 @@ export default async function handler(req, res) {
 }
 
 // ==========================================
+// SESSION — valida el token y el estado de la cuenta
+// ==========================================
+/**
+ * Devuelve el usuario del token, o null tras haber respondido 401.
+ *
+ * Además del token se comprueba profiles.enabled: una cuenta deshabilitada
+ * no debe poder registrar ni quitar suscripciones de push. Es la misma
+ * fuente de verdad que usa la RLS (017).
+ */
+async function authenticate(req, res) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s*/i, '');
+  if (!token) {
+    res.status(401).json({ error: 'Missing Authorization header' });
+    return null;
+  }
+
+  const supabase = getSupabase();
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    res.status(401).json({ error: 'Invalid or expired session' });
+    return null;
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('enabled')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profile && profile.enabled === false) {
+    res.status(403).json({ error: 'Forbidden: account disabled' });
+    return null;
+  }
+
+  return user;
+}
+
+// ==========================================
 // SUBSCRIBE
 // ==========================================
 async function handleSubscribe(req, res) {
@@ -178,31 +298,23 @@ async function handleSubscribe(req, res) {
     return res.status(400).json({ error: 'Invalid subscription object. Must include endpoint.' });
   }
 
-  // Verify auth token (pass through token from client)
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace(/^Bearer\s*/i, '');
-  if (!token) {
-    return res.status(401).json({ error: 'Missing Authorization header' });
-  }
+  const user = await authenticate(req, res);
+  if (!user) return; // ya respondió con el error
 
-  // Verify the user
   try {
-    const supabase = getSupabase();
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return res.status(401).json({ error: 'Invalid or expired session' });
-    }
-
     const subscriptions = await getSubscriptions();
 
-    // Remove old subscription for this user (one per user)
+    // Una suscripción por persona: se retiran las anteriores de este
+    // mismo usuario (otro dispositivo o un push service distinto).
     const filtered = subscriptions.filter(s => s.userId !== user.id);
 
-    // Add new subscription
     filtered.push({
       userId: user.id,
       endpoint: subscription.endpoint,
-      keys: subscription.keys,
+      keys: {
+        p256dh: subscription.keys?.p256dh || '',
+        auth: subscription.keys?.auth || ''
+      },
       createdAt: new Date().toISOString()
     });
 
@@ -210,8 +322,8 @@ async function handleSubscribe(req, res) {
 
     return res.status(200).json({ success: true, message: 'Subscription saved' });
   } catch (err) {
-    console.error('[api/push/subscribe] auth error:', err.message);
-    return res.status(401).json({ error: 'Authentication failed' });
+    console.error('[api/push/subscribe] error:', err.message);
+    return res.status(500).json({ error: err.message || 'Could not save subscription' });
   }
 }
 
@@ -219,21 +331,22 @@ async function handleSubscribe(req, res) {
 // UNSUBSCRIBE
 // ==========================================
 async function handleUnsubscribe(req, res) {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace(/^Bearer\s*/i, '');
-  if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
+  const user = await authenticate(req, res);
+  if (!user) return; // ya respondió con el error
 
   try {
-    const supabase = getSupabase();
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) return res.status(401).json({ error: 'Invalid or expired session' });
-
+    // El cuerpo puede traer el endpoint concreto (pushsubscriptionchange)
+    // o no venir (cierre de sesión / desuscribirse en los ajustes).
+    const { endpoint } = req.body || {};
     const subscriptions = await getSubscriptions();
-    const filtered = subscriptions.filter(s => s.userId !== user.id);
+    const filtered = endpoint
+      ? subscriptions.filter(s => !(s.userId === user.id && s.endpoint === endpoint))
+      : subscriptions.filter(s => s.userId !== user.id);
     await saveSubscriptions(filtered);
 
     return res.status(200).json({ success: true, message: 'Unsubscribed' });
-  } catch {
+  } catch (err) {
+    console.error('[api/push/unsubscribe] error:', err.message);
     return res.status(500).json({ error: 'Could not unsubscribe' });
   }
 }
@@ -261,10 +374,13 @@ async function handleSend(req, res) {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, enabled')
           .eq('id', user.id)
           .maybeSingle();
+        // Mismo criterio que public.is_admin() (017): rol admin, email
+        // confirmado y cuenta habilitada.
         isAdmin = profile?.role === 'admin'
+          && profile?.enabled !== false
           && !!(user.email_confirmed_at || user.confirmed_at);
       }
     } catch { /* not authenticated */ }

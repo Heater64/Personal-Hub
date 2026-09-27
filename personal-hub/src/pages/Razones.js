@@ -14,8 +14,9 @@
 
 import { h, icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { db } from '../services/db.service.js';
-import { escapeHtml } from '../utils/escape.js';
+import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { userPrefKey } from '../utils/userStorage.js';
+import { todayISO } from '../utils/format.js';
 import { onContentChange } from '../services/realtime.service.js';
 
 const FAV_KEY = () => userPrefKey('razonesFavoritas');
@@ -38,9 +39,9 @@ const DEFAULT_RAZONES = [
 
 const MONTHS_SHORT = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
+// "Hoy" en España (Europe/Madrid), igual que el calendario y los ánimos.
 function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return todayISO();
 }
 
 function formatDate(s) {

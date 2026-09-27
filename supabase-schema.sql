@@ -1,6 +1,18 @@
 -- ==========================================
--- PERSONAL HUB — Esquema Completo de Supabase
--- Pega TODO esto en el SQL Editor y ejecútalo UNA sola vez
+-- PERSONAL HUB — Esquema Completo de Supabase (HISTÓRICO)
+--
+-- ⚠️ ESTE ARCHIVO YA NO ES LA FUENTE DE VERDAD.
+--   Es el monolítico de la migración inicial. La fuente actual es la carpeta
+--   `sql/`, con un archivo por dominio (ver `sql/README.md`).
+--   Aplicarlo sobre una base que ya tiene `sql/` aplicado REVIERTE policies
+--   que las migraciones posteriores ya corrigieron, por ejemplo:
+--     · content_read_all USING (true) sin exigir is_enabled()
+--     · la policy de borrado de user_progress sin cláusula USING
+--     · is_admin() sin comprobar profiles.enabled
+--   Úsalo solo como referencia de lectura o para una base VACÍA de verdad,
+--   y termina después con sql/000 → sql/018 en orden.
+--
+-- Pega TODO esto en el SQL Editor y ejecútalo UNA sola vez.
 --
 -- ⚠️ SEGURIDAD (auditoría):
 --   · content: solo lectura para usuarios autenticados; escribir = ADMIN.

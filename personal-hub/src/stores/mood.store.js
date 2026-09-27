@@ -4,17 +4,14 @@
    ========================================== */
 
 import { supabase } from '../services/supabase.js';
+import { notifyMoodSaved } from '../services/notifications.service.js';
 import { userStore } from './user.store.js';
 import { userPrefKey } from '../utils/userStorage.js';
 import { todayISO } from '../utils/format.js';
 
-const MOODS = [
-  { id: 'great',  label: 'Muy bieeeen',         emoji: '🤍',       score: 4 },
-  { id: 'good',   label: 'Bien',                emoji: '😊',      score: 3 },
-  { id: 'meh',    label: 'Un poquito mal',       emoji: '😕',      score: 2 },
-  { id: 'bad',    label: 'Mal',                 emoji: '😔',      score: 1 },
-  { id: 'love',   label: 'Necesito cariño',     emoji: '❤️',      score: 0 }
-];
+// Catálogo y resolución viven en un módulo sin dependencias, para poder
+// probarlas en aislamiento y no duplicarlas en cada página.
+import { MOODS, LEGACY_MOODS, ALL_MOODS, findMood, resolveMood, moodEmoji } from '../data/moods.data.js';
 
 // Ventana de edición de un estado: dentro de estos 5 minutos los cambios
 // sobreescriben el MISMO estado (los toques rápidos de prueba colapsan en
@@ -47,8 +44,29 @@ class MoodStore {
     return MOODS;
   }
 
+  /** Catálogo anterior: solo para leer lo ya registrado. */
+  getLegacyMoods() {
+    return LEGACY_MOODS;
+  }
+
   getMoodById(id) {
-    return MOODS.find(m => m.id === id) || null;
+    return findMood(id);
+  }
+
+  /**
+   * Resuelve un estado para MOSTRARLO, sin depender del catálogo actual.
+   * Acepta un id suelto o una entrada { mood, label, emoji, score }.
+   * Prioridad: lo que venía guardado en la fila (fiel al histórico) →
+   * catálogo actual → catálogo antiguo. Devuelve null solo si no hay nada.
+   */
+  /** Delega en la lógica pura de moods.data.js. */
+  resolveMood(entry) {
+    return resolveMood(entry);
+  }
+
+  /** Emoji de un estado, sin devolver undefined. */
+  moodEmoji(entry) {
+    return moodEmoji(entry);
   }
 
   hasSeenToday() {
@@ -108,7 +126,21 @@ class MoodStore {
 
     this._persistTodayStates(states);
     this._finalizeLocalState(states, today, mood);
+    this._notifyMood(mood);
     return mood;
+  }
+
+  /**
+   * Aviso de "animo registrado". Va aquí y no en las pantallas porque el
+   * store es el ÚNICO punto por el que se escribe un estado: así se avisa
+   * igual desde Sentimientos, desde el perfil y desde la bienvenida.
+   *
+   * Nunca puede romper el guardado: si el aviso falla, el estado ya está
+   * escrito y eso es lo importante. No espera (fire and forget) para que
+   * poner el ánimo sea instantáneo.
+   */
+  _notifyMood(mood) {
+    notifyMoodSaved(mood).catch(() => { /* sin notificaciones: el estado sigue guardado */ });
   }
 
   /**
@@ -139,6 +171,9 @@ class MoodStore {
 
     const prev = states.length ? this._stateToMood(states[states.length - 1]) : null;
     this._finalizeLocalState(states, today, prev);
+    // Si queda otro estado anterior, el día no está "sin ánimo": el aviso
+    // habla del que ha quedado, no de uno que ya no existe.
+    this._notifyMood(prev);
     return { removed: true, mood: prev };
   }
 
@@ -244,7 +279,9 @@ class MoodStore {
     const history = this.getHistory();
     const existingIdx = history.findIndex(h => h.date === today);
     if (mood) {
-      const entry = { moodId: mood.id, date: today };
+      // Se guarda la etiqueta y el emoji, no solo el id: si mañana cambia el
+      // catálogo, los días de hoy siguen leyéndose tal como se registraron.
+      const entry = { moodId: mood.id, date: today, label: mood.label, emoji: mood.emoji, score: mood.score };
       if (existingIdx >= 0) history[existingIdx] = entry;
       else history.push(entry);
     } else if (existingIdx >= 0) {
@@ -253,11 +290,20 @@ class MoodStore {
     localStorage.setItem(userPrefKey('moodHistory'), JSON.stringify(history));
   }
 
-  /** Returns local mood history as { moodId, date }[] */
+  /**
+   * Historial local normalizado. Acepta las dos formas:
+   *   { moodId, date }                  → formato antiguo (sin etiqueta)
+   *   { moodId, date, label, emoji, … } → formato actual
+   * Siempre devuelve entradas con `date` y `moodId` resueltos.
+   */
   getHistory() {
     try {
       const raw = localStorage.getItem(userPrefKey('moodHistory'));
-      return raw ? JSON.parse(raw) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map(e => (e && e.date ? { ...e, moodId: e.moodId || e.mood } : null))
+        .filter(e => e && e.moodId);
     } catch { return []; }
   }
 
@@ -350,4 +396,4 @@ class MoodStore {
 }
 
 export const moodStore = new MoodStore();
-export { MOODS };
+export { MOODS, LEGACY_MOODS, ALL_MOODS };

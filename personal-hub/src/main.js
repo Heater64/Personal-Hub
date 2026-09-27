@@ -4,16 +4,15 @@
    ========================================== */
 
 import './styles/main.css';
+import { initTelemetry } from './services/telemetry.js';
 import { Router } from './router.js';
 import { userStore } from './stores/user.store.js';
 import { AppShell } from './components/App.js';
 import { LoginPage } from './pages/Login.js';
 import { HomePage } from './pages/Home.js';
 import { ProfilePage } from './pages/Profile.js';
-import { AdminPage } from './pages/Admin.js';
 import { RazonesPage } from './pages/Razones.js';
 import { MalDiaPage } from './pages/MalDia.js';
-import { OpenWhenPage } from './pages/OpenWhen.js';
 
 // Lazy loader para páginas pesadas → code-splitting
 // Uso: lazy(() => import('./pages/X.js').then(m => m.XPage))
@@ -21,6 +20,9 @@ import { OpenWhenPage } from './pages/OpenWhen.js';
 const lazy = (loader) => async (router) => (await loader())(router);
 
 function init() {
+  // Lo primero: capturar fallos de arranque, antes de montar nada.
+  initTelemetry();
+
   // Create router
   const router = new Router({
     container: document.getElementById('app')
@@ -44,7 +46,7 @@ function init() {
     skipMood: true
   });
 
-  router.addRoute('/admin', () => AdminPage(router), {
+  router.addRoute('/admin', lazy(() => import('./pages/Admin.js').then(m => m.AdminPage)), {
     title: 'Admin · Personal Hub',
     protected: true,
     adminOnly: true,
@@ -126,7 +128,7 @@ function init() {
   });
 
   // Register Open When page
-  router.addRoute('/openwhen', () => OpenWhenPage(router), {
+  router.addRoute('/openwhen', lazy(() => import('./pages/OpenWhen.js').then(m => m.OpenWhenPage)), {
     title: 'Open When · Personal Hub',
     protected: true
   });

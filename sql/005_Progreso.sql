@@ -36,6 +36,10 @@ CREATE POLICY "user_progress_insert_own" ON user_progress FOR INSERT
 CREATE POLICY "user_progress_update_own" ON user_progress FOR UPDATE
   USING (user_id::uuid = auth.uid() OR public.is_admin());
 
+-- La USING es obligatoria en una policy de DELETE: sin ella PostgreSQL
+-- guarda la policy con expresión nula, que no restringe nada. La misma
+-- cláusula que en SELECT/UPDATE (propietario o admin).
 CREATE POLICY "user_progress_delete_own" ON user_progress FOR DELETE
+  USING (user_id::uuid = auth.uid() OR public.is_admin());
 
 CREATE INDEX IF NOT EXISTS idx_user_progress_user ON user_progress(user_id);

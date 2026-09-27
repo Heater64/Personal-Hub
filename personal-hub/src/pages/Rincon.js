@@ -5,13 +5,14 @@
    External: Juegos, Canciones, ThoseEyes, Series
    ========================================== */
 
+import '../styles/rincon.css';
 import { GALLERY_FOLDERS, MEME_FOLDERS, SPB_DATA, CURIOSIDADES_DATA, CURIOSIDADES_EXTRA, isVideo, buildMediaItems, getVideoPoster } from '../services/rincon-data.js';
 import { loadGiftsCatalog, getGiftsCatalog, unlockedCalendarVideos } from '../services/gifts.service.js';
 import { createLightbox, openLightbox, playSlideshow, pauseSlideshow } from '../components/MediaLightbox.js';
 import { db } from '../services/db.service.js';
 import { showToast } from '../components/Toast.js';
 import { renderPageHeader } from '../components/PageHeader.js';
-import { escapeHtml } from '../utils/escape.js';
+import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
 import { player } from '../services/player.service.js';
@@ -33,6 +34,7 @@ import {
 } from '../services/memesData.js';
 import { userStore } from '../stores/user.store.js';
 import { userPrefKey } from '../utils/userStorage.js';
+import { todayISO } from '../utils/format.js';
 import { onContentChange } from '../services/realtime.service.js';
 
 // ==========================================
@@ -704,7 +706,7 @@ export function RinconPage(router) {
       // Portadas rotatorias dentro de la tarjeta (Series): la primera se muestra
       // y la rotación la va cambiando; si una falla, cae al emoji de la sección.
       visualHTML = `<div class="rincon-card-img-wrap">
-        <img class="sr-rotating-poster rincon-card-img" src="${preview.posters[0]}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <img class="sr-rotating-poster rincon-card-img" src="${safeUrl(preview.posters[0])}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <span class="rincon-card-icon-wrap" style="display:none"><span class="rincon-card-emoji">${section.emoji || '✦'}</span></span>
       </div>`;
     } else if (thumbs.length >= 4 && (section.id === 'memes' || section.previewType === 'memes')) {
@@ -712,7 +714,7 @@ export function RinconPage(router) {
       visualHTML = `<div class="rincon-card-collage">
         ${thumbs.map((t, i) => `
           <div class="rincon-card-collage-cell">
-            <img src="${t.url}" alt="" loading="lazy">
+            <img src="${safeUrl(t.url)}" alt="" loading="lazy">
             ${t.isVideo ? `<span class="rincon-card-collage-play">${ICON_SVGS['play']}</span>` : ''}
           </div>
         `).join('')}
@@ -723,12 +725,12 @@ export function RinconPage(router) {
         const zoomStyle = entry.z > 1 ? ` style="transform:scale(${entry.z})"` : '';
         visualHTML = `<div class="rincon-card-img-wrap">
           <div class="rincon-card-img-zoom"${zoomStyle}>
-            <img src="${cover}" alt="" class="rincon-card-img" loading="lazy" style="object-fit:${entry.fit};object-position:${entry.x}% ${entry.y}%;">
+            <img src="${safeUrl(cover)}" alt="" class="rincon-card-img" loading="lazy" style="object-fit:${entry.fit};object-position:${entry.x}% ${entry.y}%;">
           </div>
         </div>`;
       } else {
         visualHTML = `<div class="rincon-card-img-wrap">
-          <img src="${cover}" alt="" class="rincon-card-img" loading="lazy">
+          <img src="${safeUrl(cover)}" alt="" class="rincon-card-img" loading="lazy">
         </div>`;
       }
     } else {
@@ -2239,8 +2241,10 @@ export function RinconPage(router) {
   function getCuriosidadDelDia() {
     const pool = buildDayPool();
     if (!pool.length) return null;
-    const today = new Date();
-    const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    // Día español (Europe/Madrid): la misma curiously aparece a todo el
+    // mundo el mismo día, aunque el dispositivo esté en otro huso.
+    const iso = todayISO();
+    const seed = Number(iso.slice(0, 4)) * 10000 + Number(iso.slice(5, 7)) * 100 + Number(iso.slice(8, 10));
     return pool[seed % pool.length];
   }
 
@@ -2322,7 +2326,7 @@ export function RinconPage(router) {
             <p class="curio-day-text">${escapeHtml(dayItem.text)}</p>
             <span class="curio-day-loc">${ICON_SVGS['map-pin']} ${escapeHtml(dayItem.place)} ${ICON_SVGS['arrow-right']}</span>
           </div>
-          ${dayItem.img ? `<div class="curio-day-img"><img src="${dayItem.img}" alt="" loading="eager"></div>` : ''}
+          ${dayItem.img ? `<div class="curio-day-img"><img src="${safeUrl(dayItem.img)}" alt="" loading="eager"></div>` : ''}
         </button>
       </section>` : ''}
 
@@ -2479,7 +2483,7 @@ export function RinconPage(router) {
     return `<button class="curio-coll-card card animate-in" style="--enter-delay:${delay}s;--disco-color:${cat.accentColor}" data-cat="${cat.id}">
       <div class="curio-coll-visual">
         ${img
-          ? `<img src="${img}" alt="${cat.title}" loading="lazy" decoding="async">`
+          ? `<img src="${safeUrl(img)}" alt="${escapeHtml(cat.title)}" loading="lazy" decoding="async">`
           : `<div class="curio-coll-emoji-wrap"><span class="curio-coll-emoji">${cat.emoji}</span></div>`
         }
         <div class="curio-coll-overlay"></div>
@@ -2514,7 +2518,7 @@ export function RinconPage(router) {
     const fav = state.curioFavs.has(item.id);
     return `<article class="curio-recent-card card animate-in" style="--enter-delay:${i * 40}ms" data-curio-id="${item.id}" role="button" tabindex="0" aria-label="Abrir: ${escapeHtml(item.title)}">
       <div class="curio-recent-img">
-        <img src="${item.img || ''}" alt="" loading="lazy" onerror="this.closest('.curio-recent-img').classList.add('is-empty')">
+        <img src="${safeUrl(item.img)}" alt="" loading="lazy" onerror="this.closest('.curio-recent-img').classList.add('is-empty')">
         <button class="curio-recent-fav${fav ? ' is-on' : ''}" data-fav-id="${item.id}" aria-label="${fav ? 'Quitar de favoritas' : 'Añadir a favoritas'}" aria-pressed="${fav}">${ICON_SVGS['bookmark']}</button>
         <span class="curio-recent-badge" style="background:${catColor}">${item.category}</span>
       </div>
@@ -2609,7 +2613,7 @@ export function RinconPage(router) {
             </button>
           </div>
         </div>
-        ${item.img ? `<div class="curio-detail-img"><img src="${item.img}" alt="" loading="eager" onerror="this.closest('.curio-detail-img').classList.add('is-empty')"></div>` : ''}
+        ${item.img ? `<div class="curio-detail-img"><img src="${safeUrl(item.img)}" alt="" loading="eager" onerror="this.closest('.curio-detail-img').classList.add('is-empty')"></div>` : ''}
       </header>
 
       ${related.length ? `<section class="curio-section">
@@ -2739,7 +2743,7 @@ export function RinconPage(router) {
 
   function renderIntroHero(catColor, iconKey, title, subtitle, intro, heroImg) {
     return `<header class="disco-intro-hero" style="--disco-color:${catColor}">
-      ${heroImg ? `<div class="disco-intro-img"><img src="${heroImg}" alt="" loading="eager" decoding="async"></div>` : ''}
+      ${heroImg ? `<div class="disco-intro-img"><img src="${safeUrl(heroImg)}" alt="" loading="eager" decoding="async"></div>` : ''}
       <div class="disco-intro-body">
         <span class="disco-intro-icon" style="color:${catColor}">${ICON_SVGS[iconKey] || ''}</span>
         <h2 class="disco-intro-title">${title}</h2>
@@ -2780,8 +2784,8 @@ export function RinconPage(router) {
       <h3 class="disco-section-title">${label}</h3>
       <div class="disco-gallery">
         ${images.map((src, i) => `
-          <button type="button" class="disco-gallery-item" data-src="${src}" style="--disco-color:${catColor}" aria-label="Ver foto ampliada${captions?.[i] ? ': ' + escapeHtml(captions[i]) : ''}">
-            <img src="${src}" alt="${captions?.[i] ? escapeHtml(captions[i]) : ''}" loading="lazy">
+          <button type="button" class="disco-gallery-item" data-src="${escapeHtml(src)}" style="--disco-color:${catColor}" aria-label="Ver foto ampliada${captions?.[i] ? ': ' + escapeHtml(captions[i]) : ''}">
+            <img src="${safeUrl(src)}" alt="${captions?.[i] ? escapeHtml(captions[i]) : ''}" loading="lazy">
             ${captions?.[i] ? `<span class="disco-gallery-caption">${escapeHtml(captions[i])}</span>` : ''}
           </button>`).join('')}
       </div>
@@ -2805,7 +2809,7 @@ export function RinconPage(router) {
       <div class="disco-razas-grid">
         ${razas.map((r, i) => `<article class="disco-raza-card card animate-in" style="--enter-delay:${i * 50}ms;--disco-color:${catColor}">
           <div class="disco-raza-img">
-            <img src="${r.img}" alt="Gato de raza ${escapeHtml(r.nombre)}" loading="lazy">
+            <img src="${safeUrl(r.img)}" alt="Gato de raza ${escapeHtml(r.nombre)}" loading="lazy">
           </div>
           <div class="disco-raza-body">
             <h4 class="disco-raza-nombre">${escapeHtml(r.nombre)}</h4>
@@ -3274,9 +3278,11 @@ export function RinconPage(router) {
    * actual. Los meses futuros salen como bloqueados.
    */
   function audioMonthRange() {
-    const now = new Date();
-    const curYear = now.getFullYear();
-    const curMonth = now.getMonth() + 1;
+    // "Hasta hoy" en España: los meses futuros se bloquean igual que en
+    // el calendario, que también cuenta el día en Europe/Madrid.
+    const iso = todayISO();
+    const curYear = Number(iso.slice(0, 4));
+    const curMonth = Number(iso.slice(5, 7));
     const map = audiosByMonth();
 
     let minYear = 2025;

@@ -5,10 +5,12 @@
    el saludo es el título y el ánimo manda.
    ========================================== */
 
+import '../styles/sentimientos.css';
 import { moodStore } from '../stores/mood.store.js';
 import { userStore } from '../stores/user.store.js';
 import { renderPageHeader } from '../components/PageHeader.js';
 import { icon, toast } from '../components/ui.js';
+import { escapeHtml } from '../utils/escape.js';
 import { todayISO, hourInSpain } from '../utils/format.js';
 
 const CARDS = [
@@ -44,17 +46,25 @@ export function SentimientosPage(router) {
   let todayMood = moodStore.getTodayMood();
 
   /* ==========================================
-     HISTORIAL — una sola fuente para el mes y las cifras
-     date → moodId. Se siembra con el historial local y se
-     completa con Supabase (una consulta) para que las
-     estadísticas sean las reales también en otro dispositivo.
+     HISTORIAL — una sola fuente para el mes y las cifras.
+     date → estado COMPLETO ({ mood, label, emoji, score }), no
+     solo el id: así los días registrados con el catálogo
+     anterior se siguen viendo tal cual se pusieron, aunque ya
+     no exista ese id en el catálogo actual.
+     Se siembra con el historial local y se completa con Supabase
+     (una consulta) para que las estadísticas sean las reales
+     también en otro dispositivo.
      ========================================== */
   const historyMap = {};
   let histMonth = new Date();
   for (const entry of moodStore.getHistory() || []) {
-    if (entry?.date && entry.moodId) historyMap[entry.date] = entry.moodId;
+    if (entry?.date && entry.moodId) {
+      historyMap[entry.date] = { mood: entry.moodId, label: entry.label, emoji: entry.emoji, score: entry.score };
+    }
   }
-  if (todayMood?.id) historyMap[todayISO()] = todayMood.id;
+  if (todayMood?.id) {
+    historyMap[todayISO()] = { mood: todayMood.id, label: todayMood.label, emoji: todayMood.emoji, score: todayMood.score };
+  }
 
   function computeStats() {
     const dates = Object.keys(historyMap);
@@ -71,14 +81,14 @@ export function SentimientosPage(router) {
     }
 
     const counts = {};
-    dates.forEach(date => { const id = historyMap[date]; counts[id] = (counts[id] || 0) + 1; });
+    dates.forEach(date => { const id = historyMap[date]?.mood; if (id) counts[id] = (counts[id] || 0) + 1; });
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
 
     return {
       totalDays: dates.length,
       daysThisMonth: dates.filter(date => date.startsWith(thisMonth)).length,
       streak,
-      mostCommon: top ? moodStore.getMoodById(top[0]) : null
+      mostCommon: top ? moodStore.resolveMood({ mood: top[0] }) : null
     };
   }
 
@@ -129,7 +139,7 @@ export function SentimientosPage(router) {
     <div class="sent-cards-grid">
       ${CARDS.map(card => `
         <button type="button" class="sent-card lift" data-href="${card.href}" style="--card-color:${card.color}">
-          <span class="sent-card-cover">${icon(card.icon, 24)}</span>
+          <span class="sent-card-cover">${icon(card.icon, 30)}</span>
           <span class="sent-card-body">
             <span class="sent-card-title">${card.title}</span>
             <span class="sent-card-desc">${card.desc}</span>
@@ -180,7 +190,7 @@ export function SentimientosPage(router) {
     const items = [
       { value: stats.totalDays, label: stats.totalDays === 1 ? 'día registrado' : 'días registrados' },
       { value: stats.streak, label: stats.streak === 1 ? 'día seguido' : 'días seguidos' },
-      { value: stats.mostCommon?.emoji || '—', label: 'más frecuente', emoji: !!stats.mostCommon },
+      { value: escapeHtml(stats.mostCommon?.emoji) || '—', label: 'más frecuente', emoji: !!stats.mostCommon },
       { value: stats.daysThisMonth, label: 'este mes' }
     ];
     box.innerHTML = items.map(item => `
@@ -213,14 +223,14 @@ export function SentimientosPage(router) {
     for (let i = 0; i < firstWeekday; i++) cells += '<span class="sent-hist-cell is-offset" aria-hidden="true"></span>';
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${monthKey}-${pad2(day)}`;
-      const mood = historyMap[dateStr] ? moodStore.getMoodById(historyMap[dateStr]) : null;
+      const mood = historyMap[dateStr] ? moodStore.resolveMood(historyMap[dateStr]) : null;
       const isToday = dateStr === todayStr;
       const isFuture = dateStr > todayStr;
       cells += `
         <div class="sent-hist-cell${mood ? ' has-mood' : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}"
-             ${mood ? `title="${mood.label}" aria-label="${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}"` : ''}>
+             ${mood ? `title="${escapeHtml(mood.label)}" aria-label="${escapeHtml(`${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}`)}"` : ''}>
           <span class="sent-hist-day">${day}</span>
-          ${mood ? `<span class="sent-hist-emoji" aria-hidden="true">${mood.emoji}</span>` : ''}
+          ${mood ? `<span class="sent-hist-emoji" aria-hidden="true">${escapeHtml(mood.emoji)}</span>` : ''}
         </div>`;
     }
 
@@ -233,11 +243,16 @@ export function SentimientosPage(router) {
     `;
 
     if (legend) {
-      const present = [...new Set(monthEntries.map(date => historyMap[date]))]
-        .map(id => moodStore.getMoodById(id))
+      const present = [...new Set(monthEntries.map(date => historyMap[date]?.mood))]
+        .filter(Boolean)
+        .map(id => {
+          // Se busca una entrada real del mes para recuperar su etiqueta.
+          const entry = monthEntries.map(date => historyMap[date]).find(e => e?.mood === id);
+          return moodStore.resolveMood(entry || { mood: id });
+        })
         .filter(Boolean);
       legend.innerHTML = present.length
-        ? present.map(mood => `<span class="sent-hist-legend-item"><span aria-hidden="true">${mood.emoji}</span>${mood.label}</span>`).join('')
+        ? present.map(mood => `<span class="sent-hist-legend-item"><span aria-hidden="true">${escapeHtml(mood.emoji)}</span>${escapeHtml(mood.label)}</span>`).join('')
         : '';
     }
     if (sub) sub.textContent = monthEntries.length
@@ -258,7 +273,7 @@ export function SentimientosPage(router) {
         // Vienen de la más reciente a la más antigua: el primer estado de cada
         // día es el último que se guardó, que es el que cuenta.
         if (!row?.date || !row.mood || historyMap[row.date]) continue;
-        historyMap[row.date] = row.mood;
+        historyMap[row.date] = { mood: row.mood, label: row.label, emoji: row.emoji, score: row.score };
         changed = true;
       }
       if (changed) { renderStats(); renderHistory(); }

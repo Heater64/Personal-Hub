@@ -17,23 +17,14 @@
 @import url('./login.css');
 @import url('./home.css');
 @import url('./profile.css');
-@import url('./admin.css');
-@import url('./rincon.css');
-@import url('./minecraft.css');
-@import url('./canciones.css');
 @import url('./razones.css');
-@import url('./sentimientos.css');
-@import url('./juegos.css');
-@import url('./online-games.css');
-@import url('./calendario.css');
 @import url('./maldia.css');
-@import url('./openwhen.css');
-@import url('./series.css');
-@import url('./thoseeyes.css');
-@import url('./justthewayyouare.css');
-@import url('./ositos.css');
 @import url('./lightbox.css');
 
+/* Los estilos de paginas con carga diferida (admin, rincon, minecraft,
+   canciones, juegos, calendario, openwhen, series, etc.) ya NO se importan
+   aqui: cada pagina hace `import '../styles/X.css'` y Vite los empaqueta en
+   su chunk, asi el CSS inicial baja de ~426 KB a unos pocos decenas. */
 /* ==========================================
    SHELL — sidebar fija + contenido que scrollea
    ========================================== */

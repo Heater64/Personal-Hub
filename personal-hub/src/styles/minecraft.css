@@ -15,6 +15,34 @@
   padding-bottom: calc(var(--sp-24) + env(safe-area-inset-bottom, 0px));
 }
 
+/* ---- Botón de vuelta ---- */
+/* .rincon-back-btn lo usan Minecraft y las vistas interiores del Rincón.
+   Estaba en el marcado desde hace tiempo sin ninguna regla que lo
+   estilizara: salía como un botón del sistema, feo y con el tamaño
+   equivocado para el dedo. */
+.rincon-back-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  min-height: 36px;
+  padding: var(--sp-6) var(--sp-12) var(--sp-6) var(--sp-8);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-1);
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast), transform var(--dur-fast);
+}
+
+.rincon-back-btn:hover { color: var(--text); background: var(--surface-2); }
+.rincon-back-btn:active { transform: scale(0.96); }
+.rincon-back-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.rincon-back-btn svg { width: 16px; height: 16px; flex: none; }
+
 /* ---- Cabecera ---- */
 .mc-head {
   display: flex;

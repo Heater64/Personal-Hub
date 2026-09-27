@@ -3,6 +3,7 @@
    Sala recreativa — cada juego es un mundo
    ========================================== */
 
+import '../styles/juegos.css';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { gameCover } from '../utils/gameCovers.js';
 import { loadGiftsCatalog, getGiftsCatalog, getGiftTodayStr } from '../services/gifts.service.js';
