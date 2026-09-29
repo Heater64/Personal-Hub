@@ -927,7 +927,7 @@ textarea.form-input {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(var(--nav-h) + 88px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-toast);
   background: var(--text);
   color: var(--bg);

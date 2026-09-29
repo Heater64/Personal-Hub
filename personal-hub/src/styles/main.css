@@ -38,12 +38,18 @@
 
 .shell { flex: 1; display: flex; min-height: 0; }
 
-.main { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* position: relative para que los hijos con position:absolute (regiones .sr-only,
+   menúsEmergent) tengan aquí su bloque contenedor y queden recortados por este
+   scroller, en vez de escapar y alargar el documento. */
+.main { position: relative; flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; }
 
 .content {
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--sp-20) var(--sp-16) calc(var(--nav-h) + 90px + env(safe-area-inset-bottom, 0px));
+  /* Solo se reserva la altura de la barra inferior. Antes eran +90px para que
+     el botón "+" flotante no tapara el contenido, y ese hueco se leía como una
+     franja negra al pie; el "+" ahora es una pestaña de la propia barra. */
+  padding: var(--sp-20) var(--sp-16) calc(var(--nav-h) + 20px + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 768px) {
@@ -136,7 +142,6 @@
    ========================================== */
 .app-shell.no-nav .bottom-nav,
 .app-shell.no-nav .sidebar,
-.app-shell.no-nav .fab,
 .app-shell.no-nav .mobile-topbar { display: none !important; }
 
 .app-shell.no-nav .content { max-width: 100%; padding: 0; }

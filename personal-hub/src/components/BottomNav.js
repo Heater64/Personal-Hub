@@ -85,7 +85,7 @@ export function BottomNav(router) {
     const matched = NAV_ITEMS.find(isActiveFor);
     if (matched) setUserPref('activeSection', matched.id);
 
-    nav.querySelectorAll('.bn-item').forEach(btn => {
+    nav.querySelectorAll('.bn-item[data-nav]').forEach(btn => {
       btn.addEventListener('click', () => router.navigate(PATHS[btn.dataset.nav] || '/'));
     });
   }

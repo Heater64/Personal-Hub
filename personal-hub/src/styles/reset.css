@@ -19,6 +19,14 @@ html {
   touch-action: manipulation;
   scroll-behavior: smooth;
   overscroll-behavior-y: none;
+  /* La app es un shell de altura fija con su propio scroller (.main). Si el
+     documento puede desplazarse, cualquier elemento con position:absolute cuyo
+     bloque contenedor esté fuera de .main (por ejemplo .sr-only) se escapa de su
+     recorte, alarga el documento, y al hacer scrollIntoView se arrastra toda la
+     app: el menú lateral sube y queda una franja negra al pie de la pantalla.
+     El documento no debe desplazarse nunca; el scroll es de .main. */
+  height: 100%;
+  overflow: hidden;
 }
 
 body {

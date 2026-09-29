@@ -153,8 +153,7 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
 
   continueBtn.addEventListener('click', handleContinue);
   skipBtn.addEventListener('click', () => {
-    // Mark as seen for today so the welcome screen doesn't reappear
-    // until the next scheduled check (tomorrow at 8:00 AM).
+    // Mark as seen so the check-in no vuelva a aparecer hasta el día siguiente.
     moodStore.markSeen();
     close();
     if (onSkip) onSkip();

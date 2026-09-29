@@ -1114,10 +1114,16 @@ export function RinconPage(router) {
       state.calSynced = true;
       const content = document.getElementById('galeriaMemesContent');
       if (!content) return;
-      const y = window.scrollY; // preserva el scroll del usuario
+      // El scroll de la app lo lleva .main, no el documento: hay que leerlo y
+      // restaurarlo ahí, o el re-render deja al usuario arriba de la galería.
+      const scroller = content.closest('main.main');
+      const y = scroller ? scroller.scrollTop : window.scrollY;
       content.innerHTML = renderGaleriaContent();
       bindGaleriaEvents(content);
-      if (y) requestAnimationFrame(() => window.scrollTo(0, y));
+      if (y) requestAnimationFrame(() => {
+        if (scroller) scroller.scrollTop = y;
+        else window.scrollTo(0, y);
+      });
     });
   }
 

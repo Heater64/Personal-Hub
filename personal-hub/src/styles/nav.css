@@ -274,33 +274,8 @@
 
 .bn-item { position: relative; }
 
-/* ==========================================
-   FAB — acción rápida (solo móvil)
-   ========================================== */
-.fab {
-  position: fixed;
-  right: var(--sp-18);
-  bottom: calc(var(--nav-h) + 22px + env(safe-area-inset-bottom, 0px));
-  z-index: 45;
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  border: none;
-  background: var(--primary);
-  color: var(--on-accent, #fff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 8px 24px var(--primary-softer);
-  transition: transform var(--dur-fast), background var(--dur-fast);
-}
-
-.fab:hover { background: var(--primary-2); }
-.fab:active { transform: scale(0.93); }
-
-@media (min-width: 768px) {
-  .fab { display: none; }
-}
+/* La acción rápida flotante se ha retirado: solo abría un menú de secciones
+   que ya están en la barra, y para poder flotar sobre el contenido obligaba a
+   reservar 90px de fondo vacío al pie, que se leía como una franja negra. */
 
 /* (.skip-link vive en utilities.css) */

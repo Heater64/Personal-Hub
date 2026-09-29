@@ -148,7 +148,23 @@
   color: var(--text);
 }
 
-.cal-spot__body span { font-size: var(--fs-sm); color: var(--text-3); }
+.cal-spot__body .cal-spot__when {
+  color: var(--primary);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cal-spot__body .cal-spot__title {
+  color: var(--text);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.cal-spot__body .cal-spot__type { font-size: var(--fs-xs); color: var(--text-3); }
+
+.cal-page-head { margin-bottom: var(--sp-20); }
 
 @media (max-width: 420px) {
   .cal-spot__art { width: 60px; }
@@ -319,53 +335,6 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
-.cal-day.is-dim { color: var(--text-3); opacity: 0.4; }
-
-/* Día a medias: se ven cuántos de sus regalos quedan por abrir.
-   No es un punto más: lleva la cuenta, que es justo lo que faltaba. */
-.cal-day__part {
-  position: absolute;
-  left: 50%;
-  bottom: -1px;
-  z-index: 2;
-  transform: translateX(-50%);
-  padding: 0 3px;
-  border-radius: var(--r-full);
-  background: var(--warn-soft);
-  color: var(--warn);
-  font-size: 8px;
-  font-weight: 800;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.cal-day.is-partial .cal-day__n { color: var(--text); }
-.cal-day.is-today .cal-day__part {
-  background: var(--on-accent, #fff);
-  color: var(--primary);
-}
-.cal-day.is-empty { cursor: default; }
-.cal-day.is-empty .cal-day__n { background: transparent; box-shadow: none; color: var(--text-3); font-weight: 500; }
-
-.cal-day.is-today .cal-day__n {
-  background: var(--primary);
-  color: var(--on-accent, #fff);
-  box-shadow: 0 0 0 2px var(--primary-softer);
-  font-weight: 800;
-}
-
-.cal-day.is-sel .cal-day__n {
-  background: var(--text);
-  color: var(--surface);
-  box-shadow: 0 0 0 2px var(--text);
-  font-weight: 800;
-}
-
-.cal-day.is-opened .cal-day__n { color: var(--text-2); }
-.cal-day.is-locked .cal-day__n { color: var(--text-3); background: var(--surface-2); box-shadow: none; }
 
 /* ==========================================
    PROGRESO GLOBAL (dentro de la tarjeta del mes)
@@ -413,10 +382,408 @@
 }
 
 /* ==========================================
+   CALENDARIO · vistas mensual y semanal
+   ========================================== */
+.calendario-page {
+  width: 100%;
+  max-width: 860px;
+  min-width: 0;
+  margin: 0 auto;
+}
+
+.content:has(> .calendario-page) { max-width: 1680px; }
+
+.cal {
+  width: 100%;
+  padding: clamp(14px, 2vw, 24px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 78%, var(--bg));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-s);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 76px;
+  padding: 2px 2px 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.cal-head__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cal-head__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 22%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
+  border-radius: 15px;
+}
+
+.cal-head__month {
+  margin: 0;
+  color: var(--text);
+  font: 800 clamp(20px, 1.8vw, 27px)/1.2 var(--font-ui);
+  letter-spacing: -0.035em;
+  text-transform: capitalize;
+}
+
+.cal-head__sub {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-2);
+  font-size: var(--fs-base);
+  font-weight: 500;
+}
+
+.cal-head__controls,
+.cal-nav {
+  display: flex;
+  align-items: center;
+}
+
+.cal-head__controls {
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cal-nav { gap: 7px; }
+.cal-nav .icon-btn { width: 40px; height: 40px; border-radius: 12px; }
+
+.cal-today-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
+  border-radius: 12px;
+  font: 700 var(--fs-sm)/1 var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), transform 0.12s ease;
+}
+
+.cal-today-btn:hover { background: var(--primary-softer); }
+.cal-today-btn:active { transform: scale(0.96); }
+
+.cal-view-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 46px;
+  padding: 3px;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+}
+
+.cal-view-btn {
+  min-width: 68px;
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--text-2);
+  border: 1px solid transparent;
+  border-radius: 11px;
+  font: 600 var(--fs-sm)/1 var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.cal-view-btn:hover { color: var(--text); background: var(--surface-2); }
+.cal-view-btn.is-active {
+  color: var(--on-accent, #fff);
+  background: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 72%, white);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.cal-weekdays,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  text-align: left;
+}
+
+.cal-weekdays { margin-bottom: 6px; }
+
+.cal-weekdays .wd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 38px;
+  padding: 3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-2) 48%, transparent);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-align: center;
+}
+
+.wd__short { display: none; }
+
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  width: auto;
+  min-width: 0;
+  min-height: 80px;
+  max-height: none;
+  aspect-ratio: auto;
+  padding: 7px 8px 8px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  background: color-mix(in srgb, var(--bg) 68%, var(--surface));
+  border: 1px solid var(--border-soft);
+  border-radius: 15px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast), transform var(--dur-fast);
+}
+
+.cal-day:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border-soft));
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.cal-day.is-empty { background: color-mix(in srgb, var(--surface) 48%, var(--bg)); }
+.cal-day:disabled { cursor: default; }
+.cal-day.is-dim { opacity: 0.43; }
+.cal-day.is-today {
+  background: color-mix(in srgb, var(--primary) 8%, var(--bg));
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border-soft));
+}
+.cal-day.is-sel {
+  background: color-mix(in srgb, var(--primary) 14%, var(--bg));
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 42%, transparent);
+}
+
+.cal-day.is-pending .cal-day__n { color: var(--text); }
+
+.cal-day__n {
+  position: static;
+  z-index: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--text);
+  background: transparent;
+  border-radius: 50%;
+  box-shadow: none;
+  font: 700 17px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-fast);
+}
+
+.cal-day:not(:disabled):hover .cal-day__n {
+  background: var(--surface-2);
+  transform: scale(1.06);
+}
+
+.cal-day.is-today .cal-day__n,
+.cal-day.is-sel .cal-day__n {
+  color: var(--on-accent, #fff);
+  background: var(--primary);
+  font-weight: 800;
+}
+
+.cal-day.is-locked .cal-day__n { color: var(--text-3); }
+
+.cal-day__ok,
+.cal-day__lock {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  bottom: auto;
+  left: auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  transform: none;
+}
+
+.cal-day__ok { color: #fff; background: var(--ok); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); }
+.cal-day__lock { color: var(--text-3); background: var(--surface-2); }
+
+.cal-day__part {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  bottom: auto;
+  left: auto;
+  z-index: 2;
+  padding: 3px 8px;
+  transform: none;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-full);
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.cal-day__dot {
+  position: absolute;
+  right: 11px;
+  bottom: 11px;
+  left: auto;
+  z-index: auto;
+  width: 7px;
+  height: 7px;
+  background: var(--primary);
+  border-radius: 50%;
+  opacity: 1;
+  transform: none;
+}
+
+.cal-day.is-today .cal-day__dot { background: var(--primary); }
+
+.cal-grid--week .cal-day { min-height: 128px; }
+
+/* El pie del calendario va separado de la cuadrícula para que lea como bloque
+   con su texto y no como una franja suelta al pie de la tarjeta. */
+.cal-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.cal-progress__text {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.cal-progress__text b {
+  color: var(--text);
+  font: 800 var(--fs-base)/1.2 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+/* La pista NO se pinta: una pista del ancho de la tarjeta, casi negra y con el
+   99% vacía (4 de 393), se leía como una barra negra al pie del calendario.
+   Solo se dibuja el relleno, que además tiene ancho mínimo para que nunca
+   desaparezca del todo cuando el avance es un porcentaje pequeño. */
+.cal-progress__bar,
+.cal-dayprogress__bar {
+  height: 6px;
+  overflow: hidden;
+  background: transparent;
+  border-radius: var(--r-full);
+}
+
+.cal-progress__bar span,
+.cal-dayprogress__bar span {
+  display: block;
+  height: 100%;
+  min-width: 6px;
+  background: linear-gradient(90deg, var(--primary), var(--violet-c, var(--primary)));
+  border-radius: inherit;
+  transition: width 0.4s ease;
+}
+
+.cal-day-panel { margin-top: var(--sp-24); scroll-margin-top: var(--sp-20); }
+
+@media (max-width: 1200px) {
+  .cal-head { align-items: flex-start; flex-wrap: wrap; }
+  .cal-head__controls { flex: 1 1 100%; justify-content: space-between; }
+}
+
+@media (max-width: 700px) {
+  .cal { padding: 13px; border-radius: 18px; }
+  .cal-head { gap: 14px; }
+  .cal-head__controls { gap: 8px; }
+  .cal-view-tabs { min-height: 48px; }
+  .cal-view-btn { min-width: 64px; min-height: 38px; padding-inline: 12px; }
+  .cal-weekdays, .cal-grid { gap: 5px; }
+  .cal-weekdays { margin-bottom: 5px; }
+  .cal-weekdays .wd { min-height: 36px; font-size: 11px; }
+  .cal-weekdays .wd[aria-label] { justify-self: stretch; }
+  .wd__full { display: none; }
+  .wd__short { display: inline; }
+  .cal-day { min-height: 96px; padding: 6px; gap: 4px; border-radius: 11px; }
+  .cal-day__n { width: 28px; height: 28px; font-size: 13px; }
+  .cal-day__ok, .cal-day__lock { top: 6px; right: 5px; width: 17px; height: 17px; }
+  .cal-day__ok .ic svg, .cal-day__lock .ic svg { width: 10px; height: 10px; }
+  .cal-day__part { top: 7px; right: 5px; padding: 2px 5px; font-size: 8px; }
+  .cal-day__dot { right: 7px; bottom: 7px; width: 5px; height: 5px; }
+  .cal-grid--week .cal-day { min-height: 145px; }
+}
+
+@media (max-width: 480px) {
+  .content:has(> .calendario-page) { padding: 14px 9px calc(var(--nav-h) + 20px + env(safe-area-inset-bottom, 0px)); }
+  .cal { padding: 11px 9px; }
+  .cal-head { min-height: 0; padding-bottom: 13px; margin-bottom: 12px; }
+  .cal-head__identity { gap: 10px; }
+  .cal-head__icon { width: 46px; height: 46px; flex-basis: 46px; border-radius: 13px; }
+  .cal-head__icon svg { width: 24px; height: 24px; }
+  .cal-head__month { font-size: 20px; }
+  .cal-head__sub { margin-top: 2px; font-size: 11px; }
+  .cal-head__controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+  .cal-nav { grid-column: 1 / -1; justify-content: flex-start; }
+  .cal-nav .icon-btn { width: 38px; height: 38px; border-radius: 12px; }
+  .cal-today-btn { min-height: 38px; padding-inline: 13px; }
+  .cal-view-tabs { grid-column: 1; grid-row: 2; width: 100%; min-height: 42px; }
+  .cal-view-btn { flex: 1; min-width: 0; min-height: 34px; padding-inline: 5px; font-size: 11px; }
+  .cal-weekdays, .cal-grid { gap: 4px; }
+  .cal-weekdays .wd { min-height: 31px; padding: 2px; font-size: 10px; }
+  .cal-day { min-height: 89px; padding: 5px 4px; gap: 3px; border-radius: 9px; }
+  .cal-day__n { width: 25px; height: 25px; font-size: 12px; }
+  .cal-day__ok, .cal-day__lock { top: 5px; right: 4px; width: 14px; height: 14px; }
+  .cal-day__part { top: 5px; right: 3px; padding: 1px 4px; font-size: 7px; }
+  .cal-grid--week .cal-day { min-height: 124px; }
+  .cal-day-panel { margin-top: var(--sp-18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-day, .cal-day__n, .cal-view-btn, .cal-today-btn,
+  .cal-progress__bar span, .cal-dayprogress__bar span { transition: none; }
+}
+
+/* ==========================================
    PROGRESO DEL DÍA
    ========================================== */
 .cal-dayprogress {
-  margin: calc(-1 * var(--sp-6)) 0 var(--sp-12);
+  margin: 0 0 var(--sp-12);
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
@@ -560,7 +927,8 @@
   min-height: 60px;
   /* El JS fija la altura y pone overflow:hidden SOLO mientras dura la
      transición. Aquí no, porque recortaría el polaroid, que va rotado y
-     sobresale de su caja. */
+     sobresale de su caja. El vídeo no se anima: sus dimensiones llegan
+     después y necesitan un layout fluido desde que se monta. */
   transition: height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -1106,6 +1474,7 @@
 /* Reproductor de vídeo dentro del sheet: usa la barra compartida del
    lightbox, pero sin los límites de tamaño de la galería. */
 .exp-media .ml-video-wrap {
+  display: block;
   max-width: 100%;
   max-height: none;
   width: 100%;
@@ -1113,6 +1482,7 @@
 
 .exp-media .ml-media {
   width: 100%;
+  height: auto;
   max-height: 58vh;
   border-radius: var(--r-lg);
   box-shadow: none;

@@ -10,7 +10,6 @@ import { db } from '../services/db.service.js';
 import { BottomNav } from './BottomNav.js';
 import { Sidebar } from './Sidebar.js';
 import { renderPageIcon } from './PageHeader.js';
-import { icon, quickAddMenu } from './ui.js';
 import { NowPlayingBar } from './NowPlayingBar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
 import { moodStore } from '../stores/mood.store.js';
@@ -23,7 +22,7 @@ import { player } from '../services/player.service.js';
 import '../styles/online-games.css';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
 import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref } from '../utils/userStorage.js';
-import { todayISO, spainMsOnDate, nextDayISO } from '../utils/format.js';
+import { todayISO, hourInSpain, spainMsOnDate, nextDayISO } from '../utils/format.js';
 
 // Rutas que NO deben mostrar navegación (sidebar ni bottom-nav)
 const NO_NAV_ROUTES = ['/login'];
@@ -80,15 +79,6 @@ export function AppShell(router) {
   // Bottom nav (móvil)
   const bottomNav = BottomNav(router);
   app.appendChild(bottomNav);
-
-  // Acción rápida flotante (móvil)
-  const fab = document.createElement('button');
-  fab.type = 'button';
-  fab.className = 'fab';
-  fab.setAttribute('aria-label', 'Acciones rápidas');
-  fab.innerHTML = icon('plus', 26);
-  fab.addEventListener('click', () => quickAddMenu(router));
-  app.appendChild(fab);
 
   // Reproductor global (tipo Spotify): barra persistente que sigue
   // sonando al navegar. Vive fuera de las páginas.
@@ -203,7 +193,6 @@ export function AppShell(router) {
   // Store ref to remove welcome overlay on route change
   let currentWelcomeOverlay = null;
   let moodTimer = null;
-  let testWelcomeHour = null; // in-memory override for testing only
   let moodSyncPromise = null; // resolves once today's mood has been synced with the server
 
   /** Controla la visibilidad de la navegación según la ruta actual */
@@ -326,11 +315,11 @@ export function AppShell(router) {
   }
 
   // ==========================================
-  // Daily Welcome Screen scheduler (8:00 AM)
+  // Check-in diario de ánimo en el primer inicio del día
+  // (la fecha cambia a medianoche en Europe/Madrid).
   // ==========================================
   function shouldShowWelcome() {
     const user = userStore.getUser();
-    const now = new Date();
 
     if (!user) return false;
     if (userStore.isAdmin) return false;
@@ -340,18 +329,13 @@ export function AppShell(router) {
     if (window.location.hash === '#/login') return false;
     // Already answered/skipped today?
     if (moodStore.hasSeenToday()) return false;
-    // Only show from 8:00 AM (hora de España) onwards (or in-memory test hour)
-    const checkHour = Number.isFinite(testWelcomeHour) && testWelcomeHour >= 0 && testWelcomeHour <= 23
-      ? testWelcomeHour
-      : 8;
-    const todayCheck = spainMsOnDate(todayISO(now), checkHour);
-    return now.getTime() >= todayCheck;
+    return true;
   }
 
   function showWelcome() {
     if (!shouldShowWelcome()) return;
 
-    // Prevent re-showing on every route change after 8 AM
+    // Evita volver a abrirla el mismo día si una navegación cerró el modal.
     const today = todayISO();
     if (getUserPref('welcomeShownDate') === today) return;
 
@@ -360,8 +344,11 @@ export function AppShell(router) {
 
     setUserPref('welcomeShownDate', today);
 
-    // Notificación local (app abierta) si está habilitada
-    showDailyNotification('¡Buenos días! ☀️', 'Es hora de tu check-in diario de estado de ánimo.');
+    // Notificación local (app abierta) si está habilitada, con el saludo
+    // correspondiente a la hora española en que abrió la aplicación.
+    const hour = hourInSpain();
+    const greeting = hour < 12 ? '¡Buenos días! ☀️' : hour < 19 ? '¡Buenas tardes! 🌤️' : '¡Buenas noches! 🌙';
+    showDailyNotification(greeting, '¿Cómo te sientes hoy? Abre Personal Hub para registrarlo.');
     // Marca el día para que el SW (app cerrada) no la duplique: 1 vez/día
     markWelcomeShownToday();
 
@@ -385,32 +372,17 @@ export function AppShell(router) {
     notifyNewOpenWhenLetters();
 
     const now = new Date();
-    const checkHour = Number.isFinite(testWelcomeHour) && testWelcomeHour >= 0 && testWelcomeHour <= 23
-      ? testWelcomeHour
-      : 8;
-    // El check-in diario (8:00) y el cambio de día usan la hora de España (península)
-    const today8AM = spainMsOnDate(todayISO(now), checkHour);
-    const tomorrow8AM = spainMsOnDate(nextDayISO(now), checkHour);
+    if (!userStore.getUser() || userStore.isAdmin) return;
 
-    // Already answered today -> wait for tomorrow at 8 AM
-    if (moodStore.hasSeenToday()) {
-      const delay = Math.max(1000, tomorrow8AM - Date.now());
-      moodTimer = setTimeout(scheduleMoodCheck, delay);
-      return;
-    }
+    // Se muestra en el primer inicio del día de la princesa, a cualquier hora.
+    // El próximo check se arma a medianoche de España para el día siguiente.
+    const nextDayCheck = spainMsOnDate(nextDayISO(now), 0);
+    const scheduleNextDay = () => {
+      moodTimer = setTimeout(scheduleMoodCheck, Math.max(1000, nextDayCheck - Date.now()));
+    };
 
-    // After 8 AM and not answered -> show now, then schedule tomorrow
-    if (now.getTime() >= today8AM) {
-      showWelcome();
-
-      const delay = Math.max(1000, tomorrow8AM - Date.now());
-      moodTimer = setTimeout(scheduleMoodCheck, delay);
-      return;
-    }
-
-    // Before 8 AM -> wait until 8 AM today
-    const delay = Math.max(1000, today8AM - Date.now());
-    moodTimer = setTimeout(scheduleMoodCheck, delay);
+    if (!moodStore.hasSeenToday()) showWelcome();
+    scheduleNextDay();
   }
 
   // ── Navegación desde notificaciones ──
@@ -496,16 +468,6 @@ export function AppShell(router) {
       }
       removeUserPref('welcomeShownDate');
       showWelcome();
-    };
-    window.__setWelcomeTestHour = (hour) => {
-      const h = parseInt(hour, 10);
-      if (Number.isNaN(h) || h < 0 || h > 23) return;
-      testWelcomeHour = h;
-      scheduleMoodCheck();
-    };
-    window.__clearWelcomeTestHour = () => {
-      testWelcomeHour = null;
-      scheduleMoodCheck();
     };
   }
 

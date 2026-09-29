@@ -213,6 +213,38 @@ test('bottomnav mobile-first y compacta con etiquetas recortadas', async () => {
   assert.match(nav, /env\(safe-area-inset-bottom/);
 });
 
+test('el documento nunca se desplaza: el scroll es de .main', async () => {
+  const reset = await readFile(hub('src', 'styles', 'reset.css'), 'utf8');
+  const main = await readFile(hub('src', 'styles', 'main.css'), 'utf8');
+
+  // La franja negra al pie no era un elemento: al hacer clicables las tarjetas
+  // se añadió scrollIntoView, que desplazaba también el <html>. Eso arrastraba
+  // toda la app (menú lateral incluido) y dejaba el hueco del documento a la
+  // vista. Causa: las regiones .sr-only son position:absolute y, al no tener
+  // un ancestro posicionado dentro de .main, escapaban de su recorte y
+  // alargaban el documento.
+  assert.match(reset, /html \{[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/,
+    'el documento no puede desplazarse: el scroll lo lleva .main');
+  assert.match(main, /\.main \{ position: relative;/,
+    '.main es el bloque contenedor, así lo posicionado absolute queda dentro de su recorte');
+  assert.match(reset, /body \{[\s\S]*?height: 100dvh;[\s\S]*?overflow: hidden;/,
+    'y el body sigue bloqueado como antes');
+});
+
+test('la acción rápida flotante se ha retirado', async () => {
+  const main = await readFile(hub('src', 'styles', 'main.css'), 'utf8');
+  const nav = await readFile(hub('src', 'styles', 'nav.css'), 'utf8');
+  const app = await readFile(hub('src', 'components', 'App.js'), 'utf8');
+  const bottomNav = await readFile(hub('src', 'components', 'BottomNav.js'), 'utf8');
+
+  // Solo abría un menú con secciones que ya están en la barra.
+  assert.doesNotMatch(nav, /\.fab \{/, 'no quedan estilos del botón flotante');
+  assert.doesNotMatch(app, /className = 'fab'/, 'ni se monta suelto en el shell');
+  assert.doesNotMatch(app, /quickAddMenu/, 'y el shell ya no lo llama');
+  assert.doesNotMatch(bottomNav, /bn-fab|data-quick-add|onQuickAdd/, 'ni como pestaña de la barra');
+  assert.doesNotMatch(main, /nav-h\) \+ 90px/, 'el contenido ya no reserva hueco para un botón flotante');
+});
+
 test('inicio arranca por la tarjeta de días, sin cabecera ni frases viejas', async () => {
   const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
   // La pantalla ya no lleva cabecera: el saludo de la tarjeta hace de encabezado.
@@ -748,8 +780,110 @@ test('un día a medias se distingue de uno sin abrir', async () => {
   // no puedan contradecirse.
   assert.match(cal, /return openState\(dateStr, ids\);/, 'ambos caminos pasan por openState');
   assert.match(cal, /if \(state === 'partial'\) classes\.push\('is-partial'\)/);
-  assert.match(cal, /\$\{day\} — \$\{abiertos\} de \$\{count\} regalos abiertos/, 'y lo dice con palabras');
+  assert.match(cal, /state === 'partial' \? `\$\{day\} — \$\{abiertos\} de \$\{count\} regalos abiertos`/, 'y lo dice con palabras');
+  assert.match(cal, /\$\{abiertos > 0 \? `<div class="cal-dayprogress\$\{abiertos === ids\.length \? ' is-done' : ''\}"[\s\S]*?` : ''\}/,
+    'oculta la barra de progreso en los días sin ningún regalo abierto');
   assert.match(css, /\.cal-day__part \{/, 'con su propia marca, no un punto más');
+});
+
+test('la barra de progreso no se lee como una línea negra al pie del calendario', async () => {
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  // La barra global ocupa todo el ancho de la tarjeta pegada a su borde
+  // inferior. Con pista oscura y el 99% vacía (4 de 393) se leía como una barra
+  // negra siempre presente, así que la pista ya no se pinta: solo el relleno.
+  const bars = [...css.matchAll(/\.cal-progress__bar,\s*\.cal-dayprogress__bar \{([\s\S]*?)\}/g)];
+  assert.ok(bars.length, 'las barras comparten estilo');
+  const bar = bars[bars.length - 1][1]; // manda el último bloque: el que gana en cascada
+  assert.match(bar, /height: 6px;/, 'la barra es fina, no un bloque oscuro');
+  assert.match(bar, /background: transparent;/, 'la pista no se pinta: no hay franja oscura que leer como barra');
+  assert.doesNotMatch(css, /\.cal-progress__bar[^{]*\{[^}]*height: 10px;/,
+    'ninguna variante reintroduce la barra gruesa');
+
+  // El relleno es lo único visible, y no se desaparece con un avance pequeño.
+  // (La regla de reduced-motion comparte selector pero no pinta el relleno.)
+  const fills = [...css.matchAll(/\.cal-progress__bar span,\s*\.cal-dayprogress__bar span \{([\s\S]*?)\}/g)]
+    .map(m => m[1])
+    .filter(body => /height: 100%/.test(body));
+  assert.ok(fills.length, 'el relleno de las barras tiene estilo propio');
+  const fill = fills[fills.length - 1];
+  assert.match(fill, /min-width: 6px;/, 'con avance mínimo el relleno sigue viéndose');
+
+  // Y el pie va separado de la cuadrícula para que lea como bloque y no como línea.
+  const foots = [...css.matchAll(/\.cal-progress \{([\s\S]*?)\}/g)];
+  assert.ok(foots.length, 'el pie del calendario tiene estilo propio');
+  const foot = foots[foots.length - 1][1];
+  assert.match(foot, /border-top: 1px solid var\(--border-soft\);/,
+    'un filo lo separa de la cuadrícula');
+  assert.match(foot, /padding-top: 16px;/, 'con aire para que no toque el borde inferior');
+
+  // La barra del día ya no tira del título hacia arriba con margen negativo.
+  assert.match(css, /\.cal-dayprogress \{\s*margin: 0 0 var\(--sp-12\);/,
+    'el progreso del día no se solapa con el título de la fecha');
+});
+
+test('el calendario muestra los regalos en la cuadrícula y permite cambiar de vista', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  assert.match(cal, /const CALENDAR_VIEWS = \[\s*\{ id: 'month', label: 'Mes' \},\s*\{ id: 'week', label: 'Semana' \}\s*\];/);
+  assert.doesNotMatch(cal, /\{ id: 'day', label: 'Día' \}|CALENDAR_VIEW\.DAY|cal-grid--day/, 'solo hay vistas de mes y semana');
+  assert.match(cal, /data-calendar-view="\$\{id\}"/);
+  assert.match(cal, /const firstCell = new Date\(year, month - 1, 1\)/);
+  assert.match(cal, /firstCell\.setDate\(firstCell\.getDate\(\) - mondayIndex\(selectedParts\[0\], selectedParts\[1\], selectedParts\[2\]\)\)/,
+    'la semana empieza en lunes');
+  assert.doesNotMatch(cal, /cal-event|data-gift-id|data-day-more/, 'la cuadrícula no muestra etiquetas ni listas de regalos');
+  assert.match(cal, /state === 'opened' \? `<span class="cal-day__ok"[\s\S]*?state === 'partial' \? `<span class="cal-day__part"/,
+    'los días abiertos muestran check y los parciales su progreso');
+  assert.match(cal, /count && state !== 'opened' && state !== 'partial'[\s\S]*?cal-day__dot/,
+    'los días pendientes y bloqueados muestran solo el punto');
+  assert.match(cal, /<button type="button" class="\$\{classes\.join\(' '\)\}" data-date="\$\{dateStr\}" aria-label=.*aria-pressed="\$\{dateStr === selected\}"\$\{adjacent \? ' disabled' : ''\}>/,
+    'toda la tarjeta es un boton accesible, y solo se deshabilitan los dias adyacentes');
+  assert.match(cal, /host\.querySelectorAll\('\.cal-day\[data-date\]'\)/,
+    'el listener cubre la tarjeta completa');
+  assert.match(cal, /onclick: \(\) => openExperience\(gift, dateStr\)/,
+    'los regalos siguen disponibles en el detalle del día');
+  assert.match(cal, /function selectCalendarDate\(dateStr\) \{[\s\S]*?paintDay\(\);\s*page\.querySelector\('#calDay'\)\?\.scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\);/,
+    'al seleccionar un día se muestra automáticamente su agenda');
+  assert.match(cal, /page\.querySelector\('#calDay'\)\?\.removeAttribute\('hidden'\)/,
+    'el panel del día sigue disponible al seleccionar fechas en Mes o Semana');
+  assert.doesNotMatch(css, /\.cal-grid--day/, 'no quedan estilos para la vista diaria eliminada');
+  assert.match(css, /\.cal-day \{[\s\S]*?min-height: 80px;/, 'la cuadrícula mensual es compacta en escritorio');
+  assert.match(css, /\.cal-grid--week \.cal-day \{ min-height: 128px; \}/, 'la vista semanal evita celdas excesivamente altas');
+  assert.match(css, /@media \(max-width: 700px\) \{[\s\S]*?\.cal-day \{ min-height: 96px;/, 'móvil conserva celdas cómodas al tacto');
+  assert.doesNotMatch(css, /\.cal-day__select/, 'el número ya no es la única zona clicable');
+  assert.match(css, /\.cal-day \{[\s\S]*?cursor: pointer;/, 'la tarjeta comunica que se puede pulsar');
+  assert.doesNotMatch(css, /\.cal-event/, 'el calendario no reserva estilos para etiquetas de regalos en la cuadrícula');
+  assert.match(css, /\.calendario-page \{\s*width: 100%;\s*max-width: 860px;\s*min-width: 0;\s*margin: 0 auto;/,
+    'el calendario queda centrado y acotado en escritorio');
+  assert.match(css, /\.content:has\(> \.calendario-page\) \{ max-width: 1680px; \}/,
+    'el contenedor conserva su ancho responsive general');
+  assert.match(css, /@media \(max-width: 480px\) \{[\s\S]*?\.cal-weekdays, \.cal-grid \{ gap: 4px; \}/,
+    'la cuadrícula sigue siendo compacta en móvil');
+});
+
+test('el calendario conserva su cabecera y el regalo destacado sobre la cuadrícula', async () => {
+  const cal = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
+
+  assert.match(cal, /\$\{renderHead\(\)\}\s*<div id="calSpot"><\/div>\s*<div id="calMonth"><\/div>/,
+    'la cabecera y el regalo destacado van antes del calendario');
+  assert.match(cal, /<h1 class="scr-title">Calendario<\/h1>/);
+  assert.match(cal, /Un regalo cada día, pensado para ti/);
+  assert.equal((cal.match(/id="calSearchBtn"/g) || []).length, 1, 'la lupa solo aparece en la cabecera principal');
+  assert.equal((cal.match(/id="calAnswersBtn"/g) || []).length, 1, 'el correo solo aparece en la cabecera principal');
+  assert.equal((cal.match(/id="calDevBtn"/g) || []).length, 1, 'los ajustes solo aparecen en la cabecera principal');
+  assert.doesNotMatch(cal.slice(cal.indexOf('host.innerHTML = `', cal.indexOf('function paintMonth()')), cal.indexOf('host.querySelectorAll(\'.cal-day__select', cal.indexOf('function paintMonth()'))), /cal-head__tools/,
+    'la cabecera interior conserva la navegación y las vistas, no duplica acciones');
+  assert.match(cal, /function paintSpot\(\)/);
+  assert.match(cal, /class="cal-spot__when"/);
+  assert.match(cal, /class="cal-spot__title"/);
+  assert.match(cal, /class="cal-spot__type"/);
+  assert.match(cal, /function paintAll\(\) \{\s*paintHeadBadge\(\);\s*paintSpot\(\);/,
+    'el regalo destacado se actualiza al repintar el calendario');
+  assert.match(cal, /page\.cleanup = \(\) => \{\s*stopSpotRotation\(\);/,
+    'se detiene su rotación al salir de la página');
+  assert.match(css, /\.cal-spot__body \{/);
 });
 
 test('el Admin ya no destruye el texto de las cartas al guardar', async () => {
@@ -887,15 +1021,18 @@ test('los tres detalles finos del visor de regalos estan resueltos', async () =>
   const ui = await readFile(hub('src', 'components', 'ui.js'), 'utf8');
   const css = await readFile(hub('src', 'styles', 'calendario.css'), 'utf8');
 
-  // 1) El tirón al cambiar de regalo. Se fija la altura vieja, se pinta y se
-  //    deja interpolar; al terminar se sueltan altura y overflow, porque si
-  //    el recorte se quedara, el polaroid rotado perderia las esquinas.
+  // 1) El tirón al cambiar de regalo. El contenido normal anima su altura,
+  //    pero video y movimiento reducido usan layout fluido: sus dimensiones
+  //    pueden llegar tarde y no debe quedar un recorte sin transitionend.
   assert.match(cal, /const alturaVieja = stage\.offsetHeight;/);
-  assert.match(cal, /stage\.style\.overflow = 'hidden';/);
+  assert.match(cal, /const animateHeight = actual\.gift\.type !== 'video' && !prefersReducedMotion;/);
+  assert.match(cal, /stage\.style\.overflow = animateHeight \? 'hidden' : '';/);
   assert.match(cal, /const alturaNueva = stage\.scrollHeight;/);
-  assert.match(cal, /if \(ev\.propertyName !== 'height'\) return;/);
+  assert.match(cal, /if \(ev\.target !== stage \|\| ev\.propertyName !== 'height'\) return;/);
   assert.match(cal, /stage\.style\.height = '';      \/\/ vuelve a crecer con el contenido/);
   assert.match(css, /transition: height 0\.22s/);
+  assert.match(css, /\.exp-media \.ml-video-wrap \{\s*display: block;/, 'el reproductor usa layout fluido');
+  assert.match(css, /\.exp-media \.ml-media \{\s*width: 100%;\s*height: auto;/, 'el video conserva su proporcion');
   // Y si el sistema pide menos movimiento, no se interpola.
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.exp-browse__stage \{ transition: none; \}/);
 
@@ -915,6 +1052,32 @@ test('los tres detalles finos del visor de regalos estan resueltos', async () =>
   // Y solo cuando ya hay catalogo: si no, se quedaria marcado como dicho
   // mientras decia "sin regalo".
   assert.match(cal, /if \(!catalog\) return;/);
+});
+
+test('el check-in de ánimo aparece en el primer inicio diario y se reinicia al cambiar el día', async () => {
+  const app = await readFile(hub('src', 'components', 'App.js'), 'utf8');
+  const welcome = await readFile(hub('src', 'components', 'WelcomeScreen.js'), 'utf8');
+
+  assert.match(app, /if \(!user\) return false;[\s\S]*?if \(userStore\.isAdmin\) return false;/,
+    'solo se ofrece a la princesa, nunca al admin ni a quien cerró sesión');
+  assert.match(app, /if \(moodStore\.hasSeenToday\(\)\) return false;/,
+    'no vuelve a aparecer tras responder o posponerlo ese día');
+  assert.match(app, /const nextDayCheck = spainMsOnDate\(nextDayISO\(now\), 0\)/,
+    'se vuelve a comprobar a medianoche de España, no a una hora fija de la mañana');
+  assert.match(app, /if \(!moodStore\.hasSeenToday\(\)\) showWelcome\(\);\s*scheduleNextDay\(\);/,
+    'se muestra en el primer inicio en que todavía no se ha registrado el día');
+  assert.doesNotMatch(app, /8:00 AM|today8AM|tomorrow8AM|testWelcomeHour/,
+    'el check-in no queda bloqueado por horario de mañana');
+  assert.match(app, /await awaitMoodSync\(\);[\s\S]*?if \(!userStore\.getUser\(\) \|\| userStore\.isAdmin\) return;/,
+    'espera la sincronización del ánimo y excluye admin antes de preguntar');
+  assert.match(app, /if \(getUserPref\('welcomeShownDate'\) === today\) return;/,
+    'la pestaña abierta no presenta el modal varias veces en el mismo día');
+  assert.match(app, /setUserPref\('welcomeShownDate', today\)/,
+    'se evita duplicar el modal en el mismo día');
+  assert.match(welcome, /await moodStore\.saveMood\(selectedMood\)/,
+    'la selección guarda el estado de ánimo diario');
+  assert.match(welcome, /moodStore\.markSeen\(\);/,
+    'posponer también cuenta como check-in de hoy');
 });
 
 test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async () => {

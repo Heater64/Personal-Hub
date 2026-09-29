@@ -1,7 +1,7 @@
 /* ==========================================
    Calendario — sorpresas día a día
-   Reconstruido sobre el sistema de diseño nuevo
-   (tarjeta de mes + agenda del día + bottom sheet).
+   Cuadrícula mensual con regalos por día y vista semanal
+   y detalle de cada sorpresa en bottom sheet.
 
    Se conserva el contrato de datos completo:
      · catálogo (Supabase → /data/gifts.json) con months.calendarMapping
@@ -34,10 +34,16 @@ import {
 /* ==========================================
    CONSTANTES
    ========================================== */
-const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const WEEKDAYS_SHORT = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const WEEKDAYS_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const CALENDAR_VIEWS = [
+  { id: 'month', label: 'Mes' },
+  { id: 'week', label: 'Semana' }
+];
+const CALENDAR_VIEW = { MONTH: 'month', WEEK: 'week' };
 
 /** Icono y etiqueta de cada tipo de experiencia. */
 const TYPE_META = {
@@ -297,6 +303,16 @@ function openState(dateStr, ids) {
   return dateStr === todayISO() ? 'today' : 'open';
 }
 
+/** Mensaje breve para el regalo más cercano del calendario. */
+function countdownText(dateStr) {
+  const today = todayISO();
+  if (!dateStr) return 'Sin sorpresas programadas';
+  if (dateStr === today) return 'Tu regalo de hoy';
+  const diff = Math.round((new Date(`${dateStr}T12:00:00`) - new Date(`${today}T12:00:00`)) / 86400000);
+  if (diff === 1) return 'La sorpresa de mañana';
+  return `Próxima sorpresa en ${diff} días`;
+}
+
 /** Siguiente día con contenido a partir de hoy (inclusive). */
 function nextDayWithContent(from = todayISO()) {
   const [year, month, day] = from.split('-').map(Number);
@@ -309,15 +325,6 @@ function nextDayWithContent(from = todayISO()) {
   return null;
 }
 
-function countdownText(dateStr) {
-  const today = todayISO();
-  if (!dateStr) return 'Sin sorpresas programadas';
-  if (dateStr === today) return '¡Hoy hay sorpresa!';
-  const diff = Math.round((new Date(`${dateStr}T12:00:00`) - new Date(`${today}T12:00:00`)) / 86400000);
-  if (diff === 1) return 'Mañana llega una sorpresa';
-  return `Próxima sorpresa en ${diff} días`;
-}
-
 /* ==========================================
    PÁGINA
    ========================================== */
@@ -327,12 +334,43 @@ export function CalendarioPage(router) {
 
   const previewAll = new URLSearchParams(location.search).get('previewGifts') === '1';
   const selectedDay = { value: todayISO() };
-  const view = { monthKey: monthKeyOf(todayISO()) };
+  const view = { monthKey: monthKeyOf(todayISO()), mode: CALENDAR_VIEW.MONTH };
 
-  // Rotación del regalo destacado: si el día tiene varios, van pasando
-  // solos. `index` es la posición dentro de los regalos del día en curso.
+  page.innerHTML = `
+    ${renderHead()}
+    <div id="calSpot"></div>
+    <div id="calMonth"></div>
+    <section id="calDay" class="cal-day-panel" hidden></section>
+    <!-- Anuncia SOLO el cambio de día, no cada repintado. Con aria-live en el
+         panel entero, moverse con las flechas entre regalos lo reponía todo
+         (el panel se repinta porque navegar marca el regalo como visto) y un
+         lector de pantalla lo leía entero en cada pulsación. -->
+    <p class="sr-only" id="calAnnounce" aria-live="polite"></p>
+  `;
+
+  function renderHead() {
+    const pendientes = pendingAnswerCount();
+    return `
+      <div class="scr-head cal-page-head">
+        <div>
+          <h1 class="scr-title">Calendario</h1>
+          <p class="sub">Un regalo cada día, pensado para ti</p>
+        </div>
+        <div class="head-actions">
+          <button type="button" class="icon-btn" id="calSearchBtn" aria-label="Buscar regalos" title="Buscar regalos">${icon('search', 19)}</button>
+          <button type="button" class="icon-btn" id="calAnswersBtn" aria-label="${pendientes ? `Tus respuestas · ${pendientes} sin contestar` : 'Tus respuestas'}" title="Tus respuestas">
+            ${icon('mail', 19)}${pendientes ? `<span class="icon-btn__badge">${pendientes}</span>` : ''}
+          </button>
+          ${userStore.isAdmin ? `<button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  /* ===== REGALO DESTACADO ===== */
   const SPOT_ROTATE_MS = 5000;
   const spotRot = { date: null, index: 0, timer: null };
+
   function stopSpotRotation() {
     if (spotRot.timer) {
       clearInterval(spotRot.timer);
@@ -340,45 +378,88 @@ export function CalendarioPage(router) {
     }
   }
 
-  page.innerHTML = `
-    ${renderHead()}
-    <div id="calSpot"></div>
-    <div id="calMonth"></div>
-    <section id="calDay"></section>
-    <!-- Anuncia SOLO el cambio de día, no cada repintado. Con aria-live en el
-         panel entero, moverse con las flechas entre regalos lo reponia todo
-         (el panel se repinta porque navegar marca el regalo como visto) y un
-         lector de pantalla lo leia entero en cada pulsación. -->
-    <p class="sr-only" id="calAnnounce" aria-live="polite"></p>
-  `;
+  function paintSpot() {
+    const host = page.querySelector('#calSpot');
+    if (!host) return;
 
-  function renderHead() {
-    // El modo revisión (abrir/bloquear días artificialmente) es una
-    // herramienta de revisión del Admin, no un ajuste de la usuaria:
-    // solo se muestra si quien entra es admin.
-    const pendientes = pendingAnswerCount();
-    return `
-      <div class="scr-head">
-        <div>
-          <h1 class="scr-title">Calendario</h1>
-          <p class="sub">Un regalo cada día, pensado para ti</p>
+    stopSpotRotation();
+
+    const today = todayISO();
+    const todayIds = dayIds(today);
+    const dateStr = todayIds.length ? today : (nextDayWithContent(today) || today);
+    const ids = dayIds(dateStr);
+
+    if (!ids.length) {
+      host.innerHTML = `
+        <article class="cal-spot">
+          <span class="cal-spot__icon">${icon('calendar', 22)}</span>
+          <div class="cal-spot__body">
+            <b>Aún no hay regalos</b>
+            <span>En cuanto se programe contenido aparecerá aquí.</span>
+          </div>
+        </article>
+      `;
+      return;
+    }
+
+    if (spotRot.date !== dateStr || spotRot.index >= ids.length) {
+      spotRot.date = dateStr;
+      spotRot.index = Math.max(0, ids.findIndex(id => !progressMap[id]?.opened));
+    }
+
+    const giftId = ids[spotRot.index];
+    const gift = giftOf(giftId) || giftOf(ids[0]);
+    if (!gift) {
+      host.innerHTML = '';
+      return;
+    }
+
+    const meta = metaOf(gift.type);
+    const isOpen = !!progressMap[giftId]?.opened;
+    const art = `<div class="cal-spot__art cal-spot__art--tone is-${toneOf(gift.type)}">${icon(meta.icon, 30)}</div>`;
+    const dots = ids.length > 1
+      ? `<span class="cal-spot__dots">
+          ${ids.map((id, index) => `<button type="button" class="cal-spot__dot${index === spotRot.index ? ' is-on' : ''}" data-dot="${index}" aria-label="Regalo ${index + 1} de ${ids.length}"></button>`).join('')}
+        </span>`
+      : '';
+
+    host.innerHTML = `
+      <article class="cal-spot${isOpen ? ' is-open' : ''}">
+        <button type="button" class="cal-spot__hit" data-gift="${escapeHtml(giftId)}" aria-label="${escapeHtml(`Abrir ${gift.title || meta.label}`)}"></button>
+        ${art}
+        <div class="cal-spot__body">
+          <span class="cal-spot__when">${escapeHtml(countdownText(dateStr))}</span>
+          <b class="cal-spot__title">${escapeHtml(gift.title || meta.label)}</b>
+          <span class="cal-spot__type">${escapeHtml(meta.label)}${ids.length > 1 ? ` · ${spotRot.index + 1} de ${ids.length}` : ''}</span>
+          ${dots}
         </div>
-        <div class="head-actions">
-          <button type="button" class="icon-btn" id="calSearchBtn" aria-label="Buscar regalos" title="Buscar regalos">${icon('search', 19)}</button>
-          <button type="button" class="icon-btn" id="calAnswersBtn" aria-label="Tus respuestas" title="Tus respuestas">
-            ${icon('mail', 19)}${pendientes ? `<span class="icon-btn__badge">${pendientes}</span>` : ''}
-          </button>
-          ${userStore.isAdmin ? `
-          <button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>` : ''}
-        </div>
-      </div>
+        <span class="cal-spot__go">${isOpen ? 'Ver' : 'Abrir'} ${icon('chev', 16)}</span>
+      </article>
     `;
+
+    host.querySelector('[data-gift]')?.addEventListener('click', () => openExperience(gift, dateStr));
+    host.querySelectorAll('[data-dot]').forEach(dot => {
+      dot.addEventListener('click', event => {
+        event.stopPropagation();
+        spotRot.index = Number(dot.dataset.dot);
+        paintSpot();
+      });
+    });
+
+    if (ids.length > 1) {
+      spotRot.timer = setInterval(() => {
+        if (document.hidden) return;
+        spotRot.index = (spotRot.index + 1) % ids.length;
+        paintSpot();
+      }, SPOT_ROTATE_MS);
+    }
   }
 
-  /* ===== CABECERA DE MES ===== */
+  /* ===== CALENDARIO ===== */
   function paintMonth() {
     const host = page.querySelector('#calMonth');
     if (!host) return;
+    page.querySelector('#calDay')?.removeAttribute('hidden');
 
     const months = Object.keys(catalog?.months || {}).sort();
     if (!months.length) {
@@ -395,81 +476,105 @@ export function CalendarioPage(router) {
     const offset = mondayIndex(year, month, 1);
     const today = todayISO();
     const selected = selectedDay.value;
+    const selectedParts = selected.split('-').map(Number);
+    const firstCell = new Date(year, month - 1, 1);
+    let cellCount;
 
-    // Nº de regalos por día (para el punto que indica "hay algo aquí").
-    const counts = {};
-    for (let day = 1; day <= total; day++) {
-      const dateStr = `${year}-${pad(month)}-${pad(day)}`;
-      const ids = dayIds(dateStr);
-      if (!ids.length) continue;
-      counts[dateStr] = ids.length;
+    if (view.mode === CALENDAR_VIEW.WEEK) {
+      const selectedDate = new Date(selectedParts[0], selectedParts[1] - 1, selectedParts[2]);
+      firstCell.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      firstCell.setDate(firstCell.getDate() - mondayIndex(selectedParts[0], selectedParts[1], selectedParts[2]));
+      cellCount = 7;
+    } else {
+      firstCell.setDate(1 - offset);
+      cellCount = Math.ceil((offset + total) / 7) * 7;
     }
+
+    // Progreso mensual por día con regalos y progreso global por regalo.
+    let monthTotal = 0;
+    let monthOpened = 0;
+    for (let day = 1; day <= total; day++) {
+      const ids = dayIds(`${year}-${pad(month)}-${pad(day)}`);
+      if (!ids.length) continue;
+      monthTotal++;
+      if (allOpened(ids)) monthOpened++;
+    }
+    const global = overallProgress();
+    const pct = global.total ? Math.round((global.opened / global.total) * 100) : 0;
+    const pendientes = pendingAnswerCount();
+    const calendarTitle = monthLabel(view.monthKey);
+    const calendarSummary = monthTotal ? `${monthOpened} de ${monthTotal} regalos abiertos` : 'Sin regalos este mes';
 
     const cells = [];
-    const prevMonthTotal = daysInMonth(month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1);
-    for (let i = offset - 1; i >= 0; i--) {
-      cells.push(`<span class="cal-day is-dim is-empty" aria-hidden="true">${prevMonthTotal - i}</span>`);
-    }
-    for (let day = 1; day <= total; day++) {
-      const dateStr = `${year}-${pad(month)}-${pad(day)}`;
-      const ids = dayIds(dateStr);
+    for (let i = 0; i < cellCount; i++) {
+      const date = new Date(firstCell);
+      date.setDate(firstCell.getDate() + i);
+      const day = date.getDate();
+      const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(day)}`;
+      const inMonth = date.getFullYear() === year && date.getMonth() === month - 1;
+      const adjacent = view.mode === CALENDAR_VIEW.MONTH && !inMonth;
+      // Un mes enseña las fechas de relleno sin revelar regalos del mes
+      // siguiente; la vista semanal sí muestra su contenido completo.
+      const ids = adjacent ? [] : dayIds(dateStr);
       const state = dayState(dateStr, ids);
+      const count = ids.length;
+      const abiertos = openedCount(ids);
       const classes = ['cal-day'];
-      if (state === 'empty') classes.push('is-empty');
+      if (!count) classes.push('is-empty');
       if (state === 'locked') classes.push('is-locked');
+      if (state === 'partial') classes.push('is-partial');
       if (state === 'opened') classes.push('is-opened');
       if (state === 'partial') classes.push('is-partial');
       if (dateStr === today) classes.push('is-today');
       if (dateStr === selected) classes.push('is-sel');
+      if (state === 'today' && dateStr !== selected) classes.push('is-pending');
+      if (adjacent) classes.push('is-dim');
 
-      // Bloqueado: candado pequeño. Abierto del todo: check. A medias: un
-      // anillo con lo que falta dentro. Pendiente: punto de color.
-      const count = counts[dateStr] || 0;
-      const abiertos = openedCount(ids);
-      const mark = state === 'opened' ? `<span class="cal-day__ok" aria-hidden="true">${icon('check', 11)}</span>`
-        : state === 'locked' ? `<span class="cal-day__lock" aria-hidden="true">${icon('lock', 10)}</span>`
+      const status = state === 'opened' ? `<span class="cal-day__ok" aria-hidden="true">${icon('check', 12)}</span>`
         : state === 'partial' ? `<span class="cal-day__part" aria-hidden="true">${abiertos}/${count}</span>`
-        : count > 0 ? `<span class="cal-day__dot" aria-hidden="true"></span>` : '';
-
+        : '';
+      const dot = count && state !== 'opened' && state !== 'partial'
+        ? '<span class="cal-day__dot" aria-hidden="true"></span>'
+        : '';
       const label = state === 'empty' ? `${day} — sin regalo`
         : state === 'locked' ? `${day} — sorpresa por llegar`
         : state === 'opened' ? `${day} — regalo abierto`
         : state === 'partial' ? `${day} — ${abiertos} de ${count} regalos abiertos`
         : `${day} — ${count} ${count === 1 ? 'regalo' : 'regalos'}`;
-      cells.push(`<button type="button" class="${classes.join(' ')}" data-day="${day}" aria-label="${escapeHtml(label)}" aria-pressed="${dateStr === selected}"><span class="cal-day__n">${day}</span>${mark}</button>`);
-    }
-    while (cells.length % 7 !== 0) cells.push('<span class="cal-day is-dim is-empty" aria-hidden="true"></span>');
 
-    const [vy, vm] = view.monthKey.split('-').map(Number);
-    let mTotal = 0, mOpened = 0;
-    for (let day = 1; day <= daysInMonth(vy, vm); day++) {
-      const ids = dayIds(`${vy}-${pad(vm)}-${pad(day)}`);
-      if (!ids.length) continue;
-      mTotal++;
-      if (allOpened(ids)) mOpened++;
+      cells.push(`
+        <button type="button" class="${classes.join(' ')}" data-date="${dateStr}" aria-label="${escapeHtml(`${prettyDate(dateStr)} — ${label.split(' — ').slice(1).join(' — ')}`)}" aria-pressed="${dateStr === selected}"${adjacent ? ' disabled' : ''}>
+          <span class="cal-day__n">${date.getDate()}</span>
+          ${status}${dot}
+        </button>
+      `);
     }
-
-    // Progreso global real: cada regalo abierto cuenta (no cada día).
-    const global = overallProgress();
-    const pct = global.total ? Math.round((global.opened / global.total) * 100) : 0;
 
     host.innerHTML = `
       <div class="cal">
-        <div class="cal-head">
-          <div>
-            <b>${escapeHtml(monthLabel(view.monthKey))}</b>
-            <span class="cal-head__sub">${mTotal ? `${mOpened} de ${mTotal} ${mTotal === 1 ? 'regalo abierto' : 'regalos abiertos'}` : 'Sin regalos este mes'}</span>
+        <header class="cal-head">
+          <div class="cal-head__identity">
+            <span class="cal-head__icon" aria-hidden="true">${icon('calendar', 32)}</span>
+            <div class="cal-head__copy">
+              <h1 class="cal-head__month">${escapeHtml(calendarTitle)}</h1>
+              <p class="cal-head__sub">${escapeHtml(calendarSummary)}</p>
+            </div>
           </div>
-          <div class="cal-nav">
-            <button type="button" class="icon-btn" data-month="-1" aria-label="Mes anterior">${icon('back', 18)}</button>
-            <button type="button" class="cal-today-btn" data-today>Hoy</button>
-            <button type="button" class="icon-btn" data-month="1" aria-label="Mes siguiente">${icon('chev', 18)}</button>
+          <div class="cal-head__controls">
+            <div class="cal-nav" role="group" aria-label="Navegar por el calendario">
+              <button type="button" class="icon-btn" data-period="-1" aria-label="${view.mode === CALENDAR_VIEW.MONTH ? 'Mes anterior' : 'Semana anterior'}">${icon('back', 18)}</button>
+              <button type="button" class="cal-today-btn" data-today>Hoy</button>
+              <button type="button" class="icon-btn" data-period="1" aria-label="${view.mode === CALENDAR_VIEW.MONTH ? 'Mes siguiente' : 'Semana siguiente'}">${icon('chev', 18)}</button>
+            </div>
+            <div class="cal-view-tabs" role="group" aria-label="Vista del calendario">
+              ${CALENDAR_VIEWS.map(({ id, label: viewLabel }) => `<button type="button" class="cal-view-btn${view.mode === id ? ' is-active' : ''}" data-calendar-view="${id}" aria-pressed="${view.mode === id}">${viewLabel}</button>`).join('')}
+            </div>
           </div>
+        </header>
+        <div class="cal-weekdays" aria-label="Días de la semana">
+          ${WEEKDAYS.map((day, index) => `<span class="wd" aria-label="${day}"><span class="wd__full">${day}</span><span class="wd__short">${WEEKDAYS_SHORT[index]}</span></span>`).join('')}
         </div>
-        <div class="cal-grid">
-          ${WEEKDAYS.map(w => `<span class="wd">${w}</span>`).join('')}
-          ${cells.join('')}
-        </div>
+        <div class="cal-grid cal-grid--${view.mode}">${cells.join('')}</div>
         ${global.total ? `
         <div class="cal-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${global.total}" aria-valuenow="${global.opened}" aria-label="Regalos abiertos">
           <div class="cal-progress__text">
@@ -481,123 +586,65 @@ export function CalendarioPage(router) {
       </div>
     `;
 
-    host.querySelectorAll('.cal-day[data-day]').forEach(cell => {
-      cell.addEventListener('click', () => {
-        const day = Number(cell.dataset.day);
-        selectedDay.value = `${year}-${pad(month)}-${pad(day)}`;
+    host.querySelectorAll('.cal-day[data-date]').forEach(button => {
+      button.addEventListener('click', () => selectCalendarDate(button.dataset.date));
+    });
+    host.querySelectorAll('[data-period]').forEach(button => {
+      button.addEventListener('click', () => shiftPeriod(Number(button.dataset.period)));
+    });
+    host.querySelector('[data-today]')?.addEventListener('click', () => selectCalendarDate(todayISO()));
+    host.querySelectorAll('[data-calendar-view]').forEach(button => {
+      button.addEventListener('click', () => {
+        const nextMode = button.dataset.calendarView;
+        if (nextMode === CALENDAR_VIEW.WEEK && monthKeyOf(selectedDay.value) !== view.monthKey) {
+          const [year, month] = view.monthKey.split('-').map(Number);
+          const day = Number(selectedDay.value.slice(-2));
+          selectedDay.value = `${view.monthKey}-${pad(Math.min(day, daysInMonth(year, month)))}`;
+        }
+        view.mode = nextMode;
         paintMonth();
         paintDay();
       });
     });
-    host.querySelectorAll('[data-month]').forEach(btn => {
-      btn.addEventListener('click', () => shiftMonth(Number(btn.dataset.month)));
-    });
-    const todayBtn = host.querySelector('[data-today]');
-    if (todayBtn) {
-      todayBtn.addEventListener('click', () => {
-        selectedDay.value = todayISO();
-        view.monthKey = monthKeyOf(todayISO());
-        paintMonth();
-        paintDay();
-      });
-    }
   }
 
-  function shiftMonth(delta) {
+  function selectCalendarDate(dateStr) {
+    selectedDay.value = dateStr;
+    view.monthKey = monthKeyOf(dateStr);
+    paintMonth();
+    paintDay();
+    page.querySelector('#calDay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function shiftPeriod(delta) {
     const months = Object.keys(catalog?.months || {}).sort();
     if (!months.length) return;
-    const index = months.indexOf(view.monthKey);
-    const next = months[Math.min(months.length - 1, Math.max(0, (index === -1 ? 0 : index) + delta))];
-    if (next === view.monthKey) return;
-    view.monthKey = next;
-    paintMonth();
-  }
 
-  /* ===== REGALO DESTACADO ===== */
-  function paintSpot() {
-    const host = page.querySelector('#calSpot');
-    if (!host) return;
-
-    stopSpotRotation();
-
-    const today = todayISO();
-    const todayIds = dayIds(today);
-    // nextDayWithContent puede devolver null mientras el catálogo aún no ha
-    // llegado: en ese caso nos quedamos en hoy y se repinta al cargar.
-    const next = todayIds.length ? today : (nextDayWithContent(today) || today);
-    const nextIds = dayIds(next);
-    const state = dayState(next, nextIds);
-
-    if (!nextIds.length) {
-      host.innerHTML = `
-        <article class="cal-spot">
-          <span class="cal-spot__icon">${icon('calendar', 22)}</span>
-          <div class="cal-spot__body">
-            <b>Aún no hay regalos</b>
-            <span>En cuanto se programe contenido aparecerá aquí.</span>
-          </div>
-        </article>
-      `;
+    if (view.mode === CALENDAR_VIEW.MONTH) {
+      const index = months.indexOf(view.monthKey);
+      const next = months[Math.min(months.length - 1, Math.max(0, (index === -1 ? 0 : index) + delta))];
+      if (next === view.monthKey) return;
+      view.monthKey = next;
+      paintMonth();
       return;
     }
 
-    // El regalo destacado es el primero del día que aún no se ha abierto;
-    // si están todos abiertos, el último para volver a verlo.
-    // El destacado rota entre los regalos del día. Al repintar (p. ej. tras
-    // abrir uno) se conserva la posición; solo se reinicia si cambia el día
-    // o el índice quedó fuera de rango.
-    if (spotRot.date !== next || spotRot.index >= nextIds.length) {
-      spotRot.date = next;
-      // Empezamos por el primer regalo pendiente; si están todos abiertos, 0.
-      spotRot.index = Math.max(0, nextIds.findIndex(id => !progressMap[id]?.opened));
-    }
-    const focusId = nextIds[spotRot.index];
-    const gift = giftOf(focusId) || giftOf(nextIds[0]);
-    const meta = metaOf(gift?.type);
-    const isOpen = !!progressMap[focusId]?.opened;
-    const when = next === today ? 'Tu regalo de hoy' : countdownText(next);
+    const [year, month, day] = selectedDay.value.split('-').map(Number);
+    const target = new Date(year, month - 1, day);
+    target.setDate(target.getDate() + delta * 7);
 
-    const art = `<div class="cal-spot__art cal-spot__art--tone is-${toneOf(gift?.type)}">${icon(meta.icon, 30)}</div>`;
+    const [firstYear, firstMonth] = months[0].split('-').map(Number);
+    const [lastYear, lastMonth] = months[months.length - 1].split('-').map(Number);
+    const firstAvailable = new Date(firstYear, firstMonth - 1, 1);
+    const lastAvailable = new Date(lastYear, lastMonth, 0);
+    if (target < firstAvailable) target.setTime(firstAvailable.getTime());
+    if (target > lastAvailable) target.setTime(lastAvailable.getTime());
 
-    const dots = nextIds.length > 1
-      ? `<span class="cal-spot__dots">
-          ${nextIds.map((id, i) => `<button type="button" class="cal-spot__dot${i === spotRot.index ? ' is-on' : ''}" data-dot="${i}" aria-label="Regalo ${i + 1} de ${nextIds.length}"></button>`).join('')}
-        </span>`
-      : '';
-
-    host.innerHTML = `
-      <article class="cal-spot${isOpen ? ' is-open' : ''}">
-        <button type="button" class="cal-spot__hit" data-gift="${escapeHtml(focusId)}" aria-label="${escapeHtml(`Abrir ${gift?.title || meta.label}`)}"></button>
-        ${art}
-        <div class="cal-spot__body">
-          <span class="cal-spot__when">${escapeHtml(when)}</span>
-          <b class="cal-spot__title">${escapeHtml(gift?.title || meta.label)}</b>
-          <span class="cal-spot__type">${escapeHtml(meta.label)}${nextIds.length > 1 ? ` · ${spotRot.index + 1} de ${nextIds.length}` : ''}</span>
-          ${dots}
-        </div>
-        <span class="cal-spot__go">${isOpen ? 'Ver' : 'Abrir'} ${icon('chev', 16)}</span>
-      </article>
-    `;
-
-    const hit = host.querySelector('[data-gift]');
-    if (hit) hit.addEventListener('click', () => openExperience(gift, next));
-
-    host.querySelectorAll('[data-dot]').forEach(dot => {
-      dot.addEventListener('click', (e) => {
-        e.stopPropagation();
-        spotRot.index = Number(dot.dataset.dot);
-        paintSpot(); // repinta y reinicia el temporizador
-      });
-    });
-
-    // Rotación automática: pasa al siguiente regalo cada 5s (si hay varios).
-    if (nextIds.length > 1) {
-      spotRot.timer = setInterval(() => {
-        if (document.hidden) return; // pestaña en segundo plano: no gasta
-        spotRot.index = (spotRot.index + 1) % nextIds.length;
-        paintSpot();
-      }, SPOT_ROTATE_MS);
-    }
+    selectedDay.value = `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
+    view.monthKey = monthKeyOf(selectedDay.value);
+    paintMonth();
+    paintDay();
+    page.querySelector('#calDay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   /* ===== REGALOS DEL DÍA ===== */
@@ -646,16 +693,13 @@ export function CalendarioPage(router) {
     const dayPct = Math.round((abiertos / ids.length) * 100);
     const contestadas = ids.filter(id => alreadyAnswered(giftOf(id))).length;
     const sinResponder = ids.filter(id => pendingAnswer(giftOf(id))).length;
-    const resumen = sinResponder
-      ? ` · ${sinResponder} ${sinResponder === 1 ? 'pregunta' : 'preguntas'} sin contestar`
-      : '';
     host.innerHTML = `
       <p class="section-title">${escapeHtml(prettyDate(dateStr))}
         <span class="section-title__aside">${abiertos === ids.length ? 'Todo abierto ✓' : `${abiertos} de ${ids.length}`}</span>
       </p>
-      <div class="cal-dayprogress${abiertos === ids.length ? ' is-done' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${ids.length}" aria-valuenow="${abiertos}">
+      ${abiertos > 0 ? `<div class="cal-dayprogress${abiertos === ids.length ? ' is-done' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${ids.length}" aria-valuenow="${abiertos}">
         <div class="cal-dayprogress__bar"><span style="width:${dayPct}%"></span></div>
-      </div>
+      </div>` : ''}
       ${contestadas || sinResponder ? `<p class="cal-dayask">${sinResponder
         ? `💌 ${sinResponder === 1 ? 'Te queda 1 por responder' : `Te quedan ${sinResponder} por responder`}`
         : `💌 ${contestadas === 1 ? '1 respuesta guardada' : `${contestadas} respuestas guardadas`}`}</p>` : ''}
@@ -785,6 +829,7 @@ export function CalendarioPage(router) {
     const head = overlay.querySelector('.sheet-head h2');
     const bar = overlay.querySelector('.exp-browse__bar');
     const stage = overlay.querySelector('.exp-browse__stage');
+    let stageTransitionEnd = null;
     const kind = overlay.querySelector('.exp-kind');
     const kindIcon = kind.querySelector('.exp-kind__icon');
     const kindLabel = kind.querySelector('.exp-kind__label');
@@ -825,17 +870,20 @@ export function CalendarioPage(router) {
       kindLabel.textContent = meta.label;
       stage.className = `exp-browse__stage exp--${actual.gift.type}`;
 
-      // Cambio de regalo con altura animada. Antes el contenido se
-      // sustitua de golpe: de un mensaje corto a un video largo, todo lo de
-      // abajo (y las flechas, que van al 50%) daba un tirón. Se fija la altura
-      // vieja, se pinta el contenido nuevo y se deja que el navegador la
-      // interpole.
+      // Animamos los cambios de altura del contenido normal, pero no el vídeo:
+      // su tamaño intrínseco llega con los metadatos y fijar la altura antes
+      // de cargarlos puede recortar el reproductor. Tampoco se fija altura
+      // cuando el sistema pide movimiento reducido (no habría transitionend).
       const alturaVieja = stage.offsetHeight;
+      if (stageTransitionEnd) {
+        stage.removeEventListener('transitionend', stageTransitionEnd);
+        stageTransitionEnd = null;
+      }
+      const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      const animateHeight = actual.gift.type !== 'video' && !prefersReducedMotion;
       stage.style.transition = 'none';
-      // Recortar solo mientras dura la animación: si se dejara puesto, el
-      // polaroid (que va rotado) perdería las esquinas.
-      stage.style.overflow = 'hidden';
-      stage.style.height = `${alturaVieja}px`;
+      stage.style.overflow = animateHeight ? 'hidden' : '';
+      stage.style.height = animateHeight ? `${alturaVieja}px` : '';
 
       stage.replaceChildren();
       const content = renderContent(actual.gift);
@@ -847,19 +895,23 @@ export function CalendarioPage(router) {
       // growth se queda bloqueado en la altura anterior.
       const alturaNueva = stage.scrollHeight;
       stage.style.transition = '';
-      if (alturaNueva !== alturaVieja) {
+      if (animateHeight && alturaNueva !== alturaVieja) {
         // reflow para que el navegador vea el punto de partida de la transición
         void stage.offsetHeight;
         stage.style.height = `${alturaNueva}px`;
+        const alTerminar = (ev) => {
+          if (ev.target !== stage || ev.propertyName !== 'height') return;
+          stage.removeEventListener('transitionend', alTerminar);
+          if (stageTransitionEnd === alTerminar) stageTransitionEnd = null;
+          stage.style.height = '';      // vuelve a crecer con el contenido
+          stage.style.overflow = '';
+        };
+        stageTransitionEnd = alTerminar;
+        stage.addEventListener('transitionend', alTerminar);
       } else {
         stage.style.height = '';
-      }
-      stage.addEventListener('transitionend', function alTerminar(ev) {
-        if (ev.propertyName !== 'height') return;
-        stage.removeEventListener('transitionend', alTerminar);
-        stage.style.height = '';      // vuelve a crecer con el contenido
         stage.style.overflow = '';
-      });
+      }
 
       btnPrev.disabled = index === 0;
       btnNext.disabled = index === list.length - 1;
@@ -1282,6 +1334,7 @@ export function CalendarioPage(router) {
               view.monthKey = monthKeyOf(dateStr);
               paintMonth();
               paintDay();
+              page.querySelector('#calDay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
             closeSheets();
             openExperience(gift, dateStr);
@@ -1462,12 +1515,13 @@ export function CalendarioPage(router) {
   /* ==========================================
      ARRANQUE
      ========================================== */
-  const devBtn = page.querySelector('#calDevBtn');
-  if (devBtn) devBtn.addEventListener('click', openDevSheet);
-  const answersBtn = page.querySelector('#calAnswersBtn');
-  if (answersBtn) answersBtn.addEventListener('click', openMyAnswers);
-  const searchBtn = page.querySelector('#calSearchBtn');
-  if (searchBtn) searchBtn.addEventListener('click', openSearch);
+  // La cabecera se reconstruye al cambiar de mes/vista; delegamos para no
+  // perder estas acciones en cada repintado.
+  page.addEventListener('click', (event) => {
+    if (event.target.closest('#calSearchBtn')) openSearch();
+    else if (event.target.closest('#calAnswersBtn')) openMyAnswers();
+    else if (event.target.closest('#calDevBtn')) openDevSheet();
+  });
 
   // Atajo para llegar al buscador sin tener que ir a por el boton: Ctrl/⌘+K,
   // que es lo que ya espera cualquiera, y «/» como alternativa. Se ignoran si
