@@ -1,0 +1,194 @@
+/* ==========================================
+   MOTION — revelados y pulido de interacción
+
+   Va en su propia hoja y se importa la ÚLTIMA a propósito: así gana la
+   cascada frente a las transiciones que ya declaraban nav.css, ui.css y las
+   hojas de cada página (muchas usan `transition: all`, que si no, se comerían
+   estas). Al ser la última, sus valores mandan sin tocar los archivos viejos.
+
+   Dos reglas de seguridad:
+   1) Nada oculta contenido salvo bajo .motion-ready (la pone motion.js cuando
+      ya está montado el observer). Si el JS falla, se ve todo.
+   2) Las animaciones de transform terminan en `none`, nunca en translate(0):
+      una animación activa de transform crea containing block y rompería los
+      position:fixed de modales y hojas dentro de las tarjetas.
+   ========================================== */
+@keyframes reveal-rise {
+  from { opacity: 0; transform: translate3d(0, 14px, 0) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes reveal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Estado inicial: solo existe si motion.js confirmó que puede terminar la
+     animación. El bloque va dentro de no-preference, así que con movimiento
+     reducido no hay ni estado inicial ni animación. */
+  .motion-ready [data-reveal] {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.985);
+  }
+  .motion-ready [data-reveal].is-revealed {
+    animation: reveal-rise var(--dur-slow) cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--reveal-delay, 0ms);
+  }
+  /* Los bloques sin transform (secciones anchas) entran solo con fade: mover
+     un panel de 1000 px de alto se nota demasiado. */
+  .motion-ready [data-reveal]:not(.card):not(.admin-panel) {
+    animation-name: reveal-fade;
+  }
+}
+
+/* ---- Pulido de interacción ----
+   Transiciones cortas sobre elementos que ya están en pantalla. Aquí no hay
+   riesgo de dejar nada invisible, solo de que el movimiento resulte molesto,
+   así que el bloque entero va dentro de no-preference. */
+@media (prefers-reduced-motion: no-preference) {
+  .card,
+  .admin-panel,
+  .notif-status-card {
+    transition:
+      transform var(--dur-mid) cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow var(--dur-mid) cubic-bezier(0.22, 1, 0.36, 1),
+      border-color var(--dur-mid) ease;
+  }
+  /* Un card no interactivo (los de texto, de información) no debe chastigar
+     al cursor: solo se eleva si tiene algo pulsable dentro. */
+  .card:has(a, button, [role="button"]):hover,
+  .admin-panel:has(button, a):hover,
+  .notif-status-card:hover {
+    transform: translate3d(0, -3px, 0);
+    box-shadow: var(--sh-m, 0 10px 30px rgba(0, 0, 0, 0.25));
+    border-color: var(--primary-softer, rgba(255, 255, 255, 0.12));
+  }
+  .card:has(a, button, [role="button"]):active,
+  .admin-panel:has(button, a):active {
+    transform: translate3d(0, -1px, 0) scale(0.995);
+    transition-duration: var(--dur-instant);
+  }
+
+  /* Zoom suave de la imagen dentro de tarjetas que ya recortan. */
+  /* Zoom suave de la imagen en las tarjetas que ya la recortan. Las
+     portadas de Series llevan su propio zoom en series.css. */
+  .card--none {
+    overflow: hidden;
+  }
+  .card--none img {
+    transition: transform var(--dur-slower) cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .card--none:hover img {
+    transform: scale(1.045);
+  }
+
+  /* Filas de lista: el fondo acompaña al ratón en vez de aparecer de golpe. */
+  .admin-list-item,
+  .list__item {
+    transition:
+      background-color var(--dur-fast) ease,
+      transform var(--dur-fast) cubic-bezier(0.22, 1, 0.36, 1),
+      border-color var(--dur-fast) ease;
+  }
+  .admin-list-item:hover,
+  .list__item:hover {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  /* Botones: hundido al pulsar y un barrido de luz al pasar por encima.
+     El barrido es un pseudo-elemento, así que no toca el contenido. */
+  .btn,
+  .admin-btn,
+  .item-action-btn {
+    transition:
+      transform var(--dur-fast) cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color var(--dur-fast) ease,
+      border-color var(--dur-fast) ease,
+      box-shadow var(--dur-fast) ease,
+      opacity var(--dur-fast) ease;
+  }
+  .btn:active,
+  .admin-btn:active,
+  .item-action-btn:active {
+    transform: scale(0.96);
+  }
+  .btn-primary,
+  .admin-btn-primary {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .btn-primary::after,
+  .admin-btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.28) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform var(--dur-slower) cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+  .btn-primary:hover::after,
+  .admin-btn-primary:hover::after {
+    transform: translateX(120%);
+  }
+
+  /* Anillo de foco: aparece en vez de encenderse de golpe. Nunca se oculta
+     (outline:none), solo se suaviza. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    transition: outline-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+    outline: 2px solid var(--theme-accent, var(--primary, #e8614f));
+    outline-offset: 2px;
+  }
+
+  /* Píldoras y chips de navegación */
+  .chip,
+  .admin-seg-btn,
+  .admin-tab {
+    transition:
+      transform var(--dur-fast) cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color var(--dur-fast) ease,
+      color var(--dur-fast) ease,
+      border-color var(--dur-fast) ease;
+  }
+  .chip:hover,
+  .admin-seg-btn:hover,
+  .admin-tab:hover {
+    transform: translate3d(0, -1px, 0);
+  }
+  .chip:active,
+  .admin-seg-btn:active,
+  .admin-tab:active {
+    transform: scale(0.96);
+  }
+
+  /* Navegación: la barra lateral y la inferior ceden unos píxeles al ratón. */
+  .nav-item,
+  .bn-item,
+  .side-logout {
+    transition:
+      background-color var(--dur-fast) ease,
+      color var(--dur-fast) ease,
+      padding-left var(--dur-mid) cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .nav-item:hover,
+  .side-logout:hover {
+    padding-left: calc(var(--sp-12) + 3px);
+  }
+
+  /* Imágenes de contenido: aparecen con un desenfoque corto en vez de
+     saltar de golpe al cargar. */
+  img {
+    transition: opacity var(--dur-slow) ease, transform var(--dur-slow) ease;
+  }
+}
+
+/* ---- Utilidades ---- */
+.motion-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.motion-stagger > *:nth-child(2)  { animation-delay: 45ms; }
+.motion-stagger > *:nth-child(3)  { animation-delay: 90ms; }
+.motion-stagger > *:nth-child(4)  { animation-delay: 135ms; }
+.motion-stagger > *:nth-child(5)  { animation-delay: 180ms; }
+.motion-stagger > *:nth-child(6)  { animation-delay: 225ms; }
+.motion-stagger > *:nth-child(n+7) { animation-delay: 260ms; }

@@ -21,6 +21,10 @@
 @import url('./maldia.css');
 @import url('./lightbox.css');
 
+/* Motion va la última a propósito: sus transiciones deben ganar a las que ya
+   declaraban nav.css, ui.css y las hojas de cada página. */
+@import url('./motion.css');
+
 /* Los estilos de paginas con carga diferida (admin, rincon, minecraft,
    canciones, juegos, calendario, openwhen, series, etc.) ya NO se importan
    aqui: cada pagina hace `import '../styles/X.css'` y Vite los empaqueta en

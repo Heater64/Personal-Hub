@@ -8,6 +8,7 @@ import { initTelemetry } from './services/telemetry.js';
 import { Router } from './router.js';
 import { userStore } from './stores/user.store.js';
 import { AppShell } from './components/App.js';
+import { initMotion, refreshMotion } from './utils/motion.js';
 import { LoginPage } from './pages/Login.js';
 import { HomePage } from './pages/Home.js';
 import { ProfilePage } from './pages/Profile.js';
@@ -160,8 +161,18 @@ function init() {
   // No quedan placeholders — todas las secciones implementadas
 
 
+  // Movimiento: la primera pasada revela lo que ya está en pantalla y, tras
+  // cada navegación, se repasa la página nueva (muchas pintan su contenido
+  // de forma asíncrona, así que el DOM aún crece después del render).
+  router.afterEach(() => refreshMotion());
+
   // Build the app shell (wraps navigation + auth guards)
   AppShell(router);
+
+  // Se arranca DESPUÉS del shell para que exista `.content`, que es el árbol
+  // que se observa. Si aún no hubiera contenido, el vigilante de
+  // mutaciones lo recogerá igualmente.
+  initMotion();
 }
 
 // Wait for DOM
