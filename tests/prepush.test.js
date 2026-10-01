@@ -15,7 +15,7 @@ function projectPath(...parts) {
 
 const hub = (...parts) => projectPath('personal-hub', ...parts);
 
-test('el catálogo expandido cubre del 15 de agosto al 31 de diciembre', () => {
+test('el catálogo expandido cubre del 15 de agosto al 1 de octubre', () => {
   const catalog = expandCalendarCatalog({});
   const dates = [];
   for (const [monthKey, month] of Object.entries(catalog.months)) {
@@ -24,10 +24,10 @@ test('el catálogo expandido cubre del 15 de agosto al 31 de diciembre', () => {
     }
   }
 
-  assert.equal(dates.length, 139);
+  assert.equal(dates.length, 48);
   const numericDates = dates.map(date => Number(date.replaceAll('-', '')));
   assert.equal(Math.min(...numericDates), Number('20260815'));
-  assert.equal(Math.max(...numericDates), Number('20261231'));
+  assert.equal(Math.max(...numericDates), Number('20261001'));
   assert.equal(new Set(dates).size, dates.length);
 });
 

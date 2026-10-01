@@ -2,7 +2,7 @@
    calendar-expansion.js — Calendario 2026 (v5)
 
    Esqueleto del calendario de sorpresas: cada día de
-   2026-08-11 → 2026-12-31 puede tener VARIOS contenidos.
+   2026-08-15 → 2026-10-01 puede tener VARIOS contenidos.
 
    Distribución priorizada (sin mates a propósito):
    ❤️ Motivación · 💌 Cartas · 🧩 Acertijos · 💡 Curiosidades
@@ -16,7 +16,7 @@
    ========================================== */
 
 const START_DATE = '2026-08-15';
-const END_DATE = '2026-12-31';
+const END_DATE = '2026-10-01';
 
 // Solo los juegos que NO se desbloquearon en julio (los de julio ya se
 // jugaron: memoria, ahorcado, tiroarco, snake, buscaminas, laberinto,
