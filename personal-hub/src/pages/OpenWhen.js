@@ -145,6 +145,33 @@ function startVoiceNote(text) {
   };
 }
 
+function startAudioFile(url) {
+  // safeUrl valida el esquema pero devuelve HTML escapado: para el src del
+  // <audio> (contexto JS) hace falta la URL cruda.
+  if (!safeUrl(url)) return null;
+  const audio = new Audio();
+  audio.preload = 'metadata';
+  audio.src = String(url).trim();
+  let duration = 0;
+  audio.addEventListener('loadedmetadata', () => {
+    duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+  });
+  const startedAt = performance.now();
+  const played = audio.play();
+  if (played?.catch) played.catch(() => { /* el navegador puede bloquear la reproducción */ });
+  return {
+    kind: 'audio',
+    get duration() { return duration || Infinity; },
+    startedAt,
+    getElapsed: () => audio.currentTime,
+    hasEnded: () => audio.ended,
+    stop() {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  };
+}
+
 function stopAllMedia() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   if (activeAudio) {
@@ -226,10 +253,19 @@ export function OpenWhenPage(router) {
           <img src="${safeUrl(u)}" alt="" loading="lazy">
         </button>`).join('')}</div>`;
     }
-    const isNota = letter.media.kind === 'nota';
-    const label = isNota
+    if (letter.media.kind === 'video') {
+      return `
+      <div class="ow-video">
+        <video controls playsinline preload="metadata" src="${safeUrl(letter.media.url)}"></video>
+        <p class="ow-audio-caption">Vídeo · tócalo para verlo</p>
+      </div>`;
+    }
+
+    const label = letter.media.kind === 'nota'
       ? 'Nota de voz'
-      : `Canción · ${MELODIES[letter.media.melody]?.name || ''}`;
+      : letter.media.kind === 'audio'
+        ? 'Audio'
+        : `Canción · ${MELODIES[letter.media.melody]?.name || ''}`;
     return `
       <div class="ow-audio" data-audio="${letter.id}">
         <div class="ow-audio-bubble">
@@ -246,6 +282,14 @@ export function OpenWhenPage(router) {
 
   const OPEN_LABEL = { nota: 'Escuchar', cancion: 'Escuchar', album: 'Ver fotos' };
 
+  function openLabel(letter) {
+    const kind = letter.media?.kind;
+    if (kind === 'audio' || kind === 'nota' || kind === 'cancion') return 'Escuchar';
+    if (kind === 'album') return 'Ver fotos';
+    if (kind === 'video') return 'Ver vídeo';
+    return OPEN_LABEL[letter.type] || 'Abrir';
+  }
+
   function letterCard(letter) {
     const meta = TYPE_META[letter.type] || TYPE_META.carta;
     const fresh = isNew(letter);
@@ -258,6 +302,13 @@ export function OpenWhenPage(router) {
           </button>`).join('')}${album.length > 3 ? `<span class="ow-album-more">+${album.length - 3}</span>` : ''}</div>`
       : '';
 
+    const videoThumb = letter.media?.kind === 'video'
+      ? `<div class="ow-card__video" data-video="${letter.id}" role="button" aria-label="Ver vídeo">
+          <video src="${safeUrl(letter.media.url)}" muted playsinline preload="metadata"></video>
+          <span class="ow-card__video-play">▶</span>
+        </div>`
+      : '';
+
     return `
       <button class="ow-card${fresh ? ' is-new' : ''}" data-open="${letter.id}">
         <span class="ow-card__ic">${meta.emoji}</span>
@@ -268,8 +319,8 @@ export function OpenWhenPage(router) {
           </span>
           <span class="ow-card__note">${escapeHtml(letter.note)}</span>
         </span>
-        ${media}
-        <span class="ow-card__go">${OPEN_LABEL[letter.type] || 'Abrir'} ${icon('chev', 14)}</span>
+        ${media}${videoThumb}
+        <span class="ow-card__go">${openLabel(letter)} ${icon('chev', 14)}</span>
       </button>`;
   }
 
@@ -350,9 +401,19 @@ export function OpenWhenPage(router) {
     openLightbox(letter.media.urls.map(src => ({ src, type: 'image' })), idx);
   }
 
+  /** Abre el vídeo de una carta en el visor compartido. */
+  function openVideo(letterId) {
+    const letter = letterById(letterId);
+    const url = letter?.media?.kind === 'video' ? letter.media.url : null;
+    if (!url) return;
+    createLightbox();
+    openLightbox([{ src: url, type: 'video' }], 0);
+  }
+
   function toggleAudio(letterId) {
     const letter = letterById(letterId);
-    if (!letter?.media || (letter.media.kind !== 'nota' && letter.media.kind !== 'cancion')) return;
+    const kind = letter?.media?.kind;
+    if (!letter?.media || (kind !== 'nota' && kind !== 'cancion' && kind !== 'audio')) return;
 
     // La misma carta ya suena → parar
     if (activeAudio?.letterId === letterId) {
@@ -361,9 +422,11 @@ export function OpenWhenPage(router) {
     }
     stopAllMedia();
 
-    const player = letter.media.kind === 'nota'
+    const player = kind === 'nota'
       ? startVoiceNote(letter.message)
-      : startMusicBox(letter.media.melody);
+      : kind === 'audio'
+        ? startAudioFile(letter.media.url)
+        : startMusicBox(letter.media.melody);
     if (!player) return;
 
     // El reproductor puede vivir en la página o en el sheet abierto.
@@ -380,7 +443,7 @@ export function OpenWhenPage(router) {
     const timer = setInterval(() => {
       if (activeAudio?.player !== player) { clearInterval(timer); return; }
       const elapsed = player.getElapsed();
-      if (elapsed >= player.duration + 0.4) { onEnd(); return; }
+      if (player.hasEnded?.() || elapsed >= player.duration + 0.4) { onEnd(); return; }
       const fill = bubble?.querySelector('.ow-audio-progress-fill');
       const time = bubble?.querySelector('.ow-audio-time');
       if (fill) fill.style.width = `${Math.min(100, (elapsed / player.duration) * 100)}%`;
@@ -425,12 +488,35 @@ export function OpenWhenPage(router) {
       msg.innerHTML = escapeHtml(letter.message).replace(/\n/g, '<br>');
       body.appendChild(msg);
 
-      if (letter.media) body.appendChild(mediaWidget(letter));
+      if (letter.media) body.insertAdjacentHTML('beforeend', mediaWidget(letter));
 
       const sign = document.createElement('p');
       sign.className = 'ow-sheet__sign';
       sign.textContent = '— Con todo mi cariño: Peluchito';
       body.appendChild(sign);
+
+      // La hoja vive fuera de la página en el DOM, así que los clics del
+      // multimedia (play, fotos, vídeo) no llegan al listener delegado de la
+      // página: se cablean aquí, igual que los botones de las otras hojas.
+      body.addEventListener('click', (e) => {
+        const photo = e.target.closest('[data-photo]');
+        if (photo) {
+          e.stopPropagation();
+          openAlbum(photo.dataset.photo, parseInt(photo.dataset.idx, 10) || 0);
+          return;
+        }
+        const video = e.target.closest('[data-video]');
+        if (video) {
+          e.stopPropagation();
+          openVideo(video.dataset.video);
+          return;
+        }
+        const play = e.target.closest('[data-play]');
+        if (play) {
+          e.stopPropagation();
+          toggleAudio(play.dataset.play);
+        }
+      });
 
       return body;
     });
@@ -463,6 +549,13 @@ export function OpenWhenPage(router) {
     if (photo) {
       e.stopPropagation();
       openAlbum(photo.dataset.photo, parseInt(photo.dataset.idx, 10) || 0);
+      return;
+    }
+
+    const video = e.target.closest('[data-video]');
+    if (video) {
+      e.stopPropagation();
+      openVideo(video.dataset.video);
       return;
     }
 

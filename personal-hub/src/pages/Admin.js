@@ -2201,6 +2201,12 @@ export function AdminPage(router) {
       ['juego', '🎮 Juego'],
       ['sorpresa', '🎁 Sorpresa']
     ];
+    // Si la carta ya tiene un tipo fuera de la lista (álbum, nota, canción…),
+    // se añade como opción para que al guardar no se cambie sin querer.
+    if (letter?.type && !types.some(([v]) => v === letter.type)) {
+      const m = TYPE_META[letter.type];
+      types.push([letter.type, `${m?.emoji || '💌'} ${m?.label || letter.type}`]);
+    }
     modal.open(
       `${isNew ? 'Nueva carta' : 'Editar carta'} de Open When`,
       `
@@ -2216,20 +2222,49 @@ export function AdminPage(router) {
         </div>
       </div>
       <div class="admin-field"><label>Mensaje *</label><textarea id="owAdminMsg" rows="6" placeholder="El contenido de la carta…">${esc(letter?.message || '')}</textarea></div>
-      <p style="margin:0;color:var(--theme-text-secondary);font-size:var(--fs-sm);">💡 Las cartas con multimedia (notas de voz, canciones, álbumes) se crean desde el código.</p>
+      <div class="admin-field">
+        <label>Multimedia (opcional)</label>
+        <select id="owAdminMediaKind">
+          <option value="">Sin multimedia</option>
+          <option value="audio">🎙️ Audio</option>
+          <option value="album">📸 Fotos</option>
+          <option value="video">🎥 Vídeo</option>
+          <option value="nota">🗣️ Nota de voz (lee el mensaje)</option>
+          <option value="cancion">🎵 Canción (cajita musical)</option>
+        </select>
+        <small class="admin-field-hint">Se muestra dentro de la carta, debajo del mensaje. Puedes subir el archivo o pegar la URL.</small>
+      </div>
+      <div id="owAdminMediaFields"></div>
       `,
       async () => {
         const title = page.querySelector('#owAdminTitle')?.value?.trim();
         const message = page.querySelector('#owAdminMsg')?.value?.trim();
         if (!title) throw new Error('El título es obligatorio');
         if (!message) throw new Error('El mensaje es obligatorio');
+        const mediaKind = page.querySelector('#owAdminMediaKind')?.value || '';
+        let media = null;
+        if (mediaKind === 'audio' || mediaKind === 'video') {
+          const url = page.querySelector('#owAdminMediaUrl')?.value?.trim();
+          if (!url) throw new Error(mediaKind === 'audio' ? 'Falta la URL del audio' : 'Falta la URL del vídeo');
+          media = { kind: mediaKind, url };
+        } else if (mediaKind === 'album') {
+          const urls = (page.querySelector('#owAdminMediaUrls')?.value || '')
+            .split('\n').map(u => u.trim()).filter(Boolean);
+          if (!urls.length) throw new Error('Añade al menos una foto');
+          media = { kind: 'album', urls };
+        } else if (mediaKind === 'nota') {
+          media = { kind: 'nota' };
+        } else if (mediaKind === 'cancion') {
+          media = { kind: 'cancion', melody: page.querySelector('#owAdminMelody')?.value === 'alegre' ? 'alegre' : 'cuna' };
+        }
         const payload = {
           id: page.querySelector('#owAdminEditId').value || createId(),
           category: page.querySelector('#owAdminCat').value,
           type: page.querySelector('#owAdminType').value,
           title,
           note: page.querySelector('#owAdminNote')?.value?.trim() || '',
-          message
+          message,
+          ...(media ? { media } : {})
         };
         const custom = [...(data.items || [])];
         const idx = custom.findIndex(c => c?.id === payload.id);
@@ -2241,6 +2276,99 @@ export function AdminPage(router) {
         showToast(isNew ? 'Carta añadida ✓' : 'Carta actualizada ✓', 'success');
       }
     );
+
+    // Campos multimedia: se pintan según el tipo elegido y se suben a
+    // Supabase Storage (misma vía que Audios/Galería/Memes del panel).
+    setTimeout(() => {
+      const kindSel = page.querySelector('#owAdminMediaKind');
+      const fieldsBox = page.querySelector('#owAdminMediaFields');
+      if (!kindSel || !fieldsBox) return;
+      const current = letter?.media || null;
+      kindSel.value = current?.kind || '';
+
+      const wireUpload = () => {
+        const btn = fieldsBox.querySelector('#owUploadMediaBtn');
+        const fileInput = fieldsBox.querySelector('#owUploadMediaFile');
+        const status = fieldsBox.querySelector('.ow-media-status');
+        if (!btn || !fileInput) return;
+        btn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async () => {
+          const files = [...fileInput.files];
+          fileInput.value = '';
+          if (!files.length) return;
+          const kind = kindSel.value;
+          btn.disabled = true;
+          status.textContent = 'Subiendo…';
+          try {
+            const urls = kind === 'audio'
+              ? await db.uploadAudios(files)
+              : kind === 'video'
+                ? await db.uploadMemes(files)
+                : await db.uploadGalleryPhotos(files);
+            if (!urls?.length) throw new Error('El archivo se subió pero no devolvió URL');
+            if (kind === 'album') {
+              const ta = fieldsBox.querySelector('#owAdminMediaUrls');
+              const prev = ta.value ? ta.value.replace(/\n+$/, '') + '\n' : '';
+              ta.value = prev + urls.join('\n');
+            } else {
+              fieldsBox.querySelector('#owAdminMediaUrl').value = urls[0];
+            }
+            status.textContent = `✓ ${urls.length} ${urls.length === 1 ? 'archivo subido' : 'archivos subidos'}`;
+          } catch (err) {
+            status.textContent = '⚠ ' + (err?.message || 'No se pudo subir el archivo');
+          }
+          btn.disabled = false;
+        });
+      };
+
+      const renderFields = () => {
+        const kind = kindSel.value;
+        if (kind === 'audio' || kind === 'video') {
+          const url = current && current.kind === kind ? (current.url || '') : '';
+          const what = kind === 'audio' ? 'audio' : 'vídeo';
+          fieldsBox.innerHTML = `
+            <div class="admin-field">
+              <label>URL del ${what}</label>
+              <input type="text" id="owAdminMediaUrl" value="${esc(url)}" placeholder="${kind === 'audio' ? 'https://…mp3' : 'https://…mp4'}">
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                <button type="button" class="admin-btn admin-btn-sm" id="owUploadMediaBtn">${UI.cloud} Subir ${what}</button>
+                <span class="ow-media-status" style="font-size:12px;color:var(--theme-text-secondary);"></span>
+              </div>
+              <input type="file" id="owUploadMediaFile" accept="${kind === 'audio' ? 'audio/*' : 'video/*'}" hidden>
+            </div>`;
+        } else if (kind === 'album') {
+          const urls = current?.kind === 'album' && Array.isArray(current.urls) ? current.urls.join('\n') : '';
+          fieldsBox.innerHTML = `
+            <div class="admin-field">
+              <label>Fotos (una URL por línea)</label>
+              <textarea id="owAdminMediaUrls" rows="3" placeholder="https://…jpg">${esc(urls)}</textarea>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                <button type="button" class="admin-btn admin-btn-sm" id="owUploadMediaBtn">${UI.cloud} Subir fotos</button>
+                <span class="ow-media-status" style="font-size:12px;color:var(--theme-text-secondary);"></span>
+              </div>
+              <input type="file" id="owUploadMediaFile" accept="image/*" multiple hidden>
+            </div>`;
+        } else if (kind === 'nota') {
+          fieldsBox.innerHTML = '<small class="admin-field-hint">🎙️ Al abrir la carta se lee el mensaje en voz alta.</small>';
+        } else if (kind === 'cancion') {
+          const melody = current?.kind === 'cancion' ? (current.melody || 'cuna') : 'cuna';
+          fieldsBox.innerHTML = `
+            <div class="admin-field">
+              <label>Canción</label>
+              <select id="owAdminMelody">
+                <option value="cuna" ${melody === 'cuna' ? 'selected' : ''}>🌟 Estrellita (cuna)</option>
+                <option value="alegre" ${melody === 'alegre' ? 'selected' : ''}>🔔 Campanitas (alegre)</option>
+              </select>
+            </div>`;
+        } else {
+          fieldsBox.innerHTML = '';
+        }
+        wireUpload();
+      };
+
+      kindSel.addEventListener('change', renderFields);
+      renderFields();
+    }, 0);
   }
 
   function renderSeriesAdmin(sub, items, saveFn, reloadFn) {

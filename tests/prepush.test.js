@@ -413,6 +413,24 @@ test('el catálogo de Open When vive en un módulo sin dependencias de UI', asyn
   assert.doesNotMatch(notif, /from '\.\.\/pages\//, 'un servicio no debe importar páginas');
 });
 
+test('las cartas de Open When pueden llevar audio, fotos y vídeo dentro', async () => {
+  const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // La hoja sabe pintar los tres tipos de adjunto dentro de la carta.
+  assert.ok(page.includes("kind === 'audio'"), 'falta el audio en la hoja');
+  assert.ok(page.includes("kind === 'video'"), 'falta el vídeo en la hoja');
+  assert.ok(page.includes("kind === 'album'"), 'faltan las fotos en la hoja');
+  // El audio de archivo usa un <audio> y avisa al terminar (hasEnded).
+  assert.ok(page.includes('function startAudioFile'));
+  assert.ok(page.includes('hasEnded'));
+  // El editor del Admin deja adjuntarlos sin tocar código y sube a Storage.
+  assert.ok(admin.includes('owAdminMediaKind'), 'falta el selector de multimedia');
+  assert.ok(admin.includes('uploadAudios'));
+  assert.ok(admin.includes('uploadMemes'));
+  assert.doesNotMatch(admin, /se crean desde el código/);
+});
+
 test('la telemetría es opt-in y sanea antes de enviar', async () => {
   const telemetry = await readFile(hub('src', 'services', 'telemetry.js'), 'utf8');
 
