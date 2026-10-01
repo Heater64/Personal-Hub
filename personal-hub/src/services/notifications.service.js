@@ -20,6 +20,7 @@ const SYNC_TAG = 'daily-welcome';
 const NOVELTIES_TAG = 'daily-novelties';
 const OPENWHEN_TAG = 'openwhen-new';
 const MOOD_TAG = 'mood';
+const ADMIN_MOOD_TAG = 'admin-mood';
 const OPENWHEN_ANNOUNCED_KEY = 'openwhen.announced';
 const DB_NAME = 'ph-notifications';
 const DB_STORE = 'state';
@@ -538,6 +539,29 @@ export async function notifyMoodSaved(mood) {
     : 'Se ha quitado el estado de este día. Si cambias de idea, puedes volver a ponerlo.';
   // Tag propio: los avisos del mismo tipo se reemplazan en vez de apilarse.
   return showDailyNotification(title, body, '/sentimientos', { tag: MOOD_TAG, ignoreQuiet: true });
+}
+
+/**
+ * Aviso al Admin de que la usuaria ha registrado su estado de ánimo.
+ * A diferencia de notifyMoodSaved (respuesta a la propia acción del usuario
+ * y no respeta el horario de silencio), este aviso al admin es informativo
+ * y SÍ respeta el silencio: no interrumpe fuera de horas.
+ *
+ * Se dispara desde App.js al recibir el evento 'ph:mood-changed' (realtime o
+ * polling). Sólo avisa por ánimos ajenos al admin (lo filtra el llamador).
+ */
+export async function notifyAdminMoodSaved(mood) {
+  if (!mood) return false;
+  const displayMood = {
+    id: mood.mood,    // la columna `mood` es el id del catálogo
+    label: mood.label,
+    emoji: mood.emoji,
+    score: mood.score
+  };
+  const title = `${displayMood.emoji || '🫶'} ${displayMood.label || 'Ánimo registrado'}`;
+  const body = moodLine(displayMood) || 'Ha registrado su estado de ánimo de hoy.';
+  // Sin ignoreQuiet → respeta el horario de silencio (aviso informativo)
+  return showDailyNotification(title, body, '/admin', { tag: ADMIN_MOOD_TAG });
 }
 
 /**

@@ -31,6 +31,27 @@ let lastSeen = {};   // id -> updated_at (para detectar cambios por polling)
 let started = false;
 let warned = false;
 
+// ── Ánimos (Realtime + polling de seguridad) ──
+// El Admin recibe un aviso cuando la usuaria registra su ánimo. La tabla
+// `moods` debe estar en la publicación supabase_realtime (ver 021_moods_realtime.sql)
+// para que postgres_changes lo entregue al instante; el polling cubre el caso
+// de que la publicación no esté aplicada todavía.
+let moodChannel = null;
+let moodLastSeen = null;   // created_at más reciente que ya hemos notificado (evita dupes entre realtime y polling)
+
+/**
+ * Procesa un cambio real de ánimo: actualiza el dedupe y avisa a las páginas
+ * montadas. Sólo se muestra el aviso si no es del usuario actual (lo decide
+ * App.js, que sólo engancha este evento si es admin); el store del propio
+ * usuario ya avisa por su cuenta.
+ */
+function handleMoodChange(row) {
+  if (!row) return;
+  const t = row.created_at || '';
+  if (t && t > moodLastSeen) moodLastSeen = t;
+  window.dispatchEvent(new CustomEvent('ph:mood-changed', { detail: row }));
+}
+
 /** Procesa un cambio real de contenido: espejo local + cachés + evento. */
 function handleChange(id, eventType, newData) {
   if (!id) return;
@@ -70,10 +91,22 @@ export function initRealtime() {
         if (payload.new?.updated_at) lastSeen[id] = payload.new.updated_at;
         else if (payload.eventType === 'DELETE') delete lastSeen[id];
         handleChange(id, payload.eventType === 'DELETE' ? 'DELETE' : 'UPDATE', payload.new?.data);
+      })    .subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' && !warned) {
+        console.warn('[realtime] Realtime no disponible (¿la tabla content está en la publicación supabase_realtime?). Se usará polling.');
+        warned = true;
+      }
+    });
+
+    // Canal de ánimos: el Admin la recibe cuando la usuaria guarda su ánimo.
+    moodChannel = supabase
+      .channel('ph-mood-sync')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'moods' }, (payload) => {
+        handleMoodChange(payload.new);
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' && !warned) {
-          console.warn('[realtime] Realtime no disponible (¿la tabla content está en la publicación supabase_realtime?). Se usará polling.');
+          console.warn('[realtime] Realtime no disponible para ánimos (¿la tabla moods está en la publicación supabase_realtime?). Se usará polling.');
           warned = true;
         }
       });
@@ -114,6 +147,35 @@ async function pollOnce() {
   } catch { /* offline: reintentar en el siguiente tick */ }
 }
 
+/**
+ * Polling de seguridad: busca ánimos nuevos desde la última vista y avisa
+ * a las páginas. No necesita que `moods` esté en la publicación supabase_realtime:
+ * el SELECT directo respeta RLS (el admin ve todos los). Sirve de red de
+ * seguridad para el aviso al Admin si Realtime no entrega el evento al instante.
+ */
+async function pollMoodsOnce() {
+  if (!started) return;
+  if (!moodLastSeen) moodLastSeen = new Date().toISOString(); // siembra: no notifica pasados
+  try {
+    const { data, error } = await supabase
+      .from('moods')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) throw error;
+    const since = moodLastSeen;
+    let newest = since;
+    (data || []).forEach((row) => {
+      const t = row?.created_at || '';
+      if (t && t > since) {
+        handleMoodChange(row);
+        if (t > newest) newest = t;
+      }
+    });
+    if (newest !== since) moodLastSeen = newest;
+  } catch { /* offline: reintentar en el siguiente tick */ }
+}
+
 function onVisibility() {
   if (document.visibilityState === 'visible') pollOnce();
 }
@@ -122,8 +184,12 @@ function onFocus() {
 }
 
 function startPolling() {
-  pollOnce(); // siembra lastSeen sin disparar cambios
-  pollTimer = setInterval(pollOnce, POLL_INTERVAL);
+  pollOnce();          // siembra lastSeen sin disparar cambios
+  pollMoodsOnce();     // siembra moodLastSeen sin notificar
+  pollTimer = setInterval(() => {
+    pollOnce();
+    pollMoodsOnce();
+  }, POLL_INTERVAL);
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('focus', onFocus);
 }
@@ -135,10 +201,15 @@ export function stopRealtime() {
     try { supabase.removeChannel(channel); } catch { /* ya eliminado */ }
     channel = null;
   }
+  if (moodChannel) {
+    try { supabase.removeChannel(moodChannel); } catch { /* ya eliminado */ }
+    moodChannel = null;
+  }
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   document.removeEventListener('visibilitychange', onVisibility);
   window.removeEventListener('focus', onFocus);
   lastSeen = {};
+  moodLastSeen = null;
   warned = false;
 }
 
@@ -153,4 +224,15 @@ export function onContentChange(ids, handler) {
   };
   window.addEventListener('ph:content-updated', wrapped);
   return () => window.removeEventListener('ph:content-updated', wrapped);
+}
+
+/**
+ * Suscripción para páginas: llama a handler(mood) cuando la usuaria registra
+ * un ánimo nuevo (evento realtime o polling). Ideal para refrescar en vivo la
+ * pestaña Ánimos del Admin sin recargar. Devuelve una función para
+ * desuscribirse (llamar en page.cleanup).
+ */
+export function onMoodChange(handler) {
+  window.addEventListener('ph:mood-changed', handler);
+  return () => window.removeEventListener('ph:mood-changed', handler);
 }

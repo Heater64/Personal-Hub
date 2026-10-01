@@ -14,14 +14,15 @@ import { NowPlayingBar } from './NowPlayingBar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
 import { moodStore } from '../stores/mood.store.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
-import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters } from '../services/notifications.service.js';
+import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters, notifyAdminMoodSaved } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
 import { initListenTogether, onListenTogether, getListenTogetherState, initListenStateRealtime, stopListenStateRealtime } from '../services/listenTogether.service.js';
 import { player } from '../services/player.service.js';
+import { showToast } from './Toast.js';
 import '../styles/online-games.css';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
-import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref } from '../utils/userStorage.js';
+import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref, getUserId } from '../utils/userStorage.js';
 import { todayISO, hourInSpain, spainMsOnDate, nextDayISO } from '../utils/format.js';
 
 // Rutas que NO deben mostrar navegación (sidebar ni bottom-nav)
@@ -194,6 +195,22 @@ export function AppShell(router) {
   let currentWelcomeOverlay = null;
   let moodTimer = null;
   let moodSyncPromise = null; // resolves once today's mood has been synced with the server
+  let moodNotifCleanup = null; // unsubscribe del aviso de ánimo al admin (sólo admin)
+
+  // Aviso al Admin cuando la usuaria registra su ánimo (Realtime + polling).
+  // Sólo el admin instala este listener: el usuario ya se avisa a sí mismo
+  // en mood.store (notifyMoodSaved). Filtra los propios ánimos del admin.
+  const attachAdminMoodListener = () => {
+    const onMood = (e) => {
+      const mood = e?.detail;
+      if (!mood) return;
+      if (mood.user_id === getUserId()) return; // no avisar por el propio admin
+      notifyAdminMoodSaved(mood).catch(() => {});
+      showToast(`${mood.emoji || '🫶'} ${mood.label || 'Ánimo registrado'}`, 'info', 4000);
+    };
+    window.addEventListener('ph:mood-changed', onMood);
+    return () => window.removeEventListener('ph:mood-changed', onMood);
+  };
 
   /** Controla la visibilidad de la navegación según la ruta actual */
   function updateNavigation(path) {
@@ -418,6 +435,11 @@ export function AppShell(router) {
       // Tiempo real: los cambios del Admin se propagan a todos los usuarios
       // (Realtime + polling). Se inicia al loguearse y se detiene al salir.
       initRealtime();
+      // Aviso al Admin cuando la usuaria registra su estado de ánimo.
+      // Sólo el admin escucha: el usuario ya se avisa a sí mismo en el store.
+      if (userStore.isAdmin && !moodNotifCleanup) {
+        moodNotifCleanup = attachAdminMoodListener();
+      }
       moodSyncPromise = moodStore.fetchTodayMood().catch(() => {});
       // Sincroniza push subscription + fallback (IndexedDB + periodicSync)
       syncReminderState();
@@ -431,6 +453,7 @@ export function AppShell(router) {
       // Logout: desactiva todo (incluida la sincronización en tiempo real)
       stopRealtime();
       syncReminderState();
+      if (moodNotifCleanup) { moodNotifCleanup(); moodNotifCleanup = null; }
     }
 
     // Debounce: avoid scheduling multiple checks when onChange fires rapidly

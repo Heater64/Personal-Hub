@@ -27,6 +27,7 @@ import {
 } from '../services/cloudinary.service.js';
 import { visiblePhotos, baseFolders } from '../services/galleryData.js';
 import { getUserPref } from '../utils/userStorage.js';
+import { onMoodChange } from '../services/realtime.service.js';
 
 // Resuelve una promesa sin romper el panel: si la query falla (Supabase caído,
 // sesión caducada, RLS…), devuelve el fallback en vez de colgar el dashboard.
@@ -330,6 +331,8 @@ export function AdminPage(router) {
   page.cleanup = () => {
     document.removeEventListener('keydown', escapeHandler);
     clearInterval(clockInterval);
+    // Desuscribe del aviso de ánimos en vivo (se reinstala en loadMoods)
+    if (moodRealTimeOff) { moodRealTimeOff(); moodRealTimeOff = null; }
   };
 
   // ===== SECTION LOADER =====
@@ -340,6 +343,8 @@ export function AdminPage(router) {
   // Token por render de Ánimos: dos clics rápidos en ‹ › lanzan renders
   // solapados; el último clic debe ganar aunque resuelva antes el anterior.
   let moodRenderToken = 0;
+  // Unsubscribe del aviso de ánimos en vivo (se reinstala en loadMoods)
+  let moodRealTimeOff = null;
   function loadSection(section) {
     sectionToken++;
     const loaders = {
@@ -918,6 +923,15 @@ export function AdminPage(router) {
 
     const render = () => renderMoodMonth(S.moodDate);
     render();
+    // Refresca el calendario en vivo cuando la usuaria registra/quita un ánimo
+    // en el mes que se muestra (evento realtime o polling de seguridad).
+    if (moodRealTimeOff) moodRealTimeOff();
+    moodRealTimeOff = onMoodChange((mood) => {
+      const ds = mood?.date;
+      if (!ds) { render(); return; }
+      const displayed = `${S.moodDate.getFullYear()}-${String(S.moodDate.getMonth() + 1).padStart(2, '0')}`;
+      if (ds.slice(0, 7) === displayed) render();
+    });
     page.querySelector('#moodPrev').onclick = () => { S.moodDate.setMonth(S.moodDate.getMonth() - 1); render(); };
     page.querySelector('#moodNext').onclick = () => { S.moodDate.setMonth(S.moodDate.getMonth() + 1); render(); };
   }
