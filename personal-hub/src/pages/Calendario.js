@@ -804,6 +804,20 @@ export function CalendarioPage(router) {
     // Estado de la navegación en curso, para poder desmontarla al cerrar.
     const nav = { handler: null, alive: true };
 
+    // Al cerrar la hoja nada de lo de dentro sigue vivo: el audio y
+    // el vídeo NO se pausan solos al sacar el elemento del DOM, y las
+    // flechas del teclado no deben quedar escuchando detrás.
+    const closeExperience = () => {
+      nav.alive = false;
+      if (nav.handler) document.removeEventListener('keydown', nav.handler);
+      overlay.querySelectorAll('audio, video').forEach(media => {
+        try {
+          media.pause();
+          if (media.currentTime) media.currentTime = 0;
+        } catch { /* ya sin recurso */ }
+      });
+    };
+
     const overlay = openSheet(gift.title || metaOf(gift.type).label, () => {
       const body = document.createElement('div');
       body.className = 'exp exp--browse';
@@ -826,7 +840,7 @@ export function CalendarioPage(router) {
         h('button', { class: 'btn btn--block exp-browse__close', type: 'button', onclick: () => closeSheets() }, 'Cerrar')
       );
       return body;
-    });
+    }, closeExperience);
 
     const sheet = overlay.querySelector('.sheet');
     const head = overlay.querySelector('.sheet-head h2');
@@ -888,6 +902,11 @@ export function CalendarioPage(router) {
       stage.style.overflow = animateHeight ? 'hidden' : '';
       stage.style.height = animateHeight ? `${alturaVieja}px` : '';
 
+      // El audio/vídeo no se pausa solo al sacarlo del DOM: sin
+      // esto, la cassette anterior seguiría sonando de fondo.
+      stage.querySelectorAll('audio, video').forEach(media => {
+        try { media.pause(); media.currentTime = 0; } catch { /* ignorar */ }
+      });
       stage.replaceChildren();
       const content = renderContent(actual.gift);
       if (content) stage.append(content);

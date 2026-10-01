@@ -177,12 +177,17 @@ function overlayRoot() {
 
 let lastFocused = null;
 let sheetEsc = null;
+// Limpiezas de las hojas abiertas (parar el audio, quitar listeners
+// propios...). Se ejecutan al cerrar, ANTES de vaciar el DOM: un
+// elemento sacado del DOM no se pausa solo.
+const sheetClosers = [];
 
 /**
  * Abre un bottom sheet. `build` recibe el elemento del sheet y devuelve
- * (o añade) el contenido.
+ * (o añade) el contenido. `onClose` (opcional) se ejecuta al cerrar
+ * la hoja, con su DOM aún montado.
  */
-export function openSheet(title, build) {
+export function openSheet(title, build, onClose) {
   const overlay = h('div', {
     class: 'overlay',
     onclick: event => { if (event.target === overlay) closeSheets(); }
@@ -199,6 +204,7 @@ export function openSheet(title, build) {
   const body = build ? build(sheet) : null;
   if (body) sheet.append(body);
   overlay.append(sheet);
+  if (onClose) sheetClosers.push(onClose);
   lastFocused = document.activeElement;
   overlayRoot().append(overlay);
   if (!sheetEsc) {
@@ -246,6 +252,11 @@ function focusablesIn(sheet) {
 }
 
 export function closeSheets() {
+  // Primero las limpiezas: necesitan el DOM de la hoja todavía
+  // montado (parar el audio, soltar listeners). Una que falle no
+  // bloquea el cierre de las demás.
+  const closers = sheetClosers.splice(0);
+  closers.forEach(fn => { try { fn(); } catch { /* ignorar */ } });
   overlayRoot().innerHTML = '';
   if (sheetEsc) { document.removeEventListener('keydown', sheetEsc); sheetEsc = null; }
   if (lastFocused && typeof lastFocused.focus === 'function') {

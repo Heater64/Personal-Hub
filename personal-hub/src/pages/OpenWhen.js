@@ -524,7 +524,7 @@ export function OpenWhenPage(router) {
       });
 
       return body;
-    });
+    }, stopAllMedia);
   }
 
   function goToCategory(catId) {
