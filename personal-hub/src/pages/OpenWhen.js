@@ -136,10 +136,11 @@ function startVoiceNote(text) {
   utter.onerror = () => activeAudio?.onEnd?.();
   synth.speak(utter);
   const words = text.trim().split(/\s+/).length;
+  const startedAt = performance.now();
   return {
     kind: 'nota',
     duration: Math.min(Math.max(words * 0.42, 6), 45),
-    startedAt: performance.now(),
+    startedAt,
     getElapsed: () => (performance.now() - startedAt) / 1000,
     stop() { synth.cancel(); }
   };

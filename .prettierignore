@@ -1,0 +1,6 @@
+node_modules
+personal-hub/dist
+personal-hub/public/games
+.vercel
+package-lock.json
+*.min.js

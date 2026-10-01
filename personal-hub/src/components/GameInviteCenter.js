@@ -214,7 +214,7 @@ export function GameInviteCenter(router) {
             imgEl.style.display = freshAvatar ? '' : 'none';
             if (fallbackEl) fallbackEl.style.display = freshAvatar ? 'none' : '';
           } else if (fallbackEl) {
-            fallbackEl.textContent = (fresh || inviterName).charAt(0).toUpperCase();
+            fallbackEl.textContent = (fresh || fallbackName).charAt(0).toUpperCase();
           }
         })
         .catch(() => { /* se queda con los valores de la invitación */ });
