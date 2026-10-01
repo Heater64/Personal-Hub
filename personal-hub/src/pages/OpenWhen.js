@@ -309,8 +309,13 @@ export function OpenWhenPage(router) {
         </div>`
       : '';
 
+    // La tarjeta no puede ser un <button>: lleva miniaturas que también
+    // lo son, y un botón dentro de otro es HTML inválido. El navegador
+    // cerraba la tarjeta al encontrar la primera miniatura y las fotos
+    // quedaban fuera. Un div con role="button" (más la activación de
+    // teclado del listener de keydown) deja los botones interiores válidos.
     return `
-      <button class="ow-card${fresh ? ' is-new' : ''}" data-open="${letter.id}">
+      <div class="ow-card${fresh ? ' is-new' : ''}" role="button" tabindex="0" data-open="${letter.id}">
         <span class="ow-card__ic">${meta.emoji}</span>
         <span class="ow-card__body">
           <span class="ow-card__top">
@@ -573,6 +578,12 @@ export function OpenWhenPage(router) {
   // Esc cierra el visor de fotos (el sheet y el lightbox ya lo hacen solos)
   page.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeLightbox();
+    // La tarjeta ya no es un <button>, así que Enter y Espacio
+    // hay que gestionarlos aquí para abrirla con el teclado.
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.ow-card[data-open]')) {
+      e.preventDefault();
+      openLetter(e.target.dataset.open);
+    }
   });
 
   render();
