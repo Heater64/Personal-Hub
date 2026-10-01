@@ -512,6 +512,38 @@
 .admin-activity-action { font-size: var(--fs-sm); font-weight: 500; color: var(--theme-text-primary); }
 .admin-activity-details { font-size: var(--fs-xs); color: var(--theme-text-secondary); margin-top: 2px; }
 
+/* La hora iba pegada al detalle con un "·" y en formato largo del navegador
+   ("1/10/2026, 16:09:25"); ahora va en su propia columna, corta y alineada. */
+.admin-activity-time {
+  flex: none;
+  padding-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--theme-text-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Acciones fuera del catálogo (restos de pruebas, eventos nuevos): se marcan
+   para que no se confundan con acciones reales del panel. */
+.admin-activity-dot.unknown {
+  border-color: var(--theme-text-tertiary);
+  background: transparent;
+}
+.activity-unknown-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px dashed var(--theme-divider-strong, rgba(255,255,255,0.22));
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--theme-text-tertiary);
+  vertical-align: middle;
+}
+.activity-limit-note {
+  margin: 0 0 10px;
+  font-size: var(--fs-xs);
+  color: var(--theme-text-tertiary);
+}
+
 /* ==========================================
    BUTTONS — Refined
    ========================================== */
@@ -723,6 +755,15 @@
 .user-mood-row {
   display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;
 }
+/* Resumen de ánimo como línea de texto: en una columna de ~250 px las dos
+   etiquetas se partían en dos renglones y dejaban la tarjeta alta. */
+.user-mood-line {
+  font-size: var(--fs-xs);
+  color: var(--theme-text-secondary);
+  line-height: 1.5;
+}
+.user-mood-line strong { color: var(--theme-text-primary); font-weight: 600; }
+.user-mood-pct { color: var(--theme-text-tertiary); font-variant-numeric: tabular-nums; }
 
 .user-mood-badge {
   display: inline-flex; align-items: center; gap: 3px;
@@ -742,6 +783,40 @@
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   font-style: italic;
 }
+
+/* ---- Fila de usuario: email + chips, y el estado de conexión en su propia
+   línea. Antes todo iba en un solo .item-sub y "En línea ahora" se partía a
+   media frase, dejando la tarjeta alta y descuadrada. ---- */
+.user-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.user-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  margin-left: 8px;
+}
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.08));
+  font-size: 10px;
+  color: var(--theme-text-tertiary);
+  white-space: nowrap;
+}
+.user-chip.off { border-color: rgba(224, 90, 90, 0.45); color: #e05a5a; }
+.user-status-line {
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  color: var(--theme-text-tertiary);
+}
+.user-status-sep { margin: 0 6px; opacity: 0.5; }
 
 .admin-badge-tag {
   display: inline-block;
@@ -932,6 +1007,11 @@
 
 .moods-cal-cell.empty { opacity: 0.08; }
 
+/* Días por venir del mes en curso: no pueden tener registro todavía, así que
+   se apagan para que no parezcan "días sin anotar". */
+.moods-cal-cell.future { opacity: 0.35; }
+.moods-cal-cell.future:hover { opacity: 0.6; }
+
 .moods-cal-cell.today {
   background: var(--accent-dim);
   border: 1px solid var(--border-accent);
@@ -958,7 +1038,7 @@
 /* Moods stats row */
 .moods-stats-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
   margin: 20px 0;
 }
@@ -988,6 +1068,15 @@
   font-family: var(--font-display);
 }
 
+/* Cifra que acompaña al emoji ("2,5", "/31"): más pequeña y sin adueñarse
+   del titular de la tarjeta. */
+.moods-stat-avg {
+  font-size: var(--fs-base);
+  font-weight: 500;
+  color: var(--theme-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .moods-stat-label {
   font-size: var(--fs-xs);
   color: var(--theme-text-secondary);
@@ -999,6 +1088,19 @@
 .moods-breakdown h4 {
   font-size: var(--fs-md); font-weight: 500;
   margin: 0 0 14px; color: var(--theme-text-primary);
+}
+/* Aviso de que todo el mes se registró con los estados antiguos. */
+.moods-breakdown-note {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.12));
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--theme-text-tertiary);
+  vertical-align: middle;
 }
 
 .moods-bar-row {
@@ -1050,6 +1152,20 @@
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   min-width: 40px; text-align: right;
   font-variant-numeric: tabular-nums;
+}
+/* Marca de los ids del catálogo antiguo: comparten nombre con los vigentes
+   ("Necesito cariño", "Bien"), así que sin esto las filas parecen duplicadas. */
+.moods-bar-legacy {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.12));
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--theme-text-tertiary);
+  vertical-align: middle;
 }
 
 /* ==========================================
@@ -1341,8 +1457,10 @@
 
 /* ---- Notificaciones ---- */
 .notif-status-grid {
+  /* auto-fit por la misma razón que las subidas: el sidebar fijo impide que
+     el ancho del viewport diga cuándo caben dos columnas. */
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px;
 }
 
@@ -1453,7 +1571,6 @@
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .admin-dash-grid { grid-template-columns: 1fr; }
-  .notif-status-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
@@ -1499,6 +1616,11 @@
 .admin-badge-tag.accent {
   background: var(--theme-accent);
   color: var(--theme-text-inverse);
+}
+/* Cuenta deshabilitada: el mismo rojo que el aviso, no el naranja de acento. */
+.admin-badge-tag.warn {
+  background: rgba(224, 90, 90, 0.16);
+  color: #e87878;
 }
 
 /* Editor de temporadas dentro del modal del Admin —
@@ -1756,6 +1878,35 @@
 .upload-dropzone-sub { font-size: var(--fs-xs); color: var(--theme-text-tertiary); }
 
 .upload-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- Subir multimedia ----
+   Antes reutilizaba .admin-dash-grid, que es 1.6fr / 1fr (pensado para
+   gráfico + dona): los tres paneles de subida quedaban desiguales, uno por
+   fila y de 548 px cada uno. Aquí cada panel es una fila con la zona de
+   arrastre a la izquierda y el historial a la derecha. */
+.admin-upload-grid {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+}
+.upload-panel-body {
+  /* auto-fit y NO un media query: el admin tiene sidebar fijo, así que el
+     ancho del viewport no dice nada sobre el espacio que queda realmente
+     (a 836 px de ventana el panel mide 716 px y caben dos columnas). */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.upload-panel-body .muted-text { margin: 0 0 10px; }
+.upload-panel-body .upload-dropzone { padding: 22px 14px; }
+.upload-panel-body .admin-subsection { margin-top: 0; }
+/* El estado vacío genérico ocupa 137 px: desproporcionado en un panel bajo. */
+.upload-panel-body .admin-empty { padding: 16px; font-size: var(--fs-xs); }
+.upload-dropzone:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 3px;
+}
 
 .upload-item {
   display: flex;
@@ -2074,6 +2225,11 @@
 .dash-metrics {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  /* Todas las tarjetas de una fila miden lo mismo: si un título ocupa dos
+     líneas ("Contenido de ánimo") la fila crecía y las tarjetas quedaban
+     descuadradas respecto a sus vecinas. */
+  grid-auto-rows: 1fr;
+  align-items: stretch;
   gap: 14px;
   margin-bottom: 14px;
 }
@@ -2115,6 +2271,11 @@
   letter-spacing: 0.05em;
   color: var(--theme-text-primary);
   margin-bottom: 5px;
+  /* Que el rótulo ocupe siempre dos líneas: así todas las tarjetas tienen la
+     misma altura aunque el texto no llene. */
+  min-height: calc(2 * 1.2em);
+  display: flex;
+  align-items: center;
 }
 .dash-metric-trend { font-size: 11px; color: var(--theme-text-tertiary); }
 
@@ -2128,27 +2289,82 @@
   font-family: inherit; font-size: var(--fs-xs, 12px);
   cursor: pointer;
 }
-.dash-area-svg { width: 100%; height: 150px; display: block; }
+.dash-area-wrap { position: relative; }
+.dash-area-svg { width: 100%; height: 150px; display: block; overflow: visible; }
 .dash-area-grid { stroke: rgba(255,255,255,0.06); stroke-width: 1; }
+/* preserveAspectRatio="none" estira el eje X: sin vector-effect el trazo
+   Sale más grueso a lo ancho que a lo alto. */
 .dash-area-line {
   stroke: var(--theme-accent, #e8614f);
   stroke-width: 2.2;
   stroke-linecap: round; stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
-.dash-area-dot {
-  fill: var(--theme-accent, #e8614f);
-  stroke: var(--theme-bg-primary, #0b0c10);
+/* Guía vertical del día apuntado + zonas invisibles de hover. */
+.dash-area-guide {
+  stroke: var(--theme-accent, #e8614f);
   stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0;
+  vector-effect: non-scaling-stroke;
 }
-.dash-area-labels {
+.dash-area-guide.is-on { opacity: 0.55; }
+.dash-area-hit { fill: transparent; cursor: crosshair; }
+.dash-area-tip {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: var(--r-sm, 6px);
+  background: var(--theme-bg-primary, #0b0c10);
+  border: 1px solid var(--theme-divider);
+  color: var(--theme-text-primary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.dash-area-foot {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--theme-text-secondary);
+}
+.dash-area-summary strong { color: var(--theme-text-primary); font-weight: 700; }
+.dash-area-peak { color: var(--theme-text-tertiary); font-size: 10px; }
+.dash-area-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 150px;
+  text-align: center;
+  color: var(--theme-text-tertiary);
+  font-size: var(--fs-sm, 13px);
+}
+.dash-area-empty strong { color: var(--theme-text-secondary); font-size: var(--fs-base, 15px); }
+.dash-area-labels {
+  position: relative;
+  height: 14px;
   margin-top: 6px;
   font-size: 10px;
   color: var(--theme-text-tertiary);
 }
-.dash-area-labels span { flex: 1; }
-.dash-area-labels span:not(:empty) { text-align: center; }
+/* Posicionadas por porcentaje: con flex se partían en dos líneas ("12" /
+   "sept") en cuanto entraban 6 o más etiquetas. */
+.dash-area-labels .dash-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.dash-area-labels .dash-label.is-first { transform: none; }
+.dash-area-labels .dash-label.is-last { transform: translateX(-100%); }
 
 /* ---- Dona + leyenda ---- */
 .dash-donut { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
@@ -2182,9 +2398,18 @@
 .dash-mood-face { font-size: 30px; line-height: 1; }
 .dash-week-chart {
   display: flex; align-items: stretch; gap: 8px;
-  height: 110px;
+  height: 128px;
 }
 .dash-week-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+/* Cifra encima de la barra. min-height fijo para que todas las columnas
+   mantuvieran la misma base al reservar o no espacio. */
+.dash-week-count {
+  height: 14px; line-height: 14px;
+  font-size: 10px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--theme-text-tertiary);
+}
+.dash-week-col.top .dash-week-count { color: var(--theme-accent); }
 .dash-week-wrap {
   flex: 1; width: 100%; max-width: 30px;
   display: flex; align-items: flex-end;
@@ -2202,6 +2427,12 @@
   box-shadow: 0 0 14px var(--accent-dim);
 }
 .dash-week-label { font-size: 10px; color: var(--theme-text-tertiary); }
+.dash-week-caption {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--theme-text-tertiary);
+}
+.dash-week-caption strong { color: var(--theme-text-secondary); font-weight: 600; }
 
 /* ---- Fechas importantes ---- */
 .dash-fechas { display: flex; flex-direction: column; }
@@ -2214,7 +2445,7 @@
 .dash-fecha-icon { font-size: 18px; flex-shrink: 0; }
 .dash-fecha-body { flex: 1; min-width: 0; }
 .dash-fecha-title { font-size: var(--fs-sm, 14px); font-weight: 600; color: var(--theme-text-primary); }
-.dash-fecha-date { font-size: var(--fs-xs, 12px); color: var(--theme-text-tertiary); margin-top: 1px; }
+.dash-fecha-date { font-size: var(--fs-xs, 12px); color: var(--theme-text-tertiary); margin-top: 1px; white-space: nowrap; }
 .dash-fecha-badge {
   font-size: var(--fs-xs, 11px);
   padding: 4px 10px;
@@ -2254,13 +2485,15 @@
 /* ---- Atajos de gestión ---- */
 .dash-shortcuts-panel { margin-top: 16px; }
 .dash-shortcuts {
-  display: flex; gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  /* Antes: fila horizontal con overflow-x y tarjetas fijas de 150 px. En
+     móvil (panel de 289 px) solo cabía una y media y no había ninguna pista de
+     que se pudiera deslizar; en escritorio quedaban las últimas fuera de
+     vista. Ahora es una rejilla que reparte y envuelve: todo es reachable. */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
 }
 .dash-shortcut {
-  flex: 0 0 auto;
-  width: 150px;
   display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
   padding: 14px;
   border-radius: var(--r-md, 12px);
@@ -2296,7 +2529,10 @@
   .dash-metric-icon { font-size: 17px; margin-bottom: 8px; }
   .dash-metric-value { font-size: 20px; }
   .dash-metric-label { font-size: 10px; }
-  .dash-shortcut { width: 130px; }
+  /* Los atajos ya no son una fila con ancho fijo: dos columnas que llenan.
+     El width: 130px que había aquí los dejaba estrechos en la rejilla. */
+  .dash-shortcuts { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .dash-shortcut { padding: 12px; }
 }
 
 /* ==========================================
@@ -2419,6 +2655,8 @@
   position: sticky; top: 0; z-index: 15;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  /* Contenedor del degradado que avisa de que la barra continúa. */
+  isolation: isolate;
 }
 .admin-topbar-nav {
   display: flex;
@@ -2431,6 +2669,24 @@
   padding: 2px;
 }
 .admin-topbar-nav::-webkit-scrollbar { display: none; }
+
+/* Hay 8 secciones pero solo caben ~5: sin esto las tres últimas
+   (Notificaciones, Actividad, Configuración) quedan escondidas y no hay
+   ninguna pista de que exista más barra. El degradado se apaga cuando se
+   llega al final. */
+.admin-topbar-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 56px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.03));
+  border-radius: 0 var(--r-lg, 16px) var(--r-lg, 16px) 0;
+  opacity: 1;
+  transition: opacity var(--dur-fast, 0.15s);
+}
+.admin-topbar-fade[hidden] { display: none; }
 .admin-topbar-tab {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 8px 14px;
@@ -2687,7 +2943,51 @@
   padding: 0 4px;
 }
 .dash-fecha-note {
+  /* Línea propia: dentro de la fecha ("3 de julio de 2027 · cada año ·
+     desde 2025") se partía en tres renglones y estiraba el panel. */
+  margin-top: 2px;
   color: var(--theme-text-secondary);
   font-size: var(--fs-xs, 11px);
   opacity: 0.85;
+}
+
+/* ---- Reparto por tipo de ánimo ---- */
+.dash-mooddist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--theme-divider, rgba(255,255,255,0.06));
+}
+.dash-mooddist-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: var(--fs-sm, 13px);
+  color: var(--theme-text-secondary);
+}
+.dash-mooddist-face { font-size: 15px; flex-shrink: 0; width: 22px; text-align: center; }
+.dash-mooddist-label { flex: 0 0 auto; min-width: 92px; color: var(--theme-text-secondary); }
+.dash-mooddist-tag {
+  font-size: 10px; color: var(--theme-accent, #e8614f);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.dash-mooddist-track {
+  flex: 1; min-width: 0; height: 8px;
+  border-radius: 999px;
+  background: var(--theme-surface-elevated);
+  overflow: hidden;
+}
+.dash-mooddist-fill {
+  display: block; height: 100%;
+  border-radius: 999px;
+  background: var(--theme-divider-strong);
+}
+.dash-mooddist-row.is-current .dash-mooddist-fill {
+  background: linear-gradient(to right, var(--theme-accent, #e8614f), var(--warm-rose, #ff8a7a));
+}
+.dash-mooddist-row.is-current .dash-mooddist-label { color: var(--theme-text-primary); font-weight: 600; }
+.dash-mooddist-count {
+  flex: 0 0 auto; min-width: 26px; text-align: right;
+  font-variant-numeric: tabular-nums; font-weight: 600;
+  color: var(--theme-text-primary);
 }

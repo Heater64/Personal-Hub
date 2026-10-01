@@ -742,6 +742,13 @@ async function uploadAvatar(file) {
   return publicUrl;
 }
 
+/**
+ * Límite por tipo de subida, en MB. Única fuente de verdad: el panel de
+ * admin construye con esto tanto el texto que promete ("máx. 5 MB") como la
+ * comprobación previa, así que ya no puede desincronizarse del servicio.
+ */
+export const UPLOAD_LIMITS = { galeria: 5, memes: 50, audios: 50 };
+
 // Upload gallery photos to Supabase Storage (same storage system as avatars).
 // Falls back to 'galeria' bucket, then 'avatars' if the gallery bucket is missing.
 async function uploadGalleryPhotos(files) {
@@ -752,8 +759,8 @@ async function uploadGalleryPhotos(files) {
 
   const images = [...files].filter(f => f.type.startsWith('image/'));
   if (!images.length) throw new Error('Solo se permiten imágenes');
-  const oversized = images.find(f => f.size > 5 * 1024 * 1024);
-  if (oversized) throw new Error('Cada foto no puede superar los 5 MB');
+  const oversized = images.find(f => f.size > UPLOAD_LIMITS.galeria * 1024 * 1024);
+  if (oversized) throw new Error(`Cada foto no puede superar los ${UPLOAD_LIMITS.galeria} MB`);
 
   const buckets = ['galeria'];
   const urls = [];
@@ -797,8 +804,8 @@ async function uploadMemes(files) {
 
   const media = [...files].filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
   if (!media.length) throw new Error('Solo se permiten imágenes y vídeos');
-  const oversized = media.find(f => f.size > 50 * 1024 * 1024);
-  if (oversized) throw new Error('Cada archivo no puede superar los 50 MB');
+  const oversized = media.find(f => f.size > UPLOAD_LIMITS.memes * 1024 * 1024);
+  if (oversized) throw new Error(`Cada archivo no puede superar los ${UPLOAD_LIMITS.memes} MB`);
 
   const buckets = ['memes', 'galeria'];
   const urls = [];
@@ -842,8 +849,8 @@ async function uploadAudios(files) {
 
   const audio = [...files].filter(f => f.type.startsWith('audio/'));
   if (!audio.length) throw new Error('Solo se permiten archivos de audio');
-  const oversized = audio.find(f => f.size > 50 * 1024 * 1024);
-  if (oversized) throw new Error('Cada audio no puede superar los 50 MB');
+  const oversized = audio.find(f => f.size > UPLOAD_LIMITS.audios * 1024 * 1024);
+  if (oversized) throw new Error(`Cada audio no puede superar los ${UPLOAD_LIMITS.audios} MB`);
 
   const buckets = ['audios', 'memes', 'galeria'];
   const urls = [];
@@ -1396,7 +1403,20 @@ const ACTION_LABELS = {
   'letter_deleted': 'Carta eliminada'
 };
 
-function formatAction(action) { return ACTION_LABELS[action] || action; }
+/** ¿La acción está en el catálogo? Sirve para marcar las desconocidas. */
+function isKnownAction(action) { return Boolean(ACTION_LABELS[action]); }
+
+/**
+ * Etiqueta legible de una acción. Antes devolvía el id crudo ("test_probe",
+ * "user_updated_2") cuando no estaba en el catálogo, y esa cadena acababa
+ * tal cual en el desplegable de filtros y en la lista del panel.
+ */
+function formatAction(action) {
+  if (ACTION_LABELS[action]) return ACTION_LABELS[action];
+  const s = String(action || '').trim();
+  if (!s) return 'Acción sin nombre';
+  return s.replace(/[_-]+/g, ' ').replace(/^\w/, c => c.toUpperCase());
+}
 
 // ==========================================
 // EXPORTS
@@ -1414,7 +1434,7 @@ export const db = {
   getSeries, saveSeries,
   getOpenWhenLetters, saveOpenWhenLetters,
   getMaldiaFrases, getMaldiaMensajes, saveMaldiaFrases, saveMaldiaMensajes,
-  logActivity, getActivity, formatAction,
+  logActivity, getActivity, formatAction, isKnownAction,
   trackVisit, getAnalytics, getPageVisits,
   listUsers, saveUser, createUser, deleteUser, saveProfile,
   uploadAvatar, uploadGalleryPhotos, uploadMemes, uploadAudios,

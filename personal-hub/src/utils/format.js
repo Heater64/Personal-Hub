@@ -41,6 +41,17 @@ export function dayOfMonthInSpain(date = new Date()) {
 }
 
 /**
+ * Hora actual en España como "HH:MM".
+ * El reloj del admin usaba la hora local del dispositivo mientras el
+ * saludo ("buenas noches") usaba la de España: en otro huso se contradecían.
+ */
+export function timeInSpain(date = new Date()) {
+  return new Intl.DateTimeFormat('es-ES', {
+    timeZone: SPAIN_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).format(date);
+}
+
+/**
  * Marca de tiempo (ms) del día español 'YYYY-MM-DD' a las hour:00.
  * Corrige el desfase UTC↔España (UTC+1 invierno / UTC+2 verano).
  */

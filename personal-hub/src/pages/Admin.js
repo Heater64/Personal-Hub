@@ -5,17 +5,18 @@
    ========================================== */
 
 import '../styles/admin.css';
-import { db } from '../services/db.service.js';
+import { db, UPLOAD_LIMITS } from '../services/db.service.js';
 import {
   loadCatalog, saveCatalog, loadFavorites,
   createId, getSeasons, getTotal, deleteCatalogItem
 } from '../services/seriesData.js';
 import { seasonEditorHTML, collectSeasons, emptySeasonHTML, bindSeasonEditorEvents } from '../services/seriesEditor.js';
+import { defaultCatalog } from '../data/series-seed.js';
 import { userStore } from '../stores/user.store.js';
 import { moodStore } from '../stores/mood.store.js';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
-import { isValidUrlField, todayISO, hourInSpain } from '../utils/format.js';
+import { isValidUrlField, todayISO, hourInSpain, timeInSpain } from '../utils/format.js';
 import { refreshSpecialDates } from '../utils/specialDates.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
@@ -181,9 +182,11 @@ export function AdminPage(router) {
   const userRole = user?.role || 'admin';
 
   // Time-based greeting (hora de España, península)
-  const hour = hourInSpain();
-  const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
-  const greetingEmoji = hour < 12 ? '☀️' : hour < 19 ? '🌤️' : '🌙';
+  const greetingFor = (h) => ({
+    text: h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches',
+    emoji: h < 12 ? '☀️' : h < 19 ? '🌤️' : '🌙'
+  });
+  const { text: greeting, emoji: greetingEmoji } = greetingFor(hourInSpain());
 
   page.innerHTML = `
     <div class="admin-layout">
@@ -192,10 +195,11 @@ export function AdminPage(router) {
           <nav class="admin-topbar-nav" id="adminTopNav" aria-label="Secciones del panel">
             ${TABS.map(t => `<button class="admin-topbar-tab${t.id==='dashboard'?' active':''}" data-section="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
           </nav>
+          <div class="admin-topbar-fade" id="adminTopFade" aria-hidden="true"></div>
         </header>
         <div class="admin-welcome">
           <div class="admin-welcome-greeting">
-            <h1>${greeting}, ${esc(userName)} ${greetingEmoji}</h1>
+            <h1 id="adminGreeting">${greeting}, ${esc(userName)} ${greetingEmoji}</h1>
             <div class="admin-welcome-sub">
               <span>Aquí tienes un resumen de tu Personal Hub.</span>
             </div>
@@ -239,11 +243,15 @@ export function AdminPage(router) {
 
   const content = page.querySelector('#adminContent');
 
-  // Live clock
+  // Live clock. El saludo también se refresca: si el panel queda abierto
+  // cruzar las 12:00 o las 19:00, "buenas noches" se quedaba obsoleto.
   const timeText = page.querySelector('#adminTimeText');
+  const greetingEl = page.querySelector('#adminGreeting');
   const updateClock = () => {
-    if (timeText) {
-      timeText.textContent = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    if (timeText) timeText.textContent = timeInSpain();
+    if (greetingEl) {
+      const g = greetingFor(hourInSpain());
+      greetingEl.textContent = `${g.text}, ${userName} ${g.emoji}`;
     }
   };
   updateClock();
@@ -256,11 +264,38 @@ export function AdminPage(router) {
   }
 
   // ===== TOPBAR NAV =====
+  // Con 8 secciones la barra no cabe en pantallas normales: el degradado
+  // avisa de que sigue habiendo pestañas a la derecha y desaparece al llegar
+  // al final. Sin esto, Notificaciones/Actividad/Configuración quedaban
+  // escondidas sin ninguna pista de que existieran.
+  const topNav = page.querySelector('#adminTopNav');
+  const topFade = page.querySelector('#adminTopFade');
+  function syncTopFade() {
+    if (!topNav || !topFade) return;
+    const queda = topNav.scrollWidth - topNav.clientWidth - topNav.scrollLeft;
+    topFade.hidden = queda <= 2;
+  }
+  if (topNav && topFade) {
+    topNav.addEventListener('scroll', syncTopFade, { passive: true });
+    window.addEventListener('resize', syncTopFade);
+    // Un frame después para tener ya el ancho real calculado.
+    requestAnimationFrame(syncTopFade);
+  }
+
   function setActiveSection(btn, section) {
     page.querySelectorAll('.admin-topbar-tab').forEach(t => t.classList.remove('active'));
     if (btn) btn.classList.add('active');
     S.section = section;
     loadSection(section);
+    // Al cambiar de sección, deja la pestaña activa a la vista.
+    if (topNav && btn) {
+      const r = btn.getBoundingClientRect();
+      const nr = topNav.getBoundingClientRect();
+      if (r.left < nr.left || r.right > nr.right) {
+        btn.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+    }
+    syncTopFade();
   }
 
   page.querySelectorAll('.admin-topbar-tab').forEach(item => {
@@ -331,6 +366,7 @@ export function AdminPage(router) {
   page.cleanup = () => {
     document.removeEventListener('keydown', escapeHandler);
     clearInterval(clockInterval);
+    window.removeEventListener('resize', syncTopFade);
     // Desuscribe del aviso de ánimos en vivo (se reinstala en loadMoods)
     if (moodRealTimeOff) { moodRealTimeOff(); moodRealTimeOff = null; }
   };
@@ -367,10 +403,7 @@ export function AdminPage(router) {
       <section class="admin-section active">
         <div class="admin-section-header"><h2>${UI.dash} Resumen general</h2></div>
         <div class="dash-metrics">
-          ${'<div class="dash-metric skeleton-card"></div>'.repeat(5)}
-        </div>
-        <div class="dash-metrics">
-          ${'<div class="dash-metric skeleton-card"></div>'.repeat(5)}
+          ${'<div class="dash-metric skeleton-card"></div>'.repeat(12)}
         </div>
       </section>
     `;
@@ -474,6 +507,11 @@ export function AdminPage(router) {
       { icon: '📝', value: audiosList.length, label: 'Notas', trend: 'Notas de voz' },
       { icon: '🖼️', value: galleryPhotos, label: 'Fotos', trend: 'En la galería' },
       { icon: '💬', value: mensajes, label: 'Mensajes', trend: 'En frases' },
+      // Series y Noticias ya se calculaban para la dona, pero no salían en
+      // ninguna métrica. Con ellas son 12 tarjetas: número que encaja exacto
+      // en 3, 4 y 6 columnas, así que no queda nunca una huérfana al final.
+      { icon: '📺', value: seriesCount, label: 'Series y películas', trend: 'En el catálogo' },
+      { icon: '📰', value: newsList.length, label: 'Noticias', trend: 'Publicadas' },
       { icon: '🔔', value: unreadReasons + unreadLetters, label: 'Notificaciones', trend: 'Sin leer' }
     ];
     const metricCard = (m) => `
@@ -505,33 +543,137 @@ export function AdminPage(router) {
       return days;
     };
 
-    const areaChart = (days) => {
+    // ---- Gráfico de área ----
+    // El eje se escalaba con 0.66 / 0.33 del máximo real, así que las
+    // líneas de rejilla caían en 4.29 / 8.58 y quedaban irregulares, y los
+    // <circle> se deformaban en elipses por el preserveAspectRatio="none".
+    // Ahora: escala de paso redondo, curva suave y sin puntos deformados
+    // (la lectura fina se hace con la guía + tooltip al pasar el ratón).
+    const CHART_METRICS = { activity: 'Actividad', mood: 'Ánimos', visits: 'Visitas' };
+
+    /** Redondea el paso del eje a 1/2/5 x 10^n para que los ticks sean legibles. */
+    const niceStep = (raw) => {
+      if (!(raw > 0)) return 1;
+      const mag = 10 ** Math.floor(Math.log10(raw));
+      const norm = raw / mag;
+      return (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+    };
+
+    /** Catmull-Rom -> Bézier. La y de los puntos de control es la de los
+     *  nodos, así que la curva nunca se hunde bajo la base ni sobrepasa el pico. */
+    const smoothPath = (pts) => {
+      const f = (n) => n.toFixed(1);
+      if (pts.length < 3) {
+        return pts.map((p, i) => `${i ? 'L' : 'M'}${f(p[0])},${f(p[1])}`).join(' ');
+      }
+      let d = `M${f(pts[0][0])},${f(pts[0][1])}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[i + 2] || p2;
+        const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+        const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+        d += ` C${f(c1x)},${f(p1[1])} ${f(c2x)},${f(p2[1])} ${f(p2[0])},${f(p2[1])}`;
+      }
+      return d;
+    };
+
+    const areaChart = (days, metric = chartMetric) => {
+      const nombre = CHART_METRICS[metric] || 'Actividad';
       const W = 540, H = 150, PAD = 10;
-      const max = Math.max(...days.map(d => d.count), 4);
+      const counts = days.map(d => d.count);
+      const total = counts.reduce((a, b) => a + b, 0);
+      const rawMax = Math.max(...counts, 1);
+      const step = niceStep(rawMax / 4);
+      const max = step * 4;
       const stepX = (W - PAD * 2) / (days.length - 1 || 1);
       const y = (c) => H - PAD - (c / max) * (H - PAD * 2);
       const pts = days.map((d, i) => [PAD + i * stepX, y(d.count)]);
-      const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+      const line = smoothPath(pts);
       const area = `${line} L${(W - PAD).toFixed(1)},${(H - PAD).toFixed(1)} L${PAD},${(H - PAD).toFixed(1)} Z`;
-      const grid = [1, 0.66, 0.33, 0].map(f => Math.round(max * f));
+      const grid = [max, max * 0.75, max * 0.5, max * 0.25, 0];
       const labelsEvery = Math.max(1, Math.ceil(days.length / 6));
+      // Marcas de fecha: se descarta la que quede demasiado cerca de la
+      // última. Con 0.9 la última pareja conserva margen incluso en móvil,
+      // donde "27 sept" y "1 oct" se pegaban.
+      const marked = [];
+      for (let i = 0; i < days.length; i += labelsEvery) marked.push(i);
+      while (marked.length > 1 && (days.length - 1) - marked[marked.length - 1] < labelsEvery * 0.9) {
+        marked.pop();
+      }
+      if (marked[marked.length - 1] !== days.length - 1) marked.push(days.length - 1);
+
+      if (!total) {
+        return `
+          <div class="dash-area-empty">
+            <span aria-hidden="true">📉</span>
+            <strong>Sin ${esc(nombre.toLowerCase())} en ${days.length} días</strong>
+            <span>No hay nada que dibujar todavía</span>
+          </div>`;
+      }
+
       return `
-        <svg class="dash-area-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Actividad de los últimos ${days.length} días">
-          <defs>
-            <linearGradient id="dashAreaFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#ff6b4a" stop-opacity="0.32"/>
-              <stop offset="100%" stop-color="#ff6b4a" stop-opacity="0.02"/>
-            </linearGradient>
-          </defs>
-          ${grid.map(g => `<line x1="${PAD}" y1="${y(g)}" x2="${W - PAD}" y2="${y(g)}" class="dash-area-grid"/>`).join('')}
-          <path d="${area}" fill="url(#dashAreaFill)"/>
-          <path d="${line}" fill="none" class="dash-area-line"/>
-          ${pts.map((p, i) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${days[i].count ? 3 : 1.6}" class="dash-area-dot"/>`).join('')}
-        </svg>
+        <div class="dash-area-wrap">
+          <svg class="dash-area-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+               aria-label="${esc(nombre)} de los últimos ${days.length} días. Máximo ${rawMax}, total ${total}">
+            <defs>
+              <linearGradient id="dashAreaFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ff6b4a" stop-opacity="0.32"/>
+                <stop offset="100%" stop-color="#ff6b4a" stop-opacity="0.02"/>
+              </linearGradient>
+            </defs>
+            ${grid.map(g => `<line x1="${PAD}" y1="${y(g).toFixed(1)}" x2="${W - PAD}" y2="${y(g).toFixed(1)}" class="dash-area-grid"/>`).join('')}
+            <path d="${area}" fill="url(#dashAreaFill)"/>
+            <path d="${line}" fill="none" class="dash-area-line"/>
+            <line class="dash-area-guide" x1="0" y1="${PAD}" x2="0" y2="${H - PAD}"/>
+            ${days.map((d, i) => {
+              const cx = PAD + (i + 0.5) * stepX;
+              return `<rect class="dash-area-hit" x="${(cx - stepX / 2).toFixed(1)}" y="0"
+                            width="${stepX.toFixed(1)}" height="${H}"
+                            data-i="${i}" data-x="${cx.toFixed(1)}"/>`;
+            }).join('')}
+          </svg>
+          <div class="dash-area-tip" hidden></div>
+        </div>
+        <div class="dash-area-foot">
+          <span class="dash-area-summary">
+            <strong>${total}</strong> en ${days.length} días · máx. <strong>${rawMax}</strong>
+          </span>
+          <span class="dash-area-peak" title="Techo del eje">eje hasta ${max}</span>
+        </div>
         <div class="dash-area-labels">
-          ${days.map((d, i) => (i % labelsEvery === 0 || i === days.length - 1)
-            ? `<span>${d.label}</span>` : `<span></span>`).join('')}
+          ${days.map((d, i) => {
+            if (!marked.includes(i)) return '';
+            const pct = (i / (days.length - 1)) * 100;
+            // El primero y el último se alinean a los bordes para que no
+            // se salgan de la caja al traducirlos la mitad.
+            const edge = i === 0 ? ' is-first' : i === days.length - 1 ? ' is-last' : '';
+            return `<span class="dash-label${edge}" style="left:${pct.toFixed(2)}%">${d.label}</span>`;
+          }).join('')}
         </div>`;
+    };
+
+    /** Guía vertical + tooltip con el dato exacto de cada día. */
+    const bindAreaTip = (el, days) => {
+      const tip = el.querySelector('.dash-area-tip');
+      const guide = el.querySelector('.dash-area-guide');
+      if (!tip || !guide) return;
+      const hide = () => { tip.hidden = true; guide.classList.remove('is-on'); };
+      el.querySelectorAll('.dash-area-hit').forEach(hit => {
+        hit.addEventListener('pointerenter', () => {
+          const d = days[Number(hit.dataset.i)];
+          if (!d) return;
+          tip.textContent = `${d.label} · ${d.count ? `${d.count} ${d.count === 1 ? 'evento' : 'eventos'}` : 'sin registros'}`;
+          tip.style.left = `${((Number(hit.dataset.i) + 0.5) / days.length) * 100}%`;
+          tip.hidden = false;
+          const x = hit.dataset.x;
+          guide.setAttribute('x1', x);
+          guide.setAttribute('x2', x);
+          guide.classList.add('is-on');
+        });
+      });
+      el.querySelector('.dash-area-wrap')?.addEventListener('pointerleave', hide);
     };
 
     // ---- Distribución de contenido (dona) ----
@@ -551,10 +693,14 @@ export function AdminPage(router) {
       return seg;
     });
     const R = 42, CIRC = 2 * Math.PI * R;
+    // Cada segmento lleva su <title>: al pasar el ratón se ve la cifra
+    // exacta y, sin JavaScript, sigue siendo legible para el lector.
     const donutHtml = distSegs.map(d => {
       const len = Math.max(d.frac * CIRC - 2, 0.5);
       return `<circle r="${R}" cx="60" cy="60" fill="none" stroke="${d.color}" stroke-width="14"
-        stroke-dasharray="${len.toFixed(1)} ${(CIRC - len).toFixed(1)}" stroke-dashoffset="${(-d.start * CIRC).toFixed(1)}" stroke-linecap="butt"/>`;
+        stroke-dasharray="${len.toFixed(1)} ${(CIRC - len).toFixed(1)}" stroke-dashoffset="${(-d.start * CIRC).toFixed(1)}" stroke-linecap="butt">
+        <title>${esc(d.label)}: ${d.count} (${Math.round(d.frac * 100)}%)</title>
+      </circle>`;
     }).join('');
     const donutLegend = distSegs.map(d => `
       <div class="dash-legend-row">
@@ -564,12 +710,13 @@ export function AdminPage(router) {
       </div>`).join('');
 
     // ---- Tendencia de ánimo ----
-    const MOOD_FACE = { great: '🤍🤍', good: '😊', meh: '😕', bad: '😔', love: '❤️' };
-    const MOOD_TITLE = { great: 'Muy bien', good: 'Feliz', meh: 'Regular', bad: 'Necesita un abrazo', love: 'Enamorada' };
     const moodCounts = {};
     moods.forEach(m => { const k = m.mood || m.status || 'good'; moodCounts[k] = (moodCounts[k] || 0) + 1; });
     const dominant = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
     const domKey = dominant ? dominant[0] : 'good';
+    // Etiqueta y emoji del catalogs real: con el mapa local anterior, un
+    // ánimo vigente ("cariño") caía en el respaldo y se pintaba "Feliz".
+    const domInfo = moodInfo(domKey);
     const avgScore = moods.length
       ? moods.reduce((s, m) => s + (moodInfo(m.mood || m.status).score ?? 2), 0) / moods.length
       : 2;
@@ -580,16 +727,50 @@ export function AdminPage(router) {
       weekCounts[new Date(m.date + 'T12:00:00').getDay()]++;
     });
     const weekMax = Math.max(...weekCounts, 1);
+    const weekTop = weekCounts.indexOf(weekMax);
+    const weekTops = weekCounts.map((n, i) => (n && n === weekMax ? i : -1)).filter(i => i >= 0);
     const weekBars = WEEK_LABELS.map((l, i) => {
-      const h = weekCounts[i] ? Math.max(Math.round((weekCounts[i] / weekMax) * 100), 12) : 4;
-      return `<div class="dash-week-col" title="${l}: ${weekCounts[i]} registro${weekCounts[i] === 1 ? '' : 's'}">
-        <div class="dash-week-wrap"><div class="dash-week-bar${weekCounts[i] ? ' has' : ''}" style="height:${h}%"></div></div>
+      const n = weekCounts[i];
+      const h = n ? Math.max(Math.round((n / weekMax) * 100), 12) : 4;
+      // La cifra se pinta encima de la barra: antes solo se veía al pasar el
+      // ratón, y el gráfico no dizia cuántas barras había ni cuál era la mayor.
+      return `<div class="dash-week-col${n === weekMax && n ? ' top' : ''}" title="${l}: ${n} registro${n === 1 ? '' : 's'}">
+        <div class="dash-week-count">${n || ''}</div>
+        <div class="dash-week-wrap"><div class="dash-week-bar${n ? ' has' : ''}" style="height:${h}%"></div></div>
         <span class="dash-week-label">${l}</span>
       </div>`;
     }).join('');
+    // Reparto por tipo de ánimo. moodCounts ya se calculaba entero para
+    // sacar el dominante y se tiraba el resto; el panel se quedaba con
+    // medio cuerpo de hueco al lado de "Fechas importantes".
+    // Usa el catálogo real (MOOD_ORDER de módulo + moodInfo): antes esta
+    // lista local solo traía los ids ANTIGUOS y pintaba con un vocabulario
+    // inventado ("Enamorada", "Feliz"), así que los ánimos vigentes
+    // (preocupada, enfadada, triste, bien, cariño) no aparecían nunca.
+    const moodDist = MOOD_ORDER
+      .filter(k => moodCounts[k])
+      .map(k => ({ k, n: moodCounts[k], info: moodInfo(k) }));
+    const moodDistMax = Math.max(...moodDist.map(d => d.n), 1);
+    const moodDistHtml = moodDist.length ? moodDist.map(d => `
+        <div class="dash-mooddist-row${d.k === domKey ? ' is-current' : ''}">
+          <span class="dash-mooddist-face" aria-hidden="true">${esc(d.info.emoji)}</span>
+          <span class="dash-mooddist-label">${esc(d.info.label)}${d.k === domKey ? ' <span class="dash-mooddist-tag"> predominante</span>' : ''}</span>
+          <span class="dash-mooddist-track"><span class="dash-mooddist-fill" style="width:${Math.max(Math.round(d.n / moodDistMax * 100), 3)}%"></span></span>
+          <span class="dash-mooddist-count">${d.n}</span>
+        </div>`).join('') : '<p class="dash-week-caption">Sin registros de ánimo todavía</p>';
+
+    const weekCaption = weekCounts.some(Boolean)
+      ? (weekTops.length > 1
+        // Empate: nombrar solo uno mentía, así que se listan todos.
+        ? `<p class="dash-week-caption">Empate en el máximo (${weekMax}): <strong>${weekTops.slice(0, 4).map(i => WEEK_LABELS[i]).join(', ')}</strong>${weekTops.length > 4 ? ` y ${weekTops.length - 4} más` : ''}</p>`
+        : `<p class="dash-week-caption">Día con más registros: <strong>${WEEK_LABELS[weekTop]}</strong> (${weekMax})</p>`)
+      : '<p class="dash-week-caption">Sin registros de ánimo todavía</p>';
 
     // ---- Fechas importantes ----
-    const fmtDate = (d) => d.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+    // Formato corto ("3 jul 2027"): el largo ("3 de julio de 2027") no cabía
+    // junto a la cuenta atrás y se partía en dos renglones. Además coincide con
+    // la fecha que ya usan las tarjetas de métricas ("3 jul 2025").
+    const fmtDate = (d) => d.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
     const todayStart = new Date(today + 'T00:00:00');
     const daysUntil = (target) => Math.round((target - todayStart) / 864e5);
     const startAnniv = new Date(annivISO + 'T00:00:00');
@@ -607,14 +788,40 @@ export function AdminPage(router) {
     const userBdDays = daysUntil(userBd);
     const hubTitles = hubDates.titles || {};
     const hubRecurring = hubDates.recurring || {};
+    // Antes cada ficha repetia la fecha original ("3 de septiembre de 2012")
+    // junto a una cuenta atrás que apuntaba a 2027: dos fechas distintas en la
+    // misma línea. Ahora se muestra la PRÓXIMA ocurrencia y el año original
+    // pasa a la nota ("desde 2012"), que es lo que sí es informativo.
+    const nextOccurrence = (iso) => {
+      const start = new Date(iso + 'T00:00:00');
+      let d = new Date(todayDate.getFullYear(), start.getMonth(), start.getDate());
+      if (d < todayStart) d = new Date(todayDate.getFullYear() + 1, start.getMonth(), start.getDate());
+      return d;
+    };
+    const sinceNote = (iso, everyYear) => {
+      const y = new Date(iso + 'T00:00:00').getFullYear();
+      const parts = [];
+      if (everyYear) parts.push('cada año');
+      if (y < todayDate.getFullYear()) parts.push(`desde ${y}`);
+      // Espacio duro tras el punto: si la línea se parte, el separador va con
+      // la palabra que sigue y no queda colgando al final ("cada año ·").
+      // Carácter, no entidad: la nota pasa por esc() y &nbsp; se imprimiría
+      // literal.
+      return parts.join(' ·\u00A0');
+    };
     const fechas = [
       { icon: '🤍', title: hubTitles.anniversary || `${annivYears} año${annivYears === 1 ? '' : 's'} juntos`, date: fmtDate(anniv),
-        badge: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`, hot: annivDays <= 30, recurring: hubRecurring.anniversary !== false },
-      { icon: '🎁', title: hubTitles.birthday || 'Cumpleaños de dada', date: fmtDate(bd),
-        badge: birthdayDays === 0 ? '¡Hoy! 🎂' : `En ${birthdayDays} día${birthdayDays === 1 ? '' : 's'}`, hot: birthdayDays <= 30, recurring: hubRecurring.birthday !== false },
-      { icon: '🎂', title: hubTitles.userBirthday || 'Tu cumpleaños', date: fmtDate(ubd),
-        badge: userBdDays === 0 ? '¡Hoy! 🎂' : `En ${userBdDays} día${userBdDays === 1 ? '' : 's'}`, hot: userBdDays <= 30, recurring: hubRecurring.userBirthday !== false },
-      { icon: '📅', title: hubTitles.hubStart || 'Primer mensaje', date: fmtDate(new Date(hubStartISO + 'T00:00:00')), badge: 'Ya pasó', muted: true, recurring: hubRecurring.hubStart === true }
+        note: sinceNote(annivISO, hubRecurring.anniversary !== false),
+        badge: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`, hot: annivDays <= 30 },
+      { icon: '🎁', title: hubTitles.birthday || 'Cumpleaños de dada', date: fmtDate(birthday),
+        note: sinceNote(birthdayISO, hubRecurring.birthday !== false),
+        badge: birthdayDays === 0 ? '¡Hoy! 🎂' : `En ${birthdayDays} día${birthdayDays === 1 ? '' : 's'}`, hot: birthdayDays <= 30 },
+      { icon: '🎂', title: hubTitles.userBirthday || 'Tu cumpleaños', date: fmtDate(userBd),
+        note: sinceNote(userBirthdayISO, hubRecurring.userBirthday !== false),
+        badge: userBdDays === 0 ? '¡Hoy! 🎂' : `En ${userBdDays} día${userBdDays === 1 ? '' : 's'}`, hot: userBdDays <= 30 },
+      { icon: '📅', title: hubTitles.hubStart || 'Primer mensaje', date: fmtDate(new Date(hubStartISO + 'T00:00:00')),
+        note: sinceNote(hubStartISO, false),
+        badge: 'Ya pasó', muted: true }
     ];
 
     // ---- Actividad reciente ----
@@ -726,11 +933,10 @@ export function AdminPage(router) {
           </div>
         </div>
 
+        <!-- Una sola rejilla: con dos, cada una dejaba su hueco al final
+             cuando la pantalla da 3 columnas (3+2 y 3+2). -->
         <div class="dash-metrics">
-          ${row1.map(metricCard).join('')}
-        </div>
-        <div class="dash-metrics">
-          ${row2.map(metricCard).join('')}
+          ${[...row1, ...row2].map(metricCard).join('')}
         </div>
 
         <div class="admin-dash-grid">
@@ -747,7 +953,7 @@ export function AdminPage(router) {
                 <option value="30">30 días</option>
               </select>
             </div>
-            <div id="dashActivityChart">${areaChart(seriesDays(14, 'activity'))}</div>
+            <div id="dashActivityChart"></div>
           </div>
           <div class="admin-panel">
             <div class="admin-panel-head"><h4>Distribución de contenido</h4></div>
@@ -772,12 +978,14 @@ export function AdminPage(router) {
             </div>
             <div class="dash-mood-head">
               <div class="dash-mood-text">
-                <div class="dash-mood-main">${MOOD_TITLE[domKey] || 'Feliz'} ${MOOD_FACE[domKey] || '😊'}</div>
+                <div class="dash-mood-main">${esc(domInfo.label)} ${esc(domInfo.emoji)}</div>
                 <div class="dash-mood-sub">${avgScore >= 2.5 ? 'Predomina el buen ánimo. ¡Sigue así!' : 'Un poquito de cariño no viene mal hoy.'}</div>
               </div>
-              <div class="dash-mood-face">${MOOD_FACE[domKey] || '😊'}</div>
+              <div class="dash-mood-face">${esc(domInfo.emoji)}</div>
             </div>
             <div class="dash-week-chart">${weekBars}</div>
+            ${weekCaption}
+            <div class="dash-mooddist">${moodDistHtml}</div>
           </div>
           <div class="admin-panel">
             <div class="admin-panel-head"><h4>Fechas importantes</h4></div>
@@ -787,7 +995,8 @@ export function AdminPage(router) {
                   <div class="dash-fecha-icon">${f.icon}</div>
                   <div class="dash-fecha-body">
                     <div class="dash-fecha-title">${f.title}</div>
-                    <div class="dash-fecha-date">${f.date}${f.recurring ? ' <span class="dash-fecha-note">· cada año</span>' : ''}</div>
+                    <div class="dash-fecha-date">${f.date}</div>
+                    ${f.note ? `<div class="dash-fecha-note">${esc(f.note)}</div>` : ''}
                   </div>
                   <span class="dash-fecha-badge${f.hot ? ' hot' : ''}${f.muted ? ' muted' : ''}">${f.badge}</span>
                 </div>`).join('')}
@@ -834,7 +1043,7 @@ export function AdminPage(router) {
           <div class="admin-panel-head"><h4>Atajos de gestión</h4></div>
           <div class="dash-shortcuts">
             ${shortcuts.map(s => `
-              <button type="button" class="dash-shortcut" data-shortcut='${JSON.stringify({ href: s.href || '', section: s.section || '', sub: s.sub || '' })}'>
+              <button type="button" class="dash-shortcut" data-shortcut='${JSON.stringify({ section: s.section || '', sub: s.sub || '' })}'>
                 <span class="dash-shortcut-icon">${s.icon}</span>
                 <span class="dash-shortcut-label">${s.label}</span>
                 <span class="dash-shortcut-count">${s.count} ${s.count === 1 ? 'elemento' : 'elementos'}</span>
@@ -855,22 +1064,34 @@ export function AdminPage(router) {
       }
     }).catch(() => {});
 
-    // Métrica del gráfico: Actividad | Ánimos
+    // Gráfico: una sola vía de render para métrica y rango, que además
+    // vuelve a enganchar la guía/tooltip sobre el HTML recién inyectado.
+    const renderChart = () => {
+      const el = page.querySelector('#dashActivityChart');
+      const range = page.querySelector('#dashActivityRange');
+      if (!el) return;
+      const days = seriesDays(Number(range?.value || 14), chartMetric);
+      el.innerHTML = areaChart(days);
+      bindAreaTip(el, days);
+    };
+
+    // Métrica del gráfico: Actividad | Ánimos | Visitas
     page.querySelectorAll('.dash-chart-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
         chartMetric = btn.dataset.metric;
-        page.querySelectorAll('.dash-chart-toggle').forEach(b => b.classList.toggle('active', b === btn));
-        const range = page.querySelector('#dashActivityRange');
-        const el = page.querySelector('#dashActivityChart');
-        if (el && range) el.innerHTML = areaChart(seriesDays(Number(range.value), chartMetric));
+        page.querySelectorAll('.dash-chart-toggle').forEach(b => {
+          const on = b === btn;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-pressed', String(on));
+        });
+        renderChart();
       });
     });
 
     // Rango del gráfico
-    page.querySelector('#dashActivityRange')?.addEventListener('change', (e) => {
-      const el = page.querySelector('#dashActivityChart');
-      if (el) el.innerHTML = areaChart(seriesDays(Number(e.target.value), chartMetric));
-    });
+    page.querySelector('#dashActivityRange')?.addEventListener('change', renderChart);
+
+    renderChart();
 
     // Accesos rápidos → cambian de sección
     page.querySelectorAll('[data-goto]').forEach(btn => {
@@ -967,6 +1188,7 @@ export function AdminPage(router) {
       const dailyMoods = monthMoods[ds] || [];
       const isToday = ds === todayStr;
       const hasMood = dailyMoods.length > 0;
+      const isFuture = ds > todayStr;
 
       let emojiHtml = '';
       let titleText = `${ds}: Sin registro`;
@@ -978,7 +1200,7 @@ export function AdminPage(router) {
         titleText = `${esc(ds)}: ${labels}`;
       }
 
-      html += `<div class="moods-cal-cell${isToday?' today':''}${hasMood?' has-mood':''}" title="${titleText}">
+      html += `<div class="moods-cal-cell${isToday?' today':''}${hasMood?' has-mood':''}${isFuture?' future':''}" title="${titleText}">
         <span class="moods-cal-day">${day}</span>${emojiHtml}
       </div>`;
     }
@@ -1001,27 +1223,53 @@ export function AdminPage(router) {
     });
     const avg = totalScore / entries.length;
     const avgEmoji = avg >= 3.5 ? '🤍🤍🤍' : avg >= 2.5 ? '😊' : avg >= 1.5 ? '😕' : avg >= 0.5 ? '😔' : '❤️';
+    const avgText = avg.toLocaleString('es', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-    let bestMood = '', bestCount = 0;
-    Object.entries(counts).forEach(([k, c]) => { if (c > bestCount) { bestCount = c; bestMood = k; } });
+    // "más frecuente" con empate: antes se quedaba con el primero que
+    // encontraba y ponía un único emoji, así que en un mes con 1+1
+    // afirmaba que uno era el más frecuente cuando estaban empatados.
+    const maxCount = Math.max(...Object.values(counts), 0);
+    const topMoods = Object.keys(counts).filter(k => counts[k] === maxCount);
+    const topFaces = topMoods.map(k => moodInfo(k).emoji).join('');
+    const topLabel = topMoods.length === 1
+      ? moodInfo(topMoods[0]).label
+      : `${topMoods.length} empatados`;
+
+    // Días con registro: "ocupados" sobre el total de días del mes.
+    const daysWithMood = Object.values(monthMoods).filter(list => list.length > 0).length;
 
     stats.innerHTML = `<div class="moods-stats-row">
       <div class="moods-stat"><span class="moods-stat-num">${entries.length}</span><span class="moods-stat-label">registros totales</span></div>
-      <div class="moods-stat"><span class="moods-stat-num">${esc(moodInfo(bestMood).emoji)}</span><span class="moods-stat-label">más frecuente</span></div>
-      <div class="moods-stat"><span class="moods-stat-num">${avgEmoji}</span><span class="moods-stat-label">media del mes</span></div>
+      <div class="moods-stat" title="${esc(topLabel)}"><span class="moods-stat-num">${esc(topFaces)}</span><span class="moods-stat-label">más frecuente${maxCount > 0 ? ` · ${maxCount}${topMoods.length > 1 ? ' cada uno' : ''}` : ''}</span></div>
+      <div class="moods-stat" title="Media de la escala de 0 a 4"><span class="moods-stat-num">${esc(avgEmoji)} <span class="moods-stat-avg">${avgText}</span></span><span class="moods-stat-label">media del mes (0-4)</span></div>
+      <div class="moods-stat"><span class="moods-stat-num">${daysWithMood}<span class="moods-stat-avg">/${daysInMonth}</span></span><span class="moods-stat-label">días con registro</span></div>
     </div>`;
 
-    const order = MOOD_ORDER;
-    breakdown.innerHTML = '<h4>Desglose</h4>' + order.map(k => {
-      const count = counts[k] || 0;
-      const pct = entries.length > 0 ? Math.round(count / entries.length * 100) : 0;
-      const info = moodInfo(k);
-      return `<div class="moods-bar-row">
-        <span class="moods-bar-label">${esc(info.emoji)} ${esc(info.label)}</span>
-        <div class="moods-bar-track"><div class="moods-bar-fill mood-${k}" style="width:${pct}%"></div></div>
-        <span class="moods-bar-pct">${pct}%</span>
-      </div>`;
-    }).join('');
+    // Desglose: solo los ánimos que hay en el mes, de más a menos. Antes
+    // salían las 10 filas del catálogo y con dos registros ocho marcaban 0 %,
+    // y los ids antiguo y vigente comparten nombre ("Necesito cariño",
+    // "Bien"), así que había filas duplicadas sin explicación.
+    const rows = MOOD_ORDER
+      .filter(k => counts[k])
+      .sort((a, b) => counts[b] - counts[a] || MOOD_ORDER.indexOf(a) - MOOD_ORDER.indexOf(b));
+    // Si TODO el mes es del catálogo antiguo, decirlo una vez en la cabecera
+    // es mejor que repetir "antiguo" en cada fila; si está mezclado, la
+    // etiqueta por fila es la que explica cuál es cuál.
+    const allLegacy = rows.length > 0 && rows.every(k => moodInfo(k).legacy);
+    const anyCurrent = rows.some(k => !moodInfo(k).legacy);
+    breakdown.innerHTML = rows.length
+      ? `<h4>Desglose${allLegacy ? ' <span class="moods-breakdown-note">estados antiguos</span>' : ''}</h4>` + rows.map(k => {
+        const count = counts[k];
+        const pct = Math.round(count / entries.length * 100);
+        const info = moodInfo(k);
+        const tag = info.legacy && anyCurrent ? ' <span class="moods-bar-legacy">antiguo</span>' : '';
+        return `<div class="moods-bar-row" title="${esc(info.label)}: ${count} de ${entries.length} (${pct} %)${info.legacy ? ' · estado antiguo' : ''}">
+          <span class="moods-bar-label">${esc(info.emoji)} ${esc(info.label)}${tag}</span>
+          <div class="moods-bar-track"><div class="moods-bar-fill mood-${k}" style="width:${pct}%"></div></div>
+          <span class="moods-bar-pct">${count} · ${pct}%</span>
+        </div>`;
+      }).join('')
+      : '';
   }
 
   // ==========================================
@@ -1085,21 +1333,25 @@ export function AdminPage(router) {
     // Re-render header with count
     page.querySelector('.admin-section-header h2').innerHTML = `${UI.users} Usuarios <span class="admin-count-badge">${users.length}</span>`;
 
-    function renderUserList(list) {
+    function renderUserList(list, query = '') {
       const listEl = page.querySelector('#userList');
-      if (listEl) listEl.innerHTML = renderUsers(list, userMoodStats, visitStats);
+      if (listEl) listEl.innerHTML = renderUsers(list, userMoodStats, visitStats, query);
+      // Contador del encabezado: al buscar pasa a decir cuántas coinciden.
+      const badge = page.querySelector('.admin-count-badge');
+      if (badge) badge.textContent = String(list.length);
     }
 
     renderUserList(users);
 
     page.querySelector('#userSearch').addEventListener('input', function() {
-      const q = this.value.toLowerCase();
+      const raw = this.value.trim();
+      const q = raw.toLowerCase();
       const f = users.filter(u =>
         (u.email||'').toLowerCase().includes(q) ||
         (u.name||'').toLowerCase().includes(q) ||
-        (u.role||'').includes(q)
+        (u.role||'').toLowerCase().includes(q)
       );
-      renderUserList(f);
+      renderUserList(f, raw);
     });
 
     // Click on user actions (toggle / delete) or detail
@@ -1153,41 +1405,64 @@ export function AdminPage(router) {
     });
   }
 
-  function renderUsers(users, moodStats, visitStats) {
-    if (users.length === 0) return '<div class="admin-empty">No hay usuarios</div>';
+  function renderUsers(users, moodStats, visitStats, query = '') {
+    if (users.length === 0) {
+      // Sin esto, al buscar sin coincidencias ponía "No hay usuarios" y
+      // parecía que la cuenta había desaparecido.
+      return query
+        ? `<div class="admin-empty">Ningún usuario coincide con «${esc(query)}»</div>`
+        : '<div class="admin-empty">No hay usuarios</div>';
+    }
     return users.map((u) => {
       const initial = esc((u.name||u.email||'?').charAt(0).toUpperCase());
-      const status = u.enabled !== false ? '🟢' : '🔴';
+      const enabled = u.enabled !== false;
       const vs = visitStats[u.id];
       const online = vs?.lastTs && (Date.now() - vs.lastTs < 5 * 60e3);
       const lastLogin = vs?.lastTs ? relTimeShort(vs.lastTs) : (u.last_login ? new Date(u.last_login).toLocaleDateString('es') : '—');
       const stats = moodStats[u.id];
       const moodBadge = stats && stats.total > 0
         ? getMoodSummaryBadge(stats)
-        : '<span class="user-mood-none">Sin datos</span>';
+        : '<span class="user-mood-none">Sin ánimos</span>';
+      // La fecha del último ánimo va en la línea de estado, no como tercera
+      // etiqueta: con las tres en la misma fila la tarjeta se partía en tres
+      // renglones y quedaba desproporcionada.
+      const moodLast = stats && stats.lastDate
+        ? `<span class="user-status-sep">·</span> Último ánimo: ${relTimeShort(new Date(stats.lastDate + 'T12:00:00').getTime())}`
+        : '';
 
       return `<div class="admin-list-item" data-user-id="${esc(u.id)}" style="cursor:pointer">
         <div class="user-avatar-sm">
           ${u.photo
-            ? `<img src="${esc(u.photo)}" class="user-avatar-img" alt="">`
+            ? `<img src="${esc(u.photo)}" class="user-avatar-img" alt="">
+               `
             : `<div class="user-avatar-placeholder">${initial}</div>`
           }
         </div>
         <div style="flex:1;min-width:0">
           <div class="item-title">${esc(u.name||'Sin nombre')}
             ${u.role === 'admin' ? '<span class="admin-badge-tag">Admin</span>' : ''}
+            ${enabled ? '' : '<span class="admin-badge-tag warn">Deshabilitado</span>'}
           </div>
           <div class="item-sub">
-            ${u.email ? esc(u.email) : 'ID: ' + u.id.slice(0,12)+'…'}
-            · ${status} · ${online ? '<strong class="user-online">En línea ahora</strong>' : `Última conexión: ${lastLogin}`}
+            <span class="user-email">${u.email ? esc(u.email) : 'ID: ' + esc(u.id.slice(0,12)) + '…'}</span>
+            <span class="user-chips">
+              ${vs?.count ? `<span class="user-chip" title="Visitas registradas">👁 ${vs.count}</span>` : ''}
+              <span class="user-chip${enabled ? '' : ' off'}" title="${enabled ? 'Cuenta habilitada' : 'Cuenta deshabilitada'}">${enabled ? '🟢' : '🔴'} ${enabled ? 'Activo' : 'Inactivo'}</span>
+            </span>
+          </div>
+          <div class="user-status-line">
+            ${online
+              ? '<strong class="user-online">En línea ahora</strong>'
+              : `Última conexión: ${lastLogin}`}
+            ${moodLast}
           </div>
           <div class="user-mood-row">${moodBadge}</div>
         </div>
         <div class="item-actions">
-          <button class="item-action-btn" data-action="toggle" data-user-id="${esc(u.id)}" title="${u.enabled !== false ? 'Deshabilitar' : 'Habilitar'} usuario">
-            ${u.enabled !== false ? UI.toggleOn : UI.toggleOff}
+          <button class="item-action-btn" data-action="toggle" data-user-id="${esc(u.id)}" title="${enabled ? 'Deshabilitar' : 'Habilitar'} usuario" aria-label="${enabled ? 'Deshabilitar' : 'Habilitar'} a ${esc(u.name || u.email || 'este usuario')}">
+            ${enabled ? UI.toggleOn : UI.toggleOff}
           </button>
-          <button class="item-action-btn delete" data-action="delete-user" data-user-id="${esc(u.id)}" title="Eliminar usuario">${UI.trash}</button>
+          <button class="item-action-btn delete" data-action="delete-user" data-user-id="${esc(u.id)}" title="Eliminar usuario" aria-label="Eliminar a ${esc(u.name || u.email || 'este usuario')}">${UI.trash}</button>
         </div>
       </div>`;
     }).join('');
@@ -1195,17 +1470,23 @@ export function AdminPage(router) {
 
   function getMoodSummaryBadge(stats) {
     if (!stats || stats.total === 0) return '';
-    const best = Object.entries(stats.moods).sort((a, b) => b[1] - a[1])[0];
-    const emoji = esc(moodInfo(best[0]).emoji);
-    const pct = Math.round(best[1] / stats.total * 100);
-    const lastDate = stats.lastDate ? new Date(stats.lastDate + 'T12:00:00').toLocaleDateString('es') : '—';
-    return `
-      <span class="user-mood-badge" title="Último: ${lastDate}">
-        ${emoji} ${stats.total} registros
-      </span>
-      <span class="user-mood-badge muted">Principal: ${pct}%</span>
-      <span class="user-mood-badge muted">Últ: ${lastDate}</span>
-    `;
+    // Con empate se nombraba solo el primero que aparecía: "Principal: 50 %"
+    // sin decir de qué, y además a la carta entre dos estados igualados.
+    const max = Math.max(...Object.values(stats.moods));
+    const tops = Object.entries(stats.moods).filter(([, n]) => n === max);
+    const pct = Math.round(max / stats.total * 100);
+    const topFaces = tops.map(([id]) => moodInfo(id).emoji).join('');
+    const topNames = tops.map(([id]) => moodInfo(id).label).join(' / ');
+    // Línea de texto y no etiquetas: la columna mide ~250 px (los botones de
+    // acción reservan 72 px aunque solo aparezcan al pasar el ratón) y dos
+    // etiquetas inevitably se partían en dos renglones descuadrados.
+    const topText = tops.length === 1
+      ? `${esc(moodInfo(tops[0][0]).label)} <span class="user-mood-pct">(${pct} %)</span>`
+      : `<strong>${tops.length} estados</strong> empatados <span class="user-mood-pct">(${pct} %)</span>`;
+    return `<span class="user-mood-line"
+      title="Ánimo más repetido: ${esc(topNames)} — ${max} de ${stats.total} registros (${pct} %)">
+      ${esc(topFaces)} <strong>${stats.total}</strong> ${stats.total === 1 ? 'registro' : 'registros'} · ${topText}
+    </span>`;
   }
 
   async function showUserDetail(user, stats, visitStats) {
@@ -1486,12 +1767,10 @@ export function AdminPage(router) {
       renderCalendarAdmin(sub, data);
     } else {
       const items = data.items || [];
-      const isRegalos = id === 'regalos';
       sub.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <span style="color:var(--theme-text-secondary);font-size:var(--fs-sm);" id="contentItemCount">${items.length} elemento${items.length === 1 ? '' : 's'}</span>
           <div style="display:flex;gap:8px;">
-            ${isRegalos ? '<button class="admin-btn admin-btn-sm" id="viewGiftResponses">💌 Respuestas</button>' : ''}
             <button class="admin-btn admin-btn-sm" id="addContentItem">${UI.plus} Añadir</button>
           </div>
         </div>
@@ -1509,13 +1788,27 @@ export function AdminPage(router) {
       const listEl = page.querySelector('#contentItemsList');
       const countEl = page.querySelector('#contentItemCount');
       searchInput?.addEventListener('input', () => {
-        const q = searchInput.value.trim().toLowerCase();
+        const raw = searchInput.value.trim();
+        const q = raw.toLowerCase();
         const indexed = items.map((item, i) => ({ item, i }));
+        // Antes comparaba contra JSON.stringify(item) entero: buscar "id" o
+        // un trozo de URL devolvía todo, y cosas que no se ven en la lista
+        // (ids internos, flags) también coincidian. Ahora se busca solo en
+        // los campos que se ven.
         const filtered = q
-          ? indexed.filter(({ item }) => JSON.stringify(item).toLowerCase().includes(q))
+          ? indexed.filter(({ item, i }) => {
+            const label = String(contentItemLabel(item, id, i)).toLowerCase();
+            const extra = [
+              item?.artist, item?.creator, item?.text, item?.reason,
+              item?.date ? fmtContentDate(item.date) : '', item?.description, item?.content
+            ].filter(Boolean).join(' ').toLowerCase();
+            return label.includes(q) || extra.includes(q);
+          })
           : indexed;
-        listEl.innerHTML = renderContentItemsIndexed(filtered, id);
-        countEl.textContent = `${filtered.length} de ${items.length} elemento${items.length === 1 ? '' : 's'}`;
+        listEl.innerHTML = renderContentItemsIndexed(filtered, id, raw);
+        countEl.textContent = q
+          ? `${filtered.length} de ${items.length} elemento${items.length === 1 ? '' : 's'}`
+          : `${items.length} elemento${items.length === 1 ? '' : 's'}`;
       });
     }
   }
@@ -1577,7 +1870,7 @@ export function AdminPage(router) {
         <div class="upload-item-preview">${uploadPreviewHtml(u)}</div>
         <div class="upload-item-body">
           <div class="upload-item-name" title="${esc(u.name)}">${esc(u.name)}</div>
-          <div class="upload-item-meta">${kindLabel(u.kind)}${u.size ? ' · ' + formatBytes(u.size) : ''}</div>
+          <div class="upload-item-meta">${kindLabel(u.kind)}${u.size ? ' · ' + formatBytes(u.size) : ''}${u.date ? ' · ' + esc(relTimeShort(new Date(u.date).getTime())) : ''}</div>
           ${u.status === 'uploading'
             ? `<div class="upload-progress"><div class="upload-progress-fill" style="width:${u.progress}%"></div></div>
                <div class="upload-item-meta">Subiendo… ${u.progress}%</div>`
@@ -1590,7 +1883,7 @@ export function AdminPage(router) {
               : `<div class="upload-item-error">⚠ ${esc(u.error || 'Error al subir')}</div>`}
         </div>
       </div>
-    `).join('') || '<div class="admin-empty">Aún no hay archivos subidos en esta sesión.</div>';
+    `).join('') || '<div class="admin-empty">Todavía no has subido ningún archivo desde este navegador.</div>';
   }
 
   async function loadMultimedia() {
@@ -1598,23 +1891,25 @@ export function AdminPage(router) {
 
     // Cada sección gestiona su propia subida: el archivo va directo al bucket
     // correcto de Supabase y aparece en esa sección de la app al momento.
+    // El límite sale de UPLOAD_LIMITS (mismo que usa el servicio): el texto y
+    // la comprobación previa no pueden contradecir a lo que acepta el bucket.
     const SECTIONS = [
       {
         id: 'galeria', icon: '🖼️', title: 'Galería',
-        desc: 'Fotos (máx. 5 MB c/u) — aparecen al instante en la Galería de la app.',
-        accept: 'image/*', route: '/galeria',
+        desc: `Fotos (máx. ${UPLOAD_LIMITS.galeria} MB c/u) — aparecen al instante en la Galería de la app.`,
+        accept: 'image/*', route: '/galeria', maxMB: UPLOAD_LIMITS.galeria, maxBytes: UPLOAD_LIMITS.galeria * 1024 * 1024,
         uploadFn: (files) => db.uploadGalleryPhotos(files)
       },
       {
         id: 'memes', icon: '😂', title: 'Memes',
-        desc: 'Imágenes y vídeos (máx. 50 MB) — aparecen al instante en Memes.',
-        accept: 'image/*,video/*', route: '/memes',
+        desc: `Imágenes y vídeos (máx. ${UPLOAD_LIMITS.memes} MB) — aparecen al instante en Memes.`,
+        accept: 'image/*,video/*', route: '/memes', maxMB: UPLOAD_LIMITS.memes, maxBytes: UPLOAD_LIMITS.memes * 1024 * 1024,
         uploadFn: (files) => db.uploadMemes(files)
       },
       {
         id: 'audios', icon: '🎙️', title: 'Audios',
-        desc: 'Notas de voz (máx. 50 MB) — aparecen al instante en Audios del Rincón.',
-        accept: 'audio/*', route: '/audios',
+        desc: `Notas de voz (máx. ${UPLOAD_LIMITS.audios} MB) — aparecen al instante en Audios del Rincón.`,
+        accept: 'audio/*', route: '/audios', maxMB: UPLOAD_LIMITS.audios, maxBytes: UPLOAD_LIMITS.audios * 1024 * 1024,
         uploadFn: (files) => db.uploadAudios(files)
       }
     ];
@@ -1631,23 +1926,28 @@ export function AdminPage(router) {
         </div>
         <p class="muted-text" style="margin-top:-6px">Sube cada archivo desde su sección: va directo a Galería, Memes o Audios y aparece en la app al momento. (También puedes subir desde cada sección en la app.)</p>
 
-        <div class="admin-dash-grid">
+        <div class="admin-upload-grid">
           ${sections.map(s => `
-            <div class="admin-panel">
+            <div class="admin-panel upload-panel">
               <div class="admin-panel-head">
                 <h4>${s.icon} ${s.title}</h4>
                 <a class="admin-btn admin-btn-ghost admin-btn-sm" href="#${s.route}" rel="noopener">${UI.link} Abrir sección</a>
               </div>
-              <p class="muted-text">${s.desc}</p>
-              <div class="upload-dropzone" data-dropzone="${s.id}">
-                <div class="upload-dropzone-icon">${UI.cloud}</div>
-                <div class="upload-dropzone-title">Arrastra archivos aquí o toca para elegir</div>
-                <div class="upload-dropzone-sub">${s.id === 'galeria' ? 'Fotos' : s.id === 'memes' ? 'Imágenes y vídeos' : 'Audios (mp3, m4a, ogg, wav…)'}</div>
-                <input type="file" data-input="${s.id}" multiple accept="${s.accept}" hidden>
-              </div>
-              <div class="admin-subsection" style="margin-top:12px">
-                <h4>Subidas recientes (${s.uploads.length})</h4>
-                <div class="upload-list" data-list="${s.id}"></div>
+              <div class="upload-panel-body">
+                <div>
+                  <p class="muted-text">${s.desc}</p>
+                  <div class="upload-dropzone" data-dropzone="${s.id}" role="button" tabindex="0"
+                       aria-label="Subir archivos a ${s.title}: arrastra aquí o pulsa para elegir">
+                    <div class="upload-dropzone-icon">${UI.cloud}</div>
+                    <div class="upload-dropzone-title">Arrastra archivos aquí o toca para elegir</div>
+                    <div class="upload-dropzone-sub">${s.id === 'galeria' ? 'Fotos' : s.id === 'memes' ? 'Imágenes y vídeos' : 'Audios (mp3, m4a, ogg, wav…)'}</div>
+                    <input type="file" data-input="${s.id}" multiple accept="${s.accept}" hidden>
+                  </div>
+                </div>
+                <div class="admin-subsection">
+                  <h4>Subidas recientes (${s.uploads.length})</h4>
+                  <div class="upload-list" data-list="${s.id}"></div>
+                </div>
               </div>
             </div>`).join('')}
         </div>
@@ -1665,15 +1965,36 @@ export function AdminPage(router) {
 
       const renderList = () => renderUploadsList(s.uploads, listEl);
       const pickFiles = (files) => {
-        const valid = [...files].filter(f => f && f.size > 0);
-        if (!valid.length) return;
-        valid.forEach(file => {
+        const incoming = [...files].filter(f => f && f.size > 0);
+        if (!incoming.length) return;
+        // Comprobación previa con el mismo límite que aplica el servicio: el
+        // aviso salía después de empezar la subida, y arrastrar un .txt a la
+        // zona de Fotos no lo frenaba el accept del input.
+        const aceptados = [];
+        const rechazados = [];
+        incoming.forEach(file => {
+          const motivo = !s.accept.split(',').some(a => {
+            const tipo = a.trim().replace('*', '');
+            return tipo && file.type.startsWith(tipo);
+          })
+            ? `${file.name}: tipo no admitido`
+            : file.size > s.maxBytes
+              ? `${file.name}: supera los ${s.maxMB} MB`
+              : '';
+          if (motivo) rechazados.push(motivo);
+          else aceptados.push(file);
+        });
+        if (rechazados.length) showToast(rechazados[0] + (rechazados.length > 1 ? ` (+${rechazados.length - 1} más)` : ''), 'error');
+        if (!aceptados.length) return;
+
+        aceptados.forEach(file => {
           const entry = {
             name: file.name,
             size: file.size,
             kind: fileKind(file),
             status: 'uploading',
             progress: 0,
+            date: new Date().toISOString(),
             preview: fileKind(file) === 'image' ? URL.createObjectURL(file) : ''
           };
           s.uploads.unshift(entry);
@@ -1688,9 +2009,12 @@ export function AdminPage(router) {
             });
             renderList();
             if (url) {
+              // La fecha es la de cada subida. Antes se estampaba new Date()
+              // al guardar, así que todas las entradas acababan con la fecha
+              // del último guardado y el historial no decía nada.
               saveUploadHistory(s.id, s.uploads.map(u => ({
                 name: u.name, size: u.size, kind: u.kind,
-                secure_url: u.secure_url, date: new Date().toISOString()
+                secure_url: u.secure_url, date: u.date || new Date().toISOString()
               })).filter(u => u.secure_url));
               showToast(`✅ ${file.name} subido a ${s.title}`, 'success');
             } else {
@@ -1706,6 +2030,13 @@ export function AdminPage(router) {
       };
 
       dropzone.addEventListener('click', () => input.click());
+      // La zona es un div con click: sin esto solo se podía usar con ratón.
+      dropzone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+          e.preventDefault();
+          input.click();
+        }
+      });
       input.addEventListener('change', () => { pickFiles(input.files); input.value = ''; });
       ['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => {
         e.preventDefault();
@@ -2373,14 +2704,19 @@ export function AdminPage(router) {
 
   function renderSeriesAdmin(sub, items, saveFn, reloadFn) {
     const favs = loadFavorites();
+    const sinPortada = items.filter(i => !(i.portada || i.cover || ''));
     sub.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
         <span style="color:var(--theme-text-secondary);font-size:var(--fs-sm);">${items.length} títulos · catálogo compartido con la sección</span>
-        <button class="admin-btn admin-btn-sm" id="addSeriesItem">${UI.plus} Añadir</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${sinPortada.length ? `<button class="admin-btn admin-btn-sm" id="fixPortadas" title="Rellenar desde el catálogo semilla las fichas sin imagen">🖼️ ${sinPortada.length} sin portada</button>` : ''}
+          <button class="admin-btn admin-btn-sm" id="addSeriesItem">${UI.plus} Añadir</button>
+        </div>
       </div>
       <div class="admin-list" id="seriesAdminList">
         ${items.length ? items.map((item, i) => {
           const cover = item.portada || item.cover || '';
+          const falta = !cover;
           return `
           <div class="admin-list-item" data-index="${i}">
             <div class="series-admin-cover">
@@ -2391,6 +2727,7 @@ export function AdminPage(router) {
                 <span class="admin-badge-tag">${item.tipo === 'pelicula' ? 'Película' : 'Serie'}</span>
                 ${item.destacado ? '<span class="admin-badge-tag accent">★ Destacado</span>' : ''}
                 ${favs.has(item.id) ? '<span class="admin-badge-tag">❤</span>' : ''}
+                ${falta ? '<span class="admin-badge-tag accent">Sin portada</span>' : ''}
               </div>
               <div class="item-sub">
                 ${getTotal(item) > 0 ? `${getTotal(item)} ep · ` : ''}${item.tipo === 'serie' ? 'Serie' : 'Película'}
@@ -2405,6 +2742,7 @@ export function AdminPage(router) {
       </div>
     `;
 
+    page.querySelector('#fixPortadas')?.addEventListener('click', () => repairPortadas(items, saveFn, reloadFn));
     page.querySelector('#addSeriesItem')?.addEventListener('click', () => openSeriesEditor(null, items, saveFn, reloadFn));
     page.querySelector('#seriesAdminList')?.addEventListener('click', (e) => {
       const editBtn = e.target.closest('[data-action="edit"]');
@@ -2430,6 +2768,47 @@ export function AdminPage(router) {
         );
       }
     });
+  }
+
+  // Rellena de golpe las fichas sin portada usando la semilla.
+  // El catálogo vivo vive en Supabase, así que corregir solo la semilla
+  // no arregla lo que ya está guardado: por esto el admin ofrece el botón.
+  // Solo se completa lo que está vacío y SOLO si la semilla conoce ese
+  // título; nunca pisa una portada que el usuario haya puesto a mano.
+  async function repairPortadas(items, saveFn, reloadFn) {
+    const semilla = new Map(defaultCatalog().map(i => [i.id, i]));
+    const faltan = items.filter(i => !(i.portada || i.cover || ''));
+    const completados = new Set();
+    const next = items.map(item => {
+      if (item.portada || item.cover) return item;
+      const ref = semilla.get(item.id);
+      if (!ref?.portada) return item;
+      completados.add(item.id);
+      return {
+        ...item,
+        portada: ref.portada,
+        banner: item.banner || ref.banner || ref.portada
+      };
+    });
+
+    const sinRespaldo = faltan.filter(i => !completados.has(i.id));
+    if (!completados.size) {
+      showToast(
+        sinRespaldo.length
+          ? `Ninguna de las ${sinRespaldo.length} fichas pendientes tiene imagen en la semilla: edítalas a mano`
+          : 'No hay portadas pendientes',
+        sinRespaldo.length ? 'error' : 'info'
+      );
+      return;
+    }
+
+    try {
+      await saveFn(next);
+      showToast(`✅ ${completados.size} portada${completados.size === 1 ? '' : 's'} completada${completados.size === 1 ? '' : 's'}`, 'success');
+      reloadFn('series');
+    } catch (err) {
+      showToast(err?.message || 'No se pudo guardar el catálogo', 'error');
+    }
   }
 
   function openSeriesEditor(item, items, saveFn, reloadFn) {
@@ -2514,7 +2893,7 @@ export function AdminPage(router) {
 
   function renderContentItems(items, type) {
     // Mismo renderer que la búsqueda: los índices apuntan a la lista completa
-    return renderContentItemsIndexed(items.map((item, i) => ({ item, i })), type);
+    return renderContentItemsIndexed(items.map((item, i) => ({ item, i })), type, '');
   }
 
   function renderSimpleList(items, label) {
@@ -2591,11 +2970,6 @@ export function AdminPage(router) {
       });
     }
 
-    const respBtn = page.querySelector('#viewGiftResponses');
-    if (respBtn) {
-      respBtn.addEventListener('click', () => openGiftResponses(type, items));
-    }
-
     // Delegación en el contenedor: funciona aunque la lista se re-renderice
     // al buscar (los data-index apuntan siempre a la lista completa `items`)
     const listEl = page.querySelector('#contentItemsList');
@@ -2628,24 +3002,24 @@ export function AdminPage(router) {
   }
 
   // Render de la lista filtrada por búsqueda (mantiene los índices originales)
-  function renderContentItemsIndexed(indexed, type) {
-    if (!indexed.length) return '<div class="admin-empty">No hay elementos para mostrar</div>';
+  function renderContentItemsIndexed(indexed, type, query = '') {
+    if (!indexed.length) {
+      return query
+        ? `<div class="admin-empty">Ningún elemento coincide con «${esc(query)}»</div>`
+        : '<div class="admin-empty">No hay elementos para mostrar</div>';
+    }
     return indexed.map(({ item, i }) => {
-      const label = type === 'razones' ? (item && typeof item === 'object' ? (item.text || item.reason || 'Sin texto') : (item || 'Sin texto')) :
-                    type === 'canciones' ? (item.title || 'Sin título') :
-                    type === 'noticias' ? (item.title || 'Sin título') :
-                    type === 'series' ? (item.title || item.name || 'Sin título') :
-                    type === 'regalos' ? (item.title || item.name || 'Regalo ' + (i + 1)) :
-                    type === 'audios' ? (item.title || 'Audio ' + (i + 1)) :
-                    'Elemento ' + (i + 1);
+      const label = contentItemLabel(item, type, i);
       let sub = type === 'canciones' ? ` — ${esc(item.artist || '')}` :
-                type === 'noticias' ? ` — ${esc(item.date || '')}` :
-                type === 'audios' ? ` — ${esc(item.date || '')}${item.creator ? ' · ' + esc(item.creator) : ''}` : '';
+                type === 'noticias' ? ` — ${esc(fmtContentDate(item.date))}` :
+                type === 'audios' ? ` — ${esc(fmtContentDate(item.date))}${item.creator ? ' · ' + esc(item.creator) : ''}` : '';
       if (type === 'razones' && item && typeof item === 'object') {
         const d = item.date || '';
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-        const estado = !d ? 'Siempre disponible' : (d > todayStr ? `🔒 ${d}` : '✅ Desbloqueada');
+        // todayISO() (hora de España) y no la fecha local del dispositivo:
+        // el resto del panel usa la hora española y aquí se comparaba con
+        // getFullYear/getMonth, que en otro huso descuadraba el desbloqueo.
+        const todayStr = todayISO();
+        const estado = !d ? 'Siempre disponible' : (d > todayStr ? `🔒 ${fmtContentDate(d)}` : '✅ Desbloqueada');
         sub = ` — <span class="razon-admin-date${d && d <= todayStr ? ' is-open' : ''}">${esc(estado)}</span>`;
       }
       return `<div class="admin-list-item" data-index="${i}">
@@ -2654,11 +3028,33 @@ export function AdminPage(router) {
           ${sub ? `<div class="item-sub">${sub}</div>` : ''}
         </div>
         <div class="item-actions">
-          <button class="item-action-btn edit" data-action="edit" data-index="${i}" title="Editar">${UI.edit}</button>
-          <button class="item-action-btn delete" data-action="delete" data-index="${i}" title="Eliminar">${UI.trash}</button>
+          <button class="item-action-btn edit" data-action="edit" data-index="${i}" title="Editar" aria-label="Editar: ${esc(label)}">${UI.edit}</button>
+          <button class="item-action-btn delete" data-action="delete" data-index="${i}" title="Eliminar" aria-label="Eliminar: ${esc(label)}">${UI.trash}</button>
         </div>
       </div>`;
     }).join('');
+  }
+
+  /** Título visible de un elemento de Contenido (also the search haystack). */
+  function contentItemLabel(item, type, i) {
+    if (type === 'razones') return item && typeof item === 'object' ? (item.text || item.reason || 'Sin texto') : (item || 'Sin texto');
+    if (type === 'canciones' || type === 'noticias') return item.title || 'Sin título';
+    if (type === 'audios') return item.title || `Audio ${i + 1}`;
+    return `Elemento ${i + 1}`;
+  }
+
+  /**
+   * Fecha de contenido legible. Antes los audios pintaban la fecha tal cual
+   * venía guardada ("2025-09-26"), en crudo y con guiones, junto a tipos que
+   * sí usan texto libre ("Hoy") o fecha en español.
+   */
+  function fmtContentDate(value) {
+    const s = String(value ?? '').trim();
+    if (!s) return '';
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return s; // texto libre: "Hoy", "Mañana"…
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+      .toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   function bindSimpleCRUD(key, items, saveFn, reloadFn) {
@@ -2967,6 +3363,22 @@ export function AdminPage(router) {
   async function loadNotificaciones() {
     const supported = isPushSupported();
     const enabled = isEnabled();
+    // Tres estados distintos que antes iban todos bajo el mismo "No activadas":
+    // la preferencia de la usuaria, el permiso del navegador y el service
+    // worker. El permiso "denied" además no se puede arreglar desde la web.
+    const permission = 'Notification' in window ? Notification.permission : 'unsupported';
+    const swReady = 'serviceWorker' in navigator
+      ? Boolean(navigator.serviceWorker.controller)
+      : false;
+    const PERMISSION = {
+      granted: { ok: true, label: 'Concedido', note: 'El navegador permite mostrar notificaciones' },
+      denied: { ok: false, label: 'Denegado', note: 'Hay que reactivarlo en los ajustes del navegador (el icono del candado en la barra de direcciones)' },
+      default: { ok: false, label: 'Sin decidir', note: 'Todavía no se ha pedido permiso; se pide al activar' },
+      unsupported: { ok: false, label: 'No disponible', note: 'Este navegador no expone la API de notificaciones' }
+    };
+    const perm = PERMISSION[permission] || PERMISSION.unsupported;
+    const iconOk = UI.check;
+    const iconNo = UI.close;
 
     content.innerHTML = `
       <section class="admin-section active">
@@ -2976,19 +3388,37 @@ export function AdminPage(router) {
           <div class="admin-panel-head"><h4>Estado del sistema push</h4></div>
           <div class="notif-status-grid">
             <div class="notif-status-card">
-              <span class="notif-status-icon ${supported ? 'ok' : 'muted'}">${UI.bell}</span>
+              <span class="notif-status-icon ${supported ? 'ok' : 'muted'}">${supported ? iconOk : iconNo}</span>
               <div>
                 <strong>${supported ? 'Compatible' : 'No compatible'}</strong>
                 <div class="muted-text">Web Push API en este navegador</div>
               </div>
             </div>
             <div class="notif-status-card">
-              <span class="notif-status-icon ${enabled ? 'ok' : 'muted'}">${UI.check}</span>
+              <span class="notif-status-icon ${perm.ok ? 'ok' : 'muted'}">${perm.ok ? iconOk : iconNo}</span>
               <div>
-                <strong>${enabled ? 'Activadas' : 'No activadas'}</strong>
-                <div class="muted-text">Permiso de notificaciones del usuario</div>
+                <strong>Permiso: ${perm.label}</strong>
+                <div class="muted-text">${esc(perm.note)}</div>
               </div>
             </div>
+            <div class="notif-status-card">
+              <span class="notif-status-icon ${swReady ? 'ok' : 'muted'}">${swReady ? iconOk : iconNo}</span>
+              <div>
+                <strong>${swReady ? 'Service worker listo' : 'Service worker no activo'}</strong>
+                <div class="muted-text">${swReady ? 'Controlando la página; puede mostrar avisos' : 'Sin él no hay notificaciones aunque el permiso sea correcto'}</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;">
+            <button class="admin-btn ${enabled ? 'admin-btn-secondary' : 'admin-btn-primary'}" id="togglePushBtn"
+              ${!enabled && (permission === 'denied' || !supported) ? 'disabled' : ''}>
+              ${enabled ? UI.toggleOff + ' Desactivar en este dispositivo' : UI.bell + ' Activar notificaciones'}
+            </button>
+            <span class="admin-btn-note" id="togglePushState">${enabled
+              ? 'Activas en este dispositivo'
+              : permission === 'denied'
+                ? 'No se puede activar: el navegador tiene el permiso bloqueado'
+                : supported ? 'Se te pedirá permiso al activar' : 'Este navegador no soporta push'}</span>
           </div>
         </div>
 
@@ -2996,7 +3426,7 @@ export function AdminPage(router) {
           <div class="admin-panel-head"><h4>${UI.send} Notificación de prueba</h4></div>
           <p class="muted-text">Verifica que el service worker y el canal de notificaciones de <strong>este dispositivo</strong> funcionan.</p>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <button class="admin-btn admin-btn-primary" id="testPushBtn">${UI.send} Enviar ahora</button>
+            <button class="admin-btn admin-btn-primary" id="testPushBtn"${supported && perm.ok && swReady ? '' : ' disabled title="El canal de este dispositivo no puede mostrar notificaciones todavía"'}>${UI.send} Enviar ahora</button>
             <span class="admin-btn-note" id="testPushState"></span>
           </div>
           <div class="notif-result" id="notifResult"></div>
@@ -3025,10 +3455,33 @@ export function AdminPage(router) {
     // Estado real del canal local
     const stateEl = page.querySelector('#testPushState');
     const reasons = [];
-    if (!isEnabled()) reasons.push('notificaciones apagadas');
-    if ('Notification' in window && Notification.permission !== 'granted') reasons.push(`permiso: ${Notification.permission}`);
+    if (!enabled) reasons.push('notificaciones apagadas');
+    if (permission !== 'granted') reasons.push(`permiso: ${permission}`);
     if (!('serviceWorker' in navigator)) reasons.push('sin service worker');
+    else if (!swReady) reasons.push('service worker sin activar');
     if (stateEl) stateEl.textContent = reasons.length ? `Estado: ${reasons.join(' · ')}` : 'Estado: canal listo';
+
+    // El panel decía "No activadas" y no offercía ninguna acción, aunque el
+    // servicio de la app ya sabe activarlas.
+    page.querySelector('#togglePushBtn')?.addEventListener('click', async () => {
+      const btn = page.querySelector('#togglePushBtn');
+      const note = page.querySelector('#togglePushState');
+      btn.disabled = true;
+      try {
+        if (enabled) {
+          await disable();
+          showToast('Notificaciones desactivadas en este dispositivo', 'success');
+        } else {
+          const ok = await requestEnable();
+          showToast(ok ? 'Notificaciones activadas' : 'El navegador no concedió el permiso', ok ? 'success' : 'error');
+        }
+        await loadNotificaciones();
+      } catch (err) {
+        showToast(err?.message || 'No se pudo cambiar el estado', 'error');
+        btn.disabled = false;
+        if (note) note.textContent = 'No se pudo cambiar el estado';
+      }
+    });
 
     page.querySelector('#testPushBtn')?.addEventListener('click', async () => {
       const btn = page.querySelector('#testPushBtn');
@@ -3080,26 +3533,31 @@ export function AdminPage(router) {
   // ==========================================
   async function loadActividad() {
     const token = sectionToken;
+    // getActivity está topado; hay que decirlo o el panel parece completo
+    // cuando en realidad solo enseña los más recientes.
+    const ACTIVITY_LIMIT = 100;
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header">
           <h2>${UI.activity} Registro de Actividad</h2>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button class="admin-btn-ghost" id="refreshActivity" title="Actualizar">${UI.refresh}</button>
+            <button class="admin-btn-ghost" id="refreshActivity" title="Actualizar" aria-label="Actualizar actividad">${UI.refresh}</button>
           </div>
         </div>
         <div class="admin-toolbar">
           <span class="admin-filter-icon">${UI.filter}</span>
-          <select class="admin-select" id="activityFilter">
+          <select class="admin-select" id="activityFilter" aria-label="Filtrar por acción">
             <option value="all">Todas las acciones</option>
           </select>
           <span class="admin-count-badge" id="activityCount"></span>
         </div>
+        <p class="activity-limit-note" id="activityLimitNote" hidden></p>
         <div class="admin-list" id="activityList">${skeletonCard('48px')}${skeletonCard('48px')}${skeletonCard('48px')}</div>
       </section>
     `;
 
     let allEntries = [];
+    let truncated = false;
 
     function renderActivity() {
       const filter = page.querySelector('#activityFilter')?.value || 'all';
@@ -3107,39 +3565,89 @@ export function AdminPage(router) {
       const list = page.querySelector('#activityList');
       const count = page.querySelector('#activityCount');
       if (count) count.textContent = `${filtered.length} de ${allEntries.length}`;
+      const note = page.querySelector('#activityLimitNote');
+      if (note) {
+        note.hidden = !truncated;
+        if (truncated) {
+          note.textContent = `Mostrando los ${allEntries.length} registros más recientes. Los anteriores no se cargan para no bloquear el navegador.`;
+        }
+      }
       if (!list) return;
       if (!filtered.length) {
-        list.innerHTML = '<div class="admin-empty">No hay actividad para este filtro</div>';
+        list.innerHTML = filter === 'all'
+          ? '<div class="admin-empty">Todavía no hay actividad registrada</div>'
+          : `<div class="admin-empty">Ninguna acción de este tipo en los registros cargados</div>`;
         return;
       }
       list.innerHTML = filtered.map(e => {
-        const time = e.timestamp ? new Date(e.timestamp).toLocaleString('es') : '';
+        const time = e.timestamp ? fmtActivityStamp(e.timestamp) : '';
+        const known = db.isKnownAction(e.action);
+        const label = db.formatAction(e.action);
+        // logActivity escribe "Acción: detalle", y la acción ya sale arriba:
+        // sin quitarlo se lee "Usuario eliminado / Usuario eliminado: uuid".
+        const raw = String(e.details || '');
+        const prefix = `${label}: `;
+        const details = raw.toLowerCase().startsWith(prefix.toLowerCase()) ? raw.slice(prefix.length) : raw;
         return `<div class="admin-activity-item">
-          <div class="admin-activity-dot"></div>
+          <div class="admin-activity-dot${known ? '' : ' unknown'}"></div>
           <div class="admin-activity-body">
-            <div class="admin-activity-action">${esc(db.formatAction(e.action))}</div>
-            <div class="admin-activity-details">${esc(e.details||'')} · ${time}</div>
+            <div class="admin-activity-action">${esc(label)}${known ? '' : ` <span class="activity-unknown-tag" title="Acción ${esc(e.action)} fuera del catálogo">${esc(e.action)}</span>`}</div>
+            <div class="admin-activity-details">${details ? esc(details) : '—'}</div>
           </div>
+          <div class="admin-activity-time" title="${esc(e.timestamp || '')}">${esc(time)}</div>
         </div>`;
       }).join('');
     }
 
-    allEntries = await db.getActivity(100);
+    /** "1 oct, 16:09" — inequívoco y corto; el formato largo del navegador
+     *  ("1/10/2026, 16:09:25") mezclaba dd/mm y desbordaba la fila. */
+    function fmtActivityStamp(ts) {
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    const load = async () => {
+      try {
+        const entries = await db.getActivity(ACTIVITY_LIMIT);
+        truncated = entries.length >= ACTIVITY_LIMIT;
+        allEntries = entries;
+        return true;
+      } catch (err) {
+        showToast(err?.message || 'No se pudo cargar la actividad', 'error');
+        return false;
+      }
+    };
+
+    const fillFilter = () => {
+      const types = [...new Set(allEntries.map(e => e.action))];
+      const filterEl = page.querySelector('#activityFilter');
+      if (!filterEl) return;
+      const prev = filterEl.value;
+      filterEl.innerHTML = '<option value="all">Todas las acciones</option>' +
+        types.map(t => `<option value="${esc(t)}">${esc(db.formatAction(t))}${db.isKnownAction(t) ? '' : ' ⚠'}</option>`).join('');
+      // Al recargar pueden aparecer tipos nuevos: se conserva el filtro previo
+      // si sigue existiendo, y si no, se vuelve a "todas".
+      filterEl.value = types.includes(prev) ? prev : 'all';
+    };
+
+    if (!await load()) return;
     if (token !== sectionToken) return; // se cambió de sección mientras cargaba
 
-    // Poblar el filtro con los tipos presentes
-    const types = [...new Set(allEntries.map(e => e.action))];
-    const filterEl = page.querySelector('#activityFilter');
-    if (filterEl && types.length) {
-      filterEl.innerHTML = '<option value="all">Todas las acciones</option>' +
-        types.map(t => `<option value="${esc(t)}">${esc(db.formatAction(t))}</option>`).join('');
-      filterEl.addEventListener('change', renderActivity);
-    }
-    page.querySelector('#refreshActivity')?.addEventListener('click', async () => {
-      allEntries = await db.getActivity(100);
-      renderActivity();
-      showToast('Actividad actualizada', 'success');
+    fillFilter();
+    page.querySelector('#activityFilter')?.addEventListener('change', renderActivity);
+
+    page.querySelector('#refreshActivity')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      if (await load()) {
+        fillFilter(); // el filtro se reconstruye: pueden entrar acciones nuevas
+        renderActivity();
+        showToast('Actividad actualizada', 'success');
+      }
+      btn.disabled = false;
     });
+
     renderActivity();
   }
 
