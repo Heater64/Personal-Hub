@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,11 +58,20 @@ test('cada juego listado en Juegos tiene su página pública', async () => {
 });
 
 test('Rincón no importa en estático Canciones ni Juegos (evita CSS/JS pesados)', async () => {
+  // Tras partir la pagina, los modulos viven en src/pages/rincon/: se revisan
+  // TODOS, no solo el orquestador, porque cualquiera podria reintroducir el peso.
   const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
-  assert.doesNotMatch(rincon, /import\s+\{[^}]*\}\s+from\s+'\.\/Canciones\.js'/);
-  assert.doesNotMatch(rincon, /import\s+\{[^}]*\}\s+from\s+'\.\/Juegos\.js'/);
-  assert.match(rincon, /from '\.\.\/data\/games\.catalog\.js'/);
-  assert.match(rincon, /import\('\.\/Canciones\.js'\)/); // dinámico OK para portadas
+  const modulos = readdirSync(hub('src', 'pages', 'rincon'))
+    .filter((f) => f.endsWith('.js'))
+    .map((f) => readFileSync(hub('src', 'pages', 'rincon', f), 'utf8'))
+    .join('\n');
+  const todo = rincon + '\n' + modulos;
+
+  assert.doesNotMatch(todo, /import\s+\{[^}]*\}\s+from\s+'\.{1,2}\/(pages\/)?Canciones\.js'/);
+  assert.doesNotMatch(todo, /import\s+\{[^}]*\}\s+from\s+'\.{1,2}\/(pages\/)?Juegos\.js'/);
+  assert.match(todo, /from '\.{1,2}\/(data\/)?games\.catalog\.js'/);
+  // dinámico OK para portadas: vive en songCovers.js
+  assert.match(todo, /import\('\.\.\/Canciones\.js'\)/);
 });
 
 test('la configuración no contiene secretos de cron ni fallbacks conocidos', async () => {
@@ -308,26 +317,31 @@ test('el saludo de inicio va en la tarjeta de días, con apodo y sin duplicarse'
 });
 
 test('rincon con cabecera y carrusel manual accesible', async () => {
+  // La landing vive en su propio modulo desde el split de Rincón.
+  const landing = await readFile(hub('src', 'pages', 'rincon', 'landing.js'), 'utf8');
   const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
-  assert.ok(rincon.includes('renderPageHeader'));
-  assert.ok(rincon.includes('El Rincón'));
-  assert.ok(rincon.includes('aria-roledescription'));
+  assert.ok(landing.includes('renderPageHeader'));
+  assert.ok(landing.includes('El Rincón'));
+  assert.ok(landing.includes('aria-roledescription'));
   // Anti-autoplay acotado al carrusel "Descubre hoy" (getDescubreHoySet + renderLanding
   // hasta el binding de tarjetas): un setInterval legítimo en otra vista no debe romperlo.
-  const start = rincon.indexOf('function getDescubreHoySet()');
-  const end = rincon.indexOf('// Bind section card clicks', start);
+  const start = landing.indexOf('function getDescubreHoySet()');
+  const end = landing.indexOf('// Bind section card clicks', start);
   assert.notEqual(start, -1);
   assert.ok(end > start);
-  const carousel = rincon.slice(start, end);
+  const carousel = landing.slice(start, end);
   assert.ok(!carousel.includes('setInterval'));
   const code = carousel.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\/[^\n]*/g, '');
   assert.ok(!/autoplay/i.test(code));
-  assert.ok(rincon.includes('rincon-hero-crown') === false);
+  assert.ok((landing + rincon).includes('rincon-hero-crown') === false);
 });
 
 test('interiores con cabecera y minecraft con h1-h2', async () => {
   const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
-  for (const t of ['Galería', 'Memes', 'Audios', 'Curiosidades']) assert.ok(rincon.includes(t));
+  const interiores = await readFile(hub('src', 'pages', 'rincon', 'curiosities.js'), 'utf8');
+  // Las pestañas del dispatcher siguen en el orquestador; Curiosidades, en su modulo.
+  for (const t of ['Galería', 'Memes', 'Audios']) assert.ok(rincon.includes(t));
+  assert.ok(interiores.includes('Curiosidades'));
   const mc = await readFile(hub('src', 'pages', 'Minecraft.js'), 'utf8');
   assert.ok(mc.includes('renderPageHeader'));
   assert.ok(mc.includes("'Minecraft'"));
@@ -336,7 +350,8 @@ test('interiores con cabecera y minecraft con h1-h2', async () => {
 
 test('interiores ocultan cabecera en movil y minecraft simplifica backs', async () => {
   const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
-  assert.ok(rincon.includes('mobileHidden'));
+  const interiores = await readFile(hub('src', 'pages', 'rincon', 'curiosities.js'), 'utf8');
+  assert.ok((rincon + interiores).includes('mobileHidden'));
   const mc = await readFile(hub('src', 'pages', 'Minecraft.js'), 'utf8');
   assert.ok(mc.includes('mobileHidden'), 'Minecraft también oculta su cabecera en móvil');
   assert.ok(mc.includes('data-mc-back'), 'Minecraft debe tener botón de vuelta');
