@@ -272,14 +272,14 @@ export function OsitosWorldPage(router) {
 
       const favBtn = h('button', {
         class: `btn btn--block${fav ? ' is-on' : ''}`,
-        type: 'button'
-      }, icon('heart', 16), fav ? 'Quitar de favoritos' : 'Guardar en favoritos');
+        type: 'button',
+        html: icon('heart', 16) + (fav ? 'Quitar de favoritos' : 'Guardar en favoritos')
+      });
       favBtn.addEventListener('click', () => {
         toggleFav(c.id, c.name);
         const now = isFav(c.id);
         favBtn.classList.toggle('is-on', now);
-        favBtn.innerHTML = '';
-        favBtn.append(icon('heart', 16), document.createTextNode(now ? 'Quitar de favoritos' : 'Guardar en favoritos'));
+        favBtn.innerHTML = icon('heart', 16) + (now ? 'Quitar de favoritos' : 'Guardar en favoritos');
       });
       body.append(favBtn);
 

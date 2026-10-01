@@ -397,24 +397,23 @@ export function RazonesPage() {
 
       body.append(h('p', { class: 'razon-sheet__text' }, r.text));
       if (r.date) {
-        body.append(h('p', { class: 'razon-sheet__date' },
-          icon('calendar', 13), ` Se desbloqueó el ${formatDate(r.date)}`));
+        body.append(h('p', { class: 'razon-sheet__date', html: icon('calendar', 13) + ` Se desbloqueó el ${formatDate(r.date)}` }));
       }
 
       const favBtn = h('button', {
         class: `btn btn--block${esFav ? ' is-on' : ''}`,
-        type: 'button'
-      }, icon('heart', 16), esFav ? 'Guardada' : 'Guardar');
+        type: 'button',
+        html: icon('heart', 16) + (esFav ? 'Guardada' : 'Guardar')
+      });
       favBtn.addEventListener('click', () => {
         toggleFav(r.id);
         const now = isFav(r.id);
         favBtn.classList.toggle('is-on', now);
-        favBtn.innerHTML = '';
-        favBtn.append(icon('heart', 16), document.createTextNode(now ? 'Guardada' : 'Guardar'));
+        favBtn.innerHTML = icon('heart', 16) + (now ? 'Guardada' : 'Guardar');
       });
 
-      const copyBtn = h('button', { class: 'btn btn-secondary btn--block', type: 'button' },
-        icon('copy', 16), 'Copiar');
+      const copyBtn = h('button', { class: 'btn btn-secondary btn--block', type: 'button',
+        html: icon('copy', 16) + 'Copiar' });
       copyBtn.addEventListener('click', () => copyText(r.text));
 
       body.append(favBtn, copyBtn);
