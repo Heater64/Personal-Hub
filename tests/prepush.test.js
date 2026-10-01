@@ -43,15 +43,26 @@ test('los juegos del calendario apuntan a archivos existentes', () => {
 });
 
 test('cada juego listado en Juegos tiene su página pública', async () => {
-  const source = await readFile(hub('src', 'pages', 'Juegos.js'), 'utf8');
+  // El catálogo vive en data/ para que Rincón no arrastre Juegos.js + juegos.css.
+  const source = await readFile(hub('src', 'data', 'games.catalog.js'), 'utf8');
+  const juegos = await readFile(hub('src', 'pages', 'Juegos.js'), 'utf8');
   const hrefs = [...source.matchAll(/href:\s*'([^']+\.html)'/g)].map(match => match[1]);
 
   assert.equal(hrefs.length, 19);
   assert.equal(new Set(hrefs).size, hrefs.length);
+  assert.match(juegos, /from '\.\.\/data\/games\.catalog\.js'/);
   for (const href of hrefs) {
     const relativePath = href.replace(/^\//, '');
     assert.equal(existsSync(hub('public', relativePath)), true, href);
   }
+});
+
+test('Rincón no importa en estático Canciones ni Juegos (evita CSS/JS pesados)', async () => {
+  const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
+  assert.doesNotMatch(rincon, /import\s+\{[^}]*\}\s+from\s+'\.\/Canciones\.js'/);
+  assert.doesNotMatch(rincon, /import\s+\{[^}]*\}\s+from\s+'\.\/Juegos\.js'/);
+  assert.match(rincon, /from '\.\.\/data\/games\.catalog\.js'/);
+  assert.match(rincon, /import\('\.\/Canciones\.js'\)/); // dinámico OK para portadas
 });
 
 test('la configuración no contiene secretos de cron ni fallbacks conocidos', async () => {
