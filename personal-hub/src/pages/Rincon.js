@@ -16,9 +16,29 @@ import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
 import { player } from '../services/player.service.js';
-import { getAllSongs } from './Canciones.js';
-import { GAMES } from './Juegos.js';
+import { GAMES } from '../data/games.catalog.js';
 import { gameCover } from '../utils/gameCovers.js';
+
+/** Portadas de Canciones en caché — se calientan con import() diferido para no
+ *  arrastrar Canciones.js + canciones.css al chunk inicial de Rincón. */
+let _songCovers = [];
+let _songCoversWarm = null;
+function getSongCovers() {
+  return _songCovers;
+}
+function warmSongCovers() {
+  if (_songCoversWarm) return _songCoversWarm;
+  _songCoversWarm = import('./Canciones.js')
+    .then(({ getAllSongs }) => {
+      _songCovers = [...new Set(getAllSongs().map(s => s.cover).filter(Boolean))];
+      return _songCovers;
+    })
+    .catch(() => {
+      _songCovers = [];
+      return _songCovers;
+    });
+  return _songCoversWarm;
+}
 import {
   baseFolders, basePhotos, userPhotos, addUserPhotos,
   visiblePhotos, hiddenPhotos, hidePhoto, loadFavPhotos, saveFavPhotos, toggleFavPhoto,
@@ -181,7 +201,7 @@ const SECTIONS = [
     href: '/canciones',
     // Portadas de canciones al azar; si hay una sonando, se queda con esa.
     getPreview() {
-      const covers = [...new Set(getAllSongs().map(s => s.cover).filter(Boolean))];
+      const covers = getSongCovers();
       const now = player.info?.cover || null;
       return {
         cover: now || covers[Math.floor(Math.random() * covers.length)] || '',
@@ -300,6 +320,17 @@ export function RinconPage(router) {
   state.memeFavs = loadMemeFavs();
   state.curioFavs = loadCurioFavs();
   const isAdmin = userStore.isAdmin;
+
+  // Calienta portadas de Canciones en paralelo (import diferido). Si llegan
+  // después del primer paint de la landing, re-render una sola vez.
+  let songCoversPainted = false;
+  warmSongCovers().then((covers) => {
+    if (!covers.length || songCoversPainted || !page.isConnected) return;
+    if (state.view === 'landing') {
+      songCoversPainted = true;
+      render();
+    }
+  });
 
   // Rotación de portadas de las tarjetas (Series, Canciones, Juegos, Curiosidades).
   // Se detiene al re-render o al salir de la página.
@@ -436,6 +467,7 @@ export function RinconPage(router) {
       if (s.getPreview) return s.getPreview();
       return {};
     });
+    if (getSongCovers().length) songCoversPainted = true;
     // Detén la rotación de portadas y la suscripción al reproductor del render anterior
     stopAllRotations();
     offPlayerCard();
@@ -642,7 +674,7 @@ export function RinconPage(router) {
         }
       } else if (e.info === null) {
         // Canción cerrada: vuelve a rotar portadas al azar
-        const covers = [...new Set(getAllSongs().map(s => s.cover).filter(Boolean))];
+        const covers = getSongCovers();
         const shuffled = [...covers].sort(() => Math.random() - 0.5);
         if (shuffled.length > 1) {
           img.style.transition = 'none';
