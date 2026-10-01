@@ -287,23 +287,8 @@ export function OpenWhenPage(router) {
       </button>`;
   }
 
-  function paraTiCard(letter) {
-    const meta = TYPE_META[letter.type] || TYPE_META.carta;
-    const cat = CATEGORIES.find(c => c.id === letter.category);
-    return `
-      <button class="ow-pt" data-pt="${letter.id}">
-        <span class="ow-pt__ic">${meta.emoji}</span>
-        <span class="ow-pt__body">
-          <b>${escapeHtml(letter.title)}</b>
-          <span>${cat ? `${cat.emoji} ${escapeHtml(cat.title)}` : meta.label}</span>
-        </span>
-        <span class="ow-pt__go" aria-hidden="true">${icon('chev', 15)}</span>
-      </button>`;
-  }
-
   /* ---------- vistas ---------- */
   function landingHTML() {
-    const fresh = letters.filter(isNew).slice(0, 5);
     const cats = CATEGORIES.filter(c => totalOf(c.id) > 0);
     const n = letters.filter(isNew).length;
     const sub = n > 0
@@ -317,15 +302,6 @@ export function OpenWhenPage(router) {
           <p class="sub">${escapeHtml(sub)}</p>
         </div>
       </header>
-
-      ${fresh.length ? `
-        <section class="ow-section">
-          <p class="section-title">Para ti
-            <span class="section-title__aside">${plural(fresh.length, 'nueva', 'nuevas')}</span>
-          </p>
-          <div class="card card--none ow-pt-box">${fresh.map(paraTiCard).join('')}</div>
-        </section>` : `
-        <div class="ow-all-seen">Todo visto por aquí. Vuelve cuando lo necesites.</div>`}
 
       <section class="ow-section">
         <p class="section-title">¿Qué necesitas?</p>
@@ -480,13 +456,6 @@ export function OpenWhenPage(router) {
     const cat = e.target.closest('[data-cat]');
     if (cat) {
       goToCategory(cat.dataset.cat);
-      return;
-    }
-
-    // "Para ti": abrir la carta directamente, sin pasar por su categoría.
-    const pt = e.target.closest('[data-pt]');
-    if (pt) {
-      openLetter(pt.dataset.pt);
       return;
     }
 
