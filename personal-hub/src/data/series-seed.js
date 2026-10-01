@@ -202,8 +202,10 @@ export const DEFAULT_CATALOG = [
     titulo: 'La Bella Durmiente',
     tipo: 'pelicula',
     descripcion: 'La princesa Aurora es víctima de la maldición de Maléfica: morirá al pincharse con una rueca la noche de su cumpleaños. Solo el beso del príncipe Felipe podrá romper el hechizo. El clásico de animación de Disney de 1959.',
-    portada: '',
-    banner: '',
+    // Póster original de 1959 (dominio público: el arte no se renovó).
+    // Estaba vacío y la ficha se veía sin imagen en el admin y en la app.
+    portada: WIKI('upload.wikimedia.org/wikipedia/commons/6/6c/Sleeping_Beauty_(1959_poster_-_Style_A).jpg'),
+    banner: WIKI('upload.wikimedia.org/wikipedia/commons/6/6c/Sleeping_Beauty_(1959_poster_-_Style_A).jpg'),
     anio: 1959,
     generos: ['Animación', 'Fantasía', 'Familia', 'Romance'],
     duracion: 75,

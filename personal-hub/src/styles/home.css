@@ -84,11 +84,16 @@
 .home-hero__label {
   display: block;
   margin-top: 5px;
-  font-size: var(--fs-xs);
+  /* Mismo cuerpo que la cifra: el contador se lee como un bloque único
+     ("455 DÍAS JUNTOS") en vez de número gigante + etiqueta diminuta.
+     Solo baja el contraste con --text-2 y un pelín el tracking, que en
+     mayúsculas a este tamaño se dispara. */
+  font-size: var(--fs-3xl);
   font-weight: 700;
+  line-height: 1;
   color: var(--text-2);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.02em;
 }
 
 .home-hero__quote {

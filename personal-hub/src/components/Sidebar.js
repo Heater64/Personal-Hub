@@ -65,15 +65,24 @@ export function Sidebar(router) {
   let currentPath = router.getCurrentPath();
 
   function navButton(item, active) {
-    return `<button type="button" class="nav-item${active ? ' is-active' : ''}" data-href="${item.href}">
+    return `<button type="button" class="nav-item${active ? ' is-active' : ''}" data-href="${item.href}"${active ? ' aria-current="page"' : ''}>
       ${icon(item.icon, 20)}<span>${item.label}</span>
     </button>`;
   }
 
+  // Los grupos contextuales tienen entradas que comparten ruta base y se
+  // distinguen por el query (música: ?v=biblioteca|favoritas|...; curiosidades:
+  // ?cat=spb|sp|gatos). Comparar solo la base las daba por activas A TODAS.
+  // Ahora se compara la ruta entera; si no hay coincidencia exacta (p. ej.
+  // /curiosidades sin ?cat=), se resalta solo la primera en vez de todas.
   function group(title, items) {
+    const exactos = items.filter(item => currentPath === item.href);
     const base = currentPath.split('?')[0];
+    const activos = exactos.length
+      ? exactos
+      : items.filter(item => base === item.href.split('?')[0]).slice(0, 1);
     return `<p class="side-label">${title}</p>` +
-      items.map(item => navButton(item, base === item.href.split('?')[0])).join('');
+      items.map(item => navButton(item, activos.includes(item))).join('');
   }
 
   function render() {

@@ -43,21 +43,23 @@ let page = null;
 let currentRouter = null;
 let currentWorldId = null;
 
-/** Barra superior de secciones (Galería | Memes | Audios | Minecraft) */
+/** Barra superior de secciones (Galería | Memes | Audios | Minecraft).
+ *  Es el mismo segmentado que el de Rincón: se reutilizan las clases
+ *  .chips/.chip de ui.css para que se vea igual en las dos rutas. */
 function subnavHTML() {
   return `
-    <nav class="rincon-subnav" aria-label="Secciones">
-      <button class="rincon-subnav__btn" data-subnav="galeria">
-        <span class="rincon-subnav__icon-wrap">${UI.image}</span> Galería
+    <nav class="chips mc-subnav" aria-label="Secciones">
+      <button type="button" class="chip" data-subnav="galeria">
+        <span class="mc-subnav__ic">${UI.image}</span> Galería
       </button>
-      <button class="rincon-subnav__btn" data-subnav="memes">
-        <span class="rincon-subnav__icon-wrap">${UI.smile}</span> Memes
+      <button type="button" class="chip" data-subnav="memes">
+        <span class="mc-subnav__ic">${UI.smile}</span> Memes
       </button>
-      <button class="rincon-subnav__btn" data-subnav="audios">
-        <span class="rincon-subnav__icon-wrap">${UI.mic}</span> Audios
+      <button type="button" class="chip" data-subnav="audios">
+        <span class="mc-subnav__ic">${UI.mic}</span> Audios
       </button>
-      <button class="rincon-subnav__btn active" data-subnav="minecraft">
-        <span class="rincon-subnav__icon-wrap">⛏️</span> Minecraft
+      <button type="button" class="chip chip--active" data-subnav="minecraft" aria-current="page">
+        <span class="mc-subnav__ic">⛏️</span> Minecraft
       </button>
     </nav>
   `;
@@ -83,13 +85,14 @@ function renderWorldsList() {
         ${UI.back} Rincón
       </button>
 
-      ${subnavHTML()}
-
       ${renderPageHeader({ title: 'Minecraft', icon: 'minecraft', mobileHidden: true })}
+
+      <span class="mc-kicker mc-kicker--page">Minecraft · Nuestros mundos</span>
+
+      ${subnavHTML()}
 
       <header class="mc-head">
         <div class="mc-head-titles">
-          <span class="mc-kicker">Minecraft · Nuestros mundos</span>
           <h2 class="mc-title">⛏️ Nuestros mundos</h2>
           <p class="mc-sub">Cada mundo guarda sus fotos, vídeos y recuerdos por separado, con su semilla y descripción.</p>
         </div>
@@ -157,8 +160,6 @@ function renderWorldDetail() {
         ${UI.back} Rincón
       </button>
 
-      ${subnavHTML()}
-
       ${renderPageHeader({ title: 'Minecraft', icon: 'minecraft', mobileHidden: true })}
 
       <button class="rincon-back-btn" data-mc-back-world>
@@ -187,6 +188,8 @@ function renderWorldDetail() {
           <input type="file" id="mcFileInput" accept="image/*,video/*" multiple hidden>` : ''}
         </div>
       </header>
+
+      ${subnavHTML()}
 
       ${items.length ? `
         <div class="mc-collection-head">

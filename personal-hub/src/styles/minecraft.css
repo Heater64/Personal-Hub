@@ -15,6 +15,28 @@
   padding-bottom: calc(var(--sp-24) + env(safe-area-inset-bottom, 0px));
 }
 
+/* El h1 de la página va pegado al kicker ("Minecraft · Nuestros mundos"),
+   y el subnav queda entre el kicker y el bloque del h2. .scr-head trae
+   margin-bottom propio (es una clase global), así que se reduce para que no
+   separe el título de su own kicker. */
+.mc-page > .scr-head { margin-bottom: var(--sp-4); }
+
+/* ---- Subnav de secciones ---- */
+/* .mc-subnav reutiliza .chips/.chip de ui.css (el mismo segmentado que el
+   de Rincón); aquí solo se ajusta el icono, que en este archivo mide 25px
+   mientras que el chip de Rincón lo deja en 16px. Antes no había ninguna
+   regla para este markup: las cuatro pestañas salían como texto plano. */
+/* .chips trae margin-bottom para páginas sin gap; aquí .mc-page ya es un
+   flex con gap, así que se anula para no duplicar el espacio. */
+.mc-subnav { margin-bottom: 0; }
+/* El kicker sube pegado al h1 y por debajo solo le queda el gap del flex. */
+.mc-kicker--page { margin-bottom: 0; }
+.mc-subnav__ic { display: flex; align-items: center; line-height: 1; }
+.mc-subnav__ic svg { width: 16px; height: 16px; }
+/* El emoji ⛏️ no lleva width/height: se ajusta a la altura del chip. */
+.mc-subnav__ic:has(> svg) { font-size: 0; }
+.mc-subnav__ic:not(:has(> svg)) { font-size: 15px; }
+
 /* ---- Botón de vuelta ---- */
 /* .rincon-back-btn lo usan Minecraft y las vistas interiores del Rincón.
    Estaba en el marcado desde hace tiempo sin ninguna regla que lo
