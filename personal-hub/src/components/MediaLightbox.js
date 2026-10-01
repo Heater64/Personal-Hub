@@ -1,4 +1,5 @@
 import { safeUrl } from '../utils/escape.js';
+import { pushOverlayHistory, finalizeOverlayClose } from '../utils/overlayHistory.js';
 
 /* ==========================================
    Personal Hub v2 — Media Lightbox Pro
@@ -675,6 +676,9 @@ export function openLightbox(items, startIndex = 0) {
   if (state._videoDestroy) { try { state._videoDestroy(); } catch(e) {} state._videoDestroy = null; }
   if (state._imgCleanup) { try { state._imgCleanup(); } catch(e) {} state._imgCleanup = null; }
   state = { items, currentIndex: Math.max(0, Math.min(startIndex, items.length - 1)), rotation: 0, zoom: 1, panX: 0, panY: 0, isPanning: false, lastTap: 0, videoEl: null, _videoDestroy: null, _imgCleanup: null };
+  // Atrás cierra el visor en vez de salir de la página. Al reutilizar un
+  // visor ya abierto no se empuja otra entrada.
+  if (!box.classList.contains('open')) pushOverlayHistory(closeLightbox);
   box.classList.add('open');
   box.setAttribute('aria-hidden', 'false');
   document.body.classList.add('lightbox-open');
@@ -703,6 +707,7 @@ export function closeLightbox() {
   state.panX = 0;
   state.panY = 0;
   state.rotation = 0;
+  finalizeOverlayClose(closeLightbox);
 }
 
 export function nextMedia() { if (state.items.length > 1) { state.currentIndex = (state.currentIndex + 1) % state.items.length; render(); pokeSlideshow(); } }

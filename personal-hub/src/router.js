@@ -38,6 +38,10 @@ export class Router {
       this._navigationDepth = state.__phRouter && Number.isFinite(state.phDepth)
         ? Math.max(0, state.phDepth)
         : 0;
+      // Entradas internas de la MISMA ruta (overlays, vistas de página):
+      // las gestiona quien las creó. Re-renderizar aquí montaría la página
+      // de nuevo y perdería el estado que se está restaurando.
+      if (this.currentRoute && this.getCurrentPath() === this.currentRoute.path) return;
       // Traversing a hash history entry may also emit hashchange. Ignore the
       // duplicate event so a page is not mounted twice on mobile back.
       this._ignoreHashChange = window.location.hash;
@@ -103,7 +107,9 @@ export class Router {
    * abrió directamente, usa un destino seguro en vez de abandonar la web.
    */
   back(fallback = '/') {
-    if (this._navigationDepth > 0) {
+    // También cuando hay una vista interna encima (overlay o subvista de
+    // página): Atrás debe desapilarla antes de salir de la ruta.
+    if (this._navigationDepth > 0 || history.state?.__phInPage) {
       history.back();
       return;
     }

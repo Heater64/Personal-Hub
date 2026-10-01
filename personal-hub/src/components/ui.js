@@ -8,6 +8,7 @@
    ========================================== */
 
 import { escapeHtml } from '../utils/escape.js';
+import { pushOverlayHistory, finalizeOverlayClose } from '../utils/overlayHistory.js';
 
 /* ==========================================
    ICONOS — un solo set (stroke 1.8, 24×24)
@@ -206,6 +207,9 @@ export function openSheet(title, build, onClose) {
   overlay.append(sheet);
   if (onClose) sheetClosers.push(onClose);
   lastFocused = document.activeElement;
+  // Un sheet es una capa más de la página: Atrás lo cierra en vez de
+  // navegar fuera. Una sola entrada por sesión de overlay.
+  if (!overlayRoot().children.length) pushOverlayHistory(closeSheets);
   overlayRoot().append(overlay);
   if (!sheetEsc) {
     // Escape cierra, y Tab queda atrapado dentro del sheet. Sin esto, al
@@ -263,27 +267,34 @@ export function closeSheets() {
     try { lastFocused.focus({ preventScroll: true }); } catch { /* ignorar */ }
   }
   lastFocused = null;
+  finalizeOverlayClose(closeSheets);
 }
 
 export function confirmDialog({ title, message, confirmText = 'Eliminar', danger = true, onConfirm }) {
   const overlay = h('div', {
     class: 'overlay',
     style: 'z-index:calc(var(--z-modal) + 5)',
-    onclick: event => { if (event.target === overlay) overlay.remove(); }
+    onclick: event => { if (event.target === overlay) closeConfirm(); }
   });
   const sheet = h('div', { class: 'sheet', style: 'max-width:420px', role: 'alertdialog', 'aria-label': title },
     h('h3', { style: 'font-size:var(--fs-md);font-weight:800;margin-bottom:8px' }, title),
     h('p', { style: 'font-size:var(--fs-sm);color:var(--text-2);line-height:1.55;margin-bottom:20px' }, message),
     h('div', { style: 'display:flex;gap:10px;justify-content:flex-end' },
-      h('button', { class: 'btn-soft', type: 'button', onclick: () => overlay.remove() }, 'Cancelar'),
+      h('button', { class: 'btn-soft', type: 'button', onclick: () => closeConfirm() }, 'Cancelar'),
       h('button', {
         class: danger ? 'btn-danger' : 'btn',
         type: 'button',
-        onclick: () => { overlay.remove(); if (onConfirm) onConfirm(); }
+        onclick: () => { closeConfirm(); if (onConfirm) onConfirm(); }
       }, confirmText)
     )
   );
   overlay.append(sheet);
+  // Atrás cierra la confirmación en vez de salir de la página.
+  const closeConfirm = () => {
+    overlay.remove();
+    finalizeOverlayClose(closeConfirm);
+  };
+  pushOverlayHistory(closeConfirm);
   document.body.appendChild(overlay);
   const first = sheet.querySelector('button');
   if (first) first.focus({ preventScroll: true });

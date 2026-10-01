@@ -431,6 +431,29 @@ test('las cartas de Open When pueden llevar audio, fotos y vídeo dentro', async
   assert.doesNotMatch(admin, /se crean desde el código/);
 });
 
+test('el retroceso cierra las capas sin salir de la página', async () => {
+  const overlays = await readFile(hub('src', 'utils', 'overlayHistory.js'), 'utf8');
+  const ui = await readFile(hub('src', 'components', 'ui.js'), 'utf8');
+  const ml = await readFile(hub('src', 'components', 'MediaLightbox.js'), 'utf8');
+  const router = await readFile(hub('src', 'router.js'), 'utf8');
+  const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
+
+  // Capa común: una entrada de historial por overlay, cierre idempotente.
+  assert.ok(overlays.includes('export function pushOverlayHistory'));
+  assert.ok(overlays.includes('export function finalizeOverlayClose'));
+  // Hojas y visor registran su entrada y la deshacen al cerrarse.
+  assert.ok(ui.includes('pushOverlayHistory(closeSheets)'));
+  assert.ok(ui.includes('finalizeOverlayClose(closeSheets)'));
+  assert.ok(ml.includes('pushOverlayHistory(closeLightbox)'));
+  assert.ok(ml.includes('finalizeOverlayClose(closeLightbox)'));
+  // El router no vuelve a montar la página en un popstate de la misma ruta
+  // y su Atrás desapila primero las vistas internas.
+  assert.match(router, /getCurrentPath\(\) === this\.currentRoute\.path/);
+  assert.ok(router.includes('history.state?.__phInPage'));
+  // La categoría de Open When deja su propia entrada de historial.
+  assert.ok(page.includes('__owView'));
+});
+
 test('la telemetría es opt-in y sanea antes de enviar', async () => {
   const telemetry = await readFile(hub('src', 'services', 'telemetry.js'), 'utf8');
 

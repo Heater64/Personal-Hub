@@ -326,7 +326,7 @@ export function OpenWhenPage(router) {
         </span>
         ${media}${videoThumb}
         <span class="ow-card__go">${openLabel(letter)} ${icon('chev', 14)}</span>
-      </button>`;
+      </div>`;
   }
 
   function catCard(cat) {
@@ -532,12 +532,21 @@ export function OpenWhenPage(router) {
     view = catId;
     render();
     page.scrollTop = 0;
+    // Entrada de historial propia: Atrás vuelve al listado de Open When
+    // en vez de sacar al usuario de la página.
+    history.pushState({ ...(history.state || {}), __phInPage: true, __owView: catId }, '');
   }
 
   /* ---------- eventos ---------- */
   page.addEventListener('click', (e) => {
     const back = e.target.closest('[data-back]');
     if (back) {
+      // Si la categoría dejó su entrada de historial, se deshace con el
+      // retroceso; si no, se vuelve al listado directamente.
+      if (history.state?.__owView) {
+        history.back();
+        return;
+      }
       view = 'landing';
       render();
       page.scrollTop = 0;
@@ -575,6 +584,18 @@ export function OpenWhenPage(router) {
     if (open) openLetter(open.dataset.open);
   });
 
+  // El retroceso del navegador desapila la vista de categoría (creada en
+  // goToCategory) y acaba en el listado de Open When.
+  function onPopState() {
+    const target = history.state?.__owView;
+    const next = CATEGORIES.find(c => c.id === target) ? target : 'landing';
+    if (next === view) return;
+    view = next;
+    render();
+    page.scrollTop = 0;
+  }
+  window.addEventListener('popstate', onPopState);
+
   // Esc cierra el visor de fotos (el sheet y el lightbox ya lo hacen solos)
   page.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeLightbox();
@@ -599,6 +620,7 @@ export function OpenWhenPage(router) {
   // Antes no había cleanup: el audio seguía sonando al salir de la página
   // y el visor de fotos se quedaba abierto en el DOM.
   page.cleanup = () => {
+    window.removeEventListener('popstate', onPopState);
     stopAllMedia();
     closeLightbox();
     closeSheets();
