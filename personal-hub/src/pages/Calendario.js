@@ -114,10 +114,13 @@ function hasAskBox(gift) {
  * memoria ANTES de repintar: si solo se guardara en Supabase/localStorage, el
  * calendario seguiría mostrando el sobre y el contador de pendientes, porque
  * `pendingAnswer` lee de aquí.
+ *
+ * No repinta aquí: esta función vive a nivel de módulo y `paintAll` está
+ * dentro del cierre de la página (el mismo motivo por el que loadMyResponses
+ * devuelve la promesa en vez de repintar). Quien llama repinta justo después.
  */
 function setResponse(giftId, text, extra = {}) {
   responsesMap = { ...responsesMap, [giftId]: { text, respondedAt: new Date().toISOString(), ...extra } };
-  paintAll();
 }
 
 /** Regalos que tienen pregunta y aún no se han contestado. */
@@ -1450,6 +1453,10 @@ export function CalendarioPage(router) {
       try {
         const saved = await db.saveGiftResponse(gift.id, text);
         setResponse(gift.id, text, { respondedAt: saved?.respondedAt });
+        // La caché ya tiene la respuesta: repinta el calendario (badge,
+        // tarjeta y panel del día). La hoja de la experiencia vive fuera
+        // de la página, así que sigue abierta y con su propio estado.
+        paintAll();
         pintarEstado(text);
         toast('Respuesta guardada 💌');
       } catch (error) {
