@@ -5,7 +5,11 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
     "playwright": "^1.59.1",
+    "prettier": "^3.9.9",
     "vite": "^8.1.5"
   },
   "name": "personal-hub",
@@ -17,7 +21,10 @@
     "build": "npx vite build personal-hub",
     "preview": "npx vite preview personal-hub",
     "test": "node --test tests/prepush.test.js",
-    "postinstall": "node -e \"try{require('fs').chmodSync('node_modules/.bin/vite',0o755)}catch(e){}\""
+    "postinstall": "node -e \"try{require('fs').chmodSync('node_modules/.bin/vite',0o755)}catch(e){}\"",
+    "lint": "eslint personal-hub/src tests",
+    "format": "prettier --write \"personal-hub/src/**/*.{js,css,html,json,md}\" \"tests/**/*.{js,mjs}\" \"*.md\" \"*.json\" \"eslint.config.js\"",
+    "format:check": "prettier --check \"personal-hub/src/**/*.{js,css,html,json,md}\" \"tests/**/*.{js,mjs}\" \"*.md\" \"*.json\" \"eslint.config.js\""
   },
   "repository": {
     "type": "git",
