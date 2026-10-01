@@ -8,7 +8,7 @@
     "playwright": "^1.59.1",
     "vite": "^8.1.5"
   },
-  "name": "Hub🧸🤍",
+  "name": "personal-hub",
   "version": "2.0.0",
   "description": "Tu lugar especial con sorpresas, juegos y fotos nuestras.",
   "main": "personal-hub/index.html",

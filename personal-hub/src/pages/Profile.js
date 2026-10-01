@@ -17,7 +17,7 @@ import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/sp
 // ==========================================
 // APP — versión y novedades
 // ==========================================
-const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.0';
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '2.0.0';
 
 // Changelog real: cada versión con sus novedades (semver: fix → patch,
 // función nueva → minor). Al subir una versión nueva solo hay que añadir
