@@ -26,7 +26,7 @@ export function LoginPage(router) {
           <p>Inicia sesión para continuar</p>
         </div>
 
-        <div id="loginError" class="login-error" style="display:none">
+        <div id="loginError" class="login-error">
           <span id="loginErrorText"></span>
         </div>
 
