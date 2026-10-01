@@ -20,7 +20,6 @@ import { GameInviteCenter } from './GameInviteCenter.js';
 import { initListenTogether, onListenTogether, getListenTogetherState, initListenStateRealtime, stopListenStateRealtime } from '../services/listenTogether.service.js';
 import { player } from '../services/player.service.js';
 import { showToast } from './Toast.js';
-import '../styles/online-games.css';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
 import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref, getUserId } from '../utils/userStorage.js';
 import { todayISO, hourInSpain, spainMsOnDate, nextDayISO } from '../utils/format.js';

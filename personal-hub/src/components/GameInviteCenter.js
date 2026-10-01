@@ -32,7 +32,6 @@ import {
   initListenTogether, startListenTogether, stopListenTogether, respondListenTogether, onListenTogether
 } from '../services/listenTogether.service.js';
 import { playInviteChime } from '../services/sounds.service.js';
-import '../styles/online-games.css';
 
 /** Traduce errores técnicos de Supabase a mensajes legibles (misma utilidad que OnlineGame). */
 function friendlyError(error) {
