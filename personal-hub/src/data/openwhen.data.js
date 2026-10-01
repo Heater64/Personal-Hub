@@ -33,6 +33,22 @@ export const TYPE_META = {
 export const LETTERS = [
   // ─── ❤️ Amor y conexión ───
   {
+    id: 'peli-sin-avisar',
+    category: 'amor',
+    type: 'carta',
+    title: 'Cuando me he ido a ver una peli y se me ha olvidado avisarte',
+    note: 'Perdona por dejarte esperando, princesa',
+    message: 'Antes que nada: perdona. Sé que me desaparecí sin decirte nada y lo último que quiero es que te quedes pensando que te he dejado en visto o que algo va mal, porque no es así. Estaba viendo una peli (y pensando en ti cada diez minutos, jsjsjs). Ya sabes que a veces se me olvida avisar, pero que no te quepa duda: te quiero y te voy a querer siempre, aunque tarde en contestar. Aquí estoy de vuelta 🤍'
+  },
+  {
+    id: 'que-te-escuche',
+    category: 'amor',
+    type: 'mensaje',
+    title: 'Cuando necesites que te escuche',
+    note: 'Cuéntamelo todo, hasta lo más pequeño',
+    message: 'Estoy oyendo. Cuéntame lo que te haya pasado, lo que te haya molestado, lo que te haya hecho gracia o esa tontería que crees que no vale la pena: TODO me importa porque viene de ti. Sin juzgar y sin prisa, aquí tienes a tu oyente favorito 🤍'
+  },
+  {
     id: 'me-extranes',
     category: 'amor',
     type: 'carta',
@@ -133,6 +149,22 @@ export const LETTERS = [
 
   // ─── 😔 Tristeza y bajón ───
   {
+    id: 'estes-preocupada',
+    category: 'tristeza',
+    type: 'carta',
+    title: 'Cuando estés preocupada',
+    note: 'Respira hondo, aquí estoy',
+    message: 'Si estás leyendo esto, algo no te deja tranquila. Así que respira conmigo: entra el aire y sale el miedo. Sea lo que sea que te preocupe (por mí, por nosotros, por tus cosas o por tonterías), no lo tienes que cargar sola. Cuéntamelo cuando quieras y lo sacamos adelante juntos, como siempre. Te quiero, mi niña 🤍'
+  },
+  {
+    id: 'necesites-llorar',
+    category: 'tristeza',
+    type: 'carta',
+    title: 'Cuando necesites llorar',
+    note: 'Llora todo lo que haga falta, sin prisa',
+    message: 'No tienes que aguantar nada ni ser fuerte todo el rato. Si hoy toca llorar, llora: yo te aguanto desde aquí, hasta los mocos. Cuando termines, seca esas lágrimas y recuerda que mañana es otro día y que yo sigo aquí, esperándote con los brazos abiertos. Te quiero muchísimo, hermosa 🤍'
+  },
+  {
     id: 'estes-triste',
     category: 'tristeza',
     type: 'carta',
@@ -168,6 +200,14 @@ export const LETTERS = [
 
   // ─── 😡 Enfado y celos ───
   {
+    id: 'enojada-contigo',
+    category: 'enfado',
+    type: 'carta',
+    title: 'Cuando estés enojada contigo misma',
+    note: 'Yo te perdono todo, y tú también deberías',
+    message: 'Sé que a veces te exiges demasiado y te cabreas si no sales perfecta. Pero mírate: estás haciendo las cosas MUY bien. Equivocarse es de humanas y tú sigues adelante siempre, que es lo que de verdad cuenta. Perdónate como yo te perdono cualquier cosa, porque para mí eres increíble tal y como eres. Te quiero entera, con errores y todo 🤍'
+  },
+  {
     id: 'enojada-conmigo',
     category: 'enfado',
     type: 'carta',
@@ -185,6 +225,14 @@ export const LETTERS = [
   },
 
   // ─── 🥰 Alegría ───
+  {
+    id: 'momentos-pequenos',
+    category: 'alegria',
+    type: 'mensaje',
+    title: 'Cuando algo pequeño te haga feliz',
+    note: 'Los momentos chiquitos también cuentan',
+    message: '¿Te ha hecho feliz algo pequeño hoy? ¡GUÁRDALO! Una canción, un sol bonito, un mensaje gracioso, un café rico… así se construye la felicidad, a cachitos. Y si el cachito soy yo, ya me has puesto a llorar de la emoción jsjsjs. Celebra todo, campeona 🥰'
+  },
   {
     id: 'orgullosa-de-ti',
     category: 'alegria',
@@ -249,6 +297,14 @@ export const LETTERS = [
 
   // ─── 🤒 Cuidarte ───
   {
+    id: 'esos-dias-del-mes',
+    category: 'cuidarte',
+    type: 'carta',
+    title: 'Cuando tengas esos días del mes',
+    note: 'Manta, agüita caliente y mucho mimo',
+    message: 'Sé que te duele y que estás cansada, mi niña. Hoy manda la manta, el chocolate y las pelis, y nada de culparse por descansar. Si pudiera estar ahí te traía todo eso y un abrazo enorme sin soltarte. Déjate cuidar aunque sea desde aquí. Te quiero muchísimo 🤍'
+  },
+  {
     id: 'estes-mala',
     category: 'cuidarte',
     type: 'carta',
@@ -266,6 +322,15 @@ export const LETTERS = [
   },
 
   // ─── 🌙 Noche ───
+  {
+    id: 'tengas-una-pesadilla',
+    category: 'noche',
+    type: 'nota',
+    media: { kind: 'nota' },
+    title: 'Cuando tengas una pesadilla',
+    note: 'Escúchalo con los ojos cerrados',
+    message: 'Eh, tranquila, mi niña. Fue solo un sueño, ya pasó y aquí no pasa nada. Estoy contigo. Respira hondo, agarra la almohada muy fuerte y piensa en algo bonito (yo propongo mi cara, jsjsjs). No te va a pasar nada mientras yo te cuide el sueño. Duerme otra vez, princesa. Buenas noches 🤍'
+  },
   {
     id: 'antes-de-dormir',
     category: 'noche',

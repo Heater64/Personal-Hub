@@ -394,9 +394,9 @@ test('el catálogo de Open When vive en un módulo sin dependencias de UI', asyn
   assert.ok(data.includes('export const TYPE_META = {'));
   assert.ok(data.includes('export async function loadAllOpenWhenLetters()'));
 
-  // 29 cartas de fábrica, con id único.
+  // 37 cartas de fábrica, con id único.
   const ids = [...data.slice(data.indexOf('export const LETTERS = [')).matchAll(/^\s{4}id: '([^']+)'/gm)].map(m => m[1]);
-  assert.equal(ids.length, 29);
+  assert.equal(ids.length, 37);
   assert.equal(new Set(ids).size, ids.length, 'las cartas de fábrica necesitan id único');
 
   // La página reexporta para no romper a quien importaba desde ahí.
