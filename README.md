@@ -26,7 +26,7 @@ vercel.json            Cabeceras de seguridad + cron diario de push
 
 ```bash
 npm install
-cp .env.example .env      # o rellena .env a mano (ver §3)
+cp .env.example .env      # plantilla en la raíz; rellena VITE_* (ver §3)
 npm run dev               # http://localhost:5173
 npm run build             # genera personal-hub/dist
 npm run preview           # sirve el build
@@ -35,6 +35,8 @@ npm test                  # 21 tests de contrato
 
 `npm run dev` = `npx vite personal-hub`, y `npm run build` = `npx vite build personal-hub`.
 Para cambiar de puerto: `npx vite personal-hub --port 5178 --strictPort`.
+
+> Nota: el script histórico `FIX-SUPABASE.sql` está archivado en [`docs/archive/FIX-SUPABASE.sql`](docs/archive/FIX-SUPABASE.sql). Usa `sql/` como fuente de verdad (ver §4).
 
 ## 3. Variables de entorno
 

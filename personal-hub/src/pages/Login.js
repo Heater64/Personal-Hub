@@ -15,7 +15,7 @@ export function LoginPage(router) {
     <div class="login-decor d4" aria-hidden="true">✧</div>
 
     <div class="login-container">
-      <div class="login-card glass-card">
+      <div class="login-card">
         <div class="login-header">
           <div class="brand-icon">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
