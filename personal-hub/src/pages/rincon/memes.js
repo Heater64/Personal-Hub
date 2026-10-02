@@ -9,7 +9,7 @@ import { isVideo, getVideoPoster, buildMediaItems } from '../../services/rincon-
 import { db } from '../../services/db.service.js';
 import { showToast } from '../../components/Toast.js';
 import { escapeHtml, safeUrl } from '../../utils/escape.js';
-import { openLightbox, playSlideshow } from '../../components/MediaLightbox.js';
+import { openLightbox, closeLightbox, playSlideshow, pauseSlideshow } from '../../components/MediaLightbox.js';
 import {
   userPhotos, addUserPhotos, hidePhoto, saveFavPhotos, toggleFavPhoto,
   albumMeta, saveAlbumMeta, knownRatio, rememberRatio, photoDate, photoTs, albumYear
@@ -304,12 +304,26 @@ export function createMemes(ctx) {
   function rerenderGallery() {
     const content = document.getElementById('galeriaMemesContent');
     if (!content) return;
+    closeLightbox();
+    pauseSlideshow();
+    content.querySelectorAll('audio, video').forEach(media => {
+      try { media.pause(); media.currentTime = 0; } catch { /* ignorar */ }
+    });
     content.innerHTML = renderGaleriaContent();
     bindGaleriaEvents(content);
   }
   
   function bindGaleriaEvents(container) {
     if (!container) return;
+    // Al cambiar filtro/pestaña o repintar datos, el visor debe desmontar su
+    // video/audio y detener la presentación antes de perder el nodo dueño.
+    const stopGalleryPlayback = () => {
+      closeLightbox();
+      const content = document.getElementById('galeriaMemesContent');
+      content?.querySelectorAll('audio, video').forEach(media => {
+        try { media.pause(); media.currentTime = 0; } catch { /* ignorar */ }
+      });
+    };
     const photos = getGalleryPhotos();
     const heroPhotos = photos.slice(0, 5);
     // container.querySelector en vez de document.getElementById: la página
@@ -341,6 +355,7 @@ export function createMemes(ctx) {
     // Filtros
     container.querySelectorAll('.gallery-filter').forEach(btn => {
       btn.addEventListener('click', () => {
+        stopGalleryPlayback();
         state.galeriaFilter = btn.dataset.filter;
         rerenderGallery();
       });

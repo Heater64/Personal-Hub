@@ -9,7 +9,7 @@
 
 import '../styles/rincon.css';
 import { loadGiftsCatalog, getGiftsCatalog } from '../services/gifts.service.js';
-import { createLightbox, pauseSlideshow } from '../components/MediaLightbox.js';
+import { createLightbox, closeLightbox, pauseSlideshow } from '../components/MediaLightbox.js';
 import { db } from '../services/db.service.js';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
@@ -243,8 +243,11 @@ export function RinconPage(router) {
     offContent();
     offGallery();
     offMemes();
-    // Pausa cualquier audio del Rincón que esté sonando
-    page.querySelectorAll('.audios-player-card audio').forEach(a => a.pause());
+    // Al salir del Rincón se destruyen todos sus medios, incluido el visor.
+    closeLightbox();
+    page.querySelectorAll('audio, video').forEach(media => {
+      try { media.pause(); media.currentTime = 0; } catch { /* ignorar */ }
+    });
     pauseSlideshow();
     document.removeEventListener('keydown', memeKeyHandler);
     if (ctx.datoViewerKeyHandler) {

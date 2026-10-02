@@ -253,10 +253,11 @@ export function buildVideoPlayer(opts = {}) {
   // Cuando el vídeo carga, intenta mostrar su primer frame.
   // Si el navegador bloqueó el autoplay, reintenta con sonido una vez
   // el usuario haya interactuado (gesto ya registrado).
+  let destroyed = false;
   video.addEventListener('loadeddata', () => {
     // Si el vídeo tiene dimensión pero sigue en negro/pausado,
     // reintenta play (el gesto del usuario ya está registrado).
-    if (video.paused && autoplay) {
+    if (!destroyed && video.paused && autoplay) {
       video.play().catch(() => {});
     }
   });
@@ -275,10 +276,15 @@ export function buildVideoPlayer(opts = {}) {
 
   /** Libera el reproductor: pausa, suelta recursos y limpia listeners */
   function destroy() {
+    destroyed = true;
     try {
+      video.autoplay = false;
+      video.removeAttribute('autoplay');
       video.pause();
+      video.querySelectorAll('source').forEach(sourceEl => sourceEl.removeAttribute('src'));
       video.removeAttribute('src');
       video.load();
+      video.pause();
     } catch (e) {}
     ctrlBar._calCleanupDrag?.();
   }
