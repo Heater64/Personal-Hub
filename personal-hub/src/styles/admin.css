@@ -2771,6 +2771,33 @@
   border-radius: 50%;
   background: var(--theme-success, var(--theme-accent));
 }
+/* Guardado parado: el botón se pone en rojo y la fila culpable resaltada. */
+.config-save.is-blocked .config-save-state { color: var(--theme-error, #ff6b6b); }
+.config-save.is-blocked .admin-btn-primary {
+  border-color: var(--theme-error, #ff6b6b);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-error, #ff6b6b) 18%, transparent);
+}
+.dates-event-row.is-wrong {
+  border-color: var(--theme-error, #ff6b6b);
+  background: color-mix(in srgb, var(--theme-error, #ff6b6b) 10%, transparent);
+}
+
+/* Borrador local: lo escrito que aún no está en la nube. */
+.config-draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--theme-accent, #e8614f) 12%, transparent);
+  border: 1px solid var(--theme-divider-strong);
+  font-size: 12px;
+}
+.config-draft[hidden] { display: none; }
+.config-draft .admin-btn { padding: 4px 10px; font-size: 12px; }
+
 .config-save.is-dirty .config-save-state { color: var(--theme-accent); }
 .config-save.is-dirty .config-save-state::before {
   background: var(--theme-accent);
@@ -3161,6 +3188,16 @@ html.admin-nav-locked { overflow: hidden; }
   font-weight: 600;
   color: var(--theme-text-secondary);
 }
+/* Pie de la lista de eventos: ver la bienvenida de hoy + lo que sale. */
+.dates-events-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--theme-divider);
+  font-size: 12px;
+}
 .dates-event-row {
   display: flex;
   flex-direction: column;
@@ -3174,14 +3211,18 @@ html.admin-nav-locked { overflow: hidden; }
   border-color: var(--theme-divider-strong);
   background: var(--theme-surface-2, rgba(255,255,255,.02));
 }
-/* La fila colapsada solo enseña título + fecha + los dos botones. */
+/* La fila colapsada solo enseña título + fecha + los botones. En pantallas
+   estrechas los botones bajan a su propia línea antes que estrujar el campo. */
 .dates-event-main {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
 }
 .dates-event-row input[type="text"] {
-  flex: 1;
+  /* Base ancha: si no cabe todo en una línea, la fecha baja antes que el
+     nombre, que es el campo que de verdad hay que leer. */
+  flex: 1 1 170px;
   min-width: 0;
   padding: 9px 11px;
   border-radius: 10px;
@@ -3191,7 +3232,12 @@ html.admin-nav-locked { overflow: hidden; }
   font: inherit;
 }
 .dates-event-row input[type="date"] {
-  width: 150px;
+  /* Estrecho a propósito: el campo de fecha tiene un ancho mínimo propio
+     (los separadores y el icono del navegador) y, si se le deja, empuja el
+     botón de quitar a otra línea. */
+  flex: 0 1 122px;
+  width: 122px;
+  min-width: 0;
   padding: 9px 11px;
   border-radius: 10px;
   border: 1px solid var(--theme-divider-strong);
@@ -3230,6 +3276,71 @@ html.admin-nav-locked { overflow: hidden; }
 .dates-event-row.is-open .dates-event-toggle {
   background: var(--theme-surface);
 }
+
+/* ===== Comprobar la bienvenida sin esperar al día =====
+   «Hoy» rellena la fecha con el día de hoy y 🎬 abre la hoja tal cual
+   quedaría, aunque la fecha ya haya pasado. */
+.dates-event-today,
+.dates-se-today {
+  flex-shrink: 0;
+  padding: 0 10px;
+  height: 40px;
+  border: 1px solid var(--theme-divider-strong);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dates-event-today:hover,
+.dates-se-today:hover {
+  color: var(--theme-accent, #e8614f);
+  border-color: var(--theme-accent, #e8614f);
+}
+.dates-event-preview,
+.dates-se-preview {
+  flex-shrink: 0;
+  width: 34px;
+  height: 40px;
+  border: 1px solid var(--theme-divider-strong);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.dates-event-preview:hover,
+.dates-se-preview:hover {
+  border-color: var(--theme-accent, #e8614f);
+}
+
+/* Línea de estado: dice si ese día sale hoy, cuándo o por qué no sale. */
+.dates-when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--theme-text-secondary);
+}
+.dates-when::before {
+  content: '';
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .7;
+}
+.dates-when--ok { color: #69b984; font-weight: 600; }
+.dates-when--info { color: var(--theme-text-secondary); }
+.dates-when--muted { color: var(--theme-text-secondary); opacity: .75; }
+.dates-when--warn { color: #e8a33f; }
 
 /* ===== Aspecto de la bienvenida (emoji, color, texto, foto) ===== */
 .dates-event-look,

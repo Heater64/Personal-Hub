@@ -24,8 +24,94 @@
   box-shadow: 0 24px 80px var(--event-soft, var(--primary-soft));
 }
 
-.special-event { display: grid; justify-items: center; gap: var(--sp-14); padding: var(--sp-8) 0 var(--sp-6); text-align: center; }
-/* Foto opcional del día: va antes del emoji y sustituye al carréton. */
+.special-event {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-14);
+  padding: var(--sp-8) 0 var(--sp-6);
+  text-align: center;
+  overflow: hidden;
+}
+
+/* ===== Celebración: confeti, nieve, hojas o corazones desde arriba =====
+   Un solo canvas para toda la pantalla, por encima de la hoja y por debajo
+   de los avisos. No captura clics: mientras dura, se puede seguir usando la
+   tarjeta. */
+.celebration-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 40);
+  pointer-events: none;
+}
+
+/* ===== Vídeo de fondo =====
+   Va como una capa dentro de la tarjeta (no como fondo del navegador): así
+   el degradado se come el borde y el texto siempre se lee. */
+.special-event--media-fondo { padding-top: var(--sp-18); }
+.special-event__film {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.special-event__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 55%, transparent) 0%, color-mix(in srgb, var(--surface) 82%, transparent) 45%, var(--surface) 100%);
+}
+.special-event--media-fondo > *:not(.special-event__film):not(.special-event__scrim) { position: relative; z-index: 2; }
+
+/* Vídeo de portada: el mismo reproductor, grande y con controles. */
+.special-event__video {
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--event-accent, var(--primary-soft));
+  box-shadow: 0 14px 40px color-mix(in srgb, var(--event-accent, var(--primary)) 18%, transparent);
+}
+.special-event__video video {
+  display: block;
+  width: 100%;
+  max-height: 42dvh;
+  object-fit: cover;
+  background: #000;
+}
+
+/* ===== Tira de fotos =====
+   La primera foto es la grande; el resto va en miniatura. Al tocar una, esa
+   pasa a ser la grande, sin salir de la tarjeta. */
+.special-event__gallery {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-8);
+  width: 100%;
+}
+.special-event__thumb {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--r-md);
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  line-height: 0;
+  transition: border-color var(--dur-fast), transform var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.special-event__thumb:hover,
+.special-event__thumb:focus-visible { border-color: var(--event-accent, var(--primary)); transform: translateY(-2px); }
+.special-event__thumb img {
+  display: block;
+  width: 62px;
+  height: 62px;
+  object-fit: cover;
+}
+/* Foto del día: va antes del emoji. Con vídeo de portada la sustituye. */
 .special-event__photo { width: 100%; max-width: 340px; border-radius: var(--r-xl); overflow: hidden; box-shadow: 0 14px 40px color-mix(in srgb, var(--event-accent, var(--primary)) 18%, transparent); animation: special-event-pop 0.55s cubic-bezier(.2, .9, .3, 1.25) both; }
 .special-event__photo img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .special-event__item-body { min-width: 0; }
@@ -159,6 +245,14 @@
   font-weight: 500;
   letter-spacing: 0.01em;
   padding-inline: 0.06em;
+}
+
+/* En móvil el apodo baja a su propia línea: "Buenas noches 🌙," y debajo
+   "mi princesa". Encima de 768 px hay sitio de sobra y se queda todo en
+   una sola línea. */
+@media (max-width: 767px) {
+  .home-hero__greet-name { display: block; }
+  .home-hero__greet { line-height: 1.2; }
 }
 
 /* ==========================================

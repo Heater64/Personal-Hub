@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vista previa · días especiales</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap">
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <style>
+    body { min-height: 100dvh; background: var(--surface-0, #0a0a0c); color: var(--text); }
+    .pv { max-width: 560px; margin: 0 auto; padding: 40px 20px 80px; display: grid; gap: 22px; }
+    .pv h1 { font-family: var(--font-display); font-size: 1.9rem; margin: 0; }
+    .pv p { color: var(--text-2); margin: 0; line-height: 1.5; }
+    .pv__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .pv__hint { font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="pv">
+    <h1>Días especiales · vista previa</h1>
+    <p>Pulsa un día para ver la bienvenida tal y como saldrá ese día en Inicio. También funciona con fechas que no coinciden con hoy.</p>
+    <div class="pv__grid" id="buttons"></div>
+    <p class="pv__hint">Equivalente dentro de la app: <code>#/?evento=halloween</code>, <code>#/?evento=navidad</code>, <code>#/?evento=2026-12-25</code>…</p>
+  </div>
+
+  <script type="module">
+    import { loadSpecialDates } from '/src/utils/specialDates.js';
+    import { previewSpecialEventSheet, maybeShowSpecialEvent } from '/src/components/SpecialEventSheet.js';
+
+    const CASOS = [
+      ['Halloween', 'halloween'],
+      ['Navidad', 'navidad'],
+      ['Aniversario', 'aniversario'],
+      ['Cumpleaños', 'cumpleanos'],
+      ['Fecha suelta', '2026-10-31']
+    ];
+
+    // La hoja pide router solo para el botón del calendario: aquí no navega.
+    const routerStub = { navigate: path => { window.location.hash = path; } };
+
+    const grid = document.getElementById('buttons');
+    for (const [label, value] of CASOS) {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.type = 'button';
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        if (!previewSpecialEventSheet(value, routerStub)) alert(`No hay ningún evento en "${value}"`);
+      });
+      grid.append(btn);
+    }
+
+    // Las fechas configuradas (aniversario, cumpleaños) viven en la caché:
+    // sin esta carga la vista previa de esos aliases usaría los valores por
+    // defecto en vez de los guardados en Supabase.
+    loadSpecialDates().catch(() => {});
+
+    // Atajo para probar el camino real de "primera vez que se entra hoy".
+    window.__hoy = () => maybeShowSpecialEvent(document.body, routerStub);
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@
    ========================================== */
 
 import { db } from '../services/db.service.js';
+import { normalizeDecor, normalizeVideoMode, mediaList } from './celebration.js';
 import { todayISO } from './format.js';
 
 // Días temáticos de fábrica (Halloween, Navidad). Editables desde Admin:
@@ -31,10 +32,11 @@ const FIXED_EVENT_META = {
 // Tipos válidos: deciden el color con el que se pinta la bienvenida.
 // Fuente única: la usan la hoja (SpecialEventSheet) y el selector del Admin,
 // para que el color que eliges sea el que sale.
-export const SPECIAL_EVENT_TYPES = ['custom', 'birthday', 'anniversary', 'memory', 'halloween', 'christmas'];
+export const SPECIAL_EVENT_TYPES = ['custom', 'birthday', 'anniversary', 'memory', 'halloween', 'christmas', 'valentine'];
 
 export const SPECIAL_EVENT_TONES = {
   halloween: ['#f28b36', 'rgba(242,139,54,.16)'],
+  valentine: ['#e8614f', 'rgba(232,97,79,.16)'],
   christmas: ['#69b984', 'rgba(105,185,132,.16)'],
   birthday: ['var(--primary)', 'var(--primary-soft)'],
   anniversary: ['var(--primary)', 'var(--primary-soft)'],
@@ -62,6 +64,18 @@ function pick(value, fallback) {
 /** Un tipo solo se acepta si está en la lista: un color inventado rompe el CSS. */
 export function normalizeEventType(value, fallback = 'custom') {
   return SPECIAL_EVENT_TYPES.includes(value) ? value : fallback;
+}
+
+/** Todo lo que decora y los medios de un día, tal cual los pintan las hojas. */
+function mediaFields(source = {}) {
+  return {
+    video: pick(source.video, ''),
+    videoMode: normalizeVideoMode(source.videoMode),
+    gallery: mediaList(source.gallery),
+    decor: normalizeDecor(source.decor),
+    // Los emojis que caen cuando el ambiente es «emoji». Vacío = los de su fiesta.
+    emojis: pick(source.emojis, '')
+  };
 }
 
 function occursOnDate(value, repeats, iso) {
@@ -94,6 +108,7 @@ export function specialEventsForDate(iso = todayISO()) {
       type: normalizeEventType(look.type, meta.type),
       description: pick(look.description, meta.description),
       image: pick(look.image, ''),
+      ...mediaFields(look),
       date: iso
     });
   }
@@ -109,6 +124,7 @@ export function specialEventsForDate(iso = todayISO()) {
       type: normalizeEventType(event.type),
       description: pick(event.description, 'Hoy tenemos una razón más para crear un recuerdo juntos.'),
       image: pick(event.image, ''),
+      ...mediaFields(event),
       date: iso
     });
   }
@@ -139,6 +155,7 @@ export function seasonalEvents(cfg = specialDates()) {
       type: normalizeEventType(edit.type, preset.type),
       description: pick(edit.description, preset.description),
       image: pick(edit.image, ''),
+      ...mediaFields(edit),
       enabled: edit.enabled !== false
     };
   });
@@ -153,6 +170,7 @@ export function seasonalEvents(cfg = specialDates()) {
       type: normalizeEventType(item.type),
       description: pick(item.description, 'Hoy tenemos una razón más para crear un recuerdo juntos.'),
       image: pick(item.image, ''),
+      ...mediaFields(item),
       enabled: item.enabled !== false
     }))
     .filter(item => item.monthDay);

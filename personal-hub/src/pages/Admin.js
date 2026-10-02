@@ -15,9 +15,11 @@ import { defaultCatalog } from '../data/series-seed.js';
 import { userStore } from '../stores/user.store.js';
 import { moodStore } from '../stores/mood.store.js';
 import { showToast } from '../components/Toast.js';
+import { openSpecialEventSheet, replaySpecialEventSheet } from '../components/SpecialEventSheet.js';
+import { decorOptions, videoModeOptions, THEME_EMOJIS, MAX_GALLERY, MAX_EMOJIS } from '../utils/celebration.js';
 import { escapeHtml } from '../utils/escape.js';
 import { isValidUrlField, todayISO, hourInSpain, timeInSpain } from '../utils/format.js';
-import { refreshSpecialDates, seasonalEvents, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS } from '../utils/specialDates.js';
+import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS } from '../utils/specialDates.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { expandCalendarCatalog } from '../data/calendar-expansion.js';
@@ -205,7 +207,8 @@ const EVENT_TYPE_OPTIONS = [
   { id: 'anniversary', label: 'Aniversario' },
   { id: 'memory',      label: 'Recuerdo' },
   { id: 'halloween',   label: 'Halloween (naranja)' },
-  { id: 'christmas',   label: 'Navidad (verde)' }
+  { id: 'christmas',   label: 'Navidad (verde)' },
+  { id: 'valentine',   label: 'San Valentín (rojo)' }
 ];
 
 // ==========================================
@@ -3749,6 +3752,9 @@ export function AdminPage(router) {
     const pushOk = isPushSupported();
     const account = userStore.getUser();
     const hubDates = await db.getHubDates();
+    // La caché global la leen el botón «ver la bienvenida de hoy» y la hoja
+    // temática; sin esto seguirían con los valores de fábrica.
+    await loadSpecialDates().catch(() => {});
 
     // Cada bloque es una tarjeta con su icono y su rótulo de grupo: antes todo
     // era una lista plana de paneles y no se sabía qué tocaba cada cosa. Las
@@ -3867,7 +3873,7 @@ export function AdminPage(router) {
             <h4>${UI.copy} Fechas especiales</h4>
             <span class="admin-panel-badge">Alimentan las métricas del resumen</span>
           </div>
-          <p class="config-card-hint">«Años juntos», «En el Hub», el cumpleaños y el primer mensaje. Los eventos y los días temáticos salen además en la bienvenida del Perfil.</p>
+          <p class="config-card-hint">«Años juntos», «En el Hub», el cumpleaños y el primer mensaje. Los eventos y los días temáticos salen además en la bienvenida del Inicio.</p>
 
           <div class="admin-tabs config-tabs" id="configDatesTabs" role="tablist">
             <button type="button" class="admin-tab active" data-config-tab="fechas" role="tab" aria-selected="true">${UI.calendar}<span>Los cuatro días</span></button>
@@ -3924,9 +3930,13 @@ export function AdminPage(router) {
           <div class="config-pane" data-config-pane="eventos" hidden>
             <div class="dates-events">
               <span class="dates-events-title">✨ Próximas cosas</span>
-              <p class="muted-text">Eventos con fecha. Se muestran en el Perfil; marca ♻️ si se repiten cada año.</p>
+              <p class="muted-text">Eventos con fecha: salen en la bienvenida del Inicio el día que cae, una sola vez. Usa «Hoy» para poner la fecha de hoy y 🎬 para ver la bienvenida sin esperar.</p>
               <div id="datesEventsList"></div>
               <button type="button" class="admin-btn admin-btn-ghost" id="addDatesEventBtn">${UI.plus} Añadir evento</button>
+              <div class="dates-events-foot">
+                <button type="button" class="admin-btn admin-btn-ghost" id="replayWelcomeBtn">🎬 Ver la bienvenida de hoy</button>
+                <span class="muted-text" id="replayWelcomeHint"></span>
+              </div>
             </div>
           </div>
 
@@ -3941,7 +3951,7 @@ export function AdminPage(router) {
           <div class="config-pane" data-config-pane="tematicos" hidden>
             <div class="dates-events">
               <span class="dates-events-title">🎃 Días temáticos</span>
-              <p class="muted-text">Los que saltan solos cada año, como Halloween o Navidad. Vienen de fábrica: puedes cambiar fecha, texto, emoji, color y foto, apagarlos o añadir otros.</p>
+              <p class="muted-text">Los que saltan solos cada año, como Halloween o Navidad. «Hoy» pone el mes y el día de hoy y 🎬 muestra cómo se verá ese día. Vienen de fábrica: puedes cambiar fecha, texto, emoji, color y foto, apagarlos o añadir otros.</p>
               <div id="datesSeasonalList"></div>
               <button type="button" class="admin-btn admin-btn-ghost" id="addDatesSeasonalBtn">${UI.plus} Añadir día temático</button>
             </div>
@@ -3949,6 +3959,11 @@ export function AdminPage(router) {
 
           <div class="config-save" id="datesSaveRow">
             <span class="config-save-state" id="datesSaveState">Todo guardado</span>
+            <div class="config-draft" id="datesDraftRow" hidden>
+              <span id="datesDraftText"></span>
+              <button type="button" class="admin-btn admin-btn-ghost" id="restoreDraftBtn">Recuperar lo que no se guardó</button>
+              <button type="button" class="admin-btn admin-btn-ghost" id="discardDraftBtn">Descartar</button>
+            </div>
             <div class="config-save-right">
               <div class="muted-text" id="datesSavedHint"></div>
               <button class="admin-btn admin-btn-primary" id="saveDatesBtn">${UI.check} Guardar fechas</button>
@@ -4028,30 +4043,275 @@ export function AdminPage(router) {
     // no había forma de saber si lo editado está ya en la base de datos.
     const saveRow = page.querySelector('#datesSaveRow');
     const saveState = page.querySelector('#datesSaveState');
+    // Red de seguridad: lo que se escribe se queda en este navegador al
+    // momento. Si Supabase rechaza el guardado (sesión caducada, sin red, RLS)
+    // o si se cierra la pestana sin guardar, nada de lo escrito se pierde.
+    const DRAFT_KEY = 'ph.draft.hub_dates';
+    const saveDraft = () => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ at: Date.now(), dates: collectDates() }));
+      } catch { /* sin cuota o sin localStorage */ }
+    };
+    const readDraft = () => {
+      try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); }
+      catch { return null; }
+    };
+    const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* nada */ } };
     const markDirty = () => {
       saveRow?.classList.add('is-dirty');
       if (saveState) saveState.textContent = 'Tienes cambios sin guardar';
+      saveDraft();
     };
     const markSaved = () => {
       saveRow?.classList.remove('is-dirty');
+      saveRow?.classList.remove('is-blocked');
       if (saveState) saveState.textContent = 'Todo guardado';
+      clearDraft();
+      page.querySelectorAll('.dates-event-row.is-wrong').forEach(r => r.classList.remove('is-wrong'));
     };
+    /**
+     * El guardado está parado por algo concreto: se marca la fila culpable, se
+     * lleva la vista hasta ella y se explica. Un aviso suelto en una esquina
+     * era lo que hacía que el botón pareciera no funcionar.
+     */
+    const blockSave = (motivo, row) => {
+      page.querySelectorAll('.dates-event-row.is-wrong').forEach(r => r.classList.remove('is-wrong'));
+      row?.classList.add('is-wrong');
+      row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      saveRow?.classList.add('is-blocked');
+      if (saveState) saveState.textContent = `No se puede guardar: ${motivo.toLowerCase()}`;
+      saveDraft();
+      showToast(`Falta un dato para guardar: ${motivo.toLowerCase()}.`, 'error', 6000);
+    };
+
+    // Si quedó un borrador de una sesión anterior (cerraste sin guardar, o el
+    // subida falló), aparece con un botón para recuperar lo escrito.
+    const draftRow = page.querySelector('#datesDraftRow');
+    const showDraft = (draft) => {
+      if (!draftRow || !draft?.dates) return;
+      const cuando = new Date(draft.at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+      const text = page.querySelector('#datesDraftText');
+      if (text) text.textContent = `Hay cambios sin subir del ${cuando}.`;
+      draftRow.hidden = false;
+    };
+    page.querySelector('#restoreDraftBtn')?.addEventListener('click', () => {
+      const draft = readDraft();
+      if (!draft?.dates) return;
+      const d = draft.dates;
+      const set = (sel, value) => { const el = page.querySelector(sel); if (el && value) el.value = value; };
+      set('#dateAnniversary', d.anniversary);
+      set('#dateHubStart', d.hubStart);
+      set('#dateBirthday', d.birthday);
+      set('#dateUserBirthday', d.userBirthday);
+      set('#dateAnniversaryTitle', d.titles?.anniversary);
+      set('#dateHubStartTitle', d.titles?.hubStart);
+      set('#dateBirthdayTitle', d.titles?.birthday);
+      set('#dateUserBirthdayTitle', d.titles?.userBirthday);
+      for (const [sel, key] of [['#dateAnniversaryRecur', 'anniversary'], ['#dateHubStartRecur', 'hubStart'], ['#dateBirthdayRecur', 'birthday'], ['#dateUserBirthdayRecur', 'userBirthday']]) {
+        const el = page.querySelector(sel);
+        if (el) el.checked = d.recurring?.[key] === true;
+      }
+      if (Array.isArray(d.events)) editingDates = d.events.map(e => ({ ...e }));
+      if (Array.isArray(d.seasonal)) editingSeasonal = seasonalEvents({ seasonal: d.seasonal }).map(x => ({ ...x }));
+      renderDateEvents();
+      renderSeasonal();
+      renderDateLooks();
+      draftRow.hidden = true;
+      markDirty();
+      showToast('Recuperado lo que no se había guardado. Pulsa Guardar fechas.', 'success');
+    });
+    page.querySelector('#discardDraftBtn')?.addEventListener('click', () => {
+      clearDraft();
+      draftRow.hidden = true;
+      showToast('Se ha descartado el borrador de este navegador', 'info');
+    });
     page.querySelector('.config-dates')?.addEventListener('input', markDirty);
     page.querySelector('.config-dates')?.addEventListener('change', markDirty);
+    /**
+     * Lee todo lo del panel tal como está ahora mismo. La comparten el botón
+     * de guardar y el borrador local: una sola lectura, para que lo que se
+     * recupera sea exactamente lo que se iba a guardar.
+     */
+    function collectDates() {
+      const events = [...page.querySelectorAll('#datesEventsList .dates-event-row')].map(row => ({
+        id: row.dataset.evId,
+        title: row.querySelector('.dates-event-title').value.trim(),
+        date: row.querySelector('.dates-event-date').value,
+        recurring: row.querySelector('.dates-event-recur-cb')?.checked === true,
+        ...readLookFields(row)
+      }));
+      const seasonal = [...page.querySelectorAll('#datesSeasonalList .dates-event-row')].map(row => ({
+        id: row.dataset.seId,
+        title: row.querySelector('.dates-se-title').value.trim(),
+        monthDay: row.querySelector('.dates-se-monthday').value.trim(),
+        enabled: row.querySelector('.dates-se-enabled')?.checked === true,
+        ...readLookFields(row)
+      }));
+      const looks = {};
+      for (const row of page.querySelectorAll('#datesLooksList .dates-look-row')) {
+        const look = readLookFields(row);
+        if (look.icon || look.description || look.type || look.image || look.video || look.gallery.length) {
+          looks[row.dataset.lookId] = look;
+        }
+      }
+      return {
+        anniversary: page.querySelector('#dateAnniversary').value,
+        hubStart: page.querySelector('#dateHubStart').value,
+        birthday: page.querySelector('#dateBirthday').value,
+        userBirthday: page.querySelector('#dateUserBirthday').value,
+        events,
+        seasonal,
+        looks,
+        titles: {
+          anniversary: page.querySelector('#dateAnniversaryTitle').value,
+          hubStart: page.querySelector('#dateHubStartTitle').value,
+          birthday: page.querySelector('#dateBirthdayTitle').value,
+          userBirthday: page.querySelector('#dateUserBirthdayTitle').value
+        },
+        recurring: {
+          anniversary: page.querySelector('#dateAnniversaryRecur')?.checked === true,
+          hubStart: page.querySelector('#dateHubStartRecur')?.checked === true,
+          birthday: page.querySelector('#dateBirthdayRecur')?.checked === true,
+          userBirthday: page.querySelector('#dateUserBirthdayRecur')?.checked === true
+        }
+      };
+    }
+
     /** Lee los cuatro campos de aspecto de una fila (emoji, color, texto, foto). */
-    const readLookFields = (row) => {
+    function readLookFields(row) {
       const val = sel => row.querySelector(sel)?.value.trim() || '';
       return {
         icon: val('.dates-look-icon'),
         type: val('.dates-look-type') || 'custom',
         description: val('.dates-look-desc'),
-        image: val('.dates-look-image')
+        image: val('.dates-look-image'),
+        // Lo que llena la tarjeta: vídeo de portada o de fondo, la tira de
+        // fotos y el ambiente que cae al abrirla.
+        video: val('.dates-look-video'),
+        videoMode: val('.dates-look-videomode') || 'portada',
+        gallery: val('.dates-look-gallery').split('\n').map(url => url.trim()).filter(Boolean).slice(0, MAX_GALLERY),
+        decor: val('.dates-look-decor') || 'confeti',
+        emojis: val('.dates-look-emojis').split(/\s+/).filter(Boolean).slice(0, MAX_EMOJIS).join(' ')
       };
-    };
+    }
+
+    // Los mismos campos para los cuatro días, los eventos y los temáticos: la
+    // tarjeta se rellena igual en los tres sitios.
+    const mediaFieldsHTML = (look = {}) => `
+      <label class="dates-look-field">
+        <span>Ambiente al abrir</span>
+        <select class="dates-look-decor" aria-label="Decoración de la bienvenida">${decorOptions(look.decor)}</select>
+      </label>
+      <label class="dates-look-field dates-look-field--wide">
+        <span>Emojis que caen</span>
+        <input type="text" class="dates-look-emojis" value="${esc(look.emojis || '')}" placeholder="${esc(THEME_EMOJIS[look.type] || THEME_EMOJIS.custom)}" aria-label="Emojis que caen al abrir">
+        <small class="dates-look-note">Si lo dejas vacío caen los de la fiesta, los que se ven de ejemplo.</small>
+      </label>
+      <label class="dates-look-field dates-look-field--wide">
+        <span>Vídeo (URL)</span>
+        <input type="url" class="dates-look-video" value="${esc(look.video || '')}" placeholder="https://…mp4" aria-label="Vídeo de la bienvenida">
+      </label>
+      <label class="dates-look-field">
+        <span>El vídeo va…</span>
+        <select class="dates-look-videomode" aria-label="Dónde se ve el vídeo">${videoModeOptions(look.videoMode)}</select>
+      </label>
+      <label class="dates-look-field dates-look-field--wide">
+        <span>Más fotos (una URL por línea)</span>
+        <textarea class="dates-look-gallery" rows="2" placeholder="https://…&#10;https://…" aria-label="Fotos de la tirita">${esc((look.gallery || []).join('\n'))}</textarea>
+      </label>`;
     let editingDates = (hubDates.events || []).map(e => ({ ...e }));
     const typeOptions = (value) => EVENT_TYPE_OPTIONS
       .map(t => `<option value="${t.id}"${t.id === value ? ' selected' : ''}>${t.label}</option>`)
       .join('');
+
+    // ---- Ver la bienvenida sin esperar al día ----
+    // Antes solo se veía el día que de verdad caía, y un evento con la
+    // fecha pasada no daba ninguna pista de por qué no salía. Con estos
+    // botones se comprueba al momento: «Hoy» pone la fecha de hoy, «Ver»
+    // abre la hoja con lo que hay escrito y la línea de estado dice si
+    // ese día sale hoy, cuándo o por qué no sale.
+    const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    /** '2026-09-02' -> '2 sep 2026' (o '' si no es una fecha). */
+    const readableDate = (iso) => {
+      const [y, m, d] = String(iso || '').split('-').map(Number);
+      return y && m && d ? `${d} ${MESES_CORTOS[m - 1]} ${y}` : '';
+    };
+    /** '10-31' -> '31 de octubre' (o '' si no es un mes-día). */
+    const readableMonthDay = (mmdd) => {
+      const m = /^\d{2}-\d{2}$/.exec(String(mmdd || ''));
+      if (!m) return '';
+      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      return `${Number(mmdd.slice(3, 5))} de ${meses[Number(mmdd.slice(0, 2)) - 1]}`;
+    };
+    /** Lo que pinta la hoja, ledío de una fila del editor. */
+    const draftFromRow = (row, seasonal = false) => ({
+      title: row.querySelector(seasonal ? '.dates-se-title' : '.dates-event-title')?.value.trim() || '',
+      icon: row.querySelector('.dates-look-icon')?.value.trim() || '✨',
+      type: row.querySelector('.dates-look-type')?.value || 'custom',
+      description: row.querySelector('.dates-look-desc')?.value.trim() || '',
+      image: row.querySelector('.dates-look-image')?.value.trim() || '',
+      video: row.querySelector('.dates-look-video')?.value.trim() || '',
+      videoMode: row.querySelector('.dates-look-videomode')?.value || 'portada',
+      gallery: (row.querySelector('.dates-look-gallery')?.value || '')
+        .split('\n').map(url => url.trim()).filter(Boolean).slice(0, MAX_GALLERY),
+      decor: row.querySelector('.dates-look-decor')?.value || 'confeti',
+      emojis: row.querySelector('.dates-look-emojis')?.value.trim() || ''
+    });
+    /** Abre la hoja con el borrador de una fila, marcada como simulación. */
+    const openDraftSheet = (row, seasonal = false) => {
+      const draft = draftFromRow(row, seasonal);
+      openSpecialEventSheet([{
+        ...draft,
+        title: draft.title || 'Día especial',
+        description: draft.description || 'Así se verá este día en la bienvenida.'
+      }], router, { preview: true });
+    };
+    /** Estado de un evento con fecha completa: hoy, cuándo, o por qué no sale. */
+    const whenForEvent = (row) => {
+      const title = row.querySelector('.dates-event-title')?.value.trim() || '';
+      const date = row.querySelector('.dates-event-date')?.value || '';
+      const repeats = row.querySelector('.dates-event-recur-cb')?.checked === true;
+      if (!title) return ['warn', 'Falta el nombre: sin él no se guarda.'];
+      if (!date) return ['muted', 'Ponle una fecha para saber cuándo sale.'];
+      const today = todayISO();
+      if (date === today) return ['ok', '✓ Sale hoy en el Inicio.'];
+      if (date > today) return ['info', `Sale el ${readableDate(date)}.`];
+      return repeats
+        ? ['warn', `La fecha ya pasó (${readableDate(date)}), pero con ♻️ repetirá el ${readableMonthDay(date.slice(5))}.`]
+        : ['warn', `⚠️ La fecha ya pasó (${readableDate(date)}): no volverá a salir.`];
+    };
+    /** Lo mismo para un día temático, que se fecha con mes-día. */
+    const whenForSeasonal = (row) => {
+      const title = row.querySelector('.dates-se-title')?.value.trim() || '';
+      const monthDay = row.querySelector('.dates-se-monthday')?.value.trim() || '';
+      const enabled = row.querySelector('.dates-se-enabled')?.checked === true;
+      if (!enabled) return ['muted', 'Apagado: ese día no saltará.'];
+      if (!title) return ['warn', 'Falta el nombre: sin él no se guarda.'];
+      const cada = readableMonthDay(monthDay);
+      if (!cada) return ['muted', 'Pon el mes y el día (p. ej. 10-31).'];
+      const hoyMD = todayISO().slice(5);
+      if (monthDay === hoyMD) return ['ok', '✓ Sale hoy en el Inicio.'];
+      return monthDay > hoyMD
+        ? ['info', `Sale el ${cada}.`]
+        : ['warn', `Este año ya pasó: el año que viene, el ${cada}.`];
+    };
+    /** Pinta la línea de estado de todas las filas de las dos listas. */
+    const refreshWhens = () => {
+      const paint = (selector, calc) => page.querySelectorAll(selector).forEach(row => {
+        const out = row.querySelector('.dates-when');
+        if (!out) return;
+        const [tone, text] = calc(row);
+        out.className = `dates-when dates-when--${tone}`;
+        out.textContent = text;
+      });
+      paint('#datesEventsList .dates-event-row', whenForEvent);
+      paint('#datesSeasonalList .dates-event-row', whenForSeasonal);
+    };
+    // Se repinta solo mientras se escribe: el estado se lee sin guardar.
+    page.querySelectorAll('#datesEventsList, #datesSeasonalList').forEach(list => {
+      list.addEventListener('input', refreshWhens);
+      list.addEventListener('change', refreshWhens);
+    });
 
     // Cada evento lleva lo mínimo (título + fecha) y, al desplegarlo, todo lo
     // que pinta la bienvenida: texto, emoji, color y foto. Con foto vacía se
@@ -4065,9 +4325,12 @@ export function AdminPage(router) {
             <input type="text" class="dates-event-title" placeholder="Qué es (p. ej. Viaje a la playa)" value="${esc(e.title || '')}" maxlength="60" aria-label="Nombre del evento">
             <input type="date" class="dates-event-date" value="${esc(e.date || '')}" aria-label="Fecha del evento">
             <label class="dates-event-recur" title="Se repite cada año"><input type="checkbox" class="dates-event-recur-cb" ${e.recurring === true ? 'checked' : ''}><span>♻️</span></label>
+            <button type="button" class="dates-event-today" title="Poner la fecha de hoy">Hoy</button>
             <button type="button" class="dates-event-toggle" aria-label="Editar el aspecto de la bienvenida" title="Aspecto en la bienvenida">🎨</button>
+            <button type="button" class="dates-event-preview" title="Ver la bienvenida" aria-label="Ver la bienvenida">🎬</button>
             <button type="button" class="dates-event-del" aria-label="Quitar evento">✕</button>
           </div>
+          <p class="dates-when"></p>
           <div class="dates-event-look"${hasDetail ? '' : ' hidden'}>
             <label class="dates-look-field">
               <span>Emoji</span>
@@ -4085,6 +4348,7 @@ export function AdminPage(router) {
               <span>Foto (URL)</span>
               <input type="url" class="dates-look-image" value="${esc(e.image || '')}" placeholder="https://…" aria-label="Foto del evento">
             </label>
+            ${mediaFieldsHTML(e)}
             <p class="dates-look-preview" data-preview-for="${uid}"></p>
           </div>
         </div>`;
@@ -4133,13 +4397,42 @@ export function AdminPage(router) {
           if (open) renderLookPreview(row, row.querySelector('.dates-event-title')?.value);
         });
       });
+      list.querySelectorAll('.dates-event-today').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const input = btn.closest('.dates-event-row')?.querySelector('.dates-event-date');
+          if (!input) return;
+          input.value = todayISO();
+          refreshWhens();
+        });
+      });
+      list.querySelectorAll('.dates-event-preview').forEach(btn => {
+        btn.addEventListener('click', () => openDraftSheet(btn.closest('.dates-event-row')));
+      });
       // La vista previa se refresca mientras se escribe, sin guardar.
       list.querySelectorAll('.dates-event-row').forEach(row => {
         const look = row.querySelector('.dates-event-look');
         if (look && !look.hidden) renderLookPreview(row, row.querySelector('.dates-event-title')?.value);
       });
+      refreshWhens();
     };
     renderDateEvents();
+    // Ver la bienvenida de HOY, no una simulación: olvida que ya se vio y la
+    // abre tal cual saltaría. Sin esto, si el día ya se vio, cambiar la fecha
+    // no lo hacía volver a aparecer en todo el año.
+    page.querySelector('#replayWelcomeBtn')?.addEventListener('click', () => {
+      if (!replaySpecialEventSheet(router)) {
+        showToast('Hoy no hay ningún día especial configurado', 'error');
+      }
+    });
+    // A la derecha del botón, lo que salíría hoy: así no hay que
+    // recordar qué fechas están puestas.
+    const replayHint = page.querySelector('#replayWelcomeHint');
+    if (replayHint) {
+      const hoy = specialEventsToday();
+      replayHint.textContent = hoy.length
+        ? `Hoy: ${hoy.map(e => e.title).join(' · ')}`
+        : 'Hoy no hay ningún día configurado';
+    }
     page.querySelector('#addDatesEventBtn')?.addEventListener('click', () => {
       editingDates.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '', icon: '✨', type: 'custom', description: '', image: '' });
       renderDateEvents();
@@ -4175,6 +4468,7 @@ export function AdminPage(router) {
             <span>Foto (URL)</span>
             <input type="url" class="dates-look-image" value="${esc(look.image || '')}" placeholder="${esc(field.description ? 'Sin foto por defecto' : 'https://…')}" aria-label="Foto de ${esc(field.label)}">
           </label>
+          ${mediaFieldsHTML(look)}
           <p class="dates-look-preview" data-preview-for="${field.id}"></p>
         </div>`;
       }).join('');
@@ -4207,8 +4501,11 @@ export function AdminPage(router) {
             <input type="text" class="dates-se-title" placeholder="Nombre (p. ej. Halloween)" value="${esc(s.title || '')}" maxlength="40" aria-label="Nombre del día temático">
             <input type="text" class="dates-se-monthday" placeholder="MM-DD" value="${esc(s.monthDay || '')}" maxlength="5" pattern="[0-9]{2}-[0-9]{2}" aria-label="Mes y día, tipo 10-31">
             <label class="dates-event-recur" title="Este día está activo"><input type="checkbox" class="dates-se-enabled" ${s.enabled !== false ? 'checked' : ''}><span>Activo</span></label>
+            <button type="button" class="dates-se-today" title="Poner el mes y el día de hoy">Hoy</button>
+            <button type="button" class="dates-se-preview" title="Ver la bienvenida" aria-label="Ver la bienvenida">🎬</button>
             <button type="button" class="dates-event-del" aria-label="Quitar día temático">✕</button>
           </div>
+          <p class="dates-when"></p>
           <div class="dates-event-look">
             <label class="dates-look-field">
               <span>Emoji</span>
@@ -4226,6 +4523,7 @@ export function AdminPage(router) {
               <span>Foto (URL)</span>
               <input type="url" class="dates-look-image" value="${esc(s.image || '')}" placeholder="https://…" aria-label="Foto del día temático">
             </label>
+            ${mediaFieldsHTML(s)}
             <p class="dates-look-preview" data-preview-for="${uid}"></p>
           </div>
         </div>`;
@@ -4241,10 +4539,22 @@ export function AdminPage(router) {
           if (idx >= 0) { editingSeasonal.splice(idx, 1); renderSeasonal(); }
         });
       });
+      list.querySelectorAll('.dates-se-today').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const input = btn.closest('.dates-event-row')?.querySelector('.dates-se-monthday');
+          if (!input) return;
+          input.value = todayISO().slice(5);
+          refreshWhens();
+        });
+      });
+      list.querySelectorAll('.dates-se-preview').forEach(btn => {
+        btn.addEventListener('click', () => openDraftSheet(btn.closest('.dates-event-row'), true));
+      });
       list.querySelectorAll('.dates-event-row').forEach(row => {
         renderLookPreview(row, row.querySelector('.dates-se-title')?.value);
         row.addEventListener('input', () => renderLookPreview(row, row.querySelector('.dates-se-title')?.value));
       });
+      refreshWhens();
     };
     renderSeasonal();
     page.querySelector('#addDatesSeasonalBtn')?.addEventListener('click', () => {
@@ -4253,54 +4563,26 @@ export function AdminPage(router) {
     });
 
     page.querySelector('#saveDatesBtn')?.addEventListener('click', async () => {
-      const anniversary = page.querySelector('#dateAnniversary').value;
-      const hubStart = page.querySelector('#dateHubStart').value;
-      const birthday = page.querySelector('#dateBirthday').value;
-      const userBirthday = page.querySelector('#dateUserBirthday').value;
+      // Fechas a medias: se señala la fila culpable en vez de un aviso suelto,
+      // que es lo que hacía que el botón pareciera no funcionar.
+      const sinFecha = [...page.querySelectorAll('#datesEventsList .dates-event-row')]
+        .find(row => row.querySelector('.dates-event-title').value.trim() && !row.querySelector('.dates-event-date').value);
+      if (sinFecha) {
+        blockSave('Ese evento no tiene fecha', sinFecha);
+        return;
+      }
+      const badSeasonal = [...page.querySelectorAll('#datesSeasonalList .dates-event-row')]
+        .find(row => row.querySelector('.dates-se-title').value.trim()
+          && !/^\d{2}-\d{2}$/.test(row.querySelector('.dates-se-monthday').value.trim()));
+      if (badSeasonal) {
+        blockSave('Falta el mes y el día, tipo 10-31', badSeasonal);
+        return;
+      }
+      const { anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring } = collectDates();
       if (!anniversary || !hubStart || !birthday || !userBirthday) {
         showToast('Rellena las cuatro fechas', 'error');
         return;
       }
-      const events = [...page.querySelectorAll('#datesEventsList .dates-event-row')].map(row => ({
-        id: row.dataset.evId,
-        title: row.querySelector('.dates-event-title').value.trim(),
-        date: row.querySelector('.dates-event-date').value,
-        recurring: row.querySelector('.dates-event-recur-cb')?.checked === true,
-        ...readLookFields(row)
-      }));
-      // Los días temáticos se leen de su propia lista: shares la clase con
-      // los eventos, pero el id y la fecha (mes-día) son distintos.
-      const seasonal = [...page.querySelectorAll('#datesSeasonalList .dates-event-row')].map(row => ({
-        id: row.dataset.seId,
-        title: row.querySelector('.dates-se-title').value.trim(),
-        monthDay: row.querySelector('.dates-se-monthday').value.trim(),
-        enabled: row.querySelector('.dates-se-enabled')?.checked === true,
-        ...readLookFields(row)
-      }));
-      const looks = {};
-      for (const row of page.querySelectorAll('#datesLooksList .dates-look-row')) {
-        const look = readLookFields(row);
-        if (look.icon || look.description || look.type || look.image) looks[row.dataset.lookId] = look;
-      }
-      // Un día temático necesita mes-día válido (MM-DD) y título. Se avisa en
-      // lugar de descartarlo en silencio, para no perder lo que se escribió.
-      const badSeasonal = seasonal.find(s => s.title && !/^\d{2}-\d{2}$/.test(s.monthDay));
-      if (badSeasonal) {
-        showToast(`"${badSeasonal.title}" necesita la fecha como mes-día (p. ej. 10-31)`, 'error');
-        return;
-      }
-      const titles = {
-        anniversary: page.querySelector('#dateAnniversaryTitle').value,
-        hubStart: page.querySelector('#dateHubStartTitle').value,
-        birthday: page.querySelector('#dateBirthdayTitle').value,
-        userBirthday: page.querySelector('#dateUserBirthdayTitle').value
-      };
-      const recurring = {
-        anniversary: page.querySelector('#dateAnniversaryRecur')?.checked === true,
-        hubStart: page.querySelector('#dateHubStartRecur')?.checked === true,
-        birthday: page.querySelector('#dateBirthdayRecur')?.checked === true,
-        userBirthday: page.querySelector('#dateUserBirthdayRecur')?.checked === true
-      };
       try {
         const saved = await db.saveHubDates({ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring });
         // Refresca la caché de fechas: el inicio, la bienvenida y el Perfil
@@ -4312,7 +4594,19 @@ export function AdminPage(router) {
         if (hint) hint.textContent = `Aniversario ${saved.anniversary} · Hub ${saved.hubStart} · Cumple ${saved.birthday} · Tú ${saved.userBirthday}${saved.events?.length ? ` · ${saved.events.length} próximas` : ''}`;
       } catch (err) {
         console.error('[admin] No se pudieron guardar las fechas:', err);
-        showToast(err?.message || 'No se pudieron guardar las fechas', 'error');
+        // Lo escrito sigue en el borrador local: avisar claro es la diferencia
+        // entre «no guardó» y «no guardó, pero no has perdido nada».
+        saveDraft();
+        saveRow?.classList.add('is-blocked');
+        // Sesión caducada o permisos: es el fallo más común al volver días
+      // después, y el que más se confunde con «no funciona el botón». Se dice qué hacer.
+        const caducada = /administrador|sesión|token|401|403/i.test(err?.message || '');
+        if (saveState) saveState.textContent = caducada
+          ? 'Sesión caducada: cierra sesión y vuelve a entrar'
+          : 'No se ha podido subir; está guardado aquí';
+        showToast(caducada
+          ? 'Tu sesión ha caducado: vuelve a iniciar sesión y pulsa Guardar fechas. Lo que has escrito está guardado en este navegador.'
+          : `${err?.message || 'No se pudieron guardar las fechas'}. Lo tienes a salvo en este navegador: no cierres esta pestaña.`, 'error', 9000);
       }
     });
 
@@ -4326,6 +4620,11 @@ export function AdminPage(router) {
     };
     renderDb();
     page.querySelector('#recheckDbBtn')?.addEventListener('click', renderDb);
+
+    // ¿Quedó algo sin subir? Solo si el borrador se diferencia de lo que hay
+    // guardado; si son lo mismo, solo estaría ensuciando el pie para nada.
+    const sinSubir = readDraft();
+    if (sinSubir?.dates && JSON.stringify(sinSubir.dates) !== JSON.stringify(hubDates)) showDraft(sinSubir);
   }
 
   // ==========================================

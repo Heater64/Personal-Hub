@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vista previa · editor de días especiales</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap">
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <style>
+    /* El shell de la app deja el body sin scroll; aquí se necesita para ver
+       todo el panel de una vez. */
+    html, body { overflow: auto !important; }
+    body { background: var(--surface-0, #0a0a0c); min-height: 100dvh; }
+    #shell { max-width: 900px; margin: 0 auto; padding: 20px 16px 80px; }
+  </style>
+</head>
+<body>
+  <div id="shell"></div>
+
+  <script type="module">
+    // Monta el panel Admin real (mismo HTML, mismo CSS) saltándose el guard de
+    // autenticación del router, para poder mirar el editor sin iniciar sesión.
+    const { AdminPage } = await import('/src/pages/Admin.js');
+    const { showToast } = await import('/src/components/Toast.js');
+    window.__toast = showToast;
+
+    const routerStub = {
+      navigate() {}, replace() {}, back() {},
+      getCurrentPath: () => '/admin',
+      matchRoute: () => ({ path: '/admin' }),
+      currentRoute: { path: '/admin', query: {} }
+    };
+
+    const page = AdminPage(routerStub);
+    document.getElementById('shell').append(page);
+
+    // Abre la sección de Configuración, que es la que lleva el editor.
+    document.querySelector('[data-section="config"]')?.click();
+  </script>
+</body>
+</html>

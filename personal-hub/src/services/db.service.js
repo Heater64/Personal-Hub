@@ -6,6 +6,7 @@
 import { supabase } from './supabase.js';
 import { auth } from './auth.service.js';
 import { escapeHtml } from '../utils/escape.js';
+import { normalizeDecor, normalizeVideoMode, mediaList, MAX_EMOJIS } from '../utils/celebration.js';
 import { userPrefKey } from '../utils/userStorage.js';
 
 // Storage keys for localStorage fallback
@@ -352,6 +353,20 @@ const text = (value, fallback = '') => {
   return out || fallback;
 };
 
+/** URL de vídeo, fotos de la tira y ambiente de un día, ya limpios. Todo es
+ *  opcional: vacío significa «como saldría por defecto». */
+function cleanMedia(source) {
+  const video = text(source?.video);
+  return {
+    video: /^https?:\/\//i.test(video) ? video : '',
+    videoMode: normalizeVideoMode(source?.videoMode),
+    gallery: mediaList(source?.gallery),
+    decor: normalizeDecor(source?.decor),
+    // Emojis que caen: se guardan como una lista corta separada por espacios.
+    emojis: text(source?.emojis).split(/\s+/).filter(Boolean).slice(0, MAX_EMOJIS).join(' ')
+  };
+}
+
 /** Normaliza un evento libre: solo guarda lo que tiene sentido. */
 function cleanEvent(event) {
   if (!event || !text(event.title) || !text(event.date)) return null;
@@ -363,7 +378,8 @@ function cleanEvent(event) {
     icon: text(event.icon, '✨'),
     description: text(event.description),
     type: text(event.type, 'custom'),
-    image: text(event.image)
+    image: text(event.image),
+    ...cleanMedia(event)
   };
 }
 
@@ -385,6 +401,7 @@ function cleanSeasonal(event) {
     description: text(event.description),
     type: text(event.type, 'custom'),
     image: text(event.image),
+    ...cleanMedia(event),
     enabled: event.enabled !== false
   };
 }
@@ -432,9 +449,11 @@ async function saveHubDates(dates) {
         icon: text(look?.icon),
         description: text(look?.description),
         type: text(look?.type),
-        image: text(look?.image)
+        image: text(look?.image),
+        ...cleanMedia(look)
       }])
-      .filter(([, look]) => look.icon || look.description || look.type || look.image)),
+      .filter(([, look]) => look.icon || look.description || look.type || look.image
+        || look.video || look.gallery.length)),
     seasonal: Array.isArray(dates?.seasonal) ? dates.seasonal.map(cleanSeasonal).filter(Boolean) : []
   };
   await saveContent('hub_dates', clean);

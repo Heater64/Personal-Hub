@@ -1139,8 +1139,7 @@ test('los eventos especiales abren una bienvenida temática única por usuario',
   assert.match(sheet, /specialEventsToday\(\)\.filter\(item => !seen\[item\.key\]\)/);
   assert.match(sheet, /getUserPref\('specialEventsSeen', '\{\}'\)/);
   assert.match(sheet, /setUserPref\('specialEventsSeen', JSON\.stringify\(seen\)\)/);
-  assert.match(sheet, /class: `special-event special-event--\$\{event\.type\}`/);
-  assert.match(sheet, /Abrir nuestro calendario/);
+  assert.match(sheet, /class: `special-event special-event--\$\{event\.type} special-event--media-/);  assert.match(sheet, /Abrir nuestro calendario/);
   assert.match(css, /\.overlay--special-event \.sheet/);
   assert.match(css, /\.special-event__icon/);
 });
@@ -1148,13 +1147,21 @@ test('los eventos especiales abren una bienvenida temática única por usuario',
 // Carga specialDates.js con las dos dependencias externa sustituidas por
 // dobles (Supabase y el reloj), para poder ejercitarlo de verdad en Node:
 // aquí los fallos se ven, no solo el texto.
+// celebration.js no importa nada: se pega dentro del doble tal cual, sin sus
+// `export`, para que lo que se prueba sea el código de verdad.
+async function celebrationSource() {
+  return (await readFile(hub('src', 'utils', 'celebration.js'), 'utf8')).replace(/^export /gm, '');
+}
+
 async function loadSpecialDates() {
   let src = await readFile(hub('src', 'utils', 'specialDates.js'), 'utf8');
   src = src
     .replace("import { db } from '../services/db.service.js';",
       'const db = { getHubDates: () => Promise.resolve(globalThis.__CFG__) };')
     .replace("import { todayISO } from './format.js';",
-      "const todayISO = () => globalThis.__TODAY__;");
+      "const todayISO = () => globalThis.__TODAY__;")
+    .replace("import { normalizeDecor, normalizeVideoMode, mediaList } from './celebration.js';",
+      await celebrationSource());
   const mod = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
   // specialDates() lee de una caché: hay que recargarla con cada config.
   return { ...mod, use: async cfg => { globalThis.__CFG__ = cfg; await mod.loadSpecialDates(); } };
@@ -1226,6 +1233,8 @@ test('guardar sanea los eventos: nada de campos raros ni filas a medias', async 
     .replace("import { auth } from './auth.service.js';", 'const auth = { getUser: () => null, isAdmin: () => true, onAuthChange: () => {}, isReady: () => Promise.resolve() };')
     .replace("import { escapeHtml } from '../utils/escape.js';", 'const escapeHtml = s => s;')
     .replace("import { userPrefKey } from '../utils/userStorage.js';", 'const userPrefKey = k => k;')
+    .replace("import { normalizeDecor, normalizeVideoMode, mediaList, MAX_EMOJIS } from '../utils/celebration.js';",
+      await celebrationSource())
     .replace('await saveContent(\'hub_dates\', clean);', 'globalThis.__SAVED__ = clean;');
   const mod = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
   globalThis.__SAVED__ = null;
@@ -1236,7 +1245,9 @@ test('guardar sanea los eventos: nada de campos raros ni filas a medias', async 
     titles: {}, recurring: {},
     // Basura a propósito: sin título, sin fecha, mes-día inválido, tipo raro.
     events: [
-      { id: 'a', title: 'Viaje', date: '2026-08-08', type: 'inventado', icon: '  🏖️  ', description: '  Primera vez  ' },
+      { id: 'a', title: 'Viaje', date: '2026-08-08', type: 'inventado', icon: '  🏖️  ',
+        description: '  Primera vez  ', video: 'no-es-una-url', decor: 'inventado',
+        gallery: ['https://x/1.jpg', '  ', 'tampoco-es-url'], emojis: '  🎃 👻  ' },
       { id: 'b', title: '   ', date: '2026-08-09' },
       { id: 'c', title: 'Sin fecha', date: '' }
     ],
@@ -1255,12 +1266,21 @@ test('guardar sanea los eventos: nada de campos raros ni filas a medias', async 
   assert.equal(saved.events.length, 1, 'solo se guarda el evento con título y fecha');
   assert.equal(saved.events[0].description, 'Primera vez', 'el texto se guarda recortado');
   assert.equal(saved.events[0].icon, '🏖️', 'el emoji se guarda recortado');
+  assert.equal(saved.events[0].video, '', 'un vídeo que no es URL no se guarda');
+  assert.equal(saved.events[0].decor, 'confeti', 'un ambiente inventado cae al de fábrica');
+  assert.deepEqual(saved.events[0].gallery, ['https://x/1.jpg'], 'solo quedan las fotos que son URL');
+  assert.equal(saved.events[0].emojis, '🎃 👻', 'los emojis que caen se guardan limpios');
   assert.equal(saved.seasonal.length, 1, 'un mes-día invertido o vacío no se guarda');
   assert.equal(saved.seasonal[0].monthDay, '10-31');
   // Un aspecto con contenido se guarda; la foto en blanco queda vacía para
   // que ese día salga sin foto, y un aspecto totalmente vacío se descarta
   // (vuelve a los valores de fábrica).
-  assert.deepEqual(saved.looks, { anniversary: { icon: '💍', description: 'Un año más.', type: 'halloween', image: '' } });
+  assert.deepEqual(saved.looks, {
+    anniversary: {
+      icon: '💍', description: 'Un año más.', type: 'halloween', image: '',
+      video: '', videoMode: 'portada', gallery: [], decor: 'confeti', emojis: ''
+    }
+  }, 'un aspecto vacío no se guarda y los medios salen limpios');
 });
 
 test('el Perfil no borra lo que se editó en el Admin al guardar desde el móvil', async () => {
@@ -1290,7 +1310,7 @@ test('el Admin puede editar el aspecto, añadir y quitar días temáticos', asyn
   assert.match(admin, /\.dates-look-desc/);
   assert.match(admin, /\.dates-look-image/);
   // El mes-día se valida en vez de descartarse en silencio.
-  assert.match(admin, /necesita la fecha como mes-día/);
+  assert.ok(admin.includes("blockSave('Falta el mes y el día, tipo 10-31', badSeasonal);"), 'un día temático necesita mes-día');
   // Se guarda todo junto.
   assert.match(admin, /db\.saveHubDates\(\{ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring \}\)/);
   // El guardado sanea lo que llega.
@@ -1308,8 +1328,8 @@ test('la foto de un día sale en la hoja y el emoji si no hay foto', async () =>
   const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
   const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
 
-  assert.match(sheet, /event\.image\s*\n\s*\? h\('div', \{ class: 'special-event__photo' \}/,
-    'la foto va antes del emoji');
+  assert.match(sheet, /!conVideoPortada && portada\s*\n\s*\? h\('div', \{ class: 'special-event__photo' \}/,
+    'la foto va antes del emoji y el vídeo de portada la sustituye');
   assert.match(sheet, /class: 'special-event__item-photo'/, 'los días secundarios también llevan su foto');
   assert.match(css, /\.special-event__photo/);
   assert.match(css, /\.special-event__item-photo/);
@@ -1521,6 +1541,276 @@ test('los cuatro días son tarjetas con interruptor y el pie avisa de cambios si
   assert.ok(css.includes('.config-save.is-dirty'), 'y el aviso se ve');
 });
 
+test('el saludo de Inicio baja el apodo a su propia línea solo en móvil', async () => {
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+
+  // Saludo y apodo son dos trozos de la misma frase: el span es lo que se parte.
+  assert.match(home, /class="home-hero__greet"/);
+  assert.match(home, /class="home-hero__greet-name"/);
+  assert.ok(home.includes('mi princesa'), 'el apodo se sigue mostrando');
+
+  // La regla base del apodo no corta la línea: en escritorio va todo en una.
+  const baseIni = css.indexOf('.home-hero__greet-name {');
+  assert.notEqual(baseIni, -1, 'el apodo tiene su propia regla');
+  const base = css.slice(baseIni, css.indexOf('}', baseIni));
+  assert.doesNotMatch(base, /display:\s*block/, 'fuera de móvil el apodo no baja de línea');
+
+  // El corte solo existe dentro de la media query de móvil.
+  const corte = '.home-hero__greet-name { display: block; }';
+  const enMovil = css.indexOf(corte);
+  assert.ok(enMovil > baseIni, 'en móvil el apodo baja a su línea');
+  assert.ok(css.lastIndexOf('@media (max-width: 767px)', enMovil) !== -1,
+    'ese corte vive dentro de la media query de móvil');
+});
+
+test('desde el Admin se ve la bienvenida sin esperar al día', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+
+  // La hoja vive en components/, así que el panel la puede abrir sin Home.
+  assert.match(admin, /import \{ openSpecialEventSheet[^}]*\} from '\.\.\/components\/SpecialEventSheet\.js';/);
+  // Un botón por acción: poner la fecha de hoy y abrir la hoja con lo escrito.
+  assert.match(admin, /class="dates-event-today"/, 'los eventos tienen botón «Hoy»');
+  assert.match(admin, /class="dates-event-preview"/, 'los eventos se pueden ver');
+  assert.match(admin, /class="dates-se-today"/, 'los temáticos también');
+  assert.match(admin, /class="dates-se-preview"/);
+  // «Hoy» pone hoy: fecha entera en eventos, mes-día en temáticos.
+  assert.match(admin, /input\.value = todayISO\(\);/);
+  assert.match(admin, /input\.value = todayISO\(\)\.slice\(5\);/);
+  // «Ver» es una simulación: no marca el día como visto ni espera al real.
+  assert.match(admin, /openSpecialEventSheet\(\[\{/);
+  assert.match(admin, /\}\], router, \{ preview: true \}\);/);
+  assert.match(css, /\.dates-event-today,/);
+  assert.match(css, /\.dates-event-preview,/);
+  assert.match(css, /\.dates-when \{/);
+});
+
+test('la línea de estado dice si el día sale hoy o por qué no sale', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // Evento con fecha completa: hoy, futuro, pasado con y sin repetición.
+  assert.match(admin, /'✓ Sale hoy en el Inicio\.'/);
+  assert.match(admin, /`Sale el \$\{readableDate\(date\)\}\.`/);
+  assert.match(admin, /`⚠️ La fecha ya pasó \(\$\{readableDate\(date\)\}\): no volverá a salir\.`/);
+  assert.match(admin, /repetirá el \$\{readableMonthDay\(date\.slice\(5\)\)\}/);
+  // El año no se cuela en el mes-día: si se cuela, el texto sale vacío.
+  assert.doesNotMatch(admin, /readableMonthDay\(date\.slice\(5\) \+/);
+  // Día temático: apagado, sin formato, hoy, futuro y año ya pasado.
+  assert.match(admin, /'Apagado: ese día no saltará\.'/);
+  assert.match(admin, /'Pon el mes y el día \(p\. ej\. 10-31\)\.'/);
+  assert.match(admin, /`Sale el \$\{cada\}\.`/);
+  assert.match(admin, /`Este año ya pasó: el año que viene, el \$\{cada\}\.`/);
+  // Y se repinta solo: no hace falta guardar para leerlo.
+  assert.match(admin, /list\.addEventListener\('input', refreshWhens\)/);
+  assert.match(admin, /list\.addEventListener\('change', refreshWhens\)/);
+});
+
+test('un evento con nombre y sin fecha no se pierde en silencio', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // cleanEvent() lo descarta al guardar (así se guarda), así que se avisa antes
+  // en lugar de dar un «guardado» que miente.
+  assert.ok(admin.includes("if (sinFecha) {"), 'un evento con nombre y sin fecha para el guardado');
+  assert.ok(admin.includes("blockSave('Ese evento no tiene fecha', sinFecha);"), 'y se avisa de eso, no de otra cosa');
+  assert.ok(admin.includes("blockSave('Falta el mes y el día, tipo 10-31', badSeasonal);"),
+    'un día temático sin mes-día también se avisa');
+  assert.ok(admin.includes('return;'), 'y en los dos casos no se sigue guardando a medias');
+});
+
+test('los textos del panel dicen dónde sale la bienvenida', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // Solo se abre desde el Inicio (maybeShowSpecialEvent vive en Home.js), así
+  // que decir «del Perfil» mandaba al sitio equivocado.
+  assert.match(admin, /bienvenida del Inicio\./);
+  assert.doesNotMatch(admin, /bienvenida del Perfil/);
+  assert.doesNotMatch(admin, /Se muestran en el Perfil/);
+});
+test('la bienvenida de hoy se puede volver a ver desde el Admin', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+
+  // Con ♻️ la marca de «visto» es por año (event:<id>:<año>), así que cambiar
+  // la fecha del evento no la reseteaba: el día ya visto no volvía a salir en
+  // todo el año y no había forma de verlo de nuevo.
+  assert.match(sheet, /export function replaySpecialEventSheet/);
+  assert.match(sheet, /events\.forEach\(event => \{ delete seen\[event\.key\]; \}\)/);
+  // Abre la hoja real (sin el aviso de simulación), no una previsualización.
+  assert.match(sheet, /return openSpecialEventSheet\(events, router\);\n\}/);
+  assert.doesNotMatch(sheet, /export function replaySpecialEventSheet[\s\S]*?preview: true/);
+  // El botón va en la pestaña de Eventos y dice qué sale hoy al lado.
+  assert.match(admin, /id="replayWelcomeBtn"/);
+  assert.match(admin, /replaySpecialEventSheet\(router\)/);
+  assert.match(admin, /Hoy: \$\{hoy\.map\(e => e\.title\)\.join\(' · '\)\}/);
+  // La caché global se rellena al abrir Configuración: sin esto el botón
+  // decía que hoy no había nada aunque las fechas estuvieran puestas.
+  assert.match(admin, /await loadSpecialDates\(\)\.catch\(\(\) => \{\}\);/);
+});
+test('al abrir la tarjeta cae confeti desde arriba y se retira al cerrar', async () => {
+  const cel = await readFile(hub('src', 'components', 'Celebration.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+
+  // Un canvas a pantalla completa por encima de la hoja y que no come clics.
+  assert.match(cel, /canvas\.className = 'celebration-canvas'/);
+  assert.match(css, /\.celebration-canvas \{[\s\S]*?position: fixed;[\s\S]*?pointer-events: none;/,
+    'la celebración no puede tapar los botones de la tarjeta');
+  assert.match(css, /\.celebration-canvas \{[\s\S]*?z-index: calc\(var\(--z-modal\) \+ 40\);/,
+    'y tiene que verse por encima de la hoja');
+  // Las partículas caen desde arriba de verdad (y negative) y tienen gravedad.
+  assert.match(cel, /y: -20 - Math\.random\(\) \* 120/);
+  assert.match(cel, /p\.y \+= p\.vy \* dt;/);
+  // Se retira sola y al cerrar la hoja, que es cuando deja de fazer falta.
+  assert.match(cel, /export function stopCelebration\(\)/);
+  assert.match(cel, /if \(canvas\?\.isConnected\) canvas\.remove\(\);/);
+  assert.match(sheet, /function stopSheetMedia\(\)[\s\S]*?stopCelebration\(\);/);
+  assert.match(sheet, /\}, stopSheetMedia\);/, 'se registra como limpieza de la hoja');
+  // Abrir otra celebración no apila una segunda capa de papel.
+  assert.ok(cel.includes('if (!info.shape) return stopCelebration();'), '«sin decoración» limpia lo que hubiera');
+  assert.ok(cel.includes('stopCelebration();\n\n  const cv = createCanvas();'),
+    'y se cancela la celebración anterior antes de empezar otra');
+  // Con «movimiento reducido» se pinta un cuadro y se acaba: el gesto sí, la animación no.
+  assert.match(cel, /prefers-reduced-motion: reduce/);
+  assert.match(cel, /if \(prefersStill\(\)\) \{[\s\S]*?setTimeout\(stopCelebration, 1600\);/);
+});
+
+test('el ambiente de cada día se elige y «ninguno» no celebra', async () => {
+  const cel = await readFile(hub('src', 'utils', 'celebration.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+
+  for (const id of ['confeti', 'nieve', 'hojas', 'corazones', 'estrellas', 'emoji', 'ninguno']) {
+    assert.ok(cel.includes(`{ id: '${id}'`), `el ambiente ${id} existe`);
+  }
+  assert.match(cel, /\{ id: 'ninguno'[^}]*shape: null \}/, '«sin decoración» es el único sin partículas');
+  // Un ambiente inventado no puede dejar la pantalla muda sin querer.
+  assert.match(cel, /return DECORATIONS\.some\(d => d\.id === value\) \? value : 'confeti';/);
+  assert.match(sheet, /playCelebration\(\{ decor, accent, emojis,/);
+});
+
+test('los emojis que caen son los del día o los de su fiesta', async () => {
+  const cel = await readFile(hub('src', 'utils', 'celebration.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+  const engine = await readFile(hub('src', 'components', 'Celebration.js'), 'utf8');
+
+  // Hay una lista por fiesta: Halloween de calabazas y fantasmas, Navidad de
+  // árboles, San Valentín de corazones, y así con el resto.
+  for (const tipo of ['halloween', 'christmas', 'birthday', 'anniversary', 'valentine', 'custom']) {
+    assert.match(cel, new RegExp(`\\b${tipo}: '`), `${tipo} tiene sus emojis`);
+  }
+  // Si el día trae los suyos, mandan esos; si no, los de su fiesta.
+  assert.match(cel, /return own\.length \? own : \(THEME_EMOJIS\[type\] \|\| THEME_EMOJIS\.custom\)/);
+  assert.match(sheet, /const emojis = emojisFor\(event\.emojis, event\.type\);/);
+  // Y el canvas sabe pintarlos.
+  assert.match(engine, /p\.kind === 'glyph'/);
+  assert.match(engine, /if \(glyphs\.length\) p\.glyph = glyphs\[\(Math\.random\(\) \* glyphs\.length\) \| 0\];/);
+});
+
+test('la tarjeta lleva vídeo de portada o de fondo, a elegir', async () => {
+  const cel = await readFile(hub('src', 'utils', 'celebration.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+
+  assert.match(cel, /export const VIDEO_MODES = \[\s*\{ id: 'portada'/);
+  assert.match(cel, /return value === 'fondo' \? 'fondo' : 'portada';/);
+  // Fondo: una capa con degradado detrás del texto; portada: reproductor grande.
+  assert.match(sheet, /class: 'special-event__film'/);
+  assert.match(sheet, /class: 'special-event__scrim'/);
+  assert.match(sheet, /class: 'special-event__video'/);
+  assert.match(css, /\.special-event__film \{[\s\S]*?position: absolute;/);
+  assert.match(css, /\.special-event__scrim \{[\s\S]*?linear-gradient\(/);
+  // Con vídeo de portada la foto grande no cabe encima; de fondo, sí.
+  assert.match(sheet, /const conVideoPortada = Boolean\(video\) && videoMode === 'portada';/);
+  assert.match(sheet, /!conVideoPortada && portada/);
+  // muted y playsInline son propiedades: como atributo el vídeo salía con sonido.
+  assert.match(sheet, /video\.muted = true;\s*\n\s*video\.defaultMuted = true;\s*\n\s*video\.playsInline = true;/);
+  // Una URL muerta no puede dejar un rectángulo negro en medio de la tarjeta.
+  assert.match(sheet, /video\.addEventListener\('error',[\s\S]*?\.special-event__film'\)\?\.remove\(\);/);
+});
+
+test('las fotos del día hacen una tira que cambia la grande', async () => {
+  const cel = await readFile(hub('src', 'utils', 'celebration.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // Solo http(s) y con tope: una URL rota deja un hueco en la tira.
+  assert.match(cel, /export const MAX_GALLERY = 12;/);
+  assert.match(cel, /filter\(url => \/\^https\?:\\\/\\\/\/i\.test\(url\)\)/);
+  // La primera foto es la grande; el resto, miniaturas que la cambian.
+  assert.match(sheet, /const portada = event\.image \|\| gallery\[0\] \|\| '';/);
+  assert.match(sheet, /const resto = event\.image \? gallery : gallery\.slice\(1\);/);
+  assert.match(sheet, /class: 'special-event__gallery'/);
+  assert.match(sheet, /querySelector\('\.special-event__photo img'\)[\s\S]*?\.setAttribute\('src', src\)/);
+  // Y el Admin ofrece los campos: vídeo, modo, fotos y emojis.
+  assert.match(admin, /class="dates-look-video"/);
+  assert.match(admin, /class="dates-look-videomode"/);
+  assert.match(admin, /class="dates-look-gallery"/);
+  assert.match(admin, /class="dates-look-decor"/);
+  assert.match(admin, /class="dates-look-emojis"/);
+  assert.match(admin, /decorOptions, videoModeOptions, THEME_EMOJIS/);
+});
+
+test('un día temático trae su propio confeti y su lista de emojis', async () => {
+  const cel = await readFile(hub('src', 'utils', 'celebration.js'), 'utf8');
+  const dates = await readFile(hub('src', 'utils', 'specialDates.js'), 'utf8');
+  const db = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
+
+  // Los medios y la decoración viajan con el día por los tres caminos que hay.
+  assert.match(dates, /function mediaFields\(source = \{\}\) \{[\s\S]*?video: pick\(source\.video, ''\),[\s\S]*?gallery: mediaList\(source\.gallery\),[\s\S]*?decor: normalizeDecor\(source\.decor\)/);
+  assert.equal((dates.match(/\.\.\.mediaFields\(/g) || []).length, 4,
+    'los cuatro días, los eventos y los dos tipos de temáticos');
+  // Y al guardar se limpian: nada de URLs inventadas ni ambientes raros.
+  assert.match(db, /function cleanMedia\(source\) \{/);
+  assert.match(db, /video: \/\^https\?:\\\/\\\/\/i\.test\(video\) \? video : ''/);
+  assert.match(db, /gallery: mediaList\(source\?\.gallery\)/);
+  assert.match(db, /decor: normalizeDecor\(source\?\.decor\)/);
+  assert.match(db, /emojis: text\(source\?\.emojis\)/);
+  assert.match(cel, /export const MAX_EMOJIS = 20;/);
+});
+test('lo escrito en las fechas no se pierde ni si el guardado falla', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+
+  // Al escribir se guarda un borrador en este navegador: si Supabase rechaza
+  // el guardado o se cierra la pestaña, lo escrito sigue ahí.
+  assert.match(admin, /const DRAFT_KEY = 'ph\.draft\.hub_dates';/);
+  assert.match(admin, /localStorage\.setItem\(DRAFT_KEY, JSON\.stringify\(\{ at: Date\.now\(\), dates: collectDates\(\) \}\)\)/);
+  assert.match(admin, /const markDirty = \(\) => \{[\s\S]*?saveDraft\(\);/,
+    'cada cambio marca sucio y guarda');
+  assert.match(admin, /const markSaved = \(\) => \{[\s\S]*?clearDraft\(\);/,
+    'y guardar bien lo borra');
+  // Si el guardado falla, el borrador se refresca y se dice que no se perdió nada.
+  assert.match(admin, /catch \(err\) \{[\s\S]*?saveDraft\(\);[\s\S]*?is-blocked/);
+  assert.match(admin, /Lo tienes a salvo en este navegador/);
+  assert.match(admin, /caducada[\s\S]*?vuelve a iniciar sesi\u00f3n y pulsa Guardar/,
+    'y si es la sesi\u00f3n, se dice exactamente qu\u00e9 hacer');
+  // Al volver a abrir el panel aparece el aviso con su fecha y dos botones.
+  assert.match(admin, /id="datesDraftRow"/);
+  assert.match(admin, /id="restoreDraftBtn"/);
+  assert.match(admin, /id="discardDraftBtn"/);
+  assert.match(admin, /Hay cambios sin subir del/);
+  assert.match(admin, /page\.querySelector\('#restoreDraftBtn'\)\?\.addEventListener[\s\S]*?renderDateEvents\(\);[\s\S]*?renderSeasonal\(\);[\s\S]*?renderDateLooks\(\);/,
+    'recuperar repinta las tres listas del borrador');
+  assert.match(css, /\.config-draft \{/);
+});
+
+test('si falta un dato, se señala la fila y se explica cuál', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+
+  // Un aviso suelto en la esquina era lo que hacía que el botón pareciera no
+  // funcionar: ahora la fila culpable se marca y la vista va hasta ella.
+  assert.match(admin, /const blockSave = \(motivo, row\) => \{[\s\S]*?row\?\.classList\.add\('is-wrong'\);[\s\S]*?row\?\.scrollIntoView\(\{ block: 'center'/);
+  assert.match(admin, /saveState\.textContent = `No se puede guardar: \$\{motivo\.toLowerCase\(\)\}`/);
+  assert.match(admin, /blockSave\('Ese evento no tiene fecha', sinFecha\);/);
+  assert.match(admin, /blockSave\('Falta el mes y el d\u00eda, tipo 10-31', badSeasonal\);/);
+  assert.match(css, /\.dates-event-row\.is-wrong \{/);
+  assert.match(css, /\.config-save\.is-blocked/);
+  // El botón y el borrador comparten una única lectura del panel, para que lo
+  // que se recupera sea justo lo que se iba a subir.
+  assert.match(admin, /function collectDates\(\) \{[\s\S]*?return \{[\s\S]*?events,[\s\S]*?seasonal,[\s\S]*?looks,/);
+  assert.match(admin, /db\.saveHubDates\(\{ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring \}\)/);
+});
 test('el visor y los filtros de Galería detienen medios al cerrar o repintar', async () => {
   const lightbox = await readFile(hub('src', 'components', 'MediaLightbox.js'), 'utf8');
   const memes = await readFile(hub('src', 'pages', 'rincon', 'memes.js'), 'utf8');
