@@ -5,6 +5,10 @@
 
 .admin-page { animation: fade-in var(--dur-mid); }
 
+/* El shell envuelve las páginas en una columna de lectura; el panel de
+   gestión necesita el ancho que sobra (lo pone AdminPage al montarse). */
+.app-shell.has-admin .content { max-width: 1180px; }
+
 /* ==========================================
    LAYOUT — Sidebar + Main
    ========================================== */
@@ -14,7 +18,7 @@
    SIDEBAR — Premium glass
    ========================================== */
 .admin-sidebar {
-  width: 240px; flex-shrink: 0;
+  width: 224px; flex-shrink: 0;
   background: linear-gradient(180deg,
     rgba(255, 255, 255, 0.04) 0%,
     rgba(255, 255, 255, 0.01) 100%);
@@ -34,46 +38,6 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid rgba(100, 60, 70, 0.12);
-}
-
-.admin-sidebar-brand {
-  display: flex; align-items: center; gap: 12px;
-  padding: 24px 20px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="light"] .admin-sidebar-brand {
-  border-bottom: 1px solid rgba(100, 60, 70, 0.1);
-}
-
-.admin-sidebar-brand-icon {
-  width: 38px; height: 38px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--theme-accent), var(--accent-coral-hover));
-  display: flex; align-items: center; justify-content: center;
-  color: #fff;
-  box-shadow: 0 4px 16px var(--accent-dim);
-  flex-shrink: 0;
-}
-
-.admin-sidebar-brand-icon svg { width: 18px; height: 18px; }
-
-.admin-sidebar-brand-text {
-  display: flex; flex-direction: column;
-}
-
-.admin-sidebar-brand-text strong {
-  font-size: var(--fs-md);
-  font-weight: 600;
-  color: var(--theme-text-primary);
-  font-family: var(--font-display);
-  line-height: 1.2;
-}
-
-.admin-sidebar-brand-text span {
-  font-size: var(--fs-xs);
-  color: var(--theme-text-secondary);
-  font-weight: 400;
 }
 
 .admin-sidebar-nav {
@@ -117,19 +81,8 @@
   border-radius: 3px;
 }
 
-.admin-sidebar-divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.05);
-  margin: 8px 16px;
-}
-
-[data-theme="light"] .admin-sidebar-divider {
-  background: rgba(100, 60, 70, 0.1);
-}
-
 .admin-sidebar-footer {
-  display: flex; align-items: center; gap: 10px;
-  padding: 16px 20px;
+  padding: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -137,7 +90,7 @@
   border-top: 1px solid rgba(100, 60, 70, 0.1);
 }
 
-.admin-sidebar-avatar {
+.admin-profile-avatar {
   width: 34px; height: 34px;
   border-radius: 50%;
   background: var(--accent-dim);
@@ -148,26 +101,8 @@
   border: 2px solid rgba(232, 97, 79, 0.15);
 }
 
-.admin-sidebar-avatar img {
+.admin-profile-avatar img {
   width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
-}
-
-.admin-sidebar-user-info {
-  display: flex; flex-direction: column;
-  min-width: 0;
-}
-
-.admin-sidebar-user {
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  color: var(--theme-text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-.admin-sidebar-role {
-  font-size: var(--fs-xs);
-  color: var(--theme-text-secondary);
-  text-transform: capitalize;
 }
 
 /* ==========================================
@@ -181,6 +116,10 @@
   margin-bottom: 28px;
   flex-wrap: wrap; gap: 12px;
 }
+
+/* El saludo es del resumen: en las demás secciones sobra y empuja el
+   contenido hacia abajo, así que la cabecera pegajosa ya dice dónde estás. */
+.admin-welcome.is-hidden { display: none; }
 
 .admin-welcome-greeting {
   display: flex; flex-direction: column; gap: 4px;
@@ -213,10 +152,6 @@
   50% { opacity: 1; transform: scale(1.4); }
 }
 
-.admin-welcome-actions {
-  display: flex; align-items: center; gap: 10px;
-}
-
 /* Time badge */
 .admin-time-badge {
   display: inline-flex; align-items: center; gap: 6px;
@@ -241,6 +176,15 @@
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
 }
+
+.admin-section-hint {
+  margin: -6px 0 16px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--theme-text-secondary);
+  max-width: 70ch;
+}
+.admin-section-hint--wide { max-width: 88ch; }
 
 .admin-section-header h2 {
   font-size: var(--fs-xl); font-weight: 600; margin: 0;
@@ -1316,6 +1260,9 @@
   grid-template-columns: 1.6fr 1fr;
   gap: 16px;
   margin: 20px 0;
+  /* Cada panel ocupa lo que necesita: estirarlos todos a la altura del más
+     alto dejaba huecos enormes dentro del que tiene menos contenido. */
+  align-items: start;
 }
 
 /* Los paneles internos pueden encogerse dentro de la columna (evita
@@ -1413,19 +1360,31 @@
   max-width: 100%;
 }
 
-/* ---- Accesos rápidos ---- */
+/* ---- Ir a: secciones y atajos ---- */
+.dash-go + .dash-go { margin-top: 16px; }
+.dash-go-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--theme-text-secondary);
+}
+
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 10px;
 }
 
 .quick-action {
   display: flex;
   align-items: center;
-  gap: 10px;
+  min-height: 56px;
+  gap: 11px;
   min-width: 0;
-  padding: 12px;
+  padding: 11px 12px;
   border-radius: var(--r-md);
   background: var(--theme-surface-elevated);
   border: 1px solid var(--theme-divider);
@@ -1437,14 +1396,26 @@
   transition: all var(--dur-normal);
 }
 
-.quick-action svg { color: var(--theme-accent); flex-shrink: 0; }
+/* Icono en cuadro: es lo que hace reconocible el botón de un vistazo. */
+.quick-action-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+  transition: all var(--dur-normal);
+}
+.quick-action-icon svg { width: 16px; height: 16px; }
 
-.quick-action span {
-  flex: 1 1 auto;
+/* Los nombres largos ("Notificaciones") bajan a dos líneas: recortarlos a
+   "Notificacio..." solo obligaba a adivinar de qué botón se trata. */
+.quick-action-label {
   min-width: 0;
-  line-height: 1.3;
+  line-height: 1.25;
   text-align: left;
-  white-space: normal;
+  overflow-wrap: anywhere;
+  hyphens: none;
 }
 
 .quick-action:hover {
@@ -1452,8 +1423,23 @@
   transform: translateY(-1px);
   box-shadow: var(--elevation-1);
 }
+.quick-action:hover .quick-action-icon { background: var(--theme-accent); color: #fff; }
 
 .quick-action:active { transform: scale(0.97); }
+
+/* ---- Esqueleto de carga ----
+   Los bloques fantasma usaban .skeleton-card, que no existía en ningún
+   sitio: durante la carga se veían huecos en vez de una señal de espera. */
+.skeleton-card {
+  border-radius: var(--r-md);
+  background: var(--theme-surface-elevated);
+  min-height: 44px;
+  animation: admin-skeleton 1.2s ease-in-out infinite;
+}
+@keyframes admin-skeleton {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.9; }
+}
 
 /* ---- Notificaciones ---- */
 .notif-status-grid {
@@ -2222,62 +2208,6 @@
 /* ==========================================
    Dashboard v2
    ========================================== */
-.dash-metrics {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  /* Todas las tarjetas de una fila miden lo mismo: si un título ocupa dos
-     líneas ("Contenido de ánimo") la fila crecía y las tarjetas quedaban
-     descuadradas respecto a sus vecinas. */
-  grid-auto-rows: 1fr;
-  align-items: stretch;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-.dash-metric {
-  position: relative;
-  padding: 16px 16px 14px;
-  border-radius: var(--r-lg, 16px);
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-divider, rgba(255,255,255,0.06));
-  overflow: hidden;
-  transition: all var(--dur-smooth, 0.25s);
-}
-.dash-metric:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-accent);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25), 0 0 28px var(--accent-dim);
-}
-.dash-metric::before {
-  content: '';
-  position: absolute; top: 0; left: 14px; right: 14px;
-  height: 3px;
-  background: linear-gradient(90deg, var(--theme-accent), transparent);
-  border-radius: 0 0 3px 3px;
-  opacity: 0.35;
-}
-.dash-metric-icon { font-size: 20px; line-height: 1; margin-bottom: 10px; }
-.dash-metric-value {
-  font-size: 30px;
-  font-weight: 600;
-  font-family: var(--font-display, inherit);
-  color: var(--theme-accent);
-  line-height: 1;
-  margin-bottom: 4px;
-}
-.dash-metric-label {
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--theme-text-primary);
-  margin-bottom: 5px;
-  /* Que el rótulo ocupe siempre dos líneas: así todas las tarjetas tienen la
-     misma altura aunque el texto no llene. */
-  min-height: calc(2 * 1.2em);
-  display: flex;
-  align-items: center;
-}
-.dash-metric-trend { font-size: 11px; color: var(--theme-text-tertiary); }
 
 /* ---- Gráfico de actividad (área) ---- */
 .dash-range-select {
@@ -2478,12 +2408,7 @@
 }
 .dash-more-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); background: var(--accent-dim); }
 
-/* ---- Accesos rápidos ---- */
-.quick-action { flex-direction: column; align-items: flex-start; gap: 8px; }
-.quick-action-emoji { font-size: 20px; line-height: 1; }
-
 /* ---- Atajos de gestión ---- */
-.dash-shortcuts-panel { margin-top: 16px; }
 .dash-shortcuts {
   /* Antes: fila horizontal con overflow-x y tarjetas fijas de 150 px. En
      móvil (panel de 289 px) solo cabía una y media y no había ninguna pista de
@@ -2515,20 +2440,10 @@
 .dash-shortcut-count { font-size: var(--fs-xs, 11px); color: var(--theme-text-tertiary); }
 
 /* ---- Responsive dashboard ---- */
-@media (max-width: 1100px) {
-  .dash-metrics { grid-template-columns: repeat(3, 1fr); }
-}
 @media (max-width: 768px) {
-  .dash-metrics { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .dash-metric-value { font-size: 24px; }
   .dash-donut { justify-content: center; }
 }
 @media (max-width: 480px) {
-  .dash-metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .dash-metric { padding: 12px; }
-  .dash-metric-icon { font-size: 17px; margin-bottom: 8px; }
-  .dash-metric-value { font-size: 20px; }
-  .dash-metric-label { font-size: 10px; }
   /* Los atajos ya no son una fila con ancho fijo: dos columnas que llenan.
      El width: 130px que había aquí los dejaba estrechos en la rejilla. */
   .dash-shortcuts { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -2605,36 +2520,267 @@
 }
 .dash-link:hover { background: var(--accent-dim); }
 
-/* ---- Configuración ---- */
-.admin-seg {
-  display: inline-flex;
+/* ==========================================
+   ADMIN · Configuración
+   Tarjetas con icono y rótulo de grupo, y las fechas en pestañas: antes era
+   una lista plana de paneles con cuatro editores de fechas seguidos, y no se
+   entendía qué bloque tocaba cada cosa.
+   ========================================== */
+.config-group { margin: 0 0 26px; }
+.config-group-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-text-tertiary, var(--theme-text-secondary));
+}
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+/* Apariencia lleva el ancho entero: con la paleta y el modo en fila se ven las
+   tres paletas de un vistazo, que es justo lo que se viene a cambiar. */
+.config-card--wide { grid-column: 1 / -1; }
+/* Apariencia es la tarjeta ancha: paleta y modo se apilan a lo ancho entero
+   para que las tres paletas quepan en fila con su descripción en una línea
+   (partidas en dos columnas los textos se partían en tres renglones). */
+.config-appearance {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--theme-surface-elevated);
-  border: 1px solid var(--theme-divider);
-  flex-wrap: wrap;
+  align-items: start;
 }
-.admin-seg-btn {
-  padding: 8px 18px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
+.config-card-hint--foot { margin: 14px 0 0; }
+@media (max-width: 900px) {
+  .config-appearance { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .config-swatches { grid-template-columns: 1fr; }
+}
+.config-card { margin: 0; }
+.config-card .admin-panel-head { margin-bottom: 10px; }
+.config-card-hint {
+  margin: 0 0 18px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
   color: var(--theme-text-secondary);
-  font-family: inherit;
-  font-size: var(--fs-sm, 13px);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--dur-fast, 0.15s);
 }
-.admin-seg-btn:hover { color: var(--theme-text-primary); }
-.admin-seg-btn.active {
-  background: var(--theme-accent, #e8614f);
-  color: #fff;
-  box-shadow: 0 4px 12px var(--accent-dim);
+.config-field-label {
+  display: block;
+  margin: 18px 0 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--theme-text-secondary);
 }
 
-.admin-profile-row {
+/* ---- Paleta: cada botón muestra su propio color ---- */
+/* Siempre tres paletas en fila: es una lista cerrada (theme.service) y
+   repartirlas en 2+1 dejaba una sola y descolocada. */
+.config-swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.config-swatch {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface-elevated);
+  color: var(--theme-text-primary);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--dur-normal);
+}
+.config-swatch:hover { border-color: var(--theme-accent); transform: translateY(-1px); }
+.config-swatch.active {
+  border-color: var(--theme-accent);
+  background: var(--accent-dim);
+  box-shadow: inset 0 0 0 1px var(--theme-accent);
+}
+.config-swatch-dot {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--swatch, var(--theme-accent));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12), 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: box-shadow var(--dur-normal);
+}
+/* El punto recibe un anillo de su color: se ve de un vistazo cuál está puesta. */
+.config-swatch.active .config-swatch-dot {
+  box-shadow: 0 0 0 3px var(--theme-surface, #14141a), 0 0 0 5px var(--swatch, var(--theme-accent));
+}
+.config-swatch-text { display: grid; gap: 1px; min-width: 0; }
+.config-swatch-text b { font-size: var(--fs-sm); font-weight: 600; }
+.config-swatch-text small {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--theme-text-secondary);
+}
+
+/* ---- Modo ---- */
+.config-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.config-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 13px 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface-elevated);
+  color: var(--theme-text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur-normal);
+}
+.config-mode:hover { border-color: var(--theme-accent); color: var(--theme-text-primary); }
+.config-mode.active {
+  border-color: var(--theme-accent);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+  font-weight: 600;
+}
+.config-mode-emoji { font-size: 20px; line-height: 1; }
+
+/* ---- Estado de las notificaciones ---- */
+.config-status {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.config-status li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface-elevated);
+}
+.config-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--theme-surface);
+  color: var(--theme-text-tertiary, var(--theme-text-secondary));
+}
+.config-status li.ok .config-status-icon {
+  background: var(--theme-success-dim, var(--accent-dim));
+  color: var(--theme-success, var(--theme-accent));
+}
+.config-status b { display: block; font-size: var(--fs-sm); color: var(--theme-text-primary); }
+.config-status small { font-size: 11px; color: var(--theme-text-secondary); }
+
+.config-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+/* ---- Datos de la cuenta ---- */
+.config-facts { display: grid; gap: 8px; margin: 16px 0 0; }
+.config-facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: var(--theme-surface-elevated);
+}
+.config-facts dt { font-size: var(--fs-xs); color: var(--theme-text-secondary); }
+.config-facts dd { margin: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--theme-text-primary); }
+
+/* ---- Fechas en pestañas ---- */
+.config-dates { margin-top: 2px; }
+/* Tira de pestañas de la tarjeta: cuatro bloques iguales que llenan el ancho,
+   en lugar de una fila de píldoras sueltas que se colgaba de una esquina. */
+.config-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 4px;
+  border-radius: var(--r-md);
+  background: var(--theme-surface-elevated);
+  border: 1px solid var(--theme-divider);
+}
+.config-tabs .admin-tab {
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 8px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+}
+.config-tabs .admin-tab.active {
+  background: var(--theme-accent, #e8614f);
+  color: #fff;
+}
+@media (max-width: 620px) {
+  .config-tabs { grid-template-columns: repeat(2, 1fr); }
+}
+.config-pane { animation: fade-in var(--dur-fast, 0.15s); }
+.config-pane[hidden] { display: none; }
+.config-dates .dates-events { margin-top: 0; }
+.config-save {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--theme-divider);
+}
+.config-save-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: auto;
+}
+/* El estado va a la izquierda del pie: si hay cambios sin guardar se dice en
+   ese mismo sitio, sin tener que pulsar nada para enterarse. */
+.config-save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--theme-text-tertiary, var(--theme-text-secondary));
+}
+.config-save-state::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--theme-success, var(--theme-accent));
+}
+.config-save.is-dirty .config-save-state { color: var(--theme-accent); }
+.config-save.is-dirty .config-save-state::before {
+  background: var(--theme-accent);
+  animation: adminPulse 2s ease-in-out infinite;
+}
+
+@media (max-width: 480px) {
+  .config-swatches { grid-template-columns: 1fr; }
+  .config-grid { grid-template-columns: 1fr; }
+}.admin-profile-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2642,72 +2788,121 @@
 .admin-profile-row > div:nth-child(2) { flex: 1; min-width: 0; }
 
 /* ==========================================
-   ADMIN · Barra superior (topbar)
-   Sustituye a la sidebar interna: sin duplicar navegación
+   ADMIN · Cabecera pegajosa
+   La navegación vive en el menú lateral, así que la cabecera ya solo
+   orienta: dónde estás, qué hora es y el botón del cajón en móvil.
    ========================================== */
 .admin-topbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.03);
+  gap: 12px;
+  padding: 4px 0 12px;
+  background: var(--theme-bg);
   border-bottom: 1px solid var(--theme-divider);
   position: sticky; top: 0; z-index: 15;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  /* Contenedor del degradado que avisa de que la barra continúa. */
-  isolation: isolate;
 }
-.admin-topbar-nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
+/* Arriba del todo el título ya está en el encabezado de la sección, así
+   que solo aparece cuando este se sale de pantalla al hacer scroll. */
+.admin-topbar-title {
+  display: flex; align-items: center; gap: 9px;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--theme-text-primary);
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 2px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity var(--dur-fast, 0.15s), transform var(--dur-fast, 0.15s);
 }
-.admin-topbar-nav::-webkit-scrollbar { display: none; }
+.admin-topbar.is-scrolled .admin-topbar-title { opacity: 1; transform: none; }
+.admin-topbar-title svg { color: var(--theme-accent); flex-shrink: 0; }
+.admin-topbar-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-topbar-actions {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+}
 
-/* Hay 8 secciones pero solo caben ~5: sin esto las tres últimas
-   (Notificaciones, Actividad, Configuración) quedan escondidas y no hay
-   ninguna pista de que exista más barra. El degradado se apaga cuando se
-   llega al final. */
-.admin-topbar-fade {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 56px;
-  pointer-events: none;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.03));
-  border-radius: 0 var(--r-lg, 16px) var(--r-lg, 16px) 0;
-  opacity: 1;
-  transition: opacity var(--dur-fast, 0.15s);
-}
-.admin-topbar-fade[hidden] { display: none; }
-.admin-topbar-tab {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 14px;
-  border: none; border-radius: 999px;
-  background: transparent;
-  color: var(--theme-text-secondary);
-  font-family: inherit;
-  font-size: var(--fs-sm, 13px);
-  font-weight: 500;
+/* Botón del cajón: solo aparece cuando el menú no cabe en pantalla. */
+.admin-nav-toggle {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 38px; height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface-elevated);
+  color: var(--theme-text-primary);
   cursor: pointer;
-  white-space: nowrap;
   transition: all var(--dur-fast, 0.15s);
 }
-.admin-topbar-tab svg { width: 15px; height: 15px; opacity: 0.6; transition: opacity var(--dur-fast, 0.15s); }
-.admin-topbar-tab:hover { background: var(--accent-dim); color: var(--theme-text-primary); }
-.admin-topbar-tab:hover svg { opacity: 1; }
-.admin-topbar-tab.active {
-  background: var(--theme-accent, #e8614f);
-  color: #fff;
+.admin-nav-toggle:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+.admin-nav-toggle svg { width: 20px; height: 20px; }
+
+/* Velo del cajón: sin él, el menú tapa el contenido sin avisar. */
+.admin-nav-scrim {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 19;
+  animation: fade-in var(--dur-fast, 0.15s);
 }
-.admin-topbar-tab.active svg { opacity: 1; }
+.admin-nav-scrim[hidden] { display: none; }
+html.admin-nav-locked { overflow: hidden; }
+
+/* ==========================================
+   ADMIN · Menú lateral · grupos
+   Ocho secciones en tres grupos: lo del día a día arriba y el resto
+   separado, para que la lista se lea de un vistazo sin parecer un volcado.
+   ========================================== */
+.admin-nav-group { display: flex; flex-direction: column; gap: 2px; }
+.admin-nav-group + .admin-nav-group { margin-top: 16px; }
+.admin-nav-group-label {
+  display: flex; flex-direction: column;
+  padding: 6px 16px 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-text-tertiary, var(--theme-text-secondary));
+}
+.admin-nav-group-label em {
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 11px;
+  color: var(--theme-text-tertiary, var(--theme-text-secondary));
+  opacity: 0.8;
+}
+
+/* El shell de la app ya pone la marca y quién eres; el menú del panel solo
+   navega. Arriba, una línea de contexto; abajo, la vuelta al hub. */
+.admin-sidebar-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  padding: 18px 20px 10px;
+}
+.admin-sidebar-top-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-text-tertiary, var(--theme-text-secondary));
+}
+.admin-sidebar-close { display: none; }
+.admin-sidebar-close svg { width: 16px; height: 16px; }
+.admin-sidebar-home {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 9px 14px;
+  border-radius: var(--r-sm);
+  color: var(--theme-text-secondary);
+  font-size: var(--fs-sm);
+}
+.admin-sidebar-home svg { width: 15px; height: 15px; }
+.admin-sidebar-home:hover { color: var(--theme-text-primary); }
+
+.admin-sidebar-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Pie de página del admin */
 .admin-footer {
@@ -2725,13 +2920,35 @@
   opacity: 0.5;
 }
 
-@media (max-width: 768px) {
-  .admin-topbar { flex-wrap: wrap; padding: 10px 14px; gap: 10px; }
-  .admin-topbar-nav { flex-basis: 100%; }
+/* El menú pasa a cajón: fuera de la pantalla, con botón, velo y
+   bloqueo de scroll. El mismo marcado sirve para los dos casos. */
+@media (max-width: 920px) {
+  .admin-nav-toggle { display: inline-flex; }
+  .admin-topbar-title { opacity: 1; transform: none; }
+  .admin-sidebar {
+    position: fixed; left: 0; bottom: 0;
+    /* Empieza bajo la barra móvil de la app, que es la única vía de
+       vuelta atrás: el cajón no puede taparla. */
+    top: var(--header-height, 56px);
+    height: calc(100dvh - var(--header-height, 56px));
+    transform: translateX(-100%);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  }
+  .admin-page.nav-open .admin-sidebar { transform: none; }
+  .admin-sidebar-close {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: auto;
+    width: 30px; height: 30px;
+    border-radius: var(--r-sm);
+    border: none; background: transparent;
+    color: var(--theme-text-secondary);
+    cursor: pointer;
+  }
+  .admin-sidebar-close:hover { background: var(--accent-dim); color: var(--theme-text-primary); }
+  .admin-main { padding-left: 18px; padding-right: 18px; }
 }
 @media (max-width: 480px) {
-  .admin-topbar { padding: 8px 10px; }
-  .admin-topbar-tab { padding: 7px 11px; font-size: 12px; }
+  .admin-date-badge { display: none; }
   .admin-footer { font-size: 11px; padding-top: 20px; }
 }
 
@@ -2815,41 +3032,123 @@
 
 .user-online { color: var(--theme-success, #5fd6a0); font-weight: 600; }
 
-/* Editor de fechas especiales */
-.dates-editor {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-top: 6px;
-}
-.dates-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: var(--fs-sm, 13px);
-  font-weight: 600;
-  color: var(--theme-text-secondary);
-}
-.dates-field input[type="date"] {
-  padding: 9px 11px;
-  border-radius: 10px;
-  border: 1px solid var(--theme-border, rgba(128,128,128,.25));
-  background: var(--theme-surface, rgba(255,255,255,.06));
-  color: var(--theme-text-primary);
-  font: inherit;
-  color-scheme: dark;
-}
-.dates-field input[type="date"]:focus-visible {
-  outline: 2px solid var(--theme-accent, #e8614f);
-  outline-offset: 1px;
-}
-
 @media (max-width: 480px) {
   .dash-use-label { flex-basis: 74px; }
   .dash-use-meta { font-size: 10px; }
   .dash-conn-meta { display: none; }
 }
+/* ==========================================
+   ADMIN · Los cuatro días
+   Cada día es una tarjeta con su nombre, su título, su fecha y su interruptor
+   de repetición: antes era una rejilla suelta de campos con el emoji suelto
+   encima y la casilla desnuda, y no se sabía qué fila era qué.
+   ========================================== */
+.dates-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.dates-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface-elevated);
+}
+.dates-card-head { display: flex; align-items: center; gap: 9px; }
+.dates-card-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--accent-dim);
+  font-size: 15px;
+  line-height: 1;
+}
+.dates-card-name {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--theme-text-secondary);
+}
+.dates-input {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface);
+  color: var(--theme-text-primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color-scheme: dark;
+}
+.dates-input:focus-visible {
+  outline: 2px solid var(--theme-accent, #e8614f);
+  outline-offset: 1px;
+}
+.dates-slot { display: flex; flex-direction: column; gap: 5px; }
+.dates-slot-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-text-tertiary, var(--theme-text-secondary));
+}
+.dates-slot-label svg { width: 13px; height: 13px; }
 
+/* Interruptor de "cada año": una casilla de sistema con el texto pegado era lo
+   único que indicaba que esa fecha se repite, y quedaba descolocada. */
+.dates-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: auto;
+  padding-top: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.dates-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.dates-switch-track {
+  position: relative;
+  width: 34px; height: 20px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-divider-strong);
+  transition: background var(--dur-fast, 0.15s), border-color var(--dur-fast, 0.15s);
+}
+.dates-switch-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--theme-text-tertiary, var(--theme-text-secondary));
+  transition: transform var(--dur-fast, 0.15s), background var(--dur-fast, 0.15s);
+}
+.dates-switch input:checked + .dates-switch-track {
+  background: var(--accent-dim);
+  border-color: var(--theme-accent);
+}
+.dates-switch input:checked + .dates-switch-track .dates-switch-thumb {
+  transform: translateX(14px);
+  background: var(--theme-accent);
+}
+.dates-switch input:focus-visible + .dates-switch-track {
+  outline: 2px solid var(--theme-accent, #e8614f);
+  outline-offset: 2px;
+}
+.dates-switch-label { font-size: var(--fs-xs); color: var(--theme-text-secondary); }
+
+@media (max-width: 480px) {
+  .dates-cards { grid-template-columns: 1fr; }
+}
 /* ---- Editor de próximas cosas (eventos futuros) ---- */
 .dates-events {
   display: flex;
@@ -2863,6 +3162,20 @@
   color: var(--theme-text-secondary);
 }
 .dates-event-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+.dates-event-row.is-open {
+  border-color: var(--theme-divider-strong);
+  background: var(--theme-surface-2, rgba(255,255,255,.02));
+}
+/* La fila colapsada solo enseña título + fecha + los dos botones. */
+.dates-event-main {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -2898,32 +3211,107 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+.dates-event-toggle {
+  flex-shrink: 0;
+  width: 34px;
+  height: 40px;
+  border: 1px solid var(--theme-divider-strong);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* El mes-día de los temáticos es corto: "10-31", no un campo de texto largo. */
+.dates-event-row .dates-se-monthday {
+  flex: 0 0 96px;
+  text-align: center;
+  letter-spacing: .04em;
+}
+.dates-event-row.is-open .dates-event-toggle {
+  background: var(--theme-surface);
+}
 
-.dates-emoji-label { font-size: 18px; line-height: 1; }
-.dates-field input[type="text"] {
+/* ===== Aspecto de la bienvenida (emoji, color, texto, foto) ===== */
+.dates-event-look,
+.dates-look-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  padding: 10px 0 2px;
+}
+.dates-look-row {
+  grid-template-columns: auto repeat(auto-fit, minmax(130px, 1fr));
+  align-items: end;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--theme-divider);
+}
+.dates-look-row:last-child { border-bottom: 0; }
+.dates-look-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.dates-look-field > span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--theme-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.dates-look-field--wide { grid-column: 1 / -1; }
+.dates-look-field input,
+.dates-look-field select,
+.dates-look-field textarea {
+  width: 100%;
+  min-width: 0;
   padding: 9px 11px;
   border-radius: 10px;
   border: 1px solid var(--theme-divider-strong);
   background: var(--theme-surface);
   color: var(--theme-text-primary);
   font: inherit;
+  color-scheme: dark;
 }
-.dates-field input[type="text"]:focus-visible {
-  outline: 2px solid var(--theme-accent, #e8614f);
-  outline-offset: 1px;
-}
-.dates-recur {
-  display: inline-flex;
+.dates-look-field textarea { resize: vertical; line-height: 1.45; }
+.dates-look-field input[type="text"].dates-look-icon { max-width: 78px; text-align: center; font-size: 18px; }
+
+/* Vista previa en vivo: se parece a la hoja real (foto + emoji + texto). */
+.dates-look-preview {
+  grid-column: 1 / -1;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: var(--fs-sm, 13px);
-  font-weight: 500;
-  color: var(--theme-text-secondary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
+  gap: 12px;
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-divider-strong);
 }
-.dates-recur input[type="checkbox"],
+.dates-look-chip {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--event-soft, var(--theme-surface-2));
+  overflow: hidden;
+}
+.dates-look-chip-icon { font-size: 28px; line-height: 1; }
+.dates-look-chip-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .35;
+}
+.dates-look-chip-text { display: grid; gap: 2px; min-width: 0; }
+.dates-look-chip-text b { font-size: 14px; }
+.dates-look-chip-text small { font-size: 12px; line-height: 1.4; color: var(--theme-text-secondary); }
+
+.dates-emoji-label { font-size: 18px; line-height: 1; }
 .dates-event-recur input[type="checkbox"] {
   width: 16px;
   height: 16px;

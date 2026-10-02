@@ -9,14 +9,15 @@
 import { MEME_FOLDERS, getVideoPoster } from '../services/rincon-data.js';
 import { LETTERS } from '../data/openwhen.data.js';
 import { escapeHtml } from '../utils/escape.js';
-import { userPrefKey, migrateUserPref } from '../utils/userStorage.js';
+import { userPrefKey, migrateUserPref, getUserPref, setUserPref } from '../utils/userStorage.js';
 import { hourInSpain, todayISO } from '../utils/format.js';
 import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
 import { daysSinceAnniversary, loadSpecialDates, nextSpecialDate } from '../utils/specialDates.js';
+import { maybeShowSpecialEvent, previewSpecialEventSheet } from '../components/SpecialEventSheet.js';
+import { icon } from '../components/ui.js';
 import { moodStore } from '../stores/mood.store.js';
 import { userStore } from '../stores/user.store.js';
-import { icon } from '../components/ui.js';
 
 // ==========================================
 // SEED — contenido que cambia cada día
@@ -99,6 +100,25 @@ function countdownLabel(days) {
   if (days <= 0) return '¡Hoy!';
   if (days === 1) return 'Mañana';
   return `${days} días`;
+}
+
+// La bienvenida temática vive en components/SpecialEventSheet.js: el Inicio
+// la dispara, pero también se puede abrir a mano con `?evento=halloween`
+// (o `?evento=2026-10-31`) para ver un día temático sin esperar a esa fecha.
+function previewRequestedEvent(router) {
+  const requested = router?.currentRoute?.query?.evento;
+  if (!requested) return false;
+  if (!previewSpecialEventSheet(requested, router)) return false;
+  // Se limpia el parámetro de la URL al abrirla, para no reaparecer en cada
+  // recarga. Se reconstruye la query en vez de recortarla: si `evento` va en
+  // medio, un replace deja un `?&` colgando.
+  const [base, query = ''] = window.location.hash.slice(1).split('?');
+  const params = new URLSearchParams(query);
+  params.delete('evento');
+  const rest = params.toString();
+  const next = `${window.location.pathname}${window.location.search}#${base}${rest ? `?${rest}` : ''}`;
+  window.history.replaceState(history.state, '', next);
+  return true;
 }
 
 /** Contador que sube hasta el número real (respeta reduced-motion). */
@@ -340,6 +360,11 @@ export function HomePage(router) {
     if (el) animateNumber(el, daysSinceAnniversary());
     const stats = page.querySelector('.home-stats');
     if (stats) stats.innerHTML = statCards();
+    // Espera las fechas sincronizadas para detectar también aniversarios y
+    // eventos personalizados configurados en otro dispositivo.
+    if (!previewRequestedEvent(router)) maybeShowSpecialEvent(page, router);
+  }).catch(() => {
+    if (!previewRequestedEvent(router)) maybeShowSpecialEvent(page, router);
   });
 
   // Navegación delegada: cualquier [data-route] navega (también lo insertado después)

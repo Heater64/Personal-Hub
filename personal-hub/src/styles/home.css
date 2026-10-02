@@ -18,6 +18,39 @@
 .home-page > *:nth-child(7) { animation-delay: 0.24s; }
 .home-page > *:nth-child(8) { animation-delay: 0.28s; }
 
+.overlay--special-event .sheet {
+  overflow: hidden;
+  border-color: var(--event-accent, var(--primary));
+  box-shadow: 0 24px 80px var(--event-soft, var(--primary-soft));
+}
+
+.special-event { display: grid; justify-items: center; gap: var(--sp-14); padding: var(--sp-8) 0 var(--sp-6); text-align: center; }
+/* Foto opcional del día: va antes del emoji y sustituye al carréton. */
+.special-event__photo { width: 100%; max-width: 340px; border-radius: var(--r-xl); overflow: hidden; box-shadow: 0 14px 40px color-mix(in srgb, var(--event-accent, var(--primary)) 18%, transparent); animation: special-event-pop 0.55s cubic-bezier(.2, .9, .3, 1.25) both; }
+.special-event__photo img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.special-event__item-body { min-width: 0; }
+.special-event__item-photo { display: block; width: 100%; max-width: 220px; margin-top: 8px; border-radius: var(--r-md); object-fit: cover; aspect-ratio: 16 / 9; }
+.special-event__icon {
+  width: 88px; height: 88px; display: grid; place-items: center; border-radius: 28px;
+  background: var(--event-soft, var(--primary-soft)); color: var(--event-accent, var(--primary)); font-size: 48px;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--event-accent, var(--primary)) 12%, transparent);
+  animation: special-event-pop 0.55s cubic-bezier(.2, .9, .3, 1.25) both;
+}
+.special-event__message { max-width: 34ch; margin: 0; color: var(--text); font-size: var(--fs-lg); line-height: 1.45; font-family: var(--font-display); }
+.special-event__list { width: 100%; display: grid; gap: var(--sp-8); }
+.special-event__item { display: flex; align-items: flex-start; gap: var(--sp-10); padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); text-align: left; }
+.special-event__item-icon { font-size: 1.35rem; }
+.special-event__item small { display: block; margin-top: 3px; line-height: 1.4; }
+.special-event__note { padding: 10px 14px; border-radius: var(--r-full); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-sm); }
+.special-event__note--preview { background: var(--event-soft, var(--primary-soft)); color: var(--text); font-weight: 600; }
+.special-event__action { margin-top: var(--sp-2); }
+@keyframes special-event-pop { from { opacity: 0; transform: translateY(12px) scale(.88); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .special-event__icon { animation: none; }
+  .special-event__photo { animation: none; }
+}
+
 @keyframes home-enter {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
@@ -73,7 +106,7 @@
 .home-hero__num {
   display: block;
   font-family: var(--font-ui);
-  font-size: var(--fs-3xl);
+  font-size: var(--fs-2xl);
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -88,7 +121,7 @@
      ("455 DÍAS JUNTOS") en vez de número gigante + etiqueta diminuta.
      Solo baja el contraste con --text-2 y un pelín el tracking, que en
      mayúsculas a este tamaño se dispara. */
-  font-size: var(--fs-3xl);
+  font-size: var(--fs-2xl);
   font-weight: 700;
   line-height: 1;
   color: var(--text-2);
@@ -112,10 +145,10 @@
   position: relative;
   margin: 0;
   font-family: var(--font-ui);
-  font-size: var(--fs-xl);
+  font-size: var(--fs-2xl);
   font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
   color: var(--text);
 }
 
@@ -206,6 +239,13 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-12);
+}
+
+@media (max-width: 480px) {
+  .home-hero__greet { font-size: clamp(1.5rem, 6.5vw, var(--fs-2xl)); }
+  .home-hero__main { gap: var(--sp-10); }
+  .home-hero__num, .home-hero__label { font-size: clamp(1.5rem, 6.5vw, var(--fs-2xl)); }
+  .home-hero__badge { width: 42px; height: 42px; font-size: 20px; }
 }
 
 @media (min-width: 768px) {

@@ -1121,6 +1121,423 @@ test('los tres detalles finos del visor de regalos estan resueltos', async () =>
   assert.match(cal, /if \(!catalog\) return;/);
 });
 
+test('los eventos especiales abren una bienvenida temática única por usuario', async () => {
+  const dates = await readFile(hub('src', 'utils', 'specialDates.js'), 'utf8');
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+
+  assert.match(dates, /export function specialEventsForDate\(iso = todayISO\(\)\)/);
+  assert.match(dates, /\{ id: 'halloween', monthDay: '10-31'/);
+  assert.match(dates, /\{ id: 'christmas', monthDay: '12-25'/);
+  assert.match(dates, /export const FIXED_IDS = \['anniversary', 'hubStart', 'birthday', 'userBirthday'\]/);
+  assert.match(dates, /for \(const event of cfg\.events \|\| \[\]\)/);
+  assert.match(dates, /key: `event:\$\{identity\}:\$\{suffix\}`/);
+  // La hoja vive en su propio componente: Inicio solo la dispara.
+  assert.match(home, /import \{ maybeShowSpecialEvent, previewSpecialEventSheet \} from '\.\.\/components\/SpecialEventSheet\.js'/);
+  assert.match(home, /maybeShowSpecialEvent\(page, router\)/);
+  assert.match(sheet, /specialEventsToday\(\)\.filter\(item => !seen\[item\.key\]\)/);
+  assert.match(sheet, /getUserPref\('specialEventsSeen', '\{\}'\)/);
+  assert.match(sheet, /setUserPref\('specialEventsSeen', JSON\.stringify\(seen\)\)/);
+  assert.match(sheet, /class: `special-event special-event--\$\{event\.type\}`/);
+  assert.match(sheet, /Abrir nuestro calendario/);
+  assert.match(css, /\.overlay--special-event \.sheet/);
+  assert.match(css, /\.special-event__icon/);
+});
+
+// Carga specialDates.js con las dos dependencias externa sustituidas por
+// dobles (Supabase y el reloj), para poder ejercitarlo de verdad en Node:
+// aquí los fallos se ven, no solo el texto.
+async function loadSpecialDates() {
+  let src = await readFile(hub('src', 'utils', 'specialDates.js'), 'utf8');
+  src = src
+    .replace("import { db } from '../services/db.service.js';",
+      'const db = { getHubDates: () => Promise.resolve(globalThis.__CFG__) };')
+    .replace("import { todayISO } from './format.js';",
+      "const todayISO = () => globalThis.__TODAY__;");
+  const mod = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
+  // specialDates() lee de una caché: hay que recargarla con cada config.
+  return { ...mod, use: async cfg => { globalThis.__CFG__ = cfg; await mod.loadSpecialDates(); } };
+}
+
+test('la bienvenida de un día se puede editar entero desde la config', async () => {
+  const { use, specialEventsForDate } = await loadSpecialDates();
+
+  await use({});
+  assert.equal(specialEventsForDate('2026-10-31')[0].icon, '🎃', 'sin config, Halloween es el de fábrica');
+
+  // Texto, emoji, foto y color propios en un día temático…
+  await use({ seasonal: [{ id: 'halloween', monthDay: '11-01', title: 'Nochevieja', icon: '🥂', type: 'christmas', description: 'Brindamos por nosotros.', image: 'https://x/f.jpg' }] });
+  assert.equal(specialEventsForDate('2026-10-31').length, 0, 'al mover la fecha, el día viejo deja de saltar');
+  const nochevieja = specialEventsForDate('2026-11-01')[0];
+  assert.equal(nochevieja.title, 'Nochevieja');
+  assert.equal(nochevieja.icon, '🥂');
+  assert.equal(nochevieja.type, 'christmas');
+  assert.equal(nochevieja.image, 'https://x/f.jpg');
+
+  // …y apagar un día para que no salga.
+  await use({ seasonal: [{ id: 'halloween', enabled: false }] });
+  assert.equal(specialEventsForDate('2026-10-31').length, 0, 'un día apagado no salta ni en su fecha');
+
+  // Añadir un temático que no venía de fábrica.
+  await use({ seasonal: [{ id: 'sanvalentin', monthDay: '02-14', title: 'San Valentín', icon: '💘', description: 'Nos queremos.' }] });
+  assert.equal(specialEventsForDate('2026-02-14')[0].title, 'San Valentín');
+
+  // Los cuatro principales también.
+  await use({
+    anniversary: '2025-07-03', recurring: { anniversary: true }, titles: { anniversary: 'Nuestro aniversario' },
+    looks: { anniversary: { icon: '💍', description: 'Un año más.', type: 'halloween', image: 'https://x/a.jpg' } }
+  });
+  const anniv = specialEventsForDate('2026-07-03')[0];
+  assert.equal(anniv.title, 'Nuestro aniversario');
+  assert.equal(anniv.icon, '💍');
+  assert.equal(anniv.description, 'Un año más.');
+  assert.equal(anniv.image, 'https://x/a.jpg');
+
+  // Un campo vacío devuelve el valor de fábrica, no deja el día sin emoji.
+  await use({ anniversary: '2025-07-03', recurring: { anniversary: true }, looks: { anniversary: { icon: '   ' } } });
+  assert.equal(specialEventsForDate('2026-07-03')[0].icon, '🤍');
+
+  // Un tipo inventado no puede colarse: rompería el color de la hoja.
+  await use({ events: [{ id: 'x', title: 'Viaje', date: '2026-08-08', type: 'inventado', description: 'A la playa' }] });
+  assert.equal(specialEventsForDate('2026-08-08')[0].type, 'custom');
+
+  // Varios días el mismo día: el primero es el titular, el resto se listan.
+  await use({ anniversary: '2026-07-03', recurring: { anniversary: true }, events: [{ id: 'a', title: 'Cena', date: '2026-07-03' }] });
+  const both = specialEventsForDate('2026-07-03');
+  assert.equal(both.length, 2);
+  assert.ok(both[0].key.startsWith('date:'));
+  assert.ok(both[1].key.startsWith('event:'));
+
+  // Reeditar el texto no cambia la clave: la bienvenida no sale dos veces.
+  await use({ events: [{ id: 'a', title: 'Cena', date: '2026-08-08', description: 'x' }] });
+  const key = specialEventsForDate('2026-08-08')[0].key;
+  await use({ events: [{ id: 'a', title: 'Cena', date: '2026-08-08', description: 'otro texto' }] });
+  assert.equal(specialEventsForDate('2026-08-08')[0].key, key, 'la clave debe depender del id, no del texto');
+});
+
+test('guardar sanea los eventos: nada de campos raros ni filas a medias', async () => {
+  // saveHubDates es la puerta de entrada: si aquí se cuela un mes-día roto o
+  // un evento sin título, la bienvenida sale vacía o no sale.
+  let src = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
+  const guardado = [];
+  src = src
+    .replace("import { supabase } from './supabase.js';", 'const supabase = { from: () => ({ select: () => ({ single: async () => ({ data: null, error: null }) }) }) };')
+    .replace("import { auth } from './auth.service.js';", 'const auth = { getUser: () => null, isAdmin: () => true, onAuthChange: () => {}, isReady: () => Promise.resolve() };')
+    .replace("import { escapeHtml } from '../utils/escape.js';", 'const escapeHtml = s => s;')
+    .replace("import { userPrefKey } from '../utils/userStorage.js';", 'const userPrefKey = k => k;')
+    .replace('await saveContent(\'hub_dates\', clean);', 'globalThis.__SAVED__ = clean;');
+  const mod = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
+  globalThis.__SAVED__ = null;
+
+  const base = { anniversary: '2025-07-03', hubStart: '2024-05-10', birthday: '2012-09-03', userBirthday: '2009-08-03' };
+  await mod.db.saveHubDates({
+    ...base,
+    titles: {}, recurring: {},
+    // Basura a propósito: sin título, sin fecha, mes-día inválido, tipo raro.
+    events: [
+      { id: 'a', title: 'Viaje', date: '2026-08-08', type: 'inventado', icon: '  🏖️  ', description: '  Primera vez  ' },
+      { id: 'b', title: '   ', date: '2026-08-09' },
+      { id: 'c', title: 'Sin fecha', date: '' }
+    ],
+    seasonal: [
+      { id: 'h', monthDay: '10-31', title: 'Halloween', icon: '🎃', description: 'Sustos' },
+      { id: 'malo', monthDay: '31-10', title: 'Invertido' },
+      { id: 'vacio', monthDay: '', title: 'Sin día' }
+    ],
+    looks: {
+      anniversary: { icon: '💍', description: 'Un año más.', type: 'halloween', image: '  ' },
+      hubStart: { icon: '', description: '  ', type: '', image: '' }
+    }
+  });
+
+  const saved = globalThis.__SAVED__;
+  assert.equal(saved.events.length, 1, 'solo se guarda el evento con título y fecha');
+  assert.equal(saved.events[0].description, 'Primera vez', 'el texto se guarda recortado');
+  assert.equal(saved.events[0].icon, '🏖️', 'el emoji se guarda recortado');
+  assert.equal(saved.seasonal.length, 1, 'un mes-día invertido o vacío no se guarda');
+  assert.equal(saved.seasonal[0].monthDay, '10-31');
+  // Un aspecto con contenido se guarda; la foto en blanco queda vacía para
+  // que ese día salga sin foto, y un aspecto totalmente vacío se descarta
+  // (vuelve a los valores de fábrica).
+  assert.deepEqual(saved.looks, { anniversary: { icon: '💍', description: 'Un año más.', type: 'halloween', image: '' } });
+});
+
+test('el Perfil no borra lo que se editó en el Admin al guardar desde el móvil', async () => {
+  const profile = await readFile(hub('src', 'pages', 'Profile.js'), 'utf8');
+
+  // El editor del Perfil solo toca título/fecha/repetición: si no reenvía el
+  // resto, cada guardado desde el móvil borraría fotos, textos y temáticos.
+  assert.match(profile, /const current = specialDates\(\);/);
+  assert.match(profile, /looks: current\.looks \|\| \{\}/);
+  assert.match(profile, /seasonal: current\.seasonal \|\| \[\]/);
+});
+
+test('el Admin puede editar el aspecto, añadir y quitar días temáticos', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+  const dbSvc = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
+  const profile = await readFile(hub('src', 'pages', 'Profile.js'), 'utf8');
+
+  // Los tres bloques del panel.
+  assert.match(admin, /id="datesLooksList"/, 'editor del aspecto de los cuatro días');
+  assert.match(admin, /id="datesSeasonalList"/, 'lista de días temáticos');
+  assert.match(admin, /id="addDatesSeasonalBtn"/, 'botón para añadir un temático');
+  assert.match(admin, /id="addDatesEventBtn"/, 'botón para añadir un evento');
+  // Emoji, color, texto y foto, tanto en eventos como en temáticos.
+  assert.match(admin, /\.dates-look-icon/);
+  assert.match(admin, /\.dates-look-type/);
+  assert.match(admin, /\.dates-look-desc/);
+  assert.match(admin, /\.dates-look-image/);
+  // El mes-día se valida en vez de descartarse en silencio.
+  assert.match(admin, /necesita la fecha como mes-día/);
+  // Se guarda todo junto.
+  assert.match(admin, /db\.saveHubDates\(\{ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring \}\)/);
+  // El guardado sanea lo que llega.
+  assert.match(dbSvc, /function cleanEvent\(event\)/);
+  assert.match(dbSvc, /function cleanSeasonal\(event\)/);
+  assert.match(dbSvc, /const monthDay = text\(event\?\.monthDay\)/, 'el mes-día se recorta y se valida');
+  // El Perfil reenvía lo que no edita: si no, al guardar desde el móvil se perdía.
+  assert.match(profile, /looks: current\.looks \|\| \{\}/);
+  assert.match(profile, /seasonal: current\.seasonal \|\| \[\]/);
+  assert.match(css, /\.dates-event-look/);
+  assert.match(css, /\.dates-look-preview/);
+});
+
+test('la foto de un día sale en la hoja y el emoji si no hay foto', async () => {
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+
+  assert.match(sheet, /event\.image\s*\n\s*\? h\('div', \{ class: 'special-event__photo' \}/,
+    'la foto va antes del emoji');
+  assert.match(sheet, /class: 'special-event__item-photo'/, 'los días secundarios también llevan su foto');
+  assert.match(css, /\.special-event__photo/);
+  assert.match(css, /\.special-event__item-photo/);
+});
+
+test('un día temático se puede ver antes de que llegue (?evento=)', async () => {
+  const dates = await readFile(hub('src', 'utils', 'specialDates.js'), 'utf8');
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+
+  // Alias legibles + fechas sueltas, con año en curso para mes-día.
+  assert.match(dates, /export function resolveEventPreview\(value\)/);
+  assert.match(dates, /halloween: '10-31'/);
+  assert.match(dates, /navidad: '12-25'/);
+  assert.match(dates, /test\(raw\) \? raw : null/,
+    'una fecha completa se acepta tal cual');
+  // La vista previa no marca nada como visto: es mirar, no vivir el día.
+  assert.match(sheet, /export function previewSpecialEventSheet\(value, router\)/);
+  assert.match(sheet, /openSpecialEventSheet\(events, router, \{ preview: true \}\)/);
+  assert.match(sheet, /Vista previa/);
+  // Inicio la abre desde la query y limpia el parámetro para no repetirla.
+  assert.match(home, /router\?\.currentRoute\?\.query\?\.evento/);
+  assert.match(home, /previewSpecialEventSheet\(requested, router\)/);
+  assert.match(home, /params\.delete\('evento'\)/);
+  assert.match(home, /if \(!previewRequestedEvent\(router\)\) maybeShowSpecialEvent\(page, router\)/);
+});
+
+test('el saludo de inicio y los días juntos usan el mismo cuerpo grande', async () => {
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+  const saludo = css.slice(css.indexOf('.home-hero__greet {'), css.indexOf('.home-hero__greet-name {'));
+  const contador = css.slice(css.indexOf('.home-hero__num {'), css.indexOf('.home-hero__quote {'));
+  const size = (bloque) => (bloque.match(/font-size: var\(--fs-([\w-]+)\)/) || [])[1];
+
+  // Lo que importa es que el saludo y el contador midan lo mismo (el bloque
+  // de días se lee junto al saludo), no un tamaño concreto: si mañana se
+  // agranda o se baja, el test sigue diciendo la verdad.
+  assert.equal(size(saludo), size(contador), 'saludo y contador deben usar el mismo cuerpo');
+  assert.equal(size(saludo), '2xl', 'un cuerpo grande pero no excesivo');
+  // El número y su etiqueta ("455 DÍAS JUNTOS") también comparten cuerpo.
+  assert.equal((contador.match(/font-size: var\(--fs-([\w-]+)\)/g) || []).length, 2);
+  assert.match(css, /\.home-hero__greet \{ font-size: clamp\(/, 'el saludo también se ajusta a pantallas estrechas');
+});
+
+test('el resumen abre con los atajos de gestión y sin tarjetas de métricas', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+  const dash = admin.slice(admin.indexOf('async function loadDashboard'), admin.indexOf('async function loadMoods'));
+
+  // Arriba del resumen va lo único accionable: accesos rápidos y atajos.
+  assert.ok(dash.includes('Atajos de gestión'), 'el bloque de atajos sigue en el resumen');
+  assert.equal((dash.match(/data-shortcut=/g) || []).length, 1, 'el panel de atajos no debe estar dos veces');
+  // Los accesos rápidos se movieron al principio: primero lo accionable,
+  // después el resumen para mirar (gráfico, dona, actividad...). Se comparan
+  // los puntos donde se pintan, no los comentarios que los nombran.
+  const iAccesos = dash.indexOf('quickActions.map');
+  const iAtajos = dash.indexOf('shortcuts.map');
+  const iGrafico = dash.indexOf('dashActivityChart');
+  assert.ok(iAccesos < iAtajos, 'los accesos rápidos van antes que los atajos');
+  assert.ok(iAtajos < iGrafico, 'los accesos van antes que el gráfico');
+  assert.equal((dash.match(/quickActions\.map/g) || []).length, 1, 'los accesos rápidos no deben estar dos veces');
+  // La rejilla de métricas desaparece del panel (y su CSS con ella).
+  assert.doesNotMatch(dash, /dash-metrics/, 'no debe quedar la rejilla de métricas');
+  assert.doesNotMatch(dash, /dash-metric-value/, 'no debe quedar el marcado de las tarjetas');
+  assert.doesNotMatch(css, /\.dash-metric\b/, 'el CSS de las tarjetas sobra si no se pintan');
+  // Los atajos siguen llevando a su sub-pestaña exacta, no solo a la sección.
+  assert.match(dash, /sub: 'regalos'/);
+  assert.match(dash, /sub: 'openwhen'/);
+  assert.match(dash, /sub: 'razones'/, '"Frases" apunta a Razones');
+  assert.match(admin, /\[data-shortcut\]/);
+});
+
+test('el menú del admin agrupa las secciones y ninguna queda sin acceso', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+
+  // El menú sale de NAV_GROUPS: lo del día a día primero, el resto
+  // agrupado pero nunca escondido.
+  const nav = admin.slice(admin.indexOf('const NAV_GROUPS = ['), admin.indexOf('];', admin.indexOf('const NAV_GROUPS = [')) + 2);
+  const groups = [...nav.matchAll(/label: '([^']+)',\s+hint:/g)].map(m => m[1]);
+  assert.deepEqual(groups, ['Principal', 'Personas', 'Herramientas']);
+  const navIds = [...nav.matchAll(/id: '([a-z]+)',\s+icon:/g)].map(m => m[1]);
+  assert.deepEqual(navIds, ['dashboard', 'contenido', 'multimedia', 'moods', 'usuarios', 'notificaciones', 'actividad', 'config']);
+
+  // Toda sección que se puede cargar tiene su entrada en el menú.
+  const loaders = admin.slice(admin.indexOf('const loaders = {'), admin.indexOf('};', admin.indexOf('const loaders = {')));
+  const sections = [...loaders.matchAll(/(?:^|[\s{,])([a-z]+):\s*load[A-Z]/g)].map(m => m[1]);
+  assert.equal(sections.length, navIds.length, 'el menú y los cargadores deben cubrir lo mismo');
+  for (const s of sections) {
+    assert.ok(navIds.includes(s), `la sección "${s}" no tiene entrada en el menú`);
+  }
+
+  // El menú lateral es lo que navega: no queda ninguna barra de secciones.
+  assert.match(admin, /class="admin-sidebar-item" data-section=/);
+  assert.doesNotMatch(admin, /admin-topbar-tab/, 'la barra de secciones se ha sustituido por el menú lateral');
+  assert.doesNotMatch(css, /\.admin-topbar-tab/, 'el CSS de la barra vieja sobra');
+  assert.match(css, /\.admin-sidebar\b/);
+  assert.match(css, /\.admin-nav-group-label/);
+
+  // Todas las entradas a una sección pasan por activateNav: así el menú
+  // queda marcado, la cabecera pegajosa con el título y el saludo solo en el
+  // resumen, venga de dónde venga el clic.
+  assert.match(admin, /function loadSection\(section\) \{[\s\S]{0,400}?activateNav\(section\)/);
+  assert.match(admin, /topTitle\.innerHTML/);
+  assert.match(admin, /welcomeBox\.classList\.toggle\('is-hidden', id !== 'dashboard'\)/);
+  assert.match(css, /\.admin-welcome\.is-hidden/);
+
+  // En móvil el menú es un cajón: botón, velo y bloqueo de scroll, y
+  // el bloqueo se suelta al navegar para no dejar la web entera sin scroll.
+  assert.match(admin, /class="admin-nav-scrim" id="adminNavScrim"/);
+  assert.match(admin, /class="admin-nav-toggle" id="adminNavToggle"/);
+  assert.match(css, /@media \(max-width: 920px\)[\s\S]*?translateX\(-100%\)/);
+  assert.match(admin, /page\.cleanup = \(\) => \{[\s\S]*?classList\.remove\('admin-nav-locked'\)/);
+
+  // El cajón arranca bajo la barra móvil de la app: es la única vía de
+  // vuelta atrás y taparla dejaría al usuario sin salida.
+  assert.ok(css.includes('top: var(--header-height, 56px)'), 'el cajón debe empezar bajo la barra móvil');
+
+  // El shell mide las páginas como columna de lectura; el panel pide más ancho
+  // al montarse y lo devuelve al navegar.
+  assert.ok(css.includes('.app-shell.has-admin .content { max-width: 1180px; }'));
+  assert.ok(admin.includes("classList.add('has-admin')"), 'el panel debe pedir más ancho al shell');
+  const cleanup = admin.slice(admin.indexOf('page.cleanup = () => {'), admin.indexOf('};', admin.indexOf('page.cleanup = () => {')));
+  assert.ok(cleanup.includes("classList.remove('has-admin')"), 'al navegar hay que devolver el ancho al shell');
+
+  // El título de la cabecera solo aparece al hacer scroll, cuando el
+  // encabezado de la sección ya no se ve. El scroll lo lleva .main, no la
+  // ventana, y no burbujea: se escucha en captura sobre document.
+  assert.ok(css.includes('.admin-topbar.is-scrolled .admin-topbar-title'));
+  assert.ok(admin.includes("addEventListener('scroll', onTopScroll, { passive: true, capture: true })"));
+  assert.ok(admin.includes("page.closest('.main')?.scrollTop"), 'hay que leer el scroll del shell, no el de la ventana');
+  assert.ok(admin.includes("removeEventListener('scroll', onTopScroll, true)"), 'el listener de scroll se suelta al navegar');
+
+  // Los bloques fantasma usaban .skeleton-card, que no existía en el CSS:
+  // durante la carga se veían huecos en vez de una señal de espera.
+  assert.ok(css.includes('.skeleton-card {'));
+});
+
+test('la configuración del admin se lee por bloques y las fechas van en pestañas', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+  const cfg = admin.slice(admin.indexOf('async function loadConfiguracion'), admin.indexOf('async function renderDbStatus'));
+
+  // Grupos con rótulo y tarjetas con su icono: antes era una lista plana de
+  // paneles sin orden ni jerarquía.
+  assert.ok(cfg.includes('config-group-label'), 'los ajustes van agrupados');
+  const grupos = [...cfg.matchAll(/class="config-group-label">([^<]+)</g)].map(m => m[1]);
+  assert.deepEqual(grupos, ['Del día a día', 'Sistema']);
+  assert.ok((cfg.match(/class="admin-panel config-card/g) || []).length >= 5, 'cada bloque es una tarjeta');
+
+  // La paleta se elige con su propio color, no con botones de texto.
+  assert.ok(cfg.includes('config-swatch-dot'), 'las paletas muestran su color');
+  assert.ok(cfg.includes("style=\"--swatch:"), 'el color sale de theme.service');
+  assert.ok(css.includes('.config-swatch.active .config-swatch-dot'), 'la paleta puesta se distingue');
+  assert.ok(css.includes('grid-template-columns: repeat(3, 1fr);'), 'las tres paletas van en fila');
+  // Los dos botones de píldora viejos quedaron sin usar y su CSS se fue con ellos.
+  assert.equal((admin.match(/admin-seg/g) || []).length, 0);
+
+  // Las cuatro listas de fechas caben en una tarjeta con pestañas y solo se
+  // muestra una: con los cuatro editores seguidos la página era un bloque
+  // larguísimo sin respiro.
+  const tabs = [...cfg.matchAll(/data-config-tab="([a-z]+)"/g)].map(m => m[1]);
+  assert.deepEqual(tabs, ['fechas', 'eventos', 'aspecto', 'tematicos']);
+  const panes = [...cfg.matchAll(/data-config-pane="([a-z]+)"([^>]*)>/g)].map(m => [m[1], m[2].includes('hidden')]);
+  assert.deepEqual(panes, [['fechas', false], ['eventos', true], ['aspecto', true], ['tematicos', true]],
+    'solo la primera pestaña arranca abierta');
+  assert.match(admin, /function showConfigTab|const showConfigTab = \(id\)/);
+  assert.ok(admin.includes("pane.hidden = pane.dataset.configPane !== id"), 'la pestaña decide qué se ve');
+  // Guardar fechas queda siempre a la vista, esté en la pestaña en la que estés.
+  const save = cfg.indexOf('id="saveDatesBtn"');
+  const panesEnd = cfg.lastIndexOf('data-config-pane=');
+  assert.ok(save > panesEnd, 'el botón de guardar se queda fuera de las pestañas');
+
+  // Los días temáticos se editan aunque nunca se hayan guardado: la lista
+  // arranca de lo que resuelve la app (fábrica + guardado), no solo del
+  // guardado, o Halloween y Navidad parecía no existir.
+  assert.match(admin, /let editingSeasonal = seasonalEvents\(hubDates\)/);
+
+  // Los ids y clases que usan los editors de fechas se conservan.
+  for (const id of ['datesLooksList', 'datesSeasonalList', 'datesEventsList', 'addDatesSeasonalBtn', 'addDatesEventBtn', 'saveDatesBtn']) {
+    assert.ok(cfg.includes(`id=\"${id}\"`), `falta #${id}`);
+  }
+});
+
+test('los cuatro días son tarjetas con interruptor y el pie avisa de cambios sin guardar', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
+  const cfg = admin.slice(admin.indexOf('async function loadConfiguracion'), admin.indexOf('async function renderDbStatus'));
+
+  // Cada día es una tarjeta completa: nombre, título, fecha y su interruptor.
+  assert.equal((cfg.match(/class="dates-card"/g) || []).length, 4, 'los cuatro días, una tarjeta cada uno');
+  assert.equal((cfg.match(/class="dates-switch"/g) || []).length, 4, 'cada día con su interruptor');
+  for (const id of ['dateAnniversary', 'dateHubStart', 'dateBirthday', 'dateUserBirthday']) {
+    assert.ok(cfg.includes(`id="${id}Recur"`), `falta el interruptor de ${id}`);
+  }
+  assert.ok(css.includes('.dates-cards {'), 'las tarjetas del editor de fechas');
+  assert.ok(css.includes('.dates-switch input:checked + .dates-switch-track'), 'el interruptor se pinta encendido');
+  // La rejilla suelta y la casilla con texto se fueron con el rediseño.
+  assert.equal((admin.match(/dates-editor/g) || []).length, 0);
+  assert.equal((admin.match(/dates-recur/g) || []).length, 0);
+
+  // Las cuatro pestañas se reparten el ancho de la tarjeta en vez de ser
+  // píldoras sueltas colgando de una esquina.
+  assert.ok(css.includes('grid-template-columns: repeat(4, 1fr);'));
+
+  // Y el pie dice si lo editado está guardado o no.
+  assert.ok(cfg.includes('id="datesSaveState"'), 'el pie dice el estado');
+  assert.ok(admin.includes("classList.add('is-dirty')"), 'al editar se marca como pendiente');
+  assert.ok(admin.includes("classList.remove('is-dirty')"), 'al guardar se limpia');
+  assert.ok(css.includes('.config-save.is-dirty'), 'y el aviso se ve');
+});
+
+test('el visor y los filtros de Galería detienen medios al cerrar o repintar', async () => {
+  const lightbox = await readFile(hub('src', 'components', 'MediaLightbox.js'), 'utf8');
+  const memes = await readFile(hub('src', 'pages', 'rincon', 'memes.js'), 'utf8');
+  const rincon = await readFile(hub('src', 'pages', 'Rincon.js'), 'utf8');
+
+  assert.match(lightbox, /if \(!destroyed && video\.paused && autoplay\)/,
+    'una carga tardía no vuelve a iniciar un vídeo ya cerrado');
+  assert.match(lightbox, /video\.autoplay = false;[\s\S]*?video\.pause\(\);[\s\S]*?querySelectorAll\('source'\)/,
+    'destroy detiene y descarga el vídeo activo');
+  assert.match(memes, /function rerenderGallery\(\) \{[\s\S]*?closeLightbox\(\);[\s\S]*?pauseSlideshow\(\);[\s\S]*?querySelectorAll\('audio, video'\)/,
+    'el re-render limpia el visor, la presentación y medios montados');
+  assert.match(memes, /stopGalleryPlayback\(\);[\s\S]*?state\.galeriaFilter = btn\.dataset\.filter/,
+    'cambiar el filtro para la reproducción antes de desmontar');
+  assert.match(rincon, /page\.querySelectorAll\('audio, video'\)\.forEach\(media => \{[\s\S]*?media\.pause\(\); media\.currentTime = 0/,
+    'al salir de la sección se paran audio y vídeo');
+});
+
 test('el check-in de ánimo aparece en el primer inicio diario y se reinicia al cambiar el día', async () => {
   const app = await readFile(hub('src', 'components', 'App.js'), 'utf8');
   const welcome = await readFile(hub('src', 'components', 'WelcomeScreen.js'), 'utf8');

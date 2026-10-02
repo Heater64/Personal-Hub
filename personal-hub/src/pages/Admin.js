@@ -17,7 +17,7 @@ import { moodStore } from '../stores/mood.store.js';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
 import { isValidUrlField, todayISO, hourInSpain, timeInSpain } from '../utils/format.js';
-import { refreshSpecialDates } from '../utils/specialDates.js';
+import { refreshSpecialDates, seasonalEvents, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS } from '../utils/specialDates.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { expandCalendarCatalog } from '../data/calendar-expansion.js';
@@ -27,7 +27,6 @@ import {
   fileKind, kindLabel, formatBytes
 } from '../services/cloudinary.service.js';
 import { visiblePhotos, baseFolders } from '../services/galleryData.js';
-import { getUserPref } from '../utils/userStorage.js';
 import { onMoodChange } from '../services/realtime.service.js';
 
 // Resuelve una promesa sin romper el panel: si la query falla (Supabase caído,
@@ -69,6 +68,11 @@ const UI = {
   search: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
   filter: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>',
   cloud: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4 1.7A4 4 0 0 0 7 19z"/><line x1="12" y1="12" x2="12" y2="20"/><polyline points="9 15 12 12 15 15"/></svg>',
+  palette: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 0-5H13a2 2 0 0 1 0-4h4.5A3.5 3.5 0 0 0 21 8.5C21 5.5 17 3 12 3z"/><circle cx="7.5" cy="10.5" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/><circle cx="16.5" cy="10.5" r="1.2"/></svg>',
+  spark: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3.5 13.8 8.7 19 10.5l-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8z"/></svg>',
+  star: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 2.7 5.7 6.3.8-4.6 4.3 1.2 6.2-5.6-3.1-5.6 3.1 1.2-6.2L3 9.5l6.3-.8z"/></svg>',
+  calendar: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  back: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>',
   copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   link: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
   download: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
@@ -144,15 +148,64 @@ const CONTENT_SUBS = [
   { id: 'audios',    icon: UI.music,     label: 'Audios' }
 ];
 
-const TABS = [
-  { id:'dashboard',       icon: UI.dash,     label:'Dashboard' },
-  { id:'moods',           icon: UI.heart,    label:'Ánimo' },
-  { id:'usuarios',        icon: UI.users,    label:'Usuarios' },
-  { id:'contenido',       icon: UI.content,  label:'Contenido' },
-  { id:'multimedia',      icon: UI.cloud,    label:'Multimedia' },
-  { id:'notificaciones',  icon: UI.bell,     label:'Notificaciones' },
-  { id:'actividad',       icon: UI.activity, label:'Actividad' },
-  { id:'config',          icon: UI.settings, label:'Configuración' }
+// Navegación del panel: menú lateral agrupado. Lo que se usa a diario va
+// primero y sin rodeos; el resto no se esconde, simplemente baja a su grupo
+// para que la lista siga siendo corta y cada sección tenga su sitio.
+const NAV_GROUPS = [
+  {
+    label: 'Principal',
+    hint: 'Lo del día a día',
+    items: [
+      { id: 'dashboard',  icon: UI.dash,     label: 'Dashboard' },
+      { id: 'contenido',  icon: UI.content,  label: 'Contenido' },
+      { id: 'multimedia', icon: UI.cloud,    label: 'Multimedia' }
+    ]
+  },
+  {
+    label: 'Personas',
+    hint: 'Quién y cómo está',
+    items: [
+      { id: 'moods',    icon: UI.smile, label: 'Ánimo' },
+      { id: 'usuarios', icon: UI.users, label: 'Usuarios' }
+    ]
+  },
+  {
+    label: 'Herramientas',
+    hint: 'Avisos, registro y ajustes',
+    items: [
+      { id: 'notificaciones', icon: UI.bell,     label: 'Notificaciones' },
+      { id: 'actividad',      icon: UI.activity, label: 'Actividad' },
+      { id: 'config',         icon: UI.settings, label: 'Configuración' }
+    ]
+  }
+];
+
+// Todas las secciones en el orden en que aparecen en el menú.
+const SECTIONS = NAV_GROUPS.flatMap(g => g.items);
+const sectionInfo = (id) => SECTIONS.find(s => s.id === id) || { id, label: id, icon: '' };
+
+// Una línea de orientación bajo cada título: en cuanto hay ocho
+// secciones, saber qué hace cada una sin abrirla ahorra mucho ir y venir.
+const SECTION_HINTS = {
+  dashboard:      'Lo esencial del hub de un vistazo y un salto a cada sección.',
+  contenido:      'Razones, canciones, regalos, noticias, mal día, series, Open When y audios.',
+  multimedia:     'Sube cada archivo desde aquí: va directo a Galería, Memes o Audios y aparece en la app al momento.',
+  moods:          'Cómo se ha sentidos cada día, mes a mes.',
+  usuarios:       'Quién entra, cuándo y qué mira.',
+  notificaciones: 'Avisos del hub y notificaciones push.',
+  actividad:      'Registro completo de lo que va pasando.',
+  config:         'Apariencia, fechas especiales y base de datos.'
+};
+
+// Colores disponibles para una bienvenida. El id va a SPECIAL_EVENT_TYPES y
+// el tono a SPECIAL_EVENT_TONES: el Admin y la hoja leen los dos.
+const EVENT_TYPE_OPTIONS = [
+  { id: 'custom',      label: 'Hub (rosa)' },
+  { id: 'birthday',    label: 'Cumpleaños' },
+  { id: 'anniversary', label: 'Aniversario' },
+  { id: 'memory',      label: 'Recuerdo' },
+  { id: 'halloween',   label: 'Halloween (naranja)' },
+  { id: 'christmas',   label: 'Navidad (verde)' }
 ];
 
 // ==========================================
@@ -174,6 +227,13 @@ export function AdminPage(router) {
   const page = document.createElement('div');
   page.className = 'admin-page';
 
+  // El shell mide el contenido como una página de lectura (columna de 880 px).
+  // Un panel de gestión con menú lateral se queda sin sitio para las
+  // rejillas, así que se le pide más ancho mientras está montado y se
+  // devuelve al navegar (cleanup).
+  const appShell = document.getElementById('app');
+  appShell?.classList.add('has-admin');
+
   const esc = escapeHtml;
   const user = userStore.getUser();
   const userName = user?.name || 'Admin';
@@ -188,23 +248,40 @@ export function AdminPage(router) {
   });
   const { text: greeting, emoji: greetingEmoji } = greetingFor(hourInSpain());
 
+  // El menú lateral se pinta una sola vez a partir de NAV_GROUPS, para que
+  // el HTML no repita la lista de secciones. En móvil es un cajón que
+  // entra con el botón de la cabecera.
+  const navHTML = NAV_GROUPS.map(g => `
+    <div class="admin-nav-group">
+      <span class="admin-nav-group-label">${g.label}<em>${g.hint}</em></span>
+      ${g.items.map(t => `
+        <button type="button" class="admin-sidebar-item" data-section="${t.id}">
+          ${t.icon}<span>${t.label}</span>
+        </button>`).join('')}
+    </div>`).join('');
+
   page.innerHTML = `
     <div class="admin-layout">
+      <aside class="admin-sidebar" id="adminSidebar" aria-label="Menú del panel">
+        <div class="admin-sidebar-top">
+          <span class="admin-sidebar-top-label">Panel de admin</span>
+          <button type="button" class="admin-sidebar-close" id="adminNavClose" aria-label="Cerrar menú">${UI.close}</button>
+        </div>
+        <nav class="admin-sidebar-nav" id="adminSidebarNav" aria-label="Secciones del panel">${navHTML}</nav>
+        <div class="admin-sidebar-footer">
+          <button type="button" class="admin-btn-ghost admin-sidebar-home" id="adminGoHome" title="Volver al hub">
+            ${UI.back}<span>Volver al hub</span>
+          </button>
+        </div>
+      </aside>
+      <div class="admin-nav-scrim" id="adminNavScrim" hidden></div>
       <main class="admin-main">
         <header class="admin-topbar">
-          <nav class="admin-topbar-nav" id="adminTopNav" aria-label="Secciones del panel">
-            ${TABS.map(t => `<button class="admin-topbar-tab${t.id==='dashboard'?' active':''}" data-section="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
-          </nav>
-          <div class="admin-topbar-fade" id="adminTopFade" aria-hidden="true"></div>
-        </header>
-        <div class="admin-welcome">
-          <div class="admin-welcome-greeting">
-            <h1 id="adminGreeting">${greeting}, ${esc(userName)} ${greetingEmoji}</h1>
-            <div class="admin-welcome-sub">
-              <span>Aquí tienes un resumen de tu Personal Hub.</span>
-            </div>
-          </div>
-          <div class="admin-welcome-actions">
+          <button type="button" class="admin-nav-toggle" id="adminNavToggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="adminSidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="admin-topbar-title" id="adminTopTitle">${UI.dash}<span>Dashboard</span></div>
+          <div class="admin-topbar-actions">
             <span class="admin-time-badge" id="adminTimeBadge">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span id="adminTimeText"></span>
@@ -213,6 +290,14 @@ export function AdminPage(router) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               <span id="adminDateText"></span>
             </span>
+          </div>
+        </header>
+        <div class="admin-welcome" id="adminWelcome">
+          <div class="admin-welcome-greeting">
+            <h1 id="adminGreeting">${greeting}, ${esc(userName)} ${greetingEmoji}</h1>
+            <div class="admin-welcome-sub">
+              <span>Aquí tienes un resumen de tu Personal Hub.</span>
+            </div>
           </div>
         </div>
         <div class="admin-db-status" id="adminDbStatus" style="display:none"></div>
@@ -239,7 +324,7 @@ export function AdminPage(router) {
   `;
 
   // ===== STATE =====
-  const S = { section: 'dashboard', moodDate: new Date(), contentSub: 'razones', calMonth: null, calDay: null };
+  const S = { section: 'dashboard', moodDate: new Date(), contentSub: 'razones', calMonth: null, calDay: null, configTab: 'fechas' };
 
   const content = page.querySelector('#adminContent');
 
@@ -263,42 +348,68 @@ export function AdminPage(router) {
     dateText.textContent = new Date().toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
   }
 
-  // ===== TOPBAR NAV =====
-  // Con 8 secciones la barra no cabe en pantallas normales: el degradado
-  // avisa de que sigue habiendo pestañas a la derecha y desaparece al llegar
-  // al final. Sin esto, Notificaciones/Actividad/Configuración quedaban
-  // escondidas sin ninguna pista de que existieran.
-  const topNav = page.querySelector('#adminTopNav');
-  const topFade = page.querySelector('#adminTopFade');
-  function syncTopFade() {
-    if (!topNav || !topFade) return;
-    const queda = topNav.scrollWidth - topNav.clientWidth - topNav.scrollLeft;
-    topFade.hidden = queda <= 2;
+  // ===== NAV =====
+  // Menú lateral en escritorio, cajón en móvil. Un solo sitio decide qué está
+  // marcado, qué pone la cabecera y si el saludo se ve, para que ir a una
+  // sección desde cualquier botón (menú, accesos, atajos) deixe el panel
+  // siempre igual de orientado.
+  const navScrim = page.querySelector('#adminNavScrim');
+  const navToggle = page.querySelector('#adminNavToggle');
+  const welcomeBox = page.querySelector('#adminWelcome');
+  const topTitle = page.querySelector('#adminTopTitle');
+  const topbar = page.querySelector('.admin-topbar');
+
+  // Arriba del todo el título de la sección está justo debajo en el
+  // encabezado, y repetirlo solo ruido. En cuanto se hace scroll (donde el
+  // encabezado ya no se ve) aparece, y en móvil, donde el menú está
+  // cerrado, siempre.
+  // El scroll no lo lleva la ventana: lo lleva el contenedor .main del shell, y
+  // el evento de scroll no burbujea. Se escucha en fase de captura sobre
+  // document para que funcione llegue cuando se haya montado o no, y se lee
+  // .main en el momento en vez de cachearlo (aún no existe al crearse).
+  const onTopScroll = () => {
+    const top = page.closest('.main')?.scrollTop ?? window.scrollY;
+    topbar?.classList.toggle('is-scrolled', top > 24);
+  };
+  document.addEventListener('scroll', onTopScroll, { passive: true, capture: true });
+  onTopScroll();
+
+  function setNavOpen(open) {
+    page.classList.toggle('nav-open', open);
+    if (navScrim) navScrim.hidden = !open;
+    navToggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.documentElement.classList.toggle('admin-nav-locked', open);
   }
-  if (topNav && topFade) {
-    topNav.addEventListener('scroll', syncTopFade, { passive: true });
-    window.addEventListener('resize', syncTopFade);
-    // Un frame después para tener ya el ancho real calculado.
-    requestAnimationFrame(syncTopFade);
+  navToggle?.addEventListener('click', () => setNavOpen(!page.classList.contains('nav-open')));
+  navScrim?.addEventListener('click', () => setNavOpen(false));
+  page.querySelector('#adminNavClose')?.addEventListener('click', () => setNavOpen(false));
+  page.querySelector('#adminGoHome')?.addEventListener('click', () => {
+    setNavOpen(false);
+    router.navigate('/');
+  });
+  /**
+   * Deja el panel orientado a una sección: marca su botón del menú, pone el
+   * título en la cabecera pegajosa y esconde el saludo (que solo tiene sentido
+   * en el resumen) para que las demás secciones no repitan la bienvenida.
+   */
+  function activateNav(section) {
+    const known = !!page.querySelector(`.admin-sidebar-item[data-section="${section}"]`);
+    const id = known ? section : 'dashboard';
+    page.querySelectorAll('.admin-sidebar-item').forEach(t => t.classList.remove('active'));
+    page.querySelector(`.admin-sidebar-item[data-section="${id}"]`)?.classList.add('active');
+    if (topTitle) topTitle.innerHTML = `${sectionInfo(id).icon}<span>${sectionInfo(id).label}</span>`;
+    if (welcomeBox) welcomeBox.classList.toggle('is-hidden', id !== 'dashboard');
+    setNavOpen(false);
   }
 
   function setActiveSection(btn, section) {
-    page.querySelectorAll('.admin-topbar-tab').forEach(t => t.classList.remove('active'));
-    if (btn) btn.classList.add('active');
     S.section = section;
     loadSection(section);
-    // Al cambiar de sección, deja la pestaña activa a la vista.
-    if (topNav && btn) {
-      const r = btn.getBoundingClientRect();
-      const nr = topNav.getBoundingClientRect();
-      if (r.left < nr.left || r.right > nr.right) {
-        btn.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      }
-    }
-    syncTopFade();
+    // Al cambiar de sección, deja el botón activo a la vista en el menú.
+    btn?.scrollIntoView({ block: 'nearest' });
   }
 
-  page.querySelectorAll('.admin-topbar-tab').forEach(item => {
+  page.querySelectorAll('.admin-sidebar-item').forEach(item => {
     item.addEventListener('click', () => setActiveSection(item, item.dataset.section));
   });
 
@@ -362,11 +473,22 @@ export function AdminPage(router) {
   };
   document.addEventListener('keydown', escapeHandler);
 
+  // Escape cierra también el cajón del menú (solo en móvil, donde se superpone).
+  const navEscapeHandler = (e) => {
+    if (e.key === 'Escape' && page.classList.contains('nav-open')) setNavOpen(false);
+  };
+  document.addEventListener('keydown', navEscapeHandler);
+
   // Cleanup on navigation
   page.cleanup = () => {
+    appShell?.classList.remove('has-admin');
     document.removeEventListener('keydown', escapeHandler);
+    document.removeEventListener('keydown', navEscapeHandler);
+    document.removeEventListener('scroll', onTopScroll, true);
     clearInterval(clockInterval);
-    window.removeEventListener('resize', syncTopFade);
+    // El bloqueo de scroll es global: si se navega con el cajón abierto, se
+    // queda puesto y la web entera deja de hacer scroll al volver.
+    document.documentElement.classList.remove('admin-nav-locked');
     // Desuscribe del aviso de ánimos en vivo (se reinstala en loadMoods)
     if (moodRealTimeOff) { moodRealTimeOff(); moodRealTimeOff = null; }
   };
@@ -383,6 +505,10 @@ export function AdminPage(router) {
   let moodRealTimeOff = null;
   function loadSection(section) {
     sectionToken++;
+    // Toda entrada a una sección pasa por aquí, así que el menú y la
+    // cabecera se orientan solos venga de donde venga (menú, accesos,
+    // atajos o el guardado de un modal, que recarga la sección actual).
+    activateNav(section);
     const loaders = {
       dashboard: loadDashboard, moods: loadMoods,
       usuarios: loadUsuarios, contenido: loadContenido,
@@ -402,10 +528,20 @@ export function AdminPage(router) {
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header"><h2>${UI.dash} Resumen general</h2></div>
-        <div class="dash-metrics">
-          ${'<div class="dash-metric skeleton-card"></div>'.repeat(12)}
+        <p class="admin-section-hint">${SECTION_HINTS.dashboard}</p>
+        <div class="admin-panel dash-go-panel">
+          <div class="admin-panel-head"><h4>Ir a</h4></div>
+          <div class="quick-actions">
+            ${'<div class="quick-action skeleton-card"></div>'.repeat(4)}
+          </div>
+          <div class="dash-go">
+            <span class="dash-go-label">Atajos de gestión</span>
+            <div class="dash-shortcuts">
+              ${'<div class="dash-shortcut skeleton-card"></div>'.repeat(6)}
+            </div>
+          </div>
         </div>
-      </section>
+        </section>
     `;
 
     const token = sectionToken;
@@ -447,31 +583,7 @@ export function AdminPage(router) {
 
     if (token !== sectionToken) return; // la sección cambió mientras cargaba
 
-    // ---- Helpers de fechas ----
-    const yearsBetween = (iso) => {
-      const start = new Date(iso + 'T00:00:00');
-      let y = todayDate.getFullYear() - start.getFullYear();
-      if (new Date(todayDate.getFullYear(), start.getMonth(), start.getDate()) > todayDate) y--;
-      return Math.max(y, 0);
-    };
-    const monthsBetween = (iso) => {
-      const start = new Date(iso + 'T00:00:00');
-      let m = (todayDate.getFullYear() - start.getFullYear()) * 12 + (todayDate.getMonth() - start.getMonth());
-      if (todayDate.getDate() < start.getDate()) m--;
-      return Math.max(m, 0);
-    };
-    const fmtShortDate = (iso) => new Date(iso + 'T00:00:00')
-      .toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
-
     // ---- Métricas ----
-    const monthKey = today.slice(0, 7);
-    const usersThisMonth = realUsers.filter(u => (u.created_at || '').startsWith(monthKey)).length;
-    const moodsThisMonth = moods.filter(m => (m.date || '').startsWith(monthKey)).length;
-    const songsThisWeek = songsList.filter(s => {
-      const t = s && (s.createdAt || s.addedAt);
-      return t && (Date.now() - new Date(t).getTime()) < 7 * 864e5;
-    }).length;
-
     // Fotos de la galería
     let galleryPhotos = 0;
     try {
@@ -479,48 +591,13 @@ export function AdminPage(router) {
       (folders.length ? folders : ['general']).forEach(f => { galleryPhotos += visiblePhotos(f).length; });
     } catch { galleryPhotos = 0; }
 
-    // Notificaciones sin leer: razones nuevas + cartas Open When sin abrir
-    let unreadReasons = 0;
-    try {
-      const readSet = new Set(JSON.parse(getUserPref('razonesRead', '[]') || '[]'));
-      unreadReasons = reasonsList.filter((r, i) => r && r.date && r.date <= today && !readSet.has(r.id || `r${i}`)).length;
-    } catch { /* */ }
-    let unreadLetters = 0;
-    try {
-      const seen = new Set(JSON.parse(getUserPref('openwhen.seen', '[]') || '[]'));
-      unreadLetters = owLettersList.filter(l => l && l.id && !seen.has(l.id)).length;
-    } catch { /* */ }
-
     const frases = reasonsList.length + maldiaFrasesList.length;
     const mensajes = frases + maldiaMensajesList.length;
-    const hubMonths = monthsBetween(hubStartISO);
 
-    const row1 = [
-      { icon: '👥', value: realUsers.length, label: 'Usuarios', trend: `+${usersThisMonth} este mes` },
-      { icon: '❤️', value: moods.length, label: 'Contenido de ánimo', trend: `+${moodsThisMonth} este mes` },
-      { icon: '📅', value: yearsBetween(annivISO), label: 'Años juntos', trend: fmtShortDate(annivISO) },
-      { icon: '⏱️', value: hubMonths >= 24 ? `${Math.floor(hubMonths / 12)} años` : `${hubMonths} meses`, label: 'En el Hub', trend: 'Desde el inicio' },
-      { icon: '🎵', value: songsList.length, label: 'Canciones', trend: songsThisWeek ? `+${songsThisWeek} esta semana` : 'En el catálogo' }
-    ];
-    const row2 = [
-      { icon: '🎁', value: giftsCount, label: 'Regalos', trend: 'Total registrados' },
-      { icon: '📝', value: audiosList.length, label: 'Notas', trend: 'Notas de voz' },
-      { icon: '🖼️', value: galleryPhotos, label: 'Fotos', trend: 'En la galería' },
-      { icon: '💬', value: mensajes, label: 'Mensajes', trend: 'En frases' },
-      // Series y Noticias ya se calculaban para la dona, pero no salían en
-      // ninguna métrica. Con ellas son 12 tarjetas: número que encaja exacto
-      // en 3, 4 y 6 columnas, así que no queda nunca una huérfana al final.
-      { icon: '📺', value: seriesCount, label: 'Series y películas', trend: 'En el catálogo' },
-      { icon: '📰', value: newsList.length, label: 'Noticias', trend: 'Publicadas' },
-      { icon: '🔔', value: unreadReasons + unreadLetters, label: 'Notificaciones', trend: 'Sin leer' }
-    ];
-    const metricCard = (m) => `
-      <div class="dash-metric">
-        <div class="dash-metric-icon">${m.icon}</div>
-        <div class="dash-metric-value">${m.value}</div>
-        <div class="dash-metric-label">${m.label}</div>
-        <div class="dash-metric-trend">${m.trend}</div>
-      </div>`;
+    // ---- Atajos de gestión ----
+    // Arriba del resumen. Las tarjetas de métricas se quitaron: contaban
+    // cosas que no había que mirar para gestionar, y esos mismos datos
+    // siguen vivios en la dona de contenido y en los propios atajos.
 
     // ---- Serie de los últimos N días (actividad o ánimos, área) ----
     let chartMetric = 'activity'; // 'activity' | 'mood'
@@ -837,14 +914,18 @@ export function AdminPage(router) {
       return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
     };
 
-    // ---- Accesos rápidos y atajos ----
+    // ---- Ir a: secciones y atajos ----
+    // El menú lateral ya tiene todo, pero el resumen es donde se entra sin
+    // pensar: por eso repite el mapa completo de secciones y los atajos al
+    // contenido que más se edita, cada uno con su número.
     const quickActions = [
-      { section: 'contenido',      emoji: '📁', label: 'Gestionar contenido' },
-      { section: 'multimedia',     emoji: '☁️', label: 'Subir multimedia' },
-      { section: 'notificaciones', emoji: '✈️', label: 'Enviar notificación' },
-      { section: 'moods',          emoji: '😊', label: 'Ver ánimos' },
-      { section: 'usuarios',       emoji: '👥', label: 'Usuarios' },
-      { section: 'config',         emoji: '⚙️', label: 'Configuración' }
+      { section: 'contenido',      icon: UI.content,  label: 'Contenido' },
+      { section: 'multimedia',     icon: UI.cloud,    label: 'Multimedia' },
+      { section: 'moods',          icon: UI.smile,    label: 'Ánimo' },
+      { section: 'usuarios',       icon: UI.users,    label: 'Usuarios' },
+      { section: 'notificaciones', icon: UI.bell,     label: 'Notificaciones' },
+      { section: 'actividad',      icon: UI.activity, label: 'Actividad' },
+      { section: 'config',         icon: UI.settings, label: 'Configuración' }
     ];
     const shortcuts = [
       { icon: '📮', label: 'Open When', count: owLettersList.length, section: 'contenido', sub: 'openwhen' },
@@ -932,11 +1013,36 @@ export function AdminPage(router) {
             <button class="admin-btn-ghost" id="refreshDashboard" title="Actualizar">${UI.refresh}</button>
           </div>
         </div>
+        <p class="admin-section-hint">${SECTION_HINTS.dashboard}</p>
 
-        <!-- Una sola rejilla: con dos, cada una dejaba su hueco al final
-             cuando la pantalla da 3 columnas (3+2 y 3+2). -->
-        <div class="dash-metrics">
-          ${[...row1, ...row2].map(metricCard).join('')}
+        <!-- Arriba del todo, lo accionable: a qué ir y qué editar. El resto
+             del resumen es para mirar. -->
+        <div class="admin-panel dash-go-panel">
+          <div class="admin-panel-head">
+            <h4>Ir a</h4>
+            <span class="admin-panel-badge">Todo el panel a un clic</span>
+          </div>
+          <div class="dash-go">
+            <span class="dash-go-label">Secciones del panel</span>
+            <div class="quick-actions">
+              ${quickActions.map(q => `
+                <button type="button" class="quick-action" data-goto="${q.section}">
+                  <span class="quick-action-icon">${q.icon}</span>
+                  <span class="quick-action-label">${q.label}</span>
+                </button>`).join('')}
+            </div>
+          </div>
+          <div class="dash-go">
+            <span class="dash-go-label">Atajos de gestión</span>
+            <div class="dash-shortcuts">
+              ${shortcuts.map(s => `
+                <button type="button" class="dash-shortcut" data-shortcut='${JSON.stringify({ section: s.section || '', sub: s.sub || '' })}'>
+                  <span class="dash-shortcut-icon">${s.icon}</span>
+                  <span class="dash-shortcut-label">${s.label}</span>
+                  <span class="dash-shortcut-count">${s.count} ${s.count === 1 ? 'elemento' : 'elementos'}</span>
+                </button>`).join('')}
+            </div>
+          </div>
         </div>
 
         <div class="admin-dash-grid">
@@ -1031,24 +1137,6 @@ export function AdminPage(router) {
             </div>
             <button class="dash-more-btn" data-goto="actividad">Ver toda la actividad →</button>
           </div>
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Accesos rápidos</h4></div>
-            <div class="quick-actions">
-              ${quickActions.map(q => `<button class="quick-action" data-goto="${q.section}"><span class="quick-action-emoji">${q.emoji}</span><span>${q.label}</span></button>`).join('')}
-            </div>
-          </div>
-        </div>
-
-        <div class="admin-panel dash-shortcuts-panel">
-          <div class="admin-panel-head"><h4>Atajos de gestión</h4></div>
-          <div class="dash-shortcuts">
-            ${shortcuts.map(s => `
-              <button type="button" class="dash-shortcut" data-shortcut='${JSON.stringify({ section: s.section || '', sub: s.sub || '' })}'>
-                <span class="dash-shortcut-icon">${s.icon}</span>
-                <span class="dash-shortcut-label">${s.label}</span>
-                <span class="dash-shortcut-count">${s.count} ${s.count === 1 ? 'elemento' : 'elementos'}</span>
-              </button>`).join('')}
-          </div>
         </div>
       </section>
     `;
@@ -1097,9 +1185,6 @@ export function AdminPage(router) {
     page.querySelectorAll('[data-goto]').forEach(btn => {
       btn.addEventListener('click', () => {
         S.section = btn.dataset.goto;
-        page.querySelectorAll('.admin-topbar-tab').forEach(t => t.classList.remove('active'));
-        const navBtn = page.querySelector(`.admin-topbar-tab[data-section="${S.section}"]`);
-        if (navBtn) navBtn.classList.add('active');
         loadSection(S.section);
       });
     });
@@ -1111,9 +1196,6 @@ export function AdminPage(router) {
         if (s.href) { router.navigate(s.href); return; }
         if (s.sub) S.contentSub = s.sub;
         S.section = s.section;
-        page.querySelectorAll('.admin-topbar-tab').forEach(t => t.classList.remove('active'));
-        const navBtn = page.querySelector(`.admin-topbar-tab[data-section="${S.section}"]`);
-        if (navBtn) navBtn.classList.add('active');
         loadSection(S.section);
       });
     });
@@ -1126,6 +1208,7 @@ export function AdminPage(router) {
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header"><h2>${UI.heart} Estado de Ánimo</h2></div>
+        <p class="admin-section-hint">${SECTION_HINTS.moods}</p>
         <div class="moods-chart-section">
           <div class="moods-chart-header">
             <h3>Calendario mensual</h3>
@@ -1281,6 +1364,7 @@ export function AdminPage(router) {
         <div class="admin-section-header">
           <h2>${UI.users} Usuarios</h2>
         </div>
+        <p class="admin-section-hint">${SECTION_HINTS.usuarios}</p>
         <div class="admin-search"><input type="text" id="userSearch" class="admin-search-input" placeholder="Buscar usuarios..."></div>
         <div class="admin-list" id="userList">${skeletonCard('56px')}${skeletonCard('56px')}${skeletonCard('56px')}</div>
       </section>
@@ -1620,6 +1704,7 @@ export function AdminPage(router) {
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header"><h2>${UI.content} Gestión de Contenido</h2></div>
+        <p class="admin-section-hint">${SECTION_HINTS.contenido}</p>
         <div class="admin-tabs" id="contentSubTabs" style="margin-bottom:16px">
           ${CONTENT_SUBS.map(t => `<button class="admin-tab${t.id === (S.contentSub || 'razones') ? ' active' : ''}" data-content="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
         </div>
@@ -1924,7 +2009,7 @@ export function AdminPage(router) {
         <div class="admin-section-header">
           <h2>${UI.cloud} Subir multimedia</h2>
         </div>
-        <p class="muted-text" style="margin-top:-6px">Sube cada archivo desde su sección: va directo a Galería, Memes o Audios y aparece en la app al momento. (También puedes subir desde cada sección en la app.)</p>
+        <p class="admin-section-hint admin-section-hint--wide">${SECTION_HINTS.multimedia}</p>
 
         <div class="admin-upload-grid">
           ${sections.map(s => `
@@ -3383,6 +3468,7 @@ export function AdminPage(router) {
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header"><h2>${UI.bell} Notificaciones</h2></div>
+        <p class="admin-section-hint">${SECTION_HINTS.notificaciones}</p>
 
         <div class="admin-panel">
           <div class="admin-panel-head"><h4>Estado del sistema push</h4></div>
@@ -3544,6 +3630,7 @@ export function AdminPage(router) {
             <button class="admin-btn-ghost" id="refreshActivity" title="Actualizar" aria-label="Actualizar actividad">${UI.refresh}</button>
           </div>
         </div>
+        <p class="admin-section-hint">${SECTION_HINTS.actividad}</p>
         <div class="admin-toolbar">
           <span class="admin-filter-icon">${UI.filter}</span>
           <select class="admin-select" id="activityFilter" aria-label="Filtrar por acción">
@@ -3663,113 +3750,235 @@ export function AdminPage(router) {
     const account = userStore.getUser();
     const hubDates = await db.getHubDates();
 
+    // Cada bloque es una tarjeta con su icono y su rótulo de grupo: antes todo
+    // era una lista plana de paneles y no se sabía qué tocaba cada cosa. Las
+    // fechas, que son lo más largo, van en pestañas para no esconder el resto.
+    const modeEmoji = { auto: '🖥️', dark: '🌙', light: '☀️' };
+    const paletas = theme.getPaletas();
+    const modos = theme.getModos();
+
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header">
           <h2>${UI.settings} Configuración</h2>
         </div>
+        <p class="admin-section-hint">${SECTION_HINTS.config}</p>
 
-        <div class="admin-dash-grid">
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Apariencia</h4></div>
-            <p class="muted-text">El tema se aplica en toda la web y se recuerda en este navegador.</p>
-            <div class="admin-seg" id="themeSeg" role="radiogroup" aria-label="Paleta de color">
-              ${theme.getPaletas()
-                .map(t => `<button type="button" role="radio" aria-checked="${paletaActiva === t.id}" class="admin-seg-btn${paletaActiva === t.id ? ' active' : ''}" data-theme-set="paleta" data-theme-id="${t.id}" data-theme-label="${t.label}">${t.label}</button>`).join('')}
-            </div>
-            <div class="admin-seg" id="modeSeg" role="radiogroup" aria-label="Modo de color" style="margin-top:8px">
-              ${[{ id: 'auto', label: '🖥️ Auto' }, { id: 'dark', label: '🌙 Oscuro' }, { id: 'light', label: '☀️ Claro' }]
-                .map(t => `<button type="button" role="radio" aria-checked="${modoActivo === t.id}" class="admin-seg-btn${modoActivo === t.id ? ' active' : ''}" data-theme-set="modo" data-theme-id="${t.id}" data-theme-label="${t.label}">${t.label}</button>`).join('')}
-            </div>
-          </div>
-
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Notificaciones</h4></div>
-            <p class="muted-text">El recordatorio diario se envía a las 8:00 (hora de España) a los dispositivos suscritos.</p>
-            <div class="notif-status-grid">
-              <div class="notif-status-card">
-                <span class="notif-status-icon ${pushOk ? 'ok' : 'muted'}">${UI.bell}</span>
-                <div><strong>${pushOk ? 'Web Push compatible' : 'Push no disponible'}</strong><div class="muted-text">Este navegador puede recibir notificaciones</div></div>
+        <div class="config-group">
+          <span class="config-group-label">Del día a día</span>
+          <div class="config-grid">
+            <div class="admin-panel config-card config-card--wide">
+              <div class="admin-panel-head">
+                <h4>${UI.palette} Apariencia</h4>
+                <span class="admin-panel-badge">Se aplica al instante</span>
               </div>
-              <div class="notif-status-card">
-                <span class="notif-status-icon ${notifEnabled ? 'ok' : 'muted'}">${UI.check}</span>
-                <div><strong>${notifEnabled ? 'Activadas' : 'Apagadas'}</strong><div class="muted-text">Estado de tu suscripción</div></div>
-              </div>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-              ${notifEnabled
-                ? `<button class="admin-btn admin-btn-secondary" id="disableNotifBtn">Apagar notificaciones</button>`
-                : `<button class="admin-btn admin-btn-primary" id="enableNotifBtn">${UI.bell} Activar notificaciones</button>`}
-              <button class="admin-btn admin-btn-ghost" id="testNotifBtn">Enviar prueba</button>
-            </div>
-            <div class="notif-result" id="configNotifResult"></div>
-          </div>
-        </div>
+              <p class="config-card-hint">El tema se guarda en este navegador y se aplica en toda la web.</p>
 
-        <div class="admin-dash-grid">
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Base de datos</h4></div>
-            <div id="configDbStatus">${skeletonText()}</div>
-            <button class="admin-btn admin-btn-ghost" id="recheckDbBtn" style="margin-top:12px">${UI.refresh} Comprobar de nuevo</button>
-          </div>
-
-          <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Cuenta</h4></div>
-            <div class="admin-profile-row">
-              <div class="admin-sidebar-avatar">${userPhoto ? `<img src="${esc(userPhoto)}" alt="">` : userInitial}</div>
+              <div class="config-appearance">
               <div>
-                <strong>${esc(account?.name || userName)}</strong>
-                <div class="muted-text">${esc(account?.email || '')}</div>
+              <span class="config-field-label">Paleta de color</span>
+              <div class="config-swatches" id="themeSeg" role="radiogroup" aria-label="Paleta de color">
+                ${paletas.map(t => `
+                  <button type="button" role="radio" aria-checked="${paletaActiva === t.id}" class="config-swatch${paletaActiva === t.id ? ' active' : ''}" data-theme-set="paleta" data-theme-id="${t.id}" data-theme-label="${t.label}">
+                    <span class="config-swatch-dot" style="--swatch:${t.preview}"></span>
+                    <span class="config-swatch-text">
+                      <b>${t.label}</b>
+                      <small>${t.hint}</small>
+                    </span>
+                  </button>`).join('')}
               </div>
-              <span class="admin-sidebar-admin-badge">ADMIN</span>
+              </div>
+
+              <div>
+              <span class="config-field-label">Modo</span>
+              <div class="config-modes" id="modeSeg" role="radiogroup" aria-label="Modo de color">
+                ${modos.map(m => `
+                  <button type="button" role="radio" aria-checked="${modoActivo === m.id}" class="config-mode${modoActivo === m.id ? ' active' : ''}" data-theme-set="modo" data-theme-id="${m.id}" data-theme-label="${m.label}">
+                    <span class="config-mode-emoji" aria-hidden="true">${modeEmoji[m.id] || '🎨'}</span>
+                    <span>${m.label}</span>
+                  </button>`).join('')}
+              </div>
+              <p class="config-card-hint config-card-hint--foot">Con <b>Auto</b> se respeta el modo del sistema.</p>
+              </div>
+              </div>
             </div>
-            <p class="muted-text" style="margin-top:14px">Hora base: <strong>España (península)</strong> · ahora son las ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</p>
+
+            <div class="admin-panel config-card">
+              <div class="admin-panel-head">
+                <h4>${UI.bell} Notificaciones</h4>
+                <span class="admin-panel-badge">8:00 · hora de España</span>
+              </div>
+              <p class="config-card-hint">El recordatorio diario se envía a los dispositivos suscritos.</p>
+
+              <ul class="config-status">
+                <li class="${pushOk ? 'ok' : 'muted'}">
+                  <span class="config-status-icon">${pushOk ? UI.check : UI.close}</span>
+                  <span><b>${pushOk ? 'Este navegador admite push' : 'Push no disponible'}</b><small>Compatibilidad del dispositivo</small></span>
+                </li>
+                <li class="${notifEnabled ? 'ok' : 'muted'}">
+                  <span class="config-status-icon">${notifEnabled ? UI.check : UI.close}</span>
+                  <span><b>${notifEnabled ? 'Suscripción activa' : 'Suscripción apagada'}</b><small>Estado de tus notificaciones</small></span>
+                </li>
+              </ul>
+
+              <div class="config-actions">
+                ${notifEnabled
+                  ? `<button class="admin-btn admin-btn-secondary" id="disableNotifBtn">Apagar notificaciones</button>`
+                  : `<button class="admin-btn admin-btn-primary" id="enableNotifBtn">${UI.bell} Activar notificaciones</button>`}
+                <button class="admin-btn admin-btn-ghost" id="testNotifBtn">${UI.send} Enviar prueba</button>
+              </div>
+              <div class="notif-result" id="configNotifResult"></div>
+            </div>
+
+            <div class="admin-panel config-card">
+              <div class="admin-panel-head"><h4>${UI.users} Tu cuenta</h4></div>
+              <div class="admin-profile-row">
+                <div class="admin-profile-avatar">${userPhoto ? `<img src="${esc(userPhoto)}" alt="">` : userInitial}</div>
+                <div>
+                  <strong>${esc(account?.name || userName)}</strong>
+                  <div class="muted-text">${esc(account?.email || '')}</div>
+                </div>
+                <span class="admin-sidebar-admin-badge">${esc(String(userRole).toUpperCase())}</span>
+              </div>
+              <dl class="config-facts">
+                <div><dt>Zona horaria</dt><dd>España (península)</dd></div>
+                <div><dt>Hora local ahora</dt><dd>${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</dd></div>
+              </dl>
+            </div>
           </div>
         </div>
 
-        <div class="admin-panel">
-          <div class="admin-panel-head"><h4>Fechas especiales</h4></div>
-          <p class="muted-text">Estas fechas alimentan las métricas del dashboard: «Años juntos», «En el Hub», el cumpleaños y el primer mensaje.</p>
-          <div class="dates-editor">
-            <label class="dates-field">
-              <span class="dates-emoji-label">🤍</span>
-              <input type="text" id="dateAnniversaryTitle" value="${esc(hubDates.titles?.anniversary || 'Aniversario')}" maxlength="40" placeholder="Título" aria-label="Título del aniversario">
-              <input type="date" id="dateAnniversary" value="${esc(hubDates.anniversary)}">
-              <label class="dates-recur"><input type="checkbox" id="dateAnniversaryRecur" ${hubDates.recurring?.anniversary !== false ? 'checked' : ''}><span>Se repite cada año</span></label>
-            </label>
-            <label class="dates-field">
-              <span class="dates-emoji-label">📅</span>
-              <input type="text" id="dateHubStartTitle" value="${esc(hubDates.titles?.hubStart || 'Primer mensaje')}" maxlength="40" placeholder="Título" aria-label="Título del primer mensaje">
-              <input type="date" id="dateHubStart" value="${esc(hubDates.hubStart)}">
-              <label class="dates-recur"><input type="checkbox" id="dateHubStartRecur" ${hubDates.recurring?.hubStart === true ? 'checked' : ''}><span>Se repite cada año</span></label>
-            </label>
-            <label class="dates-field">
-              <span class="dates-emoji-label">🎁</span>
-              <input type="text" id="dateBirthdayTitle" value="${esc(hubDates.titles?.birthday || 'Cumpleaños de dada')}" maxlength="40" placeholder="Título" aria-label="Título del cumpleaños">
-              <input type="date" id="dateBirthday" value="${esc(hubDates.birthday)}">
-              <label class="dates-recur"><input type="checkbox" id="dateBirthdayRecur" ${hubDates.recurring?.birthday !== false ? 'checked' : ''}><span>Se repite cada año</span></label>
-            </label>
-            <label class="dates-field">
-              <span class="dates-emoji-label">🎂</span>
-              <input type="text" id="dateUserBirthdayTitle" value="${esc(hubDates.titles?.userBirthday || 'Tu cumpleaños')}" maxlength="40" placeholder="Título" aria-label="Título del cumpleaños del admin">
-              <input type="date" id="dateUserBirthday" value="${esc(hubDates.userBirthday)}">
-              <label class="dates-recur"><input type="checkbox" id="dateUserBirthdayRecur" ${hubDates.recurring?.userBirthday !== false ? 'checked' : ''}><span>Se repite cada año</span></label>
-            </label>
+        <div class="config-group">
+          <span class="config-group-label">Sistema</span>
+          <div class="config-grid">
+            <div class="admin-panel config-card">
+              <div class="admin-panel-head"><h4>${UI.cloud} Base de datos</h4></div>
+              <div id="configDbStatus">${skeletonText()}</div>
+              <div class="config-actions">
+                <button class="admin-btn admin-btn-ghost" id="recheckDbBtn">${UI.refresh} Comprobar de nuevo</button>
+              </div>
+            </div>
+
           </div>
-          <div class="dates-events">
-            <span class="dates-events-title">✨ Próximas cosas (eventos futuros — se muestran en el Perfil; marca ♻️ si se repite cada año)</span>
-            <div id="datesEventsList"></div>
-            <button type="button" class="admin-btn admin-btn-ghost" id="addDatesEventBtn">+ Añadir evento</button>
+        </div>
+
+        <div class="admin-panel config-card config-dates">
+          <div class="admin-panel-head">
+            <h4>${UI.copy} Fechas especiales</h4>
+            <span class="admin-panel-badge">Alimentan las métricas del resumen</span>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;margin-top:14px;">
-            <button class="admin-btn admin-btn-primary" id="saveDatesBtn">${UI.check} Guardar fechas</button>
-            <div class="muted-text" id="datesSavedHint"></div>
+          <p class="config-card-hint">«Años juntos», «En el Hub», el cumpleaños y el primer mensaje. Los eventos y los días temáticos salen además en la bienvenida del Perfil.</p>
+
+          <div class="admin-tabs config-tabs" id="configDatesTabs" role="tablist">
+            <button type="button" class="admin-tab active" data-config-tab="fechas" role="tab" aria-selected="true">${UI.calendar}<span>Los cuatro días</span></button>
+            <button type="button" class="admin-tab" data-config-tab="eventos" role="tab" aria-selected="false">${UI.spark}<span>Eventos</span></button>
+            <button type="button" class="admin-tab" data-config-tab="aspecto" role="tab" aria-selected="false">${UI.palette}<span>Aspecto</span></button>
+            <button type="button" class="admin-tab" data-config-tab="tematicos" role="tab" aria-selected="false">${UI.star}<span>Días temáticos</span></button>
+          </div>
+
+<div class="config-pane" data-config-pane="fechas">
+            <p class="config-card-hint">Los cuatro días que alimentan el resumen y la bienvenida. El título es el que aparece en la app.</p>
+            <div class="dates-cards">
+              <div class="dates-card">
+                <div class="dates-card-head"><span class="dates-card-emoji">🤍</span><span class="dates-card-name">Aniversario</span></div>
+                <input type="text" id="dateAnniversaryTitle" class="dates-input" value="${esc(hubDates.titles?.anniversary || 'Aniversario')}" maxlength="40" placeholder="Título" aria-label="Título del aniversario">
+                <label class="dates-slot">
+                  <span class="dates-slot-label">${UI.calendar} Fecha</span>
+                  <input type="date" id="dateAnniversary" class="dates-input" value="${esc(hubDates.anniversary)}" aria-label="Fecha del aniversario">
+                </label>
+                <label class="dates-switch"><input type="checkbox" id="dateAnniversaryRecur" ${hubDates.recurring?.anniversary !== false ? 'checked' : ''}><span class="dates-switch-track"><span class="dates-switch-thumb"></span></span><span class="dates-switch-label">Cada año</span></label>
+              </div>
+
+              <div class="dates-card">
+                <div class="dates-card-head"><span class="dates-card-emoji">📅</span><span class="dates-card-name">Primer mensaje</span></div>
+                <input type="text" id="dateHubStartTitle" class="dates-input" value="${esc(hubDates.titles?.hubStart || 'Primer mensaje')}" maxlength="40" placeholder="Título" aria-label="Título del primer mensaje">
+                <label class="dates-slot">
+                  <span class="dates-slot-label">${UI.calendar} Fecha</span>
+                  <input type="date" id="dateHubStart" class="dates-input" value="${esc(hubDates.hubStart)}" aria-label="Fecha del primer mensaje">
+                </label>
+                <label class="dates-switch"><input type="checkbox" id="dateHubStartRecur" ${hubDates.recurring?.hubStart === true ? 'checked' : ''}><span class="dates-switch-track"><span class="dates-switch-thumb"></span></span><span class="dates-switch-label">Cada año</span></label>
+              </div>
+
+              <div class="dates-card">
+                <div class="dates-card-head"><span class="dates-card-emoji">🎁</span><span class="dates-card-name">Cumpleaños de dada</span></div>
+                <input type="text" id="dateBirthdayTitle" class="dates-input" value="${esc(hubDates.titles?.birthday || 'Cumpleaños de dada')}" maxlength="40" placeholder="Título" aria-label="Título del cumpleaños">
+                <label class="dates-slot">
+                  <span class="dates-slot-label">${UI.calendar} Fecha</span>
+                  <input type="date" id="dateBirthday" class="dates-input" value="${esc(hubDates.birthday)}" aria-label="Fecha del cumpleaños">
+                </label>
+                <label class="dates-switch"><input type="checkbox" id="dateBirthdayRecur" ${hubDates.recurring?.birthday !== false ? 'checked' : ''}><span class="dates-switch-track"><span class="dates-switch-thumb"></span></span><span class="dates-switch-label">Cada año</span></label>
+              </div>
+
+              <div class="dates-card">
+                <div class="dates-card-head"><span class="dates-card-emoji">🎂</span><span class="dates-card-name">Tu cumpleaños</span></div>
+                <input type="text" id="dateUserBirthdayTitle" class="dates-input" value="${esc(hubDates.titles?.userBirthday || 'Tu cumpleaños')}" maxlength="40" placeholder="Título" aria-label="Título del cumpleaños del admin">
+                <label class="dates-slot">
+                  <span class="dates-slot-label">${UI.calendar} Fecha</span>
+                  <input type="date" id="dateUserBirthday" class="dates-input" value="${esc(hubDates.userBirthday)}" aria-label="Fecha del cumpleaños del admin">
+                </label>
+                <label class="dates-switch"><input type="checkbox" id="dateUserBirthdayRecur" ${hubDates.recurring?.userBirthday !== false ? 'checked' : ''}><span class="dates-switch-track"><span class="dates-switch-thumb"></span></span><span class="dates-switch-label">Cada año</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="config-pane" data-config-pane="eventos" hidden>
+            <div class="dates-events">
+              <span class="dates-events-title">✨ Próximas cosas</span>
+              <p class="muted-text">Eventos con fecha. Se muestran en el Perfil; marca ♻️ si se repiten cada año.</p>
+              <div id="datesEventsList"></div>
+              <button type="button" class="admin-btn admin-btn-ghost" id="addDatesEventBtn">${UI.plus} Añadir evento</button>
+            </div>
+          </div>
+
+          <div class="config-pane" data-config-pane="aspecto" hidden>
+            <div class="dates-events">
+              <span class="dates-events-title">🎨 Aspecto de los cuatro días en la bienvenida</span>
+              <p class="muted-text">Emoji, texto, color y foto. Vaciar un campo devuelve el valor de fábrica.</p>
+              <div id="datesLooksList"></div>
+            </div>
+          </div>
+
+          <div class="config-pane" data-config-pane="tematicos" hidden>
+            <div class="dates-events">
+              <span class="dates-events-title">🎃 Días temáticos</span>
+              <p class="muted-text">Los que saltan solos cada año, como Halloween o Navidad. Vienen de fábrica: puedes cambiar fecha, texto, emoji, color y foto, apagarlos o añadir otros.</p>
+              <div id="datesSeasonalList"></div>
+              <button type="button" class="admin-btn admin-btn-ghost" id="addDatesSeasonalBtn">${UI.plus} Añadir día temático</button>
+            </div>
+          </div>
+
+          <div class="config-save" id="datesSaveRow">
+            <span class="config-save-state" id="datesSaveState">Todo guardado</span>
+            <div class="config-save-right">
+              <div class="muted-text" id="datesSavedHint"></div>
+              <button class="admin-btn admin-btn-primary" id="saveDatesBtn">${UI.check} Guardar fechas</button>
+            </div>
           </div>
         </div>
       </section>
     `;
 
     if (token !== sectionToken) return;
+
+    // ---- Pestañas de fechas ----
+    // Los cuatro bloques de fechas (días base, eventos, aspecto y días
+    // temáticos) ocupaban media pantalla cada uno: con las pestañas se ve
+    // uno trabajo cada vez y el botón de guardar sigue siempre a mano.
+    const showConfigTab = (id) => {
+      S.configTab = id;
+      page.querySelectorAll('#configDatesTabs .admin-tab').forEach(t => {
+        const on = t.dataset.configTab === id;
+        t.classList.toggle('active', on);
+        t.setAttribute('aria-selected', String(on));
+      });
+      page.querySelectorAll('[data-config-pane]').forEach(pane => {
+        pane.hidden = pane.dataset.configPane !== id;
+      });
+    };
+    page.querySelectorAll('#configDatesTabs .admin-tab').forEach(btn => {
+      btn.addEventListener('click', () => showConfigTab(btn.dataset.configTab));
+    });
+    showConfigTab(S.configTab);
 
     // ---- Tema ----
     // El catálogo de paletas sale de theme.service (una sola fuente), no de
@@ -3814,17 +4023,94 @@ export function AdminPage(router) {
     });
 
     // ---- Fechas especiales ----
+    // Aviso de cambios sin guardar: los cuatro días y las tres listas se
+    // guardan juntos con un botón al final de la tarjeta, así que sin esto
+    // no había forma de saber si lo editado está ya en la base de datos.
+    const saveRow = page.querySelector('#datesSaveRow');
+    const saveState = page.querySelector('#datesSaveState');
+    const markDirty = () => {
+      saveRow?.classList.add('is-dirty');
+      if (saveState) saveState.textContent = 'Tienes cambios sin guardar';
+    };
+    const markSaved = () => {
+      saveRow?.classList.remove('is-dirty');
+      if (saveState) saveState.textContent = 'Todo guardado';
+    };
+    page.querySelector('.config-dates')?.addEventListener('input', markDirty);
+    page.querySelector('.config-dates')?.addEventListener('change', markDirty);
+    /** Lee los cuatro campos de aspecto de una fila (emoji, color, texto, foto). */
+    const readLookFields = (row) => {
+      const val = sel => row.querySelector(sel)?.value.trim() || '';
+      return {
+        icon: val('.dates-look-icon'),
+        type: val('.dates-look-type') || 'custom',
+        description: val('.dates-look-desc'),
+        image: val('.dates-look-image')
+      };
+    };
     let editingDates = (hubDates.events || []).map(e => ({ ...e }));
+    const typeOptions = (value) => EVENT_TYPE_OPTIONS
+      .map(t => `<option value="${t.id}"${t.id === value ? ' selected' : ''}>${t.label}</option>`)
+      .join('');
+
+    // Cada evento lleva lo mínimo (título + fecha) y, al desplegarlo, todo lo
+    // que pinta la bienvenida: texto, emoji, color y foto. Con foto vacía se
+    // guarda sin foto y la hoja sale sin ella.
     const dateEventRow = (e) => {
       const uid = e.id || 'ev' + Math.random().toString(36).slice(2, 8);
+      const hasDetail = !!(e.description || e.icon || e.image || e.type);
       return `
-        <div class="dates-event-row" data-ev-id="${uid}">
-          <input type="text" class="dates-event-title" placeholder="Qué es (p. ej. Viaje a la playa)" value="${esc(e.title || '')}" maxlength="60" aria-label="Nombre del evento">
-          <input type="date" class="dates-event-date" value="${esc(e.date || '')}" aria-label="Fecha del evento">
-          <label class="dates-event-recur" title="Se repite cada año"><input type="checkbox" class="dates-event-recur-cb" ${e.recurring === true ? 'checked' : ''}><span>♻️</span></label>
-          <button type="button" class="dates-event-del" aria-label="Quitar evento">✕</button>
+        <div class="dates-event-row${hasDetail ? ' is-open' : ''}" data-ev-id="${uid}">
+          <div class="dates-event-main">
+            <input type="text" class="dates-event-title" placeholder="Qué es (p. ej. Viaje a la playa)" value="${esc(e.title || '')}" maxlength="60" aria-label="Nombre del evento">
+            <input type="date" class="dates-event-date" value="${esc(e.date || '')}" aria-label="Fecha del evento">
+            <label class="dates-event-recur" title="Se repite cada año"><input type="checkbox" class="dates-event-recur-cb" ${e.recurring === true ? 'checked' : ''}><span>♻️</span></label>
+            <button type="button" class="dates-event-toggle" aria-label="Editar el aspecto de la bienvenida" title="Aspecto en la bienvenida">🎨</button>
+            <button type="button" class="dates-event-del" aria-label="Quitar evento">✕</button>
+          </div>
+          <div class="dates-event-look"${hasDetail ? '' : ' hidden'}>
+            <label class="dates-look-field">
+              <span>Emoji</span>
+              <input type="text" class="dates-look-icon" value="${esc(e.icon || '✨')}" maxlength="4" aria-label="Emoji del evento">
+            </label>
+            <label class="dates-look-field">
+              <span>Color</span>
+              <select class="dates-look-type" aria-label="Color del evento">${typeOptions(e.type || 'custom')}</select>
+            </label>
+            <label class="dates-look-field dates-look-field--wide">
+              <span>Texto de la bienvenida</span>
+              <textarea class="dates-look-desc" rows="2" maxlength="180" placeholder="Lo que se lea ese día" aria-label="Texto de la bienvenida">${esc(e.description || '')}</textarea>
+            </label>
+            <label class="dates-look-field dates-look-field--wide">
+              <span>Foto (URL)</span>
+              <input type="url" class="dates-look-image" value="${esc(e.image || '')}" placeholder="https://…" aria-label="Foto del evento">
+            </label>
+            <p class="dates-look-preview" data-preview-for="${uid}"></p>
+          </div>
         </div>`;
     };
+
+    // Vista previa en vivo de la hoja: sin salir del panel se ve cómo queda.
+    const renderLookPreview = (row, title) => {
+      const out = row.querySelector('[data-preview-for]');
+      if (!out) return;
+      const val = sel => row.querySelector(sel)?.value.trim() || '';
+      const icon = val('.dates-look-icon') || '✨';
+      const type = val('.dates-look-type') || 'custom';
+      const desc = val('.dates-look-desc');
+      const image = val('.dates-look-image');
+      const [accent, soft] = SPECIAL_EVENT_TONES[type] || SPECIAL_EVENT_TONES.custom;
+      out.innerHTML = `
+        <span class="dates-look-chip" style="--event-accent:${accent};--event-soft:${soft}">
+          ${image ? `<img class="dates-look-chip-photo" src="${esc(image)}" alt="" loading="lazy">` : ''}
+          <span class="dates-look-chip-icon">${esc(icon)}</span>
+        </span>
+        <span class="dates-look-chip-text">
+          <b>${esc(title || 'Día especial')}</b>
+          ${desc ? `<small>${esc(desc)}</small>` : '<small class="muted-text">Sin texto: se usará el de fábrica.</small>'}
+        </span>`;
+    };
+
     const renderDateEvents = () => {
       const list = page.querySelector('#datesEventsList');
       if (!list) return;
@@ -3836,11 +4122,134 @@ export function AdminPage(router) {
           if (idx >= 0) { editingDates.splice(idx, 1); renderDateEvents(); }
         });
       });
+      list.querySelectorAll('.dates-event-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const row = btn.closest('.dates-event-row');
+          const look = row.querySelector('.dates-event-look');
+          if (!look) return;
+          const open = look.hidden;
+          look.hidden = !open;
+          row.classList.toggle('is-open', open);
+          if (open) renderLookPreview(row, row.querySelector('.dates-event-title')?.value);
+        });
+      });
+      // La vista previa se refresca mientras se escribe, sin guardar.
+      list.querySelectorAll('.dates-event-row').forEach(row => {
+        const look = row.querySelector('.dates-event-look');
+        if (look && !look.hidden) renderLookPreview(row, row.querySelector('.dates-event-title')?.value);
+      });
     };
     renderDateEvents();
     page.querySelector('#addDatesEventBtn')?.addEventListener('click', () => {
-      editingDates.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '' });
+      editingDates.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '', icon: '✨', type: 'custom', description: '', image: '' });
       renderDateEvents();
+      // El nuevo sale ya desplegado: es la parte que hay que rellenar.
+      const rows = page.querySelectorAll('.dates-event-row');
+      rows[rows.length - 1]?.querySelector('.dates-event-toggle')?.click();
+    });
+
+    // ---- Aspecto de los cuatro días principales ----
+    // Se edita directo sobre los inputs (no un array paralelo): lo que se ve
+    // en el panel es lo que se guarda.
+    const renderDateLooks = () => {
+      const list = page.querySelector('#datesLooksList');
+      if (!list) return;
+      list.innerHTML = FIXED_EVENT_FIELDS.map(field => {
+        const look = hubDates.looks?.[field.id] || {};
+        return `
+        <div class="dates-look-row" data-look-id="${field.id}">
+          <span class="dates-emoji-label">${field.icon}</span>
+          <label class="dates-look-field">
+            <span>Emoji</span>
+            <input type="text" class="dates-look-icon" value="${esc(look.icon || field.icon)}" maxlength="4" aria-label="Emoji de ${esc(field.label)}">
+          </label>
+          <label class="dates-look-field">
+            <span>Color</span>
+            <select class="dates-look-type" aria-label="Color de ${esc(field.label)}">${typeOptions(look.type || field.type)}</select>
+          </label>
+          <label class="dates-look-field dates-look-field--wide">
+            <span>Texto de la bienvenida</span>
+            <textarea class="dates-look-desc" rows="2" maxlength="180" placeholder="${esc(field.description)}" aria-label="Texto de ${esc(field.label)}">${esc(look.description || '')}</textarea>
+          </label>
+          <label class="dates-look-field dates-look-field--wide">
+            <span>Foto (URL)</span>
+            <input type="url" class="dates-look-image" value="${esc(look.image || '')}" placeholder="${esc(field.description ? 'Sin foto por defecto' : 'https://…')}" aria-label="Foto de ${esc(field.label)}">
+          </label>
+          <p class="dates-look-preview" data-preview-for="${field.id}"></p>
+        </div>`;
+      }).join('');
+      list.querySelectorAll('.dates-look-row').forEach(row => {
+        renderLookPreview(row, page.querySelector(`#date${fieldIdToInput(row.dataset.lookId)}Title`)?.value);
+      });
+      // Se repinta al escribir, para ver el resultado mientras se edita.
+      list.querySelectorAll('.dates-look-row').forEach(row => {
+        row.addEventListener('input', () => {
+          renderLookPreview(row, page.querySelector(`#date${fieldIdToInput(row.dataset.lookId)}Title`)?.value);
+        });
+      });
+    };
+    // anniversary -> Anniversary, userBirthday -> UserBirthday (el input usa CamelCase)
+    function fieldIdToInput(id) {
+      return id.charAt(0).toUpperCase() + id.slice(1);
+    }
+    renderDateLooks();
+
+    // ---- Días temáticos ----
+    // La lista arranca de lo que resuelve la app (fábrica + lo guardado), no
+    // solo de lo guardado: si nunca se guardó, Halloween y Navidad salían
+    // como lista vacía y parecía que no existieran ni se podían editar.
+    let editingSeasonal = seasonalEvents(hubDates).map(s => ({ ...s }));
+    const seasonalRow = (s) => {
+      const uid = s.id || 'se' + Math.random().toString(36).slice(2, 8);
+      return `
+        <div class="dates-event-row is-open" data-se-id="${uid}">
+          <div class="dates-event-main">
+            <input type="text" class="dates-se-title" placeholder="Nombre (p. ej. Halloween)" value="${esc(s.title || '')}" maxlength="40" aria-label="Nombre del día temático">
+            <input type="text" class="dates-se-monthday" placeholder="MM-DD" value="${esc(s.monthDay || '')}" maxlength="5" pattern="[0-9]{2}-[0-9]{2}" aria-label="Mes y día, tipo 10-31">
+            <label class="dates-event-recur" title="Este día está activo"><input type="checkbox" class="dates-se-enabled" ${s.enabled !== false ? 'checked' : ''}><span>Activo</span></label>
+            <button type="button" class="dates-event-del" aria-label="Quitar día temático">✕</button>
+          </div>
+          <div class="dates-event-look">
+            <label class="dates-look-field">
+              <span>Emoji</span>
+              <input type="text" class="dates-look-icon" value="${esc(s.icon || '✨')}" maxlength="4" aria-label="Emoji del día temático">
+            </label>
+            <label class="dates-look-field">
+              <span>Color</span>
+              <select class="dates-look-type" aria-label="Color del día temático">${typeOptions(s.type || 'custom')}</select>
+            </label>
+            <label class="dates-look-field dates-look-field--wide">
+              <span>Texto de la bienvenida</span>
+              <textarea class="dates-look-desc" rows="2" maxlength="180" placeholder="Lo que se lea ese día" aria-label="Texto de la bienvenida">${esc(s.description || '')}</textarea>
+            </label>
+            <label class="dates-look-field dates-look-field--wide">
+              <span>Foto (URL)</span>
+              <input type="url" class="dates-look-image" value="${esc(s.image || '')}" placeholder="https://…" aria-label="Foto del día temático">
+            </label>
+            <p class="dates-look-preview" data-preview-for="${uid}"></p>
+          </div>
+        </div>`;
+    };
+    const renderSeasonal = () => {
+      const list = page.querySelector('#datesSeasonalList');
+      if (!list) return;
+      list.innerHTML = editingSeasonal.map(seasonalRow).join('');
+      list.querySelectorAll('.dates-event-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const row = btn.closest('.dates-event-row');
+          const idx = editingSeasonal.findIndex(s => (s.id || '') === row.dataset.seId);
+          if (idx >= 0) { editingSeasonal.splice(idx, 1); renderSeasonal(); }
+        });
+      });
+      list.querySelectorAll('.dates-event-row').forEach(row => {
+        renderLookPreview(row, row.querySelector('.dates-se-title')?.value);
+        row.addEventListener('input', () => renderLookPreview(row, row.querySelector('.dates-se-title')?.value));
+      });
+    };
+    renderSeasonal();
+    page.querySelector('#addDatesSeasonalBtn')?.addEventListener('click', () => {
+      editingSeasonal.push({ id: 'se' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', monthDay: '', icon: '✨', type: 'custom', description: '', image: '', enabled: true });
+      renderSeasonal();
     });
 
     page.querySelector('#saveDatesBtn')?.addEventListener('click', async () => {
@@ -3852,12 +4261,34 @@ export function AdminPage(router) {
         showToast('Rellena las cuatro fechas', 'error');
         return;
       }
-      const events = [...page.querySelectorAll('.dates-event-row')].map(row => ({
+      const events = [...page.querySelectorAll('#datesEventsList .dates-event-row')].map(row => ({
         id: row.dataset.evId,
         title: row.querySelector('.dates-event-title').value.trim(),
         date: row.querySelector('.dates-event-date').value,
-        recurring: row.querySelector('.dates-event-recur-cb')?.checked === true
+        recurring: row.querySelector('.dates-event-recur-cb')?.checked === true,
+        ...readLookFields(row)
       }));
+      // Los días temáticos se leen de su propia lista: shares la clase con
+      // los eventos, pero el id y la fecha (mes-día) son distintos.
+      const seasonal = [...page.querySelectorAll('#datesSeasonalList .dates-event-row')].map(row => ({
+        id: row.dataset.seId,
+        title: row.querySelector('.dates-se-title').value.trim(),
+        monthDay: row.querySelector('.dates-se-monthday').value.trim(),
+        enabled: row.querySelector('.dates-se-enabled')?.checked === true,
+        ...readLookFields(row)
+      }));
+      const looks = {};
+      for (const row of page.querySelectorAll('#datesLooksList .dates-look-row')) {
+        const look = readLookFields(row);
+        if (look.icon || look.description || look.type || look.image) looks[row.dataset.lookId] = look;
+      }
+      // Un día temático necesita mes-día válido (MM-DD) y título. Se avisa en
+      // lugar de descartarlo en silencio, para no perder lo que se escribió.
+      const badSeasonal = seasonal.find(s => s.title && !/^\d{2}-\d{2}$/.test(s.monthDay));
+      if (badSeasonal) {
+        showToast(`"${badSeasonal.title}" necesita la fecha como mes-día (p. ej. 10-31)`, 'error');
+        return;
+      }
       const titles = {
         anniversary: page.querySelector('#dateAnniversaryTitle').value,
         hubStart: page.querySelector('#dateHubStartTitle').value,
@@ -3871,10 +4302,11 @@ export function AdminPage(router) {
         userBirthday: page.querySelector('#dateUserBirthdayRecur')?.checked === true
       };
       try {
-        const saved = await db.saveHubDates({ anniversary, hubStart, birthday, userBirthday, events, titles, recurring });
+        const saved = await db.saveHubDates({ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring });
         // Refresca la caché de fechas: el inicio, la bienvenida y el Perfil
         // reflejan el cambio al instante.
         refreshSpecialDates().catch(() => {});
+        markSaved();
         showToast('Fechas especiales guardadas', 'success');
         const hint = page.querySelector('#datesSavedHint');
         if (hint) hint.textContent = `Aniversario ${saved.anniversary} · Hub ${saved.hubStart} · Cumple ${saved.birthday} · Tú ${saved.userBirthday}${saved.events?.length ? ` · ${saved.events.length} próximas` : ''}`;

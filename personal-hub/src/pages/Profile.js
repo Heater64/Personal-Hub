@@ -614,6 +614,11 @@ export function ProfilePage(router) {
       date: row.querySelector('.prof-days-event-date').value,
       recurring: row.querySelector('.prof-days-event-recur-cb')?.checked === true
     }));
+    // Este editor solo toca título/fecha/repetición. El aspecto de la
+    // bienvenida (emoji, texto, foto) y los días temáticos se editan en
+    // Admin → Configuración, así que aquí se reenvían tal cual: si no, al
+    // guardar desde el móvil se perderían.
+    const current = specialDates();
     const payload = {
       anniversary: page.querySelector('#pdAnniversary').value,
       hubStart: page.querySelector('#pdHubStart').value,
@@ -631,7 +636,9 @@ export function ProfilePage(router) {
         birthday: page.querySelector('#pdBirthdayRecur')?.checked === true,
         userBirthday: page.querySelector('#pdUserBirthdayRecur')?.checked === true
       },
-      events: rows
+      events: rows,
+      looks: current.looks || {},
+      seasonal: current.seasonal || []
     };
     if (!payload.anniversary || !payload.hubStart || !payload.birthday || !payload.userBirthday) {
       showToast('Rellena las cuatro fechas principales', 'error');

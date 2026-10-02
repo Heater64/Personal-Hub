@@ -340,8 +340,54 @@ const DEFAULT_HUB_DATES = {
     hubStart: false,
     birthday: true,
     userBirthday: true
-  }
+  },
+  looks: {},                   // { [id]: { icon, description, type, image } } de los 4 principales
+  seasonal: []                 // Halloween/Navidad editados + días temáticos nuevos
 };
+
+// Recorta texto y, si queda vacío, deja que lo ponga el consumidor.
+// `image` sí puede ser '' a propósito (ese día no lleva foto).
+const text = (value, fallback = '') => {
+  const out = typeof value === 'string' ? value.trim() : '';
+  return out || fallback;
+};
+
+/** Normaliza un evento libre: solo guarda lo que tiene sentido. */
+function cleanEvent(event) {
+  if (!event || !text(event.title) || !text(event.date)) return null;
+  return {
+    id: text(event.id) || `ev${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    title: text(event.title).slice(0, 60),
+    date: text(event.date),
+    recurring: event.recurring === true,
+    icon: text(event.icon, '✨'),
+    description: text(event.description),
+    type: text(event.type, 'custom'),
+    image: text(event.image)
+  };
+}
+
+/** Normaliza un día temático: mes-día 'MM-DD' + los campos de la bienvenida. */
+function cleanSeasonal(event) {
+  const monthDay = text(event?.monthDay);
+  // El formato no basta: '31-10' pasa el regexp pero no existe ese día y
+  // nunca saltaría. Se comprueba que el mes y el día estén en rango.
+  const match = /^(\d{2})-(\d{2})$/.exec(monthDay);
+  if (!match) return null;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return {
+    id: text(event.id) || `se${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    monthDay,
+    title: text(event.title, 'Día especial'),
+    icon: text(event.icon, '✨'),
+    description: text(event.description),
+    type: text(event.type, 'custom'),
+    image: text(event.image),
+    enabled: event.enabled !== false
+  };
+}
 
 async function getHubDates() {
   try {
@@ -350,9 +396,11 @@ async function getHubDates() {
     merged.events = Array.isArray(merged.events) ? merged.events : [];
     merged.titles = { ...DEFAULT_HUB_DATES.titles, ...(merged.titles && typeof merged.titles === 'object' ? merged.titles : {}) };
     merged.recurring = { ...DEFAULT_HUB_DATES.recurring, ...(merged.recurring && typeof merged.recurring === 'object' ? merged.recurring : {}) };
+    merged.looks = merged.looks && typeof merged.looks === 'object' ? merged.looks : {};
+    merged.seasonal = Array.isArray(merged.seasonal) ? merged.seasonal : [];
     return merged;
   } catch {
-    return { ...DEFAULT_HUB_DATES, titles: { ...DEFAULT_HUB_DATES.titles }, recurring: { ...DEFAULT_HUB_DATES.recurring } };
+    return { ...DEFAULT_HUB_DATES, titles: { ...DEFAULT_HUB_DATES.titles }, recurring: { ...DEFAULT_HUB_DATES.recurring }, looks: {}, seasonal: [] };
   }
 }
 
@@ -363,7 +411,7 @@ async function saveHubDates(dates) {
     birthday: dates?.birthday || DEFAULT_HUB_DATES.birthday,
     userBirthday: dates?.userBirthday || DEFAULT_HUB_DATES.userBirthday,
     events: Array.isArray(dates?.events)
-      ? dates.events.filter(e => e && e.title && e.date).map(e => ({ ...e, recurring: e.recurring === true }))
+      ? dates.events.map(cleanEvent).filter(Boolean)
       : [],
     titles: {
       anniversary: (dates?.titles?.anniversary || '').trim() || DEFAULT_HUB_DATES.titles.anniversary,
@@ -376,7 +424,18 @@ async function saveHubDates(dates) {
       hubStart: dates?.recurring?.hubStart === true,
       birthday: dates?.recurring?.birthday !== false,
       userBirthday: dates?.recurring?.userBirthday !== false
-    }
+    },
+    // Cómo se ve cada uno de los cuatro en la bienvenida. Solo se guardan
+    // los campos con contenido: un campo vacío vuelve al valor de fábrica.
+    looks: Object.fromEntries(Object.entries(dates?.looks || {})
+      .map(([id, look]) => [id, {
+        icon: text(look?.icon),
+        description: text(look?.description),
+        type: text(look?.type),
+        image: text(look?.image)
+      }])
+      .filter(([, look]) => look.icon || look.description || look.type || look.image)),
+    seasonal: Array.isArray(dates?.seasonal) ? dates.seasonal.map(cleanSeasonal).filter(Boolean) : []
   };
   await saveContent('hub_dates', clean);
   return clean;
