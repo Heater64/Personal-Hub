@@ -22,6 +22,58 @@ import { openSheet, closeSheets, h } from './ui.js';
 import { playCelebration, stopCelebration } from './Celebration.js';
 import { normalizeDecor, normalizeVideoMode, emojisFor } from '../utils/celebration.js';
 
+const MOOD_WELCOME_DONE = 'ph:mood-welcome-done';
+let moodWelcomeState = 'pending';
+const pendingEventRequests = [];
+
+/** El check-in diario publica su estado; el evento espera a que quede libre. */
+export function setMoodWelcomeState(state) {
+  if (!['pending', 'showing', 'clear'].includes(state)) return;
+  if (state === 'clear' && typeof document !== 'undefined' && document.querySelector('.welcome-overlay')) {
+    moodWelcomeState = 'showing';
+    return;
+  }
+  moodWelcomeState = state;
+  if (state === 'clear') pendingEventRequests.splice(0).forEach(openQueuedEvent);
+}
+
+function openQueuedEvent(request) {
+  if (!request.page.isConnected || request.router?.getCurrentPath?.().split('?')[0] !== '/') return;
+  if (moodWelcomeState !== 'clear' || document.querySelector('.welcome-overlay')) {
+    pendingEventRequests.push(request);
+    return;
+  }
+
+  // Puede haber más de una Home montada durante una navegación rápida; relee
+  // la marca justo antes de abrir para no duplicar la misma bienvenida.
+  const stored = getUserPref('specialEventsSeen', '{}');
+  let seen = {};
+  try { seen = JSON.parse(stored || '{}') || {}; } catch { /* clave dañada */ }
+  const events = request.events.filter(event => !seen[event.key]);
+  if (!events.length) return;
+
+  events.forEach(event => { seen[event.key] = true; });
+  setUserPref('specialEventsSeen', JSON.stringify(seen));
+  openSpecialEventSheet(events, request.router);
+}
+
+function queueSpecialEvent(request) {
+  if (moodWelcomeState === 'clear' && !document.querySelector('.welcome-overlay')) {
+    openQueuedEvent(request);
+    return;
+  }
+  pendingEventRequests.push(request);
+}
+
+// El evento se dispara después de retirar el overlay y completar su cierre.
+// Esperar un frame también deja terminar las navegaciones que lo hayan cerrado.
+if (typeof window !== 'undefined') {
+  window.addEventListener(MOOD_WELCOME_DONE, () => {
+    if (document.querySelector('.welcome-overlay')) return;
+    requestAnimationFrame(() => setMoodWelcomeState('clear'));
+  });
+}
+
 // Un <video> que se deja sonando detrás de otra pantalla derrama el audio al
 // móvil. Se apaga al cerrar la hoja, como ya se hacía con el visor de la galería.
 let sheetMedia = [];
@@ -80,16 +132,24 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
         ? h('div', { class: 'special-event__photo' },
             h('img', { src: portada, alt: '', loading: 'lazy', decoding: 'async' }))
         : null,
-      h('div', { class: 'special-event__icon' }, event.icon),
-      h('p', { class: 'special-event__message' }, event.description),
+      h('p', { class: 'special-event__kicker' }, 'Hoy'),
+      h('div', { class: 'special-event__icon', 'aria-hidden': 'true' }, event.icon),
+      event.description
+        ? h('p', { class: 'special-event__message' }, event.description)
+        : null,
       resto.length && !conVideoPortada
         ? h('div', { class: 'special-event__gallery', role: 'group', 'aria-label': 'Fotos de este día' },
             ...resto.map((src, i) => h('button', {
               class: 'special-event__thumb', type: 'button',
               'data-gallery-index': String(i),
+              'aria-label': `Mostrar foto ${i + 2}`,
+              'aria-pressed': 'false',
               onclick: (ev) => {
-                ev.currentTarget.closest('.special-event')?.querySelector('.special-event__photo img')
-                  ?.setAttribute('src', src);
+                const galleryRoot = ev.currentTarget.closest('.special-event');
+                galleryRoot?.querySelector('.special-event__photo img')?.setAttribute('src', src);
+                galleryRoot?.querySelectorAll('.special-event__thumb').forEach(button => {
+                  button.setAttribute('aria-pressed', String(button === ev.currentTarget));
+                });
               }
             }, h('img', { src, alt: '', loading: 'lazy', decoding: 'async' }))))
         : null,
@@ -104,12 +164,12 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
         )
       )) : null,
       preview
-        ? h('div', { class: 'special-event__note special-event__note--preview' }, '👀 Vista previa: así se verá este día cuando llegue de verdad')
-        : h('div', { class: 'special-event__note' }, 'Un día para guardar un momento bonito juntos 💌'),
+        ? h('p', { class: 'special-event__note special-event__note--preview' }, 'Vista previa. Así se presentará este día.')
+        : h('p', { class: 'special-event__note' }, 'Marcado en el calendario.'),
       h('button', {
         class: 'btn special-event__action', type: 'button',
         onclick: () => { closeSheets(); router?.navigate?.('/calendario'); }
-      }, 'Abrir nuestro calendario')
+      }, 'Abrir el calendario')
     );
   }, stopSheetMedia);
   overlay.classList.add('overlay--special-event');
@@ -136,8 +196,10 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
   // Los emojis que caen: los que se escribieron para ese día y, si no hay,
   // los de su fiesta (Halloween de calabazas y fantasmas, Navidad de árboles…).
   const emojis = emojisFor(event.emojis, event.type);
-  if (!preview) playCelebration({ decor, accent, emojis, amount: videoMode === 'fondo' ? 60 : 110 });
-  else playCelebration({ decor, accent, emojis, amount: 40, duration: 2600 });
+  const eventContent = overlay.querySelector('.special-event');
+  const celebration = { decor, accent, emojis, root: eventContent };
+  if (!preview) playCelebration({ ...celebration, amount: videoMode === 'fondo' ? 28 : 48 });
+  else playCelebration({ ...celebration, amount: 22, duration: 2200 });
   return overlay;
 }
 
@@ -171,7 +233,7 @@ export function replaySpecialEventSheet(router) {
 /**
  * Primera vez que se entra HOY en un día con evento: abre la hoja y marca
  * esa ocurrencia como vista (por usuario), para no repetirla al saltar
- * entre pestañas. Espera a que no haya una bienvenida de ánimo encima.
+ * entre pestañas. Espera a que el check-in diario confirme que está cerrado.
  */
 export function maybeShowSpecialEvent(page, router) {
   const stored = getUserPref('specialEventsSeen', '{}');
@@ -180,16 +242,5 @@ export function maybeShowSpecialEvent(page, router) {
   const events = specialEventsToday().filter(item => !seen[item.key]);
   if (!events.length) return;
 
-  const show = () => {
-    if (!page.isConnected) return;
-    if (document.querySelector('.welcome-overlay')) {
-      setTimeout(show, 400);
-      return;
-    }
-    events.forEach(event => { seen[event.key] = true; });
-    setUserPref('specialEventsSeen', JSON.stringify(seen));
-    openSpecialEventSheet(events, router);
-  };
-  if (window.requestIdleCallback) window.requestIdleCallback(show, { timeout: 1200 });
-  else setTimeout(show, 350);
+  queueSpecialEvent({ page, router, events });
 }

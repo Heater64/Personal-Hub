@@ -12,6 +12,7 @@ import { Sidebar } from './Sidebar.js';
 import { renderPageIcon } from './PageHeader.js';
 import { NowPlayingBar } from './NowPlayingBar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
+import { setMoodWelcomeState } from './SpecialEventSheet.js';
 import { moodStore } from '../stores/mood.store.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
 import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters, notifyAdminMoodSaved } from '../services/notifications.service.js';
@@ -255,7 +256,10 @@ export function AppShell(router) {
     if (currentWelcomeOverlay) {
       currentWelcomeOverlay.remove();
       currentWelcomeOverlay = null;
+      setMoodWelcomeState('clear');
+      window.dispatchEvent(new CustomEvent('ph:mood-welcome-done'));
     }
+
     document.body.style.overflow = '';
 
     // Close lightbox if open when navigating between pages
@@ -349,14 +353,14 @@ export function AppShell(router) {
   }
 
   function showWelcome() {
-    if (!shouldShowWelcome()) return;
+    if (!shouldShowWelcome()) return false;
 
     // Evita volver a abrirla el mismo día si una navegación cerró el modal.
     const today = todayISO();
-    if (getUserPref('welcomeShownDate') === today) return;
+    if (getUserPref('welcomeShownDate') === today) return false;
 
     // Prevent double-show if a welcome is already displayed
-    if (currentWelcomeOverlay || document.querySelector('.welcome-overlay')) return;
+    if (currentWelcomeOverlay || document.querySelector('.welcome-overlay')) return false;
 
     setUserPref('welcomeShownDate', today);
 
@@ -369,15 +373,27 @@ export function AppShell(router) {
     markWelcomeShownToday();
 
     const ws = WelcomeScreen({
-      onDone: () => { currentWelcomeOverlay = null; },
-      onSkip: () => { currentWelcomeOverlay = null; }
+      onDone: () => {
+        currentWelcomeOverlay = null;
+        setMoodWelcomeState('clear');
+      },
+      onSkip: () => {
+        currentWelcomeOverlay = null;
+        setMoodWelcomeState('clear');
+      }
     });
     currentWelcomeOverlay = ws;
     document.getElementById('app').appendChild(ws);
+    setMoodWelcomeState('showing');
+    return true;
   }
 
   async function scheduleMoodCheck() {
     clearTimeout(moodTimer);
+    // Invalida el estado anterior (también al cambiar el día): hasta terminar
+    // la sincronización no se debe abrir un evento con el ánimo aún pendiente.
+    const user = userStore.getUser();
+    setMoodWelcomeState(user && !userStore.isAdmin ? 'pending' : 'clear');
 
     // Make sure we have the latest server state before deciding
     await awaitMoodSync();
@@ -388,7 +404,10 @@ export function AppShell(router) {
     notifyNewOpenWhenLetters();
 
     const now = new Date();
-    if (!userStore.getUser() || userStore.isAdmin) return;
+    if (!userStore.getUser() || userStore.isAdmin) {
+      setMoodWelcomeState('clear');
+      return;
+    }
 
     // Se muestra en el primer inicio del día de la princesa, a cualquier hora.
     // El próximo check se arma a medianoche de España para el día siguiente.
@@ -397,7 +416,13 @@ export function AppShell(router) {
       moodTimer = setTimeout(scheduleMoodCheck, Math.max(1000, nextDayCheck - Date.now()));
     };
 
-    if (!moodStore.hasSeenToday()) showWelcome();
+    if (!moodStore.hasSeenToday()) {
+      if (!showWelcome()) {
+        setMoodWelcomeState(document.querySelector('.welcome-overlay') ? 'showing' : 'clear');
+      }
+    } else {
+      setMoodWelcomeState('clear');
+    }
     scheduleNextDay();
   }
 
@@ -417,6 +442,10 @@ export function AppShell(router) {
   let legacyKeysCleaned = false;
   let schedulePending = false;
   userStore.onChange(async () => {
+    // Al reautenticar, congela la bienvenida temática hasta conocer el ánimo
+    // sincronizado de esta cuenta (evita que una sesión previa dé vía libre).
+    setMoodWelcomeState(userStore.getUser() && !userStore.isAdmin ? 'pending' : 'clear');
+
     // Clean up old global localStorage keys once per session now that
     // these preferences are stored per-user.
     if (userStore.getUser() && !legacyKeysCleaned) {

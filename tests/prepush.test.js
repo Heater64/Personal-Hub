@@ -1139,9 +1139,29 @@ test('los eventos especiales abren una bienvenida temática única por usuario',
   assert.match(sheet, /specialEventsToday\(\)\.filter\(item => !seen\[item\.key\]\)/);
   assert.match(sheet, /getUserPref\('specialEventsSeen', '\{\}'\)/);
   assert.match(sheet, /setUserPref\('specialEventsSeen', JSON\.stringify\(seen\)\)/);
-  assert.match(sheet, /class: `special-event special-event--\$\{event\.type} special-event--media-/);  assert.match(sheet, /Abrir nuestro calendario/);
+  assert.match(sheet, /class: `special-event special-event--\$\{event\.type} special-event--media-/);
+  assert.match(sheet, /Abrir el calendario/);
   assert.match(css, /\.overlay--special-event \.sheet/);
   assert.match(css, /\.special-event__icon/);
+  assert.match(css, /\.special-event__kicker/);
+  // El check-in de ánimo publica su estado; no hay sondeo ni timeout que
+  // pueda abrir la tarjeta mientras la bienvenida sigue pendiente.
+  assert.match(sheet, /export function setMoodWelcomeState\(state\)/);
+  assert.match(sheet, /pendingEventRequests/);
+  assert.match(sheet, /moodWelcomeState !== 'clear'/);
+  assert.match(sheet, /document\.querySelector\('\.welcome-overlay'\)/);
+  assert.doesNotMatch(sheet, /MOOD_WELCOME_MAX_WAIT|setTimeout\(tick/);
+});
+
+test('el check-in coordina sus estados y avisa cuando ya se puede abrir el evento', async () => {
+  const welcome = await readFile(hub('src', 'components', 'WelcomeScreen.js'), 'utf8');
+  const app = await readFile(hub('src', 'components', 'App.js'), 'utf8');
+  assert.match(welcome, /ph:mood-welcome-done/,
+    'al cerrar el ánimo se libera el día especial');
+  assert.match(app, /setMoodWelcomeState\('showing'\)/,
+    'el Inicio informa antes de montar el check-in');
+  assert.match(app, /setMoodWelcomeState\('clear'\)/,
+    'el inicio informa cuando el ánimo ya se respondió o no aplica');
 });
 
 // Carga specialDates.js con las dos dependencias externa sustituidas por
@@ -1652,12 +1672,13 @@ test('al abrir la tarjeta cae confeti desde arriba y se retira al cerrar', async
   const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
   const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
 
-  // Un canvas a pantalla completa por encima de la hoja y que no come clics.
-  assert.match(cel, /canvas\.className = 'celebration-canvas'/);
-  assert.match(css, /\.celebration-canvas \{[\s\S]*?position: fixed;[\s\S]*?pointer-events: none;/,
-    'la celebración no puede tapar los botones de la tarjeta');
-  assert.match(css, /\.celebration-canvas \{[\s\S]*?z-index: calc\(var\(--z-modal\) \+ 40\);/,
-    'y tiene que verse por encima de la hoja');
+  // El canvas queda dentro de la tarjeta, encima de la decoración y sin robar clics.
+  assert.match(cel, /canvas\.className = 'celebration-canvas special-event__celebration'/);
+  assert.match(css, /\.special-event__celebration \{[\s\S]*?position: absolute;[\s\S]*?pointer-events: none;/,
+    'la celebración queda dentro de la tarjeta y no cubre el check-in de ánimo');
+  assert.match(cel, /const host = root \|\| document\.body/);
+  assert.match(cel, /host\.appendChild\(canvas\)/);
+  assert.match(sheet, /root: eventContent/);
   // Las partículas caen desde arriba de verdad (y negative) y tienen gravedad.
   assert.match(cel, /y: -20 - Math\.random\(\) \* 120/);
   assert.match(cel, /p\.y \+= p\.vy \* dt;/);
@@ -1668,7 +1689,7 @@ test('al abrir la tarjeta cae confeti desde arriba y se retira al cerrar', async
   assert.match(sheet, /\}, stopSheetMedia\);/, 'se registra como limpieza de la hoja');
   // Abrir otra celebración no apila una segunda capa de papel.
   assert.ok(cel.includes('if (!info.shape) return stopCelebration();'), '«sin decoración» limpia lo que hubiera');
-  assert.ok(cel.includes('stopCelebration();\n\n  const cv = createCanvas();'),
+  assert.ok(cel.includes('stopCelebration();\n\n  const cv = createCanvas(root);'),
     'y se cancela la celebración anterior antes de empezar otra');
   // Con «movimiento reducido» se pinta un cuadro y se acaba: el gesto sí, la animación no.
   assert.match(cel, /prefers-reduced-motion: reduce/);
@@ -1685,7 +1706,7 @@ test('el ambiente de cada día se elige y «ninguno» no celebra', async () => {
   assert.match(cel, /\{ id: 'ninguno'[^}]*shape: null \}/, '«sin decoración» es el único sin partículas');
   // Un ambiente inventado no puede dejar la pantalla muda sin querer.
   assert.match(cel, /return DECORATIONS\.some\(d => d\.id === value\) \? value : 'confeti';/);
-  assert.match(sheet, /playCelebration\(\{ decor, accent, emojis,/);
+  assert.match(sheet, /playCelebration\(\{ \.\.\.celebration,/);
 });
 
 test('los emojis que caen son los del día o los de su fiesta', async () => {
@@ -1838,13 +1859,17 @@ test('el check-in de ánimo aparece en el primer inicio diario y se reinicia al 
     'no vuelve a aparecer tras responder o posponerlo ese día');
   assert.match(app, /const nextDayCheck = spainMsOnDate\(nextDayISO\(now\), 0\)/,
     'se vuelve a comprobar a medianoche de España, no a una hora fija de la mañana');
-  assert.match(app, /if \(!moodStore\.hasSeenToday\(\)\) showWelcome\(\);\s*scheduleNextDay\(\);/,
+  assert.match(app, /if \(!moodStore\.hasSeenToday\(\)\) \{\s+if \(!showWelcome\(\)\)/,
     'se muestra en el primer inicio en que todavía no se ha registrado el día');
+  assert.match(app, /setMoodWelcomeState\('showing'\)/,
+    'la bienvenida anuncia que está visible antes de esperar a que acabe la animación');
+  assert.match(app, /scheduleNextDay\(\);/,
+    'el check-in se vuelve a comprobar al siguiente día');
   assert.doesNotMatch(app, /8:00 AM|today8AM|tomorrow8AM|testWelcomeHour/,
     'el check-in no queda bloqueado por horario de mañana');
-  assert.match(app, /await awaitMoodSync\(\);[\s\S]*?if \(!userStore\.getUser\(\) \|\| userStore\.isAdmin\) return;/,
+  assert.match(app, /await awaitMoodSync\(\);[\s\S]*?if \(!userStore\.getUser\(\) \|\| userStore\.isAdmin\) \{\s+setMoodWelcomeState\('clear'\);\s+return;/,
     'espera la sincronización del ánimo y excluye admin antes de preguntar');
-  assert.match(app, /if \(getUserPref\('welcomeShownDate'\) === today\) return;/,
+  assert.match(app, /if \(getUserPref\('welcomeShownDate'\) === today\) return false;/,
     'la pestaña abierta no presenta el modal varias veces en el mismo día');
   assert.match(app, /setUserPref\('welcomeShownDate', today\)/,
     'se evita duplicar el modal en el mismo día');

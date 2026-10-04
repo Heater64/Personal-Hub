@@ -19,6 +19,7 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'welcome-overlay';
   overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
   overlay.setAttribute('aria-label', 'Bienvenida diaria');
   overlay.innerHTML = `
     <div class="welcome-modal">
@@ -134,8 +135,7 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
     try {
       await moodStore.saveMood(selectedMood);
       showToast('💖 ¡Gracias por compartir cómo te sientes!', 'success');
-      close();
-      if (onDone) onDone();
+      close(onDone);
     } catch (err) {
       showToast('Error al guardar', 'error');
       continueBtn.disabled = false;
@@ -143,11 +143,16 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
     }
   }
 
-  function close() {
+  let isClosing = false;
+  function close(onClose) {
+    if (isClosing) return;
+    isClosing = true;
     overlay.style.animation = 'fade-out 0.35s ease forwards';
     document.body.style.overflow = '';
     setTimeout(() => {
       if (overlay.isConnected) overlay.remove();
+      if (onClose) onClose();
+      window.dispatchEvent(new CustomEvent('ph:mood-welcome-done'));
     }, 350);
   }
 
@@ -155,8 +160,7 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
   skipBtn.addEventListener('click', () => {
     // Mark as seen so the check-in no vuelva a aparecer hasta el día siguiente.
     moodStore.markSeen();
-    close();
-    if (onSkip) onSkip();
+    close(onSkip);
   });
 
   return overlay;

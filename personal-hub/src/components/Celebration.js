@@ -2,9 +2,9 @@
    CELEBRACIÓN — confeti, nieve, hojas,
    corazones y estrellas cayendo desde arriba.
    Se usa cuando se abre la bienvenida de un
-   día especial. Un único canvas a pantalla
-   completa por encima de todo, sin capturar
-   clics, que se retira solo cuando pasa.
+   día especial. Un único canvas limitado a
+   la tarjeta, sin capturar clics, que se
+   retira solo al terminar o cerrar.
 
    Los ambientes y sus formas viven en
    utils/celebration.js, que también los usa
@@ -20,17 +20,19 @@ let canvas = null;
 let frame = 0;
 let particles = [];
 let running = false;
+let burstTimers = [];
 
 // Respetar la preferencia del sistema: si pide menos movimiento, se pinta un
 // solo cuadro y se retira. El gesto de celebrar se mantiene, la animación no.
 const prefersStill = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-function createCanvas() {
+function createCanvas(root) {
   if (canvas?.isConnected) return canvas;
   canvas = document.createElement('canvas');
-  canvas.className = 'celebration-canvas';
+  canvas.className = 'celebration-canvas special-event__celebration';
   canvas.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(canvas);
+  const host = root || document.body;
+  host.appendChild(canvas);
   return canvas;
 }
 
@@ -90,36 +92,43 @@ function draw(ctx, p) {
 }
 
 /**
- * Lanza la celebración sobre toda la pantalla.
+ * Lanza la celebración dentro del contenedor indicado.
  * @param {object} opts
  * @param {string} opts.decor  ambiente (confeti, nieve, hojas, corazones, estrellas, ninguno)
  * @param {string} opts.accent color principal del día, para que case con la hoja
  * @param {string[]} opts.emojis glífos a soltar (ambiente «emoji»)
  * @param {number} opts.duration ms que dura antes de retirarse sola
  * @param {number} opts.amount partículas (se reduce en móvil)
+ * @param {Element} [opts.root] dónde pintar (la hoja del día; si falta, el body)
  */
-export function playCelebration({ decor = 'confeti', accent = '', emojis = [], duration = 5200, amount } = {}) {
+export function playCelebration({ decor = 'confeti', accent = '', emojis = [], duration = 4200, amount, root } = {}) {
   const info = decorInfo(decor);
   if (!info.shape) return stopCelebration();
   const glyphs = info.shape === 'glyph' ? (emojis.length ? emojis : ['✨']) : [];
   // Cancelar la anterior: dos capas de papel por encima solo hacen ruido.
   stopCelebration();
 
-  const cv = createCanvas();
+  const cv = createCanvas(root);
   const ctx = cv.getContext('2d');
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const host = cv.parentElement || document.body;
+  const size = () => ({
+    w: host.clientWidth || window.innerWidth,
+    h: host.clientHeight || window.innerHeight
+  });
   const resize = () => {
-    cv.width = Math.floor(window.innerWidth * dpr);
-    cv.height = Math.floor(window.innerHeight * dpr);
-    cv.style.width = `${window.innerWidth}px`;
-    cv.style.height = `${window.innerHeight}px`;
+    const { w, h } = size();
+    cv.width = Math.floor(w * dpr);
+    cv.height = Math.floor(h * dpr);
+    cv.style.width = `${w}px`;
+    cv.style.height = `${h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
   resize();
 
-  const w = window.innerWidth;
+  const { w } = size();
   const colors = accent ? [accent, ...PALETTE] : PALETTE;
-  const total = Math.round(amount || (w < 520 ? 70 : 130));
+  const total = Math.round(amount || (w < 520 ? 36 : 56));
   // Tres tandas: la mayoría entra al abrir y el resto reparte la lluvia.
   const bursts = [0, 420, 900];
 
@@ -137,8 +146,8 @@ export function playCelebration({ decor = 'confeti', accent = '', emojis = [], d
     }
   };
   spawn(Math.round(total * 0.5), w);
-  bursts.forEach(delay => setTimeout(() => {
-    if (running) spawn(Math.round(total * 0.25), window.innerWidth);
+  burstTimers = bursts.map(delay => setTimeout(() => {
+    if (running) spawn(Math.round(total * 0.25), size().w);
   }, delay));
 
   running = true;
@@ -151,7 +160,8 @@ export function playCelebration({ decor = 'confeti', accent = '', emojis = [], d
     const dt = Math.min(48, now - last) / 16.67;
     last = now;
     elapsed += dt;
-    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    const { w: vw, h: vh } = size();
+    ctx.clearRect(0, 0, vw, vh);
 
     for (const p of particles) {
       p.sway += p.swaySpeed * dt;
@@ -160,9 +170,9 @@ export function playCelebration({ decor = 'confeti', accent = '', emojis = [], d
       p.rot += p.vr * dt;
       // Se desvanecen en el último tramo, para no cortarse en seco.
       if (elapsed > duration - fade) p.alpha = Math.max(0, 1 - (elapsed - (duration - fade)) / fade);
-      if (p.y < window.innerHeight + 40) draw(ctx, p);
+      if (p.y < vh + 40) draw(ctx, p);
     }
-    particles = particles.filter(p => p.y < window.innerHeight + 40 && p.alpha > 0);
+    particles = particles.filter(p => p.y < vh + 40 && p.alpha > 0);
 
     if (elapsed >= duration || !particles.length) {
       stopCelebration();
@@ -172,10 +182,11 @@ export function playCelebration({ decor = 'confeti', accent = '', emojis = [], d
   };
 
   if (prefersStill()) {
-    for (let i = 0; i < 40; i++) {
+    const { h } = size();
+    for (let i = 0; i < 18; i++) {
       const p = makeParticle(info.shape, w, colors[(Math.random() * colors.length) | 0]);
       if (glyphs.length) p.glyph = glyphs[(Math.random() * glyphs.length) | 0];
-      p.y = Math.random() * window.innerHeight;
+      p.y = Math.random() * h;
       draw(ctx, p);
     }
     setTimeout(stopCelebration, 1600);
@@ -191,6 +202,8 @@ export function stopCelebration() {
   running = false;
   if (frame) cancelAnimationFrame(frame);
   frame = 0;
+  burstTimers.forEach(clearTimeout);
+  burstTimers = [];
   particles = [];
   if (canvas?.isConnected) canvas.remove();
   canvas = null;

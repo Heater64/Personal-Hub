@@ -18,10 +18,36 @@
 .home-page > *:nth-child(7) { animation-delay: 0.24s; }
 .home-page > *:nth-child(8) { animation-delay: 0.28s; }
 
+.overlay--special-event {
+  z-index: calc(var(--z-modal) + 1);
+  background: color-mix(in srgb, var(--overlay-light) 86%, transparent);
+  backdrop-filter: blur(10px);
+}
+
 .overlay--special-event .sheet {
+  position: relative;
+  isolation: isolate;
   overflow: hidden;
-  border-color: var(--event-accent, var(--primary));
-  box-shadow: 0 24px 80px var(--event-soft, var(--primary-soft));
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface);
+  box-shadow: var(--elevation-3);
+}
+
+.overlay--special-event .sheet-head { position: relative; z-index: 2; }
+.overlay--special-event .sheet-head h2 { color: var(--theme-text-primary); }
+
+.special-event__celebration {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.special-event > *:not(.special-event__film):not(.special-event__scrim):not(.special-event__celebration) {
+  position: relative;
+  z-index: 2;
 }
 
 .special-event {
@@ -29,20 +55,27 @@
   display: grid;
   justify-items: center;
   gap: var(--sp-14);
-  padding: var(--sp-8) 0 var(--sp-6);
+  padding: var(--sp-8) 0 var(--sp-10);
   text-align: center;
   overflow: hidden;
 }
 
-/* ===== Celebración: confeti, nieve, hojas o corazones desde arriba =====
-   Un solo canvas para toda la pantalla, por encima de la hoja y por debajo
-   de los avisos. No captura clics: mientras dura, se puede seguir usando la
-   tarjeta. */
-.celebration-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--z-modal) + 40);
-  pointer-events: none;
+.special-event__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--theme-accent)) 22%, transparent);
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--event-soft, var(--theme-surface-elevated)) 72%, transparent);
+  color: var(--theme-text-secondary);
+}
+.special-event__kicker::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--event-accent, var(--theme-accent));
 }
 
 /* ===== Vídeo de fondo =====
@@ -64,15 +97,15 @@
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--surface) 55%, transparent) 0%, color-mix(in srgb, var(--surface) 82%, transparent) 45%, var(--surface) 100%);
 }
-.special-event--media-fondo > *:not(.special-event__film):not(.special-event__scrim) { position: relative; z-index: 2; }
+.special-event--media-fondo > *:not(.special-event__film):not(.special-event__scrim):not(.special-event__celebration) { position: relative; z-index: 2; }
 
 /* Vídeo de portada: el mismo reproductor, grande y con controles. */
 .special-event__video {
   width: 100%;
   overflow: hidden;
   border-radius: var(--r-lg);
-  border: 1px solid var(--event-accent, var(--primary-soft));
-  box-shadow: 0 14px 40px color-mix(in srgb, var(--event-accent, var(--primary)) 18%, transparent);
+  border: 1px solid var(--theme-divider);
+  box-shadow: var(--elevation-2);
 }
 .special-event__video video {
   display: block;
@@ -111,30 +144,89 @@
   height: 62px;
   object-fit: cover;
 }
-/* Foto del día: va antes del emoji. Con vídeo de portada la sustituye. */
-.special-event__photo { width: 100%; max-width: 340px; border-radius: var(--r-xl); overflow: hidden; box-shadow: 0 14px 40px color-mix(in srgb, var(--event-accent, var(--primary)) 18%, transparent); animation: special-event-pop 0.55s cubic-bezier(.2, .9, .3, 1.25) both; }
+/* Foto del día: va antes del icono. Con vídeo de portada la sustituye. */
+.special-event__photo {
+  width: 100%;
+  max-width: 340px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--theme-divider);
+  box-shadow: var(--elevation-2);
+  animation: special-event-enter var(--dur-smooth) both;
+}
 .special-event__photo img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .special-event__item-body { min-width: 0; }
+.special-event__thumb[aria-pressed="true"] { border-color: var(--event-accent, var(--theme-accent)); }
+.special-event__thumb:focus-visible { outline: 2px solid var(--event-accent, var(--theme-accent)); outline-offset: 2px; }
 .special-event__item-photo { display: block; width: 100%; max-width: 220px; margin-top: 8px; border-radius: var(--r-md); object-fit: cover; aspect-ratio: 16 / 9; }
-.special-event__icon {
-  width: 88px; height: 88px; display: grid; place-items: center; border-radius: 28px;
-  background: var(--event-soft, var(--primary-soft)); color: var(--event-accent, var(--primary)); font-size: 48px;
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--event-accent, var(--primary)) 12%, transparent);
-  animation: special-event-pop 0.55s cubic-bezier(.2, .9, .3, 1.25) both;
+.special-event__kicker {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
-.special-event__message { max-width: 34ch; margin: 0; color: var(--text); font-size: var(--fs-lg); line-height: 1.45; font-family: var(--font-display); }
+.special-event__icon {
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--event-accent, var(--theme-accent)) 20%, transparent);
+  border-radius: var(--r-lg);
+  background: linear-gradient(145deg, var(--event-soft, var(--theme-surface-elevated)), var(--theme-surface));
+  color: var(--event-accent, var(--theme-accent));
+  font-size: 30px;
+  box-shadow: var(--elevation-1);
+  animation: special-event-enter var(--dur-smooth) both;
+}
+.special-event__message {
+  max-width: 38ch;
+  margin: 0;
+  color: var(--theme-text-primary);
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+  font-family: var(--font-display, var(--font-body));
+}
 .special-event__list { width: 100%; display: grid; gap: var(--sp-8); }
-.special-event__item { display: flex; align-items: flex-start; gap: var(--sp-10); padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); text-align: left; }
-.special-event__item-icon { font-size: 1.35rem; }
-.special-event__item small { display: block; margin-top: 3px; line-height: 1.4; }
-.special-event__note { padding: 10px 14px; border-radius: var(--r-full); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-sm); }
-.special-event__note--preview { background: var(--event-soft, var(--primary-soft)); color: var(--text); font-weight: 600; }
-.special-event__action { margin-top: var(--sp-2); }
-@keyframes special-event-pop { from { opacity: 0; transform: translateY(12px) scale(.88); } to { opacity: 1; transform: none; } }
+.special-event__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-10);
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-divider);
+  text-align: left;
+}
+.special-event__item-icon { font-size: 1.1rem; }
+.special-event__item small { display: block; margin-top: 3px; line-height: 1.4; color: var(--theme-text-secondary); }
+.special-event__note {
+  margin: 0;
+  color: var(--theme-text-tertiary);
+  font-size: var(--fs-xs);
+}
+.special-event__note--preview {
+  padding: 7px 11px;
+  border: 1px solid var(--theme-divider);
+  border-radius: var(--r-full);
+  color: var(--theme-text-secondary);
+  font-weight: 600;
+}
+.special-event__action { margin-top: var(--sp-4); min-height: 44px; }
+.special-event__item-photo { border: 1px solid var(--theme-divider); }
+@keyframes special-event-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   .special-event__icon { animation: none; }
   .special-event__photo { animation: none; }
+  .special-event__thumb { transition: none; }
+}
+
+@media (max-width: 480px) {
+  .overlay--special-event .sheet { max-height: 92dvh; }
+  .special-event { gap: var(--sp-10); }
+  .special-event__photo { max-width: 100%; }
+  .special-event__message { font-size: var(--fs-md); }
 }
 
 @keyframes home-enter {
