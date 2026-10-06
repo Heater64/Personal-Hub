@@ -171,28 +171,40 @@ function findGiftsCatalog() {
   return null;
 }
 
-/**
- * Si hoy hay un regalo programado en el calendario, devuelve un payload
- * con enlace directo al día. Si no (o el catálogo no es legible), null
- * para que el push quede genérico.
- */
-function calendarPayloadForToday() {
-  const today = todayServerStr();
+async function loadCalendarCatalog() {
   try {
-    const catalog = findGiftsCatalog();
-    if (!catalog) return null;
-    const byId = {};
-    (catalog.gifts || []).forEach(g => { if (g.id) byId[g.id] = g; });
-    const dayNum = String(parseInt(today.slice(8), 10));
-    const giftId = catalog.months?.[today.slice(0, 7)]?.calendarMapping?.[dayNum];
-    const gift = giftId ? byId[giftId] : null;
-    if (!gift) return null;
-    return {
-      title: 'Hay una sorpresa esperándote 🎁',
-      body: 'Tu calendario te espera hoy. Ábrela cuando quieras ❤️',
-      url: `/calendario?day=${today}`,
-      tag: 'daily-novelties'
-    };
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('content')
+      .select('data')
+      .eq('id', 'gifts')
+      .maybeSingle();
+    if (!error && data?.data && typeof data.data === 'object') return data.data;
+  } catch { /* la API puede ejecutarse sin credenciales locales */ }
+  return findGiftsCatalog();
+}
+
+export function calendarPayloadForCatalog(catalog, today = todayServerStr()) {
+  if (!catalog || typeof today !== 'string' || today.length !== 10 || today[4] !== '-' || today[7] !== '-') return null;
+  const dayNum = String(parseInt(today.slice(8), 10));
+  const rawIds = catalog.months?.[today.slice(0, 7)]?.calendarMapping?.[dayNum];
+  const giftIds = Array.isArray(rawIds) ? rawIds : rawIds ? [rawIds] : [];
+  const giftsById = { ...(catalog.giftsById || {}) };
+  (catalog.gifts || []).forEach(gift => { if (gift?.id) giftsById[gift.id] = gift; });
+  const giftId = giftIds.find(id => giftsById[id]);
+  if (!giftId) return null;
+  return {
+    title: 'Hay una sorpresa esperándote 🎁',
+    body: 'Tu calendario te espera hoy. Ábrela cuando quieras ❤️',
+    url: `/calendario?day=${today}&gift=${encodeURIComponent(giftId)}`,
+    tag: 'daily-novelties'
+  };
+}
+
+/** Lee el catálogo de Admin de Supabase y cae al JSON semilla si falta. */
+async function calendarPayloadForToday() {
+  try {
+    return calendarPayloadForCatalog(await loadCalendarCatalog());
   } catch {
     return null;
   }
@@ -421,7 +433,7 @@ async function handleSend(req, res) {
   // Push diario del cron: si hoy hay un regalo del calendario, enlaza a ese
   // día; si no, queda el saludo genérico. (Las novedades por-usuario como
   // "razones sin leer" se notifican desde el cliente, que sí conoce su estado.)
-  const calendarPush = customTitle ? null : calendarPayloadForToday();
+  const calendarPush = customTitle ? null : await calendarPayloadForToday();
   const payload = JSON.stringify({
     ...(calendarPush || {
       title: customTitle || '¡Buenos días! ☀️',

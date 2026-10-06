@@ -4,6 +4,8 @@
    reproductor compacto, ayuda y respiración.
    ========================================== */
 
+.maldia-page { position: relative; }
+
 .md-section { margin-bottom: var(--sp-22, 22px); }
 
 .md-head-main { display: flex; align-items: flex-start; gap: var(--sp-10); min-width: 0; }

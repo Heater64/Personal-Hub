@@ -9,6 +9,7 @@
 import { getVideoPoster } from './rincon-data.js';
 import { db } from './db.service.js';
 import { expandCalendarCatalog } from '../data/calendar-expansion.js';
+import { userPrefKey } from '../utils/userStorage.js';
 
 const GIFTS_PATH = '/data/gifts.json';
 
@@ -132,9 +133,27 @@ export function getGiftTodayStr() {
 }
 
 /** ¿El regalo ya está desbloqueado por fecha? */
-export function isGiftUnlocked(gift) {
-  if (!gift?.unlock?.value) return false;
-  return getGiftTodayStr() >= gift.unlock.value;
+/**
+ * Contenidos del calendario asignados a HOY, con lo que queda por abrir.
+ *
+ * Es la lectura del "regalo del día" para cualquier pantalla (Inicio, avisos):
+ * el reparto por día (`months[mes].calendarMapping`) y el progreso
+ * (`giftProgress`) viven aquí, en el servicio dueño del catálogo, y nadie más
+ * los vuelve a derivar por su cuenta.
+ *
+ * Devuelve `{ ids, total, pending }`; `pending` = aún sin abrir en este
+ * navegador. Requiere que `loadGiftsCatalog()` haya resuelto antes.
+ */
+export function todayCalendarGifts() {
+  const today = getGiftTodayStr();
+  const monthKey = today.slice(0, 7);
+  const raw = catalog?.months?.[monthKey]?.calendarMapping?.[String(Number(today.slice(8, 10)))];
+  const ids = Array.isArray(raw) ? raw.filter(Boolean) : (raw ? [raw] : []);
+  if (!ids.length) return { ids: [], total: 0, pending: 0 };
+
+  let progress = {};
+  try { progress = JSON.parse(localStorage.getItem(userPrefKey('giftProgress')) || '{}'); } catch { /* sin progreso */ }
+  return { ids, total: ids.length, pending: ids.filter(id => !progress[id]?.opened).length };
 }
 
 /**

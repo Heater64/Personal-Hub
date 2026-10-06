@@ -1,60 +1,15 @@
 /* ==========================================
    Sidebar — navegación de escritorio
-   Estructura de habitos-web: marca, items tipo píldora,
-   grupo contextual según la sección y usuario al pie.
+   Marca, items tipo píldora, grupo contextual según la sección y usuario
+   al pie. Los items y los grupos salen del registro de rutas: la usuaria
+   ve «Inicio» y el admin no (su casa es el panel).
    ========================================== */
 
 import { userStore } from '../stores/user.store.js';
 import { auth } from '../services/auth.service.js';
 import { icon } from './ui.js';
 import { escapeHtml, safeUrl } from '../utils/escape.js';
-
-const NAV_ITEMS = [
-  { id: 'home',         label: 'Inicio',       icon: 'home',            href: '/' },
-  { id: 'rincon',       label: 'Rincón',       icon: 'heart',           href: '/rincon' },
-  { id: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: '/sentimientos' },
-  { id: 'ositos',       label: 'OsitosWorld',  icon: 'star',            href: '/ositos' }
-];
-
-const MUSIC_ITEMS = [
-  { label: 'Explorar',   icon: 'music',   href: '/canciones' },
-  { label: 'Biblioteca', icon: 'book',    href: '/canciones?v=biblioteca' },
-  { label: 'Favoritas',  icon: 'heart',   href: '/canciones?v=favoritas' },
-  { label: 'Playlists',  icon: 'list',    href: '/canciones?v=playlists' },
-  { label: 'Historial',  icon: 'clock',   href: '/canciones?v=historial' }
-];
-
-const RINCON_CARDS = [
-  { label: 'Galería y Memes', icon: 'image',   href: '/galeria' },
-  { label: 'Audios',          icon: 'mic',     href: '/audios' },
-  { label: 'Curiosidades',    icon: 'compass', href: '/curiosidades' },
-  { label: 'Juegos',          icon: 'game',    href: '/juegos' },
-  { label: 'Canciones',       icon: 'music',   href: '/canciones' },
-  { label: 'Those Eyes',      icon: 'spark',   href: '/thoseeyes' },
-  { label: 'Series',          icon: 'book',    href: '/series' }
-];
-
-const GALERIA_ITEMS = [
-  { label: 'Galería',   icon: 'image', href: '/galeria' },
-  { label: 'Memes',     icon: 'smile', href: '/memes' },
-  { label: 'Audios',    icon: 'mic',   href: '/audios' },
-  { label: 'Minecraft', icon: 'game',  href: '/minecraft' }
-];
-
-const CURIOSIDADES_ITEMS = [
-  { label: 'San Juan Pueblo',     icon: 'map',      href: '/curiosidades?cat=spb' },
-  { label: 'San Petersburgo',     icon: 'compass',  href: '/curiosidades?cat=sp' },
-  { label: 'Enciclopedia Gatuna', icon: 'paw',      href: '/curiosidades?cat=gatos' }
-];
-
-const SENTIMIENTOS_ITEMS = [
-  { label: 'Razones',    icon: 'spark',    href: '/razones' },
-  { label: 'Open When',  icon: 'mail',     href: '/openwhen' },
-  { label: 'Calendario', icon: 'calendar', href: '/calendario' },
-  { label: 'Mal Día',    icon: 'sun',      href: '/maldia' }
-];
-
-const GROUPS = { rincon: RINCON_CARDS, galeria: GALERIA_ITEMS, curiosidades: CURIOSIDADES_ITEMS, sentimientos: SENTIMIENTOS_ITEMS };
+import { sidebarItems, sidebarGroupFor, navEntry, roleFor, sectionFor } from '../routes.js';
 
 export function Sidebar(router) {
   const aside = document.createElement('aside');
@@ -91,18 +46,12 @@ export function Sidebar(router) {
     const base = currentPath.split('?')[0];
     const currentId = (base.split('/')[1] || '') || 'home';
 
-    // Subsecciones: cada grupo se muestra también dentro de sus páginas
-    // hijas (p. ej. el grupo Sentimientos al estar en /razones o /calendario).
-    const RINCON_PATHS = ['/rincon', '/juegos', '/series', '/thoseeyes'];
-    const SENTIMIENTOS_PATHS = ['/sentimientos', '/razones', '/openwhen', '/calendario', '/maldia'];
+    const contextual = (() => {
+      const grupo = sidebarGroupFor(base);
+      return grupo ? group(grupo.title, grupo.items) : '';
+    })();
 
-    let contextual = '';
-    if (base === '/canciones') contextual = group('Música', MUSIC_ITEMS);
-    else if (RINCON_PATHS.includes(base)) contextual = group('Rincón', RINCON_CARDS);
-    else if (['/galeria', '/memes', '/audios', '/minecraft'].includes(base)) contextual = group('Galería y Memes', GALERIA_ITEMS);
-    else if (base === '/curiosidades') contextual = group('Curiosidades', CURIOSIDADES_ITEMS);
-    else if (SENTIMIENTOS_PATHS.includes(base)) contextual = group('Sentimientos', SENTIMIENTOS_ITEMS);
-
+    const adminEntry = navEntry('/admin');
     const initial = user ? (user.name || 'U').charAt(0).toUpperCase() : '?';
     // El avatar viene de user_metadata.avatar_url, que el usuario puede
     // editar por su cuenta: se valida el esquema y se escapa el atributo
@@ -123,9 +72,9 @@ export function Sidebar(router) {
         </div>
 
         <div class="side-nav">
-          ${NAV_ITEMS.map(item => navButton(item, item.id === currentId || (item.id === 'home' && currentId === ''))).join('')}
+          ${sidebarItems(roleFor(isAdmin)).map(item => navButton(item, item.id === currentId)).join('')}
           ${contextual}
-          ${isAdmin ? `<p class="side-label">Admin</p>${navButton({ label: 'Panel Admin', icon: 'gear', href: '/admin' }, currentId === 'admin')}` : ''}
+          ${isAdmin && adminEntry ? `<p class="side-label">Admin</p>${navButton(adminEntry, sectionFor(base) === 'admin')}` : ''}
         </div>
       </div>
 

@@ -25,6 +25,7 @@
   /* Modo carrera (?race=1): además de la puntuación se envía el TIEMPO,
      que es lo que decide quién fue más rápido. */
   var RACE = params.get('race') === '1';
+  var PARENT_ORIGIN = window.location.origin;
 
   /* Fuente de la puntuación final por juego:
      · el  -> id de un elemento del HUD que muestra el marcador final
@@ -110,7 +111,7 @@
       try {
         var progress = read();
         if (progress) {
-          window.parent.postMessage({ type: 'ph-progress', game: GAME_ID, progress: progress }, '*');
+          window.parent.postMessage({ type: 'ph-progress', game: GAME_ID, progress: progress }, PARENT_ORIGIN);
         }
       } catch (e) { /* el padre puede haberse ido: nada que hacer */ }
     }, 1000);
@@ -139,9 +140,9 @@
     if (progressTimer) clearInterval(progressTimer);
     try {
       if (RACE) {
-        window.parent.postMessage({ type: 'ph-race', score: score, time: time, game: GAME_ID }, '*');
+        window.parent.postMessage({ type: 'ph-race', score: score, time: time, game: GAME_ID }, PARENT_ORIGIN);
       } else {
-        window.parent.postMessage({ type: 'ph-score', score: score, game: GAME_ID }, '*');
+        window.parent.postMessage({ type: 'ph-score', score: score, game: GAME_ID }, PARENT_ORIGIN);
       }
     } catch (e) { /* el padre puede haberse ido: nada que hacer */ }
   }

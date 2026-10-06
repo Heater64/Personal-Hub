@@ -8,6 +8,8 @@
 /* ==========================================
    CHIPS DE SECCIÓN
    ========================================== */
+.ositos-page { position: relative; }
+
 .os-chips { margin-bottom: var(--sp-16); }
 
 .os-chip { flex: 0 0 auto; }

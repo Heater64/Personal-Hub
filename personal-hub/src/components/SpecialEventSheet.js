@@ -16,7 +16,8 @@
    toda la portada.
    ========================================== */
 
-import { specialEventsForDate, specialEventsToday, resolveEventPreview, SPECIAL_EVENT_TONES } from '../utils/specialDates.js';
+import { specialEventsForDate, specialEventsToday, specialEventsToAnnounce, daysUntilDate, resolveEventPreview, SPECIAL_EVENT_TONES } from '../utils/specialDates.js';
+import { isExternalAction } from '../utils/event-actions.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { openSheet, closeSheets, h } from './ui.js';
 import { playCelebration, stopCelebration } from './Celebration.js';
@@ -83,6 +84,15 @@ function stopSheetMedia() {
   stopCelebration();
 }
 
+/** '2026-07-03' → '3 de julio' (con el año, si no es el de hoy). */
+function longDate(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const opciones = { day: 'numeric', month: 'long' };
+  if (String(y) !== String(new Date().getFullYear())) opciones.year = 'numeric';
+  return new Intl.DateTimeFormat('es-ES', opciones).format(new Date(y, m - 1, d));
+}
+
 /**
  * Abre la hoja temática de una lista de eventos (el primero es el titular).
  * `preview` añade una aviso de que es una simulación, no el día real.
@@ -96,6 +106,30 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
   const video = event.video || '';
   const videoMode = normalizeVideoMode(event.videoMode);
   const gallery = Array.isArray(event.gallery) ? event.gallery.filter(Boolean) : [];
+
+  // Cuándo es: hoy, o dentro de unos días. Un evento del panel se anuncia
+  // antes de su día (si no, aparecía por sorpresa), así que la hoja dice la
+  // fecha tal cual en vez de obligar a contar días.
+  const days = daysUntilDate(event.date) ?? 0;
+  const cuando = days > 0
+    ? { kicker: 'Próximamente', texto: `${longDate(event.date)}${days === 1 ? ' · mañana' : ` · faltan ${days} días`}` }
+    // Una fecha de este año ya pasada solo se ve en la vista previa: no es
+    // «hoy», y decir que lo es despista a quien la está revisando.
+    : days < 0
+      ? { kicker: 'Ya pasó', texto: '' }
+      : { kicker: 'Hoy', texto: '' };
+
+  // Acciones: las que definió el admin para este evento. Sin acciones, el
+  // botón de siempre (abrir el calendario) para que la hoja no sea un callejón.
+  const acciones = Array.isArray(event.actions) ? event.actions : [];
+  const irA = (route) => {
+    if (isExternalAction(route)) { window.open(route, '_blank', 'noopener,noreferrer'); return; }
+    closeSheets();
+    router?.navigate?.(route);
+  };
+  const actionButton = (label, onclick) => h('button', {
+    class: 'btn special-event__action', type: 'button', onclick
+  }, label);
 
   const overlay = openSheet(event.title, () => {
     // Foto de portada: la primera de la galería hace de foto grande, para no
@@ -132,11 +166,12 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
         ? h('div', { class: 'special-event__photo' },
             h('img', { src: portada, alt: '', loading: 'lazy', decoding: 'async' }))
         : null,
-      h('p', { class: 'special-event__kicker' }, 'Hoy'),
+      h('p', { class: 'special-event__kicker' }, cuando.kicker),
       h('div', { class: 'special-event__icon', 'aria-hidden': 'true' }, event.icon),
       event.description
         ? h('p', { class: 'special-event__message' }, event.description)
         : null,
+
       resto.length && !conVideoPortada
         ? h('div', { class: 'special-event__gallery', role: 'group', 'aria-label': 'Fotos de este día' },
             ...resto.map((src, i) => h('button', {
@@ -158,6 +193,8 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
           h('span', { class: 'special-event__item-icon', 'aria-hidden': 'true' }, item.icon),
           h('span', { class: 'special-event__item-body' },
             h('b', null, item.title),
+            // Los que aún no han llegado dicen cuándo son.
+            item.days > 0 ? h('small', null, longDate(item.date)) : null,
             item.description ? h('small', null, item.description) : null,
             item.image ? h('img', { class: 'special-event__item-photo', src: item.image, alt: '', loading: 'lazy', decoding: 'async' }) : null
           )
@@ -165,11 +202,13 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
       )) : null,
       preview
         ? h('p', { class: 'special-event__note special-event__note--preview' }, 'Vista previa. Así se presentará este día.')
-        : h('p', { class: 'special-event__note' }, 'Marcado en el calendario.'),
-      h('button', {
-        class: 'btn special-event__action', type: 'button',
-        onclick: () => { closeSheets(); router?.navigate?.('/calendario'); }
-      }, 'Abrir el calendario')
+        // Cuando aún no es su día, la nota dice cuándo es: es lo que se mira
+        // justo antes de pulsar.
+        : h('p', { class: 'special-event__note' }, cuando.texto ? `${cuando.texto}.` : 'Marcado en el calendario.'),
+      h('div', { class: 'special-event__actions' },
+        ...(acciones.length
+          ? acciones.map(action => actionButton(action.label, () => irA(action.route)))
+          : [actionButton('Abrir el calendario', () => irA('/calendario'))]))
     );
   }, stopSheetMedia);
   overlay.classList.add('overlay--special-event');
@@ -239,7 +278,7 @@ export function maybeShowSpecialEvent(page, router) {
   const stored = getUserPref('specialEventsSeen', '{}');
   let seen = {};
   try { seen = JSON.parse(stored || '{}') || {}; } catch { /* clave dañada */ }
-  const events = specialEventsToday().filter(item => !seen[item.key]);
+  const events = specialEventsToAnnounce().filter(item => !seen[item.key]);
   if (!events.length) return;
 
   queueSpecialEvent({ page, router, events });

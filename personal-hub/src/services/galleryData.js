@@ -38,10 +38,6 @@ const sync = createSyncStore({
 });
 
 /** Sincroniza con el servidor (pull/push). Devuelve { changed, data }. */
-export function hydrateGallery() {
-  return sync.hydrate();
-}
-
 // ==========================================
 // STORAGE helpers (user-scoped)
 // ==========================================

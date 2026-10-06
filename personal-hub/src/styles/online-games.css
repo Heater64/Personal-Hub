@@ -101,7 +101,6 @@
    BOTONES
    ========================================== */
 .online-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
-.online-actions--center { justify-content: center; }
 
 .online-btn {
   min-height: 46px;

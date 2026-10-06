@@ -10,8 +10,9 @@
 import { getUserPref, setUserPref, getUserId } from '../utils/userStorage.js';
 import { todayISO, hourInSpain } from '../utils/format.js';
 import { supabase } from './supabase.js';
-import { getTodayNovelties } from './novelties.service.js';
+import { getTodayNovelties, getNoveltyNotificationRoute } from './novelties.service.js';
 import { loadAllOpenWhenLetters } from '../data/openwhen.data.js';
+import { normalizeNotificationRoute } from '../utils/notification-route.js';
 
 // VAPID public key — debe coincidir con VAPID_PUBLIC_KEY en el servidor
 const VAPID_PUBLIC_KEY = 'BO_qmnZrQT4twbo24CGDk-bpJWcJyfGFQoBVqf24B0jkUKKHNOEyhkZQZ2nPc1Q4BHSSEpcVq71Xcb3FYKz7gIA';
@@ -355,7 +356,7 @@ export async function showDailyNotification(title, body, url = '/', opts = {}) {
       body,
       tag: opts.tag || SYNC_TAG,
       vibrate: [200, 100, 200],
-      data: { url }
+      data: { url: normalizeNotificationRoute(url, window.location.origin) }
     });
     return true;
   } catch (err) {
@@ -408,7 +409,7 @@ export async function notifyTodayNovelties() {
       } else {
         title = `Tienes ${items.length} novedades hoy`;
         body = items.map(n => `${n.icon} ${n.tag}: ${n.text}`).join('\n');
-        url = '/'; // el Inicio las agrupa todas
+        url = getNoveltyNotificationRoute(items);
       }
 
       await showDailyNotification(title, body, url, { tag: NOVELTIES_TAG });
@@ -467,11 +468,14 @@ export async function notifyNewOpenWhenLetters() {
     ? `«${fresh[0].title}» te está esperando.`
     : 'Te están esperando. ¿Qué necesitas ahora? 🤍';
 
-  const shown = await showDailyNotification(title, body, '/openwhen', { tag: OPENWHEN_TAG });
+  const route = fresh.length === 1
+    ? `/openwhen?letter=${encodeURIComponent(fresh[0].id)}`
+    : '/openwhen';
+  const shown = await showDailyNotification(title, body, route, { tag: OPENWHEN_TAG });
 
   // Solo marca como anunciadas si la notificación pudo mostrarse
   if (shown) {
-    setUserPref(OPENWHEN_ANNOUNCED_KEY, JSON.stringify([...announced, ...fresh.map(l => l.id)]));
+    setUserPref(OPENWHEN_ANNOUNCED_KEY, JSON.stringify([...new Set([...announced, ...fresh.map(l => l.id)])]));
   }
 }
 

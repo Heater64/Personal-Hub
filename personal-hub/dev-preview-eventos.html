@@ -27,7 +27,7 @@
 
   <script type="module">
     import { loadSpecialDates } from '/src/utils/specialDates.js';
-    import { previewSpecialEventSheet, maybeShowSpecialEvent } from '/src/components/SpecialEventSheet.js';
+    import { previewSpecialEventSheet, maybeShowSpecialEvent, setMoodWelcomeState } from '/src/components/SpecialEventSheet.js';
 
     const CASOS = [
       ['Halloween', 'halloween'],
@@ -37,8 +37,10 @@
       ['Fecha suelta', '2026-10-31']
     ];
 
-    // La hoja pide router solo para el botón del calendario: aquí no navega.
-    const routerStub = { navigate: path => { window.location.hash = path; } };
+    // La hoja pide router para el botón del calendario y para saber que
+    // estamos en Inicio (el camino real de `maybeShowSpecialEvent` no abre la
+    // hoja desde ninguna otra pantalla): aquí no navega de verdad.
+    const routerStub = { navigate: path => { window.location.hash = path; }, getCurrentPath: () => '/' };
 
     const grid = document.getElementById('buttons');
     for (const [label, value] of CASOS) {
@@ -58,7 +60,12 @@
     loadSpecialDates().catch(() => {});
 
     // Atajo para probar el camino real de "primera vez que se entra hoy".
-    window.__hoy = () => maybeShowSpecialEvent(document.body, routerStub);
+    // Aquí no hay check-in de ánimo que libere el turno, así que se declara
+    // cerrado a mano: si no, la hoja se queda esperando y no se ve nada.
+    window.__hoy = () => {
+      setMoodWelcomeState('clear');
+      maybeShowSpecialEvent(document.body, routerStub);
+    };
   </script>
 </body>
 </html>

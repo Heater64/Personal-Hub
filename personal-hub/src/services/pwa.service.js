@@ -329,25 +329,6 @@ export async function initPWA() {
 // ==========================================
 // EXPORTS (para uso programático)
 // ==========================================
-export function getInstallPrompt() {
-  return installPrompt;
-}
-
-export function triggerInstall() {
-  if (!installPrompt) return false;
-  installPrompt.prompt();
-  installPrompt.userChoice.finally(() => {
-    installPrompt = null;
-  });
-  return true;
-}
-
-export function checkForUpdates() {
-  if (swRegistration) {
-    swRegistration.update();
-  }
-}
-
 export function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 }

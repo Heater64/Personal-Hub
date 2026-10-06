@@ -18,8 +18,10 @@ import { showToast } from '../components/Toast.js';
 import { openSpecialEventSheet, replaySpecialEventSheet } from '../components/SpecialEventSheet.js';
 import { decorOptions, videoModeOptions, THEME_EMOJIS, MAX_GALLERY, MAX_EMOJIS } from '../utils/celebration.js';
 import { escapeHtml } from '../utils/escape.js';
+import { labelForPath } from '../routes.js';
 import { isValidUrlField, todayISO, hourInSpain, timeInSpain } from '../utils/format.js';
-import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS } from '../utils/specialDates.js';
+import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, daysUntilDate, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS } from '../utils/specialDates.js';
+import { cleanEventActions, MAX_EVENT_ACTIONS } from '../utils/event-actions.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { expandCalendarCatalog } from '../data/calendar-expansion.js';
@@ -102,15 +104,9 @@ const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto
 // ==========================================
 // ACTIVIDAD DE USO — helpers compartidos
 // (dashboard y detalle de usuario)
+// Los nombres de las secciones salen del registro de rutas (labelForPath),
+// no de una lista paralela que se quedaba corta al añadir una página.
 // ==========================================
-const SECTION_LABELS = {
-  '/': 'Inicio', '/rincon': 'Rincón', '/galeria': 'Galería', '/memes': 'Memes',
-  '/audios': 'Audios', '/curiosidades': 'Curiosidades', '/canciones': 'Música',
-  '/juegos': 'Juegos', '/series': 'Series', '/sentimientos': 'Sentimientos',
-  '/razones': 'Razones', '/openwhen': 'Open When', '/calendario': 'Calendario',
-  '/maldia': 'Mal Día', '/ositos': 'OsitosWorld', '/thoseeyes': 'Those Eyes',
-  '/justthewayyouare': 'Just The Way You Are', '/perfil': 'Perfil', '/admin': 'Panel Admin'
-};
 
 /** Sección raíz de una página: '/canciones?v=x' → '/canciones', '/juegos/online/1' → '/juegos' */
 function basePageOf(p) {
@@ -327,7 +323,10 @@ export function AdminPage(router) {
   `;
 
   // ===== STATE =====
-  const S = { section: 'dashboard', moodDate: new Date(), contentSub: 'razones', calMonth: null, calDay: null, configTab: 'fechas' };
+  // El admin no entra por la pantalla diaria: el panel abre directamente la
+  // gestión de fechas y eventos (Configuración → Eventos), que es su casa. El
+  // resumen de estadísticas sigue a un clic, en el menú.
+  const S = { section: 'config', moodDate: new Date(), contentSub: 'razones', calMonth: null, calDay: null, configTab: 'eventos' };
 
   const content = page.querySelector('#adminContent');
 
@@ -386,10 +385,13 @@ export function AdminPage(router) {
   navToggle?.addEventListener('click', () => setNavOpen(!page.classList.contains('nav-open')));
   navScrim?.addEventListener('click', () => setNavOpen(false));
   page.querySelector('#adminNavClose')?.addEventListener('click', () => setNavOpen(false));
-  page.querySelector('#adminGoHome')?.addEventListener('click', () => {
-    setNavOpen(false);
-    router.navigate('/');
-  });
+  // «Volver al hub» apunta a la pantalla diaria, que el admin no usa (su casa
+  // es este panel): para él el botón no tendría destino, así que se retira.
+  const goHomeBtn = page.querySelector('#adminGoHome');
+  if (goHomeBtn) {
+    if (userStore.isAdmin) goHomeBtn.remove();
+    else goHomeBtn.addEventListener('click', () => { setNavOpen(false); router.navigate('/'); });
+  }
   /**
    * Deja el panel orientado a una sección: marca su botón del menú, pone el
    * título en la cabecera pegajosa y esconde el saludo (que solo tiene sentido
@@ -975,7 +977,7 @@ export function AdminPage(router) {
     const useHtml = topSections.length
       ? topSections.map(([bp, s]) => `
         <div class="dash-use-row">
-          <span class="dash-use-label">${esc(SECTION_LABELS[bp] || bp)}</span>
+          <span class="dash-use-label">${esc(labelForPath(bp))}</span>
           <div class="dash-use-track"><div class="dash-use-fill" style="width:${Math.max(Math.round(s.ms / sectionMaxMs * 100), 4)}%"></div></div>
           <span class="dash-use-meta">${s.count} visita${s.count === 1 ? '' : 's'} · ${fmtDuration(s.ms)}</span>
         </div>`).join('')
@@ -991,7 +993,7 @@ export function AdminPage(router) {
           isAdmin: user?.role === 'admin',
           count: u.count,
           lastTs: u.lastTs,
-          topSec: topSec ? (SECTION_LABELS[topSec[0]] || topSec[0]) : '—'
+          topSec: topSec ? labelForPath(topSec[0]) : '—'
         };
       })
       .filter(c => c.count > 0)
@@ -1591,7 +1593,7 @@ export function AdminPage(router) {
       const rows = top.length
         ? top.map(([bp, ms]) => `
           <div class="moods-bar-row">
-            <span class="moods-bar-label" style="min-width:130px">${esc(SECTION_LABELS[bp] || bp)}</span>
+            <span class="moods-bar-label" style="min-width:130px">${esc(labelForPath(bp))}</span>
             <div class="moods-bar-track"><div class="moods-bar-fill mood-good" style="width:${Math.round(ms / maxMs * 100)}%"></div></div>
             <span class="moods-bar-pct">${fmtDuration(ms)}</span>
           </div>`).join('')
@@ -3770,104 +3772,6 @@ export function AdminPage(router) {
         </div>
         <p class="admin-section-hint">${SECTION_HINTS.config}</p>
 
-        <div class="config-group">
-          <span class="config-group-label">Del día a día</span>
-          <div class="config-grid">
-            <div class="admin-panel config-card config-card--wide">
-              <div class="admin-panel-head">
-                <h4>${UI.palette} Apariencia</h4>
-                <span class="admin-panel-badge">Se aplica al instante</span>
-              </div>
-              <p class="config-card-hint">El tema se guarda en este navegador y se aplica en toda la web.</p>
-
-              <div class="config-appearance">
-              <div>
-              <span class="config-field-label">Paleta de color</span>
-              <div class="config-swatches" id="themeSeg" role="radiogroup" aria-label="Paleta de color">
-                ${paletas.map(t => `
-                  <button type="button" role="radio" aria-checked="${paletaActiva === t.id}" class="config-swatch${paletaActiva === t.id ? ' active' : ''}" data-theme-set="paleta" data-theme-id="${t.id}" data-theme-label="${t.label}">
-                    <span class="config-swatch-dot" style="--swatch:${t.preview}"></span>
-                    <span class="config-swatch-text">
-                      <b>${t.label}</b>
-                      <small>${t.hint}</small>
-                    </span>
-                  </button>`).join('')}
-              </div>
-              </div>
-
-              <div>
-              <span class="config-field-label">Modo</span>
-              <div class="config-modes" id="modeSeg" role="radiogroup" aria-label="Modo de color">
-                ${modos.map(m => `
-                  <button type="button" role="radio" aria-checked="${modoActivo === m.id}" class="config-mode${modoActivo === m.id ? ' active' : ''}" data-theme-set="modo" data-theme-id="${m.id}" data-theme-label="${m.label}">
-                    <span class="config-mode-emoji" aria-hidden="true">${modeEmoji[m.id] || '🎨'}</span>
-                    <span>${m.label}</span>
-                  </button>`).join('')}
-              </div>
-              <p class="config-card-hint config-card-hint--foot">Con <b>Auto</b> se respeta el modo del sistema.</p>
-              </div>
-              </div>
-            </div>
-
-            <div class="admin-panel config-card">
-              <div class="admin-panel-head">
-                <h4>${UI.bell} Notificaciones</h4>
-                <span class="admin-panel-badge">8:00 · hora de España</span>
-              </div>
-              <p class="config-card-hint">El recordatorio diario se envía a los dispositivos suscritos.</p>
-
-              <ul class="config-status">
-                <li class="${pushOk ? 'ok' : 'muted'}">
-                  <span class="config-status-icon">${pushOk ? UI.check : UI.close}</span>
-                  <span><b>${pushOk ? 'Este navegador admite push' : 'Push no disponible'}</b><small>Compatibilidad del dispositivo</small></span>
-                </li>
-                <li class="${notifEnabled ? 'ok' : 'muted'}">
-                  <span class="config-status-icon">${notifEnabled ? UI.check : UI.close}</span>
-                  <span><b>${notifEnabled ? 'Suscripción activa' : 'Suscripción apagada'}</b><small>Estado de tus notificaciones</small></span>
-                </li>
-              </ul>
-
-              <div class="config-actions">
-                ${notifEnabled
-                  ? `<button class="admin-btn admin-btn-secondary" id="disableNotifBtn">Apagar notificaciones</button>`
-                  : `<button class="admin-btn admin-btn-primary" id="enableNotifBtn">${UI.bell} Activar notificaciones</button>`}
-                <button class="admin-btn admin-btn-ghost" id="testNotifBtn">${UI.send} Enviar prueba</button>
-              </div>
-              <div class="notif-result" id="configNotifResult"></div>
-            </div>
-
-            <div class="admin-panel config-card">
-              <div class="admin-panel-head"><h4>${UI.users} Tu cuenta</h4></div>
-              <div class="admin-profile-row">
-                <div class="admin-profile-avatar">${userPhoto ? `<img src="${esc(userPhoto)}" alt="">` : userInitial}</div>
-                <div>
-                  <strong>${esc(account?.name || userName)}</strong>
-                  <div class="muted-text">${esc(account?.email || '')}</div>
-                </div>
-                <span class="admin-sidebar-admin-badge">${esc(String(userRole).toUpperCase())}</span>
-              </div>
-              <dl class="config-facts">
-                <div><dt>Zona horaria</dt><dd>España (península)</dd></div>
-                <div><dt>Hora local ahora</dt><dd>${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</dd></div>
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        <div class="config-group">
-          <span class="config-group-label">Sistema</span>
-          <div class="config-grid">
-            <div class="admin-panel config-card">
-              <div class="admin-panel-head"><h4>${UI.cloud} Base de datos</h4></div>
-              <div id="configDbStatus">${skeletonText()}</div>
-              <div class="config-actions">
-                <button class="admin-btn admin-btn-ghost" id="recheckDbBtn">${UI.refresh} Comprobar de nuevo</button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
         <div class="admin-panel config-card config-dates">
           <div class="admin-panel-head">
             <h4>${UI.copy} Fechas especiales</h4>
@@ -3968,6 +3872,104 @@ export function AdminPage(router) {
               <div class="muted-text" id="datesSavedHint"></div>
               <button class="admin-btn admin-btn-primary" id="saveDatesBtn">${UI.check} Guardar fechas</button>
             </div>
+          </div>
+        </div>
+
+        <div class="config-group">
+          <span class="config-group-label">Del día a día</span>
+          <div class="config-grid">
+            <div class="admin-panel config-card config-card--wide">
+              <div class="admin-panel-head">
+                <h4>${UI.palette} Apariencia</h4>
+                <span class="admin-panel-badge">Se aplica al instante</span>
+              </div>
+              <p class="config-card-hint">El tema se guarda en este navegador y se aplica en toda la web.</p>
+
+              <div class="config-appearance">
+              <div>
+              <span class="config-field-label">Paleta de color</span>
+              <div class="config-swatches" id="themeSeg" role="radiogroup" aria-label="Paleta de color">
+                ${paletas.map(t => `
+                  <button type="button" role="radio" aria-checked="${paletaActiva === t.id}" class="config-swatch${paletaActiva === t.id ? ' active' : ''}" data-theme-set="paleta" data-theme-id="${t.id}" data-theme-label="${t.label}">
+                    <span class="config-swatch-dot" style="--swatch:${t.preview}"></span>
+                    <span class="config-swatch-text">
+                      <b>${t.label}</b>
+                      <small>${t.hint}</small>
+                    </span>
+                  </button>`).join('')}
+              </div>
+              </div>
+
+              <div>
+              <span class="config-field-label">Modo</span>
+              <div class="config-modes" id="modeSeg" role="radiogroup" aria-label="Modo de color">
+                ${modos.map(m => `
+                  <button type="button" role="radio" aria-checked="${modoActivo === m.id}" class="config-mode${modoActivo === m.id ? ' active' : ''}" data-theme-set="modo" data-theme-id="${m.id}" data-theme-label="${m.label}">
+                    <span class="config-mode-emoji" aria-hidden="true">${modeEmoji[m.id] || '🎨'}</span>
+                    <span>${m.label}</span>
+                  </button>`).join('')}
+              </div>
+              <p class="config-card-hint config-card-hint--foot">Con <b>Auto</b> se respeta el modo del sistema.</p>
+              </div>
+              </div>
+            </div>
+
+            <div class="admin-panel config-card">
+              <div class="admin-panel-head">
+                <h4>${UI.bell} Notificaciones</h4>
+                <span class="admin-panel-badge">8:00 · hora de España</span>
+              </div>
+              <p class="config-card-hint">El recordatorio diario se envía a los dispositivos suscritos.</p>
+
+              <ul class="config-status">
+                <li class="${pushOk ? 'ok' : 'muted'}">
+                  <span class="config-status-icon">${pushOk ? UI.check : UI.close}</span>
+                  <span><b>${pushOk ? 'Este navegador admite push' : 'Push no disponible'}</b><small>Compatibilidad del dispositivo</small></span>
+                </li>
+                <li class="${notifEnabled ? 'ok' : 'muted'}">
+                  <span class="config-status-icon">${notifEnabled ? UI.check : UI.close}</span>
+                  <span><b>${notifEnabled ? 'Suscripción activa' : 'Suscripción apagada'}</b><small>Estado de tus notificaciones</small></span>
+                </li>
+              </ul>
+
+              <div class="config-actions">
+                ${notifEnabled
+                  ? `<button class="admin-btn admin-btn-secondary" id="disableNotifBtn">Apagar notificaciones</button>`
+                  : `<button class="admin-btn admin-btn-primary" id="enableNotifBtn">${UI.bell} Activar notificaciones</button>`}
+                <button class="admin-btn admin-btn-ghost" id="testNotifBtn">${UI.send} Enviar prueba</button>
+              </div>
+              <div class="notif-result" id="configNotifResult"></div>
+            </div>
+
+            <div class="admin-panel config-card">
+              <div class="admin-panel-head"><h4>${UI.users} Tu cuenta</h4></div>
+              <div class="admin-profile-row">
+                <div class="admin-profile-avatar">${userPhoto ? `<img src="${esc(userPhoto)}" alt="">` : userInitial}</div>
+                <div>
+                  <strong>${esc(account?.name || userName)}</strong>
+                  <div class="muted-text">${esc(account?.email || '')}</div>
+                </div>
+                <span class="admin-sidebar-admin-badge">${esc(String(userRole).toUpperCase())}</span>
+              </div>
+              <dl class="config-facts">
+                <div><dt>Zona horaria</dt><dd>España (península)</dd></div>
+                <div><dt>Hora local ahora</dt><dd>${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</dd></div>
+              </dl>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-group">
+          <span class="config-group-label">Sistema</span>
+          <div class="config-grid">
+            <div class="admin-panel config-card">
+              <div class="admin-panel-head"><h4>${UI.cloud} Base de datos</h4></div>
+              <div id="configDbStatus">${skeletonText()}</div>
+              <div class="config-actions">
+                <button class="admin-btn admin-btn-ghost" id="recheckDbBtn">${UI.refresh} Comprobar de nuevo</button>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -4138,6 +4140,7 @@ export function AdminPage(router) {
         title: row.querySelector('.dates-event-title').value.trim(),
         date: row.querySelector('.dates-event-date').value,
         recurring: row.querySelector('.dates-event-recur-cb')?.checked === true,
+        actions: readActions(row),
         ...readLookFields(row)
       }));
       const seasonal = [...page.querySelectorAll('#datesSeasonalList .dates-event-row')].map(row => ({
@@ -4193,6 +4196,14 @@ export function AdminPage(router) {
         decor: val('.dates-look-decor') || 'confeti',
         emojis: val('.dates-look-emojis').split(/\s+/).filter(Boolean).slice(0, MAX_EMOJIS).join(' ')
       };
+    }
+
+    /** Acciones escritas en una fila (texto del botón + destino), ya limpias. */
+    function readActions(row) {
+      return cleanEventActions([...row.querySelectorAll('[data-actions-list] .dates-action-row')].map(a => ({
+        label: a.querySelector('.dates-action-label')?.value || '',
+        route: a.querySelector('.dates-action-route')?.value || ''
+      })));
     }
 
     // Los mismos campos para los cuatro días, los eventos y los temáticos: la
@@ -4255,7 +4266,9 @@ export function AdminPage(router) {
       gallery: (row.querySelector('.dates-look-gallery')?.value || '')
         .split('\n').map(url => url.trim()).filter(Boolean).slice(0, MAX_GALLERY),
       decor: row.querySelector('.dates-look-decor')?.value || 'confeti',
-      emojis: row.querySelector('.dates-look-emojis')?.value.trim() || ''
+      emojis: row.querySelector('.dates-look-emojis')?.value.trim() || '',
+      // La simulación muestra los mismos botones que verá ese día.
+      actions: readActions(row)
     });
     /** Abre la hoja con el borrador de una fila, marcada como simulación. */
     const openDraftSheet = (row, seasonal = false) => {
@@ -4275,7 +4288,14 @@ export function AdminPage(router) {
       if (!date) return ['muted', 'Ponle una fecha para saber cuándo sale.'];
       const today = todayISO();
       if (date === today) return ['ok', '✓ Sale hoy en el Inicio.'];
-      if (date > today) return ['info', `Sale el ${readableDate(date)}.`];
+      if (date > today) {
+        // Un evento del panel se anuncia unos días antes: quien lo escriba
+        // tiene que saber que ya va a salir, no esperar a su víspera.
+        const faltan = daysUntilDate(date, today);
+        return faltan !== null && faltan <= 7
+          ? ['info', `Sale el ${readableDate(date)}: se anuncia desde una semana antes.`]
+          : ['info', `Sale el ${readableDate(date)}.`];
+      }
       return repeats
         ? ['warn', `La fecha ya pasó (${readableDate(date)}), pero con ♻️ repetirá el ${readableMonthDay(date.slice(5))}.`]
         : ['warn', `⚠️ La fecha ya pasó (${readableDate(date)}): no volverá a salir.`];
@@ -4316,9 +4336,17 @@ export function AdminPage(router) {
     // Cada evento lleva lo mínimo (título + fecha) y, al desplegarlo, todo lo
     // que pinta la bienvenida: texto, emoji, color y foto. Con foto vacía se
     // guarda sin foto y la hoja sale sin ella.
+    /** Una acción de la hoja: el texto del botón y a dónde lleva. */
+    const dateActionRow = (a = {}) => `
+      <div class="dates-action-row">
+        <input type="text" class="dates-action-label" placeholder="Qué pone el botón (p. ej. Ver la sorpresa)" value="${esc(a.label || '')}" maxlength="30" aria-label="Texto de la acción">
+        <input type="text" class="dates-action-route" placeholder="/calendario o https://…" value="${esc(a.route || '')}" spellcheck="false" aria-label="Destino de la acción">
+        <button type="button" class="dates-action-del" aria-label="Quitar acción">✕</button>
+      </div>`;
+
     const dateEventRow = (e) => {
       const uid = e.id || 'ev' + Math.random().toString(36).slice(2, 8);
-      const hasDetail = !!(e.description || e.icon || e.image || e.type);
+      const hasDetail = !!(e.description || e.icon || e.image || e.type || (e.actions || []).length);
       return `
         <div class="dates-event-row${hasDetail ? ' is-open' : ''}" data-ev-id="${uid}">
           <div class="dates-event-main">
@@ -4326,7 +4354,7 @@ export function AdminPage(router) {
             <input type="date" class="dates-event-date" value="${esc(e.date || '')}" aria-label="Fecha del evento">
             <label class="dates-event-recur" title="Se repite cada año"><input type="checkbox" class="dates-event-recur-cb" ${e.recurring === true ? 'checked' : ''}><span>♻️</span></label>
             <button type="button" class="dates-event-today" title="Poner la fecha de hoy">Hoy</button>
-            <button type="button" class="dates-event-toggle" aria-label="Editar el aspecto de la bienvenida" title="Aspecto en la bienvenida">🎨</button>
+            <button type="button" class="dates-event-toggle" aria-label="Editar el aspecto y las acciones de la bienvenida" title="Aspecto y acciones en la bienvenida">🎨</button>
             <button type="button" class="dates-event-preview" title="Ver la bienvenida" aria-label="Ver la bienvenida">🎬</button>
             <button type="button" class="dates-event-del" aria-label="Quitar evento">✕</button>
           </div>
@@ -4349,6 +4377,12 @@ export function AdminPage(router) {
               <input type="url" class="dates-look-image" value="${esc(e.image || '')}" placeholder="https://…" aria-label="Foto del evento">
             </label>
             ${mediaFieldsHTML(e)}
+            <div class="dates-actions">
+              <p class="dates-actions-title">Acciones de la hoja (opcional)</p>
+              <small class="dates-look-note">Los botones que verá ese día. Si no pones ninguna, sale el de siempre («Abrir el calendario»).</small>
+              <div class="dates-actions-list" data-actions-list>${(e.actions || []).map(dateActionRow).join('')}</div>
+              <button type="button" class="admin-btn admin-btn-ghost dates-action-add">${UI.plus} Añadir acción</button>
+            </div>
             <p class="dates-look-preview" data-preview-for="${uid}"></p>
           </div>
         </div>`;
@@ -4375,15 +4409,51 @@ export function AdminPage(router) {
         </span>`;
     };
 
+    /** Pinta las acciones guardadas de una fila y deja listos sus ✕. */
+    const bindActionDeletes = (box) => {
+      box.querySelectorAll('.dates-action-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.closest('.dates-action-row')?.remove();
+          markDirty();
+        });
+      });
+    };
+    const paintActions = (row, actions = []) => {
+      const box = row.querySelector('[data-actions-list]');
+      if (!box) return;
+      box.innerHTML = actions.map(dateActionRow).join('');
+      bindActionDeletes(box);
+    };
+
     const renderDateEvents = () => {
       const list = page.querySelector('#datesEventsList');
       if (!list) return;
       list.innerHTML = editingDates.map(dateEventRow).join('');
+      // Las acciones se añaden y se quitan dentro de su propia fila: repintar
+      // la lista entera se llevaría por delante lo escrito en las demás.
+      list.querySelectorAll('.dates-event-row').forEach((row, i) => paintActions(row, editingDates[i]?.actions || []));
+      list.querySelectorAll('.dates-action-add').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const box = btn.closest('.dates-actions')?.querySelector('[data-actions-list]');
+          if (!box) return;
+          if (box.children.length >= MAX_EVENT_ACTIONS) {
+            showToast(`Máximo ${MAX_EVENT_ACTIONS} acciones por evento`, 'info');
+            return;
+          }
+          box.insertAdjacentHTML('beforeend', dateActionRow({}));
+          bindActionDeletes(box);
+          markDirty();
+          box.lastElementChild?.querySelector('.dates-action-label')?.focus();
+        });
+      });
       list.querySelectorAll('.dates-event-del').forEach(btn => {
         btn.addEventListener('click', () => {
           const row = btn.closest('.dates-event-row');
+          // Se relee lo escrito antes de quitar un evento: quitarlo no puede
+          // llevarse el texto ni las acciones de los otros.
+          editingDates = collectDates().events;
           const idx = editingDates.findIndex(e => (e.id || '') === row.dataset.evId);
-          if (idx >= 0) { editingDates.splice(idx, 1); renderDateEvents(); }
+          if (idx >= 0) { editingDates.splice(idx, 1); renderDateEvents(); refreshWhens(); }
         });
       });
       list.querySelectorAll('.dates-event-toggle').forEach(btn => {
@@ -4649,7 +4719,7 @@ export function AdminPage(router) {
   // INIT
   // ==========================================
   renderDbStatus();
-  loadSection('dashboard');
+  loadSection(S.section);
 
   return page;
 }

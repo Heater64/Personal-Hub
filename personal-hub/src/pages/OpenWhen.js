@@ -201,6 +201,10 @@ export function OpenWhenPage(router) {
   const page = document.createElement('div');
   page.className = 'openwhen-page';
 
+  const query = router.currentRoute?.query || {};
+  const requestedLetterId = typeof query.letter === 'string' && /^[\w-]{1,120}$/.test(query.letter) ? query.letter : '';
+  let requestedLetterOpened = false;
+  let pageActive = true;
   let view = 'landing'; // 'landing' | category id
   let seen = loadSeen();
   let letters = LETTERS; // se reemplaza con la lista fusionada tras cargar el Admin
@@ -610,17 +614,32 @@ export function OpenWhenPage(router) {
 
   render();
 
-  // Carga las cartas personalizadas del Admin (Supabase) y re-renderiza
-  loadAllOpenWhenLetters().then(all => {
-    const same = all.length === letters.length && all.every((l, i) => JSON.stringify(l) === JSON.stringify(letters[i]));
-    if (same) return;
-    letters = all;
+  function openRequestedLetter() {
+    if (!pageActive || !requestedLetterId || requestedLetterOpened) return;
+    const letter = letterById(requestedLetterId);
+    if (!letter) return;
+    requestedLetterOpened = true;
+    view = letter.category;
     render();
+    openLetter(requestedLetterId);
+  }
+
+  // Carga las cartas personalizadas del Admin (Supabase) y re-renderiza.
+  // El deep link espera esta lista antes de intentar abrir una carta custom.
+  loadAllOpenWhenLetters().then(all => {
+    if (!pageActive) return;
+    const same = all.length === letters.length && all.every((l, i) => JSON.stringify(l) === JSON.stringify(letters[i]));
+    if (!same) {
+      letters = all;
+      render();
+    }
+    openRequestedLetter();
   });
 
   // Antes no había cleanup: el audio seguía sonando al salir de la página
   // y el visor de fotos se quedaba abierto en el DOM.
   page.cleanup = () => {
+    pageActive = false;
     window.removeEventListener('popstate', onPopState);
     stopAllMedia();
     closeLightbox();

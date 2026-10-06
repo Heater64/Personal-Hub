@@ -252,10 +252,6 @@ SONGS_RECUERDAN.splice(0, SONGS_RECUERDAN.length, ...dedupeSongs(SONGS_RECUERDAN
 ALL_SONGS.splice(0, ALL_SONGS.length, ...dedupeSongs(ALL_SONGS));
 
 /** Catálogo completo de canciones (semilla + las del Admin) — para otras secciones. */
-export function getAllSongs() {
-  return ALL_SONGS;
-}
-
 /** Localiza una canción por clave "título | artista" (exportado para App.js). */
 export function findSongByKey(key) {
   if (!key) return null;

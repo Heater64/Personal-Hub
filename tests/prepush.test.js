@@ -6,6 +6,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { expandCalendarCatalog } from '../personal-hub/src/data/calendar-expansion.js';
+import { calendarPayloadForCatalog } from '../api/push.js';
+import { ROUTES } from '../personal-hub/src/routes.js';
+import { cleanEventActions, isExternalAction, isActionRoute, MAX_EVENT_ACTIONS } from '../personal-hub/src/utils/event-actions.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -273,7 +276,10 @@ test('inicio arranca por la tarjeta de días, sin cabecera ni frases viejas', as
   assert.ok(!home.includes('home-hero__phrase'));
   assert.ok(!home.includes('home-hero__particle'));
   assert.ok(home.includes('homeCounter'));
-  assert.ok(home.includes('Datos curiosos'));
+  // Lo secundario (los «datos curiosos», que no son del día) salió de aquí:
+  // la pantalla diaria solo lleva lo de hoy.
+  assert.ok(!home.includes('FUN_FACTS'), 'ni se declaran los datos curiosos');
+  assert.ok(!home.includes('Datos curiosos'), 'ni se pintan');
   // Pero sigue habiendo un único h1 en la pantalla, para lectores de pantalla.
   assert.equal([...home.matchAll(/<h1/g)].length, 1, 'Inicio debe tener exactamente un h1');
   assert.ok(home.includes('class="sr-only"'), 'ese h1 es solo para lectores de pantalla');
@@ -367,9 +373,15 @@ test('las páginas de carga diferida se enrutan con el helper lazy', async () =>
   const main = await readFile(hub('src', 'main.js'), 'utf8');
 
   assert.ok(main.includes('const lazy = (loader)'), 'debe existir el helper lazy');
+  // El registro declara qué pantallas pesan y main.js las monta con el helper,
+  // cada una en su chunk: si una se importara de forma estática, volvería al
+  // bundle de arranque y este contrato se rompería.
   for (const ruta of ['/openwhen', '/admin', '/rincon', '/canciones', '/juegos', '/calendario', '/series']) {
-    const idx = main.indexOf(`router.addRoute('${ruta}'`);
-    assert.notEqual(idx, -1, `falta la ruta ${ruta}`);
+    const entrada = ROUTES.find(r => r.path === ruta);
+    assert.ok(entrada, `falta la ruta ${ruta} en el registro`);
+    assert.equal(entrada.lazy, true, `${ruta} debería declararse diferida`);
+    const idx = main.indexOf(`'${ruta}':`);
+    assert.notEqual(idx, -1, `falta la página de ${ruta} en main.js`);
     const linea = main.slice(idx, main.indexOf('\n', idx));
     assert.ok(linea.includes('lazy('), `${ruta} debería cargarse con lazy()`);
   }
@@ -377,6 +389,15 @@ test('las páginas de carga diferida se enrutan con el helper lazy', async () =>
   for (const page of ['Login', 'Home', 'Profile', 'Razones', 'MalDia']) {
     assert.ok(main.includes(`from './pages/${page}.js'`), `${page} debería seguir siendo estático`);
   }
+
+  // Ni una ruta sin página ni una página sin ruta: el registro y el mapa de
+  // main.js son las dos mitades de la misma lista (nada de rutas huérfanas).
+  const rutas = ROUTES.map(r => r.path);
+  assert.equal(new Set(rutas).size, rutas.length, 'el registro no puede repetir rutas');
+  const mapa = main.slice(main.indexOf('const PAGES = {'), main.indexOf('};', main.indexOf('const PAGES = {')));
+  const paginas = [...mapa.matchAll(/^\s+'([^']+)':/gm)].map(m => m[1]);
+  assert.deepEqual(paginas.slice().sort(), rutas.slice().sort(),
+    'el mapa de páginas y el registro deben cubrir exactamente lo mismo');
 });
 
 test('cada página diferida importa su propio CSS y main.css solo trae lo compartido', async () => {
@@ -825,7 +846,8 @@ test('el sistema de respuestas es alcanzable y el día avisa de lo que falta', a
   assert.match(cal, /function loadMyResponses\(\) \{\s*return db\.getMyGiftResponses\(\)/,
     'devuelve la promesa y no repinta por su cuenta');
   assert.doesNotMatch(cal.slice(cal.indexOf('function loadMyResponses()'), cal.indexOf('HELPERS DE FECHA')), /paintAll/, 'no puede llamar a paintAll desde el modulo');
-  assert.match(cal, /loadMyResponses\(\)\.then\(paintAll\);/, 'quien la llama se encarga de repintar');
+  assert.match(cal, /loadMyResponses\(\)\.then\(\(\) => \{ if \(pageActive\) paintAll\(\); \}\);/,
+    'quien la llama se encarga de repintar solo si la página sigue montada');
 
   // Y guardar una respuesta tiene que actualizar la cache: si solo se guarda
   // en Supabase, el sobre y el contador seguirian diciendo que falta.
@@ -948,7 +970,7 @@ test('el calendario conserva su cabecera y el regalo destacado sobre la cuadríc
   assert.match(cal, /class="cal-spot__type"/);
   assert.match(cal, /function paintAll\(\) \{\s*paintHeadBadge\(\);\s*paintSpot\(\);/,
     'el regalo destacado se actualiza al repintar el calendario');
-  assert.match(cal, /page\.cleanup = \(\) => \{\s*stopSpotRotation\(\);/,
+  assert.match(cal, /page\.cleanup = \(\) => \{[\s\S]*?pageActive = false;[\s\S]*?stopSpotRotation\(\);/,
     'se detiene su rotación al salir de la página');
   assert.match(css, /\.cal-spot__body \{/);
 });
@@ -1136,7 +1158,7 @@ test('los eventos especiales abren una bienvenida temática única por usuario',
   // La hoja vive en su propio componente: Inicio solo la dispara.
   assert.match(home, /import \{ maybeShowSpecialEvent, previewSpecialEventSheet \} from '\.\.\/components\/SpecialEventSheet\.js'/);
   assert.match(home, /maybeShowSpecialEvent\(page, router\)/);
-  assert.match(sheet, /specialEventsToday\(\)\.filter\(item => !seen\[item\.key\]\)/);
+  assert.match(sheet, /specialEventsToAnnounce\(\)\.filter\(item => !seen\[item\.key\]\)/);
   assert.match(sheet, /getUserPref\('specialEventsSeen', '\{\}'\)/);
   assert.match(sheet, /setUserPref\('specialEventsSeen', JSON\.stringify\(seen\)\)/);
   assert.match(sheet, /class: `special-event special-event--\$\{event\.type} special-event--media-/);
@@ -1173,6 +1195,11 @@ async function celebrationSource() {
   return (await readFile(hub('src', 'utils', 'celebration.js'), 'utf8')).replace(/^export /gm, '');
 }
 
+// Limpiar acciones tampoco importa nada: se pega igual, sin sus `export`.
+async function eventActionsSource() {
+  return (await readFile(hub('src', 'utils', 'event-actions.js'), 'utf8')).replace(/^export /gm, '');
+}
+
 async function loadSpecialDates() {
   let src = await readFile(hub('src', 'utils', 'specialDates.js'), 'utf8');
   src = src
@@ -1181,7 +1208,9 @@ async function loadSpecialDates() {
     .replace("import { todayISO } from './format.js';",
       "const todayISO = () => globalThis.__TODAY__;")
     .replace("import { normalizeDecor, normalizeVideoMode, mediaList } from './celebration.js';",
-      await celebrationSource());
+      await celebrationSource())
+    .replace("import { cleanEventActions } from './event-actions.js';",
+      await eventActionsSource());
   const mod = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
   // specialDates() lee de una caché: hay que recargarla con cada config.
   return { ...mod, use: async cfg => { globalThis.__CFG__ = cfg; await mod.loadSpecialDates(); } };
@@ -1243,6 +1272,120 @@ test('la bienvenida de un día se puede editar entero desde la config', async ()
   assert.equal(specialEventsForDate('2026-08-08')[0].key, key, 'la clave debe depender del id, no del texto');
 });
 
+test('las acciones de un evento solo aceptan texto y un destino válido', () => {
+  // saveHubDates y la hoja comparten este saneado: aquí se ve qué pasa de verdad.
+  assert.deepEqual(cleanEventActions(null), []);
+  assert.deepEqual(cleanEventActions([{ label: '   ', route: '/x' }, { label: 'Sin destino', route: '' }]), []);
+  assert.deepEqual(cleanEventActions([{ label: 'Ver', route: '/calendario' }]), [{ label: 'Ver', route: '/calendario' }]);
+  // El texto se recorta y se compara sin distinguir mayúsculas: no se repite.
+  assert.deepEqual(
+    cleanEventActions([{ label: ' Ver ', route: ' https://x.com' }, { label: 'ver', route: '/otro' }]),
+    [{ label: 'Ver', route: 'https://x.com' }]
+  );
+  // '//evil.com' es otro origen disfrazado de ruta y 'javascript:' no es un destino.
+  assert.deepEqual(cleanEventActions([{ label: 'Mal', route: '//evil.com' }, { label: 'JS', route: 'javascript:alert(1)' }]), []);
+  assert.equal(isExternalAction('https://x.com'), true);
+  assert.equal(isExternalAction('/calendario'), false);
+  assert.equal(isActionRoute('/calendario'), true);
+  assert.equal(isActionRoute('mailto:a@b.c'), false);
+  // Nunca más de tres botones por evento.
+  const many = Array.from({ length: 6 }, (_, i) => ({ label: 'B' + i, route: '/p' + i }));
+  assert.equal(MAX_EVENT_ACTIONS, 3);
+  assert.equal(cleanEventActions(many).length, MAX_EVENT_ACTIONS);
+});
+
+test('los días hasta una fecha se cuentan sin desfase de huso', async () => {
+  const { daysUntilDate } = await loadSpecialDates();
+  assert.equal(daysUntilDate('2026-10-06', '2026-10-06'), 0, 'hoy son 0 días');
+  assert.equal(daysUntilDate('2026-10-07', '2026-10-06'), 1);
+  assert.equal(daysUntilDate('2026-09-30', '2026-10-06'), -6, 'una fecha pasada cuenta en negativo');
+  assert.equal(daysUntilDate('31-10', '2026-10-06'), null, 'una fecha inválida no es «hoy»');
+  assert.equal(daysUntilDate('2026-02-30', '2026-02-01'), null, 'el 30 de febrero no existe');
+});
+
+test('un evento del panel se anuncia unos días antes y vuelve a salir el día real', async () => {
+  const { use, specialEventsToAnnounce } = await loadSpecialDates();
+  globalThis.__TODAY__ = '2026-10-06';
+
+  // Sin eventos no hay nada que anunciar: la pantalla no aparece.
+  await use({ events: [] });
+  assert.deepEqual(specialEventsToAnnounce(), []);
+
+  // Dentro de la ventana de aviso: sale, dice cuántos días faltan y lleva una
+  // clave propia para no tapar el día real.
+  await use({ events: [{ id: 'viaje', title: 'Viaje a la playa', date: '2026-10-13', description: 'Nos vamos' }] });
+  const [aviso] = specialEventsToAnnounce();
+  assert.equal(aviso.title, 'Viaje a la playa');
+  assert.equal(aviso.date, '2026-10-13');
+  assert.equal(aviso.days, 7, 'siete días antes ya avisa');
+  assert.ok(aviso.key.startsWith('event:viaje:soon:2026-10-13'), 'el aviso lleva su propia clave');
+  assert.deepEqual(aviso.actions, [], 'un evento sin acciones no inventa botones');
+
+  // El día real vuelve a salir, con otra clave: haberlo visto antes no lo tapa.
+  globalThis.__TODAY__ = '2026-10-13';
+  const delDia = specialEventsToAnnounce();
+  assert.equal(delDia.length, 1);
+  assert.equal(delDia[0].key, 'event:viaje:2026-10-13');
+  assert.notEqual(delDia[0].key, aviso.key);
+  assert.equal(delDia[0].days, undefined, 'el día real no es un aviso: no lleva «days»');
+
+  // Fuera de la ventana (más de una semana) todavía no se anuncia.
+  globalThis.__TODAY__ = '2026-10-06';
+  await use({ events: [{ id: 'viaje', title: 'Viaje', date: '2026-11-20' }] });
+  assert.deepEqual(specialEventsToAnnounce(), []);
+
+  // Un recurrente que ya pasó este año se proyecta al siguiente.
+  await use({ events: [{ id: 'cena', title: 'Cena de año', date: '2025-10-12', recurring: true }] });
+  const [recurrente] = specialEventsToAnnounce();
+  assert.equal(recurrente.date, '2026-10-12');
+  assert.equal(recurrente.days, 6);
+  assert.ok(recurrente.key.startsWith('event:cena:soon:2026-10-12'));
+
+  // Las acciones del admin viajan con el evento, hasta la hoja.
+  await use({ events: [{ id: 'sorpresa', title: 'Sorpresa', date: '2026-10-08', actions: [{ label: 'Abrir sobre', route: '/calendario' }, { label: 'Vacío', route: '' }] }] });
+  assert.deepEqual(specialEventsToAnnounce()[0].actions, [{ label: 'Abrir sobre', route: '/calendario' }]);
+});
+
+test('los días temáticos solo salen su día, no se anuncian antes', async () => {
+  const { use, specialEventsToAnnounce } = await loadSpecialDates();
+  await use({ events: [] });
+  globalThis.__TODAY__ = '2026-10-24';
+  assert.deepEqual(specialEventsToAnnounce(), [], 'Halloween no se anuncia una semana antes');
+  globalThis.__TODAY__ = '2026-10-31';
+  assert.equal(specialEventsToAnnounce()[0].title, 'Halloween');
+});
+
+test('el evento importante sale con lo que definió el admin y el panel lo pone a la vista', async () => {
+  const dates = await readFile(hub('src', 'utils', 'specialDates.js'), 'utf8');
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const dbSvc = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
+
+  // El aviso previo y los días que faltan se calculan en el registro de fechas.
+  assert.match(dates, /export function daysUntilDate\(iso, today = todayISO\(\)\)/);
+  assert.match(dates, /export function specialEventsToAnnounce\(\)/);
+  assert.match(dates, /soon:\$\{occurrence\}/);
+  // La hoja pinta las acciones del evento; sin ellas, el botón de siempre.
+  assert.match(sheet, /const acciones = Array\.isArray\(event\.actions\) \? event\.actions : \[\]/);
+  // El titular dice cuándo es: hoy, dentro de unos días o (solo en la vista
+  // previa) una fecha de este año que ya pasó.
+  assert.match(sheet, /kicker: 'Próximamente'/);
+  assert.match(sheet, /kicker: 'Hoy'/);
+  assert.match(sheet, /kicker: 'Ya pasó'/);
+  assert.match(sheet, /acciones\.length[\s\S]*?Abrir el calendario/);
+  assert.match(sheet, /isExternalAction\(route\)/);
+  // El panel escribe y relee esas acciones, y el guardado las sanea.
+  assert.match(admin, /actions: readActions\(row\)/);
+  assert.match(admin, /data-actions-list/);
+  assert.match(admin, /cleanEventActions/);
+  assert.match(dbSvc, /actions: cleanEventActions\(event\.actions\)/);
+  // El admin entra con la gestión de eventos a la vista, no por debajo del pliegue.
+  assert.ok(
+    admin.indexOf('config-card config-dates') < admin.indexOf('config-group-label">Del día a día'),
+    'las fechas y los eventos van antes que el resto de Configuración'
+  );
+});
+
 test('guardar sanea los eventos: nada de campos raros ni filas a medias', async () => {
   // saveHubDates es la puerta de entrada: si aquí se cuela un mes-día roto o
   // un evento sin título, la bienvenida sale vacía o no sale.
@@ -1255,6 +1398,8 @@ test('guardar sanea los eventos: nada de campos raros ni filas a medias', async 
     .replace("import { userPrefKey } from '../utils/userStorage.js';", 'const userPrefKey = k => k;')
     .replace("import { normalizeDecor, normalizeVideoMode, mediaList, MAX_EMOJIS } from '../utils/celebration.js';",
       await celebrationSource())
+    .replace("import { cleanEventActions } from '../utils/event-actions.js';",
+      await eventActionsSource())
     .replace('await saveContent(\'hub_dates\', clean);', 'globalThis.__SAVED__ = clean;');
   const mod = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
   globalThis.__SAVED__ = null;
@@ -1375,6 +1520,35 @@ test('un día temático se puede ver antes de que llegue (?evento=)', async () =
   assert.match(home, /previewSpecialEventSheet\(requested, router\)/);
   assert.match(home, /params\.delete\('evento'\)/);
   assert.match(home, /if \(!previewRequestedEvent\(router\)\) maybeShowSpecialEvent\(page, router\)/);
+});
+
+test('la pantalla diaria lee cada dato de su dueño, sin re-derivarlo', async () => {
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+  const gifts = await readFile(hub('src', 'services', 'gifts.service.js'), 'utf8');
+  const store = await readFile(hub('src', 'stores', 'mood.store.js'), 'utf8');
+
+  // Los regalos de hoy los reparte el servicio dueño del catálogo: el Inicio
+  // consume su lectura y no vuelve a montar el reparto por su cuenta.
+  assert.match(home, /todayCalendarGifts\(\)/);
+  assert.doesNotMatch(home, /calendarMapping/, 'Inicio ya no deriva el reparto del día');
+  assert.doesNotMatch(home, /giftProgress/, 'ni lee el progreso del calendario por su cuenta');
+  assert.doesNotMatch(home, /function todaySurprises/, 'esa derivación se fue al servicio');
+  assert.match(gifts, /export function todayCalendarGifts\(\)/);
+  assert.match(gifts, /userPrefKey\('giftProgress'\)/, 'el progreso lo lee el dueño del catálogo');
+  assert.match(gifts, /pending: ids\.filter\(id => !progress\[id\]\?\.opened\)\.length/);
+
+  // El ánimo se repinta al suscribirse al store, no con temporizadores ni foco.
+  assert.match(home, /moodStore\.subscribe\(/);
+  assert.match(home, /unsubscribeMood\(\);/);
+  assert.doesNotMatch(home, /repaintMood/, 'fuera el repintado por foco/temporizador');
+  assert.match(store, /subscribe\(fn\) \{/);
+  assert.match(store, /_emitMoodChange\(\);/, 'el store avisa a quien escucha');
+
+  // Y lo primero que se mira es cómo está hoy; la próxima fecha va detrás.
+  const idxMood = home.indexOf('data-route="/sentimientos"');
+  const idxNext = home.indexOf('data-route="/calendario"');
+  assert.ok(idxMood !== -1 && idxNext !== -1, 'las dos tarjetas del día existen');
+  assert.ok(idxMood < idxNext, 'el estado de ánimo del día va primero');
 });
 
 test('el saludo de inicio y los días juntos usan el mismo cuerpo grande', async () => {
@@ -1913,5 +2087,97 @@ test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async ()
 
   // Y no se promete en el horario de silencio algo que luego no ocurre.
   assert.match(profile, /El de tu estado de ánimo sale siempre/, 'el texto del silencio no puede mentir');
-  assert.match(sw, /clients\.openWindow\('\/#'/, 'el aviso abre la ruta hash');
+  assert.ok(sw.includes("const appUrl = notificationAppUrl(route);"), 'el aviso abre una URL hash normalizada');
+  assert.ok(sw.includes('client.navigate(appUrl)'), 'la pestaña de la app navega al destino aunque el listener no haya arrancado');
+});
+
+test('las carreras simultáneas dejan terminar al rival y sincronizan resultados de forma segura', async () => {
+  const onlinePage = await readFile(hub('src', 'pages', 'OnlineGame.js'), 'utf8');
+  const gamesService = await readFile(hub('src', 'services', 'games.service.js'), 'utf8');
+  const inviteCenter = await readFile(hub('src', 'components', 'GameInviteCenter.js'), 'utf8');
+  const bridge = await readFile(hub('public', 'games', '_online.js'), 'utf8');
+  const raceSql = await readFile(projectPath('sql', '014_carrera_online.sql'), 'utf8');
+
+  // El estado finished del servidor no desmonta el juego del segundo jugador.
+  assert.match(onlinePage, /if \(raceAwaitingMyResult\(\)\) \{ renderRacePlay\(\); return; \}/);
+  assert.match(onlinePage, /currentFrame && currentFrame === scoreFrame/,
+    'la actualización del estado conserva el iframe y su partida en curso');
+  assert.match(onlinePage, /El resultado aún puede cambiar|el resultado aún puede cambiar/i);
+  assert.match(onlinePage, /pendingRaceResult = \{ score: data\.score, time: data\.time \}/,
+    'el resultado queda disponible para reintentar si falla la red');
+  assert.match(onlinePage, /retry-race/);
+  assert.match(onlinePage, /for \(let attempt = 0; attempt < 3; attempt\+\+\)/,
+    'los conflictos optimistas vuelven a leer y reintentar con la revisión vigente');
+
+  // Solo se aceptan mensajes same-origin del iframe esperado y datos acotados.
+  assert.match(onlinePage, /event\.origin !== window\.location\.origin/);
+  assert.match(onlinePage, /Number\.isSafeInteger\(data\.time\)/);
+  assert.match(bridge, /postMessage\(\{ type: 'ph-race'[\s\S]*?PARENT_ORIGIN\)/);
+  assert.match(bridge, /postMessage\(\{ type: 'ph-progress'[\s\S]*?PARENT_ORIGIN\)/);
+  assert.match(gamesService, /function normalizeRaceProgress\(progress\)/);
+  assert.match(gamesService, /payload\.player === 0 \|\| payload\.player === 1/);
+
+  // El RPC admite el segundo tiempo tras el primer cierre y compara ambos.
+  assert.match(raceSql, /room\.status = 'finished' AND COALESCE\(room\.result->>'race', 'false'\) = 'true'/);
+  assert.match(raceSql, /p_time < rival_time/);
+});
+
+test('las notificaciones llevan al regalo o contenido anunciado y nunca caen en Inicio por el formato del enlace', async () => {
+  const sw = await readFile(hub('public', 'sw.js'), 'utf8');
+  const novelties = await readFile(hub('src', 'services', 'novelties.service.js'), 'utf8');
+  const notifications = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
+  const calendar = await readFile(hub('src', 'pages', 'Calendario.js'), 'utf8');
+  const openWhen = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
+  const pushApi = await readFile(projectPath('api', 'push.js'), 'utf8');
+
+  assert.match(sw, /notificationRoute\(payload\.url \|\| payload\.data\?\.url \|\| '\/'\)/,
+    'normaliza el destino de Web Push antes de mostrarlo');
+  assert.match(sw, /const appUrl = notificationAppUrl\(route\);/);
+  assert.match(sw, /const client = appClients\.find\(item => item\.focused\) \|\| appClients\[0\];/,
+    'no deja que una pestaña de un juego aparte capture el clic');
+  assert.ok(sw.includes('return clientUrl.origin === self.location.origin'));
+  assert.ok(sw.includes("clientUrl.pathname === '/'"));
+  assert.ok(sw.includes("clientUrl.pathname === '/index.html'"));
+
+  assert.match(novelties, /getNoveltyNotificationRoute/);
+  const routeUtils = await readFile(hub('src', 'utils', 'notification-route.js'), 'utf8');
+  assert.ok(routeUtils.includes("item?.section === 'calendario'"));
+  assert.ok(routeUtils.includes('return calendarGift?.route'));
+  assert.match(novelties, /gift=\$\{encodeURIComponent\(gift\.id\)\}/,
+    'el enlace identifica el regalo pendiente exacto');
+  assert.match(notifications, /url = getNoveltyNotificationRoute\(items\)/,
+    'las novedades múltiples no mandan a Inicio');
+  assert.match(notifications, /\/openwhen\?letter=\$\{encodeURIComponent\(fresh\[0\]\.id\)\}/,
+    'el aviso de una sola carta apunta a la carta concreta');
+
+  assert.match(calendar, /query\.day/);
+  assert.match(calendar, /requestedGiftId/);
+  assert.match(calendar, /openRequestedGift\(\)/,
+    'el calendario abre automáticamente el regalo indicado por deep link');
+  assert.match(openWhen, /requestedLetterId/);
+  assert.match(openWhen, /openRequestedLetter\(\)/,
+    'Open When entra en la categoría y abre la carta indicada');
+  assert.ok(pushApi.includes(".from('content')"), 'el cron usa el catálogo dinámico guardado por Admin');
+  assert.ok(pushApi.includes(".eq('id', 'gifts')"));
+
+  const calendarPush = calendarPayloadForCatalog({
+    gifts: [{ id: 'regalo_hoy', title: 'Sorpresa' }],
+    months: { '2026-10': { calendarMapping: { 4: ['regalo_hoy'] } } }
+  }, '2026-10-04');
+  assert.equal(calendarPush.url, '/calendario?day=2026-10-04&gift=regalo_hoy');
+});
+
+test('el centro de invitaciones detecta llegadas nuevas y limpia suscripciones parciales', async () => {
+  const inviteCenter = await readFile(hub('src', 'components', 'GameInviteCenter.js'), 'utf8');
+
+  assert.match(inviteCenter, /let invitationsLoaded = false;/);
+  assert.match(inviteCenter, /nextInvitations\.some\(item => !invitations\.some\(previous => previous\.id === item\.id\)\)/,
+    'avisa de invitaciones nuevas aunque ya hubiera una al iniciar');
+  assert.match(inviteCenter, /nextRematches\.some\(item => !rematches\.some\(previous => previous\.id === item\.id\)\)/);
+  assert.match(inviteCenter, /try \{ previousUnsub\?\.\(\); \}[\s\S]*?try \{ rematchUnsub\?\.\(\); \}/,
+    'limpia ambas suscripciones incluso si falla una de ellas');
+  assert.match(inviteCenter, /catch \(error\) \{ console\.warn\('\[games\] No se pudo cerrar el canal de invitaciones:'/);
+  assert.match(inviteCenter, /catch \(error\) \{ console\.warn\('\[games\] No se pudo cerrar el canal de revanchas:'/);
+  assert.ok(inviteCenter.includes('if (offListen) {'), 'al cambiar de usuario limpia la suscripción de música');
+  assert.ok(inviteCenter.includes('offListen = null;'), 'olvida el cleanup de música después de cerrarlo');
 });

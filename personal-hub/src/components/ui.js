@@ -116,29 +116,6 @@ export function h(tag, attrs, ...children) {
   return el;
 }
 
-/* ==========================================
-   CABECERAS DE PANTALLA
-   ========================================== */
-export function headBar(title, subtitle, ...actions) {
-  return h('div', { class: 'scr-head' },
-    h('div', null,
-      h('h1', { class: 'scr-title' }, title),
-      subtitle ? h('p', { class: 'sub' }, subtitle) : null
-    ),
-    actions.filter(Boolean).length ? h('div', { class: 'head-actions' }, ...actions.filter(Boolean)) : null
-  );
-}
-
-export function formHead(title, onBack, extra) {
-  return h('div', { class: 'scr-head' },
-    h('div', { style: 'display:flex;align-items:center;gap:10px;min-width:0' },
-      h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Volver', onclick: onBack, html: icon('back', 19) }),
-      h('h1', { class: 'scr-title', style: 'font-size:var(--fs-lg)' }, title)
-    ),
-    extra ? h('div', { class: 'head-actions' }, extra) : null
-  );
-}
-
 export function iconBtn(name, label, onClick, { size = 19, small = false } = {}) {
   return h('button', {
     class: small ? 'mini-btn' : 'icon-btn',
@@ -270,37 +247,6 @@ export function closeSheets() {
   finalizeOverlayClose(closeSheets);
 }
 
-export function confirmDialog({ title, message, confirmText = 'Eliminar', danger = true, onConfirm }) {
-  const overlay = h('div', {
-    class: 'overlay',
-    style: 'z-index:calc(var(--z-modal) + 5)',
-    onclick: event => { if (event.target === overlay) closeConfirm(); }
-  });
-  const sheet = h('div', { class: 'sheet', style: 'max-width:420px', role: 'alertdialog', 'aria-label': title },
-    h('h3', { style: 'font-size:var(--fs-md);font-weight:800;margin-bottom:8px' }, title),
-    h('p', { style: 'font-size:var(--fs-sm);color:var(--text-2);line-height:1.55;margin-bottom:20px' }, message),
-    h('div', { style: 'display:flex;gap:10px;justify-content:flex-end' },
-      h('button', { class: 'btn-soft', type: 'button', onclick: () => closeConfirm() }, 'Cancelar'),
-      h('button', {
-        class: danger ? 'btn-danger' : 'btn',
-        type: 'button',
-        onclick: () => { closeConfirm(); if (onConfirm) onConfirm(); }
-      }, confirmText)
-    )
-  );
-  overlay.append(sheet);
-  // Atrás cierra la confirmación en vez de salir de la página.
-  const closeConfirm = () => {
-    overlay.remove();
-    finalizeOverlayClose(closeConfirm);
-  };
-  pushOverlayHistory(closeConfirm);
-  document.body.appendChild(overlay);
-  const first = sheet.querySelector('button');
-  if (first) first.focus({ preventScroll: true });
-  return overlay;
-}
-
 let toastTimer = null;
 
 export function toast(message, action) {
@@ -332,37 +278,4 @@ export function avatarEl(name, photo, size = 40, className = '') {
   if (photo) box.append(h('img', { src: photo, alt: '', loading: 'lazy' }));
   else box.append(escapeHtml((name || '?').trim().charAt(0).toUpperCase()));
   return box;
-}
-
-/* ==========================================
-   ACCIÓN RÁPIDA (FAB)
-   ========================================== */
-const QUICK_ACTIONS = [
-  { id: 'calendario', icon: 'calendar', label: 'Calendario', hint: 'Sorpresas y días especiales' },
-  { icon: 'spark', label: 'Razones', hint: 'Una razón nueva para quererte' },
-  { icon: 'mail', label: 'Open When', hint: 'Cartas para cuando lo necesites' },
-  { icon: 'music', label: 'Canciones', hint: 'Lo que suena entre nosotros' },
-  { icon: 'image', label: 'Galería', hint: 'Momentos guardados' },
-  { icon: 'heart', label: 'Mal Día', hint: 'Un abrazo para el mal día' }
-];
-
-export function quickAddMenu(router) {
-  openSheet('¿Qué quieres abrir?', () => {
-    const list = h('div', { style: 'margin:-4px -20px -8px' });
-    for (const action of QUICK_ACTIONS) {
-      list.append(h('button', {
-        class: 'set-row',
-        type: 'button',
-        onclick: () => { closeSheets(); router.navigate('/' + action.id); }
-      },
-        h('span', { class: 'r-ic', html: icon(action.icon, 19) }),
-        h('div', { style: 'flex:1' },
-          h('b', { style: 'font-size:var(--fs-base);display:block' }, action.label),
-          h('span', { style: 'font-size:var(--fs-xs);color:var(--text-2);font-weight:500' }, action.hint)
-        ),
-        h('span', { class: 'chev', html: icon('chev', 17) })
-      ));
-    }
-    return list;
-  });
 }

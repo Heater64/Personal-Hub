@@ -1,45 +1,14 @@
 /* ==========================================
    BottomNav — navegación inferior (móvil)
    5 secciones, indicador activo suave y píldora en el icono.
+   Las pestañas salen del registro de rutas: la usuaria ve «Inicio» y el
+   admin ve «Admin» en su lugar (no usa la pantalla diaria).
    ========================================== */
 
 import { userStore } from '../stores/user.store.js';
 import { setUserPref } from '../utils/userStorage.js';
 import { icon, avatarEl } from './ui.js';
-
-const NAV_ITEMS = [
-  { id: 'home',         label: 'Inicio',       icon: 'home' },
-  { id: 'rincon',       label: 'Rincón',       icon: 'heart' },
-  { id: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake' },
-  { id: 'ositos',       label: 'OsitosWorld',  icon: 'star' },
-  { id: 'perfil',       label: 'Perfil',       icon: 'user' }
-];
-
-const PATHS = {
-  home: '/',
-  rincon: '/rincon',
-  sentimientos: '/sentimientos',
-  ositos: '/ositos',
-  perfil: '/perfil'
-};
-
-// Subsecciones → sección a la que pertenecen: la pestaña del padre
-// sigue marcada como activa dentro de sus páginas hijas.
-const SECTION_PARENT = {
-  razones: 'sentimientos',
-  openwhen: 'sentimientos',
-  calendario: 'sentimientos',
-  maldia: 'sentimientos',
-  galeria: 'rincon',
-  memes: 'rincon',
-  audios: 'rincon',
-  minecraft: 'rincon',
-  curiosidades: 'rincon',
-  juegos: 'rincon',
-  canciones: 'rincon',
-  series: 'rincon',
-  thoseeyes: 'rincon'
-};
+import { bottomNavItems, roleFor, sectionFor } from '../routes.js';
 
 export function BottomNav(router) {
   const nav = document.createElement('nav');
@@ -49,21 +18,15 @@ export function BottomNav(router) {
 
   let currentPath = router.getCurrentPath();
 
-  function isActiveFor(item) {
-    const base = currentPath.split('?')[0];
-    const currentId = (base.split('/')[1] || '') || 'home';
-    if (item.id === 'home') return currentId === '' || currentId === 'home';
-    if (item.id === 'perfil') return currentId === 'perfil' || currentId === 'admin';
-    if (currentId === item.id) return true;
-    return SECTION_PARENT[currentId] === item.id;
-  }
-
   function render() {
     const user = userStore.getUser();
+    const role = roleFor(userStore.isAdmin);
+    const items = bottomNavItems(role);
+    const section = sectionFor(currentPath);
     const online = navigator.onLine;
 
-    nav.innerHTML = NAV_ITEMS.map(item => {
-      const active = isActiveFor(item);
+    nav.innerHTML = items.map(item => {
+      const active = item.id === section;
       let visual;
 
       if (item.id === 'perfil' && user) {
@@ -82,11 +45,12 @@ export function BottomNav(router) {
       </button>`;
     }).join('');
 
-    const matched = NAV_ITEMS.find(isActiveFor);
+    const matched = items.find(item => item.id === section);
     if (matched) setUserPref('activeSection', matched.id);
 
     nav.querySelectorAll('.bn-item[data-nav]').forEach(btn => {
-      btn.addEventListener('click', () => router.navigate(PATHS[btn.dataset.nav] || '/'));
+      const item = items.find(i => i.id === btn.dataset.nav);
+      btn.addEventListener('click', () => router.navigate(item?.href || '/'));
     });
   }
 

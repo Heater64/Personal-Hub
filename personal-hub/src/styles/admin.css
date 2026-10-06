@@ -5,15 +5,13 @@
 
 .admin-page { animation: fade-in var(--dur-mid); }
 
-/* El shell envuelve las páginas en una columna de lectura; el panel de
+/* El shell envuelve las páginas en una columna de lectura;el panel de
    gestión necesita el ancho que sobra (lo pone AdminPage al montarse). */
 .app-shell.has-admin .content { max-width: 1180px; }
-
 /* ==========================================
    LAYOUT — Sidebar + Main
    ========================================== */
 .admin-layout { display: flex; min-height: 100vh; }
-
 /* ==========================================
    SIDEBAR — Premium glass
    ========================================== */
@@ -29,9 +27,7 @@
   position: sticky; top: 0; height: 100vh;
   z-index: 20;
   transition: transform var(--dur-smooth);
-}
-
-[data-theme="light"] .admin-sidebar {
+}[data-theme="light"] .admin-sidebar {
   background: linear-gradient(180deg,
     rgba(255, 255, 255, 0.95) 0%,
     rgba(253, 244, 246, 0.9) 100%);
@@ -39,13 +35,11 @@
   -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid rgba(100, 60, 70, 0.12);
 }
-
 .admin-sidebar-nav {
   flex: 1; padding: 16px 10px;
   display: flex; flex-direction: column; gap: 4px;
   overflow-y: auto;
 }
-
 .admin-sidebar-item {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 16px; border-radius: var(--r-md);
@@ -55,23 +49,19 @@
   font-family: inherit; text-align: left; width: 100%;
   position: relative;
 }
-
 .admin-sidebar-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.6; transition: all var(--dur-smooth); }
 .admin-sidebar-item:hover {
   background: rgba(255, 255, 255, 0.04);
   color: var(--theme-text-primary);
 }
 .admin-sidebar-item:hover svg { opacity: 1; }
-
 .admin-sidebar-item.active {
   background: var(--accent-dim);
   color: var(--theme-accent);
   font-weight: 500;
   box-shadow: inset 0 0 0 1px rgba(232, 97, 79, 0.1);
 }
-
 .admin-sidebar-item.active svg { opacity: 1; }
-
 /* Active pill indicator */
 .admin-sidebar-item.active::before {
   content: '';
@@ -80,16 +70,12 @@
   background: var(--theme-accent);
   border-radius: 3px;
 }
-
 .admin-sidebar-footer {
   padding: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="light"] .admin-sidebar-footer {
+}[data-theme="light"] .admin-sidebar-footer {
   border-top: 1px solid rgba(100, 60, 70, 0.1);
 }
-
 .admin-profile-avatar {
   width: 34px; height: 34px;
   border-radius: 50%;
@@ -100,31 +86,25 @@
   flex-shrink: 0;
   border: 2px solid rgba(232, 97, 79, 0.15);
 }
-
 .admin-profile-avatar img {
   width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
 }
-
 /* ==========================================
    MAIN CONTENT AREA
    ========================================== */
 .admin-main { flex: 1; min-width: 0; padding: 28px 32px 48px; overflow-x: hidden; }
-
 /* Welcome header */
 .admin-welcome {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 28px;
   flex-wrap: wrap; gap: 12px;
 }
-
 /* El saludo es del resumen: en las demás secciones sobra y empuja el
    contenido hacia abajo, así que la cabecera pegajosa ya dice dónde estás. */
 .admin-welcome.is-hidden { display: none; }
-
 .admin-welcome-greeting {
   display: flex; flex-direction: column; gap: 4px;
 }
-
 .admin-welcome-greeting h1 {
   font-family: var(--font-display);
   font-size: var(--fs-2xl);
@@ -133,25 +113,21 @@
   color: var(--theme-text-primary);
   line-height: 1.2;
 }
-
 .admin-welcome-sub {
   font-size: var(--fs-sm);
   color: var(--theme-text-secondary);
   display: flex; align-items: center; gap: 6px;
 }
-
 .admin-welcome-sub .admin-welcome-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--theme-accent);
   animation: adminPulse 2s ease-in-out infinite;
 }
-
 @keyframes adminPulse {
   0%, 100% { opacity: 0.4; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.4); }
 }
-
 /* Time badge */
 .admin-time-badge {
   display: inline-flex; align-items: center; gap: 6px;
@@ -163,20 +139,16 @@
   font-weight: 500;
   white-space: nowrap;
 }
-
 .admin-time-badge svg { width: 14px; height: 14px; }
-
 /* ==========================================
    SECTION HEADER
    ========================================== */
 .admin-section { display: none; }
 .admin-section.active { display: block; animation: fade-in var(--dur-mid) forwards; }
-
 .admin-section-header {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
 }
-
 .admin-section-hint {
   margin: -6px 0 16px;
   font-size: var(--fs-sm);
@@ -185,13 +157,11 @@
   max-width: 70ch;
 }
 .admin-section-hint--wide { max-width: 88ch; }
-
 .admin-section-header h2 {
   font-size: var(--fs-xl); font-weight: 600; margin: 0;
   display: flex; align-items: center; gap: 10px;
   color: var(--theme-text-primary);
 }
-
 /* ==========================================
    STATS GRID — Premium cards
    ========================================== */
@@ -201,7 +171,6 @@
   gap: 16px;
   margin-bottom: 28px;
 }
-
 .stat-card {
   position: relative;
   padding: 24px;
@@ -211,12 +180,9 @@
   transition: all var(--dur-smooth);
   overflow: hidden;
   cursor: default;
-}
-
-[data-theme="light"] .stat-card {
+}[data-theme="light"] .stat-card {
   border: 1px solid rgba(100, 60, 70, 0.08);
 }
-
 /* Gradient accent bar */
 .stat-card::before {
   content: '';
@@ -227,15 +193,12 @@
   opacity: 0.3;
   transition: all var(--dur-smooth);
 }
-
 .stat-card:hover {
   transform: translateY(-3px);
   border-color: var(--border-accent);
   box-shadow: var(--elevation-2), 0 0 32px var(--accent-dim);
 }
-
 .stat-card:hover::before { opacity: 1; left: 12px; right: 12px; }
-
 /* Background icon */
 .stat-card::after {
   content: '';
@@ -246,34 +209,12 @@
   opacity: 0;
   transition: all var(--dur-slow);
 }
-
 .stat-card:hover::after { opacity: 0.6; }
-
-.stat-card-content {
-  position: relative; z-index: 1;
-  display: flex; align-items: flex-start; gap: 16px;
-}
-
-.stat-card-icon {
-  width: 44px; height: 44px;
-  border-radius: 12px;
-  background: var(--accent-dim);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--theme-accent);
-  flex-shrink: 0;
-  transition: all var(--dur-smooth);
-}
-
 .stat-card:hover .stat-card-icon {
   background: var(--theme-accent);
   color: #fff;
   transform: scale(1.05);
 }
-
-.stat-card-icon svg { width: 20px; height: 20px; }
-
-.stat-card-info { flex: 1; min-width: 0; }
-
 .stat-value {
   font-size: var(--fs-3xl);
   font-weight: 500;
@@ -283,9 +224,7 @@
   margin-bottom: 4px;
   transition: all var(--dur-smooth);
 }
-
 .stat-card:hover .stat-value { transform: scale(1.02); }
-
 .stat-label {
   font-size: var(--fs-xs);
   color: var(--theme-text-secondary);
@@ -293,7 +232,6 @@
   letter-spacing: 0.05em;
   font-weight: 500;
 }
-
 .stat-trend {
   display: inline-flex; align-items: center; gap: 3px;
   font-size: var(--fs-xs);
@@ -304,7 +242,6 @@
   color: var(--theme-success);
   font-weight: 500;
 }
-
 /* ==========================================
    CONTENT TABS — Pill style
    ========================================== */
@@ -314,12 +251,9 @@
   background: var(--theme-surface);
   border-radius: var(--r-full);
   border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="light"] .admin-tabs {
+}[data-theme="light"] .admin-tabs {
   border: 1px solid rgba(100, 60, 70, 0.08);
 }
-
 .admin-tab {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 8px 16px;
@@ -334,31 +268,24 @@
   font-weight: 500;
   white-space: nowrap;
 }
-
 .admin-tab svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.5; transition: all var(--dur-smooth); }
-
 .admin-tab:hover {
   color: var(--theme-text-primary);
   background: rgba(255, 255, 255, 0.04);
 }
-
 .admin-tab:hover svg { opacity: 0.8; }
-
 .admin-tab.active {
   background: var(--accent-dim);
   color: var(--theme-accent);
   box-shadow: 0 2px 8px var(--accent-dim);
 }
-
 .admin-tab.active svg { opacity: 1; }
-
 /* ==========================================
    LIST — Refined
    ========================================== */
 .admin-list {
   display: flex; flex-direction: column; gap: 6px;
 }
-
 .admin-list-item {
   display: flex; align-items: center; gap: 14px;
   padding: 14px 18px;
@@ -367,43 +294,33 @@
   border: 1px solid rgba(255, 255, 255, 0.04);
   transition: all var(--dur-smooth);
   animation: slide-up 0.35s ease backwards;
-}
-
-[data-theme="light"] .admin-list-item {
+}[data-theme="light"] .admin-list-item {
   border: 1px solid rgba(100, 60, 70, 0.06);
 }
-
 .admin-list-item:nth-child(1) { animation-delay: 0.02s; }
 .admin-list-item:nth-child(2) { animation-delay: 0.04s; }
 .admin-list-item:nth-child(3) { animation-delay: 0.06s; }
 .admin-list-item:nth-child(4) { animation-delay: 0.08s; }
 .admin-list-item:nth-child(n+5) { animation-delay: 0.1s; }
-
 .admin-list-item:hover {
   background: var(--theme-surface-elevated);
   border-color: var(--border-accent);
   transform: translateX(2px);
 }
-
 .item-content { flex: 1; min-width: 0; }
-
 .item-title {
   font-size: var(--fs-sm); font-weight: 500;
   color: var(--theme-text-primary); line-height: 1.3;
 }
-
 .item-sub {
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   margin-top: 3px; line-height: 1.4;
 }
-
 .item-actions {
   display: flex; gap: 4px; flex-shrink: 0;
   opacity: 0; transition: opacity var(--dur-smooth);
 }
-
 .admin-list-item:hover .item-actions { opacity: 1; }
-
 .item-action-btn {
   width: 34px; height: 34px;
   display: flex; align-items: center; justify-content: center;
@@ -412,13 +329,11 @@
   cursor: pointer; transition: all var(--dur-spring);
   opacity: 0.6; color: var(--theme-text-secondary);
 }
-
 .item-action-btn:hover { opacity: 1; background: var(--accent-dim); transform: scale(1.12); }
 .item-action-btn:active { transform: scale(0.92); }
 .item-action-btn.edit:hover { color: var(--theme-accent); }
 .item-action-btn.delete:hover { background: var(--theme-error-dim); color: var(--theme-error); }
 .item-action-btn svg { width: 15px; height: 15px; }
-
 /* ==========================================
    ACTIVITY TIMELINE
    ========================================== */
@@ -427,16 +342,13 @@
   padding: 14px 0;
   position: relative;
 }
-
 .admin-activity-item::before {
   content: '';
   position: absolute; left: 5px; top: 44px; bottom: -14px;
   width: 1px;
   background: rgba(255, 255, 255, 0.06);
 }
-
 .admin-activity-item:last-child::before { display: none; }
-
 .admin-activity-dot {
   width: 10px; height: 10px;
   border-radius: 50%;
@@ -446,18 +358,16 @@
   margin-top: 6px;
   transition: all var(--dur-smooth);
 }
-
 .admin-activity-item:hover .admin-activity-dot {
   background: var(--theme-accent);
   box-shadow: 0 0 12px var(--accent-dim);
 }
-
 .admin-activity-body { flex: 1; min-width: 0; }
 .admin-activity-action { font-size: var(--fs-sm); font-weight: 500; color: var(--theme-text-primary); }
 .admin-activity-details { font-size: var(--fs-xs); color: var(--theme-text-secondary); margin-top: 2px; }
 
 /* La hora iba pegada al detalle con un "·" y en formato largo del navegador
-   ("1/10/2026, 16:09:25"); ahora va en su propia columna, corta y alineada. */
+   ("1/10/2026, 16:09:25");ahora va en su propia columna, corta y alineada. */
 .admin-activity-time {
   flex: none;
   padding-top: 2px;
@@ -487,7 +397,6 @@
   font-size: var(--fs-xs);
   color: var(--theme-text-tertiary);
 }
-
 /* ==========================================
    BUTTONS — Refined
    ========================================== */
@@ -500,40 +409,32 @@
   border: none; white-space: nowrap;
   font-family: inherit; font-weight: 500;
 }
-
 .admin-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
-
 .admin-btn-primary {
   background: var(--accent-dim);
   color: var(--theme-accent);
   border: 1px solid var(--border-accent);
 }
-
 .admin-btn-primary:hover {
   background: var(--theme-accent);
   color: #fff;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px var(--accent-dim);
 }
-
 .admin-btn-primary:active { transform: translateY(0); }
-
 .admin-btn-secondary {
   background: var(--theme-surface-elevated);
   color: var(--theme-text-secondary);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
-
 .admin-btn-secondary:hover {
   border-color: var(--theme-accent);
   color: var(--theme-accent);
   background: var(--accent-dim);
   transform: translateY(-1px);
 }
-
 .admin-btn-sm { padding: 6px 14px; font-size: var(--fs-xs); }
 .admin-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
-
 /* Ghost button — flexible for icon-only & icon+text */
 .admin-btn-ghost {
   min-width: 38px; height: 38px; padding: 0 10px;
@@ -545,21 +446,17 @@
   transition: all var(--dur-spring);
   font-family: inherit; font-size: var(--fs-sm);
 }
-
 .admin-btn-ghost svg { width: 15px; height: 15px; flex-shrink: 0; }
-
 .admin-btn-ghost:hover {
   background: var(--accent-dim);
   color: var(--theme-accent);
   transform: scale(1.08);
 }
-
 /* ==========================================
    FIELDS — Form
    ========================================== */
 .admin-field { margin-bottom: 18px; }
 .admin-field:last-child { margin-bottom: 0; }
-
 .admin-field label {
   display: block;
   font-size: var(--fs-xs);
@@ -568,7 +465,6 @@
   font-weight: 500;
   text-transform: uppercase;
 }
-
 .admin-field-hint {
   display: block;
   margin-top: 6px;
@@ -577,7 +473,6 @@
   color: var(--theme-text-tertiary);
   letter-spacing: 0.05em;
 }
-
 .admin-field input,
 .admin-field textarea,
 .admin-field select {
@@ -591,14 +486,11 @@
   transition: all var(--dur-smooth);
   font-family: inherit;
   box-sizing: border-box;
-}
-
-[data-theme="light"] .admin-field input,
+}[data-theme="light"] .admin-field input,
 [data-theme="light"] .admin-field textarea,
 [data-theme="light"] .admin-field select {
   border: 1px solid rgba(100, 60, 70, 0.15);
 }
-
 .admin-field input:focus,
 .admin-field textarea:focus,
 .admin-field select:focus {
@@ -607,9 +499,7 @@
   background: var(--theme-surface);
   outline: none;
 }
-
 .admin-field textarea { min-height: 80px; resize: vertical; }
-
 /* ==========================================
    MODAL — Premium glass
    ========================================== */
@@ -623,7 +513,6 @@
   padding: 20px;
   animation: fade-in 0.2s ease;
 }
-
 .admin-modal {
   width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto;
   background: var(--theme-bg-primary);
@@ -631,28 +520,22 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: var(--theme-shadow-xl), 0 0 60px rgba(0,0,0,0.3);
   animation: adminModalPop 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-[data-theme="light"] .admin-modal {
+}[data-theme="light"] .admin-modal {
   border: 1px solid rgba(100, 60, 70, 0.12);
 }
-
 @keyframes adminModalPop {
   from { opacity: 0; transform: scale(0.94) translateY(16px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
-
 .admin-modal-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 24px 28px 0;
 }
-
 .admin-modal-header h3 {
   font-size: var(--fs-lg); font-weight: 600; margin: 0;
   color: var(--theme-text-primary);
   display: flex; align-items: center; gap: 8px;
 }
-
 .admin-modal-close {
   width: 36px; height: 36px;
   display: flex; align-items: center; justify-content: center;
@@ -661,20 +544,16 @@
   color: var(--theme-text-secondary);
   cursor: pointer; transition: all var(--dur-spring);
 }
-
 .admin-modal-close:hover {
   background: var(--accent-dim);
   color: var(--theme-accent);
   transform: scale(1.1) rotate(90deg);
 }
-
 .admin-modal-body { padding: 20px 28px; }
-
 .admin-modal-footer {
   display: flex; justify-content: flex-end; gap: 10px;
   padding: 0 28px 24px;
 }
-
 /* ==========================================
    USER AVATAR
    ========================================== */
@@ -685,9 +564,7 @@
   flex-shrink: 0;
   border: 2px solid rgba(255, 255, 255, 0.06);
 }
-
 .user-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-
 .user-avatar-placeholder {
   width: 100%; height: 100%;
   background: var(--accent-dim);
@@ -695,7 +572,6 @@
   font-weight: 600; color: var(--theme-accent);
   font-size: var(--fs-sm);
 }
-
 .user-mood-row {
   display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;
 }
@@ -708,7 +584,6 @@
 }
 .user-mood-line strong { color: var(--theme-text-primary); font-weight: 600; }
 .user-mood-pct { color: var(--theme-text-tertiary); font-variant-numeric: tabular-nums; }
-
 .user-mood-badge {
   display: inline-flex; align-items: center; gap: 3px;
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
@@ -717,17 +592,14 @@
   white-space: nowrap;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
-
 .user-mood-badge.muted {
   color: var(--theme-text-secondary); background: transparent;
   border-color: transparent;
 }
-
 .user-mood-none {
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   font-style: italic;
 }
-
 /* ---- Fila de usuario: email + chips, y el estado de conexión en su propia
    línea. Antes todo iba en un solo .item-sub y "En línea ahora" se partía a
    media frase, dejando la tarjeta alta y descuadrada. ---- */
@@ -761,7 +633,6 @@
   color: var(--theme-text-tertiary);
 }
 .user-status-sep { margin: 0 6px; opacity: 0.5; }
-
 .admin-badge-tag {
   display: inline-block;
   font-size: 0.62rem; padding: 2px 8px;
@@ -772,7 +643,6 @@
   vertical-align: middle; margin-left: 6px;
   letter-spacing: 0.03em;
 }
-
 .admin-count-badge {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 26px; height: 26px;
@@ -783,7 +653,6 @@
   font-size: var(--fs-xs); font-weight: 600;
   line-height: 1;
 }
-
 /* ==========================================
    DB STATUS BANNER
    ========================================== */
@@ -797,14 +666,11 @@
   font-size: var(--fs-sm);
   line-height: 1.5;
 }
-
 .admin-db-status small { opacity: 0.65; font-size: var(--fs-xs); }
-
 /* ==========================================
    SEARCH
    ========================================== */
 .admin-search { margin-bottom: 16px; }
-
 .admin-search-input {
   width: 100%;
   padding: 11px 18px;
@@ -816,18 +682,14 @@
   transition: all var(--dur-smooth);
   font-family: inherit;
   box-sizing: border-box;
-}
-
-[data-theme="light"] .admin-search-input {
+}[data-theme="light"] .admin-search-input {
   border: 1px solid rgba(100, 60, 70, 0.12);
 }
-
 .admin-search-input:focus {
   border-color: var(--theme-accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
   outline: none;
 }
-
 /* ==========================================
    EMPTY STATE
    ========================================== */
@@ -838,9 +700,7 @@
   border-radius: var(--r-lg);
   border: 1px dashed rgba(255, 255, 255, 0.06);
 }
-
 .admin-empty svg { width: 40px; height: 40px; opacity: 0.3; margin-bottom: 12px; }
-
 /* ==========================================
    SUBSECTIONS
    ========================================== */
@@ -851,45 +711,36 @@
   border: 1px solid rgba(255, 255, 255, 0.04);
   transition: all var(--dur-smooth);
 }
-
 .admin-subsection + .admin-subsection { margin-top: 16px; }
-
 .admin-subsection:hover {
   border-color: var(--border-accent);
 }
-
 .admin-subsection h4 {
   font-size: var(--fs-md);
   font-weight: 500;
   margin: 0 0 10px;
   color: var(--theme-text-primary);
 }
-
 /* ==========================================
    MOOD CALENDAR — Premium
    ========================================== */
 .moods-chart-section { margin-top: 8px; }
-
 .moods-chart-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 16px;
 }
-
 .moods-chart-header h3 {
   font-size: var(--fs-lg); font-weight: 500; margin: 0;
   color: var(--theme-text-primary);
 }
-
 .moods-nav {
   display: flex; align-items: center; gap: 10px;
 }
-
 #moodMonthLabel {
   font-size: var(--fs-sm); font-weight: 600;
   color: var(--theme-text-primary);
   min-width: 140px; text-align: center;
 }
-
 .moods-nav-btn {
   width: 36px; height: 36px;
   display: flex; align-items: center; justify-content: center;
@@ -901,16 +752,13 @@
   font-size: 1.2rem; font-weight: 300;
   transition: all var(--dur-spring);
 }
-
 .moods-nav-btn:hover {
   border-color: var(--theme-accent);
   color: var(--theme-accent);
   background: var(--accent-dim);
   transform: scale(1.08);
 }
-
 .moods-nav-btn:active { transform: scale(0.92); }
-
 /* Calendar grid */
 .moods-cal-grid {
   display: grid;
@@ -922,7 +770,6 @@
   border: 1px solid rgba(255, 255, 255, 0.04);
   margin-bottom: 20px;
 }
-
 .moods-cal-hd {
   text-align: center;
   font-size: var(--fs-xs);
@@ -932,7 +779,6 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-
 .moods-cal-cell {
   text-align: center;
   padding: 8px 3px;
@@ -948,37 +794,29 @@
   gap: 2px;
   background: rgba(255, 255, 255, 0.01);
 }
-
 .moods-cal-cell.empty { opacity: 0.08; }
-
 /* Días por venir del mes en curso: no pueden tener registro todavía, así que
    se apagan para que no parezcan "días sin anotar". */
 .moods-cal-cell.future { opacity: 0.35; }
 .moods-cal-cell.future:hover { opacity: 0.6; }
-
 .moods-cal-cell.today {
   background: var(--accent-dim);
   border: 1px solid var(--border-accent);
 }
-
 .moods-cal-cell.has-mood:not(.today) {
   background: rgba(255, 255, 255, 0.03);
 }
-
 .moods-cal-cell:hover {
   background: var(--theme-surface-elevated);
   transform: scale(1.05);
   z-index: 1;
   box-shadow: var(--elevation-1);
 }
-
 .moods-cal-day {
   font-size: var(--fs-sm); line-height: 1;
   font-weight: 500;
 }
-
 .moods-cal-emoji { font-size: 0.75rem; line-height: 1; }
-
 /* Moods stats row */
 .moods-stats-row {
   display: grid;
@@ -986,7 +824,6 @@
   gap: 12px;
   margin: 20px 0;
 }
-
 .moods-stat {
   text-align: center;
   padding: 18px 14px;
@@ -996,13 +833,11 @@
   transition: all var(--dur-smooth);
   cursor: default;
 }
-
 .moods-stat:hover {
   border-color: var(--border-accent);
   transform: translateY(-2px);
   box-shadow: var(--elevation-1);
 }
-
 .moods-stat-num {
   display: block;
   font-size: var(--fs-xl);
@@ -1011,7 +846,6 @@
   color: var(--theme-accent);
   font-family: var(--font-display);
 }
-
 /* Cifra que acompaña al emoji ("2,5", "/31"): más pequeña y sin adueñarse
    del titular de la tarjeta. */
 .moods-stat-avg {
@@ -1020,15 +854,12 @@
   color: var(--theme-text-secondary);
   font-variant-numeric: tabular-nums;
 }
-
 .moods-stat-label {
   font-size: var(--fs-xs);
   color: var(--theme-text-secondary);
 }
-
 /* Moods breakdown bars */
 .moods-breakdown { margin-top: 20px; }
-
 .moods-breakdown h4 {
   font-size: var(--fs-md); font-weight: 500;
   margin: 0 0 14px; color: var(--theme-text-primary);
@@ -1046,24 +877,20 @@
   color: var(--theme-text-tertiary);
   vertical-align: middle;
 }
-
 .moods-bar-row {
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 8px;
   animation: slide-up 0.3s ease backwards;
 }
-
 .moods-bar-row:nth-child(1) { animation-delay: 0.02s; }
 .moods-bar-row:nth-child(2) { animation-delay: 0.04s; }
 .moods-bar-row:nth-child(3) { animation-delay: 0.06s; }
 .moods-bar-row:nth-child(4) { animation-delay: 0.08s; }
 .moods-bar-row:nth-child(5) { animation-delay: 0.1s; }
-
 .moods-bar-label {
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   min-width: 120px; flex-shrink: 0; text-align: right;
 }
-
 .moods-bar-track {
   flex: 1; height: 22px;
   border-radius: 11px;
@@ -1071,27 +898,23 @@
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.03);
 }
-
 .moods-bar-fill {
   height: 100%; border-radius: 11px;
   transition: width var(--dur-slow);
   min-width: 0;
 }
-
 .moods-bar-fill.mood-great { background: linear-gradient(90deg, var(--theme-accent), #dc5078); }
-.moods-bar-fill.mood-good  { background: linear-gradient(90deg, #4caf50, #66bb6a); }
-.moods-bar-fill.mood-meh   { background: linear-gradient(90deg, #ff9800, #ffb74d); }
-.moods-bar-fill.mood-bad   { background: linear-gradient(90deg, #42a5f5, #64b5f6); }
-.moods-bar-fill.mood-love  { background: linear-gradient(90deg, #e91e63, #f06292); }
-
+.moods-bar-fill.mood-good { background: linear-gradient(90deg, #4caf50, #66bb6a); }
+.moods-bar-fill.mood-meh { background: linear-gradient(90deg, #ff9800, #ffb74d); }
+.moods-bar-fill.mood-bad { background: linear-gradient(90deg, #42a5f5, #64b5f6); }
+.moods-bar-fill.mood-love { background: linear-gradient(90deg, #e91e63, #f06292); }
 /* Catálogo actual de ánimos (score 4 → 0, en el mismo orden de color que
    el anterior para que las gráficas históricas sigan siendo legibles). */
-.moods-bar-fill.mood-bien       { background: linear-gradient(90deg, #4caf50, #66bb6a); }
-.moods-bar-fill.mood-carino     { background: linear-gradient(90deg, #e91e63, #f06292); }
-.moods-bar-fill.mood-triste     { background: linear-gradient(90deg, #ff9800, #ffb74d); }
+.moods-bar-fill.mood-bien { background: linear-gradient(90deg, #4caf50, #66bb6a); }
+.moods-bar-fill.mood-carino { background: linear-gradient(90deg, #e91e63, #f06292); }
+.moods-bar-fill.mood-triste { background: linear-gradient(90deg, #ff9800, #ffb74d); }
 .moods-bar-fill.mood-preocupada { background: linear-gradient(90deg, #42a5f5, #64b5f6); }
-.moods-bar-fill.mood-enfadada   { background: linear-gradient(90deg, #e53935, #ef5350); }
-
+.moods-bar-fill.mood-enfadada { background: linear-gradient(90deg, #e53935, #ef5350); }
 .moods-bar-pct {
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   min-width: 40px; text-align: right;
@@ -1111,7 +934,6 @@
   color: var(--theme-text-tertiary);
   vertical-align: middle;
 }
-
 /* ==========================================
    USER DETAIL (in modal)
    ========================================== */
@@ -1120,17 +942,14 @@
   background: rgba(255, 255, 255, 0.06);
   margin: 16px 0;
 }
-
 .user-detail-grid h3 {
   font-size: var(--fs-md); font-weight: 500;
   margin: 0 0 12px; color: var(--theme-text-primary);
 }
-
 .user-mood-summary-card {
   display: flex; gap: 10px; flex-wrap: wrap;
   margin-bottom: 18px;
 }
-
 .user-mood-summary-card > div {
   flex: 1; min-width: 90px;
   text-align: center;
@@ -1139,38 +958,16 @@
   border-radius: var(--r-md);
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
-
 .user-mood-summary-card strong {
   font-size: 1.2rem;
   color: var(--theme-accent);
   font-family: var(--font-display);
 }
-
 .muted-text {
   font-size: var(--fs-xs);
   color: var(--theme-text-secondary);
   margin-top: 4px;
 }
-
-/* ==========================================
-   MOBILE MENU TOGGLE
-   ========================================== */
-.admin-menu-toggle {
-  display: none;
-  width: 40px; height: 40px; border-radius: var(--r-md);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: var(--theme-surface);
-  color: var(--theme-text-secondary);
-  cursor: pointer;
-  align-items: center; justify-content: center;
-  transition: all var(--dur-fast);
-}
-
-.admin-menu-toggle:hover {
-  border-color: var(--border-accent);
-  color: var(--theme-accent);
-}
-
 /* ==========================================
    RESPONSIVE
    ========================================== */
@@ -1180,13 +977,11 @@
   .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; }
   .admin-main { max-width: 1100px; }
 }
-
 /* Desktop */
 @media (min-width: 769px) and (max-width: 1199px) {
   .stats-grid { grid-template-columns: repeat(3, 1fr); }
   .admin-main { padding: 24px 24px 40px; }
 }
-
 /* Tablet */
 @media (max-width: 768px) {
   .admin-sidebar {
@@ -1206,7 +1001,6 @@
   .moods-cal-grid { gap: 3px; padding: 10px; }
   .moods-cal-cell { min-height: 38px; padding: 6px 2px; }
 }
-
 /* Mobile */
 @media (max-width: 480px) {
   .admin-main { padding: 14px 10px 24px; }
@@ -1238,7 +1032,6 @@
   .moods-bar-label { min-width: 80px; font-size: 0.65rem; }
   .moods-bar-track { height: 16px; }
 }
-
 /* Tiny mobile */
 @media (max-width: 360px) {
   .admin-main { padding: 10px 8px 20px; }
@@ -1250,7 +1043,6 @@
   .admin-btn { padding: 6px 12px; font-size: var(--fs-xs); }
   .admin-btn svg { width: 13px; height: 13px; }
 }
-
 /* ==========================================
    PANEL ADMIN v2 — Dashboard, Notificaciones, Toolbars
    ========================================== */
@@ -1264,20 +1056,17 @@
      alto dejaba huecos enormes dentro del que tiene menos contenido. */
   align-items: start;
 }
-
 /* Los paneles internos pueden encogerse dentro de la columna (evita
    desbordes horizontales cuando el chart/estadísticas exigen ancho). */
 .admin-dash-grid > *,
 .admin-panel > * { min-width: 0; }
 .admin-panel { min-width: 0; }
-
 .admin-panel {
   border-radius: var(--r-lg);
   background: var(--theme-surface);
   border: 1px solid var(--theme-divider);
   padding: 18px;
 }
-
 .admin-panel-head {
   display: flex;
   align-items: center;
@@ -1285,7 +1074,6 @@
   gap: 12px;
   margin-bottom: 14px;
 }
-
 .admin-panel-head h4 {
   margin: 0;
   font-size: var(--fs-sm);
@@ -1295,9 +1083,7 @@
   align-items: center;
   gap: 8px;
 }
-
 .admin-panel-head h4 svg { color: var(--theme-accent); }
-
 .admin-panel-badge {
   font-size: var(--fs-xs);
   padding: 3px 10px;
@@ -1306,60 +1092,12 @@
   color: var(--theme-accent);
   white-space: nowrap;
 }
-
-/* ---- Tendencia de ánimo ---- */
-.trend-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 140px;
-  padding-top: 8px;
-}
-
-.trend-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.trend-bar-wrap {
-  flex: 1;
-  width: 100%;
-  max-width: 26px;
-  display: flex;
-  align-items: flex-end;
-  border-radius: 6px;
-  background: var(--theme-surface-elevated);
-  overflow: hidden;
-}
-
-.trend-bar {
-  width: 100%;
-  border-radius: 6px;
-  background: var(--theme-divider-strong);
-  transition: height 0.6s cubic-bezier(0.2, 0.9, 0.4, 1);
-}
-
 .trend-bar.has {
   background: linear-gradient(to top, var(--theme-accent), var(--warm-rose));
 }
-
 .trend-bar.today {
   box-shadow: var(--glow-accent);
 }
-
-.trend-label {
-  font-size: 9px;
-  color: var(--theme-text-tertiary);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  max-width: 100%;
-}
-
 /* ---- Ir a: secciones y atajos ---- */
 .dash-go + .dash-go { margin-top: 16px; }
 .dash-go-label {
@@ -1371,13 +1109,11 @@
   text-transform: uppercase;
   color: var(--theme-text-secondary);
 }
-
 .quick-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 10px;
 }
-
 .quick-action {
   display: flex;
   align-items: center;
@@ -1395,7 +1131,6 @@
   cursor: pointer;
   transition: all var(--dur-normal);
 }
-
 /* Icono en cuadro: es lo que hace reconocible el botón de un vistazo. */
 .quick-action-icon {
   display: inline-flex; align-items: center; justify-content: center;
@@ -1407,7 +1142,6 @@
   transition: all var(--dur-normal);
 }
 .quick-action-icon svg { width: 16px; height: 16px; }
-
 /* Los nombres largos ("Notificaciones") bajan a dos líneas: recortarlos a
    "Notificacio..." solo obligaba a adivinar de qué botón se trata. */
 .quick-action-label {
@@ -1417,16 +1151,13 @@
   overflow-wrap: anywhere;
   hyphens: none;
 }
-
 .quick-action:hover {
   border-color: var(--theme-accent);
   transform: translateY(-1px);
   box-shadow: var(--elevation-1);
 }
 .quick-action:hover .quick-action-icon { background: var(--theme-accent); color: #fff; }
-
 .quick-action:active { transform: scale(0.97); }
-
 /* ---- Esqueleto de carga ----
    Los bloques fantasma usaban .skeleton-card, que no existía en ningún
    sitio: durante la carga se veían huecos en vez de una señal de espera. */
@@ -1440,7 +1171,6 @@
   0%, 100% { opacity: 0.55; }
   50% { opacity: 0.9; }
 }
-
 /* ---- Notificaciones ---- */
 .notif-status-grid {
   /* auto-fit por la misma razón que las subidas: el sidebar fijo impide que
@@ -1449,7 +1179,6 @@
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px;
 }
-
 .notif-status-card {
   display: flex;
   align-items: center;
@@ -1459,7 +1188,6 @@
   background: var(--theme-surface-elevated);
   border: 1px solid var(--theme-divider);
 }
-
 .notif-status-icon {
   width: 42px;
   height: 42px;
@@ -1471,11 +1199,8 @@
   background: var(--theme-surface-pressed);
   color: var(--theme-text-secondary);
 }
-
 .notif-status-icon.ok { background: var(--accent-dim); color: var(--theme-accent); }
-
 .notif-result { margin-top: 14px; }
-
 .notif-ok {
   padding: 12px 16px;
   border-radius: var(--r-md);
@@ -1483,7 +1208,6 @@
   color: var(--green);
   font-size: var(--fs-sm);
 }
-
 .notif-err {
   padding: 12px 16px;
   border-radius: var(--r-md);
@@ -1491,20 +1215,16 @@
   color: var(--red);
   font-size: var(--fs-sm);
 }
-
 .admin-btn-danger {
   background: var(--red);
   border-color: var(--red);
   color: #fff;
 }
-
 .admin-btn-danger:hover { background: var(--red); filter: brightness(1.1); }
-
 .admin-btn-note {
   font-size: var(--fs-xs);
   color: var(--theme-text-tertiary);
 }
-
 /* ---- Toolbar (Actividad) ---- */
 .admin-toolbar {
   display: flex;
@@ -1513,13 +1233,11 @@
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
-
 .admin-filter-icon {
   display: flex;
   align-items: center;
   color: var(--theme-text-secondary);
 }
-
 .admin-select {
   flex: 1;
   min-width: 180px;
@@ -1534,14 +1252,10 @@
   cursor: pointer;
   outline: none;
 }
-
 .admin-select:focus { border-color: var(--theme-accent); }
-
 /* ---- Búsqueda de contenido ---- */
 .admin-search--compact { margin-bottom: 14px; }
-
 .admin-search { position: relative; }
-
 .admin-search-icon {
   position: absolute;
   left: 12px;
@@ -1551,18 +1265,14 @@
   display: flex;
   pointer-events: none;
 }
-
 .admin-search-icon ~ .admin-search-input { padding-left: 36px; }
-
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .admin-dash-grid { grid-template-columns: 1fr; }
 }
-
 @media (max-width: 480px) {
   .quick-actions { grid-template-columns: 1fr; }
 }
-
 /* ==========================================
    SERIES ADMIN — editor unificado (catálogo
    compartido con la sección Series)
@@ -1585,7 +1295,6 @@
   accent-color: var(--theme-accent);
   cursor: pointer;
 }
-
 .series-admin-cover {
   width: 44px; height: 62px;
   border-radius: var(--r-sm);
@@ -1608,7 +1317,6 @@
   background: rgba(224, 90, 90, 0.16);
   color: #e87878;
 }
-
 /* Editor de temporadas dentro del modal del Admin —
    reutiliza los estilos compartidos de series.css */
 .sr-admin-seasons {
@@ -1771,17 +1479,14 @@
   background: var(--theme-accent);
   color: var(--theme-text-inverse);
 }
-
 @media (max-width: 480px) {
   .admin-form-grid { grid-template-columns: 1fr; }
 }
-
 .sr-admin-seasons .sr-ep-thumb-all-input.is-empty {
   border-color: var(--theme-error);
   box-shadow: 0 0 0 3px var(--theme-error-dim);
   animation: shake 0.3s ease;
 }
-
 /* ==========================================
    MULTIMEDIA — subida a Cloudinary
    ========================================== */
@@ -1807,27 +1512,7 @@
   font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
   margin: 0 2px;
 }
-.admin-banner--ok {
-  background: rgba(90, 156, 110, 0.12);
-  border: 1px solid rgba(90, 156, 110, 0.35);
-  color: var(--theme-text-primary);
-}
-.admin-banner--warn {
-  background: rgba(214, 168, 83, 0.10);
-  border: 1px solid rgba(214, 168, 83, 0.35);
-  color: var(--theme-text-primary);
-}
 .admin-banner small { color: var(--theme-text-tertiary); }
-
-.admin-setup-list {
-  margin: 6px 0 0;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.admin-setup-list li::marker { color: var(--theme-accent); }
-
 .upload-dropzone {
   display: flex;
   flex-direction: column;
@@ -1862,9 +1547,7 @@
 .upload-dropzone-icon svg { width: 26px; height: 26px; }
 .upload-dropzone-title { font-weight: 600; color: var(--theme-text-primary); }
 .upload-dropzone-sub { font-size: var(--fs-xs); color: var(--theme-text-tertiary); }
-
 .upload-list { display: flex; flex-direction: column; gap: 10px; }
-
 /* ---- Subir multimedia ----
    Antes reutilizaba .admin-dash-grid, que es 1.6fr / 1fr (pensado para
    gráfico + dona): los tres paneles de subida quedaban desiguales, uno por
@@ -1893,7 +1576,6 @@
   outline: 2px solid var(--theme-accent);
   outline-offset: 3px;
 }
-
 .upload-item {
   display: flex;
   gap: 12px;
@@ -1904,7 +1586,6 @@
   align-items: flex-start;
 }
 .upload-item--error { border-color: rgba(202, 45, 45, 0.4); }
-
 .upload-item-preview {
   flex-shrink: 0;
   width: 64px;
@@ -1932,7 +1613,6 @@
   padding: 4px 6px;
   letter-spacing: .5px;
 }
-
 .upload-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .upload-item-name {
   font-weight: 500;
@@ -1954,7 +1634,6 @@
   direction: rtl;
   text-align: left;
 }
-
 .upload-progress {
   height: 5px;
   border-radius: 99px;
@@ -1967,9 +1646,7 @@
   background: linear-gradient(90deg, var(--theme-accent), var(--accent, #e8735a));
   transition: width .2s ease;
 }
-
 .upload-item-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
 /* Respuestas de regalos interactivos */
 .gift-responses-list {
   display: flex;
@@ -2021,7 +1698,6 @@
 @media (max-width: 480px) {
   .gift-response-group { padding: var(--sp-8, 8px); }
 }
-
 /* ==========================================
    ADMIN · Editor de Calendario (regalos por día)
    ========================================== */
@@ -2039,7 +1715,6 @@
   text-align: center;
 }
 .admin-cal-nav .admin-btn-sm { min-width: 34px; }
-
 .admin-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -2076,7 +1751,6 @@
   .admin-cal-day { min-height: 54px; padding: 6px 2px; }
   .admin-cal-day__count { font-size: 10px; }
 }
-
 /* ==========================================
    ADMIN · Dashboard v2 (mockup: sidebar app, métricas, charts)
    ========================================== */
@@ -2101,7 +1775,6 @@
   font-size: var(--fs-xs, 12px);
   color: var(--theme-text-tertiary);
 }
-
 .admin-sidebar-appnav {
   display: flex; flex-direction: column; gap: 2px;
   padding: 10px 12px;
@@ -2118,7 +1791,6 @@
 }
 .admin-sidebar-app:hover { background: var(--accent-dim); color: var(--theme-text-primary); }
 .admin-sidebar-app-icon { font-size: 16px; line-height: 1; }
-
 .admin-sidebar-group { padding: 8px 12px 12px; }
 .admin-sidebar-group-label {
   display: block;
@@ -2147,14 +1819,12 @@
   box-shadow: 0 6px 18px rgba(232, 97, 79, 0.35);
 }
 .admin-sidebar-admin-icon { font-size: 15px; line-height: 1; }
-
 .admin-sidebar-nav--sub {
   flex: 0 1 auto;
   padding: 6px 0 0;
 }
 .admin-sidebar-nav--sub .admin-sidebar-item { padding: 8px 12px 8px 38px; }
 .admin-sidebar-nav--sub .admin-sidebar-item svg { width: 16px; height: 16px; }
-
 .admin-sidebar-footer {
   margin-top: auto;
   flex-direction: column; align-items: stretch; gap: 0;
@@ -2198,13 +1868,11 @@
   line-height: 1.6;
 }
 .admin-sidebar-footnote span { font-size: 10px; }
-
 /* ---- Header: pill de fecha ---- */
 .admin-date-badge { margin-left: 6px; }
 @media (max-width: 768px) {
   .admin-date-badge { display: none; }
 }
-
 /* ==========================================
    Dashboard v2
    ========================================== */
@@ -2295,7 +1963,6 @@
 }
 .dash-area-labels .dash-label.is-first { transform: none; }
 .dash-area-labels .dash-label.is-last { transform: translateX(-100%); }
-
 /* ---- Dona + leyenda ---- */
 .dash-donut { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .dash-donut-wrap { position: relative; width: 130px; height: 130px; flex-shrink: 0; }
@@ -2317,7 +1984,6 @@
 .dash-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .dash-legend-label { flex: 1; color: var(--theme-text-secondary); }
 .dash-legend-count { color: var(--theme-text-primary); font-weight: 500; white-space: nowrap; }
-
 /* ---- Tendencia de ánimo ---- */
 .dash-mood-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
@@ -2363,7 +2029,6 @@
   color: var(--theme-text-tertiary);
 }
 .dash-week-caption strong { color: var(--theme-text-secondary); font-weight: 600; }
-
 /* ---- Fechas importantes ---- */
 .dash-fechas { display: flex; flex-direction: column; }
 .dash-fecha {
@@ -2387,7 +2052,6 @@
 }
 .dash-fecha-badge.hot { background: rgba(232, 97, 79, 0.16); color: #ff8a7a; }
 .dash-fecha-badge.muted { background: rgba(255,255,255,0.05); color: var(--theme-text-tertiary); font-weight: 500; }
-
 /* ---- Actividad reciente ---- */
 .admin-activity-list .admin-activity-item { align-items: center; gap: 12px; }
 .admin-activity-list .admin-activity-item::before { display: none; }
@@ -2407,7 +2071,6 @@
   transition: all var(--dur-smooth, 0.25s);
 }
 .dash-more-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); background: var(--accent-dim); }
-
 /* ---- Atajos de gestión ---- */
 .dash-shortcuts {
   /* Antes: fila horizontal con overflow-x y tarjetas fijas de 150 px. En
@@ -2438,7 +2101,6 @@
 .dash-shortcut-icon { font-size: 20px; }
 .dash-shortcut-label { font-size: var(--fs-sm, 14px); font-weight: 600; }
 .dash-shortcut-count { font-size: var(--fs-xs, 11px); color: var(--theme-text-tertiary); }
-
 /* ---- Responsive dashboard ---- */
 @media (max-width: 768px) {
   .dash-donut { justify-content: center; }
@@ -2449,12 +2111,10 @@
   .dash-shortcuts { grid-template-columns: 1fr 1fr; gap: 10px; }
   .dash-shortcut { padding: 12px; }
 }
-
 /* ==========================================
    ADMIN · Profesional: conexión, toggle de gráfico, config
    ========================================== */
 .dash-header-tools { display: flex; align-items: center; gap: 10px; }
-
 .dash-conn-pill {
   font-size: 11px;
   padding: 5px 12px;
@@ -2469,16 +2129,7 @@
   border-color: rgba(95, 214, 160, 0.3);
   background: rgba(95, 214, 160, 0.08);
 }
-
-.admin-conn-pill {
-  display: block;
-  margin-top: 10px;
-  text-align: center;
-  font-size: 10px;
-  color: var(--theme-text-tertiary);
-}
 .admin-conn-pill.ok { color: var(--theme-success, #5fd6a0); }
-
 .dash-chart-toggle-group {
   display: inline-flex;
   gap: 2px;
@@ -2504,7 +2155,6 @@
   background: var(--theme-accent, #e8614f);
   color: #fff;
 }
-
 .dash-panel-actions { display: flex; align-items: center; gap: 8px; }
 .dash-link {
   border: none;
@@ -2519,7 +2169,6 @@
   transition: all var(--dur-fast, 0.15s);
 }
 .dash-link:hover { background: var(--accent-dim); }
-
 /* ==========================================
    ADMIN · Configuración
    Tarjetas con icono y rótulo de grupo, y las fechas en pestañas: antes era
@@ -2578,7 +2227,6 @@
   text-transform: uppercase;
   color: var(--theme-text-secondary);
 }
-
 /* ---- Paleta: cada botón muestra su propio color ---- */
 /* Siempre tres paletas en fila: es una lista cerrada (theme.service) y
    repartirlas en 2+1 dejaba una sola y descolocada. */
@@ -2626,7 +2274,6 @@
   line-height: 1.3;
   color: var(--theme-text-secondary);
 }
-
 /* ---- Modo ---- */
 .config-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .config-mode {
@@ -2653,7 +2300,6 @@
   font-weight: 600;
 }
 .config-mode-emoji { font-size: 20px; line-height: 1; }
-
 /* ---- Estado de las notificaciones ---- */
 .config-status {
   list-style: none;
@@ -2688,9 +2334,7 @@
 }
 .config-status b { display: block; font-size: var(--fs-sm); color: var(--theme-text-primary); }
 .config-status small { font-size: 11px; color: var(--theme-text-secondary); }
-
 .config-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-
 /* ---- Datos de la cuenta ---- */
 .config-facts { display: grid; gap: 8px; margin: 16px 0 0; }
 .config-facts > div {
@@ -2704,7 +2348,6 @@
 }
 .config-facts dt { font-size: var(--fs-xs); color: var(--theme-text-secondary); }
 .config-facts dd { margin: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--theme-text-primary); }
-
 /* ---- Fechas en pestañas ---- */
 .config-dates { margin-top: 2px; }
 /* Tira de pestañas de la tarjeta: cuatro bloques iguales que llenan el ancho,
@@ -2781,7 +2424,6 @@
   border-color: var(--theme-error, #ff6b6b);
   background: color-mix(in srgb, var(--theme-error, #ff6b6b) 10%, transparent);
 }
-
 /* Borrador local: lo escrito que aún no está en la nube. */
 .config-draft {
   display: flex;
@@ -2797,23 +2439,21 @@
 }
 .config-draft[hidden] { display: none; }
 .config-draft .admin-btn { padding: 4px 10px; font-size: 12px; }
-
 .config-save.is-dirty .config-save-state { color: var(--theme-accent); }
 .config-save.is-dirty .config-save-state::before {
   background: var(--theme-accent);
   animation: adminPulse 2s ease-in-out infinite;
 }
-
 @media (max-width: 480px) {
   .config-swatches { grid-template-columns: 1fr; }
   .config-grid { grid-template-columns: 1fr; }
-}.admin-profile-row {
+}
+.admin-profile-row {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 .admin-profile-row > div:nth-child(2) { flex: 1; min-width: 0; }
-
 /* ==========================================
    ADMIN · Cabecera pegajosa
    La navegación vive en el menú lateral, así que la cabecera ya solo
@@ -2848,7 +2488,6 @@
   margin-left: auto;
   display: flex; align-items: center; gap: 8px;
 }
-
 /* Botón del cajón: solo aparece cuando el menú no cabe en pantalla. */
 .admin-nav-toggle {
   display: none;
@@ -2864,7 +2503,6 @@
 }
 .admin-nav-toggle:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
 .admin-nav-toggle svg { width: 20px; height: 20px; }
-
 /* Velo del cajón: sin él, el menú tapa el contenido sin avisar. */
 .admin-nav-scrim {
   position: fixed; inset: 0;
@@ -2872,9 +2510,7 @@
   z-index: 19;
   animation: fade-in var(--dur-fast, 0.15s);
 }
-.admin-nav-scrim[hidden] { display: none; }
-html.admin-nav-locked { overflow: hidden; }
-
+.admin-nav-scrim[hidden] { display: none; }html.admin-nav-locked { overflow: hidden; }
 /* ==========================================
    ADMIN · Menú lateral · grupos
    Ocho secciones en tres grupos: lo del día a día arriba y el resto
@@ -2902,7 +2538,7 @@ html.admin-nav-locked { overflow: hidden; }
 }
 
 /* El shell de la app ya pone la marca y quién eres; el menú del panel solo
-   navega. Arriba, una línea de contexto; abajo, la vuelta al hub. */
+   navega. Arriba, una línea de contexto;abajo, la vuelta al hub. */
 .admin-sidebar-top {
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px;
@@ -2928,9 +2564,7 @@ html.admin-nav-locked { overflow: hidden; }
 }
 .admin-sidebar-home svg { width: 15px; height: 15px; }
 .admin-sidebar-home:hover { color: var(--theme-text-primary); }
-
 .admin-sidebar-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 /* Pie de página del admin */
 .admin-footer {
   display: flex;
@@ -2946,7 +2580,6 @@ html.admin-nav-locked { overflow: hidden; }
   margin-right: 10px;
   opacity: 0.5;
 }
-
 /* El menú pasa a cajón: fuera de la pantalla, con botón, velo y
    bloqueo de scroll. El mismo marcado sirve para los dos casos. */
 @media (max-width: 920px) {
@@ -2978,7 +2611,6 @@ html.admin-nav-locked { overflow: hidden; }
   .admin-date-badge { display: none; }
   .admin-footer { font-size: 11px; padding-top: 20px; }
 }
-
 /* ==========================================
    ADMIN · Actividad de uso (tiempo por sección, conexiones)
    ========================================== */
@@ -3017,7 +2649,6 @@ html.admin-nav-locked { overflow: hidden; }
   color: var(--theme-text-tertiary);
   white-space: nowrap;
 }
-
 .dash-conn { display: flex; flex-direction: column; }
 .dash-conn-row {
   display: flex;
@@ -3056,9 +2687,7 @@ html.admin-nav-locked { overflow: hidden; }
   font-weight: 500;
   white-space: nowrap;
 }
-
 .user-online { color: var(--theme-success, #5fd6a0); font-weight: 600; }
-
 @media (max-width: 480px) {
   .dash-use-label { flex-basis: 74px; }
   .dash-use-meta { font-size: 10px; }
@@ -3128,7 +2757,6 @@ html.admin-nav-locked { overflow: hidden; }
   color: var(--theme-text-tertiary, var(--theme-text-secondary));
 }
 .dates-slot-label svg { width: 13px; height: 13px; }
-
 /* Interruptor de "cada año": una casilla de sistema con el texto pegado era lo
    único que indicaba que esa fecha se repite, y quedaba descolocada. */
 .dates-switch {
@@ -3172,7 +2800,6 @@ html.admin-nav-locked { overflow: hidden; }
   outline-offset: 2px;
 }
 .dates-switch-label { font-size: var(--fs-xs); color: var(--theme-text-secondary); }
-
 @media (max-width: 480px) {
   .dates-cards { grid-template-columns: 1fr; }
 }
@@ -3276,7 +2903,53 @@ html.admin-nav-locked { overflow: hidden; }
 .dates-event-row.is-open .dates-event-toggle {
   background: var(--theme-surface);
 }
-
+/* ===== Acciones de un evento importante =====
+   Los botones que la hoja ofrece ese día: los escribe aquí el admin. Cada
+   acción es una fila con el texto del botón y a dónde lleva. */
+.dates-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+.dates-actions-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--theme-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.dates-actions-list { display: grid; gap: 6px; }
+.dates-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.dates-action-row input {
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface);
+  color: var(--theme-text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+.dates-action-label { flex: 1 1 150px; }
+.dates-action-route { flex: 1 1 200px; }
+.dates-action-del {
+  flex-shrink: 0;
+  width: 34px;
+  height: 40px;
+  border: 1px solid var(--theme-divider-strong);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--theme-error, #ff6b6b);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
 /* ===== Comprobar la bienvenida sin esperar al día =====
    «Hoy» rellena la fecha con el día de hoy y 🎬 abre la hoja tal cual
    quedaría, aunque la fecha ya haya pasado. */
@@ -3317,7 +2990,6 @@ html.admin-nav-locked { overflow: hidden; }
 .dates-se-preview:hover {
   border-color: var(--theme-accent, #e8614f);
 }
-
 /* Línea de estado: dice si ese día sale hoy, cuándo o por qué no sale. */
 .dates-when {
   display: flex;
@@ -3341,7 +3013,6 @@ html.admin-nav-locked { overflow: hidden; }
 .dates-when--info { color: var(--theme-text-secondary); }
 .dates-when--muted { color: var(--theme-text-secondary); opacity: .75; }
 .dates-when--warn { color: #e8a33f; }
-
 /* ===== Aspecto de la bienvenida (emoji, color, texto, foto) ===== */
 .dates-event-look,
 .dates-look-row {
@@ -3385,7 +3056,6 @@ html.admin-nav-locked { overflow: hidden; }
 }
 .dates-look-field textarea { resize: vertical; line-height: 1.45; }
 .dates-look-field input[type="text"].dates-look-icon { max-width: 78px; text-align: center; font-size: 18px; }
-
 /* Vista previa en vivo: se parece a la hoja real (foto + emoji + texto). */
 .dates-look-preview {
   grid-column: 1 / -1;
@@ -3421,7 +3091,6 @@ html.admin-nav-locked { overflow: hidden; }
 .dates-look-chip-text { display: grid; gap: 2px; min-width: 0; }
 .dates-look-chip-text b { font-size: 14px; }
 .dates-look-chip-text small { font-size: 12px; line-height: 1.4; color: var(--theme-text-secondary); }
-
 .dates-emoji-label { font-size: 18px; line-height: 1; }
 .dates-event-recur input[type="checkbox"] {
   width: 16px;
@@ -3449,7 +3118,6 @@ html.admin-nav-locked { overflow: hidden; }
   font-size: var(--fs-xs, 11px);
   opacity: 0.85;
 }
-
 /* ---- Reparto por tipo de ánimo ---- */
 .dash-mooddist {
   display: flex;

@@ -10,6 +10,7 @@ import { db } from '../services/db.service.js';
 import { BottomNav } from './BottomNav.js';
 import { Sidebar } from './Sidebar.js';
 import { renderPageIcon } from './PageHeader.js';
+import { isChromeHidden, isMobileRoot, mobileTopbarMeta, mobileBackTarget, homePathFor, isVisibleTo, roleFor } from '../routes.js';
 import { NowPlayingBar } from './NowPlayingBar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
 import { setMoodWelcomeState } from './SpecialEventSheet.js';
@@ -25,8 +26,6 @@ import { initRealtime, stopRealtime } from '../services/realtime.service.js';
 import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref, getUserId } from '../utils/userStorage.js';
 import { todayISO, hourInSpain, spainMsOnDate, nextDayISO } from '../utils/format.js';
 
-// Rutas que NO deben mostrar navegación (sidebar ni bottom-nav)
-const NO_NAV_ROUTES = ['/login'];
 
 export function AppShell(router) {
   const app = document.getElementById('app');
@@ -139,34 +138,13 @@ export function AppShell(router) {
     }
   });
 
-  const MOBILE_ROOT_ROUTES = new Set(['/', '/rincon', '/sentimientos', '/ositos', '/perfil']);
-  const MOBILE_ROUTE_META = {
-    '/galeria': { label: 'Galería', icon: 'image' },
-    '/memes': { label: 'Memes', icon: 'smile' },
-    '/audios': { label: 'Audios', icon: 'mic' },
-    '/minecraft': { label: 'Minecraft', icon: 'minecraft' },
-    '/curiosidades': { label: 'Curiosidades', icon: 'compass' },
-    '/juegos': { label: 'Juegos', icon: 'minecraft' },
-    '/calendario': { label: 'Calendario', icon: 'home' },
-    '/razones': { label: 'Razones', icon: 'heart' },
-    '/openwhen': { label: 'Open When', icon: 'heart' },
-    '/maldia': { label: 'Mal Día', icon: 'heart' },
-    '/canciones': { label: 'Canciones', icon: 'mic' },
-    '/series': { label: 'Series', icon: 'image' },
-    '/thoseeyes': { label: 'Those Eyes', icon: 'heart' }
-  };
-
-  function mobileBackTarget(path) {
-    if (path.startsWith('/juegos/online/')) return '/juegos';
-    if (['/galeria', '/memes', '/audios', '/minecraft', '/curiosidades', '/juegos', '/canciones', '/series', '/thoseeyes'].includes(path.split('?')[0])) return '/rincon';
-    if (['/razones', '/openwhen', '/calendario', '/maldia'].includes(path.split('?')[0])) return '/sentimientos';
-    return '/';
-  }
-
+  // Qué rutas llevan barra de vuelta, cómo se llama cada una, sin navegación
+  // y hacia dónde vuelve el botón Atrás: todo sale del registro de rutas
+  // (src/routes.js), que es la única lista de pantallas de la aplicación.
   function updateMobileTopBar(path) {
+    const role = roleFor(userStore.isAdmin);
     const basePath = path.split('?')[0];
-    const shouldShow = !NO_NAV_ROUTES.some(route => path === route || path.startsWith(route + '/'))
-      && !MOBILE_ROOT_ROUTES.has(basePath);
+    const shouldShow = !isChromeHidden(path) && !isMobileRoot(basePath, role);
 
     mobileTopBar.classList.toggle('is-visible', shouldShow);
     if (!shouldShow) {
@@ -174,7 +152,7 @@ export function AppShell(router) {
       return;
     }
 
-    const meta = MOBILE_ROUTE_META[basePath] || { label: 'Volver', icon: 'home' };
+    const meta = mobileTopbarMeta(basePath);
     mobileTopBar.innerHTML = `
       <button type="button" class="mobile-topbar__back" aria-label="Volver">
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -187,7 +165,7 @@ export function AppShell(router) {
       <span class="mobile-topbar__spacer" aria-hidden="true"></span>
     `;
     mobileTopBar.querySelector('.mobile-topbar__back').addEventListener('click', () => {
-      router.back(mobileBackTarget(path));
+      router.back(mobileBackTarget(path, role));
     });
   }
 
@@ -214,7 +192,7 @@ export function AppShell(router) {
 
   /** Controla la visibilidad de la navegación según la ruta actual */
   function updateNavigation(path) {
-    const shouldHide = NO_NAV_ROUTES.some(route => path === route || path.startsWith(route + '/'));
+    const shouldHide = isChromeHidden(path);
     app.classList.toggle('no-nav', shouldHide);
     // has-sidebar = hay navegación lateral visible (lo usan la barra del
     // reproductor y las vistas inmersivas para alinearse al contenido).
@@ -294,6 +272,16 @@ export function AppShell(router) {
         router.replace('/');
         return false;
       }
+    }
+
+    // Cada rol entra por donde le toca: la pantalla diaria ('/') es de la
+    // usuaria, así que el admin aterriza en su casa, el panel, donde gestiona
+    // los eventos importantes. Se usa replace para no apilar una entrada de
+    // historial que vuelva a redirigir.
+    const navRole = roleFor(userStore.isAdmin);
+    if (!isVisibleTo(path, navRole)) {
+      router.replace(homePathFor(navRole));
+      return false;
     }
 
     return true;

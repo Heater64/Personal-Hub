@@ -608,17 +608,22 @@ export function ProfilePage(router) {
     renderEventRows();
   });
   page.querySelector('#pdSave')?.addEventListener('click', async () => {
-    const rows = [...page.querySelectorAll('.prof-days-event-row')].map(row => ({
-      id: row.dataset.evId,
-      title: row.querySelector('.prof-days-event-title').value.trim(),
-      date: row.querySelector('.prof-days-event-date').value,
-      recurring: row.querySelector('.prof-days-event-recur-cb')?.checked === true
-    }));
     // Este editor solo toca título/fecha/repetición. El aspecto de la
-    // bienvenida (emoji, texto, foto) y los días temáticos se editan en
-    // Admin → Configuración, así que aquí se reenvían tal cual: si no, al
-    // guardar desde el móvil se perderían.
+    // bienvenida (emoji, texto, foto), las acciones que definió el Admin y los
+    // días temáticos se reenvían tal cual: si no, al guardar desde el móvil se
+    // perdían.
     const current = specialDates();
+    const previos = new Map((current.events || []).map(e => [e.id, e]));
+    const rows = [...page.querySelectorAll('.prof-days-event-row')].map(row => {
+      const id = row.dataset.evId;
+      return {
+        ...(previos.get(id) || {}),
+        id,
+        title: row.querySelector('.prof-days-event-title').value.trim(),
+        date: row.querySelector('.prof-days-event-date').value,
+        recurring: row.querySelector('.prof-days-event-recur-cb')?.checked === true
+      };
+    });
     const payload = {
       anniversary: page.querySelector('#pdAnniversary').value,
       hubStart: page.querySelector('#pdHubStart').value,

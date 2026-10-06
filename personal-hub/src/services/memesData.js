@@ -37,10 +37,6 @@ const sync = createSyncStore({
 });
 
 /** Sincroniza con el servidor (pull/push). Devuelve { changed, data }. */
-export function hydrateMemes() {
-  return sync.hydrate();
-}
-
 // ==========================================
 // STORAGE helpers (user-scoped)
 // ==========================================
@@ -84,10 +80,6 @@ export function memeItems(albumId) {
 }
 
 /** Subidas del usuario para un álbum concreto */
-export function albumUploads(albumId) {
-  return readJson(UPLOADS_KEY, {})[albumId] || [];
-}
-
 /** Añadir memes subidos a un álbum */
 export function addMemesToAlbum(albumId, urls) {
   const all = readJson(UPLOADS_KEY, {});

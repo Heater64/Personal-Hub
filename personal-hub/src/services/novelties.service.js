@@ -14,6 +14,8 @@ import { userPrefKey } from '../utils/userStorage.js';
 import { loadGiftsCatalog, getGiftTodayStr } from './gifts.service.js';
 import { db } from './db.service.js';
 
+export { getNoveltyNotificationRoute } from '../utils/notification-route.js';
+
 /**
  * Novedades de hoy:
  *  - Calendario: el regalo de hoy sin abrir todavía.
@@ -28,23 +30,22 @@ export async function getTodayNovelties() {
     const cat = await loadGiftsCatalog();
     if (cat) {
       const dayNum = String(parseInt(today.slice(8), 10));
-      // Un día puede tener varios contenidos: se usa el primero para la novedad
+      // Un día puede tener varios contenidos: notifica si queda cualquiera
+      // sin abrir e incluye su id para que la ruta baje al regalo concreto.
       const raw = cat.months?.[today.slice(0, 7)]?.calendarMapping?.[dayNum];
       const ids = Array.isArray(raw) ? raw.filter(Boolean) : (raw ? [raw] : []);
-      const gift = ids.length ? cat.giftsById?.[ids[0]] : null;
+      let progress = {};
+      try { progress = JSON.parse(localStorage.getItem(userPrefKey('giftProgress')) || '{}'); } catch { /* */ }
+      const gift = ids.map(id => cat.giftsById?.[id]).find(item => item && !progress[item.id]?.opened);
       if (gift) {
-        let progress = {};
-        try { progress = JSON.parse(localStorage.getItem(userPrefKey('giftProgress')) || '{}'); } catch { /* */ }
-        if (!progress[gift.id]?.opened) {
-          novelties.push({
-            id: `cal-${today}`,
-            section: 'calendario',
-            icon: '🎁',
-            tag: 'Calendario',
-            text: gift.title || 'Hay una sorpresa esperándote hoy',
-            route: `/calendario?day=${today}`
-          });
-        }
+        novelties.push({
+          id: `cal-${today}`,
+          section: 'calendario',
+          icon: '🎁',
+          tag: 'Calendario',
+          text: gift.title || 'Hay una sorpresa esperándote hoy',
+          route: `/calendario?day=${today}&gift=${encodeURIComponent(gift.id)}`
+        });
       }
     }
   } catch { /* catálogo no disponible: omitir esta fuente */ }

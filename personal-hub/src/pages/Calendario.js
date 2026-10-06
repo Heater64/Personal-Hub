@@ -336,8 +336,13 @@ export function CalendarioPage(router) {
   page.className = 'calendario-page';
 
   const previewAll = new URLSearchParams(location.search).get('previewGifts') === '1';
-  const selectedDay = { value: todayISO() };
-  const view = { monthKey: monthKeyOf(todayISO()), mode: CALENDAR_VIEW.MONTH };
+  const query = router.currentRoute?.query || {};
+  const requestedDay = /^\d{4}-\d{2}-\d{2}$/.test(query.day || '') ? query.day : todayISO();
+  const requestedGiftId = typeof query.gift === 'string' && /^[\w-]{1,120}$/.test(query.gift) ? query.gift : '';
+  const selectedDay = { value: requestedDay };
+  const view = { monthKey: monthKeyOf(requestedDay), mode: CALENDAR_VIEW.MONTH };
+  let requestedGiftOpened = false;
+  let pageActive = true;
 
   page.innerHTML = `
     ${renderHead()}
@@ -472,6 +477,9 @@ export function CalendarioPage(router) {
     if (!months.includes(view.monthKey)) {
       const past = months.filter(m => m <= monthKeyOf(todayISO()));
       view.monthKey = past.length ? past[past.length - 1] : months[0];
+      if (!months.includes(monthKeyOf(selectedDay.value))) {
+        selectedDay.value = `${view.monthKey}-${pad(Math.min(Number(selectedDay.value.slice(-2)), daysInMonth(...view.monthKey.split('-').map(Number))))}`;
+      }
     }
 
     const [year, month] = view.monthKey.split('-').map(Number);
@@ -619,6 +627,15 @@ export function CalendarioPage(router) {
     page.querySelector('#calDay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function openRequestedGift() {
+    if (!pageActive || !requestedGiftId || requestedGiftOpened || selectedDay.value !== requestedDay) return;
+    const ids = dayIds(requestedDay);
+    const gift = ids.includes(requestedGiftId) ? giftOf(requestedGiftId) : null;
+    if (!gift || dayState(requestedDay, ids) === 'locked') return;
+    requestedGiftOpened = true;
+    openExperience(gift, requestedDay);
+  }
+
   function shiftPeriod(delta) {
     const months = Object.keys(catalog?.months || {}).sort();
     if (!months.length) return;
@@ -707,6 +724,11 @@ export function CalendarioPage(router) {
         ? `💌 ${sinResponder === 1 ? 'Te queda 1 por responder' : `Te quedan ${sinResponder} por responder`}`
         : `💌 ${contestadas === 1 ? '1 respuesta guardada' : `${contestadas} respuestas guardadas`}`}</p>` : ''}
     `;
+
+    if (requestedGiftId && requestedDay === dateStr && ids.includes(requestedGiftId)
+        && !requestedGiftOpened) {
+      queueMicrotask(openRequestedGift);
+    }
 
     const grid = h('div', { class: `cal-gifts${isToday ? ' is-today' : ''}` });
     for (const id of ids) {
@@ -1564,7 +1586,7 @@ export function CalendarioPage(router) {
   document.addEventListener('keydown', onShortcut);
 
   loadProgress();
-  loadMyResponses().then(paintAll);
+  loadMyResponses().then(() => { if (pageActive) paintAll(); });
 
   // Un override creado antes (p. ej. como admin) no debe seguir alterando
   // el calendario en una cuenta de usuaria: se limpia al detectar que ya
@@ -1576,10 +1598,15 @@ export function CalendarioPage(router) {
   paintAll();
 
   loadGiftsCatalog().then(data => {
+    if (!pageActive) return;
     if (data) {
       catalog = data; resetAnnouncement();
       catalog.giftsById = catalog.giftsById || {};
       (catalog.gifts || []).forEach(gift => { if (gift.id) catalog.giftsById[gift.id] = gift; });
+      if (!dayIds(requestedDay).length || !catalog.months?.[monthKeyOf(requestedDay)]) {
+        selectedDay.value = todayISO();
+        view.monthKey = monthKeyOf(selectedDay.value);
+      }
     }
     // Solo saltamos a un mes con contenido si el actual está vacío
     if (catalog && !dayIds(selectedDay.value).length) {
@@ -1590,6 +1617,7 @@ export function CalendarioPage(router) {
       }
     }
     paintAll();
+    openRequestedGift();
   });
 
   const offContent = previewAll
@@ -1618,10 +1646,12 @@ export function CalendarioPage(router) {
           }
         }
         paintAll();
+        openRequestedGift();
       }
     });
 
   page.cleanup = () => {
+    pageActive = false;
     stopSpotRotation();
     document.removeEventListener('keydown', onShortcut);
     try { offContent(); } catch { /* noop */ }

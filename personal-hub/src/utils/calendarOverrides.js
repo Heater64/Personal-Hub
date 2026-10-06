@@ -50,20 +50,6 @@ export function setCalendarOverrideMode(mode) {
   save(o);
 }
 
-/** Fuerza el estado de un día concreto ('open' | 'locked'); null lo limpia. */
-export function setCalendarDayOverride(dateStr, state) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
-  const o = getCalendarOverrides();
-  if (state === null) {
-    delete o.days[dateStr];
-  } else if (state === 'open' || state === 'locked') {
-    o.days[dateStr] = state;
-  } else {
-    return;
-  }
-  save(o);
-}
-
 /** Elimina TODOS los overrides (vuelve al comportamiento normal). */
 export function clearCalendarOverrides() {
   try {

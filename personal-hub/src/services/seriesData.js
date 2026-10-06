@@ -236,19 +236,6 @@ export function detectGenres(item) {
   return genres.length ? genres.slice(0, 3) : [typeLabel(item)];
 }
 
-export function formatYear(item) {
-  return item.anio ? String(item.anio) : '';
-}
-
-export function formatRating(item) {
-  const r = parseFloat(item.valoracion);
-  return isNaN(r) ? '' : r.toFixed(1);
-}
-
-export function formatDuration(item) {
-  return item.duracion ? `${item.duracion} min` : '';
-}
-
 /** Enlace de reproducción (nuevo `recurso`/`webUrl` o legacy `videoUrl`) */
 export function playUrl(item) {
   return item.recurso || item.webUrl || item.videoUrl || '';

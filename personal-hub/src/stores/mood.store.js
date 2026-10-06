@@ -38,6 +38,27 @@ function getMoodKey() {
 class MoodStore {
   constructor() {
     this.todayMood = null;
+    // Quien pinte el ánimo del día (Inicio) se suscribe aquí en vez de
+    // repintar a ciegas con temporizadores o al recuperar el foco.
+    this.listeners = new Set();
+  }
+
+  /**
+   * Escucha los cambios del ánimo de hoy: registrarlo, quitarlo o que llegue
+   * de Supabase al arrancar. Devuelve la función para dejar de escuchar.
+   */
+  subscribe(fn) {
+    if (typeof fn !== 'function') return () => {};
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  /** Avisa a los suscriptores con el estado visible (o null) del día. */
+  _emitMoodChange() {
+    const mood = this.getTodayMood();
+    for (const fn of this.listeners) {
+      try { fn(mood); } catch { /* un suscriptor roto no puede tumbar a los demás */ }
+    }
   }
 
   getMoods() {
@@ -288,6 +309,7 @@ class MoodStore {
       history.splice(existingIdx, 1);
     }
     localStorage.setItem(userPrefKey('moodHistory'), JSON.stringify(history));
+    this._emitMoodChange();
   }
 
   /**
@@ -354,6 +376,8 @@ class MoodStore {
           createdAt,
           updatedAt: createdAt
         }]);
+        // El ánimo que pinta el Inicio puede llegar después del primer render.
+        this._emitMoodChange();
         return mood;
       }
     } catch (err) {
@@ -361,7 +385,9 @@ class MoodStore {
     }
 
     // Fall back to locally cached mood
-    return this.getTodayMood();
+    const fallback = this.getTodayMood();
+    this._emitMoodChange();
+    return fallback;
   }
 
   getTodayMood() {

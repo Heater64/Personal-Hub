@@ -246,14 +246,6 @@ export function initPlaylistsRealtime() {
   }
 }
 
-export function stopPlaylistsRealtime() {
-  started = false;
-  if (channel) {
-    try { supabase.removeChannel(channel); } catch { /* ya eliminado */ }
-    channel = null;
-  }
-}
-
 /** Suscripción para páginas: handler(list) cuando cambian las playlists. */
 export function onPlaylistsChange(handler) {
   const wrapped = () => { handler(getCachedPlaylists()); };

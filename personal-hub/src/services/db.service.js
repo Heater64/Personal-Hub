@@ -7,6 +7,7 @@ import { supabase } from './supabase.js';
 import { auth } from './auth.service.js';
 import { escapeHtml } from '../utils/escape.js';
 import { normalizeDecor, normalizeVideoMode, mediaList, MAX_EMOJIS } from '../utils/celebration.js';
+import { cleanEventActions } from '../utils/event-actions.js';
 import { userPrefKey } from '../utils/userStorage.js';
 
 // Storage keys for localStorage fallback
@@ -329,7 +330,7 @@ const DEFAULT_HUB_DATES = {
   hubStart: '2024-05-10',      // inicio del Hub / primer mensaje
   birthday: '2012-09-03',      // cumpleaños de dada: 03/09/2012
   userBirthday: '2009-08-03',  // cumpleaños del admin: 03/08/2009
-  events: [],                  // próximas cosas: [{ id, title, date, recurring }]
+  events: [],                  // próximas cosas: [{ id, title, date, recurring, actions }]
   titles: {                    // títulos editables de los 4 días principales
     anniversary: 'Aniversario',
     hubStart: 'Primer mensaje',
@@ -367,7 +368,8 @@ function cleanMedia(source) {
   };
 }
 
-/** Normaliza un evento libre: solo guarda lo que tiene sentido. */
+/** Normaliza un evento importante: solo guarda lo que tiene sentido.
+ *  Sus `actions` son los botones que la hoja ofrecerá ese día. */
 function cleanEvent(event) {
   if (!event || !text(event.title) || !text(event.date)) return null;
   return {
@@ -379,7 +381,8 @@ function cleanEvent(event) {
     description: text(event.description),
     type: text(event.type, 'custom'),
     image: text(event.image),
-    ...cleanMedia(event)
+    ...cleanMedia(event),
+    actions: cleanEventActions(event.actions)
   };
 }
 

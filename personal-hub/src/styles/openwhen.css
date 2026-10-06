@@ -4,6 +4,8 @@
    y cartas en grid que se abren en el sheet común.
    ========================================== */
 
+.openwhen-page { position: relative; }
+
 .ow-section { margin-bottom: var(--sp-22, 22px); }
 
 /* ==========================================
@@ -21,11 +23,6 @@
   border: 1px solid var(--border-soft);
 }
 
-/* ==========================================
-   PARA TI
-   ========================================== */
-.ow-pt-box { padding: 0; overflow: hidden; }
-
 .ow-pt {
   width: 100%;
   display: flex;
@@ -40,34 +37,6 @@
 
 .ow-pt:last-child { border-bottom: none; }
 .ow-pt:hover { background: var(--surface-2); }
-
-.ow-pt__ic {
-  width: 38px;
-  height: 38px;
-  flex: none;
-  border-radius: var(--r-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 19px;
-  background: var(--primary-soft);
-}
-
-.ow-pt__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-
-.ow-pt__body b {
-  font-family: var(--font-ui);
-  font-size: var(--fs-base);
-  font-weight: 600;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ow-pt__body span { font-size: var(--fs-xs); color: var(--text-3); }
-
-.ow-pt__go { color: var(--text-3); display: flex; flex: none; }
 .ow-pt:hover .ow-pt__go { color: var(--primary); }
 
 /* ==========================================

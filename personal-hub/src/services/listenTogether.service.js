@@ -178,10 +178,6 @@ export function respondListenTogether(approved, name = '', avatar = '') {
   broadcast('response', { approved: Boolean(approved), name, avatar });
 }
 
-export function isListenTogetherActive() {
-  return active;
-}
-
 /** Estado actual de la sesión: { active, pending, peerName, peerAvatar }. */
 export function getListenTogetherState() {
   return { active, pending, peerName, peerAvatar };

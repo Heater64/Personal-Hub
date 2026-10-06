@@ -36,10 +36,6 @@ export function hourInSpain(date = new Date()) {
 }
 
 /** Día del mes actual en España (1-31). */
-export function dayOfMonthInSpain(date = new Date()) {
-  return Number(todayISO(date).slice(8, 10));
-}
-
 /**
  * Hora actual en España como "HH:MM".
  * El reloj del admin usaba la hora local del dispositivo mientras el

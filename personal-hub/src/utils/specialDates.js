@@ -9,6 +9,7 @@
 
 import { db } from '../services/db.service.js';
 import { normalizeDecor, normalizeVideoMode, mediaList } from './celebration.js';
+import { cleanEventActions } from './event-actions.js';
 import { todayISO } from './format.js';
 
 // Días temáticos de fábrica (Halloween, Navidad). Editables desde Admin:
@@ -87,6 +88,26 @@ function eventOccurrenceKey(prefix, recurring, date, iso) {
   return `${prefix}:${recurring ? iso.slice(0, 4) : date}`;
 }
 
+/**
+ * Un evento con fecha del panel, tal y como lo pinta la hoja: lo comparten el
+ * día que cae y el aviso previo (que solo cambia la clave).
+ */
+function freeEvent(event, iso, suffix) {
+  const identity = event.id || String(event.title || 'evento').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return {
+    key: `event:${identity}:${suffix}`,
+    title: pick(event.title, 'Día especial'),
+    icon: pick(event.icon, '✨'),
+    type: normalizeEventType(event.type),
+    description: pick(event.description, 'Hoy tenemos una razón más para crear un recuerdo juntos.'),
+    image: pick(event.image, ''),
+    ...mediaFields(event),
+    // Botones que definió el admin (si los hay) para este día.
+    actions: cleanEventActions(event.actions),
+    date: iso
+  };
+}
+
 /** Eventos configurados y festivos que coinciden con una fecha española. */
 export function specialEventsForDate(iso = todayISO()) {
   const cfg = specialDates();
@@ -115,18 +136,7 @@ export function specialEventsForDate(iso = todayISO()) {
 
   for (const event of cfg.events || []) {
     if (!event?.date || !occursOnDate(event.date, event.recurring === true, iso)) continue;
-    const suffix = event.recurring === true ? iso.slice(0, 4) : event.date;
-    const identity = event.id || String(event.title || 'evento').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    events.push({
-      key: `event:${identity}:${suffix}`,
-      title: pick(event.title, 'Día especial'),
-      icon: pick(event.icon, '✨'),
-      type: normalizeEventType(event.type),
-      description: pick(event.description, 'Hoy tenemos una razón más para crear un recuerdo juntos.'),
-      image: pick(event.image, ''),
-      ...mediaFields(event),
-      date: iso
-    });
+    events.push(freeEvent(event, iso, event.recurring === true ? iso.slice(0, 4) : event.date));
   }
 
   const monthDay = iso.slice(5);
@@ -180,6 +190,44 @@ export function seasonalEvents(cfg = specialDates()) {
 /** Eventos de hoy según el mismo huso que usa el resto de la aplicación. */
 export function specialEventsToday() {
   return specialEventsForDate(todayISO());
+}
+
+/**
+ * Días que faltan hasta una fecha (0 = hoy, negativo = ya pasó).
+ * Devuelve null si la fecha no es un día real, para poder distinguirla de
+ * «hoy» en vez de tratarla como si lo fuera.
+ */
+export function daysUntilDate(iso, today = todayISO()) {
+  const target = parseISODate(iso);
+  const base = parseISODate(today);
+  if (!target || !base) return null;
+  return Math.round((target - base) / MS_DAY);
+}
+
+/** Cuántos días antes se anuncia un evento del panel que todavía no ha llegado. */
+const ANNOUNCE_WINDOW_DAYS = 7;
+
+/**
+ * Lo que la hoja debe anunciar al entrar: los días que caen hoy (los cuatro
+ * principales, los temáticos y los eventos del panel) más los eventos del
+ * panel que aún no han llegado, hasta una semana antes, para que no aparezcan
+ * por sorpresa el mismo día.
+ *
+ * El aviso previo lleva una clave distinta a la del día real (`soon:<fecha>`):
+ * así, haberlo visto antes no impide que vuelva a salir cuando llegue su día.
+ * El campo `days` dice cuántos faltan, para poder escribir la fecha en la hoja.
+ */
+export function specialEventsToAnnounce() {
+  const today = todayISO();
+  const events = specialEventsForDate(today);
+  for (const event of specialDates().events || []) {
+    const occurrence = occurrenceISO(event, today);
+    if (!occurrence || occurrence <= today) continue;
+    const days = daysUntilDate(occurrence, today);
+    if (days === null || days > ANNOUNCE_WINDOW_DAYS) continue;
+    events.push({ ...freeEvent(event, occurrence, `soon:${occurrence}`), days });
+  }
+  return events;
 }
 
 // Alias legibles para la vista previa (`?evento=halloween`): con sólo mes y
@@ -272,6 +320,31 @@ const MS_DAY = 86400000;
 /** Fecha local YYYY-MM-DD (sin desfase de UTC). */
 function toISO(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** 'YYYY-MM-DD' → medianoche local, o null si no es un día real (31 de febrero). */
+function parseISODate(value) {
+  const [year, month, day] = String(value || '').split('-').map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+/**
+ * La próxima vez que cae un evento del panel desde `from`. Los recurrentes se
+ * proyectan al año en curso o al siguiente si ya pasaron; los de fecha única
+ * se dejan tal cual (aunque ya hayan pasado, los descarta el aviso).
+ */
+function occurrenceISO(event, from) {
+  const value = String(event?.date || '');
+  if (!parseISODate(value)) return null;
+  if (event.recurring !== true) return value;
+  const [, month, day] = value.split('-').map(Number);
+  const base = parseISODate(from) || todayMidnight();
+  let date = new Date(base.getFullYear(), month - 1, day);
+  if (date < base) date = new Date(base.getFullYear() + 1, month - 1, day);
+  return toISO(date);
 }
 
 /** Medianoche local de hoy, para comparar días sin horas. */

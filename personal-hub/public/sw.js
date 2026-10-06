@@ -15,7 +15,7 @@
    · Resto                 → network-first
    ========================================== */
 
-const CACHE_VERSION = '10';
+const CACHE_VERSION = '11';
 const CACHE = `personal-hub-v${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `personal-hub-dynamic-v${CACHE_VERSION}`;
 const MEDIA_CACHE = `personal-hub-media-v${CACHE_VERSION}`;
@@ -218,21 +218,64 @@ self.addEventListener('fetch', event => {
 });
 
 // ─── NOTIFICATIONS ─────────────────────────────
+function notificationRoute(value) {
+  let route = typeof value === 'string' ? value.trim() : '/';
+  try {
+    if (route.startsWith('//')) return '/';
+    if (/^[a-z][a-z\d+.-]*:/i.test(route) && !/^https?:\/\//i.test(route)) return '/';
+    if (/^https?:\/\//i.test(route)) {
+      const parsed = new URL(route);
+      if (parsed.origin !== self.location.origin) return '/';
+      route = parsed.hash.startsWith('#/') ? parsed.hash.slice(1) : `${parsed.pathname}${parsed.search}`;
+    }
+    if (route.startsWith('/#/')) route = route.slice(2);
+    if (route.startsWith('#')) route = route.slice(1);
+    if (!route.startsWith('/')) route = `/${route}`;
+    const parsed = new URL(route, self.location.origin);
+    if (parsed.origin !== self.location.origin) return '/';
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return '/';
+  }
+}
+
+function notificationAppUrl(route) {
+  const appUrl = new URL('/', self.location.origin);
+  appUrl.hash = notificationRoute(route);
+  return appUrl.href;
+}
+
 self.addEventListener('notificationclick', event => {
-  const url = event.notification.data?.url || '/';
+  const route = notificationRoute(event.notification.data?.url);
+  const appUrl = notificationAppUrl(route);
   event.notification.close();
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      for (const client of clientList) {
-        if ('focus' in client) {
-          client.focus();
-          // App abierta: navega a la sección (p. ej. /calendario?day=...) sin recargar
-          client.postMessage({ type: 'NAVIGATE', url });
-          return;
+      // Solo se reutiliza una ventana de la SPA: una pestaña de un juego
+      // independiente no escucha NAVIGATE y antes podía robar el clic.
+      const appClients = clientList.filter(client => {
+        try {
+          const clientUrl = new URL(client.url);
+          return clientUrl.origin === self.location.origin
+            && (clientUrl.pathname === '/' || clientUrl.pathname === '/index.html');
+        } catch {
+          return false;
         }
+      });
+      const client = appClients.find(item => item.focused) || appClients[0];
+      if (client) {
+        // Navega la pestaña SPA con la URL hash final: no depende de que el
+        // listener de App.js ya se haya montado tras abrir desde frío.
+        if (typeof client.navigate === 'function') {
+          return client.navigate(appUrl).then(windowClient => windowClient?.focus())
+            .catch(() => clients.openWindow?.(appUrl));
+        }
+        return Promise.resolve(client.focus()).then(() => {
+          client.postMessage({ type: 'NAVIGATE', url: route });
+        }).catch(() => clients.openWindow?.(appUrl));
       }
-      // App cerrada: abre la ruta hash (el router la resuelve)
-      if (clients.openWindow) return clients.openWindow('/#' + url.replace(/^\//, ''));
+      // El hash del router lleva slash: #/calendario (no #calendario).
+      if (clients.openWindow) return clients.openWindow(appUrl);
     })
   );
 });
@@ -258,8 +301,8 @@ self.addEventListener('push', event => {
     badge: payload.badge || 'https://res.cloudinary.com/dcsent4fs/image/upload/v1783958838/imagen_180x180_vzdvku.png',
     tag: payload.tag || 'default',
     data: {
-      url: payload.url || '/',
-      ...payload.data
+      ...payload.data,
+      url: notificationRoute(payload.url || payload.data?.url || '/')
     },
     vibrate: payload.vibrate || [200, 100, 200],
     requireInteraction: payload.requireInteraction !== false,

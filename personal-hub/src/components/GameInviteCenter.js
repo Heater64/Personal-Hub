@@ -60,6 +60,8 @@ export function GameInviteCenter(router) {
 
   let invitations = [];
   let rematches = [];
+  let invitationsLoaded = false;
+  let rematchesLoaded = false;
   let listenRequest = null;      // solicitud de escuchar juntos pendiente
   let unsubscribe = null;
   let subscribedUserId = null;
@@ -355,12 +357,24 @@ export function GameInviteCenter(router) {
 
   function attach(user) {
     if (subscribedUserId === user?.id) return;
-    if (unsubscribe) unsubscribe();
+    if (unsubscribe) {
+      const cleanup = unsubscribe;
+      unsubscribe = null;
+      try { cleanup(); }
+      catch (error) { console.warn('[games] No se pudieron limpiar las notificaciones:', error); }
+    }
+    if (offListen) {
+      const cleanup = offListen;
+      offListen = null;
+      try { cleanup(); }
+      catch (error) { console.warn('[listen] No se pudo cerrar la suscripción:', error); }
+    }
     clearTimeout(expiryTimer);
-    unsubscribe = null;
     subscribedUserId = user?.id || null;
     invitations = [];
     rematches = [];
+    invitationsLoaded = false;
+    rematchesLoaded = false;
     listenRequest = null;
     if (!user) { render(); return; }
     initListenTogether();
@@ -388,9 +402,12 @@ export function GameInviteCenter(router) {
     if (ONLINE_GAMES_ENABLED) {
       try {
         unsubscribe = subscribeToGameInvitations(user.id, (items) => {
-          const hadNone = invitations.length === 0;
-          invitations = items || [];
-          if (!hadNone && invitations.length > 0) {
+          const nextInvitations = items || [];
+          const hasNewInvitation = invitationsLoaded
+            && nextInvitations.some(item => !invitations.some(previous => previous.id === item.id));
+          invitationsLoaded = true;
+          invitations = nextInvitations;
+          if (hasNewInvitation) {
             playInviteChime('invite');
             showToast('Tienes una nueva invitación para jugar 🎮', 'info', 6000);
           }
@@ -401,16 +418,24 @@ export function GameInviteCenter(router) {
       }
       try {
         const rematchUnsub = subscribeToRematchRequests(user.id, (items) => {
-          const hadNone = rematches.length === 0;
-          rematches = items || [];
-          if (!hadNone && rematches.length > 0) {
+          const nextRematches = items || [];
+          const hasNewRematch = rematchesLoaded
+            && nextRematches.some(item => !rematches.some(previous => previous.id === item.id));
+          rematchesLoaded = true;
+          rematches = nextRematches;
+          if (hasNewRematch) {
             playInviteChime('rematch');
             showToast('Tu rival quiere la revancha 🎮', 'info', 6000);
           }
           render();
         });
         const previousUnsub = unsubscribe;
-        unsubscribe = () => { previousUnsub(); rematchUnsub(); };
+        unsubscribe = () => {
+          try { previousUnsub?.(); }
+          catch (error) { console.warn('[games] No se pudo cerrar el canal de invitaciones:', error); }
+          try { rematchUnsub?.(); }
+          catch (error) { console.warn('[games] No se pudo cerrar el canal de revanchas:', error); }
+        };
       } catch (error) {
         console.warn('[games] Notificaciones de revancha no disponibles:', friendlyError(error));
       }

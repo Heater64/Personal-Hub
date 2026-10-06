@@ -1,29 +1,25 @@
 /* ==========================================
-   INICIO — resumen del día
+   INICIO — la pantalla diaria
    Estructura: saludo + contador de días juntos,
-   dos datos rápidos, cuatro destacados visuales y
-   los detalles de la web en filas compactas.
+   lo de hoy (ánimo y próxima fecha, más el aviso de
+   sorpresas cuando toca) y cuatro destacados visuales.
    Todo sobre los componentes compartidos (ui.css).
    ========================================== */
 
 .home-page > * {
   animation: home-enter var(--dur-normal) both;
 }
-
 .home-page > *:nth-child(2) { animation-delay: 0.04s; }
 .home-page > *:nth-child(3) { animation-delay: 0.08s; }
 .home-page > *:nth-child(4) { animation-delay: 0.12s; }
 .home-page > *:nth-child(5) { animation-delay: 0.16s; }
 .home-page > *:nth-child(6) { animation-delay: 0.2s; }
 .home-page > *:nth-child(7) { animation-delay: 0.24s; }
-.home-page > *:nth-child(8) { animation-delay: 0.28s; }
-
 .overlay--special-event {
   z-index: calc(var(--z-modal) + 1);
   background: color-mix(in srgb, var(--overlay-light) 86%, transparent);
   backdrop-filter: blur(10px);
 }
-
 .overlay--special-event .sheet {
   position: relative;
   isolation: isolate;
@@ -32,10 +28,8 @@
   background: var(--theme-surface);
   box-shadow: var(--elevation-3);
 }
-
 .overlay--special-event .sheet-head { position: relative; z-index: 2; }
 .overlay--special-event .sheet-head h2 { color: var(--theme-text-primary); }
-
 .special-event__celebration {
   position: absolute;
   inset: 0;
@@ -44,12 +38,10 @@
   height: 100%;
   pointer-events: none;
 }
-
 .special-event > *:not(.special-event__film):not(.special-event__scrim):not(.special-event__celebration) {
   position: relative;
   z-index: 2;
 }
-
 .special-event {
   position: relative;
   display: grid;
@@ -59,7 +51,6 @@
   text-align: center;
   overflow: hidden;
 }
-
 .special-event__kicker {
   display: inline-flex;
   align-items: center;
@@ -77,7 +68,6 @@
   border-radius: 50%;
   background: var(--event-accent, var(--theme-accent));
 }
-
 /* ===== Vídeo de fondo =====
    Va como una capa dentro de la tarjeta (no como fondo del navegador): así
    el degradado se come el borde y el texto siempre se lee. */
@@ -98,7 +88,6 @@
     linear-gradient(180deg, color-mix(in srgb, var(--surface) 55%, transparent) 0%, color-mix(in srgb, var(--surface) 82%, transparent) 45%, var(--surface) 100%);
 }
 .special-event--media-fondo > *:not(.special-event__film):not(.special-event__scrim):not(.special-event__celebration) { position: relative; z-index: 2; }
-
 /* Vídeo de portada: el mismo reproductor, grande y con controles. */
 .special-event__video {
   width: 100%;
@@ -116,7 +105,7 @@
 }
 
 /* ===== Tira de fotos =====
-   La primera foto es la grande; el resto va en miniatura. Al tocar una, esa
+   La primera foto es la grande;el resto va en miniatura. Al tocar una, esa
    pasa a ser la grande, sin salir de la tarjeta. */
 .special-event__gallery {
   display: flex;
@@ -213,27 +202,27 @@
   font-weight: 600;
 }
 .special-event__action { margin-top: var(--sp-4); min-height: 44px; }
+/* Los botones del evento: los que definió el admin y, si no hay ninguno, el
+   de siempre. Uno debajo de otro: en el móvil el pulgar llega a todos. */
+.special-event__actions { display: grid; justify-items: center; width: 100%; }
+.special-event__actions .special-event__action { width: 100%; max-width: 340px; }
 .special-event__item-photo { border: 1px solid var(--theme-divider); }
 @keyframes special-event-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-
 @media (prefers-reduced-motion: reduce) {
   .special-event__icon { animation: none; }
   .special-event__photo { animation: none; }
   .special-event__thumb { transition: none; }
 }
-
 @media (max-width: 480px) {
   .overlay--special-event .sheet { max-height: 92dvh; }
   .special-event { gap: var(--sp-10); }
   .special-event__photo { max-width: 100%; }
   .special-event__message { font-size: var(--fs-md); }
 }
-
 @keyframes home-enter {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
 }
-
 /* ==========================================
    1 · CONTADOR — el protagonista, sin relleno
    ========================================== */
@@ -249,7 +238,6 @@
   padding: var(--sp-18);
   box-shadow: var(--sh-s);
 }
-
 /* Luz ambiental muy discreta en la esquina del contador */
 .home-hero::before {
   content: '';
@@ -261,14 +249,12 @@
   background: radial-gradient(circle, var(--hero-glow-1) 0%, transparent 68%);
   pointer-events: none;
 }
-
 .home-hero__main {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-14);
 }
-
 .home-hero__badge {
   width: 50px;
   height: 50px;
@@ -280,7 +266,6 @@
   justify-content: center;
   font-size: 24px;
 }
-
 .home-hero__num {
   display: block;
   font-family: var(--font-ui);
@@ -291,7 +276,6 @@
   color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
-
 .home-hero__label {
   display: block;
   margin-top: 5px;
@@ -306,7 +290,6 @@
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-
 .home-hero__quote {
   position: relative;
   margin: 0;
@@ -316,7 +299,6 @@
   line-height: 1.55;
   color: var(--text-2);
 }
-
 /* Saludo con apodo: va arriba de todo en la tarjeta de días, antes del
    contador. El apodo sale del rol de la sesión (admin / mi princesa). */
 .home-hero__greet {
@@ -329,7 +311,6 @@
   letter-spacing: -0.035em;
   color: var(--text);
 }
-
 .home-hero__greet-name {
   color: var(--primary);
   font-family: var(--font-display, Georgia, serif);
@@ -338,7 +319,6 @@
   letter-spacing: 0.01em;
   padding-inline: 0.06em;
 }
-
 /* En móvil el apodo baja a su propia línea: "Buenas noches 🌙," y debajo
    "mi princesa". Encima de 768 px hay sitio de sobra y se queda todo en
    una sola línea. */
@@ -346,7 +326,6 @@
   .home-hero__greet-name { display: block; }
   .home-hero__greet { line-height: 1.2; }
 }
-
 /* ==========================================
    2 · DOS DATOS RÁPIDOS
    ========================================== */
@@ -356,7 +335,6 @@
   gap: var(--sp-12);
   margin-top: var(--sp-12);
 }
-
 .home-stat {
   display: flex;
   flex-direction: column;
@@ -371,13 +349,9 @@
   cursor: pointer;
   transition: border-color var(--dur-fast), transform 0.12s ease;
 }
-
 .home-stat:hover { border-color: var(--primary-softer); }
 .home-stat:active { transform: scale(0.98); }
-.home-stat--static { cursor: default; }
-
 .home-stat__num--emoji { font-size: var(--fs-xl); line-height: 1.15; }
-
 .home-stat__ic {
   width: 30px;
   height: 30px;
@@ -390,7 +364,6 @@
   font-size: 15px;
   margin-bottom: var(--sp-2);
 }
-
 .home-stat__num {
   font-family: var(--font-ui);
   font-size: var(--fs-lg);
@@ -399,7 +372,6 @@
   line-height: 1.1;
   color: var(--text);
 }
-
 .home-stat__label {
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -408,16 +380,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .home-stat__sub {
   font-size: var(--fs-caption);
   color: var(--text-3);
   font-weight: 500;
 }
-
 /* Aviso de sorpresas del calendario (se inserta solo si hay algo hoy) */
 .home-banner { margin-top: var(--sp-12); }
-
 /* ==========================================
    3 · DESTACADOS — rejilla visual
    ========================================== */
@@ -426,18 +395,15 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-12);
 }
-
 @media (max-width: 480px) {
   .home-hero__greet { font-size: clamp(1.5rem, 6.5vw, var(--fs-2xl)); }
   .home-hero__main { gap: var(--sp-10); }
   .home-hero__num, .home-hero__label { font-size: clamp(1.5rem, 6.5vw, var(--fs-2xl)); }
   .home-hero__badge { width: 42px; height: 42px; font-size: 20px; }
 }
-
 @media (min-width: 768px) {
   .home-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
-
 .tile {
   display: flex;
   flex-direction: column;
@@ -452,10 +418,8 @@
   transition: border-color var(--dur-fast), transform 0.12s ease, box-shadow var(--dur-fast);
   padding: 0;
 }
-
 .tile:hover { border-color: var(--primary-softer); box-shadow: var(--sh-m); }
 .tile:active { transform: scale(0.98); }
-
 .tile__media {
   position: relative;
   aspect-ratio: 1;
@@ -465,19 +429,16 @@
   align-items: center;
   justify-content: center;
 }
-
 .tile__media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-
 .tile__fallback {
   font-size: 34px;
   opacity: 0.75;
 }
-
 .tile__chip {
   position: absolute;
   top: var(--sp-8);
@@ -496,7 +457,6 @@
   border-radius: var(--r-full);
   padding: 5px var(--sp-10);
 }
-
 .tile__play {
   position: absolute;
   right: var(--sp-8);
@@ -512,7 +472,6 @@
   -webkit-backdrop-filter: blur(6px);
   color: var(--on-accent);
 }
-
 .tile__body {
   padding: var(--sp-10) var(--sp-12) var(--sp-12);
   display: flex;
@@ -520,7 +479,6 @@
   gap: 3px;
   min-width: 0;
 }
-
 .tile__title {
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -532,7 +490,6 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-
 .tile__sub {
   font-size: var(--fs-caption);
   color: var(--text-3);
@@ -541,48 +498,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .tile__body .bar {
   margin-top: var(--sp-6);
   height: 5px;
 }
 
-/* ==========================================
-   4 · DETALLES — filas compactas
-   ========================================== */
-.home-fact {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-12);
-  padding: var(--sp-14) var(--sp-16);
-}
-
-.home-fact + .home-fact { border-top: 1px solid var(--border-soft); }
-
-.home-fact__emoji {
-  width: 32px;
-  height: 32px;
-  flex: none;
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-
-.home-fact__body { min-width: 0; }
-
-.home-fact__title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text);
-  margin: 0 0 2px;
-}
-
-.home-fact__text {
-  font-size: var(--fs-xs);
-  line-height: 1.55;
-  color: var(--text-2);
-  margin: 0;
-}

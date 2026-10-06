@@ -1,9 +1,10 @@
 /* ==========================================
-   INICIO — resumen del día
-   Arranca directamente por la tarjeta de días, sin cabecera:
-   el saludo con apodo (admin / mi princesa) ya dice dónde
-   estás y hace de encabezado. Debajo: dos datos rápidos,
-   cuatro destacados visuales y los detalles de la web.
+   INICIO — la pantalla diaria
+   Arranca por la tarjeta de días, sin cabecera: el saludo con
+   apodo ya dice dónde estás. Después, solo lo de hoy: cómo
+   estás, qué hay para hoy y los atajos a lo importante.
+   Cada dato viene de su dueño (el store del ánimo, los servicios
+   de fechas y del calendario); la pantalla no los re-deriva.
    ========================================== */
 
 import { MEME_FOLDERS, getVideoPoster } from '../services/rincon-data.js';
@@ -76,13 +77,6 @@ const RANDOM_COVERS = [
   { title: 'Cosas Que No Te Dije', artist: 'Saiko', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/ab67616d0000b273fb045f7dda9773e266437bc6.jpeg' },
   { title: 'Indeciso', artist: 'Reik, J Balvin', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/R%20(3).jpeg' },
   { title: 'Loco Enamorado', artist: 'Abraham Mateo, Farruko', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/f53f05470b4146d4a202cf5df55b4ead.1000x1000x1.png' }
-];
-
-const FUN_FACTS = [
-  { icon: '🎨', title: 'Paleta de colores', text: 'Los colores de esta web están inspirados en el personaje animado \'Darwin\' y tu color favorito (negro), por eso la web es un poco oscura.' },
-  { icon: '🌠', title: 'La estrella fugaz', text: 'Cada estrella que ves en la web representa lo deslumbrante que eres.' },
-  { icon: '🤍', title: 'El corazón', text: 'Porque simplemente es especial.' },
-  { icon: '📅', title: 'El calendario', text: 'El calendario es una metáfora de nuestro tiempo juntos. Cada día es una oportunidad para crear un recuerdo nuevo.' }
 ];
 
 // ==========================================
@@ -184,21 +178,26 @@ function readMood() {
 // ==========================================
 // BLOQUES DE MARCADO
 // ==========================================
-function statCards() {
-  const next = nextSpecialDate();
+/**
+ * Lo de hoy, en el orden en que se mira: primero cómo está, después qué
+ * toca ese día. El ánimo sale del store y la próxima fecha del registro de
+ * fechas: aquí solo se pinta lo que ya calcularon sus dueños.
+ */
+function todayCards() {
   const mood = readMood();
+  const next = nextSpecialDate();
   return `
+    <button class="home-stat" type="button" data-route="/sentimientos" aria-label="Estado de ánimo de hoy">
+      <span class="home-stat__ic">${icon('smile', 17)}</span>
+      <span class="home-stat__num${mood ? ' home-stat__num--emoji' : ''}">${mood ? escapeHtml(mood.emoji || '🤍') : '—'}</span>
+      <span class="home-stat__label">${escapeHtml(mood ? (mood.label || 'Registrado') : 'Sin registrar')}</span>
+      <span class="home-stat__sub">${mood ? 'Cómo estás hoy' : 'Toca para registrar'}</span>
+    </button>
     <button class="home-stat" type="button" data-route="/calendario">
       <span class="home-stat__ic">${icon('calendar', 17)}</span>
       <span class="home-stat__num">${next ? escapeHtml(countdownLabel(next.days)) : '—'}</span>
       <span class="home-stat__label">${escapeHtml(next ? next.title : 'Sin fechas aún')}</span>
       <span class="home-stat__sub">${next ? escapeHtml(shortDate(next.date)) : 'Añádelas desde el perfil'}</span>
-    </button>
-    <button class="home-stat" type="button" data-route="/sentimientos">
-      <span class="home-stat__ic">${icon('smile', 17)}</span>
-      <span class="home-stat__num${mood ? ' home-stat__num--emoji' : ''}">${mood ? escapeHtml(mood.emoji || '🤍') : '—'}</span>
-      <span class="home-stat__label">${escapeHtml(mood ? (mood.label || 'Registrado') : 'Sin registrar')}</span>
-      <span class="home-stat__sub">${mood ? 'Cómo estás hoy' : 'Toca para registrar'}</span>
     </button>
   `;
 }
@@ -325,7 +324,7 @@ export function HomePage(router) {
       ${frase ? `<p class="home-hero__quote">${escapeHtml(frase)}</p>` : ''}
     </section>
 
-    <div class="home-stats">${statCards()}</div>
+    <div class="home-stats">${todayCards()}</div>
 
     <h2 class="section-title">Destacados de hoy
       <button class="link" type="button" data-route="/rincon">Ver el Rincón</button>
@@ -337,20 +336,6 @@ export function HomePage(router) {
       ${tileSeries(continueList, posters, continueFirst)}
       ${tileSong(song)}
     </div>
-
-    <h2 class="section-title">Datos curiosos</h2>
-
-    <div class="card card--none">
-      ${FUN_FACTS.map(f => `
-        <div class="home-fact">
-          <span class="home-fact__emoji" aria-hidden="true">${f.icon}</span>
-          <div class="home-fact__body">
-            <h3 class="home-fact__title">${escapeHtml(f.title)}</h3>
-            <p class="home-fact__text">${escapeHtml(f.text)}</p>
-          </div>
-        </div>
-      `).join('')}
-    </div>
   `;
 
   // Contador — arranca ya y se corrige cuando llegan las fechas reales
@@ -359,7 +344,7 @@ export function HomePage(router) {
     const el = page.querySelector('#homeCounter');
     if (el) animateNumber(el, daysSinceAnniversary());
     const stats = page.querySelector('.home-stats');
-    if (stats) stats.innerHTML = statCards();
+    if (stats) stats.innerHTML = todayCards();
     // Espera las fechas sincronizadas para detectar también aniversarios y
     // eventos personalizados configurados en otro dispositivo.
     if (!previewRequestedEvent(router)) maybeShowSpecialEvent(page, router);
@@ -392,22 +377,25 @@ export function HomePage(router) {
     });
   }
 
-  // El ánimo de hoy puede llegar después del render (sync con Supabase al arrancar)
-  const repaintMood = () => {
+  // El ánimo de hoy lo avisa el store cuando cambia: al registrarlo desde
+  // cualquier pantalla o cuando llega de Supabase al arrancar. Así el Inicio
+  // no necesita temporizadores ni repintar cada vez que se recupera el foco.
+  const unsubscribeMood = moodStore.subscribe(() => {
     const stats = page.querySelector('.home-stats');
-    if (stats) stats.innerHTML = statCards();
-  };
-  window.addEventListener('focus', repaintMood);
-  const moodTimer = setTimeout(repaintMood, 1500);
+    if (stats) stats.innerHTML = todayCards();
+  });
 
-  // Sorpresas de hoy — carga diferida: no pesa en el arranque
+  // Sorpresas de hoy — carga diferida: no pesa en el arranque. El reparto del
+  // día y lo que queda por abrir los calcula el servicio dueño del catálogo
+  // (gifts.service), no esta pantalla.
   let cancelled = false;
   import('../services/gifts.service.js')
-    .then(({ loadGiftsCatalog }) => loadGiftsCatalog())
-    .then((catalog) => {
-      if (cancelled || !catalog) return;
-      const count = todaySurprises(catalog);
-      if (!count.total) return;
+    .then(async ({ loadGiftsCatalog, todayCalendarGifts }) => {
+      await loadGiftsCatalog();
+      return todayCalendarGifts();
+    })
+    .then((count) => {
+      if (cancelled || !count.total) return;
       const banner = document.createElement('button');
       banner.type = 'button';
       banner.className = 'row home-banner';
@@ -426,28 +414,9 @@ export function HomePage(router) {
 
   page.cleanup = () => {
     cancelled = true;
-    clearTimeout(moodTimer);
-    window.removeEventListener('focus', repaintMood);
+    unsubscribeMood();
     stopRotation();
   };
 
   return page;
-}
-
-/**
- * Sorpresas asignadas a hoy en el catálogo del calendario.
- * Devuelve { total, pending } (pending = aún sin abrir en este navegador).
- */
-function todaySurprises(catalog) {
-  // Mismo "hoy" que el Calendario y que el push del servidor (Europe/Madrid).
-  const iso = todayISO();
-  const monthKey = iso.slice(0, 7);
-  const mapping = catalog?.months?.[monthKey]?.calendarMapping || {};
-  const value = mapping[String(Number(iso.slice(8, 10)))];
-  const ids = Array.isArray(value) ? value.filter(Boolean) : (value ? [value] : []);
-  if (!ids.length) return { total: 0, pending: 0 };
-
-  let progress = {};
-  try { progress = JSON.parse(localStorage.getItem(userPrefKey('giftProgress')) || '{}'); } catch { /* sin progreso */ }
-  return { total: ids.length, pending: ids.filter(id => !progress[id]?.opened).length };
 }

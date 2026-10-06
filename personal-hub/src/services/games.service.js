@@ -243,8 +243,8 @@ export async function submitGameMove({ roomId, expectedRevision, state, turnUser
 
 /**
  * Modo carrera: envía el resultado del jugador (puntuación + tiempo). El
- * servidor arbitra: el primero en terminar cierra la carrera y, si el rival
- * también termina, compara los tiempos para decidir quién fue más rápido.
+ * primer resultado cierra la sala como provisional; el rival aún puede enviar
+ * el suyo y el servidor compara los tiempos definitivos.
  */
 export async function submitRaceResult({ roomId, expectedRevision, score, time, result = {} }) {
   assertConfigured();
@@ -314,7 +314,7 @@ export async function listPendingRematchRequests(userId) {
 export function subscribeToRematchRequests(userId, onChange) {
   if (!db.isSupabaseConfigured() || !isUuid(userId)) return () => {};
   let active = true;
-  let lastSignature = '';
+  let lastSignature = null;
   let refreshSequence = 0;
   const refresh = async () => {
     if (!active) return;
@@ -356,6 +356,16 @@ const PROGRESS_CHANNEL_PREFIX = 'race-live-';
 let progressChannel = null;
 let progressRoomId = '';
 
+function normalizeRaceProgress(progress) {
+  if (!progress || typeof progress !== 'object') return null;
+  const { pairs, totalPairs, moves, seconds } = progress;
+  if (!Number.isInteger(pairs) || pairs < 0
+      || !Number.isInteger(totalPairs) || totalPairs < 1 || totalPairs > 100 || pairs > totalPairs
+      || !Number.isInteger(moves) || moves < 0 || moves > 100000
+      || !Number.isInteger(seconds) || seconds < 0 || seconds > 86400) return null;
+  return { pairs, totalPairs, moves, seconds };
+}
+
 /**
  * Entra en el canal de progreso de una sala. `onProgress` recibe el payload
  * del rival ({ sender, game, pairs, moves, seconds, ... }). Devuelve un
@@ -369,8 +379,10 @@ export function joinRaceProgress(roomId, onProgress) {
     progressChannel = supabase
       .channel(PROGRESS_CHANNEL_PREFIX + roomId)
       .on('broadcast', { event: 'progress' }, ({ payload }) => {
-        if (payload && payload.room === roomId && typeof onProgress === 'function') {
-          onProgress(payload);
+        const progress = normalizeRaceProgress(payload?.progress);
+        if (payload?.room === roomId && (payload.player === 0 || payload.player === 1)
+            && progress && typeof onProgress === 'function') {
+          onProgress({ room: roomId, player: payload.player, progress });
         }
       })
       .subscribe();
@@ -395,12 +407,13 @@ export function leaveRaceProgress() {
  * usuario) y quedarse solo con el progreso del rival.
  */
 export function sendRaceProgress(progress = {}, player = null) {
-  if (!progressChannel || !progressRoomId) return;
+  const safeProgress = normalizeRaceProgress(progress);
+  if (!progressChannel || !progressRoomId || (player !== 0 && player !== 1) || !safeProgress) return;
   try {
     progressChannel.send({
       type: 'broadcast',
       event: 'progress',
-      payload: { room: progressRoomId, progress, player }
+      payload: { room: progressRoomId, progress: safeProgress, player }
     });
   } catch (err) {
     console.warn('[games] No se pudo enviar progreso:', err.message);
@@ -455,7 +468,7 @@ export function subscribeToGameRoom(roomId, onChange) {
 export function subscribeToGameInvitations(userId, onChange) {
   if (!db.isSupabaseConfigured() || !isUuid(userId)) return () => {};
   let active = true;
-  let lastSignature = '';
+  let lastSignature = null;
   let refreshSequence = 0;
   const refresh = async () => {
     if (!active) return;
