@@ -326,7 +326,7 @@ export function AdminPage(router) {
   // El admin no entra por la pantalla diaria: el panel abre directamente la
   // gestión de fechas y eventos (Configuración → Eventos), que es su casa. El
   // resumen de estadísticas sigue a un clic, en el menú.
-  const S = { section: 'config', moodDate: new Date(), contentSub: 'razones', calMonth: null, calDay: null, configTab: 'eventos' };
+  const S = { section: 'moods', moodDate: new Date(), contentSub: 'razones', calMonth: null, calDay: null, configTab: 'eventos' };
 
   const content = page.querySelector('#adminContent');
 

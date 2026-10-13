@@ -139,9 +139,12 @@ test('la barra inferior de la usuaria es exactamente la de antes', () => {
 });
 
 test('el menú lateral de la usuaria es exactamente el de antes', () => {
-  assert.deepEqual(sidebarItems(ROLE_USER), SIDEBAR_ANTES);
-  // El admin no lleva «Inicio»: su casa es el panel.
-  assert.deepEqual(sidebarItems(ROLE_ADMIN), SIDEBAR_ANTES.filter(i => i.id !== 'home'));
+  const sidebarForUser = sidebarItems(ROLE_USER);
+  assert.deepEqual(sidebarForUser, SIDEBAR_ANTES);
+  // El admin ahora sí tiene Inicio en PC; en móvil no hay sidebar,
+  // así que esa entrada no participa (ver routes.js).
+  assert.ok(sidebarItems(ROLE_ADMIN).some(i => i.href === '/'), 'el admin tiene Inicio en PC');
+  assert.deepEqual(sidebarItems(ROLE_ADMIN).filter(i => i.href !== '/'), SIDEBAR_ANTES.filter(i => i.id !== 'home'), 'el resto del menú lateral del admin es igual al de la usuaria');
   assert.deepEqual(navEntry('/admin'), { href: '/admin', label: 'Admin', icon: 'gear' });
   assert.equal(navEntry('/no-existe'), null);
 });
@@ -214,13 +217,14 @@ test('sin navegación y etiquetas de sección siguen resolviéndose igual', () =
 });
 
 // ==========================================
-// EL ADMIN NO USA LA PANTALLA DIARIA
+// EL ADMIN NO USA LA PANTALLA DIARIA COMO FLUJO POR DEFECTO,
+// PERO LA TIENE EXPUESTA EN EL MENÚ LATERAL DE ESCRITORIO (PC)
 // ==========================================
 
-test('el admin no tiene la pantalla diaria ni el check-in de ánimo', () => {
+test('el admin no usa la pantalla diaria como flujo por defecto, pero la tiene en PC', () => {
   const inicio = routeFor('/');
-  assert.deepEqual(inicio.roles, [ROLE_USER], 'la pantalla diaria es solo de la usuaria');
-  assert.equal(isVisibleTo('/', ROLE_ADMIN), false);
+  assert.deepEqual(inicio.roles, [ROLE_USER, ROLE_ADMIN], 'la pantalla diaria es de ambos roles');
+  assert.equal(isVisibleTo('/', ROLE_ADMIN), true, 'el admin puede ver Inicio');
   assert.equal(isVisibleTo('/', ROLE_USER), true);
 
   // Y el check-in diario se salta para el admin (la pantalla que lo ofrece
@@ -228,17 +232,20 @@ test('el admin no tiene la pantalla diaria ni el check-in de ánimo', () => {
   assert.equal(routeFor('/admin').skipMood, true);
   assert.equal(routeFor('/admin').adminOnly, true);
 
-  // Ni se la ofrece en ninguna de las dos navegaciones.
-  assert.equal(bottomNavItems(ROLE_ADMIN).some(i => i.id === 'home'), false);
-  assert.equal(bottomNavItems(ROLE_ADMIN).some(i => i.href === '/'), false);
-  assert.equal(sidebarItems(ROLE_ADMIN).some(i => i.href === '/'), false);
+  // El admin ahora tiene Inicio tanto en la barra inferior de móvil
+  // como en el menú lateral de PC (ver routes.js: `/` tiene
+  // `roles: [ROLE_USER, ROLE_ADMIN]`).
+  assert.ok(bottomNavItems(ROLE_ADMIN).some(i => i.id === 'home'), 'el admin tiene Inicio en la barra inferior de móvil');
+  assert.ok(bottomNavItems(ROLE_ADMIN).some(i => i.href === '/'), 'el admin tiene Inicio en la barra inferior de móvil');
+  assert.ok(sidebarItems(ROLE_ADMIN).some(i => i.href === '/'), 'el admin tiene Inicio en el menú lateral de PC');
 
-  // Su casa es la gestión de eventos del panel, y ahí aterriza.
-  assert.equal(homePathFor(ROLE_ADMIN), '/admin');
+  // Su casa es la gestión de eventos del panel, pero ahora la barra inferior
+  // del admin empieza con Inicio (la pantalla diaria es de ambos roles).
+  assert.equal(homePathFor(ROLE_ADMIN), '/admin', 'su casa sigue siendo el panel');
   assert.equal(homePathFor(ROLE_USER), '/');
-  assert.equal(bottomNavItems(ROLE_ADMIN)[0].href, '/admin', 'el admin entra por el panel');
-  assert.equal(bottomNavItems(ROLE_ADMIN).length, 5, 'la barra del admin sigue teniendo 5 pestañas');
-  assert.deepEqual(bottomNavItems(ROLE_ADMIN).map(i => i.id), ['admin', 'rincon', 'sentimientos', 'ositos', 'perfil']);
+  assert.equal(bottomNavItems(ROLE_ADMIN)[0].href, '/', 'la primera pestaña del admin ahora es Inicio');
+  assert.equal(bottomNavItems(ROLE_ADMIN).length, 6, 'la barra del admin ahora tiene 6 pestañas (añadido Inicio)');
+  assert.deepEqual(bottomNavItems(ROLE_ADMIN).map(i => i.id), ['home', 'admin', 'rincon', 'sentimientos', 'ositos', 'perfil']);
 
   // Y el panel abre en el editor de fechas y eventos, no en el resumen.
   assert.equal(routeFor('/admin').mobileRoot, true, 'el panel es raíz: no lleva flecha de vuelta');

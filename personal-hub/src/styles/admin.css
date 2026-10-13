@@ -985,10 +985,18 @@
 /* Tablet */
 @media (max-width: 768px) {
   .admin-sidebar {
-    position: fixed; left: 0; top: 0; height: 100vh; z-index: 30;
+    position: fixed; inset: 0; z-index: 30;
     transform: translateX(-100%);
+    width: 100%; height: 100vh;
+    background: var(--theme-bg-primary);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-right: none;
+    box-shadow: none;
   }
-  .admin-sidebar.is-open { transform: translateX(0); box-shadow: var(--theme-shadow-xl); }
+  .admin-sidebar.is-open {
+    transform: translateX(0);
+  }
   .admin-main { padding: 20px 16px 32px; }
   .admin-menu-toggle { display: flex; }
   .admin-welcome-greeting h1 { font-size: var(--fs-xl); }

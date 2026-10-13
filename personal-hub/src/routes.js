@@ -46,9 +46,9 @@ export const ROUTES = [
     label: 'Inicio',
     icon: 'home',
     title: 'Inicio · Personal Hub',
-    // La pantalla diaria es de la usuaria: el admin no la ve ni la tiene
-    // en su navegación (aterriza en el panel, ver homePathFor).
-    roles: [ROLE_USER],
+    // La pantalla diaria es de la usuaria, pero el admin también la tiene
+    // en el menú lateral de escritorio — la entrada participa en PC.
+    roles: [ROLE_USER, ROLE_ADMIN],
     section: 'home',
     mobileRoot: true,
     bottomNav: true,
