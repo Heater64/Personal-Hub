@@ -201,7 +201,7 @@ class MoodStore {
   /** Ánimo del último estado del día (el que ve la usuaria) */
   _stateToMood(state) {
     if (!state) return null;
-    return { id: state.mood, label: state.label, emoji: state.emoji, score: state.score };
+    return resolveMood({ mood: state.mood, label: state.label, emoji: state.emoji, score: state.score });
   }
 
   /** Estados de HOY (fuente local para la ventana de 5 min y el offline) */
@@ -353,12 +353,12 @@ class MoodStore {
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
-        const mood = {
-          id: data.mood,
+        const mood = this.resolveMood({
+          mood: data.mood,
           label: data.label,
           emoji: data.emoji,
           score: data.score
-        };
+        });
         this.todayMood = mood;
         this.markSeen();
         localStorage.setItem(getMoodKey(), JSON.stringify(mood));
@@ -396,7 +396,7 @@ class MoodStore {
       const today = todayISOStr();
       const savedDate = localStorage.getItem(getMoodDateKey());
       if (raw && savedDate === today) {
-        return JSON.parse(raw);
+        return resolveMood(JSON.parse(raw));
       }
     } catch (e) { /* */ }
     return null;

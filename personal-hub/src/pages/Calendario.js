@@ -15,7 +15,7 @@ import '../styles/calendario.css';
 import {
   h, icon, emptyState, openSheet, closeSheets, toast
 } from '../components/ui.js';
-import { buildVideoPlayer } from '../components/MediaLightbox.js';
+import { createLightbox, openLightbox, buildVideoPlayer } from '../components/MediaLightbox.js';
 import { loadGiftsCatalog } from '../services/gifts.service.js';
 import { db } from '../services/db.service.js';
 import { userStore } from '../stores/user.store.js';
@@ -981,6 +981,7 @@ export function CalendarioPage(router) {
         document.removeEventListener('keydown', nav.handler);
         return;
       }
+      if (event.defaultPrevented || !overlay.isConnected) return;
       const typing = event.target.closest?.('input,textarea,select,[contenteditable]');
       if (typing) return;
       if (event.key === 'ArrowLeft') { event.preventDefault(); go(-1); }
@@ -1003,6 +1004,12 @@ export function CalendarioPage(router) {
       saveProgress();
     }
     paintAll();
+  }
+
+  /** Abre la foto o vídeo del regalo a tamaño completo en el visor compartido. */
+  function openGiftMedia(gift, type, src, poster = '') {
+    createLightbox();
+    openLightbox([{ src, type, caption: gift.title || '' }], 0, { poster });
   }
 
   /** Contenido de la sorpresa según su tipo. */
@@ -1045,7 +1052,18 @@ export function CalendarioPage(router) {
         const wrap = h('div', { class: 'exp' });
         const src = data.image || '';
         if (src) {
-          wrap.append(h('div', { class: 'exp-media' }, h('img', { src, alt: gift.title || 'Sorpresa', loading: 'lazy' })));
+          const image = h('img', { src, alt: gift.title || 'Sorpresa', loading: 'lazy' });
+          image.addEventListener('click', () => openGiftMedia(gift, 'image', src));
+          image.setAttribute('role', 'button');
+          image.setAttribute('tabindex', '0');
+          image.setAttribute('aria-label', `Ver foto: ${gift.title || 'sorpresa'}`);
+          image.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openGiftMedia(gift, 'image', src);
+            }
+          });
+          wrap.append(h('div', { class: 'exp-media exp-media--zoomable' }, image));
         } else {
           wrap.append(h('div', { class: 'exp-media exp-media--placeholder' },
             h('span', { html: icon(type === 'polaroid' ? 'camera' : 'gift', 26) }),
@@ -1067,6 +1085,10 @@ export function CalendarioPage(router) {
           const player = buildVideoPlayer({ src, poster, autoplay: false, loop: false, className: 'exp-video' });
           const media = h('div', { class: 'exp-media' });
           media.append(player.wrap);
+          player.wrap.addEventListener('click', event => {
+            if (event.target.closest('.ml-video-controls, .ml-video-play-overlay, video')) return;
+            openGiftMedia(gift, 'video', src, poster);
+          });
           wrap.append(media);
         } else {
           wrap.append(h('div', { class: 'exp-media exp-media--placeholder' },

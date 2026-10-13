@@ -223,6 +223,38 @@ export const LETTERS = [
     note: 'Solo hay una reina en mi corazón',
     message: 'No tienes por qué sentir celos, nunca. En mi mundo solo existes tú. No hay nadie más que me haga sentir lo que tú me haces sentir. Eres la única, la elegida, mi princesa. Siempre'
   },
+  {
+    id: 'enfadada-contigo',
+    category: 'enfado',
+    type: 'carta',
+    title: 'Ábrela cuando estés enfadada conmigo',
+    note: 'No tienes que dejar de sentirlo para que podamos hablar',
+    message: 'Si estás enfadada conmigo, no voy a pedirte que se te pase rápido ni a decirte que no era para tanto. Si algo que hice te dolió o te molestó, quiero entenderlo de verdad, aunque necesitemos un rato para calmarnos primero. Respira, date el espacio que te haga falta y, cuando estés preparada, cuéntame cómo lo viviste. Voy a escucharte sin ponerme a la defensiva y a intentar hacerme cargo de mi parte. No tenemos que resolverlo todo en cinco minutos; sí quiero que encontremos juntos una forma de arreglarlo. Te quiero también cuando no estamos de acuerdo, y sigo aquí. 🤍'
+  },
+  {
+    id: 'metido-la-pata',
+    category: 'tristeza',
+    type: 'carta',
+    title: 'Ábrela cuando la hayas cagado y no sepas qué hacer',
+    note: 'Un error se puede mirar de frente sin machacarte',
+    message: 'Ey, ven un segundo. Sé que ahora tu cabeza igual está poniendo la escena en bucle y narrándola como si fueras la peor persona del mundo. Para un poquito: haber metido la pata no te convierte en un desastre; significa que algo salió mal y que ahora toca ver qué hacemos con ello. Respira y sepáralo en dos: ¿qué pasó exactamente?, ¿a quién afectó?, ¿qué puedes reparar o aclarar hoy? Empieza por una cosa pequeña y honesta: reconocerlo, pedir perdón si corresponde y escuchar sin buscar excusas. Si no sabes por dónde tirar, no tienes que tener el plan perfecto tú sola; lo pensamos juntos. Puedes aprender de esto sin castigarte toda la noche. Te quiero, incluso en tus días torpes (y mira que yo también tengo experiencia en eso). 🤍'
+  },
+  {
+    id: 'examenes',
+    category: 'cuidarte',
+    type: 'carta',
+    title: 'Ábrela cuando tengas exámenes',
+    note: 'No tienes que poder con todo de golpe',
+    message: 'Mi niña, sé que los exámenes pueden hacer que todo parezca urgente a la vez. Antes de abrir veinte apuntes y entrar en pánico, respira conmigo: ahora solo toca el siguiente paso. Has estudiado, has aprendido un montón y sabes más de lo que el miedo te deja ver. Haz una cosa cada vez, bebe un poco de agua y acuérdate de descansar: tu cabeza también necesita una pausa para funcionar. Un examen mide cómo te fue ese día, no lo lista, valiente ni increíble que eres. Cuando termines, sea como sea, voy a estar aquí para escucharte y celebrar el esfuerzo contigo. Te quiero muchísimo; estoy orgullosísimo de ti. 🤍'
+  },
+  {
+    id: 'insultar-a-todos',
+    category: 'enfado',
+    type: 'carta',
+    title: 'Ábrela cuando quieras insultar a todo el mundo',
+    note: 'Desahogo acompañado, sin mandar nada de lo que te arrepientas',
+    message: 'Vale, suelta los hombros. Puedes empezar por dentro con: “qué día de porquería y qué colección de personajes me he encontrado”. Aquí puedes despotricar con total libertad; te leo sin juzgar y no voy a responderte con un “cálmate”, que eso solo dan más ganas de lanzar el móvil a la luna. Si necesitas, escribe el mensaje más salvaje en notas, pero no lo envíes todavía: primero lo dejamos reposar, como una pizza demasiado caliente. Luego vemos si alguien se merece una conversación, si hoy simplemente necesitas distancia o si lo único que te hace falta es merendar y que te acompañe un rato. No tienes que ser zen ahora mismo. Estoy de tu lado, te quiero y acepto que hoy el mundo está lleno de gente muy, muy pesada. 🤍'
+  },
 
   // ─── 🥰 Alegría ───
   {

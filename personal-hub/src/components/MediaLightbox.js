@@ -26,6 +26,7 @@ let slideshowMs = 5000;
 let slideshowActive = false;
 let slideshowVideo = null;
 let slideshowVideoEnded = null;
+let lastFocusedElement = null;
 
 function clearSlideshowVideoBinding() {
   if (!slideshowVideo) return;
@@ -335,7 +336,7 @@ function render() {
   };
 
   if (item.type === 'video') {
-    const player = buildVideoPlayer({ src: item.src, loop: !slideshowActive });
+    const player = buildVideoPlayer({ src: item.src, poster: item.poster || '', loop: !slideshowActive });
     content.appendChild(player.wrap);
     state.videoEl = player.video;
     state._videoDestroy = player.destroy;
@@ -400,9 +401,22 @@ function render() {
         const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
         state.zoom = Math.max(1, Math.min(4, pinchStartZoom * (dist / pinchStartDist)));
         updateImageTransform(img);
+      } else if (e.touches.length === 1 && state.zoom > 1) {
+        if (!state.isPanning) {
+          state.isPanning = true;
+          state._touchPan = { x: e.touches[0].clientX - state.panX, y: e.touches[0].clientY - state.panY };
+        }
+        state.panX = e.touches[0].clientX - state._touchPan.x;
+        state.panY = e.touches[0].clientY - state._touchPan.y;
+        updateImageTransform(img);
+        e.preventDefault();
       }
-    }, { passive: true });
-    img.addEventListener('touchend', () => { pinchStartDist = 0; });
+    }, { passive: false });
+    img.addEventListener('touchend', () => {
+      pinchStartDist = 0;
+      state.isPanning = false;
+      state._touchPan = null;
+    });
 
     // Rotate button
     const rotBtn = document.createElement('button');
@@ -592,16 +606,18 @@ function bindVideoControls(video, ctrlBar, wrap, playOverlay) {
   progressTrack.addEventListener('click', (e) => { seekTo(e); updateProgress(); });
 
   // Progress bar — drag
-  progressTrack.addEventListener('mousedown', (e) => {
+  progressTrack.addEventListener('pointerdown', e => {
     isDragging = true;
     seekTo(e);
     updateProgress();
+    e.preventDefault();
   });
   progressTrack.addEventListener('touchstart', (e) => {
     isDragging = true;
     seekTo(e.touches[0]);
     updateProgress();
-  }, { passive: true });
+    e.preventDefault();
+  }, { passive: false });
 
   // Volume toggle
   volumeBtn.addEventListener('click', () => {
@@ -654,6 +670,8 @@ function bindVideoControls(video, ctrlBar, wrap, playOverlay) {
 
   // Cleanup de listeners de arrastre al destruir (evita acumulación)
   const cleanupDrag = () => {
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', onDragUp);
     document.removeEventListener('mousemove', onDragMove);
     document.removeEventListener('mouseup', onDragUp);
     document.removeEventListener('touchmove', onTouchMove);
@@ -661,34 +679,50 @@ function bindVideoControls(video, ctrlBar, wrap, playOverlay) {
   };
   function onDragMove(e) { if (!isDragging) return; seekTo(e); updateProgress(); }
   function onDragUp() { isDragging = false; }
-  function onTouchMove(e) { if (!isDragging) return; seekTo(e.touches[0]); updateProgress(); }
+  function onTouchMove(e) { if (!isDragging || !e.touches[0]) return; seekTo(e.touches[0]); updateProgress(); }
   function onTouchEnd() { isDragging = false; }
+  document.addEventListener('pointermove', onDragMove);
+  document.addEventListener('pointerup', onDragUp);
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mouseup', onDragUp);
   document.addEventListener('touchmove', onTouchMove, { passive: true });
   document.addEventListener('touchend', onTouchEnd);
-  ctrlBar._calCleanupDrag = cleanupDrag;
+  ctrlBar._calCleanupDrag = () => {
+    cleanupDrag();
+    clearTimeout(hideTimer);
+    document.removeEventListener('keydown', onKey);
+  };
 }
 
 // ==========================================
 // PUBLIC API
 // ==========================================
-export function openLightbox(items, startIndex = 0) {
+export function openLightbox(items, startIndex = 0, options = {}) {
+  if (!items?.length) return;
   const box = document.getElementById('mediaLightbox');
-  if (!box || !items?.length) return;
+  if (!box) return;
   stopSlideshow();
   clearPreloadPool();
   // Si ya había un render abierto, libera sus listeners antes de resetear
   if (state._videoDestroy) { try { state._videoDestroy(); } catch(e) {} state._videoDestroy = null; }
   if (state._imgCleanup) { try { state._imgCleanup(); } catch(e) {} state._imgCleanup = null; }
-  state = { items, currentIndex: Math.max(0, Math.min(startIndex, items.length - 1)), rotation: 0, zoom: 1, panX: 0, panY: 0, isPanning: false, lastTap: 0, videoEl: null, _videoDestroy: null, _imgCleanup: null };
+  const normalizedItems = items.map(item => ({ ...item, ...(options.poster && item.type === 'video' ? { poster: options.poster } : {}) }));
+  state = { items: normalizedItems, currentIndex: Math.max(0, Math.min(startIndex, normalizedItems.length - 1)), rotation: 0, zoom: 1, panX: 0, panY: 0, isPanning: false, lastTap: 0, videoEl: null, _videoDestroy: null, _imgCleanup: null };
   // Atrás cierra el visor en vez de salir de la página. Al reutilizar un
   // visor ya abierto no se empuja otra entrada.
-  if (!box.classList.contains('open')) pushOverlayHistory(closeLightbox);
+  if (!box.classList.contains('open')) {
+    lastFocusedElement = document.activeElement;
+    pushOverlayHistory(closeLightbox);
+  }
   box.classList.add('open');
   box.setAttribute('aria-hidden', 'false');
   document.body.classList.add('lightbox-open');
+  document.querySelectorAll('#overlays > .overlay').forEach(overlay => {
+    overlay.inert = true;
+    overlay.setAttribute('aria-hidden', 'true');
+  });
   render();
+  box.querySelector('#mlCloseBtn')?.focus({ preventScroll: true });
 }
 
 export function closeLightbox() {
@@ -703,10 +737,16 @@ export function closeLightbox() {
   box.classList.remove('is-video');
   box.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('lightbox-open');
+  document.querySelectorAll('#overlays > .overlay').forEach(overlay => {
+    overlay.inert = false;
+    overlay.removeAttribute('aria-hidden');
+  });
   const content = document.getElementById('mlContent');
   if (content) { while (content.firstChild) content.removeChild(content.firstChild); }
   const thumbs = document.getElementById('mlThumbs');
   if (thumbs) thumbs.innerHTML = '';
+  if (lastFocusedElement?.isConnected) lastFocusedElement.focus({ preventScroll: true });
+  lastFocusedElement = null;
   state.items = [];
   state.currentIndex = 0;
   state.zoom = 1;
@@ -733,6 +773,9 @@ export function createLightbox() {
   el.id = 'mediaLightbox';
   el.className = 'media-lightbox';
   el.setAttribute('aria-hidden', 'true');
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-label', 'Visor multimedia');
   el.innerHTML = `
     <div class="ml-backdrop"></div>
     <div class="ml-shell">
@@ -754,11 +797,11 @@ export function createLightbox() {
 
       <!-- Main stage -->
       <div class="ml-stage">
-        <button class="ml-nav ml-prev" id="mlPrevBtn" aria-label="Anterior">
+        <button type="button" class="ml-nav ml-prev" id="mlPrevBtn" aria-label="Anterior">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <div class="ml-content" id="mlContent"></div>
-        <button class="ml-nav ml-next" id="mlNextBtn" aria-label="Siguiente">
+        <button type="button" class="ml-nav ml-next" id="mlNextBtn" aria-label="Siguiente">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -792,7 +835,8 @@ export function createLightbox() {
     }
   };
 
-  // Fullscreen
+  // El contenido que abrió el visor queda inerte hasta cerrarlo.
+  // El overlay permanece montado para poder restaurar el foco al origen.
   const fsBtn = el.querySelector('#mlFullscreenBtn');
   const fsIconExpand = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
   const fsIconShrink = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 8 4 3 9 3"/><polyline points="20 16 20 21 15 21"/><line x1="4" y1="3" x2="11" y2="10"/><line x1="20" y1="21" x2="13" y2="14"/></svg>';
@@ -816,7 +860,7 @@ export function createLightbox() {
   // Click left/right zones on stage
   const stage = el.querySelector('.ml-stage');
   stage.addEventListener('click', (e) => {
-    if (e.target !== stage) return;
+    if (e.detail === 0 || e.target !== stage) return;
     const rect = stage.getBoundingClientRect();
     if (e.clientX < rect.left + rect.width * 0.2) prevMedia();
     else if (e.clientX > rect.right - rect.width * 0.2) nextMedia();
@@ -824,11 +868,15 @@ export function createLightbox() {
 
   // Touch swipe
   let sx = 0, sy = 0;
+  let swipeTarget = null;
   el.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.ml-topbar, .ml-bottombar, .ml-nav, .ml-img-controls, .ml-video-controls, video, .ml-video-play-overlay')) { swipeTarget = null; return; }
+    swipeTarget = e.target.closest('.ml-stage');
     if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }
   }, { passive: true });
   el.addEventListener('touchend', (e) => {
-    if (!e.changedTouches.length || state.items.length <= 1) return;
+    if (!e.changedTouches.length || state.items.length <= 1 || !swipeTarget) return;
+    if (e.target.closest('.ml-topbar, .ml-bottombar, .ml-nav, .ml-img-controls, .ml-video-controls, video, .ml-video-play-overlay')) return;
     const dx = e.changedTouches[0].clientX - sx;
     const dy = e.changedTouches[0].clientY - sy;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) { dx < 0 ? nextMedia() : prevMedia(); }
@@ -837,6 +885,10 @@ export function createLightbox() {
   // Keyboard
   document.addEventListener('keydown', (e) => {
     if (!document.getElementById('mediaLightbox')?.classList.contains('open')) return;
+    if (e.key === 'Escape' || e.key === 'Tab' || e.target.closest?.('input,textarea,select,[contenteditable]')) {
+      if (e.key === 'Escape') closeLightbox();
+      return;
+    }
     switch (e.key) {
       case 'Escape': closeLightbox(); break;
       case 'ArrowRight': nextMedia(); break;

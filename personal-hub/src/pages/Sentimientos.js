@@ -57,12 +57,10 @@ export function SentimientosPage(router) {
      ========================================== */
   const historyMap = {};
   let histMonth = new Date();
-  for (const entry of moodStore.getHistory() || []) {
-    if (entry?.date && entry.moodId) {
+  for (const entry of moodStore.getHistory() || []) {      if (entry?.date && entry.moodId) {
       historyMap[entry.date] = { mood: entry.moodId, label: entry.label, emoji: entry.emoji, score: entry.score };
     }
-  }
-  if (todayMood?.id) {
+  }    if (todayMood?.id) {
     historyMap[todayISO()] = { mood: todayMood.id, label: todayMood.label, emoji: todayMood.emoji, score: todayMood.score };
   }
 
@@ -273,7 +271,7 @@ export function SentimientosPage(router) {
         // Vienen de la más reciente a la más antigua: el primer estado de cada
         // día es el último que se guardó, que es el que cuenta.
         if (!row?.date || !row.mood || historyMap[row.date]) continue;
-        historyMap[row.date] = { mood: row.mood, label: row.label, emoji: row.emoji, score: row.score };
+        historyMap[row.date] = moodStore.resolveMood({ mood: row.mood, label: row.label, emoji: row.emoji, score: row.score });
         changed = true;
       }
       if (changed) { renderStats(); renderHistory(); }

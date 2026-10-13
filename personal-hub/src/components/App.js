@@ -51,6 +51,23 @@ export function AppShell(router) {
   mobileTopBar.setAttribute('aria-label', 'Navegación de página');
   app.appendChild(mobileTopBar);
 
+  // Motivos estáticos y no interactivos: la capa vive por encima de cada ruta,
+  // sin meterse en tarjetas, navegación ni páginas inmersivas. Los emojis
+  // coloreados (corazones, osos, estrellas) conservan su color propio; los
+  // neutros (✦ ✿) heredan el tono del tema vía `color: currentColor`.
+  const ambientDecor = document.createElement('div');
+  ambientDecor.className = 'ambient-decor';
+  ambientDecor.setAttribute('aria-hidden', 'true');
+  ambientDecor.innerHTML = [
+    ['🤍', 'heart-white'], ['⭐', 'star'], ['🧸', 'bear'],
+    ['❤️', 'heart-red'], ['✨', 'sparkle'], ['🐻', 'bear'],
+    ['🌸', 'flower'], ['💗', 'heart-pink'], ['✧', 'sparkle'],
+    ['🌟', 'star'], ['🌷', 'flower'], ['🤍', 'heart-white'],
+    ['🧸', 'bear'], ['💫', 'sparkle'], ['❤️', 'heart-red'],
+    ['⭐', 'star']
+  ].map(([ch, tone]) => `<span class="${tone}">${ch}</span>`).join('');
+  app.appendChild(ambientDecor);
+
   // Contenido: el router monta dentro de .shell > .main > .content.
   // Estructura del sistema nuevo (habitos-web): la sidebar ocupa su
   // columna fija y el contenido scrollea por su cuenta en escritorio.

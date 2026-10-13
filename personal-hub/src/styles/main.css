@@ -30,6 +30,78 @@
    aqui: cada pagina hace `import '../styles/X.css'` y Vite los empaqueta en
    su chunk, asi el CSS inicial baja de ~426 KB a unos pocos decenas. */
 /* ==========================================
+   DECORACIÓN AMBIENTAL — compartida entre rutas
+   ========================================== */
+.ambient-decor {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--primary);
+}
+
+.ambient-decor span {
+  position: absolute;
+  font-size: 20px;
+  line-height: 1;
+  user-select: none;
+  /* Sutil pero visible: suficiente para notar la personalidad sin competir
+     con el contenido. Los motivos neutros (✦ ✿) heredan el acento del tema. */
+  opacity: 0.16;
+}
+
+/* Los emojis coloreados mantienen su color en ambos temas; solo ajustamos la
+   presencia para que rojos/rosas no griten y los neutros queden de fondo. */
+.ambient-decor span.heart-red { opacity: 0.15; }
+.ambient-decor span.heart-pink { opacity: 0.16; }
+.ambient-decor span.heart-white { opacity: 0.22; }
+.ambient-decor span.bear { opacity: 0.18; }
+.ambient-decor span.star { opacity: 0.2; }
+.ambient-decor span.sparkle { opacity: 0.18; }
+.ambient-decor span.flower { opacity: 0.16; }
+
+/* Reparto equilibrado por pantalla — 16 motivos en escritorio */
+.ambient-decor span:nth-child(1)  { top: 8%;  left: 8%;  }
+.ambient-decor span:nth-child(2)  { top: 14%; right: 12%; font-size: 16px; }
+.ambient-decor span:nth-child(3)  { top: 24%; left: 26%; font-size: 22px; }
+.ambient-decor span:nth-child(4)  { top: 32%; right: 6%;  }
+.ambient-decor span:nth-child(5)  { top: 41%; left: 5%;  font-size: 15px; }
+.ambient-decor span:nth-child(6)  { top: 48%; right: 22%; font-size: 23px; }
+.ambient-decor span:nth-child(7)  { top: 57%; left: 18%; }
+.ambient-decor span:nth-child(8)  { top: 63%; right: 9%;  font-size: 17px; }
+.ambient-decor span:nth-child(9)  { top: 71%; left: 34%; font-size: 14px; }
+.ambient-decor span:nth-child(10) { top: 78%; right: 28%; }
+.ambient-decor span:nth-child(11) { top: 85%; left: 11%; font-size: 21px; }
+.ambient-decor span:nth-child(12) { top: 90%; right: 15%; font-size: 16px; }
+.ambient-decor span:nth-child(13) { top: 19%; left: 52%; font-size: 18px; }
+.ambient-decor span:nth-child(14) { top: 54%; left: 62%; font-size: 15px; }
+.ambient-decor span:nth-child(15) { top: 36%; left: 40%; font-size: 20px; }
+.ambient-decor span:nth-child(16) { top: 95%; left: 44%; font-size: 14px; }
+
+.app-shell > :not(.ambient-decor) { position: relative; z-index: 1; }
+
+@media (max-width: 768px) {
+  /* En móvil se reducen tamaño y número para no saturar pantallas estrechas */
+  .ambient-decor span { font-size: 16px; opacity: 0.13; }
+  .ambient-decor span.heart-red, .ambient-decor span.heart-pink { opacity: 0.12; }
+  .ambient-decor span.heart-white { opacity: 0.18; }
+  .ambient-decor span.bear, .ambient-decor span.star, .ambient-decor span.sparkle { opacity: 0.15; }
+  .ambient-decor span:nth-child(3),
+  .ambient-decor span:nth-child(6),
+  .ambient-decor span:nth-child(9),
+  .ambient-decor span:nth-child(12),
+  .ambient-decor span:nth-child(13),
+  .ambient-decor span:nth-child(14),
+  .ambient-decor span:nth-child(16) { display: none; }
+  .app-shell > .ambient-decor { position: fixed; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-decor, .ambient-decor * { animation: none !important; transition: none !important; }
+}
+
+/* ==========================================
    SHELL — sidebar fija + contenido que scrollea
    ========================================== */
 

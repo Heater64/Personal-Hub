@@ -14,7 +14,7 @@
 export const MOODS = [
   { id: 'preocupada', label: 'Preocupada',      emoji: '😟', score: 1 },
   { id: 'enfadada',   label: 'Enfadada',        emoji: '😡', score: 0 },
-  { id: 'triste',     label: 'Triste',          emoji: '🥹', score: 2 },
+  { id: 'triste',     label: 'Triste',          emoji: '🥺', score: 2 },
   { id: 'bien',       label: 'Bien',            emoji: '😊', score: 4 },
   { id: 'carino',     label: 'Necesito cariño', emoji: '🤍', score: 3 }
 ];
@@ -58,7 +58,7 @@ export function resolveMood(entry) {
   return {
     id,
     label: label || known.label,
-    emoji: emoji || known.emoji,
+    emoji: id === 'triste' && emoji === '🥹' ? '🥺' : (emoji || known.emoji),
     score: typeof score === 'number' ? score : (known ? known.score : 0),
     legacy: Boolean(known?.legacy)
   };

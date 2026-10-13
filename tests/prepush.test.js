@@ -441,9 +441,9 @@ test('el catálogo de Open When vive en un módulo sin dependencias de UI', asyn
   assert.ok(data.includes('export const TYPE_META = {'));
   assert.ok(data.includes('export async function loadAllOpenWhenLetters()'));
 
-  // 37 cartas de fábrica, con id único.
+  // Cartas de fábrica, con id único.
   const ids = [...data.slice(data.indexOf('export const LETTERS = [')).matchAll(/^\s{4}id: '([^']+)'/gm)].map(m => m[1]);
-  assert.equal(ids.length, 37);
+  assert.equal(ids.length, 41);
   assert.equal(new Set(ids).size, ids.length, 'las cartas de fábrica necesitan id único');
 
   // La página reexporta para no romper a quien importaba desde ahí.
@@ -556,8 +556,10 @@ test('el catálogo de ánimos es el nuevo y el histórico conserva el antiguo', 
 
   // Lo que se puede registrar AHORA: los cinco nuevos, en el orden pedido.
   assert.deepEqual(MOODS.map(m => m.id), ['preocupada', 'enfadada', 'triste', 'bien', 'carino']);
-  assert.deepEqual(MOODS.map(m => m.emoji), ['😟', '😡', '🥹', '😊', '🤍']);
+  assert.deepEqual(MOODS.map(m => m.emoji), ['😟', '😡', '🥺', '😊', '🤍']);
   assert.deepEqual(MOODS.map(m => m.label), ['Preocupada', 'Enfadada', 'Triste', 'Bien', 'Necesito cariño']);
+  const { resolveMood } = await import('../personal-hub/src/data/moods.data.js');
+  assert.equal(resolveMood({ mood: 'triste', emoji: '🥹' }).emoji, '🥺', 'los registros históricos muestran el emoji nuevo');
 
   // Escala 0..4 (4 = mejor) para que las medias sigan siendo comparables.
   const scores = MOODS.map(m => m.score);
