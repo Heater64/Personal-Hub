@@ -11,7 +11,7 @@ import { showToast } from '../components/Toast.js';
 import { hourInSpain } from '../utils/format.js';
 import { daysSinceAnniversary, loadSpecialDates } from '../utils/specialDates.js';
 
-export function WelcomeScreen({ onDone, onSkip } = {}) {
+export function WelcomeScreen({ onDone } = {}) {
   const user = userStore.getUser();
   const userName = user?.name || 'princesa';
   const daysSince = daysSinceAnniversary();
@@ -51,11 +51,8 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
             <span>Continuar</span>
             <span class="welcome-btn-arrow">→</span>
           </button>
+          <button type="button" class="welcome-later" id="welcomeLaterBtn">Más tarde</button>
         </div>
-
-        <button type="button" class="welcome-skip" id="welcomeSkipBtn">
-          Pregúntame luego
-        </button>
 
         <p class="welcome-counter" id="welcomeCounter">${daysSince} días compartiendo momentos juntos</p>
       </div>
@@ -76,7 +73,6 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
 
   const moodsContainer = overlay.querySelector('#welcomeMoods');
   const continueBtn = overlay.querySelector('#welcomeContinueBtn');
-  const skipBtn = overlay.querySelector('#welcomeSkipBtn');
   const greetingEl = overlay.querySelector('#welcomeGreeting');
   const timeIcon = overlay.querySelector('#welcomeTimeIcon');
 
@@ -157,11 +153,9 @@ export function WelcomeScreen({ onDone, onSkip } = {}) {
   }
 
   continueBtn.addEventListener('click', handleContinue);
-  skipBtn.addEventListener('click', () => {
-    // Mark as seen so the check-in no vuelva a aparecer hasta el día siguiente.
-    moodStore.markSeen();
-    close(onSkip);
-  });
+
+  // «Más tarde»: cierra sin registrar ánimo. Vuelve a salir en la próxima entrada.
+  overlay.querySelector('#welcomeLaterBtn').addEventListener('click', () => close(onDone));
 
   return overlay;
 }

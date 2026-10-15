@@ -143,6 +143,19 @@
   margin-bottom: 12px;
 }
 
+.welcome-later {
+  display: block;
+  margin: 12px auto 0;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--theme-text-secondary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .welcome-btn {
   display: inline-flex;
   align-items: center;
