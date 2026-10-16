@@ -430,11 +430,19 @@ export function buildMediaItems(srcs, folderName) {
   }));
 }
 
+// Helper: Cloudinary image URL resized for grids and heroes (no-op for other hosts).
+// Replaces any transform already in the URL, so full-size originals (often 4000px+)
+// are never downloaded just to show a thumbnail.
+export function cloudinaryThumb(src, width = 800) {
+  if (!src || !src.includes('res.cloudinary.com') || !src.includes('/image/upload/')) return src || '';
+  return src.replace(/\/image\/upload\/(?:(?!v\d+\/)[^/]+\/)*/, `/image/upload/c_limit,w_${width},q_auto,f_auto/`);
+}
+
 // Helper: Get Cloudinary video poster
 export function getVideoPoster(src) {
   if (!src) return '';
   if (src.includes('res.cloudinary.com') && src.includes('/video/upload/')) {
-    return src.replace('/video/upload/', '/video/upload/f_jpg,so_auto/').replace(/\.(mp4|webm|mov)(\?.*)?$/i, '.jpg');
+    return src.replace(/\/video\/upload\/(?:(?!v\d+\/)[^/]+\/)*/, '/video/upload/so_auto,c_limit,w_800,f_jpg,q_auto/').replace(/\.(mp4|webm|mov)(\?.*)?$/i, '.jpg');
   }
   return '';
 }

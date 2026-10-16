@@ -257,6 +257,9 @@ export function ThoseEyesPage(router) {
     if (audioEl.error || audioEl.networkState === 3) onAudioError();
 
     audioEl.addEventListener('timeupdate', () => {
+      // El cleanup anula audioEl y llama a load(), que puede disparar este
+      // evento una última vez: sin esta guarda lanza TypeError al salir.
+      if (!audioEl) return;
       if (audioEl.duration) {
         const pct = (audioEl.currentTime / audioEl.duration) * 100;
         if (timeDisplay) timeDisplay.textContent = fmt(audioEl.currentTime);
@@ -276,7 +279,7 @@ export function ThoseEyesPage(router) {
 
     // Click en la barra de progreso para saltar
     progressTrack?.addEventListener('click', (e) => {
-      if (!audioEl.duration || !audioReady) return;
+      if (!audioEl || !audioEl.duration || !audioReady) return;
       const rect = progressTrack.getBoundingClientRect();
       audioEl.currentTime = ((e.clientX - rect.left) / rect.width) * audioEl.duration;
     });

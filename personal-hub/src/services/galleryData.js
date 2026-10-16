@@ -72,7 +72,7 @@ export function userPhotos() {
 /** Subir URLs de fotos del usuario al final (más recientes al principio) */
 export function addUserPhotos(urls) {
   const list = userPhotos();
-  writeJson(UPLOADS_KEY, [...urls.reverse(), ...list]);
+  writeJson(UPLOADS_KEY, [...[...urls].reverse(), ...list]);
   sync.markDirty();
 }
 
@@ -141,7 +141,18 @@ export function saveAlbumMeta(meta) {
 // PROPORCIONES REALES (cache — evita CLS)
 // ==========================================
 
-const ratioCache = new Map(Object.entries(readJson(RATIO_KEY, {})));
+// Se carga de forma perezosa: al importar el módulo aún no se conoce el usuario,
+// así que leerla entonces dejaba la cache vacía. Se recarga si cambia la cuenta.
+let ratioCache = null;
+let ratioOwner = null;
+function ratios() {
+  const owner = RATIO_KEY();
+  if (!ratioCache || ratioOwner !== owner) {
+    ratioCache = new Map(Object.entries(readJson(RATIO_KEY, {})));
+    ratioOwner = owner;
+  }
+  return ratioCache;
+}
 
 function normalizeRatio(w, h) {
   if (!w || !h) return '4/3';
@@ -161,17 +172,19 @@ function gcd(a, b) { return b ? gcd(b, a % b) : a; }
 
 /** Devuelve la proporción conocida de una URL (4/3 por defecto) */
 export function knownRatio(url) {
-  return ratioCache.get(url) || '4/3';
+  return ratios().get(url) || '4/3';
 }
 
 /** Registra la proporción real de una imagen y persiste la cache */
 export function rememberRatio(url, w, h) {
   if (!url || !w || !h) return;
   const ratio = normalizeRatio(w, h);
-  ratioCache.set(url, ratio);
+  const cache = ratios();
+  cache.delete(url); // re-insertar al final: las entradas más recientes se conservan
+  cache.set(url, ratio);
   // Persistencia acotada (máx 500 entradas)
   try {
-    const entries = [...ratioCache.entries()].slice(-500);
+    const entries = [...cache.entries()].slice(-500);
     localStorage.setItem(RATIO_KEY(), JSON.stringify(Object.fromEntries(entries)));
   } catch { /* quota */ }
 }

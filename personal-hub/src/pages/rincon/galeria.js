@@ -5,7 +5,7 @@
    reexportan aqui) para no duplicar codigo.
    ========================================== */
 
-import { getVideoPoster, isVideo } from '../../services/rincon-data.js';
+import { getVideoPoster, isVideo, cloudinaryThumb } from '../../services/rincon-data.js';
 import { loadGiftsCatalog, getGiftsCatalog, unlockedCalendarVideos } from '../../services/gifts.service.js';
 import { db } from '../../services/db.service.js';
 import { showToast } from '../../components/Toast.js';
@@ -133,7 +133,10 @@ export function createGaleria(ctx) {
     const fotoCount = photos.length - vidCount;
     // El hero solo recibe recursos que realmente tienen una miniatura. Así un
     // vídeo sin póster no provoca una petición accidental a la página actual.
-    const heroPhotos = photos.slice(0, 5).map(galleryThumb).filter(Boolean);
+    // Portada primero y sin repetir: las miniaturas se piden a 1600px, no el original
+    const heroPhotos = [...new Set([cover, ...photos.slice(0, 8)].map(galleryThumb).filter(Boolean))]
+      .slice(0, 5)
+      .map(s => cloudinaryThumb(s, 1600));
   
     return `<div class="gallery-app">
       <!-- Añadir fotos (acción primaria, solo ADMIN) -->
@@ -150,7 +153,7 @@ export function createGaleria(ctx) {
         ${heroPhotos.length ? `
           <div class="gallery-hero-slide is-active">
             <span class="gallery-hero-loader" aria-hidden="true"></span>
-            <img src="${escapeHtml(galleryThumb(cover) || heroPhotos[0])}" alt="${escapeHtml(album.title)}" class="gallery-hero-bg" loading="eager" fetchpriority="high" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()">
+            <img src="${escapeHtml(heroPhotos[0])}" alt="${escapeHtml(album.title)}" class="gallery-hero-bg" loading="eager" fetchpriority="high" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()">
             <span class="gallery-hero-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>
           </div>
           ${heroPhotos.slice(1).map((src, i) => `<div class="gallery-hero-slide" data-slide="${i + 1}"><span class="gallery-hero-loader" aria-hidden="true"></span><img src="${escapeHtml(src)}" alt="" class="gallery-hero-bg" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-hero-fallback" aria-hidden="true">${ICON_SVGS['image']}</span></div>`).join('')}
@@ -222,7 +225,7 @@ export function createGaleria(ctx) {
     }
     const cells = previews.map((src, i) => {
       const isVid = isVideo(src);
-      const thumb = memePoster(src);
+      const thumb = cloudinaryThumb(memePoster(src), 600);
       const media = thumb
         ? `<span class="meme-cell-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="" loading="${imageLoading}"${imagePriority} decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="meme-cell-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
         : `<span class="meme-cell-fallback" aria-hidden="true">${isVid ? ICON_SVGS['play'] : ICON_SVGS['image']}</span>`;
@@ -230,7 +233,7 @@ export function createGaleria(ctx) {
     }).join('');
     const emptyCells = [...Array(Math.max(0, 4 - previews.length))].map(() => '<div class="meme-album-cell is-empty"></div>').join('');
     const coverBadge = cover && !items.slice(0, 4).includes(cover)
-      ? `<div class="meme-album-cover-mini"${memePoster(cover) ? ` style="background-image:url('${escapeHtml(memePoster(cover))}')"` : ''}></div>`
+      ? `<div class="meme-album-cover-mini"${memePoster(cover) ? ` style="background-image:url('${escapeHtml(cloudinaryThumb(memePoster(cover), 400))}')"` : ''}></div>`
       : '';
     return `<div class="meme-album-collage">${cells}${emptyCells}${coverBadge}</div>`;
   }

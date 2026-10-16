@@ -1279,8 +1279,8 @@
 .gallery-hero-shade {
   position: absolute; inset: 0; z-index: 1;
   background:
-    linear-gradient(to top, rgba(10,10,14,0.72) 0%, rgba(10,10,14,0.18) 42%, rgba(10,10,14,0.02) 68%),
-    linear-gradient(to right, rgba(10,10,14,0.34) 0%, transparent 55%);
+    linear-gradient(to top, rgba(10,10,14,0.92) 0%, rgba(10,10,14,0.72) 45%, rgba(10,10,14,0.35) 65%, rgba(10,10,14,0) 90%),
+    linear-gradient(to right, rgba(10,10,14,0.4) 0%, transparent 60%);
 }
 
 .gallery-hero-edit {
@@ -1425,7 +1425,11 @@
   gap: var(--sp-12);
   text-transform: none;
   letter-spacing: 0;
+  white-space: nowrap;
 }
+.gallery-toolbar-actions .gallery-sort-btn { flex-shrink: 0; }
+.section-title:has(.gallery-toolbar-actions) { flex-wrap: wrap; row-gap: var(--sp-8); }
+.section-title:has(.gallery-toolbar-actions) .gallery-toolbar-actions { margin-left: auto; }
 
 .gallery-filters { margin-bottom: var(--sp-4); }
 .gallery-filter { flex: 0 0 auto; }
@@ -1440,7 +1444,7 @@
   position: relative;
   break-inside: avoid;
   margin-bottom: var(--sp-12);
-  border-radius: 18px;
+  border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
   background: var(--theme-surface-elevated);
@@ -1450,6 +1454,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 .gallery-photo.visible { opacity: 1; transform: translateY(0); }
+.gallery-photo.visible:hover { transform: translateY(-3px); }
 
 .gallery-photo-loader {
   position: absolute;
@@ -1496,7 +1501,7 @@
 .gallery-photo.is-error img { display: none; }
 .gallery-photo.is-error .gallery-photo-fallback { display: flex; }
 
-.gallery-photo:hover { box-shadow: var(--elevation-2); }
+.gallery-photo:hover { box-shadow: 0 16px 32px -14px rgba(0, 0, 0, 0.55); }
 .gallery-photo:hover img { transform: scale(1.04); }
 
 /* Vídeos en la galería — poster + badge de play */
@@ -1889,7 +1894,7 @@
 /* ----- Responsive galería ----- */
 @media (min-width: 600px) {
   .gallery-masonry { columns: 3; column-gap: var(--sp-16); }
-  .gallery-photo { border-radius: 20px; margin-bottom: var(--sp-16); }
+  .gallery-photo { margin-bottom: var(--sp-16); }
 }
 @media (min-width: 900px) {
   .gallery-masonry { columns: 4; column-gap: var(--sp-20); }
@@ -2656,13 +2661,11 @@
 @media (min-width: 769px) {
   .rincon-page { max-width: 1100px; }
 
-  .gallery-masonry { columns: 4 200px; }
   .meme-albums-grid { grid-template-columns: repeat(3, 1fr); }
   .meme-album-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 }
 
 @media (max-width: 640px) {
-  .gallery-masonry { columns: 2 140px; }
   .meme-albums-grid { grid-template-columns: 1fr 1fr; }
   .meme-album-grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); }
 }

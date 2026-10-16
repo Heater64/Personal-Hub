@@ -5,7 +5,7 @@
    este modulo exporta tambien lo que Galeria necesita.
    ========================================== */
 
-import { isVideo, getVideoPoster, buildMediaItems } from '../../services/rincon-data.js';
+import { isVideo, getVideoPoster, buildMediaItems, cloudinaryThumb } from '../../services/rincon-data.js';
 import { db } from '../../services/db.service.js';
 import { showToast } from '../../components/Toast.js';
 import { escapeHtml, safeUrl } from '../../utils/escape.js';
@@ -113,7 +113,7 @@ export function createMemes(ctx) {
         card.innerHTML = `
           ${isVid && !poster
             ? `<span class="gallery-photo-placeholder" aria-hidden="true">${ICON_SVGS['play']}</span>`
-            : `<span class="gallery-photo-loader" aria-hidden="true"></span><img src="${escapeHtml(poster || src)}" alt="Recuerdo ${idx + 1}" loading="${idx < 4 ? 'eager' : 'lazy'}"${idx < 4 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded');window.__galleryRemember && window.__galleryRemember(this)" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-photo-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`}
+            : `<span class="gallery-photo-loader" aria-hidden="true"></span><img src="${escapeHtml(cloudinaryThumb(poster || src))}" data-key="${escapeHtml(src)}" alt="${escapeHtml(galleryAlbum().title)} ${idx + 1}" loading="${idx < 4 ? 'eager' : 'lazy'}"${idx < 4 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded');window.__galleryRemember && window.__galleryRemember(this)" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-photo-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`}
           ${isVid ? `<span class="gallery-photo-play" aria-hidden="true">${ICON_SVGS['play']}</span>` : ''}
           <div class="gallery-photo-shade"></div>
           ${date ? `<span class="gallery-photo-date">${escapeHtml(date)}</span>` : ''}
@@ -124,7 +124,14 @@ export function createMemes(ctx) {
       });
       requestAnimationFrame(() => { grid.querySelectorAll('.gallery-photo.animate-in').forEach(el => el.classList.add('visible')); });
       // Sigue observando mientras queden fotos; finishLoad() desconecta al final
-      if (offset >= photos.length) finishLoad();
+      if (offset >= photos.length) {
+        finishLoad();
+      } else if (io) {
+        // Re-observar: IntersectionObserver solo avisa en cambios de estado, y si el
+        // centinela sigue visible tras el lote el scroll infinito se quedaría parado.
+        io.unobserve(sentinel);
+        io.observe(sentinel);
+      }
     }
   
     function finishLoad() {
@@ -149,7 +156,11 @@ export function createMemes(ctx) {
   
   // Recordar proporción real (exposición global mínima para el onload inline)
   window.__galleryRemember = (img) => {
-    if (img.naturalWidth) rememberRatio(img.currentSrc || img.src, img.naturalWidth, img.naturalHeight);
+    const key = img.dataset.key;
+    if (!img.naturalWidth || !key) return;
+    rememberRatio(key, img.naturalWidth, img.naturalHeight);
+    // La primera visita usa 4/3 por defecto: corregir la tarjeta con la proporción real
+    if (img.parentElement) img.parentElement.style.aspectRatio = knownRatio(key);
   };
   // Desconecta el observer del scroll infinito al re-renderizar
   function disconnectGalleryIO(grid) {
