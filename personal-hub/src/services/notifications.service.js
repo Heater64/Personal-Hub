@@ -21,7 +21,6 @@ const SYNC_TAG = 'daily-welcome';
 const NOVELTIES_TAG = 'daily-novelties';
 const OPENWHEN_TAG = 'openwhen-new';
 const MOOD_TAG = 'mood';
-const ADMIN_MOOD_TAG = 'admin-mood';
 const OPENWHEN_ANNOUNCED_KEY = 'openwhen.announced';
 const DB_NAME = 'ph-notifications';
 const DB_STORE = 'state';
@@ -546,26 +545,32 @@ export async function notifyMoodSaved(mood) {
 }
 
 /**
- * Aviso al Admin de que la usuaria ha registrado su estado de ánimo.
- * A diferencia de notifyMoodSaved (respuesta a la propia acción del usuario
- * y no respeta el horario de silencio), este aviso al admin es informativo
- * y SÍ respeta el silencio: no interrumpe fuera de horas.
+ * Pide al servidor que avise a los admins de que la usuaria ha registrado su
+ * estado de ánimo de hoy. El aviso sale como push desde el servidor, así que
+ * llega aunque el admin no tenga la web abierta. El servidor lee el ánimo de la
+ * base de datos y no avisa a los admins de sus propios ánimos.
  *
- * Se dispara desde App.js al recibir el evento 'ph:mood-changed' (realtime o
- * polling). Sólo avisa por ánimos ajenos al admin (lo filtra el llamador).
+ * Lo llama mood.store.js tras guardar. Nunca lanza: un fallo del aviso no debe
+ * romper el guardado del ánimo.
  */
-export async function notifyAdminMoodSaved(mood) {
-  if (!mood) return false;
-  const displayMood = {
-    id: mood.mood,    // la columna `mood` es el id del catálogo
-    label: mood.label,
-    emoji: mood.emoji,
-    score: mood.score
-  };
-  const title = `${displayMood.emoji || '🫶'} ${displayMood.label || 'Ánimo registrado'}`;
-  const body = moodLine(displayMood) || 'Ha registrado su estado de ánimo de hoy.';
-  // Sin ignoreQuiet → respeta el horario de silencio (aviso informativo)
-  return showDailyNotification(title, body, '/admin', { tag: ADMIN_MOOD_TAG });
+export async function notifyAdminOfMood() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return false;
+
+    const res = await fetch('/api/push?action=notify-admin', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (!res.ok) {
+      console.warn('[notif] Admin mood notify failed:', res.status);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[notif] Could not notify admin of mood:', err.message);
+    return false;
+  }
 }
 
 /**

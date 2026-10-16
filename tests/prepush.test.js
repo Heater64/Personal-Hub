@@ -2045,14 +2045,14 @@ test('el check-in de ánimo aparece en el primer inicio diario y se reinicia al 
     'el check-in no queda bloqueado por horario de mañana');
   assert.match(app, /await awaitMoodSync\(\);[\s\S]*?if \(!userStore\.getUser\(\) \|\| userStore\.isAdmin\) \{\s+setMoodWelcomeState\('clear'\);\s+return;/,
     'espera la sincronización del ánimo y excluye admin antes de preguntar');
-  assert.match(app, /if \(getUserPref\('welcomeShownDate'\) === today\) return false;/,
-    'la pestaña abierta no presenta el modal varias veces en el mismo día');
+  assert.match(app, /if \(getUserPref\('welcomeShownDate'\) !== today\) \{/,
+    'la notificación local sale solo 1 vez al día; el modal se repite en cada entrada hasta responder');
   assert.match(app, /setUserPref\('welcomeShownDate', today\)/,
     'se evita duplicar el modal en el mismo día');
   assert.match(welcome, /await moodStore\.saveMood\(selectedMood\)/,
     'la selección guarda el estado de ánimo diario');
-  assert.match(welcome, /moodStore\.markSeen\(\);/,
-    'posponer también cuenta como check-in de hoy');
+  assert.doesNotMatch(welcome, /welcomeSkipBtn|Pregúntame luego|onSkip/,
+    'sin opción de posponer: se pregunta cada día hasta que responde');
 });
 
 test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async () => {
@@ -2060,13 +2060,17 @@ test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async ()
   const store = await readFile(hub('src', 'stores', 'mood.store.js'), 'utf8');
   const profile = await readFile(hub('src', 'pages', 'Profile.js'), 'utf8');
   const sw = await readFile(hub('public', 'sw.js'), 'utf8');
+  const pushApi = await readFile(projectPath('api', 'push.js'), 'utf8');
 
   // El aviso va en el STORE, no en las pantallas: es el unico punto por el
   // que se escribe un estado, asi que se avisa igual desde Sentimientos, desde
   // el perfil y desde la pantalla de bienvenida.
   assert.match(store, /_notifyMood\(mood\);/, 'saveMood avisa');
   assert.match(store, /this\._notifyMood\(prev\);/, 'y quitarlo tambien avisa del estado que queda');
-  assert.match(store, /import \{ notifyMoodSaved \} from '\.\.\/services\/notifications\.service\.js';/, 'import estatico: el modulo ya esta en el bundle');
+  assert.match(store, /import \{ notifyMoodSaved, notifyAdminOfMood \} from '\.\.\/services\/notifications\.service\.js';/, 'import estatico: el modulo ya esta en el bundle');
+  // El aviso al admin va solo al guardar (quitar el ánimo no avisa): una sola llamada
+  assert.equal(store.match(/notifyAdminOfMood\(\)/g)?.length, 1, 'solo saveMood avisa al admin');
+  assert.match(store, /notifyAdminOfMood\(\)\.catch/, 'el aviso al admin no rompe el guardado');
   assert.match(store, /notifyMoodSaved\(mood\)\.catch\(\(\) => \{ \/\* sin notificaciones/, 'un fallo del aviso no rompe el guardado');
 
   // Interruptor propio: es un aviso mas y se apaga sin apagar los demas.
@@ -2086,6 +2090,13 @@ test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async ()
   }
   assert.match(notif, /const day = Number\(String\(todayISO\(\)\)\.replace/, 'la frase varia con el dia');
   assert.match(notif, /return pool\[day % pool\.length\];/);
+
+  // Aviso al admin: el servidor lo envía con su tag y no avisa al propio admin.
+  assert.match(pushApi, /tag: 'admin-mood'/, 'el push al admin lleva su tag propio');
+  assert.match(pushApi, /if \(profile\?\.role === 'admin'\)/, 'el admin no se avisa a sí mismo');
+  // Horario de silencio: el aviso al admin sale sin sonido ni vibración.
+  assert.match(sw, /payload\.tag === 'admin-mood'[\s\S]*?isQuietHour\(new Date\(\), quiet\)/, 'el aviso al admin respeta el horario de silencio');
+  assert.match(sw, /options\.silent = true;/);
 
   // Y no se promete en el horario de silencio algo que luego no ocurre.
   assert.match(profile, /El de tu estado de ánimo sale siempre/, 'el texto del silencio no puede mentir');

@@ -16,7 +16,7 @@ import { WelcomeScreen } from './WelcomeScreen.js';
 import { setMoodWelcomeState } from './SpecialEventSheet.js';
 import { moodStore } from '../stores/mood.store.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
-import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters, notifyAdminMoodSaved } from '../services/notifications.service.js';
+import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
 import { initListenTogether, onListenTogether, getListenTogetherState, initListenStateRealtime, stopListenStateRealtime } from '../services/listenTogether.service.js';
@@ -192,15 +192,14 @@ export function AppShell(router) {
   let moodSyncPromise = null; // resolves once today's mood has been synced with the server
   let moodNotifCleanup = null; // unsubscribe del aviso de ánimo al admin (sólo admin)
 
-  // Aviso al Admin cuando la usuaria registra su ánimo (Realtime + polling).
-  // Sólo el admin instala este listener: el usuario ya se avisa a sí mismo
-  // en mood.store (notifyMoodSaved). Filtra los propios ánimos del admin.
+  // Toast al Admin cuando la usuaria registra su ánimo (Realtime + polling).
+  // El aviso de sistema llega por push desde el servidor (notify-admin), así
+  // que llegue o no la web abierta. Filtra los propios ánimos del admin.
   const attachAdminMoodListener = () => {
     const onMood = (e) => {
       const mood = e?.detail;
       if (!mood) return;
       if (mood.user_id === getUserId()) return; // no avisar por el propio admin
-      notifyAdminMoodSaved(mood).catch(() => {});
       showToast(`${mood.emoji || '🫶'} ${mood.label || 'Ánimo registrado'}`, 'info', 4000);
     };
     window.addEventListener('ph:mood-changed', onMood);
@@ -360,29 +359,25 @@ export function AppShell(router) {
   function showWelcome() {
     if (!shouldShowWelcome()) return false;
 
-    // Evita volver a abrirla el mismo día si una navegación cerró el modal.
     const today = todayISO();
-    if (getUserPref('welcomeShownDate') === today) return false;
 
     // Prevent double-show if a welcome is already displayed
     if (currentWelcomeOverlay || document.querySelector('.welcome-overlay')) return false;
 
-    setUserPref('welcomeShownDate', today);
-
-    // Notificación local (app abierta) si está habilitada, con el saludo
-    // correspondiente a la hora española en que abrió la aplicación.
-    const hour = hourInSpain();
-    const greeting = hour < 12 ? '¡Buenos días! ☀️' : hour < 19 ? '¡Buenas tardes! 🌤️' : '¡Buenas noches! 🌙';
-    showDailyNotification(greeting, '¿Cómo te sientes hoy? Abre Personal Hub para registrarlo.');
-    // Marca el día para que el SW (app cerrada) no la duplique: 1 vez/día
-    markWelcomeShownToday();
+    // El overlay se pregunta en cada entrada hasta que se responde (lo filtra
+    // shouldShowWelcome). El aviso de sistema sí sale sólo 1 vez al día.
+    if (getUserPref('welcomeShownDate') !== today) {
+      setUserPref('welcomeShownDate', today);
+      // Notificación local (app abierta) con el saludo según la hora española.
+      const hour = hourInSpain();
+      const greeting = hour < 12 ? '¡Buenos días! ☀️' : hour < 19 ? '¡Buenas tardes! 🌤️' : '¡Buenas noches! 🌙';
+      showDailyNotification(greeting, '¿Cómo te sientes hoy? Abre Personal Hub para registrarlo.');
+      // Marca el día para que el SW (app cerrada) no la duplique: 1 vez/día
+      markWelcomeShownToday();
+    }
 
     const ws = WelcomeScreen({
       onDone: () => {
-        currentWelcomeOverlay = null;
-        setMoodWelcomeState('clear');
-      },
-      onSkip: () => {
         currentWelcomeOverlay = null;
         setMoodWelcomeState('clear');
       }

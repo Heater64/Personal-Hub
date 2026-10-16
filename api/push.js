@@ -3,6 +3,7 @@
    - POST /api/push/subscribe   — guarda subscripción
    - POST /api/push/unsubscribe — elimina subscripción
    - POST /api/push/send        — envía a todos (admin/cron)
+   - POST /api/push?action=notify-admin — avisa a los admins del ánimo de hoy
    ========================================== */
 
 import webpush from 'web-push';
@@ -255,8 +256,10 @@ export default async function handler(req, res) {
         return await handleUnsubscribe(req, res);
       case 'send':
         return await handleSend(req, res);
+      case 'notify-admin':
+        return await handleNotifyAdmin(req, res);
       default:
-        return res.status(400).json({ error: 'Invalid action. Use: subscribe, unsubscribe, send' });
+        return res.status(400).json({ error: 'Invalid action. Use: subscribe, unsubscribe, send, notify-admin' });
     }
   } catch (err) {
     console.error('[api/push] error:', err.message);
@@ -361,6 +364,94 @@ async function handleUnsubscribe(req, res) {
     console.error('[api/push/unsubscribe] error:', err.message);
     return res.status(500).json({ error: 'Could not unsubscribe' });
   }
+}
+
+// ==========================================
+// NOTIFY ADMIN — avisa a los admins de que alguien registró su ánimo
+// ==========================================
+// Lo llama el cliente de la usuaria tras guardar el ánimo. El servidor lee
+// el ánimo de hoy de la tabla (no se fía del cuerpo) y lo envía como push a
+// los admins, así que llega aunque el admin no tenga la web abierta.
+async function handleNotifyAdmin(req, res) {
+  const user = await authenticate(req, res);
+  if (!user) return;
+
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    return res.status(500).json({ error: 'VAPID keys not configured' });
+  }
+
+  const supabase = getSupabase();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  // El admin no se avisa a sí mismo
+  if (profile?.role === 'admin') {
+    return res.status(200).json({ success: true, sent: 0, skipped: true, reason: 'Admin mood' });
+  }
+
+  const { data: mood, error: moodError } = await supabase
+    .from('moods')
+    .select('label, emoji')
+    .eq('user_id', user.id)
+    .eq('date', todayServerStr())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (moodError) throw moodError;
+  if (!mood) {
+    return res.status(404).json({ error: 'No mood registered today' });
+  }
+
+  const { data: admins, error: adminsError } = await supabase
+    .from('profiles')
+    .select('id, enabled')
+    .eq('role', 'admin');
+  if (adminsError) throw adminsError;
+  const adminIds = new Set((admins || []).filter(a => a.enabled !== false).map(a => a.id));
+
+  const allSubscriptions = await getSubscriptions();
+  const adminSubscriptions = allSubscriptions.filter(s => adminIds.has(s.userId));
+  if (adminSubscriptions.length === 0) {
+    return res.status(200).json({ success: true, sent: 0, message: 'No admin subscriptions' });
+  }
+
+  const payload = JSON.stringify({
+    title: `${mood.emoji || '💬'} ${mood.label || 'Ánimo registrado'}`,
+    body: 'Ha registrado su estado de ánimo de hoy.',
+    url: '/admin',
+    tag: 'admin-mood',
+    timestamp: Date.now()
+  });
+
+  const { results, expired } = await deliverPush(adminSubscriptions, payload);
+  if (expired.length > 0) {
+    await saveSubscriptions(allSubscriptions.filter(s => !expired.includes(s.endpoint)));
+  }
+
+  return res.status(200).json({ success: true, ...results });
+}
+
+/** Envía el mismo payload a cada suscripción y devuelve los endpoints caducados. */
+async function deliverPush(subscriptions, payload) {
+  const results = { sent: 0, failed: 0, removed: 0 };
+  const expired = [];
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload);
+      results.sent++;
+    } catch (err) {
+      // 410/404: la suscripción caducó y se retira. Otros errores: se conserva.
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        results.removed++;
+        expired.push(sub.endpoint);
+      } else {
+        results.failed++;
+      }
+    }
+  }
+  return { results, expired };
 }
 
 // ==========================================

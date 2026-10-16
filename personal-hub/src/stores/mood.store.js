@@ -4,7 +4,7 @@
    ========================================== */
 
 import { supabase } from '../services/supabase.js';
-import { notifyMoodSaved } from '../services/notifications.service.js';
+import { notifyMoodSaved, notifyAdminOfMood } from '../services/notifications.service.js';
 import { userStore } from './user.store.js';
 import { userPrefKey } from '../utils/userStorage.js';
 import { todayISO } from '../utils/format.js';
@@ -148,6 +148,9 @@ class MoodStore {
     this._persistTodayStates(states);
     this._finalizeLocalState(states, today, mood);
     this._notifyMood(mood);
+    // Push al admin desde el servidor (llega aunque la web del admin esté cerrada).
+    // Solo al guardar: quitar el ánimo no avisa al admin.
+    notifyAdminOfMood().catch(() => { /* el estado ya está guardado */ });
     return mood;
   }
 

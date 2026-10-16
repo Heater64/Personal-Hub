@@ -309,9 +309,25 @@ self.addEventListener('push', event => {
     silent: payload.silent || false
   };
 
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
+  // El aviso al admin por ánimo respeta el horario de silencio del dispositivo:
+  // sale sin sonido ni vibración. No se descarta del todo porque Chrome exige
+  // mostrar una notificación por cada push (userVisibleOnly).
+  event.waitUntil((async () => {
+    if (payload.tag === 'admin-mood') {
+      let quiet = null;
+      try {
+        quiet = (await idbGet('reminder'))?.quiet;
+      } catch {
+        // sin estado guardado: se trata como fuera de silencio
+      }
+      if (isQuietHour(new Date(), quiet)) {
+        options.silent = true;
+        options.vibrate = undefined;
+        options.requireInteraction = false;
+      }
+    }
+    return self.registration.showNotification(title, options);
+  })());
 });
 
 // ─── PUSH SUBSCRIPTION CHANGE ─────────────────
