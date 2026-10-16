@@ -120,6 +120,9 @@ class MoodStore {
     const states = this._getTodayStates();
     const current = states.length ? states[states.length - 1] : null;
     const fresh = current && (now - current.updatedAt) <= STATE_WINDOW_MS;
+    // Si hoy ya había un estado, el siguiente no es «el primero del día»:
+    // es un cambio, y el aviso al admin tiene que decirlo así.
+    const hadStates = states.length > 0;
 
     if (current && fresh) {
       // Cambio dentro de la ventana → actualiza el mismo estado (solo el último cuenta)
@@ -148,9 +151,16 @@ class MoodStore {
     this._persistTodayStates(states);
     this._finalizeLocalState(states, today, mood);
     this._notifyMood(mood);
-    // Push al admin desde el servidor (llega aunque la web del admin esté cerrada).
+    // Push al admin desde el servidor (llega aunque su web esté cerrada).
     // Solo al guardar: quitar el ánimo no avisa al admin.
-    notifyAdminOfMood().catch(() => { /* el estado ya está guardado */ });
+    //
+    // El TIPO importa, porque de él depende el interruptor que lo gobierna
+    // (024) y sobre todo que no le suene el teléfono de más: una corrección
+    // dentro de la ventana de 5 min solo le avisa si aterriza en un mal día,
+    // y un estado nuevo que sustituye al de antes le dice que lo que vio ya
+    // no es su ánimo actual.
+    const adminKind = fresh ? 'mood_update' : (hadStates ? 'mood_change' : 'mood');
+    notifyAdminOfMood(adminKind).catch(() => { /* el estado ya está guardado */ });
     return mood;
   }
 

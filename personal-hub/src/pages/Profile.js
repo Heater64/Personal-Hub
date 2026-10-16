@@ -824,7 +824,63 @@ export function ProfilePage(router) {
               <span class="prof-toggle-slider"></span>
             </label>
           </div>
+          <div class="prof-row">
+            <div class="prof-row-text">
+              <span class="prof-row-title">Recordatorios</span>
+              <span class="prof-row-sub">Avisos que te escribe él/ella para una hora concreta</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifReminders" ${s.reminders ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
         </div>
+
+        ${userStore.isAdmin ? `
+        <div class="notif-card">
+          <p class="notif-card__title">Avisos para ti (admin)</p>
+          <p class="notif-card__hint">Lo que ella hace te llega a ti, no a ella. Son los mismos eventos que ves en el panel: apágalos aquí si te suenan de más, cada uno por separado. Dentro de tu horario de silencio llegan sin sonido.</p>
+          <div class="prof-row">
+            <div class="prof-row-text">
+              <span class="prof-row-title">Registra su ánimo</span>
+              <span class="prof-row-sub">Cada vez que marca cómo está hoy; un mal día se avisa destacado</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifAdminMood" ${s.adminMood ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-row">
+            <div class="prof-row-text">
+              <span class="prof-row-title">Cambia de ánimo</span>
+              <span class="prof-row-sub">Cuando el ánimo de hoy ya no es el que viste</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifAdminMoodChanges" ${s.adminMoodChanges ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-row">
+            <div class="prof-row-text">
+              <span class="prof-row-title">Notas de Mal Día</span>
+              <span class="prof-row-sub">Cuando deja una nota escrita para ti</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifAdminNotes" ${s.adminNotes ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-row">
+            <div class="prof-row-text">
+              <span class="prof-row-title">Avisos técnicos</span>
+              <span class="prof-row-sub">Si un aviso no se pudo entregar o un dispositivo caducó</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifAdminHealth" ${s.adminHealth ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+        </div>` : ''}
 
         <div class="notif-card">
           <p class="notif-card__title">Horario de silencio</p>
@@ -833,7 +889,7 @@ export function ProfilePage(router) {
             <span class="notif-quiet__sep">→</span>
             <input type="time" id="notifQuietTo" class="prof-name-input" value="${escapeHtml(s.quietTo)}" aria-label="Silencio hasta">
           </div>
-          <p class="notif-card__hint">Entre esas horas no recibirás avisos automáticos (soporta franjas que cruzan medianoche). El de tu estado de ánimo sale siempre: es la respuesta a lo que acabas de hacer.</p>
+          <p class="notif-card__hint">Entre esas horas no recibirás avisos automáticos (soporta franjas que cruzan medianoche). Los recordatorios que caigan ahí esperan a que termine el silencio. El de tu estado de ánimo sale siempre: es la respuesta a lo que acabas de hacer.</p>
         </div>
 
         <button type="button" class="prof-btn prof-btn--primary" id="notifTestBtn">Enviar notificación de prueba</button>
@@ -894,6 +950,26 @@ export function ProfilePage(router) {
       setNotifSettings({ moods: e.target.checked });
       showToast(e.target.checked ? '💗 Aviso de ánimo activado' : '🔕 Aviso de ánimo desactivado', 'success');
     });
+
+    $('#notifReminders').addEventListener('change', (e) => {
+      setNotifSettings({ reminders: e.target.checked });
+      showToast(e.target.checked ? '📌 Recordatorios activados' : '🔕 Recordatorios desactivados', 'success');
+    });
+
+    // Avisos del admin (024). Solo existen en su cuenta, así que las filas no
+    // están cuando el perfil es el de ella.
+    const ADMIN_TOGGLES = [
+      ['#notifAdminMood', 'adminMood', '🔔 Te aviso cuando registra su ánimo', '🔕 Ya no te aviso de su ánimo'],
+      ['#notifAdminMoodChanges', 'adminMoodChanges', '🔔 Te aviso si cambia de ánimo', '🔕 Ya no te aviso de los cambios'],
+      ['#notifAdminNotes', 'adminNotes', '💌 Te aviso cuando deja una nota', '🔕 Ya no te aviso de las notas'],
+      ['#notifAdminHealth', 'adminHealth', '⚠️ Avisos técnicos activados', '🔕 Avisos técnicos desactivados']
+    ];
+    for (const [selector, key, on, off] of ADMIN_TOGGLES) {
+      $(selector)?.addEventListener('change', (e) => {
+        setNotifSettings({ [key]: e.target.checked });
+        showToast(e.target.checked ? on : off, 'success');
+      });
+    }
 
     const saveQuiet = () => {
       const next = setNotifSettings({

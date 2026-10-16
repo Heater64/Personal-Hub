@@ -76,12 +76,92 @@ Las 017/018 son el endurecimiento de seguridad (RLS autoritativa + tabla de push
 3. **`018_push_subscriptions.sql`** — mueve las suscripciones fuera de `content`. Solo borra
    la fila antigua si el recuento coincide; si no, avisa y la conserva.
 
+### Recordatorios programados (022)
+
+**`022_push_reminders.sql`** crea `push_reminders` (qué se envía, cuándo y cada cuánto) y
+`push_logs` (qué llegó y a quién). El admin los escribe desde el panel, pero los manda el
+**servidor**: llegan aunque nadie tenga la app abierta.
+
+El reloj periódico es un paso aparte porque necesita la URL de producción y el `CRON_SECRET`:
+se activa con Supabase `pg_cron` y está detallado en [`SUPABASE-SETUP.md`](SUPABASE-SETUP.md) §4.
+Sin él, el cron diario de Vercel vacía igualmente los recordatorios vencidos (a su hora, no al minuto).
+
+### Preferencias de avisos (023)
+
+**`023_notification_prefs.sql`** lleva al servidor lo que antes solo sabía el navegador: qué tipos de
+aviso quiere cada persona y en qué horas no quiere que suene. Un aviso enviado por el servidor
+—el saludo diario y, sobre todo, un recordatorio— respeta desde entonces esos ajustes; un
+recordatorio que caiga dentro del silencio se **aplaza** al fin del silencio en vez de perderse.
+Sin la tabla aplicada, la app funciona igual (el cliente cae a `localStorage` y el servidor, sin
+fila, entrega como antes).
+
+### Avisos del admin (024)
+
+La app separa dos públicos. **Ella recibe contenido** (cartas nuevas de Open When, novedades del
+calendario, los avisos que él escribe a mano) y el acuse de su propio ánimo. **El admin recibe
+seguimiento**, y es él quien decide cuánto: cada clase tiene su interruptor en Perfil →
+Notificaciones (solo visibles en su cuenta).
+
+| Aviso | Cuándo suena | Interruptor |
+|---|---|---|
+| Registra su ánimo | cada vez que marca cómo está hoy | `admin_mood` |
+| Mal día | si la puntuación es ≤ 2 (`enfadada`, `preocupada`, `triste`) | `admin_mood` |
+| Cambia de ánimo | un estado nuevo que sustituye al de antes | `admin_mood_changes` |
+| Nota de Mal Día | cuando deja una nota escrita para él | `admin_notes` |
+| Técnicos | un envío falló o un dispositivo caducó | `admin_health` |
+
+Dos decisiones que evitan que el teléfono suene de más: una **corrección rápida** (dentro de la
+ventana de 5 min de `mood.store`) no avisa salvo que aterrice en un mal día, y un mal día lleva
+`tag` propio para que un «Bien» posterior no lo reemplace sin que llegue a verse. El texto lo
+compone el **servidor** a partir de la base de datos (el ánimo de hoy, la última nota) — el cuerpo
+de la petición solo elige la clase. El silencio nocturno no descarta estos avisos: el service
+worker los muestra sin sonido y quedan ahí, porque el evento ya ocurrió.
+
+`sql/024_admin_alerts.sql` añade las columnas a `notification_prefs` con `TRUE` por defecto. Sin
+aplicarla, la API entrega igual pero el admin no puede apagar ninguna clase.
+
+Cada aviso abre la vista exacta, no el panel a secas: `/admin?section=moods` para el ánimo,
+`?section=contenido&sub=maldia` para las notas y `?section=recordatorios` para los técnicos. El panel
+lee ese `?section=` al montar —igual que el Rincón con `?tab=`— y **el servidor solo acepta
+secciones que existan**: la lista vive en `api/push.js` y un test exige que coincida con la del menú,
+así que añadir una sección y olvidarla en el servidor rompe los tests en vez de dejar un enlace
+muerto.
+
+### Entrega: «enviado» no es «entregado» (025)
+
+Web Push **no tiene recibo**. Que FCM o Mozilla acepten un envío solo significa que lo aceptaron: el
+móvil puede estar apagado, sin datos o con la app congelada. Por eso el historial separa tres cosas y
+no las mezcla:
+
+| Estado | Qué significa | Quién lo sabe |
+|---|---|---|
+| Enviado | el push service aceptó el envío | el servidor |
+| Fallido | lo rechazó (410/404 = suscripción caducada) | el servidor |
+| Entregado al dispositivo | el service worker lo recibió y confirmó | el dispositivo |
+
+La confirmación es un token —`delivery_id`, un UUID distinto por dispositivo y envío— que viaja en
+el payload; al recibirlo el service worker lo devuelve a `/api/push?action=ack` y esa fila pasa a
+tener `delivered_at`. Que al móvil le llegue no marca el portátil: cada fila espera su propio acuse.
+
+El historial se escribe **antes** de enviar, con el envío aún en `queued`. No es un adorno: el acuse
+llega en cuanto el aviso se muestra, así que una fila creada después del envío no existiría todavía
+cuando el dispositivo confirma, y la confirmación se perdería en silencio. Si el proceso muere a
+mitad, la fila se queda en `queued`, que es la verdad — no se sabe si llegó a salir.
+
+`sql/025_push_log_delivery.sql` añade las dos columnas y un `CHECK` (`NOT VALID`, para no reventar
+por una fila antigua). Sin ella el envío funciona igual y el acuse responde 503 con la instrucción.
+
+Lo que **no** dice ninguna columna es «visto»: un acuse prueba que el aviso llegó a un dispositivo y
+se mostró, no que se haya leído. `seen_at` no existe a propósito.
+
 ### Instalación desde cero
 
 ```bash
 # 1. sql/000_Reglas.sql … 016, en orden
 # 2. sql/017_enabled_autoritativo.sql
 # 3. sql/018_push_subscriptions.sql
+# 4. sql/019 a sql/025 (aislamiento verificado, políticas permisivas, realtime,
+#    recordatorios, preferencias de avisos, avisos del admin y acuse de entrega)
 ```
 
 `000_Reglas.sql` avisa y se detiene si `user_profiles` tiene filas en lugar de borrarlas en cascada.
@@ -100,6 +180,9 @@ select proname, prosecdef from pg_proc where proname in ('is_enabled','is_admin'
 -- Las suscripciones ya no viven en content
 select count(*) from push_subscriptions;
 select count(*) from content where id = 'push_subscriptions';
+
+-- Los recordatorios (022) existen, con RLS activa
+select relname, relrowsecurity from pg_class where relname in ('push_reminders','push_logs');
 ```
 
 ## 5. Despliegue
@@ -129,6 +212,8 @@ y la salida `personal-hub/dist`.
 | `api/_admin.js` | El rol sale de `profiles`, no del token ni de metadata |
 | `api/push.js` | Exige sesión **y** `enabled`; el envío diario exige admin |
 | `push_subscriptions` | `REVOKE` a `anon`, sin INSERT/UPDATE desde el cliente |
+| `push_reminders` | Solo el admin lee; escribir exige su sesión en `/api/push?action=reminders` |
+| `notification_prefs` | RLS de dueño (`user_id = auth.uid()`): nadie puede apagarle los avisos a otro. Incluye los del admin (024) |
 | `public/sw.js` | No cachea `/api/*` ni peticiones con `Authorization` |
 
 Detalles y consultas de comprobación: [`sql/README.md`](sql/README.md) y
@@ -155,12 +240,15 @@ npm test
 ```
 
 Tests de contrato sobre el código fuente (no requieren red ni navegador): RLS y migraciones,
-policies, la API de push, el catálogo del calendario, la coherencia de temas/paletas, y el
-code-splitting. No sustituyen a las pruebas manuales de §9.
+policies, la API de push, la programación de los recordatorios (incluidos los dos cambios de
+hora), el catálogo del calendario, la coherencia de temas/paletas, y el code-splitting. No
+sustituyen a las pruebas manuales de §9.
 
 ## 9. Pendiente antes de abrirla a más gente
 
-- [ ] Aplicar 017 y 018 en Supabase (requiere el SQL Editor).
+- [ ] Aplicar 017 a 022 en Supabase (requiere el SQL Editor).
+- [ ] Programar `pg_cron` para los recordatorios y comprobar que el trabajo late (SUPABASE-SETUP §4).
+- [ ] Probar en dos dispositivos que un ajuste de notificaciones se sincroniza (023) y que un recordatorio en horario de silencio se aplaza.
 - [ ] Probar aislamiento real con dos cuentas (leer/escribir/borrar cruzados, manipular `user_id`).
 - [ ] Probar PWA en un Android y un iOS reales: instalación, safe areas, push, actualización del SW.
 - [ ] Backup cifrado + restauración probada en staging. RPO/RTO definidos.

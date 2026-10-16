@@ -1233,6 +1233,22 @@
   font-size: var(--fs-xs);
   color: var(--theme-text-tertiary);
 }
+/* ---- Recordatorios programados ---- */
+/* Los botones van siempre visibles (no como .item-actions, que aparecen al
+   pasar el ratón): en móvil no hay hover y esta lista se usa desde el móvil. */
+.rem-item { align-items: flex-start; }
+.rem-actions {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  align-items: center; flex-shrink: 0;
+}
+.rem-badge {
+  display: inline-block; margin-left: 6px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: var(--fs-xs); font-weight: 600;
+  vertical-align: middle;
+}
+.rem-badge.is-on { background: var(--green-dim); color: var(--green); }
+.rem-badge.is-off { background: var(--theme-surface-pressed); color: var(--theme-text-tertiary); }
 /* ---- Toolbar (Actividad) ---- */
 .admin-toolbar {
   display: flex;

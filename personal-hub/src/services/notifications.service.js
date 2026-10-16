@@ -36,6 +36,13 @@ const DEFAULT_NOTIF_SETTINGS = {
   daily: true,       // recordatorio diario (bienvenida + novedades)
   letters: true,     // cartas nuevas en Open When
   moods: true,       // aviso cada vez que registra su estado de ánimo
+  reminders: true,   // avisos que escribe el admin a mano (recordatorios de 022)
+  // --- Avisos del ADMIN (024): seguimiento de ella, no contenido ----------
+  // Solo tienen efecto en la cuenta del admin; en la suya quedan ignorados.
+  adminMood: true,        // cada vez que ella registra su ánimo del día
+  adminMoodChanges: true, // cuando cambia el ánimo de hoy más tarde
+  adminNotes: true,       // cuando deja una nota en Mal Día
+  adminHealth: true,      // avisos técnicos: envíos fallidos, bajas de dispositivos
   quietFrom: '23:00', // silencio desde…
   quietTo: '08:00'    // …hasta
 };
@@ -51,9 +58,115 @@ export function getNotifSettings() {
 }
 
 export function setNotifSettings(patch) {
-  const next = { ...getNotifSettings(), ...patch };
+  // `updatedAt` es la marca que decide quién gana cuando la misma persona
+  // cambia sus ajustes desde dos dispositivos (ver syncNotifPrefs).
+  const next = { ...getNotifSettings(), ...patch, updatedAt: Date.now() };
   setUserPref(NOTIF_SETTINGS_KEY, JSON.stringify(next));
+  // El servidor necesita saberlo para no despertar a nadie: se refleja en
+  // Supabase sin esperar — un fallo de red no puede romper el ajuste local,
+  // que es el que decide al instante en este dispositivo.
+  pushNotifPrefs(next);
   return next;
+}
+
+/** ¿Hay ajustes guardados aquí, o son solo los de por defecto? */
+function hasLocalNotifSettings() {
+  return getUserPref(NOTIF_SETTINGS_KEY, '') !== '';
+}
+
+/**
+ * Refleja los ajustes en `notification_prefs` (023).
+ *
+ * Nunca lanza: si la migración aún no está aplicada (42P01), no hay red o la
+ * sesión ha caducado, el ajuste local sigue valiendo y el servidor se queda
+ * con el valor por defecto (entregar sin silencio).
+ */
+async function pushNotifPrefs(settings) {
+  const userId = getUserId();
+  if (!userId) return false;
+  try {
+    const { error } = await supabase.from('notification_prefs').upsert({
+      user_id: userId,
+      daily: settings.daily !== false,
+      letters: settings.letters !== false,
+      moods: settings.moods !== false,
+      reminders: settings.reminders !== false,
+      admin_mood: settings.adminMood !== false,
+      admin_mood_changes: settings.adminMoodChanges !== false,
+      admin_notes: settings.adminNotes !== false,
+      admin_health: settings.adminHealth !== false,
+      quiet_from: settings.quietFrom || '23:00',
+      quiet_to: settings.quietTo || '08:00',
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    if (error) {
+      console.warn('[notif] no se pudieron subir los ajustes:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[notif] no se pudieron subir los ajustes:', err?.message);
+    return false;
+  }
+}
+
+/**
+ * Sincroniza los ajustes con la copia del servidor al entrar.
+ *
+ * Gana el más reciente (last-write-wins por marca de tiempo): si otra
+ * persona/dispositivo los cambió después de la última vez aquí, se adoptan;
+ * si no, se suben los de este dispositivo. Sin fila en el servidor se sube
+ * la copia local (si existe): así los ajustes que ya había antes de 023 no
+ * se pierden.
+ *
+ * Devuelve los ajustes efectivos. Nunca lanza.
+ */
+export async function syncNotifPrefs() {
+  const userId = getUserId();
+  if (!userId) return getNotifSettings();
+
+  try {
+    const { data, error } = await supabase
+      .from('notification_prefs')
+      .select('daily, letters, moods, reminders, admin_mood, admin_mood_changes, admin_notes, admin_health, quiet_from, quiet_to, updated_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    // Sin tabla (023 sin aplicar) o sin red: manda lo local.
+    if (error) return getNotifSettings();
+
+    if (!data) {
+      if (hasLocalNotifSettings()) await pushNotifPrefs(getNotifSettings());
+      return getNotifSettings();
+    }
+
+    const remoteAt = Date.parse(data.updated_at) || 0;
+    const local = getNotifSettings();
+    // La comparación es entre relojes distintos: un desfase de segundos solo
+    // puede hacer que gane la copia "equivocada" de dos ajustes casi iguales.
+    if (remoteAt > (Number(local.updatedAt) || 0)) {
+      const merged = {
+        ...local,
+        daily: data.daily !== false,
+        letters: data.letters !== false,
+        moods: data.moods !== false,
+        reminders: data.reminders !== false,
+        adminMood: data.admin_mood !== false,
+        adminMoodChanges: data.admin_mood_changes !== false,
+        adminNotes: data.admin_notes !== false,
+        adminHealth: data.admin_health !== false,
+        quietFrom: data.quiet_from || '23:00',
+        quietTo: data.quiet_to || '08:00',
+        updatedAt: remoteAt
+      };
+      setUserPref(NOTIF_SETTINGS_KEY, JSON.stringify(merged));
+      return merged;
+    }
+
+    await pushNotifPrefs(local);
+    return local;
+  } catch {
+    return getNotifSettings();
+  }
 }
 
 /** Permiso actual: 'granted' | 'denied' | 'default' | 'unsupported'. */
@@ -545,32 +658,51 @@ export async function notifyMoodSaved(mood) {
 }
 
 /**
- * Pide al servidor que avise a los admins de que la usuaria ha registrado su
- * estado de ánimo de hoy. El aviso sale como push desde el servidor, así que
- * llega aunque el admin no tenga la web abierta. El servidor lee el ánimo de la
- * base de datos y no avisa a los admins de sus propios ánimos.
+ * Pide al servidor que avise a los admins de algo que ha hecho la usuaria.
+ * El aviso sale como push desde el servidor, así que llega aunque el admin no
+ * tenga la web abierta. El servidor lee el CONTENIDO de la base de datos (el
+ * ánimo de hoy, la última nota) y nunca avisa a los admins de lo suyo propio.
  *
- * Lo llama mood.store.js tras guardar. Nunca lanza: un fallo del aviso no debe
- * romper el guardado del ánimo.
+ * `kind` elige el texto y el interruptor que lo gobierna (024):
+ *   'mood'        — primer estado del día            (adminMood)
+ *   'mood_update' — corrección dentro de los 5 min   (adminMood, solo si es mal día)
+ *   'mood_change' — estado nuevo que sustituye al de antes (adminMoodChanges)
+ *   'note'        — nota dejada en Mal Día           (adminNotes)
+ *
+ * Nunca lanza: un fallo del aviso no debe romper la acción de ella.
  */
-export async function notifyAdminOfMood() {
+export async function notifyAdmin(kind = 'mood') {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return false;
 
     const res = await fetch('/api/push?action=notify-admin', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${session.access_token}` }
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ kind })
     });
     if (!res.ok) {
-      console.warn('[notif] Admin mood notify failed:', res.status);
+      console.warn('[notif] Admin alert failed:', kind, res.status);
       return false;
     }
     return true;
   } catch (err) {
-    console.warn('[notif] Could not notify admin of mood:', err.message);
+    console.warn('[notif] Could not notify admin:', err.message);
     return false;
   }
+}
+
+/** Aviso al admin de que ella ha registrado su ánimo (ver `notifyAdmin`). */
+export function notifyAdminOfMood(kind = 'mood') {
+  return notifyAdmin(kind);
+}
+
+/** Aviso al admin de que ella ha dejado una nota en Mal Día. */
+export function notifyAdminOfNote() {
+  return notifyAdmin('note');
 }
 
 /**

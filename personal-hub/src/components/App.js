@@ -16,7 +16,7 @@ import { WelcomeScreen } from './WelcomeScreen.js';
 import { setMoodWelcomeState } from './SpecialEventSheet.js';
 import { moodStore } from '../stores/mood.store.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
-import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters } from '../services/notifications.service.js';
+import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters, syncNotifPrefs } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
 import { initListenTogether, onListenTogether, getListenTogetherState, initListenStateRealtime, stopListenStateRealtime } from '../services/listenTogether.service.js';
@@ -469,8 +469,10 @@ export function AppShell(router) {
         moodNotifCleanup = attachAdminMoodListener();
       }
       moodSyncPromise = moodStore.fetchTodayMood().catch(() => {});
-      // Sincroniza push subscription + fallback (IndexedDB + periodicSync)
-      syncReminderState();
+      // Preferencias de avisos (023): se adoptan las del servidor si allí son
+      // más recientes y DESPUÉS se pasan al service worker, que lee el
+      // silencio de IndexedDB — al revés se quedaría con el horario viejo.
+      syncNotifPrefs().finally(() => syncReminderState());
       resyncPushSubscription();
       // Notificación diaria de novedades (dedupe 1/día + puerta 8 AM)
       notifyTodayNovelties();

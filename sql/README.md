@@ -37,6 +37,11 @@ Los archivos **dependen entre sí** — ejecútalos en orden numérico.
 | **018** | `018_push_subscriptions.sql` | **Suscripciones de push en tabla propia con RLS** | 🔴 seguridad |
 | **019** | `019_aislamiento_verificado.sql` | **Aislamiento comprobado con las dos cuentas reales** | 🔴 seguridad |
 | **020** | `020_policies_permisivas.sql` | **Cierra las políticas `USING (true)` que dejó 016 sin aplicarse** | 🔴 seguridad |
+| 021 | `021_moods_realtime.sql` | `moods` entra en la publicación de Realtime | migración |
+| 022 | `022_push_reminders.sql` | Recordatorios programados (`push_reminders`) y su historial de envíos (`push_logs`) | crea tablas |
+| 023 | `023_notification_prefs.sql` | Preferencias de avisos por persona: qué tipos quiere y su horario de silencio | crea tabla |
+| 024 | `024_admin_alerts.sql` | Avisos del admin (ánimo, cambios, notas de Mal Día, técnicos) en columnas propias de `notification_prefs` | añade columnas |
+| 025 | `025_push_log_delivery.sql` | Acuse de entrega por dispositivo: `delivery_id` y `delivered_at` en `push_logs`, con `CHECK` del estado | añade columnas |
 
 ---
 
@@ -72,6 +77,28 @@ aplicados) y subir solo lo nuevo:
    **No apliques 016**: es anterior a 017/018 y revertiría el
    endurecimiento de `role` y `enabled`. 020 es quirúrgica, solo toca
    políticas.
+5. `021_moods_realtime.sql` y `022_push_reminders.sql` — ninguna toca datos
+   existentes: la primera mete `moods` en la publicación de Realtime (sin
+   ella la app sigue avisando, con 25 s de retraso) y la segunda crea las
+   dos tablas nuevas de recordatorios. `022` **no** programa nada por sí
+   sola: el disparador periódico (Supabase pg_cron) se activa a mano
+   porque necesita la URL de producción y el `CRON_SECRET`, y está
+   explicado en [`../SUPABASE-SETUP.md`](../SUPABASE-SETUP.md) §4.
+6. `023_notification_prefs.sql` — crea la tabla de preferencias. Tampoco
+   toca datos: la app funciona antes y después (el cliente cae a
+   localStorage y el servidor, sin fila, entrega como antes). Lo que cambia
+   cuando está aplicada es que un aviso del servidor respeta el tipo apagado
+   y el horario de silencio de cada persona.
+7. `024_admin_alerts.sql` — añade cuatro columnas a `notification_prefs`, con
+   `TRUE` por defecto. Tampoco toca datos: sin ellas la API entrega igual
+   (la lectura falla y el reparto asume que todo el mundo quiere recibir),
+   pero el admin no puede apagar los avisos de ánimo, cambios, notas ni los
+   técnicos. No reescribe políticas: las de 023 son por fila y ya lo cubren.
+8. `025_push_log_delivery.sql` — añade `delivery_id` y `delivered_at` a
+   `push_logs` más un `CHECK` (NOT VALID) de los estados. Tampoco toca datos:
+   sin ella el envío funciona igual y el acuse responde **503** con la
+   instrucción, así que el historial se queda en «enviado» — que es la verdad
+   hasta que el dispositivo confirme.
 
 ### Orden recomendado para producción
 
@@ -88,6 +115,22 @@ notificaciones.
 ### Verificar después de aplicar
 
 ```sql
+-- 022/023: las tablas existen, tienen RLS y permisos para la API
+SELECT relname, relrowsecurity FROM pg_class
+ WHERE relname IN ('push_reminders', 'push_logs', 'notification_prefs');
+
+-- 025: los estados quedan separados de la confirmación del dispositivo
+SELECT status, count(*), count(delivered_at) AS confirmados
+  FROM public.push_logs GROUP BY status;
+
+-- 024: las columnas del admin existen y vienen activas
+SELECT column_name, column_default, is_nullable
+  FROM information_schema.columns
+ WHERE table_name = 'notification_prefs' AND column_name LIKE 'admin\_%';
+
+-- 023: cada persona solo ve su fila (entrar con la otra cuenta debe dar 0)
+SELECT user_id, reminders, quiet_from, quiet_to FROM public.notification_prefs;
+
 -- 017: no debe devolver filas (metadata y profiles ya coinciden)
 SELECT p.email, p.enabled
   FROM public.profiles p
@@ -127,6 +170,8 @@ SELECT p.id, p.user_id
 | Contenido de la app | `content` (JSONB por `id`) | Admin escribe, autenticados leen |
 | Datos por usuario | Tablas con `user_id` + RLS | `moods`, `user_progress`, `playlists`, `push_subscriptions` |
 | Suscripciones push | `push_subscriptions` | Antes en `content` (legible por cualquier autenticado) |
+| Recordatorios programados | `push_reminders` | Los escribe la API con `service_role`; el cliente solo lee (y solo el admin) |
+| Preferencias de avisos | `notification_prefs` | Por persona y atada a `auth.uid()`; el envío del servidor las lee antes de mandar. Las columnas `admin_*` (024) gobiernan lo que recibe él |
 
 ---
 

@@ -8,6 +8,7 @@ import { db } from '../services/db.service.js';
 import { onContentChange } from '../services/realtime.service.js';
 import { userPrefKey } from '../utils/userStorage.js';
 import { userStore } from '../stores/user.store.js';
+import { notifyAdminOfNote } from '../services/notifications.service.js';
 
 const PHRASES = [
   "Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un abrazo.",
@@ -423,6 +424,10 @@ export function MalDiaPage(router) {
       // synced=false: la nota solo quedó en este dispositivo (sin sesión o
       // sin respuesta del servidor), así que no se promete que llegue.
       const synced = saved?.synced !== false;
+      // Aviso al admin por push (024). Solo si la nota llegó al servidor: si se
+      // quedó en este dispositivo, un aviso que apunte a la base sería un
+      // aviso que abre una lista donde la nota todavía no está.
+      if (synced) notifyAdminOfNote().catch(() => { /* la nota ya está guardada */ });
       if (synced && msgSent) {
         msgSent.hidden = false;
         msgSent.style.animation = 'none';

@@ -1633,7 +1633,7 @@ test('el menú del admin agrupa las secciones y ninguna queda sin acceso', async
   const groups = [...nav.matchAll(/label: '([^']+)',\s+hint:/g)].map(m => m[1]);
   assert.deepEqual(groups, ['Principal', 'Personas', 'Herramientas']);
   const navIds = [...nav.matchAll(/id: '([a-z]+)',\s+icon:/g)].map(m => m[1]);
-  assert.deepEqual(navIds, ['dashboard', 'contenido', 'multimedia', 'moods', 'usuarios', 'notificaciones', 'actividad', 'config']);
+  assert.deepEqual(navIds, ['dashboard', 'contenido', 'multimedia', 'moods', 'usuarios', 'notificaciones', 'recordatorios', 'actividad', 'config']);
 
   // Toda sección que se puede cargar tiene su entrada en el menú.
   const loaders = admin.slice(admin.indexOf('const loaders = {'), admin.indexOf('};', admin.indexOf('const loaders = {')));
@@ -2094,9 +2094,10 @@ test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async ()
   assert.match(store, /_notifyMood\(mood\);/, 'saveMood avisa');
   assert.match(store, /this\._notifyMood\(prev\);/, 'y quitarlo tambien avisa del estado que queda');
   assert.match(store, /import \{ notifyMoodSaved, notifyAdminOfMood \} from '\.\.\/services\/notifications\.service\.js';/, 'import estatico: el modulo ya esta en el bundle');
-  // El aviso al admin va solo al guardar (quitar el ánimo no avisa): una sola llamada
-  assert.equal(store.match(/notifyAdminOfMood\(\)/g)?.length, 1, 'solo saveMood avisa al admin');
-  assert.match(store, /notifyAdminOfMood\(\)\.catch/, 'el aviso al admin no rompe el guardado');
+  // El aviso al admin va solo al guardar (quitar el ánimo no avisa): una sola
+  // llamada, y con la clase del evento (024: registro, corrección o cambio).
+  assert.equal(store.match(/notifyAdminOfMood\(/g)?.length, 1, 'solo saveMood avisa al admin');
+  assert.match(store, /notifyAdminOfMood\(adminKind\)\.catch/, 'el aviso al admin no rompe el guardado');
   assert.match(store, /notifyMoodSaved\(mood\)\.catch\(\(\) => \{ \/\* sin notificaciones/, 'un fallo del aviso no rompe el guardado');
 
   // Interruptor propio: es un aviso mas y se apaga sin apagar los demas.
@@ -2120,8 +2121,9 @@ test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async ()
   // Aviso al admin: el servidor lo envía con su tag y no avisa al propio admin.
   assert.match(pushApi, /tag: 'admin-mood'/, 'el push al admin lleva su tag propio');
   assert.match(pushApi, /if \(profile\?\.role === 'admin'\)/, 'el admin no se avisa a sí mismo');
-  // Horario de silencio: el aviso al admin sale sin sonido ni vibración.
-  assert.match(sw, /payload\.tag === 'admin-mood'[\s\S]*?isQuietHour\(new Date\(\), quiet\)/, 'el aviso al admin respeta el horario de silencio');
+  // Horario de silencio: los avisos al admin (todos los `admin-*` desde 024)
+  // salen sin sonido ni vibración.
+  assert.match(sw, /String\(payload\.tag \|\| ''\)\.startsWith\('admin-'\)[\s\S]*?isQuietHour\(new Date\(\), quiet\)/, 'los avisos del admin respetan el horario de silencio');
   assert.match(sw, /options\.silent = true;/);
 
   // Y no se promete en el horario de silencio algo que luego no ocurre.

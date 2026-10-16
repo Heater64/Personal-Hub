@@ -309,11 +309,14 @@ self.addEventListener('push', event => {
     silent: payload.silent || false
   };
 
-  // El aviso al admin por ánimo respeta el horario de silencio del dispositivo:
-  // sale sin sonido ni vibración. No se descarta del todo porque Chrome exige
-  // mostrar una notificación por cada push (userVisibleOnly).
+  // Los avisos al admin (ánimo, mal día, cambio, nota, técnicos: todos con tag
+  // `admin-*`) respetan el horario de silencio del dispositivo: salen sin
+  // sonido ni vibración. No se descartan del todo porque Chrome exige mostrar
+  // una notificación por cada push (userVisibleOnly), y porque son eventos ya
+  // ocurridos: descartarlos los perdería, mostrarlos en silencio los deja ahí
+  // para la mañana.
   event.waitUntil((async () => {
-    if (payload.tag === 'admin-mood') {
+    if (String(payload.tag || '').startsWith('admin-')) {
       let quiet = null;
       try {
         quiet = (await idbGet('reminder'))?.quiet;
@@ -327,8 +330,26 @@ self.addEventListener('push', event => {
       }
     }
     return self.registration.showNotification(title, options);
-  })());
+  })().then(() => ackDelivery(payload.delivery)));
 });
+
+/**
+ * Confirma al servidor que ESTE dispositivo recibió el aviso (025).
+ *
+ * Web Push no tiene recibo: sin esto, el historial solo puede decir «enviado»
+ * —el push service lo aceptó— y no «entregado». El token viajó en el payload y
+ * es lo único que identifica este envío en este dispositivo, así que se
+ * devuelve tal cual. Un fallo al confirmar no puede romper nada: ya se mostró
+ * la notificación y el historial se queda en «enviado», que es la verdad.
+ */
+function ackDelivery(deliveryId) {
+  if (typeof deliveryId !== 'string' || !deliveryId) return Promise.resolve();
+  return fetch('/api/push?action=ack', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ delivery: deliveryId })
+  }).catch(() => {});
+}
 
 // ─── PUSH SUBSCRIPTION CHANGE ─────────────────
 // Re-suscribirse automáticamente cuando la suscripción expira o cambia.

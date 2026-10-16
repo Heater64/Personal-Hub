@@ -23,6 +23,10 @@ import { isValidUrlField, todayISO, hourInSpain, timeInSpain } from '../utils/fo
 import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, daysUntilDate, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS } from '../utils/specialDates.js';
 import { cleanEventActions, MAX_EVENT_ACTIONS } from '../utils/event-actions.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
+import {
+  listReminders, createReminder, updateReminder, toggleReminder, deleteReminder,
+  runReminder, localInputToIso, isoToLocalInput, formatReminderDate
+} from '../services/reminders.service.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { expandCalendarCatalog } from '../data/calendar-expansion.js';
 import { theme } from '../services/theme.service.js';
@@ -172,6 +176,7 @@ const NAV_GROUPS = [
     hint: 'Avisos, registro y ajustes',
     items: [
       { id: 'notificaciones', icon: UI.bell,     label: 'Notificaciones' },
+      { id: 'recordatorios',  icon: UI.calendar, label: 'Recordatorios' },
       { id: 'actividad',      icon: UI.activity, label: 'Actividad' },
       { id: 'config',         icon: UI.settings, label: 'Configuración' }
     ]
@@ -182,6 +187,13 @@ const NAV_GROUPS = [
 const SECTIONS = NAV_GROUPS.flatMap(g => g.items);
 const sectionInfo = (id) => SECTIONS.find(s => s.id === id) || { id, label: id, icon: '' };
 
+// Los ids que un aviso puede pedir por URL (`/admin?section=moods`,
+// `/admin?section=contenido&sub=maldia`). Salen de las mismas listas que pinta
+// el menú, así que no hay una segunda copia que se pueda quedar atrás. El
+// servidor guarda la suya (es otro proceso) y un test exige que coincidan.
+export const ADMIN_SECTION_IDS = SECTIONS.map(s => s.id);
+export const ADMIN_CONTENT_SUB_IDS = CONTENT_SUBS.map(s => s.id);
+
 // Una línea de orientación bajo cada título: en cuanto hay ocho
 // secciones, saber qué hace cada una sin abrirla ahorra mucho ir y venir.
 const SECTION_HINTS = {
@@ -191,6 +203,7 @@ const SECTION_HINTS = {
   moods:          'Cómo se ha sentidos cada día, mes a mes.',
   usuarios:       'Quién entra, cuándo y qué mira.',
   notificaciones: 'Avisos del hub y notificaciones push.',
+  recordatorios:  'Avisos programados que envía el servidor, aunque nadie tenga la app abierta.',
   actividad:      'Registro completo de lo que va pasando.',
   config:         'Apariencia, fechas especiales y base de datos.'
 };
@@ -519,6 +532,7 @@ export function AdminPage(router) {
       usuarios: loadUsuarios, contenido: loadContenido,
       multimedia: loadMultimedia,
       notificaciones: loadNotificaciones,
+      recordatorios: loadRecordatorios,
       actividad: loadActividad,
       config: loadConfiguracion
     };
@@ -3663,6 +3677,257 @@ export function AdminPage(router) {
   }
 
   // ==========================================
+  // 5b. RECORDATORIOS PROGRAMADOS
+  // ==========================================
+  // A diferencia del envío manual de arriba, esto lo manda el SERVIDOR
+  // cuando toca: llega aunque no haya nadie con la app abierta. Las reglas
+  // (longitudes, destino interno) las valida la API; aquí solo se recogen.
+  const REMINDER_RECURRENCES = {
+    once: 'Una sola vez',
+    daily: 'Todos los días',
+    weekly: 'Cada semana'
+  };
+
+  /** Formulario de un recordatorio, para crear y para editar. */
+  function reminderFormHTML(r = {}) {
+    const when = isoToLocalInput(r.next_run_at || new Date(Date.now() + 3600e3).toISOString());
+    return `
+      <div class="admin-field"><label>Título</label>
+        <input type="text" id="remEditTitle" maxlength="100" value="${esc(r.title || '')}">
+      </div>
+      <div class="admin-field"><label>Mensaje</label>
+        <textarea id="remEditBody" rows="2" maxlength="500">${esc(r.body || '')}</textarea>
+      </div>
+      <div class="admin-field"><label>Cuándo</label>
+        <input type="datetime-local" id="remEditWhen" value="${when}">
+      </div>
+      <div class="admin-field"><label>Repetir</label>
+        <select id="remEditRecurrence">
+          ${Object.entries(REMINDER_RECURRENCES).map(([value, label]) =>
+            `<option value="${value}"${(r.recurrence || 'once') === value ? ' selected' : ''}>${label}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div class="admin-field"><label>Al pulsarla, abrir</label>
+        <input type="text" id="remEditUrl" value="${esc(r.target_url || '/')}" placeholder="/">
+      </div>
+      <p class="muted-text">Guardar fija la próxima ejecución en la fecha de arriba. Para encenderlo o apagarlo sin mover la fecha, usa el botón de la lista.</p>
+    `;
+  }
+
+  /** Lee el formulario del modal y lo devuelve con los nombres de la API. */
+  function reminderFieldsFrom(root) {
+    return {
+      title: root.querySelector('#remEditTitle')?.value?.trim() || '',
+      body: root.querySelector('#remEditBody')?.value?.trim() || '',
+      targetUrl: root.querySelector('#remEditUrl')?.value?.trim() || '/',
+      recurrence: root.querySelector('#remEditRecurrence')?.value || 'once',
+      scheduledAt: localInputToIso(root.querySelector('#remEditWhen')?.value)
+    };
+  }
+
+  async function loadRecordatorios() {
+    const token = sectionToken;
+    content.innerHTML = `
+      <section class="admin-section active">
+        <div class="admin-section-header">
+          <h2>${UI.calendar} Recordatorios</h2>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="admin-btn-ghost" id="refreshReminders" title="Actualizar" aria-label="Actualizar recordatorios">${UI.refresh}</button>
+          </div>
+        </div>
+        <p class="admin-section-hint">${SECTION_HINTS.recordatorios}</p>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h4>${UI.plus} Nuevo recordatorio</h4></div>
+          <div class="admin-field"><label>Fecha y hora</label>
+            <input type="datetime-local" id="remWhen">
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <button class="admin-btn admin-btn-primary" id="remNewBtn">${UI.plus} Escribirlo</button>
+            <span class="admin-btn-note">Se envía aunque nadie tenga la app abierta</span>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h4>${UI.calendar} Programados <span class="admin-count-badge" id="remCount"></span></h4></div>
+          <p class="muted-text">Los envía el servidor cuando toca; los de una sola vez se apagan solos al salir.</p>
+          <div class="admin-list" id="remList">${skeletonCard('72px')}${skeletonCard('72px')}</div>
+          <div class="notif-result" id="remResult"></div>
+        </div>
+      </section>
+    `;
+
+    // Por defecto, dentro de una hora: es lo que se suele querer y evita
+    // dejar el campo vacío (que la API rechazaría al no ser fecha válida).
+    const whenInput = page.querySelector('#remWhen');
+    if (whenInput) whenInput.value = isoToLocalInput(new Date(Date.now() + 3600e3).toISOString());
+
+    const list = page.querySelector('#remList');
+    const result = page.querySelector('#remResult');
+
+    // Cómo se lee el resultado de un envío. Un 'skipped' no es un fallo: es
+    // que esa persona tenía los recordatorios apagados o estaba en silencio
+    // (023), y saberlo es la diferencia entre "falló" y "no le tocaba".
+    // Tres estados, y el orden importa: «entregado» SOLO cuando el dispositivo
+    // lo ha confirmado con su acuse (025). Sin confirmación, lo único que se
+    // sabe es que el push service aceptó el envío — el móvil puede estar
+    // apagado, sin datos o con la app congelada— y «visto» no lo sabe nadie.
+    // Antes esta tabla traducía 'sent' como «entregado», que era una promesa
+    // que la base no podía cumplir.
+    const DELIVERY_RESULT = {
+      delivered: () => 'entregado al dispositivo',
+      sent: () => 'enviado (sin confirmación del dispositivo)',
+      // Transitorio: el envío se registra antes de mandarlo, así que una fila
+      // en 'queued' significa que todavía no hay resultado. Si se queda así,
+      // la ejecución murió a mitad y no se sabe si llegó a salir.
+      queued: () => 'en curso (sin resultado todavía)',
+      skipped: log => `no enviado (${log.error === 'quiet_hours' ? 'horario de silencio' : 'avisos apagados'})`,
+      failed: log => `falló (${esc(String(log.error || 'error'))})`
+    };
+    const deliveryResult = (log) => (log?.delivered_at
+      ? DELIVERY_RESULT.delivered(log)
+      : (DELIVERY_RESULT[log?.status] || DELIVERY_RESULT.failed)(log));
+
+    function paint(reminders, logs) {
+      const count = page.querySelector('#remCount');
+      if (count) count.textContent = String(reminders.length);
+
+      const lastByReminder = new Map();
+      logs.forEach(log => {
+        if (log.reminder_id && !lastByReminder.has(log.reminder_id)) lastByReminder.set(log.reminder_id, log);
+      });
+
+      if (!reminders.length) {
+        list.innerHTML = '<div class="admin-empty">Todavía no hay recordatorios programados</div>';
+        return;
+      }
+
+      list.innerHTML = reminders.map(r => {
+        const pending = r.active && Date.parse(r.next_run_at) <= Date.now();
+        const when = !r.active
+          ? `Programado para: ${formatReminderDate(r.next_run_at)}`
+          : pending
+            ? 'Pendiente de envío'
+            : `Próximo: ${formatReminderDate(r.next_run_at)}`;
+        const last = lastByReminder.get(r.id);
+        const lastLine = last
+          ? `<div class="item-sub">Último envío: ${deliveryResult(last)} · ${esc(formatReminderDate(last.sent_at))}</div>`
+          : '';
+        return `
+          <div class="admin-list-item rem-item" data-id="${esc(r.id)}">
+            <div class="item-content">
+              <div class="item-title">${esc(r.title)}
+                <span class="rem-badge ${r.active ? 'is-on' : 'is-off'}">${r.active ? 'Activo' : 'Pausado'}</span>
+              </div>
+              <div class="item-sub">${esc(r.body)}</div>
+              <div class="item-sub">${esc(REMINDER_RECURRENCES[r.recurrence] || REMINDER_RECURRENCES.once)} · ${esc(when)}${r.target_url && r.target_url !== '/' ? ` · ${esc(r.target_url)}` : ''}</div>
+              ${lastLine}
+            </div>
+            <div class="rem-actions">
+              <button class="admin-btn admin-btn-secondary" data-rem="run">${UI.send} Enviar</button>
+              <button class="admin-btn admin-btn-secondary" data-rem="toggle">${r.active ? 'Pausar' : 'Activar'}</button>
+              <button class="admin-btn admin-btn-secondary" data-rem="edit" aria-label="Editar recordatorio">${UI.edit}</button>
+              <button class="admin-btn admin-btn-secondary" data-rem="delete" aria-label="Eliminar recordatorio">${UI.trash}</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function refresh() {
+      const { reminders, logs } = await listReminders();
+      // Otra sección se abrió mientras cargaba: no se pisa su contenido.
+      if (token !== sectionToken) return;
+      paint(reminders, logs);
+      return reminders;
+    }
+
+    page.querySelector('#remNewBtn')?.addEventListener('click', () => {
+      // La fecha del formulario es la que se propone al abrir el editor.
+      const when = page.querySelector('#remWhen')?.value;
+      let proposed;
+      try {
+        proposed = when ? localInputToIso(when) : undefined;
+      } catch {
+        showToast('Elige una fecha y una hora', 'error');
+        return;
+      }
+      const html = reminderFormHTML({ next_run_at: proposed });
+      modal.open(
+        `${UI.calendar} Nuevo recordatorio`,
+        html,
+        async () => {
+          await createReminder(reminderFieldsFrom(page.querySelector('#adminModalBody')));
+        }
+      );
+    });
+
+    page.querySelector('#refreshReminders')?.addEventListener('click', () => {
+      loadRecordatorios();
+    });
+
+    // Delegación: la lista se repinta entera en cada refresco, así que los
+    // botones se leen por su data-rem en vez de enlazarse uno a uno.
+    list?.addEventListener('click', async (event) => {
+      const btn = event.target.closest('[data-rem]');
+      const item = event.target.closest('.rem-item');
+      if (!btn || !item) return;
+      const id = item.dataset.id;
+      const action = btn.dataset.rem;
+
+      if (action === 'edit') {
+        try {
+          const { reminders } = await listReminders();
+          const current = reminders.find(r => String(r.id) === String(id));
+          if (!current) throw new Error('Ese recordatorio ya no existe');
+          modal.open(
+            `${UI.calendar} Editar recordatorio`,
+            reminderFormHTML(current),
+            async () => {
+              await updateReminder(current.id, reminderFieldsFrom(page.querySelector('#adminModalBody')));
+            }
+          );
+        } catch (err) {
+          showToast(err?.message || 'No se pudo abrir el recordatorio', 'error');
+        }
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        if (action === 'run') {
+          const data = await runReminder(id);
+          const n = data?.sent || 0;
+          if (result) {
+            result.innerHTML = n
+              ? `<div class="notif-ok">✓ Enviado a ${n} dispositivo${n === 1 ? '' : 's'}${data?.removed ? ` (${data.removed} expirados eliminados)` : ''}.</div>`
+              : `<div class="notif-err">✗ No hay ningún dispositivo suscrito al que enviarlo.</div>`;
+          }
+        } else if (action === 'toggle') {
+          const isOn = item.querySelector('.rem-badge')?.classList.contains('is-on');
+          await toggleReminder(id, !isOn);
+          showToast(isOn ? 'Recordatorio pausado' : 'Recordatorio activado', 'success');
+        } else if (action === 'delete') {
+          await deleteReminder(id);
+          showToast('Recordatorio eliminado', 'success');
+        }
+        await refresh();
+      } catch (err) {
+        showToast(err?.message || 'No se pudo completar la acción', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    try {
+      await refresh();
+    } catch (err) {
+      if (token !== sectionToken) return;
+      list.innerHTML = `<div class="admin-empty">${esc(err?.message || 'No se pudieron cargar los recordatorios')}</div>`;
+    }
+  }
+
+  // ==========================================
   // 6. ACTIVIDAD
   // ==========================================
   async function loadActividad() {
@@ -4761,7 +5026,25 @@ export function AdminPage(router) {
   // ==========================================
   // INIT
   // ==========================================
+  /**
+   * Abre la sección que pide el aviso: `/admin?section=moods` o
+   * `/admin?section=contenido&sub=maldia`.
+   *
+   * Se lee al montar, igual que el Rincón con `?tab=`. Un id desconocido no
+   * cambia nada (manda el defecto del panel) y `sub` solo vale dentro de
+   * Contenido, que es donde existen esas subsecciones.
+   */
+  function applyDeepLink() {
+    const query = router?.currentRoute?.query;
+    if (!query) return;
+    const section = String(query.section || '');
+    if (ADMIN_SECTION_IDS.includes(section)) S.section = section;
+    const sub = String(query.sub || '');
+    if (S.section === 'contenido' && ADMIN_CONTENT_SUB_IDS.includes(sub)) S.contentSub = sub;
+  }
+
   renderDbStatus();
+  applyDeepLink();
   loadSection(S.section);
 
   return page;
