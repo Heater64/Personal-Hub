@@ -1360,9 +1360,52 @@ function maldiaNotesLocalKey(userId) {
   return `ph.maldiaNotes.${userId || 'guest'}`;
 }
 
+/** Identidad de una nota para unir listas sin duplicar (fecha + texto). */
+function maldiaNoteKey(n) {
+  return `${n?.createdAt || ''}|${n?.text || ''}`;
+}
+
+/**
+ * Une dos listas de notas preservando lo que haya en cualquiera de las dos.
+ * Hace falta porque cada navegador guarda su propia copia local: si se
+ * sobrescribiera el servidor con la copia local (a veces vacía), se perderían
+ * las notas escritas desde otro dispositivo.
+ */
+function mergeMaldiaNotes(...lists) {
+  const merged = [];
+  const seen = new Set();
+  for (const list of lists) {
+    for (const n of Array.isArray(list) ? list : []) {
+      if (!n || seen.has(maldiaNoteKey(n))) continue;
+      seen.add(maldiaNoteKey(n));
+      merged.push(n);
+    }
+  }
+  return merged;
+}
+
+/** Lee la fila de notas en Supabase. `null` = sin respuesta (no tocar nada). */
+async function readMaldiaNotesRow(userId) {
+  if (!userId || !isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('data')
+      .eq('user_id', userId)
+      .eq('type', MALDIA_NOTES_TYPE)
+      .maybeSingle();
+    if (error) return null;
+    return Array.isArray(data?.data) ? data.data : [];
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Guarda una nota de Mal Día (para el Admin). Cada envío añade una
  * entrada con marca de tiempo; el Admin las lee desde el panel.
+ * Devuelve la entrada con `synced: true/false` para que la UI pueda
+ * avisar si la nota solo quedó en este dispositivo.
  */
 async function saveMaldiaNote(text) {
   const clean = String(text || '').trim();
@@ -1376,45 +1419,43 @@ async function saveMaldiaNote(text) {
   } catch { /* sin sesión */ }
 
   const entry = { text: clean, createdAt: new Date().toISOString(), email };
-  const stored = lsGet(maldiaNotesLocalKey(userId), []);
-  const all = Array.isArray(stored) ? stored : [];
-  all.push(entry);
-  lsSet(maldiaNotesLocalKey(userId), all);
 
-  if (userId && isSupabaseConfigured()) {
+  // Primero se lee lo que ya existe y se une con lo local: nunca se pisa
+  // la fila del servidor con una copia local posiblemente vacía o antigua.
+  const local = lsGet(maldiaNotesLocalKey(userId), []);
+  const remote = await readMaldiaNotesRow(userId);
+  const merged = mergeMaldiaNotes(remote, local, [entry]);
+  lsSet(maldiaNotesLocalKey(userId), merged);
+
+  let synced = false;
+  if (userId && remote !== null) {
     try {
       const { error } = await supabase
         .from('user_progress')
         .upsert(
-          { user_id: userId, type: MALDIA_NOTES_TYPE, data: all, updated_at: new Date().toISOString() },
+          { user_id: userId, type: MALDIA_NOTES_TYPE, data: merged, updated_at: new Date().toISOString() },
           { onConflict: 'user_id,type' }
         );
       if (error) console.warn('[db] maldia note sync failed:', error.message);
+      else synced = true;
     } catch (err) {
       console.warn('[db] maldia note sync failed:', err.message);
     }
   }
-  return entry;
+  return { ...entry, synced };
 }
 
 /** Notas enviadas por la usuaria actual (más reciente primero). */
 async function getMyMaldiaNotes() {
   const userId = await getCurrentUserId();
-  if (userId && isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('user_progress')
-        .select('data')
-        .eq('user_id', userId)
-        .eq('type', MALDIA_NOTES_TYPE)
-        .maybeSingle();
-      if (!error && Array.isArray(data?.data)) {
-        lsSet(maldiaNotesLocalKey(userId), data.data);
-        return [...data.data].reverse();
-      }
-    } catch { /* usa el guardado local */ }
-  }
-  return [...(lsGet(maldiaNotesLocalKey(userId), []))].reverse();
+  const local = lsGet(maldiaNotesLocalKey(userId), []);
+  const remote = await readMaldiaNotesRow(userId);
+  if (remote === null) return [...(Array.isArray(local) ? local : [])].reverse();
+  // Unión en ambos sentidos: lo local que aún no subió no se pierde, y lo
+  // del servidor escrito desde otro dispositivo baja a este navegador.
+  const merged = mergeMaldiaNotes(remote, local);
+  lsSet(maldiaNotesLocalKey(userId), merged);
+  return [...merged].reverse();
 }
 
 /**

@@ -234,6 +234,89 @@
 .md-note__sent[hidden] { display: none; }
 
 /* ==========================================
+   NOTAS RECIBIDAS (solo Admin)
+   ========================================== */
+.md-notes[hidden] { display: none; }
+
+.md-notes__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-10);
+}
+
+.md-notes__count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+.md-notes__refresh {
+  padding: 6px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.md-notes__refresh:hover { color: var(--primary); border-color: var(--primary); }
+
+.md-notes__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+  margin-top: var(--sp-12);
+}
+
+.md-note-item {
+  padding: var(--sp-12) var(--sp-14);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-s);
+}
+
+.md-note-item__meta {
+  margin-bottom: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.md-note-item__text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md-notes__empty,
+.md-notes__hint {
+  margin: 0;
+  padding: var(--sp-16);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-lg);
+}
+
+/* ==========================================
    AYUDA
    ========================================== */
 .md-help {

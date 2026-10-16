@@ -2163,7 +2163,7 @@
   background: var(--theme-accent, #e8614f);
   color: #fff;
 }
-.dash-panel-actions { display: flex; align-items: center; gap: 8px; }
+.dash-panel-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dash-link {
   border: none;
   background: transparent;
@@ -2173,10 +2173,16 @@
   font-family: inherit;
   font-size: var(--fs-xs, 12px);
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition: all var(--dur-fast, 0.15s);
 }
 .dash-link:hover { background: var(--accent-dim); }
+/* Notas de Mal Día en el resumen: la columna es estrecha y las notas son
+   largas, así que se acota la altura y se baja un cuerpo el texto para que el
+   panel no se coma la fila. El listado completo vive en Contenido → Mal Día. */
+.dash-notes-list { max-height: 320px; }
+.dash-notes-list .gift-response__text { font-size: var(--fs-sm, 13px); }
 /* ==========================================
    ADMIN · Configuración
    Tarjetas con icono y rótulo de grupo, y las fechas en pestañas: antes era

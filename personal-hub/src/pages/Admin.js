@@ -528,6 +528,19 @@ export function AdminPage(router) {
   // ==========================================
   // 1. DASHBOARD
   // ==========================================
+  // Nota dejada desde la sección Mal Día: la misma tarjeta se usa en el
+  // resumen y en Contenido → Mal Día para que no haya dos formatos.
+  function maldiaNoteCardHtml(n) {
+    const who = n.email || (n.userId ? String(n.userId).slice(0, 8) : 'Ella');
+    const when = n.createdAt
+      ? new Date(n.createdAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '';
+    return `<div class="gift-response">
+            <div class="gift-response__meta">${esc(who)}${when ? ` · ${esc(when)}` : ''}</div>
+            <div class="gift-response__text">${esc(n.text || '—')}</div>
+          </div>`;
+  }
+
   async function loadDashboard() {
     // Skeleton
     content.innerHTML = `
@@ -555,13 +568,13 @@ export function AdminPage(router) {
 
     const [
       reasons, songs, giftsData, users, audios, news,
-      maldiaFrases, maldiaMensajes, owLetters, activity, allMoods, seriesCatalog, visits
+      maldiaFrases, maldiaMensajes, owLetters, activity, allMoods, seriesCatalog, visits, maldiaNotes
     ] = await Promise.all([
       safe(db.getReasons(), []), safe(db.getSongs(), []), safe(db.getGifts(), { gifts: [] }),
       safe(db.listUsers(), []), safe(db.getAudios(), []), safe(db.getNews(), []),
       safe(db.getMaldiaFrases(), []), safe(db.getMaldiaMensajes(), []), safe(db.getOpenWhenLetters(), []),
       safe(db.getActivity(200), []), safe(db.getAllMoods('2024-01-01', today), []), safe(loadCatalog(), null),
-      safe(db.getPageVisits(2000), [])
+      safe(db.getPageVisits(2000), []), safe(db.getAllMaldiaNotes(), [])
     ]);
 
     // Fechas especiales configurables (aniversario, inicio del Hub, cumpleaños)
@@ -578,6 +591,7 @@ export function AdminPage(router) {
     const newsList = arr(news);
     const maldiaFrasesList = arr(maldiaFrases);
     const maldiaMensajesList = arr(maldiaMensajes);
+    const maldiaNotesList = arr(maldiaNotes);
     const owLettersList = arr(owLetters);
     const visitsList = arr(visits).filter(v => isStatsUser(v.user_id));
     const audiosList = arr(audios);
@@ -1128,6 +1142,20 @@ export function AdminPage(router) {
 
         <div class="admin-dash-grid">
           <div class="admin-panel">
+            <div class="admin-panel-head">
+              <h4>Notas de Mal Día</h4>
+              <div class="dash-panel-actions">
+                <button class="dash-link" id="dashMaldiaNotesAll">Ver todas →</button>
+                <span class="admin-panel-badge">${maldiaNotesList.length} ${maldiaNotesList.length === 1 ? 'nota' : 'notas'}</span>
+              </div>
+            </div>
+            <div class="gift-responses-list dash-notes-list">
+              ${maldiaNotesList.length
+                ? maldiaNotesList.slice(0, 3).map(maldiaNoteCardHtml).join('')
+                : '<p class="muted-text" style="margin:0">Todavía no hay notas. Cuando ella escriba una desde la sección Mal Día, aparecerán aquí.</p>'}
+            </div>
+          </div>
+          <div class="admin-panel">
             <div class="admin-panel-head"><h4>Actividad reciente</h4></div>
             <div class="admin-activity-list">
               ${activity.slice(0, 5).map(e => `
@@ -1203,6 +1231,13 @@ export function AdminPage(router) {
         S.section = s.section;
         loadSection(S.section);
       });
+    });
+
+    // "Ver todas" de las notas de Mal Día → Contenido, subpestaña Mal Día
+    page.querySelector('#dashMaldiaNotesAll')?.addEventListener('click', () => {
+      S.contentSub = 'maldia';
+      S.section = 'contenido';
+      loadSection(S.section);
     });
   }
 
@@ -1779,6 +1814,8 @@ export function AdminPage(router) {
       title: 'Mal Día',
       frases: await safe(db.getMaldiaFrases(), []),
       mensajes: await safe(db.getMaldiaMensajes(), []),
+      // Notas que ella deja desde la sección Mal Día (recibidas por el Admin)
+      notes: await safe(db.getAllMaldiaNotes(), []),
       saveFrases: db.saveMaldiaFrases,
       saveMensajes: db.saveMaldiaMensajes
     }),
@@ -1808,7 +1845,26 @@ export function AdminPage(router) {
     if (token !== sectionToken || !page.querySelector('#contentSubContent')) return;
 
     if (id === 'maldia') {
+      const notes = Array.isArray(data.notes) ? data.notes : [];
+      const openNotes = async () => {
+        const all = notes.length ? notes : await db.getAllMaldiaNotes();
+        if (!all.length) {
+          modal.open('💌 Notas de Mal Día', '<p style="margin:0;color:var(--theme-text-secondary);">Todavía no hay notas. Cuando ella escriba una desde la sección Mal Día, aparecerá aquí.</p>');
+          return;
+        }
+        modal.open('💌 Notas de Mal Día', `<div class="gift-responses-list">${all.map(maldiaNoteCardHtml).join('')}</div>`);
+      };
+
       sub.innerHTML = `
+        <div class="admin-subsection">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h4>Notas recibidas (${notes.length})</h4>
+            ${notes.length > 8 ? `<button class="admin-btn admin-btn-sm" id="viewAllMaldiaNotes">💌 Ver todas</button>` : ''}
+          </div>
+          ${notes.length
+            ? `<div class="gift-responses-list">${notes.slice(0, 8).map(maldiaNoteCardHtml).join('')}</div>`
+            : '<div class="admin-empty">Todavía no hay notas. Cuando ella escriba una desde la sección Mal Día, aparecerá aquí.</div>'}
+        </div>
         <div class="admin-subsection">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <h4>Frases (${data.frases.length})</h4>
@@ -1831,23 +1887,10 @@ export function AdminPage(router) {
       bindSimpleCRUD('maldia_frase', data.frases, data.saveFrases, loadContentSub);
       bindSimpleCRUD('maldia_mensaje', data.mensajes, data.saveMensajes, loadContentSub);
 
-      // Notas que la usuaria deja desde Mal Día (llegan directas al Admin)
-      page.querySelector('#viewMaldiaNotes')?.addEventListener('click', async () => {
-        const notes = await db.getAllMaldiaNotes();
-        if (!notes.length) {
-          modal.open('💌 Notas de Mal Día', '<p style="margin:0;color:var(--theme-text-secondary);">Todavía no hay notas. Cuando ella escriba una desde la sección Mal Día, aparecerá aquí.</p>');
-          return;
-        }
-        const listHtml = notes.map(n => {
-          const who = n.email || (n.userId ? String(n.userId).slice(0, 8) : 'Ella');
-          const when = n.createdAt ? new Date(n.createdAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-          return `<div class="gift-response">
-            <div class="gift-response__meta">${esc(who)}${when ? ` · ${esc(when)}` : ''}</div>
-            <div class="gift-response__text">${esc(n.text || '—')}</div>
-          </div>`;
-        }).join('');
-        modal.open('💌 Notas de Mal Día', `<div class="gift-responses-list">${listHtml}</div>`);
-      });
+      // Notas que la usuaria deja desde Mal Día (llegan directas al Admin):
+      // las N más recientes ya se ven en línea; el modal muestra todas.
+      page.querySelector('#viewMaldiaNotes')?.addEventListener('click', openNotes);
+      page.querySelector('#viewAllMaldiaNotes')?.addEventListener('click', openNotes);
     } else if (id === 'series') {
       // Catálogo unificado con la sección Series (misma fuente local)
       renderSeriesAdmin(sub, data.items, data.save, loadContentSub);

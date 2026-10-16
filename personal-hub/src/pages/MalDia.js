@@ -7,6 +7,7 @@ import { h, icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { db } from '../services/db.service.js';
 import { onContentChange } from '../services/realtime.service.js';
 import { userPrefKey } from '../utils/userStorage.js';
+import { userStore } from '../stores/user.store.js';
 
 const PHRASES = [
   "Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un abrazo.",
@@ -59,6 +60,7 @@ export function MalDiaPage(router) {
   let breathingInterval = null;
   let breathingRunning = false;
   let onKeyDown = null;
+  let notesOff = null;   // suscripción al rol de usuario (sección de notas)
 
   // Favoritas, por usuario
   try { favPhrases = new Set(JSON.parse(localStorage.getItem(userPrefKey('maldiaFavs')) || '[]')); } catch { /* vacío */ }
@@ -70,6 +72,7 @@ export function MalDiaPage(router) {
     if (onKeyDown) document.removeEventListener('keydown', onKeyDown);
     if (breathingInterval) { clearInterval(breathingInterval); breathingInterval = null; }
     if (audioPlayer) { audioPlayer.pause(); audioPlayer = null; }
+    if (notesOff) { notesOff(); notesOff = null; }
     closeSheets();
   };
 
@@ -115,6 +118,54 @@ export function MalDiaPage(router) {
       phraseIdx = (phraseIdx + 1) % frases.length;
       renderQuoteCard();
     });
+  }
+
+  // ==========================================
+  // NOTAS RECIBIDAS — solo visibles para el Admin
+  // Mismo origen que "Déjame una nota" (db.getAllMaldiaNotes).
+  // ==========================================
+  function noteWhen(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const diff = Date.now() - d.getTime();
+    if (diff < 2 * 60000) return 'ahora mismo';
+    if (diff < 60 * 60000) return `hace ${Math.round(diff / 60000)} min`;
+    if (diff < 24 * 60 * 60000) return `hace ${Math.round(diff / (60 * 60000))} h`;
+    return `${d.toLocaleDateString('es', { day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+
+  function noteAuthor(note) {
+    const mail = String(note?.email || '');
+    return mail ? mail.split('@')[0] : 'Ella';
+  }
+
+  function notesHTML(notes) {
+    return notes.map(n => `
+      <article class="md-note-item">
+        <div class="md-note-item__meta">${escapeHtml(noteAuthor(n))}${noteWhen(n.createdAt) ? ` · ${escapeHtml(noteWhen(n.createdAt))}` : ''}</div>
+        <p class="md-note-item__text">${escapeHtml(n.text || '—')}</p>
+      </article>`).join('');
+  }
+
+  async function renderNotes() {
+    const section = page.querySelector('#mdNotesSection');
+    const list = page.querySelector('#mdNotesList');
+    if (!section || !list) return;
+    if (!userStore.isAdmin) { section.hidden = true; return; }
+    section.hidden = false;
+    const countEl = page.querySelector('#mdNotesCount');
+    if (!list.dataset.ready) list.innerHTML = '<p class="md-notes__hint">Cargando notas…</p>';
+
+    const [res] = await Promise.allSettled([db.getAllMaldiaNotes()]);
+    if (!page.contains(section)) return; // la página se cerró mientras cargaba
+
+    const notes = res.status === 'fulfilled' && Array.isArray(res.value) ? res.value : [];
+    list.dataset.ready = '1';
+    if (countEl) countEl.textContent = String(notes.length);
+    list.innerHTML = notes.length
+      ? notesHTML(notes.slice(0, 50))
+      : '<p class="md-notes__empty">Todavía no hay notas. Las que se escriban en esta sección aparecerán aquí.</p>';
   }
 
   function render() {
@@ -163,6 +214,15 @@ export function MalDiaPage(router) {
           <button type="button" class="btn" id="msgSendBtn" aria-label="Enviar nota">${icon('send', 17)}</button>
         </div>
         <p class="md-note__sent" id="msgSent" hidden>Nota enviada. Llegará directo a mí</p>
+      </section>
+
+      <!-- Notas recibidas — solo las ve el Admin -->
+      <section class="md-section md-notes" id="mdNotesSection" hidden aria-label="Notas recibidas">
+        <div class="md-notes__head">
+          <p class="section-title">Notas recibidas <span class="md-notes__count" id="mdNotesCount">0</span></p>
+          <button type="button" class="md-notes__refresh" id="mdNotesRefresh">Actualizar</button>
+        </div>
+        <div class="md-notes__list" id="mdNotesList"></div>
       </section>
 
       <!-- Cosas que pueden ayudarte ahora -->
@@ -232,6 +292,11 @@ export function MalDiaPage(router) {
 
   render();
   bindQuoteNav();
+
+  // Notas recibidas (solo Admin): onChange notifica ya con el estado actual,
+  // así que la sección aparece en cuanto el rol está resuelto.
+  notesOff = userStore.onChange(() => { renderNotes(); });
+  page.querySelector('#mdNotesRefresh')?.addEventListener('click', () => renderNotes());
 
   // Carga frases gestionadas desde el Admin (fallback silencioso a las
   // estáticas). También se invoca en tiempo real cuando el Admin las edita.
@@ -329,20 +394,31 @@ export function MalDiaPage(router) {
     const sendMsg = async () => {
       const value = (msgInput?.value || '').trim();
       if (!value) { toast('Escribe una nota antes de enviar'); return; }
+      let saved;
       try {
-        await db.saveMaldiaNote(value);
+        saved = await db.saveMaldiaNote(value);
       } catch (err) {
         toast(err?.message || 'No se pudo enviar la nota');
         return;
       }
       if (msgInput) msgInput.value = '';
-      if (msgSent) {
+      // synced=false: la nota solo quedó en este dispositivo (sin sesión o
+      // sin respuesta del servidor), así que no se promete que llegue.
+      const synced = saved?.synced !== false;
+      if (synced && msgSent) {
         msgSent.hidden = false;
         msgSent.style.animation = 'none';
         void msgSent.offsetWidth; // reinicia la animación
         msgSent.style.animation = '';
+      } else if (msgSent) {
+        msgSent.hidden = true;
       }
-      toast('Nota enviada. Llegará directo a mí');
+      toast(synced
+        ? 'Nota enviada. Llegará directo a mí'
+        : 'Nota guardada aquí, pero no se pudo sincronizar. Inténtalo más tarde');
+      // Si quien la envía es el Admin (o está viendo la sección como Admin),
+      // la nota recién guardada aparece en la lista sin recargar.
+      renderNotes();
     };
     document.getElementById('msgSendBtn')?.addEventListener('click', sendMsg);
     msgInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMsg(); });
