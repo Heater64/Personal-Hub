@@ -428,6 +428,32 @@ test('cada página diferida importa su propio CSS y main.css solo trae lo compar
   }
 });
 
+test('Mal Día: el admin lee todas las notas y la usuaria solo las suyas, en solo lectura', async () => {
+  const maldia = await readFile(hub('src', 'pages', 'MalDia.js'), 'utf8');
+
+  // La sección arranca oculta y solo se revela con sesión: sin más no hay
+  // por qué enseñar mensajes a un invitado.
+  assert.match(maldia, /id="mdNotesSection"[^>]*\bhidden\b/);
+  assert.match(maldia, /if \(!isAdmin && !userStore\.isLoggedIn\) \{ section\.hidden = true; return; \}/,
+    'sin sesión la sección de mensajes no se enseña');
+
+  // Dos fuentes según el rol: la visibilidad no se filtra en el cliente
+  // con lo que devuelve una única query.
+  assert.match(maldia, /isAdmin \? db\.getAllMaldiaNotes\(\) : db\.getMyMaldiaNotes\(\)/,
+    'el rol decide la fuente: todas las notas (admin) o solo las propias');
+  assert.match(maldia, /'Notas recibidas'/, 'el admin ve las recibidas');
+  assert.match(maldia, /'Tus mensajes'/, 'la usuaria ve las suyas con su propio título');
+
+  // Ella puede leerlas pero no editarlas: la lista se pinta como texto plano,
+  // sin botones, inputs ni contenido editable dentro de la tarjeta.
+  const notesBlock = maldia.slice(maldia.indexOf('function notesHTML'), maldia.indexOf('async function renderNotes'));
+  assert.match(notesBlock, /md-note-item/, 'la tarjeta de mensaje sigue existiendo');
+  assert.doesNotMatch(notesBlock, /<button|<input|contenteditable/,
+    'la lista de mensajes no puede llevar controles de edición');
+  assert.match(maldia, /Son de solo lectura/,
+    'la usuaria se avisa de que sus mensajes no se pueden editar');
+});
+
 test('el catálogo de Open When vive en un módulo sin dependencias de UI', async () => {
   const data = await readFile(hub('src', 'data', 'openwhen.data.js'), 'utf8');
   const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');

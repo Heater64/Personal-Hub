@@ -152,12 +152,27 @@ export function MalDiaPage(router) {
     const section = page.querySelector('#mdNotesSection');
     const list = page.querySelector('#mdNotesList');
     if (!section || !list) return;
-    if (!userStore.isAdmin) { section.hidden = true; return; }
+    // Admin: todas las notas de todas las cuentas.
+    // Usuaria autenticada: solo las suyas, y sin opción de editarlas.
+    const isAdmin = userStore.isAdmin;
+    if (!isAdmin && !userStore.isLoggedIn) { section.hidden = true; return; }
     section.hidden = false;
-    const countEl = page.querySelector('#mdNotesCount');
-    if (!list.dataset.ready) list.innerHTML = '<p class="md-notes__hint">Cargando notas…</p>';
 
-    const [res] = await Promise.allSettled([db.getAllMaldiaNotes()]);
+    const label = isAdmin ? 'Notas recibidas' : 'Tus mensajes';
+    section.setAttribute('aria-label', label);
+    const titleEl = page.querySelector('#mdNotesTitle');
+    if (titleEl) titleEl.textContent = label;
+    const subEl = page.querySelector('#mdNotesSub');
+    if (subEl) {
+      subEl.hidden = false;
+      subEl.textContent = isAdmin
+        ? 'Todo lo escrito desde esta sección, de cualquier cuenta.'
+        : 'Solo tú ves estos mensajes. Son de solo lectura: para cambiar algo, envía uno nuevo.';
+    }
+    const countEl = page.querySelector('#mdNotesCount');
+    if (!list.dataset.ready) list.innerHTML = '<p class="md-notes__hint">Cargando mensajes…</p>';
+
+    const [res] = await Promise.allSettled([isAdmin ? db.getAllMaldiaNotes() : db.getMyMaldiaNotes()]);
     if (!page.contains(section)) return; // la página se cerró mientras cargaba
 
     const notes = res.status === 'fulfilled' && Array.isArray(res.value) ? res.value : [];
@@ -165,7 +180,9 @@ export function MalDiaPage(router) {
     if (countEl) countEl.textContent = String(notes.length);
     list.innerHTML = notes.length
       ? notesHTML(notes.slice(0, 50))
-      : '<p class="md-notes__empty">Todavía no hay notas. Las que se escriban en esta sección aparecerán aquí.</p>';
+      : (isAdmin
+        ? '<p class="md-notes__empty">Todavía no hay notas. Las que se escriban en esta sección aparecerán aquí.</p>'
+        : '<p class="md-notes__empty">Aún no has enviado ningún mensaje. Escríbelo arriba y aparecerá aquí.</p>');
   }
 
   function render() {
@@ -216,12 +233,13 @@ export function MalDiaPage(router) {
         <p class="md-note__sent" id="msgSent" hidden>Nota enviada. Llegará directo a mí</p>
       </section>
 
-      <!-- Notas recibidas — solo las ve el Admin -->
+      <!-- Mensajes: recibidas (admin) / enviadas por ella (solo lectura) -->
       <section class="md-section md-notes" id="mdNotesSection" hidden aria-label="Notas recibidas">
         <div class="md-notes__head">
-          <p class="section-title">Notas recibidas <span class="md-notes__count" id="mdNotesCount">0</span></p>
+          <p class="section-title"><span id="mdNotesTitle">Notas recibidas</span> <span class="md-notes__count" id="mdNotesCount">0</span></p>
           <button type="button" class="md-notes__refresh" id="mdNotesRefresh">Actualizar</button>
         </div>
+        <p class="md-notes__sub" id="mdNotesSub" hidden></p>
         <div class="md-notes__list" id="mdNotesList"></div>
       </section>
 

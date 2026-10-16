@@ -259,6 +259,16 @@
   vertical-align: middle;
 }
 
+.md-notes__sub {
+  margin: 6px 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+/* Reserva explícita: el atributo hidden debe seguir mandando */
+.md-notes__sub[hidden] { display: none; }
+
 .md-notes__refresh {
   padding: 6px 12px;
   border: 1px solid var(--border-soft);
