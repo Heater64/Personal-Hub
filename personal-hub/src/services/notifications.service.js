@@ -15,7 +15,7 @@ import { loadAllOpenWhenLetters } from '../data/openwhen.data.js';
 import { normalizeNotificationRoute } from '../utils/notification-route.js';
 
 // VAPID public key — debe coincidir con VAPID_PUBLIC_KEY en el servidor
-const VAPID_PUBLIC_KEY = 'BO_qmnZrQT4twbo24CGDk-bpJWcJyfGFQoBVqf24B0jkUKKHNOEyhkZQZ2nPc1Q4BHSSEpcVq71Xcb3FYKz7gIA';
+const VAPID_PUBLIC_KEY = 'BALzk9q-6CaVPmvMC0h4JIMQ582uOKAhX7AwwqefqLQzAeFxbLMhIaeazaZ8OqSQjFQJVIhwPis7zsJL2SrNY3A';
 
 const SYNC_TAG = 'daily-welcome';
 const NOVELTIES_TAG = 'daily-novelties';

@@ -21,9 +21,39 @@ const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@personalhub.com';
 
-// Configurar web-push si las claves existen
+// Configurar web-push si las claves existen.
+//
+// Esto se ejecuta al IMPORTAR el módulo: si web-push rechaza el par (una
+// clave con `=` al final, comillas o de otro proyecto), un throw aquí mata
+// la función entera y cada llamada responde 500 FUNCTION_INVOCATION_FAILED
+// sin ningún JSON que explique el motivo. Se captura el error, se marca la
+// configuración como inválida y cada acción responde su 500 legible de
+// siempre ("VAPID keys not configured").
+let vapidConfigError = null;
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  } catch (err) {
+    vapidConfigError = err?.message || 'Invalid VAPID details';
+    console.error('[api/push] VAPID inválidas:', vapidConfigError);
+  }
+}
+
+/**
+ * Guardia común de los envíos.
+ *
+ * Devuelve true (y responde 500) cuando no se puede enviar: faltan las claves
+ * o web-push rechazó el par al importar. Mismo texto en todas partes para que
+ * el motivo sea legible en los logs y en el panel, en vez de un 500 opaco.
+ */
+function requireVapid(res) {
+  if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && !vapidConfigError) return false;
+  res.status(500).json({
+    error: vapidConfigError
+      ? `VAPID keys not configured: ${vapidConfigError}`
+      : 'VAPID keys not configured'
+  });
+  return true;
 }
 
 // Supabase admin client
@@ -906,9 +936,7 @@ async function handleNotifyAdmin(req, res) {
   const user = await authenticate(req, res);
   if (!user) return;
 
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    return res.status(500).json({ error: 'VAPID keys not configured' });
-  }
+  if (requireVapid(res)) return;
 
   // Una clase desconocida (o ausente) cae a 'mood': el cliente antiguo sigue
   // funcionando sin cambio alguno.
@@ -1023,7 +1051,7 @@ async function notifyAdminsOfHealth(summary) {
   const failed = Number(summary?.failed) || 0;
   const removed = Number(summary?.removed) || 0;
   if (failed === 0 && removed === 0) return null;
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return null;
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || vapidConfigError) return null;
   try {
     const supabase = getSupabase();
     const { data: admins, error } = await supabase
@@ -1399,9 +1427,7 @@ async function handleRunReminders(req, res) {
     if (!user) return; // ya respondió con el error
   }
 
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    return res.status(500).json({ error: 'VAPID keys not configured' });
-  }
+  if (requireVapid(res)) return;
 
   try {
     const summary = await runDueReminders();
@@ -1492,9 +1518,7 @@ async function handleReminders(req, res) {
 
     if (action === 'run') {
       if (!id) return res.status(400).json({ error: 'Falta el id del recordatorio' });
-      if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-        return res.status(500).json({ error: 'VAPID keys not configured' });
-      }
+      if (requireVapid(res)) return;
       const { data: reminder, error: readError } = await supabase
         .from(REMINDERS_TABLE)
         .select('*')
@@ -1620,9 +1644,7 @@ async function handleSend(req, res) {
     return res.status(200).json({ success: true, skipped: true, reason: 'Outside delivery window', reminders });
   }
 
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    return res.status(500).json({ error: 'VAPID keys not configured' });
-  }
+  if (requireVapid(res)) return;
 
   const allSubscriptions = await getSubscriptions();
 

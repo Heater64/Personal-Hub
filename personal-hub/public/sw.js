@@ -356,7 +356,7 @@ function ackDelivery(deliveryId) {
 // La clave VAPID pública es pública por diseño (no es secreto) y debe
 // coincidir con VAPID_PUBLIC_KEY de notifications.service.js y el servidor.
 const VAPID_PUBLIC_KEY =
-  'BO_qmnZrQT4twbo24CGDk-bpJWcJyfGFQoBVqf24B0jkUKKHNOEyhkZQZ2nPc1Q4BHSSEpcVq71Xcb3FYKz7gIA';
+  'BALzk9q-6CaVPmvMC0h4JIMQ582uOKAhX7AwwqefqLQzAeFxbLMhIaeazaZ8OqSQjFQJVIhwPis7zsJL2SrNY3A';
 
 self.addEventListener('pushsubscriptionchange', event => {
   event.waitUntil(
