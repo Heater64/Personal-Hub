@@ -1424,6 +1424,7 @@ test('guardar sanea los eventos: nada de campos raros ni filas a medias', async 
     .replace("import { auth } from './auth.service.js';", 'const auth = { getUser: () => null, isAdmin: () => true, onAuthChange: () => {}, isReady: () => Promise.resolve() };')
     .replace("import { escapeHtml } from '../utils/escape.js';", 'const escapeHtml = s => s;')
     .replace("import { userPrefKey } from '../utils/userStorage.js';", 'const userPrefKey = k => k;')
+    .replace("import { announcePublished } from './announce.service.js';", 'const announcePublished = async () => true;')
     .replace("import { normalizeDecor, normalizeVideoMode, mediaList, MAX_EMOJIS } from '../utils/celebration.js';",
       await celebrationSource())
     .replace("import { cleanEventActions } from '../utils/event-actions.js';",

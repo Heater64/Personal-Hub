@@ -459,6 +459,8 @@ function isQuietHour(now, quiet) {
 async function handleDailyWelcome() {
   const state = await idbGet('reminder');
   if (!state || !state.enabled || !state.userId) return;
+  // «Recordatorio diario» apagado apaga también este saludo (app cerrada).
+  if (state.daily === false) return;
 
   const now = new Date();
   const today = todaySpain();

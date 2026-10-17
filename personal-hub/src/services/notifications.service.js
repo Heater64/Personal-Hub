@@ -70,11 +70,6 @@ export function setNotifSettings(patch) {
   return next;
 }
 
-/** ¿Hay ajustes guardados aquí, o son solo los de por defecto? */
-function hasLocalNotifSettings() {
-  return getUserPref(NOTIF_SETTINGS_KEY, '') !== '';
-}
-
 /**
  * Refleja los ajustes en `notification_prefs` (023).
  *
@@ -136,7 +131,11 @@ export async function syncNotifPrefs() {
     if (error) return getNotifSettings();
 
     if (!data) {
-      if (hasLocalNotifSettings()) await pushNotifPrefs(getNotifSettings());
+      // Sin fila en el servidor: se suben los ajustes efectivos de este
+      // dispositivo, haya tocado algo o sean los de por defecto. Si no, el
+      // servidor no sabría su horario de silencio (23:00–08:00) y un
+      // recordatorio programado de madrugada le sonaría a las 3:00.
+      await pushNotifPrefs(getNotifSettings());
       return getNotifSettings();
     }
 
@@ -437,6 +436,10 @@ export async function syncReminderState() {
     enabled: enabled && !!userId,
     userId,
     lastShown: prev?.lastShown ?? null,
+    // El saludo de `periodicsync` (app cerrada) también obedece al interruptor
+    // «Recordatorio diario»; el SW lo lee de aquí. Sin este campo se quedaba en
+    // `undefined` y sonaba aunque estuviera apagado.
+    daily: getNotifSettings().daily !== false,
     quiet: { from: quietFrom, to: quietTo }
   };
   await setState(state);

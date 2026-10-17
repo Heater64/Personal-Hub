@@ -9,6 +9,7 @@ import { escapeHtml } from '../utils/escape.js';
 import { normalizeDecor, normalizeVideoMode, mediaList, MAX_EMOJIS } from '../utils/celebration.js';
 import { cleanEventActions } from '../utils/event-actions.js';
 import { userPrefKey } from '../utils/userStorage.js';
+import { announcePublished } from './announce.service.js';
 
 // Storage keys for localStorage fallback
 const KEYS = {
@@ -121,8 +122,52 @@ async function loadContent(id, fallback = null) {
   }
 }
 
+/**
+ * Cuántos elementos tiene una sección. Sirve para saber si al guardar se han
+ * AÑADIDO cosas (lo único que avisa): editar un texto o reordenar no cambia
+ * el recuento.
+ */
+const CONTENT_COUNT = {
+  razones: d => (Array.isArray(d?.reasons) ? d.reasons.length : 0),
+  canciones: d => (Array.isArray(d?.songs) ? d.songs.length : 0),
+  noticias: d => (Array.isArray(d?.news) ? d.news.length : 0),
+  audios: d => (Array.isArray(d?.audios) ? d.audios.length : 0),
+  series: d => (Array.isArray(d?.series) ? d.series.length : 0),
+  maldia_frases: d => (Array.isArray(d?.phrases) ? d.phrases.length : 0),
+  maldia_mensajes: d => (Array.isArray(d?.messages) ? d.messages.length : 0),
+  openwhen_letters: d => (Array.isArray(d?.letters) ? d.letters.length : 0),
+  gifts: d => (Array.isArray(d?.gifts) ? d.gifts.length : 0),
+  hub_dates: d => (d && typeof d === 'object' ? Object.keys(d).length : 0)
+};
+
+/**
+ * Qué se anuncia al añadir contenido y con qué destino. `kind` decide el texto
+ * y el interruptor en el servidor (ver announcePayload en api/push.js).
+ */
+const CONTENT_ANNOUNCE = {
+  openwhen_letters: { kind: 'openwhen', section: 'Open When', url: '/openwhen' },
+  gifts:            { kind: 'calendar', section: 'Calendario', url: '/calendario' },
+  razones:          { kind: 'reason',   section: 'Razones', url: '/razones' },
+  canciones:        { kind: 'content',  section: 'Canciones', url: '/canciones' },
+  series:           { kind: 'content',  section: 'Series', url: '/series' },
+  audios:           { kind: 'content',  section: 'Audios', url: '/rincon' },
+  maldia_frases:    { kind: 'content',  section: 'Mal Día', url: '/maldia' },
+  maldia_mensajes:  { kind: 'content',  section: 'Mal Día', url: '/maldia' },
+  noticias:         { kind: 'content',  section: 'Noticias', url: '/' },
+  hub_dates:        { kind: 'content',  section: 'Fechas especiales', url: '/' }
+};
+
 async function saveContent(id, data) {
   await requireAdmin(); // contenido global: solo ADMIN
+
+  // Lo que había antes de escribir: el aviso de contenido nuevo sale solo si
+  // el recuento sube. Si no se puede leer, `prev` es null y no se avisa —
+  // mejor quedarse callado que anunciar todo el catálogo como «nuevo».
+  const countOf = CONTENT_COUNT[id];
+  let prev = null;
+  if (CONTENT_ANNOUNCE[id]) {
+    try { prev = await loadContent(id, null); } catch { prev = null; }
+  }
 
   // Salvaguarda del catálogo de regalos: si lo que llega tiene una caída
   // drástica frente a lo que ya había, es un catálogo truncado (carga fallida
@@ -132,8 +177,8 @@ async function saveContent(id, data) {
     const incoming = Array.isArray(data?.gifts) ? data.gifts.length : 0;
     let current = 0;
     try {
-      const prev = await loadContent('gifts', null);
-      current = Array.isArray(prev?.gifts) ? prev.gifts.length : 0;
+      const before = prev || await loadContent('gifts', null);
+      current = Array.isArray(before?.gifts) ? before.gifts.length : 0;
     } catch { /* si no se puede leer, no se bloquea el guardado */ }
     if (current > 0 && incoming * 2 < current) {
       throw new Error(
@@ -149,6 +194,21 @@ async function saveContent(id, data) {
     if (error) throw error;
     lsSet('ph.config.' + id, data);
     notifyLocalSave(id, data);
+
+    // Contenido nuevo → push a ella (el servidor decide interruptor y
+    // silencio). No se espera: el guardado ya está hecho y un aviso que falle
+    // no puede retrasar ni romper el panel.
+    const announce = CONTENT_ANNOUNCE[id];
+    if (announce && countOf && prev !== null) {
+      const added = countOf(data) - countOf(prev);
+      if (added > 0) {
+        announcePublished(announce.kind, {
+          count: added,
+          section: announce.section,
+          url: announce.url
+        }).catch(() => {});
+      }
+    }
     return true;
   } catch (err) {
     if (isSupabaseConfigured()) {

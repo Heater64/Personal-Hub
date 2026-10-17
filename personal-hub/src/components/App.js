@@ -16,7 +16,7 @@ import { WelcomeScreen } from './WelcomeScreen.js';
 import { setMoodWelcomeState } from './SpecialEventSheet.js';
 import { moodStore } from '../stores/mood.store.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
-import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters, syncNotifPrefs } from '../services/notifications.service.js';
+import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters, syncNotifPrefs, getNotifSettings } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
 import { initListenTogether, onListenTogether, getListenTogetherState, initListenStateRealtime, stopListenStateRealtime } from '../services/listenTogether.service.js';
@@ -369,11 +369,16 @@ export function AppShell(router) {
     if (getUserPref('welcomeShownDate') !== today) {
       setUserPref('welcomeShownDate', today);
       // Notificación local (app abierta) con el saludo según la hora española.
-      const hour = hourInSpain();
-      const greeting = hour < 12 ? '¡Buenos días! ☀️' : hour < 19 ? '¡Buenas tardes! 🌤️' : '¡Buenas noches! 🌙';
-      showDailyNotification(greeting, '¿Cómo te sientes hoy? Abre Personal Hub para registrarlo.');
-      // Marca el día para que el SW (app cerrada) no la duplique: 1 vez/día
-      markWelcomeShownToday();
+      // Respeta el interruptor «Recordatorio diario»: es su texto («Bienvenida
+      // y novedades»), así que apagarlo tiene que apagar también este aviso, no
+      // solo las novedades y el push del servidor.
+      if (getNotifSettings().daily) {
+        const hour = hourInSpain();
+        const greeting = hour < 12 ? '¡Buenos días! ☀️' : hour < 19 ? '¡Buenas tardes! 🌤️' : '¡Buenas noches! 🌙';
+        showDailyNotification(greeting, '¿Cómo te sientes hoy? Abre Personal Hub para registrarlo.');
+        // Marca el día para que el SW (app cerrada) no la duplique: 1 vez/día
+        markWelcomeShownToday();
+      }
     }
 
     const ws = WelcomeScreen({

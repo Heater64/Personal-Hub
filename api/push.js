@@ -696,6 +696,76 @@ async function calendarPayloadForToday() {
 }
 
 // ==========================================
+// ANNOUNCE — contenido nuevo que publica el admin
+// ==========================================
+
+/**
+ * Tipos de contenido que se pueden anunciar al publicarlos. La lista es
+ * cerrada: el cliente elige QUÉ se publicó, pero el texto lo pone el servidor.
+ *
+ * Cada tipo se gobierna con el interruptor que ya existe (no se añade otro):
+ * las cartas con «Cartas Open When» y el resto con el aviso diario, que es el
+ * que ya agrupa las novedades del hub.
+ */
+export const ANNOUNCE_KINDS = ['openwhen', 'calendar', 'reason', 'content'];
+const ANNOUNCE_PREF = {
+  openwhen: 'letters',
+  calendar: 'daily',
+  reason: 'daily',
+  content: 'daily'
+};
+
+/** Nombre de la sección, recortado y sin caracteres de control. */
+function cleanSection(value) {
+  const text = String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.slice(0, 40);
+}
+
+/**
+ * Payload del aviso de contenido nuevo.
+ *
+ * `count` es cuántos elementos se han añadido (1 por defecto): el texto cambia
+ * entre singular y plural para que el aviso diga algo cierto. En `content` el
+ * destino lo elige el panel, así que pasa por la lista blanca de rutas.
+ */
+export function announcePayload(kind, { count = 1, section = '', url = '' } = {}) {
+  const n = Number.isFinite(Number(count)) && Number(count) > 0 ? Math.floor(Number(count)) : 1;
+  if (kind === 'openwhen') {
+    return {
+      title: n === 1 ? 'Nueva carta en Open When 💌' : `${n} cartas nuevas en Open When 💌`,
+      body: n === 1 ? 'Tienes una carta sin abrir esperándote.' : 'Tienes cartas sin abrir esperándote.',
+      url: '/openwhen',
+      tag: 'openwhen-new'
+    };
+  }
+  if (kind === 'calendar') {
+    return {
+      title: n === 1 ? 'Hay una sorpresa nueva 🎁' : 'Hay sorpresas nuevas 🎁',
+      body: n === 1
+        ? 'El calendario tiene un regalo nuevo. Ábrelo cuando quieras.'
+        : `El calendario tiene ${n} regalos nuevos.`,
+      url: '/calendario',
+      tag: 'calendar-new'
+    };
+  }
+  if (kind === 'reason') {
+    return {
+      title: n === 1 ? 'Razón nueva 💛' : `${n} razones nuevas 💛`,
+      body: 'Hay algo nuevo para ti en Razones.',
+      url: '/razones',
+      tag: 'reason-new'
+    };
+  }
+  const where = cleanSection(section);
+  return {
+    title: where ? `Contenido nuevo: ${where}` : 'Contenido nuevo en el hub ✨',
+    body: 'Hay cosas nuevas esperándote. Ábrelo cuando quieras.',
+    url: isAllowedNotificationPath(url) ? url.trim() : '/',
+    tag: 'content-new'
+  };
+}
+
+// ==========================================
 // HELPERS
 // ==========================================
 
@@ -747,6 +817,8 @@ export default async function handler(req, res) {
         return await handleSend(req, res);
       case 'notify-admin':
         return await handleNotifyAdmin(req, res);
+      case 'announce':
+        return await handleAnnounce(req, res);
       case 'reminders':
         return await handleReminders(req, res);
       case 'run-reminders':
@@ -754,7 +826,7 @@ export default async function handler(req, res) {
       case 'ack':
         return await handleAck(req, res);
       default:
-        return res.status(400).json({ error: 'Invalid action. Use: subscribe, unsubscribe, send, notify-admin, reminders, run-reminders, ack' });
+        return res.status(400).json({ error: 'Invalid action. Use: subscribe, unsubscribe, send, notify-admin, announce, reminders, run-reminders, ack' });
     }
   } catch (err) {
     console.error('[api/push] error:', err.message);
@@ -1043,6 +1115,79 @@ async function handleNotifyAdmin(req, res) {
   }
 
   return res.status(200).json({ success: true, filtered: off.length, ...results });
+}
+
+/**
+ * ANNOUNCE — el admin publica contenido y ella se entera al momento.
+ *
+ * La dirección es una sola: admin → ella. Los admins que publican no se
+ * avisan a sí mismos de lo que acaban de escribir.
+ *
+ * El tipo lo elige el panel (lista cerrada) y el texto lo compone el servidor:
+ * el cuerpo de la petición no puede inventar un mensaje ni un destino fuera de
+ * la app. El interruptor es el que ya existe para esa clase de contenido.
+ *
+ * Dentro del silencio no suena nada —ni siquiera en silencio, porque un aviso
+ * de «hay contenido nuevo» a las 3:00 no aporta nada que no esté al abrir— y
+ * la respuesta lo dice con `quiet`/`until` para que el panel pueda explicarlo.
+ */
+async function handleAnnounce(req, res) {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+  if (requireVapid(res)) return;
+
+  const kind = ANNOUNCE_KINDS.includes(req.body?.kind) ? req.body.kind : null;
+  if (!kind) {
+    return res.status(400).json({ error: 'Invalid kind', allowed: ANNOUNCE_KINDS });
+  }
+
+  const alert = announcePayload(kind, {
+    count: req.body?.count,
+    section: req.body?.section,
+    url: req.body?.url
+  });
+
+  const supabase = getSupabase();
+  const { data: admins, error: adminsError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin');
+  if (adminsError) throw adminsError;
+  const adminIds = new Set((admins || []).map(a => String(a.id)));
+
+  const all = await excludeDisabledUsers(await getSubscriptions());
+  const recipients = all.filter(sub => !adminIds.has(String(sub.userId)));
+  if (recipients.length === 0) {
+    return res.status(200).json({ success: true, sent: 0, message: 'No subscriptions' });
+  }
+
+  const now = new Date();
+  const prefsById = await loadPrefsByIds([...new Set(recipients.map(s => String(s.userId)))]);
+  const { allowed, quiet, off } = splitRecipients(recipients, prefsById, now, ANNOUNCE_PREF[kind]);
+
+  if (allowed.length === 0) {
+    return res.status(200).json({
+      success: true,
+      sent: 0,
+      quiet: quiet.length,
+      until: deferUntilFor(quiet, prefsById, now),
+      filtered: off.length,
+      message: quiet.length > 0 ? 'Quiet hours' : 'Announcement off'
+    });
+  }
+
+  const payload = JSON.stringify({ ...alert, timestamp: Date.now() });
+  const { results, expired } = await deliverPush(allowed, payload);
+  if (expired.length > 0) {
+    await saveSubscriptions(all.filter(s => !expired.includes(s.endpoint)));
+  }
+
+  return res.status(200).json({
+    success: true,
+    ...results,
+    quiet: quiet.length,
+    filtered: off.length
+  });
 }
 
 /**
