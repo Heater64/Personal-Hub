@@ -89,11 +89,27 @@ test('un mal día se avisa destacado y no se borra solo', () => {
   assert.notEqual(bad.tag, good.tag);
 });
 
-test('un cambio de ánimo dice que lo anterior ya no vale', () => {
+test('un cambio de ánimo dice que lo anterior ya no vale y cuál es el nuevo', () => {
   const cambio = adminMoodPayload({ label: 'Enfadada', emoji: '😡', score: 0 }, 'mood_change');
   assert.equal(cambio.tag, 'admin-mood', 'comparte tag con el aviso normal para reemplazarlo');
   assert.match(cambio.title, /ha cambiado/);
   assert.match(cambio.body, /ya no es su estado actual/);
+  // El estado actual va escrito, no solo implícito en el título.
+  assert.match(cambio.body, /«Enfadada»/);
+});
+
+test('una corrección rápida se anuncia con el estado nuevo', () => {
+  const update = adminMoodPayload({ label: 'Preocupada', emoji: '🥺', score: 1 }, 'mood_update');
+  assert.equal(update.tag, 'admin-mood');
+  assert.match(update.title, /Preocupada/);
+  assert.match(update.title, /actualizado/);
+  assert.match(update.body, /«Preocupada»/);
+  assert.equal(update.url, '/admin?section=moods');
+});
+
+test('el aviso normal también escribe el estado en el cuerpo', () => {
+  const alert = adminMoodPayload({ label: 'Bien', emoji: '😊', score: 4 }, 'mood');
+  assert.match(alert.body, /«Bien»/);
 });
 
 // ==========================================
@@ -193,15 +209,17 @@ test('el servidor lee el contenido de la base y no del cuerpo', async () => {
   assert.match(handler, /profile\?\.role === 'admin'\) \{\s*\n\s*return res\.status\(200\)\.json\(\{ success: true, sent: 0, skipped: true, reason: 'Admin event' \}\)/);
 });
 
-test('una corrección rápida solo avisa si aterriza en un mal día', async () => {
+test('una corrección rápida también se envía, no se descarta', async () => {
   const pushApi = await readApi();
   const handler = pushApi.slice(
     pushApi.indexOf('async function handleNotifyAdmin'),
     pushApi.indexOf('async function lastMaldiaNote')
   );
-  // El caso raro que se evita: toques de prueba que hacen sonar el teléfono.
-  assert.match(handler, /if \(kind === 'mood_update' && !isBadDayMood\(mood\.score\)\)/);
-  assert.match(handler, /reason: 'Routine update'/);
+  // Se pidió avisar de CADA estado, también de la corrección: si se
+  // silenciara, el admin se quedaría con el ánimo viejo en la cabeza.
+  assert.doesNotMatch(handler, /kind === 'mood_update' && !isBadDayMood/);
+  assert.doesNotMatch(handler, /Routine update/);
+  assert.match(handler, /alert = adminMoodPayload\(mood, kind\);/);
 });
 
 test('el aviso del admin respeta SUS preferencias, y el silencio no lo descarta', async () => {

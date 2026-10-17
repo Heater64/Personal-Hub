@@ -441,6 +441,11 @@ export function adminAlertPrefFor(kind) {
  * es el único que se queda en pantalla hasta que se descarta
  * (`requireInteraction`) y lleva su propio `tag` para que un «Bien» posterior
  * no lo reemplace silenciosamente.
+ *
+ * En los tres casos el texto dice el estado CONCRETO (emoji + nombre): el
+ * aviso sirve para saber cómo está ahora, no solo para saber que algo pasó.
+ * `mood_update` (corrección dentro de la ventana de 5 min) conserva la marca
+ * de que es una corrección, pero se envía igual que las demás.
  */
 export function adminMoodPayload(mood, kind = 'mood') {
   const emoji = mood?.emoji || '💬';
@@ -448,7 +453,15 @@ export function adminMoodPayload(mood, kind = 'mood') {
   if (kind === 'mood_change') {
     return {
       title: `${emoji} ${label} · ha cambiado`,
-      body: 'Ha cambiado el ánimo de hoy. Lo que viste antes ya no es su estado actual.',
+      body: `Ahora está en «${label}» ${emoji}. Lo que viste antes ya no es su estado actual.`,
+      url: ADMIN_MOOD_DESTINATION,
+      tag: 'admin-mood'
+    };
+  }
+  if (kind === 'mood_update') {
+    return {
+      title: `${emoji} ${label} · actualizado`,
+      body: `Acaba de corregir su ánimo de hoy: ahora está en «${label}» ${emoji}.`,
       url: ADMIN_MOOD_DESTINATION,
       tag: 'admin-mood'
     };
@@ -464,7 +477,7 @@ export function adminMoodPayload(mood, kind = 'mood') {
   }
   return {
     title: `${emoji} ${label}`,
-    body: 'Ha registrado su estado de ánimo de hoy.',
+    body: `Su ánimo de hoy es «${label}» ${emoji}.`,
     url: ADMIN_MOOD_DESTINATION,
     tag: 'admin-mood'
   };
@@ -992,12 +1005,10 @@ async function handleNotifyAdmin(req, res) {
     if (!mood) {
       return res.status(404).json({ error: 'No mood registered today' });
     }
-    // Corrección rápida (dentro de la ventana de 5 min de mood.store): solo
-    // avisa si aterriza en un mal día. Un toque de prueba no hace sonar su
-    // teléfono; un cambio hacia «necesito apoyo» sí.
-    if (kind === 'mood_update' && !isBadDayMood(mood.score)) {
-      return res.status(200).json({ success: true, sent: 0, skipped: true, reason: 'Routine update' });
-    }
+    // Corrección rápida (dentro de la ventana de 5 min de mood.store): se
+    // avisa igual que cualquier otro cambio. Antes se silenciaba salvo que
+    // aterrizara en un mal día, y eso dejaba al admin con el estado viejo en
+    // la cabeza cuando ella lo corregía. El aviso lleva el estado nuevo.
     alert = adminMoodPayload(mood, kind);
   }
 

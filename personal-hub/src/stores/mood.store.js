@@ -155,10 +155,10 @@ class MoodStore {
     // Solo al guardar: quitar el ánimo no avisa al admin.
     //
     // El TIPO importa, porque de él depende el interruptor que lo gobierna
-    // (024) y sobre todo que no le suene el teléfono de más: una corrección
-    // dentro de la ventana de 5 min solo le avisa si aterriza en un mal día,
-    // y un estado nuevo que sustituye al de antes le dice que lo que vio ya
-    // no es su ánimo actual.
+    // (024) y el texto del aviso: una corrección dentro de la ventana de 5 min
+    // se anuncia como corrección, y un estado nuevo que sustituye al de antes
+    // le dice al admin que lo que vio ya no es su ánimo actual. Los tres
+    // llevan el estado concreto (emoji + nombre).
     const adminKind = fresh ? 'mood_update' : (hadStates ? 'mood_change' : 'mood');
     notifyAdminOfMood(adminKind).catch(() => { /* el estado ya está guardado */ });
     return mood;
