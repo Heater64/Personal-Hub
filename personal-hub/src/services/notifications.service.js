@@ -13,6 +13,7 @@ import { supabase } from './supabase.js';
 import { getTodayNovelties, getNoveltyNotificationRoute } from './novelties.service.js';
 import { loadAllOpenWhenLetters } from '../data/openwhen.data.js';
 import { normalizeNotificationRoute } from '../utils/notification-route.js';
+import { urlBase64ToUint8Array, subscriptionKeyChanged } from '../utils/push-key.js';
 
 // VAPID public key — debe coincidir con VAPID_PUBLIC_KEY en el servidor
 const VAPID_PUBLIC_KEY = 'BALzk9q-6CaVPmvMC0h4JIMQ582uOKAhX7AwwqefqLQzAeFxbLMhIaeazaZ8OqSQjFQJVIhwPis7zsJL2SrNY3A';
@@ -295,6 +296,20 @@ export async function subscribeToPush() {
     // Check existing subscription
     let subscription = await reg.pushManager.getSubscription();
 
+    // Una suscripción vieja se creó con la clave VAPID anterior y el push
+    // service la rechaza para siempre (403 VapidPkHashMismatch). Reutilizarla
+    // es exactamente lo que dejaba a los dispositivos sin avisos tras rotar
+    // las claves, así que si la clave no coincide se renueva aquí mismo.
+    if (subscription && subscriptionKeyChanged(subscription, VAPID_PUBLIC_KEY)) {
+      console.warn('[notif] La suscripción usa otra clave VAPID: se renueva');
+      try {
+        await subscription.unsubscribe();
+      } catch {
+        /* si el navegador no deja cancelarla, subscribe() fallará y se ve abajo */
+      }
+      subscription = null;
+    }
+
     if (subscription) {
       // Already subscribed — verify it on the server
       await sendSubscriptionToServer(subscription);
@@ -362,12 +377,14 @@ export async function resyncPushSubscription() {
 
   try {
     const reg = await navigator.serviceWorker.ready;
-    let subscription = await reg.pushManager.getSubscription();
+    const subscription = await reg.pushManager.getSubscription();
 
-    if (subscription) {
+    // Con la clave cambiada, la suscripción guardada ya no sirve: se renueva
+    // antes de mandarla al servidor. subscribeToPush() hace la comparación y
+    // la sustituye si hace falta (y si no hay, la crea).
+    if (subscription && !subscriptionKeyChanged(subscription, VAPID_PUBLIC_KEY)) {
       await sendSubscriptionToServer(subscription);
     } else {
-      // Try to subscribe
       await subscribeToPush();
     }
   } catch {
@@ -718,18 +735,3 @@ export async function sendTestNotification() {
   );
 }
 
-/**
- * Convierte base64 URL-safe a Uint8Array (para applicationServerKey).
- */
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}

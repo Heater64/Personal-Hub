@@ -56,6 +56,25 @@ function requireVapid(res) {
   return true;
 }
 
+/**
+ * ¿Es este error «esta suscripción se creó con OTRA clave VAPID»?
+ *
+ * El push service responde 403 con «the VAPID credentials in the
+ * authorization header do not correspond to the credentials used to create
+ * the subscriptions». Esa suscripción no puede volver a funcionar con la
+ * clave actual: reintentarla cada día no arregla nada y deja el fallo mudo
+ * (solo suma en `failed`). Se marca como caducada para retirarla; el cliente
+ * la renueva al abrir la app y vuelve a suscribirse con la clave nueva.
+ *
+ * No se confunde con un 403 de otro tipo (p. ej. VAPID sin configurar en el
+ * servidor): solo coincide si el cuerpo habla de credenciales VAPID.
+ */
+export function isVapidMismatchError(err) {
+  if (!err || err.statusCode !== 403) return false;
+  const body = typeof err.body === 'string' ? err.body : err.message || '';
+  return /vapid/i.test(body) && /do not correspond|credentials/i.test(body);
+}
+
 // Supabase admin client
 function getSupabase() {
   const url = process.env.VITE_SUPABASE_URL;
@@ -1098,11 +1117,17 @@ async function deliverPush(subscriptions, payload, onResult) {
       // antes de pasar al siguiente dispositivo.
       if (onResult) await onResult(sub, null);
     } catch (err) {
-      // 410/404: la suscripción caducó y se retira. Otros errores: se conserva.
-      if (err.statusCode === 410 || err.statusCode === 404) {
+      // 410/404: la suscripción caducó. 403 con cambio de clave VAPID: nació
+      // con otra clave y no puede recibir nunca más. En ambos casos se retira.
+      if (err.statusCode === 410 || err.statusCode === 404 || isVapidMismatchError(err)) {
         results.removed++;
         expired.push(sub.endpoint);
-        if (onResult) await onResult(sub, { expired: true, error: String(err.statusCode) });
+        if (onResult) {
+          await onResult(sub, {
+            expired: true,
+            error: isVapidMismatchError(err) ? 'vapid_mismatch' : String(err.statusCode)
+          });
+        }
       } else {
         results.failed++;
         if (onResult) await onResult(sub, { expired: false, error: String(err.statusCode || err.message || 'push_error') });
@@ -1694,6 +1719,7 @@ async function handleSend(req, res) {
 
   const results = { sent: 0, failed: 0, removed: 0 };
   const expiredEndpoints = [];
+  const staleEndpoints = [];
 
   for (const sub of recipients) {
     try {
@@ -1708,14 +1734,24 @@ async function handleSend(req, res) {
     } catch (err) {
       // 410 Gone = subscription expired/unsubscribed — remove it
       // 404 Not Found = endpoint no longer valid — remove it
-      if (err.statusCode === 410 || err.statusCode === 404) {
+      // 403 VAPID mismatch = se creó con otra clave (p. ej. tras rotarla):
+      //   tampoco puede recibir nunca, así que se retira igual.
+      if (err.statusCode === 410 || err.statusCode === 404 || isVapidMismatchError(err)) {
         results.removed++;
         expiredEndpoints.push(sub.endpoint);
+        if (isVapidMismatchError(err)) staleEndpoints.push(sub.endpoint);
       } else {
         // Keep subscription for retry (temporary error)
         results.failed++;
       }
     }
+  }
+
+  if (staleEndpoints.length > 0) {
+    console.warn(
+      '[api/push/send] suscripciones creadas con otra clave VAPID retiradas:',
+      staleEndpoints.length
+    );
   }
 
   // Limpieza de caducados: la lista de referencia es la COMPLETA, no la de
@@ -1734,6 +1770,7 @@ async function handleSend(req, res) {
     sent: results.sent,
     failed: results.failed,
     removed: results.removed,
+    stale: staleEndpoints.length,
     filtered,
     total: allSubscriptions.length,
     reminders
