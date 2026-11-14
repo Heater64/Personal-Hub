@@ -42,6 +42,7 @@ Los archivos **dependen entre sí** — ejecútalos en orden numérico.
 | 023 | `023_notification_prefs.sql` | Preferencias de avisos por persona: qué tipos quiere y su horario de silencio | crea tabla |
 | 024 | `024_admin_alerts.sql` | Avisos del admin (ánimo, cambios, notas de Mal Día, técnicos) en columnas propias de `notification_prefs` | añade columnas |
 | 025 | `025_push_log_delivery.sql` | Acuse de entrega por dispositivo: `delivery_id` y `delivered_at` en `push_logs`, con `CHECK` del estado | añade columnas |
+| **026** | `026_rls_hardening.sql` | **Cierra la escalada por INSERT en `profiles`, el listado anónimo de Storage y los privilegios sobrantes** | 🔴 seguridad |
 
 ---
 
@@ -99,6 +100,13 @@ aplicados) y subir solo lo nuevo:
    sin ella el envío funciona igual y el acuse responde **503** con la
    instrucción, así que el historial se queda en «enviado» — que es la verdad
    hasta que el dispositivo confirme.
+9. `026_rls_hardening.sql` — sale de auditar las RLS contra la base real.
+   No toca datos ni tablas: redefine el trigger de perfiles para que cubra
+   también `INSERT`, fija el `search_path` de `handle_new_user()`, cambia las
+   cuatro políticas SELECT de Storage de `TO public` a `TO authenticated`, y
+   retira privilegios que nadie usa (`EXECUTE` de funciones de trigger,
+   `TRUNCATE`/`REFERENCES`/`TRIGGER` de `anon` y `authenticated`). El bucket
+   sigue siendo público: las imágenes se sirven por URL directa, como antes.
 
 ### Orden recomendado para producción
 
@@ -146,6 +154,24 @@ SELECT p.id, p.user_id
   FROM public.push_subscriptions p
   LEFT JOIN auth.users u ON u.id = p.user_id
  WHERE u.id IS NULL;
+
+-- 026: ninguna tabla del esquema public sin RLS (debe devolver 0)
+SELECT count(*) AS sin_rls
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity;
+
+-- 026: las funciones de trigger no se pueden invocar como RPC
+SELECT p.proname,
+       has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public'
+   AND p.proname IN ('handle_new_user', 'prevent_role_escalation',
+                     'protect_user_metadata', 'sync_profile_from_auth',
+                     'prune_game_history', 'backfill_inviter_avatars')
+ ORDER BY p.proname;  -- todas deben salir en false
 ```
 
 ---

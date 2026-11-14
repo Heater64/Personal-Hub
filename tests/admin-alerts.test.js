@@ -344,7 +344,9 @@ test('la nota solo avisa si llegó al servidor', async () => {
   assert.match(maldia, /import \{ notifyAdminOfNote \} from '\.\.\/services\/notifications\.service\.js';/);
   // Avisar de una nota que se quedó en el dispositivo mandaría al admin a una
   // lista donde todavía no está.
-  assert.match(maldia, /if \(synced\) notifyAdminOfNote\(\)\.catch\(/);
+  // Solo las notas de ella avisan: una respuesta del admin no le empuja un
+  // aviso a sí mismo.
+  assert.match(maldia, /if \(synced && !isAdmin\) notifyAdminOfNote\(\)\.catch\(/);
 });
 
 test('el perfil ofrece los cuatro interruptores, y solo al admin', async () => {

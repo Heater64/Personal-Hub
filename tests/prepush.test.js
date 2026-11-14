@@ -428,30 +428,66 @@ test('cada página diferida importa su propio CSS y main.css solo trae lo compar
   }
 });
 
-test('Mal Día: el admin lee todas las notas y la usuaria solo las suyas, en solo lectura', async () => {
+test('Mal Día: la conversación es una sola y ambos leen lo del otro', async () => {
   const maldia = await readFile(hub('src', 'pages', 'MalDia.js'), 'utf8');
+  const service = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
 
   // La sección arranca oculta y solo se revela con sesión: sin más no hay
-  // por qué enseñar mensajes a un invitado.
-  assert.match(maldia, /id="mdNotesSection"[^>]*\bhidden\b/);
-  assert.match(maldia, /if \(!isAdmin && !userStore\.isLoggedIn\) \{ section\.hidden = true; return; \}/,
-    'sin sesión la sección de mensajes no se enseña');
+  // por qué enseñar la conversación a un invitado.
+  assert.match(maldia, /id="mdThreadSection"[^>]*\bhidden\b/);
+  assert.match(maldia, /if \(!isAdmin && !userStore\.isLoggedIn\) \{[^}]*section\.hidden = true;/, 
+    'sin sesión la conversación no se enseña');
 
-  // Dos fuentes según el rol: la visibilidad no se filtra en el cliente
-  // con lo que devuelve una única query.
-  assert.match(maldia, /isAdmin \? db\.getAllMaldiaNotes\(\) : db\.getMyMaldiaNotes\(\)/,
-    'el rol decide la fuente: todas las notas (admin) o solo las propias');
-  assert.match(maldia, /'Notas recibidas'/, 'el admin ve las recibidas');
-  assert.match(maldia, /'Tus mensajes'/, 'la usuaria ve las suyas con su propio título');
+  // Una sola fuente para los dos: notas (todas si es admin, las suyas si es
+  // ella) + respuestas del admin, ordenadas por fecha.
+  assert.match(maldia, /db\.getMaldiaConversation\(\)/);
+  assert.match(service, /isAdmin \? getAllMaldiaNotes\(\) : getMyMaldiaNotes\(\)/,
+    'el rol decide si ve todas las notas o solo las propias');
+  assert.match(service, /\.sort\(\(a, b\) => String\(a\.createdAt\)\.localeCompare\(String\(b\.createdAt\)\)\)/,
+    'la conversación va en orden cronológico');
 
-  // Ella puede leerlas pero no editarlas: la lista se pinta como texto plano,
-  // sin botones, inputs ni contenido editable dentro de la tarjeta.
-  const notesBlock = maldia.slice(maldia.indexOf('function notesHTML'), maldia.indexOf('async function renderNotes'));
-  assert.match(notesBlock, /md-note-item/, 'la tarjeta de mensaje sigue existiendo');
-  assert.doesNotMatch(notesBlock, /<button|<input|contenteditable/,
-    'la lista de mensajes no puede llevar controles de edición');
-  assert.match(maldia, /Son de solo lectura/,
-    'la usuaria se avisa de que sus mensajes no se pueden editar');
+  // El admin responde en `content` (legible por cualquier sesión) porque la
+  // RLS de user_progress solo deja leer la fila propia.
+  assert.match(service, /const MALDIA_THREAD_ID = 'maldia_conversacion';/);
+  assert.match(service, /await saveContent\(MALDIA_THREAD_ID, \{/);
+
+  // Cada uno escribe desde el mismo campo: nota si no es admin, respuesta si lo es.
+  assert.match(maldia, /isAdmin\s*\r?\n\s*\? await db\.saveMaldiaReply\(value, replyTarget\)\s*\r?\n\s*: await db\.saveMaldiaNote\(value\)/);
+  assert.match(maldia, /id="mdThreadInput"/, 'la conversación necesita su propio campo de envío');
+});
+
+test('Mal Día: el admin responde a un mensaje concreto y puede borrarlo', async () => {
+  const maldia = await readFile(hub('src', 'pages', 'MalDia.js'), 'utf8');
+  const service = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
+
+  // La cita viaja dentro del mensaje y se pinta en las dos cuentas.
+  assert.match(service, /entry\.replyTo = \{/);
+  assert.match(service, /text: String\(replyTo\.text\)\.trim\(\)\.slice\(0, 140\)/);
+  assert.match(maldia, /md-bubble__quote/);
+
+  // Responder y borrar solo existen en la vista del admin: los botones se
+  // generan dentro de la rama `iAmAdmin ?`.
+  assert.match(maldia, /const tools = iAmAdmin \? `/, 'las herramientas son solo del admin');
+  assert.match(maldia, /data-reply-idx="\$\{idx\}"/);
+  assert.match(maldia, /data-delete-idx="\$\{idx\}"/);
+
+  // Borrar cubre las dos fuentes: respuestas en content y notas en la fila de
+  // ella, con lápida para que su copia local no la resucite.
+  assert.match(service, /async function deleteMaldiaMessage\(message\) \{\s*\r?\n\s*await requireAdmin\(\);/);
+  assert.match(service, /type: MALDIA_NOTES_TYPE, data: remaining/);
+  assert.match(service, /deleted: \[\.\.\.thread\.deleted, key\]/);
+  assert.match(service, /deleteMaldiaMessage,/);
+});
+
+test('Mal Día: las notas viejas del admin entran en la conversación', async () => {
+  const service = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
+
+  // Las notas que él escribió antes de que existiera el chat estaban en su
+  // propia fila de user_progress, que ella no puede leer. Se copian al hilo.
+  assert.match(service, /const ownNotes = myId \? allNotes\.filter\(n => n\.userId && n\.userId === myId\) : \[\];/);
+  assert.match(service, /messages: \[\s*\r?\n\s*\.\.\.thread\.messages,/,
+    'la copia conserva las respuestas que ya hubiera');
+  assert.match(service, /let maldiaLegacyImportTried = false;/, 'la copia se intenta una sola vez');
 });
 
 test('el catálogo de Open When vive en un módulo sin dependencias de UI', async () => {

@@ -146,6 +146,23 @@ Las playlists históricas con `created_by IS NULL` no se reasignan automáticame
 - No promete «visto» en ningún caso. Un acuse prueba que el aviso llegó y se
   mostró; que se haya leído no lo sabe nadie (`seen_at` no existe a propósito).
 
+**`sql/026_rls_hardening.sql`**
+
+- El trigger de perfiles solo cubría `UPDATE`: un usuario autenticado **sin**
+  fila de perfil podía insertarse la suya con `role = 'admin'`. Ahora cubre
+  también `INSERT` y solo deja crear perfiles normales a quien no es admin.
+- Fija el `search_path` de `handle_new_user()` (era la única función
+  `SECURITY DEFINER` sin él) y retira `EXECUTE` a PUBLIC de las funciones de
+  trigger y de mantenimiento: PostgREST las exponía como RPC.
+- Quita `TRUNCATE`, `REFERENCES` y `TRIGGER` a `anon` y `authenticated`. No los
+  usa PostgREST y `TRUNCATE` se salta RLS.
+- Las políticas de lectura de Storage eran `TO public`: con la anon key
+  —que viaja en el bundle— cualquiera podía **listar** las fotos, memes y
+  audios del bucket y quedarse con los nombres de archivo. Pasan a
+  `TO authenticated` con `is_enabled()`. El bucket sigue público: las URLs
+  directas de las imágenes se sirven igual que antes.
+- No toca datos ni tablas. Se puede re-ejecutar.
+
 ---
 
 ## 2. Variables de entorno

@@ -241,6 +241,34 @@ function monthLabel(key) {
   return `${MONTHS[month - 1] || month} ${year}`;
 }
 
+/**
+ * Todos los meses del calendario, en orden y sin huecos: desde el primer mes
+ * con contenido (o el actual, si el contenido empieza más adelante) hasta el
+ * último con contenido o el actual, lo que sea más tardío. Antes solo existían
+ * los meses que tenían regalos, así que un mes vacío partía la navegación: las
+ * flechas saltaban de un mes con contenido al siguiente y el mes real
+ * desaparecía. Ahora el calendario avanza mes a mes, haya regalos o no.
+ */
+function monthKeys() {
+  const keys = Object.keys(catalog?.months || {}).sort();
+  const current = monthKeyOf(todayISO());
+
+  // Se abarcan años completos: desde enero del año del primer contenido (o del
+  // actual, si es anterior) hasta diciembre del año del último contenido (o del
+  // actual). Así siempre se puede seguir avanzando, aunque el mes siguiente no
+  // tenga ni un regalo, y también volver atrás por meses vacíos.
+  const first = keys.length && keys[0] < current ? keys[0] : current;
+  const last = keys.length && keys[keys.length - 1] > current ? keys[keys.length - 1] : current;
+  const startYear = Number(first.slice(0, 4));
+  const endYear = Number(last.slice(0, 4));
+
+  const out = [];
+  for (let year = startYear; year <= endYear; year++) {
+    for (let month = 1; month <= 12; month++) out.push(`${year}-${pad(month)}`);
+  }
+  return out;
+}
+
 function prettyDate(dateStr) {
   const [year, month, day] = dateStr.split('-').map(Number);
   const weekday = new Date(year, month - 1, day).getDay();
@@ -469,14 +497,12 @@ export function CalendarioPage(router) {
     if (!host) return;
     page.querySelector('#calDay')?.removeAttribute('hidden');
 
-    const months = Object.keys(catalog?.months || {}).sort();
-    if (!months.length) {
-      host.innerHTML = '';
-      return;
-    }
+    // Meses reales, no solo los que tienen regalos: un mes vacío también se
+    // pinta (con sus días) y se puede recorrer con las flechas.
+    const months = monthKeys();
     if (!months.includes(view.monthKey)) {
-      const past = months.filter(m => m <= monthKeyOf(todayISO()));
-      view.monthKey = past.length ? past[past.length - 1] : months[0];
+      const current = monthKeyOf(todayISO());
+      view.monthKey = months.includes(current) ? current : months[0];
       if (!months.includes(monthKeyOf(selectedDay.value))) {
         selectedDay.value = `${view.monthKey}-${pad(Math.min(Number(selectedDay.value.slice(-2)), daysInMonth(...view.monthKey.split('-').map(Number))))}`;
       }
@@ -637,7 +663,7 @@ export function CalendarioPage(router) {
   }
 
   function shiftPeriod(delta) {
-    const months = Object.keys(catalog?.months || {}).sort();
+    const months = monthKeys();
     if (!months.length) return;
 
     if (view.mode === CALENDAR_VIEW.MONTH) {
