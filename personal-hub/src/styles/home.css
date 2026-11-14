@@ -503,3 +503,208 @@
   height: 5px;
 }
 
+/* ==========================================
+   ATAJOS RÁPIDOS — Mal día y Open When
+   ========================================== */
+.home-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-10);
+  margin-top: var(--sp-12);
+}
+
+.home-shortcut {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  min-width: 0;
+  padding: var(--sp-10) var(--sp-12);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-s);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), transform 0.12s ease;
+}
+
+.home-shortcut:hover { border-color: var(--primary-softer); }
+.home-shortcut:active { transform: scale(0.98); }
+
+.home-shortcut__ic {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.home-shortcut__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.home-shortcut__body b {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.home-shortcut__body small {
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-shortcut__chev {
+  flex: none;
+  display: flex;
+  color: var(--text-4);
+}
+
+/* ==========================================
+   ESTÁS VIENDO — recuento rápido de series
+   ========================================== */
+.home-watch__list {
+  display: flex;
+  gap: var(--sp-10);
+  overflow-x: auto;
+  padding-bottom: var(--sp-4);
+  scrollbar-width: thin;
+}
+
+.home-watch {
+  flex: 0 0 auto;
+  width: 252px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-8);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-s);
+}
+
+.home-watch__cover {
+  width: 46px;
+  height: 64px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.home-watch__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-watch__fallback { font-size: 20px; opacity: 0.75; }
+
+.home-watch__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.home-watch__title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-watch__meta {
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-watch__meta em { font-style: normal; font-weight: 500; color: var(--text-3); }
+
+.home-watch__bar {
+  display: block;
+  height: 4px;
+  margin-top: 2px;
+  border-radius: var(--r-full);
+  background: var(--border-soft);
+  overflow: hidden;
+}
+
+.home-watch__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.home-watch__ctrl {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.home-watch__btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-watch__btn:hover:not(:disabled) { color: var(--primary); background: var(--primary-soft); }
+.home-watch__btn:disabled { opacity: 0.4; cursor: default; }
+
+.home-watch__btn--add {
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--on-accent, #fff);
+}
+
+.home-watch__btn--add:hover:not(:disabled) {
+  background: var(--primary-2);
+  color: var(--on-accent, #fff);
+}
+
+@media (max-width: 480px) {
+  .home-shortcuts { grid-template-columns: 1fr; }
+  .home-watch { width: 232px; }
+}
+
+@media (min-width: 768px) {
+  .home-watch { width: 272px; }
+}
+

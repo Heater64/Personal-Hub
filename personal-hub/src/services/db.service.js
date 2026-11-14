@@ -1409,6 +1409,54 @@ async function getAllGiftResponses() {
 }
 
 // ==========================================
+// SERIES — progreso de la cuenta
+// Una fila por usuario en user_progress (type='series_progress') con todos
+// los capítulos vistos, para que el avance viaje entre dispositivos. La copia
+// local sigue siendo la caché y la red de seguridad sin conexión.
+// ==========================================
+
+const SERIES_PROGRESS_TYPE = 'series_progress';
+
+/** Progreso de series del usuario ({ [itemId]: { watched: [...] } }). */
+async function getSeriesProgress() {
+  const userId = await getCurrentUserId();
+  if (!userId || !isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('data')
+      .eq('user_id', userId)
+      .eq('type', SERIES_PROGRESS_TYPE)
+      .maybeSingle();
+    if (error && error.code !== 'PGRST116') throw error;
+    const value = data?.data;
+    return value && typeof value === 'object' ? value : null;
+  } catch (err) {
+    console.warn('Error loading series progress:', err);
+    return null;
+  }
+}
+
+/** Sube el progreso completo del usuario (una fila por cuenta). */
+async function saveSeriesProgress(all) {
+  const userId = await getCurrentUserId();
+  if (!userId || !isSupabaseConfigured()) return { synced: false };
+  try {
+    const { error } = await supabase
+      .from('user_progress')
+      .upsert(
+        { user_id: userId, type: SERIES_PROGRESS_TYPE, data: all, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,type' }
+      );
+    if (error) throw error;
+    return { synced: true };
+  } catch (err) {
+    console.warn('Error saving series progress:', err);
+    return { synced: false };
+  }
+}
+
+// ==========================================
 // MAL DÍA NOTES — notas que la usuaria deja para el Admin
 // Mismo patrón que gift_responses: localStorage por usuario +
 // sincronización con user_progress (type='maldia_notes').
@@ -1564,6 +1612,206 @@ async function getAllMaldiaNotes() {
 }
 
 // ==========================================
+// MAL DÍA — LA CONVERSACIÓN
+// Las notas de ella se guardan en su fila de user_progress (arriba).
+// Las respuestas del admin van a una fila de `content`, porque la RLS de
+// user_progress solo deja leer la fila propia (salvo al admin) y él tiene
+// que poder escribir sin tocar la fila de otra cuenta.
+// ==========================================
+
+const MALDIA_THREAD_ID = 'maldia_conversacion';
+
+/** Identidad estable de un mensaje (id propio o fecha + texto). */
+function maldiaMessageKey(m) {
+  return String(m?.id || `${m?.createdAt || ''}|${m?.text || ''}`);
+}
+
+/** Fila del hilo: respuestas del admin + claves de notas borradas. */
+async function readMaldiaThread() {
+  let data = null;
+  try { data = await loadContent(MALDIA_THREAD_ID, { messages: [], deleted: [] }); }
+  catch { data = null; }
+  return {
+    messages: Array.isArray(data?.messages) ? data.messages : [],
+    deleted: Array.isArray(data?.deleted) ? data.deleted.map(String) : []
+  };
+}
+
+/** Respuestas del admin, en orden cronológico. */
+function mapMaldiaReplies(messages) {
+  return (Array.isArray(messages) ? messages : [])
+    .filter(m => m && String(m.text || '').trim())
+    .map(m => ({
+      key: maldiaMessageKey(m),
+      id: m.id || '',
+      text: String(m.text),
+      createdAt: m.createdAt || '',
+      email: m.email || '',
+      replyTo: m.replyTo && String(m.replyTo.text || '').trim()
+        ? { text: String(m.replyTo.text), author: String(m.replyTo.author || '') }
+        : null,
+      fromAdmin: true
+    }));
+}
+
+async function getMaldiaReplies() {
+  const { messages } = await readMaldiaThread();
+  return mapMaldiaReplies(messages);
+}
+
+/**
+ * Respuesta del admin dentro de la conversación. `content` se lee desde
+ * cualquier sesión, así que ella la ve sin depender de su fila de
+ * user_progress. Solo el admin puede escribir aquí (RLS + requireAdmin).
+ * `replyTo` cita el mensaje concreto al que contesta.
+ */
+async function saveMaldiaReply(text, replyTo = null) {
+  const clean = String(text || '').trim();
+  if (!clean) throw new Error('Escribe una respuesta antes de enviar.');
+
+  let email = '';
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    email = user?.email || '';
+  } catch { /* sin sesión */ }
+
+  const entry = { id: generateId(), text: clean, createdAt: new Date().toISOString(), email };
+  if (replyTo && String(replyTo.text || '').trim()) {
+    entry.replyTo = {
+      text: String(replyTo.text).trim().slice(0, 140),
+      author: String(replyTo.author || '').slice(0, 40)
+    };
+  }
+
+  const thread = await readMaldiaThread();
+  await saveContent(MALDIA_THREAD_ID, {
+    messages: [...thread.messages, entry],
+    deleted: thread.deleted
+  });
+  return { ...entry, key: entry.id, replyTo: entry.replyTo || null, fromAdmin: true, synced: true };
+}
+
+/**
+ * Borra un mensaje de la conversación (solo admin). Las respuestas viven en
+ * `content`; las notas de ella, en su fila de user_progress. Al borrar una
+ * nota se guarda su clave en `deleted`: sin esa lápida, la copia local del
+ * dispositivo de ella la resucitaría en la siguiente lectura.
+ */
+async function deleteMaldiaMessage(message) {
+  await requireAdmin();
+
+  const key = maldiaMessageKey(message);
+  if (!key || key === '|') throw new Error('No se sabe qué mensaje borrar.');
+
+  const thread = await readMaldiaThread();
+
+  if (message?.fromAdmin) {
+    await saveContent(MALDIA_THREAD_ID, {
+      messages: thread.messages.filter(m => maldiaMessageKey(m) !== key),
+      deleted: thread.deleted
+    });
+    return true;
+  }
+
+  const userId = message?.userId;
+  if (!userId) throw new Error('No se puede borrar: falta saber de quién es la nota.');
+
+  const { data, error } = await supabase
+    .from('user_progress')
+    .select('data')
+    .eq('user_id', userId)
+    .eq('type', MALDIA_NOTES_TYPE)
+    .maybeSingle();
+  if (error) throw new Error(`No se pudo leer la nota: ${error.message}`);
+
+  const notes = Array.isArray(data?.data) ? data.data : [];
+  const remaining = notes.filter(n => maldiaMessageKey(n) !== key);
+  const { error: writeError } = await supabase
+    .from('user_progress')
+    .upsert(
+      { user_id: userId, type: MALDIA_NOTES_TYPE, data: remaining, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,type' }
+    );
+  if (writeError) throw new Error(`No se pudo borrar la nota: ${writeError.message}`);
+
+  if (!thread.deleted.includes(key)) {
+    await saveContent(MALDIA_THREAD_ID, {
+      messages: thread.messages,
+      deleted: [...thread.deleted, key]
+    });
+  }
+  return true;
+}
+
+// Las notas que el admin escribió antes de que existiera la conversación se
+// copian al hilo una sola vez por sesión de página.
+let maldiaLegacyImportTried = false;
+
+/**
+ * La conversación entera, de lo más antiguo a lo más reciente: sus notas
+ * (todas si es admin, solo las suyas si es ella) y las respuestas del admin.
+ */
+async function getMaldiaConversation() {
+  const isAdmin = auth.isAdmin();
+  const thread = await readMaldiaThread();
+  const [notesRes] = await Promise.allSettled([
+    isAdmin ? getAllMaldiaNotes() : getMyMaldiaNotes()
+  ]);
+  const allNotes = notesRes.status === 'fulfilled' && Array.isArray(notesRes.value)
+    ? notesRes.value
+    : [];
+
+  // Las notas escritas con la cuenta del admin son mensajes suyos, no notas
+  // de ella: van al hilo para que las dos cuentas las lean igual.
+  const myId = isAdmin ? await getCurrentUserId() : '';
+  const ownNotes = myId ? allNotes.filter(n => n.userId && n.userId === myId) : [];
+  const deleted = new Set(thread.deleted);
+
+  const notes = allNotes
+    .filter(n => !ownNotes.includes(n))
+    .filter(n => !deleted.has(maldiaMessageKey(n)))
+    .map(n => ({ ...n, key: maldiaMessageKey(n), replyTo: null, fromAdmin: false }));
+
+  const replies = mapMaldiaReplies(thread.messages).filter(r => !deleted.has(r.key));
+
+  const legacy = ownNotes
+    .filter(n => String(n.text || '').trim())
+    .filter(n => !deleted.has(maldiaMessageKey(n)))
+    .filter(n => !replies.some(r => `${r.createdAt}|${r.text}` === `${n.createdAt}|${n.text}`))
+    .map(n => ({
+      key: maldiaMessageKey(n),
+      text: String(n.text || ''),
+      createdAt: n.createdAt || '',
+      email: n.email || '',
+      replyTo: null,
+      fromAdmin: true
+    }));
+
+  if (legacy.length && !maldiaLegacyImportTried) {
+    maldiaLegacyImportTried = true;
+    try {
+      await saveContent(MALDIA_THREAD_ID, {
+        messages: [
+          ...thread.messages,
+          ...legacy.map(l => ({ text: l.text, createdAt: l.createdAt, email: l.email }))
+        ],
+        deleted: thread.deleted
+      });
+    } catch { /* si no se puede, se quedan solo en la vista del admin */ }
+  }
+
+  const seen = new Set();
+  return [...notes, ...replies, ...legacy]
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+    .filter(m => {
+      const idea = `${m.createdAt}|${m.text}`;
+      if (seen.has(idea)) return false;
+      seen.add(idea);
+      return true;
+    });
+}
+
+// ==========================================
 // FORMAT HELPERS
 // ==========================================
 
@@ -1615,6 +1863,7 @@ export const db = {
   getNews, saveNews,
   getSeries, saveSeries,
   getOpenWhenLetters, saveOpenWhenLetters,
+  getSeriesProgress, saveSeriesProgress,
   getMaldiaFrases, getMaldiaMensajes, saveMaldiaFrases, saveMaldiaMensajes,
   logActivity, getActivity, formatAction, isKnownAction,
   trackVisit, getAnalytics, getPageVisits,
@@ -1622,5 +1871,6 @@ export const db = {
   uploadAvatar, uploadGalleryPhotos, uploadMemes, uploadAudios,
   saveGiftResponse, getMyGiftResponses, getAllGiftResponses,
   saveMaldiaNote, getMyMaldiaNotes, getAllMaldiaNotes,
+  saveMaldiaReply, getMaldiaReplies, getMaldiaConversation, deleteMaldiaMessage,
   escapeHtml, generateId, checkConnection, isSupabaseConfigured
 };

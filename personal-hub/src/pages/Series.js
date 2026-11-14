@@ -15,7 +15,8 @@ import {
   loadCatalog, saveCatalog, loadPodio, savePodio,
   loadFavorites, saveFavorites, loadProgressFor, saveProgressFor,
   createId, getSeasons, getTotal, getCompletedCount, getPercent,
-  getStatusText, detectGenres, typeLabel, deleteCatalogItem, playUrl
+  getStatusText, detectGenres, typeLabel, deleteCatalogItem, playUrl,
+  hydrateProgress
 } from '../services/seriesData.js';
 import { seasonEditorHTML, collectSeasons, emptySeasonHTML, bindSeasonEditorEvents } from '../services/seriesEditor.js';
 import { isValidUrlField } from '../utils/format.js';
@@ -46,6 +47,8 @@ async function loadData() {
   catalog = await loadCatalog();
   podioData = loadPodio();
   favorites = loadFavorites();
+  // Progreso por cuenta: lo visto en otro dispositivo llega antes de pintar.
+  await hydrateProgress().catch(() => { /* sin red: se queda lo local */ });
 }
 
 async function saveData() { await saveCatalog(catalog); }

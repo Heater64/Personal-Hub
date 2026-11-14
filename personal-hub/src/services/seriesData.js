@@ -126,12 +126,96 @@ export function getContinueWatching() {
   return out;
 }
 
-export function saveProgressFor(itemId, data) {
+function readAllProgress() {
   try {
     const all = JSON.parse(localStorage.getItem(PROGRESS_KEY()) || '{}');
-    all[itemId] = data;
-    localStorage.setItem(PROGRESS_KEY(), JSON.stringify(all));
-  } catch { /* ignore */ }
+    return all && typeof all === 'object' ? all : {};
+  } catch { return {}; }
+}
+
+function writeAllProgress(all) {
+  try { localStorage.setItem(PROGRESS_KEY(), JSON.stringify(all)); } catch { /* cuota llena: ignorar */ }
+}
+
+// Un solo temporizador: si se marcan varios capítulos seguidos se sube el
+// progreso completo una vez, no una por clic.
+let progressPushTimer = null;
+
+/** Sube el progreso completo de la cuenta (una fila por usuario en Supabase). */
+function scheduleProgressPush() {
+  if (progressPushTimer) clearTimeout(progressPushTimer);
+  progressPushTimer = setTimeout(() => {
+    progressPushTimer = null;
+    db.saveSeriesProgress(readAllProgress()).catch(() => { /* sin red: queda local */ });
+  }, 500);
+}
+
+/**
+ * Trae el progreso de la cuenta desde Supabase y lo mezcla con el local:
+ * lo remoto manda por título (es lo último que se vio en otro dispositivo) y
+ * lo que solo existe aquí (sin conexión) se conserva y se vuelve a subir.
+ * Sin sesión o sin Supabase devuelve lo local tal cual.
+ */
+export async function hydrateProgress() {
+  const local = readAllProgress();
+  const remote = await db.getSeriesProgress();
+  if (!remote) {
+    // Primera vez de esta cuenta en la nube: se sube lo que ya hubiera aquí.
+    if (Object.keys(local).length) scheduleProgressPush();
+    return local;
+  }
+  const merged = { ...local, ...remote };
+  writeAllProgress(merged);
+  if (JSON.stringify(local) !== JSON.stringify(merged)) scheduleProgressPush();
+  return merged;
+}
+
+export function saveProgressFor(itemId, data) {
+  const all = readAllProgress();
+  all[itemId] = data;
+  writeAllProgress(all);
+  scheduleProgressPush();
+}
+
+/**
+ * Series empezadas (con algún capítulo visto), incluidas las completadas.
+ * Devuelve [{ item, watched, total, percent }]; las que siguen en marcha van
+ * primero y las completadas al final.
+ */
+export function getStartedSeries() {
+  const catalog = getCatalogSync();
+  if (!catalog.length) return [];
+  const all = readAllProgress();
+  const out = [];
+  for (const [id, d] of Object.entries(all)) {
+    const item = catalog.find(c => String(c.id) === String(id));
+    if (!item || item.tipo !== 'serie') continue;
+    const total = getTotal(item);
+    const watched = Math.min(Array.isArray(d?.watched) ? d.watched.length : 0, total);
+    if (total > 0 && watched > 0) {
+      out.push({ item, watched, total, percent: Math.round((watched / total) * 100) });
+    }
+  }
+  const done = (x) => (x.watched >= x.total ? 1 : 0);
+  return out.sort((a, b) => done(a) - done(b) || String(a.item.titulo || '').localeCompare(String(b.item.titulo || ''), 'es'));
+}
+
+/**
+ * Suma (+1) o resta (−1) un capítulo visto a una serie, con el mismo modelo
+ * acumulativo que la sección: el progreso es 1..N, así que marcar el siguiente
+ * deja todos los anteriores vistos. Devuelve { watched, total } o null.
+ */
+export function bumpWatched(itemId, delta = 1) {
+  const item = getCatalogSync().find(c => String(c.id) === String(itemId));
+  if (!item) return null;
+  const total = getTotal(item);
+  if (total <= 0) return null;
+  const p = loadProgressFor(itemId);
+  const done = Array.isArray(p.watched) ? Math.min(p.watched.length, total) : 0;
+  const next = Math.max(0, Math.min(total, done + (delta > 0 ? 1 : -1)));
+  const watched = Array.from({ length: next }, (_, i) => i + 1);
+  saveProgressFor(itemId, { ...p, watched });
+  return { watched: next, total };
 }
 
 export function createId() {

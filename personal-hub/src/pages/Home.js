@@ -12,7 +12,7 @@ import { LETTERS } from '../data/openwhen.data.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userPrefKey, migrateUserPref, getUserPref, setUserPref } from '../utils/userStorage.js';
 import { hourInSpain, todayISO } from '../utils/format.js';
-import { getContinueWatching, getCatalogSync } from '../services/seriesData.js';
+import { getContinueWatching, getCatalogSync, getStartedSeries, hydrateProgress, bumpWatched } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
 import { daysSinceAnniversary, loadSpecialDates, nextSpecialDate } from '../utils/specialDates.js';
 import { maybeShowSpecialEvent, previewSpecialEventSheet } from '../components/SpecialEventSheet.js';
@@ -276,6 +276,70 @@ function tileSong(song) {
   `;
 }
 
+/** Atajos directos a las dos pantallas de consuelo. */
+function shortcutsHTML() {
+  return `
+    <div class="home-shortcuts">
+      <button class="home-shortcut" type="button" data-route="/maldia">
+        <span class="home-shortcut__ic">${icon('heart-handshake', 18)}</span>
+        <span class="home-shortcut__body">
+          <b>Mal día</b>
+          <small>Un abrazo cuando lo necesites</small>
+        </span>
+        <span class="home-shortcut__chev">${icon('chev', 18)}</span>
+      </button>
+      <button class="home-shortcut" type="button" data-route="/openwhen">
+        <span class="home-shortcut__ic">${icon('mail', 18)}</span>
+        <span class="home-shortcut__body">
+          <b>Open When</b>
+          <small>Cartas para cuando toque</small>
+        </span>
+        <span class="home-shortcut__chev">${icon('chev', 18)}</span>
+      </button>
+    </div>
+  `;
+}
+
+/** Tarjeta de una serie empezada: portada, recuento y + / −. */
+function watchCardHTML(c) {
+  const id = escapeHtml(c.item.id);
+  const title = escapeHtml(c.item.titulo || 'Serie');
+  const completed = c.watched >= c.total;
+  return `
+    <article class="home-watch">
+      <button class="home-watch__cover" type="button" data-route="/series?id=${encodeURIComponent(c.item.id)}" aria-label="Abrir ${title}">
+        ${c.item.portada ? `<img src="${escapeHtml(c.item.portada)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <span class="home-watch__fallback" style="display:${c.item.portada ? 'none' : 'flex'}">🎬</span>
+      </button>
+      <div class="home-watch__body">
+        <span class="home-watch__title">${title}</span>
+        <span class="home-watch__meta">${completed ? `Completa · ${c.total} eps` : `Ep. ${c.watched} <em>de ${c.total}</em>`}</span>
+        <span class="home-watch__bar"><span style="width:${Math.max(c.percent, 3)}%"></span></span>
+      </div>
+      <div class="home-watch__ctrl">
+        <button type="button" class="home-watch__btn" data-watch-step="-1" data-watch-item="${id}"
+          aria-label="Quitar un episodio a ${title}"${c.watched > 0 ? '' : ' disabled'}>${icon('minus', 16)}</button>
+        <button type="button" class="home-watch__btn home-watch__btn--add" data-watch-step="1" data-watch-item="${id}"
+          aria-label="Añadir un episodio a ${title}"${completed ? ' disabled' : ''}>${icon('plus', 16)}</button>
+      </div>
+    </article>
+  `;
+}
+
+/** Sección "Estás viendo": solo aparece si hay alguna serie empezada. */
+function watchSectionHTML() {
+  const list = getStartedSeries();
+  if (!list.length) return '';
+  return `
+    <section class="home-watch-section" aria-label="Series que estás viendo">
+      <h2 class="section-title">Estás viendo
+        <button class="link" type="button" data-route="/series">Ver series</button>
+      </h2>
+      <div class="home-watch__list">${list.map(watchCardHTML).join('')}</div>
+    </section>
+  `;
+}
+
 // ==========================================
 // MAIN
 // ==========================================
@@ -326,6 +390,10 @@ export function HomePage(router) {
 
     <div class="home-stats">${todayCards()}</div>
 
+    ${shortcutsHTML()}
+
+    <div id="homeWatchSlot">${watchSectionHTML()}</div>
+
     <h2 class="section-title">Destacados de hoy
       <button class="link" type="button" data-route="/rincon">Ver el Rincón</button>
     </h2>
@@ -357,6 +425,39 @@ export function HomePage(router) {
     const target = event.target.closest('[data-route]');
     if (target && page.contains(target)) router.navigate(target.dataset.route);
   });
+
+  // + / − de "Estás viendo": guarda el capítulo y repinta la sección en el acto.
+  const watchSlot = page.querySelector('#homeWatchSlot');
+  page.addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-watch-step]');
+    if (!btn || !page.contains(btn)) return;
+    const res = bumpWatched(btn.dataset.watchItem, Number(btn.dataset.watchStep));
+    if (res && watchSlot) watchSlot.innerHTML = watchSectionHTML();
+  });
+
+  // La tarjeta "Seguir viendo" de Destacados también refleja el progreso
+  // que acaba de llegar de otro dispositivo.
+  function refreshContinueTile() {
+    const tile = page.querySelector('[data-poster-rotate]');
+    if (!tile) return;
+    const first = getContinueWatching()[0];
+    if (!first) return;
+    const t = tile.querySelector('[data-role="title"]');
+    const s = tile.querySelector('[data-role="sub"]');
+    const bar = tile.querySelector('[data-role="bar"]');
+    if (t) t.textContent = first.item.titulo;
+    if (s) s.textContent = `Ep. ${first.watched} de ${first.total} · ${first.percent}%`;
+    if (bar) bar.style.width = `${Math.max(first.percent, 4)}%`;
+  }
+
+  // Progreso de la cuenta: lo visto en otro dispositivo llega después del
+  // primer pintado, así que las tarjetas se repintan cuando termina.
+  hydrateProgress()
+    .then(() => {
+      if (watchSlot) watchSlot.innerHTML = watchSectionHTML();
+      refreshContinueTile();
+    })
+    .catch(() => { /* sin red: se queda lo local */ });
 
   // Rotación de portadas (10s) cuando no hay nada que seguir viendo
   const rotateEl = page.querySelector('[data-poster-rotate]');

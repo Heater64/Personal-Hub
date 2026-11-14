@@ -1,31 +1,13 @@
 /* ==========================================
    Personal Hub v2 — Mal Día Page
-   Consuelo, frases, recuerdos y apoyo
+   Consuelo y conversación, como un chat
    ========================================== */
 
 import { h, icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { db } from '../services/db.service.js';
 import { onContentChange } from '../services/realtime.service.js';
-import { userPrefKey } from '../utils/userStorage.js';
 import { userStore } from '../stores/user.store.js';
 import { notifyAdminOfNote } from '../services/notifications.service.js';
-
-const PHRASES = [
-  "Respira. No tienes que arreglarlo todo ahora mismo. Primero: agua, aire y un abrazo.",
-  "Estás aquí, y eso ya es suficiente. Un día más, un paso más. Yo te veo, y eres increíble.",
-  "No necesitas demostrar nada a nadie. Solo a ti misma. Y si puedes, sonreír un poquito.",
-  "Eres más fuerte de lo que crees, más bonita de lo que piensas y más querida de lo que imaginas.",
-  "Hoy puede que no sea fácil, pero mañana será otro día. Yo seguiré estando aquí para ti.",
-  "Tu misión ahora: beber agua, respirar hondo y recordar que te quiero muchísimo.",
-  "No tienes que poder con todo. Permítete descansar. Yo te apaño el resto.",
-  "Eres mi persona favorita en este planeta. No lo olvides.",
-  "Aunque hoy sea gris, recuerda que los días bonitos también existen y volverán.",
-  "Tómate un minuto para ti. Cierra los ojos. Respira. Yo cuido de ti.",
-  "Eres única, especial e irrepetible. No hay nadie como tú.",
-  "Eres como una flor que florece incluso en invierno.",
-  "Eres el mejor descubrimiento de mi vida.",
-  "Incluso sin saberlo, haces mi mundo más bonito.",
-];
 
 // Ciclo de respiración: 4 fases con duración (ms) y escala del círculo
 const BREATH_PHASES = [
@@ -52,24 +34,21 @@ export function MalDiaPage(router) {
     return wrap.firstElementChild;
   };
 
-  // Frases gestionables desde el Admin (tab Mal Día) con fallback a las estáticas
-  let frases = PHRASES.slice();
-  let phraseIdx = 0;            // frase visible actualmente
-  let favPhrases = new Set();   // frases favoritas (texto, user-scoped)
   let isMusicPlaying = false;
   let audioPlayer = null;
   let breathingInterval = null;
   let breathingRunning = false;
   let onKeyDown = null;
   let notesOff = null;   // suscripción al rol de usuario (sección de notas)
+  let threadItems = [];  // mensajes pintados ahora mismo (para responder/borrar)
+  let replyTarget = null; // mensaje citado en la respuesta que se está escribiendo
 
-  // Favoritas, por usuario
-  try { favPhrases = new Set(JSON.parse(localStorage.getItem(userPrefKey('maldiaFavs')) || '[]')); } catch { /* vacío */ }
-
-  const offContent = onContentChange(['maldia_frases'], loadAdminContent);
+  // Las respuestas del admin viven en `content`, así que Realtime ya las
+  // empuja a los dos: la conversación se repinta sin pulsar «Actualizar».
+  const offThread = onContentChange(['maldia_conversacion'], () => { renderConversation(); });
 
   page.cleanup = () => {
-    offContent();
+    offThread();
     if (onKeyDown) document.removeEventListener('keydown', onKeyDown);
     if (breathingInterval) { clearInterval(breathingInterval); breathingInterval = null; }
     if (audioPlayer) { audioPlayer.pause(); audioPlayer = null; }
@@ -77,259 +56,277 @@ export function MalDiaPage(router) {
     closeSheets();
   };
 
-  function persistFavs() {
-    try { localStorage.setItem(userPrefKey('maldiaFavs'), JSON.stringify([...favPhrases])); } catch { /* quota */ }
-  }
-
-  // Una frase a la vez, con navegación ‹ › y corazón de favorita
-  function quoteCardHTML() {
-    if (!frases.length) return '<p class="md-quote-empty">Aún no hay frases</p>';
-    const frase = frases[phraseIdx] || frases[0];
-    const fav = favPhrases.has(frase);
-    const single = frases.length === 1;
-    return `
-      <div class="md-quote">
-        <p class="md-quote__text">${escapeHtml(frase)}</p>
-        <div class="md-quote__foot">
-          <div class="md-quote__nav">
-            <button type="button" class="icon-btn" id="quotePrev" aria-label="Frase anterior"${single ? ' disabled' : ''}>${icon('back', 18)}</button>
-            <span class="md-quote__count">${phraseIdx + 1} / ${frases.length}</span>
-            <button type="button" class="icon-btn" id="quoteNext" aria-label="Frase siguiente"${single ? ' disabled' : ''}>${icon('chev', 18)}</button>
-          </div>
-          <button type="button" class="md-fav${fav ? ' is-on' : ''}" data-quote-fav="${phraseIdx}"
-            aria-label="${fav ? 'Quitar de favoritas' : 'Guardar frase'}" aria-pressed="${fav}">${icon('heart', 17)}</button>
-        </div>
-      </div>`;
-  }
-
-  function renderQuoteCard() {
-    const card = page.querySelector('#quoteCard');
-    if (card) card.innerHTML = quoteCardHTML();
-    bindQuoteNav();
-  }
-
-  function bindQuoteNav() {
-    const prev = page.querySelector('#quotePrev');
-    const next = page.querySelector('#quoteNext');
-    prev?.addEventListener('click', () => {
-      phraseIdx = (phraseIdx - 1 + frases.length) % frases.length;
-      renderQuoteCard();
-    });
-    next?.addEventListener('click', () => {
-      phraseIdx = (phraseIdx + 1) % frases.length;
-      renderQuoteCard();
-    });
-  }
-
   // ==========================================
-  // NOTAS RECIBIDAS — solo visibles para el Admin
-  // Mismo origen que "Déjame una nota" (db.getAllMaldiaNotes).
+  // LA CONVERSACIÓN — ambos leen lo del otro
+  // Sus notas vienen de user_progress (todas si es admin, solo las suyas si
+  // es ella) y las respuestas del admin, de `content`.
   // ==========================================
-  function noteWhen(iso) {
+  /** Hora del mensaje, como en cualquier chat (14:32). */
+  function noteClock(iso) {
     if (!iso) return '';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
-    const diff = Date.now() - d.getTime();
-    if (diff < 2 * 60000) return 'ahora mismo';
-    if (diff < 60 * 60000) return `hace ${Math.round(diff / 60000)} min`;
-    if (diff < 24 * 60 * 60000) return `hace ${Math.round(diff / (60 * 60000))} h`;
-    return `${d.toLocaleDateString('es', { day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
+    return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
   }
 
   function noteAuthor(note) {
     const mail = String(note?.email || '');
-    return mail ? mail.split('@')[0] : 'Ella';
+    return mail ? mail.split('@')[0] : 'Princesa🤍';
   }
 
-  function notesHTML(notes) {
-    return notes.map(n => `
-      <article class="md-note-item">
-        <div class="md-note-item__meta">${escapeHtml(noteAuthor(n))}${noteWhen(n.createdAt) ? ` · ${escapeHtml(noteWhen(n.createdAt))}` : ''}</div>
-        <p class="md-note-item__text">${escapeHtml(n.text || '—')}</p>
-      </article>`).join('');
+  /**
+   * Cita el mensaje al que se va a responder (solo admin). Aparece encima del
+   * campo de escribir hasta que se envía o se cancela.
+   */
+  function showReplyTarget(msg) {
+    replyTarget = msg
+      ? {
+        text: String(msg.text || '').slice(0, 140),
+        author: msg.fromAdmin ? 'Peluche🧸' : noteAuthor(msg)
+      }
+      : null;
+    const bar = page.querySelector('#mdThreadReply');
+    const textEl = page.querySelector('#mdThreadReplyText');
+    if (!bar || !textEl) return;
+    if (!replyTarget) {
+      bar.hidden = true;
+      textEl.textContent = '';
+      textEl.title = '';
+      return;
+    }
+    bar.hidden = false;
+    textEl.textContent = `Respondiendo a ${replyTarget.author}: “${replyTarget.text}”`;
+    textEl.title = replyTarget.text;
+    page.querySelector('#mdThreadInput')?.focus();
   }
 
-  async function renderNotes() {
-    const section = page.querySelector('#mdNotesSection');
-    const list = page.querySelector('#mdNotesList');
+  const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+  /** Fecha del separador: Hoy, Ayer o el día con su mes. */
+  function dayLabel(d) {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (dayKey(d) === dayKey(today)) return 'Hoy';
+    if (dayKey(d) === dayKey(yesterday)) return 'Ayer';
+    const opts = { day: 'numeric', month: 'long' };
+    if (d.getFullYear() !== today.getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString('es', opts);
+  }
+
+  /** Burbujas agrupadas por día, con la fecha centrada encima de cada grupo. */
+  function threadHTML(items) {
+    const iAmAdmin = userStore.isAdmin;
+    let currentDay = null;
+    return items.map((m, idx) => {
+      const own = Boolean(m.fromAdmin) === iAmAdmin;
+      const author = m.fromAdmin ? 'Peluche🧸' : noteAuthor(m);
+      const date = m.createdAt ? new Date(m.createdAt) : null;
+      const validDate = date && !Number.isNaN(date.getTime());
+      const when = noteClock(m.createdAt);
+      let divider = '';
+      if (validDate) {
+        const key = dayKey(date);
+        if (key !== currentDay) {
+          currentDay = key;
+          divider = `<p class="md-chat__day"><span>${escapeHtml(dayLabel(date))}</span></p>`;
+        }
+      }
+      // La cita viaja con el mensaje: se ve igual en las dos cuentas.
+      const quote = m.replyTo && m.replyTo.text
+        ? `<blockquote class="md-bubble__quote">${m.replyTo.author ? `<b>${escapeHtml(m.replyTo.author)}</b> ` : ''}${escapeHtml(m.replyTo.text)}</blockquote>`
+        : '';
+      // Responder a un mensaje concreto y borrarlo son solo del admin.
+      const tools = iAmAdmin ? `
+        <span class="md-bubble__tools">
+          <button type="button" class="md-bubble__tool md-bubble__tool--reply" data-reply-idx="${idx}"
+            aria-label="Responder a este mensaje" title="Responder">${icon('back', 12)}</button>
+          <button type="button" class="md-bubble__tool" data-delete-idx="${idx}"
+            aria-label="Eliminar este mensaje" title="Eliminar">${icon('trash', 12)}</button>
+        </span>` : '';
+      return `${divider}
+      <div class="md-bubble ${own ? 'md-bubble--out' : 'md-bubble--in'}">
+        ${own ? '' : `<span class="md-bubble__who">${escapeHtml(author)}</span>`}
+        ${quote}
+        <p class="md-bubble__text">${escapeHtml(m.text || '—')}</p>
+        <span class="md-bubble__meta">${when ? `<span class="md-bubble__time">${escapeHtml(when)}</span>` : ''}${own
+          ? `<span class="md-bubble__tick" aria-label="Enviado">${icon('check', 12)}${icon('check', 12)}</span>`
+          : ''}</span>
+        ${tools}
+      </div>`;
+    }).join('');
+  }
+
+  async function renderConversation() {
+    const section = page.querySelector('#mdThreadSection');
+    const list = page.querySelector('#mdThreadList');
     if (!section || !list) return;
-    // Admin: todas las notas de todas las cuentas.
-    // Usuaria autenticada: solo las suyas, y sin opción de editarlas.
     const isAdmin = userStore.isAdmin;
-    if (!isAdmin && !userStore.isLoggedIn) { section.hidden = true; return; }
+    const compose = page.querySelector('#mdChatCompose');
+    // Sin sesión no hay conversación que enseñar (ni barra para escribir).
+    if (!isAdmin && !userStore.isLoggedIn) {
+      section.hidden = true;
+      if (compose) compose.hidden = true;
+      showReplyTarget(null);
+      return;
+    }
     section.hidden = false;
+    if (compose) compose.hidden = false;
 
-    const label = isAdmin ? 'Notas recibidas' : 'Tus mensajes';
-    section.setAttribute('aria-label', label);
-    const titleEl = page.querySelector('#mdNotesTitle');
-    if (titleEl) titleEl.textContent = label;
-    const subEl = page.querySelector('#mdNotesSub');
+    const subEl = page.querySelector('#mdThreadSub');
     if (subEl) {
       subEl.hidden = false;
       subEl.textContent = isAdmin
-        ? 'Todo lo escrito desde esta sección, de cualquier cuenta.'
-        : 'Solo tú ves estos mensajes. Son de solo lectura: para cambiar algo, envía uno nuevo.';
+        ? 'Todo lo que hemos escrito, en orden. Lo que respondas aquí le llega al momento.'
+        : 'Tú y yo en un mismo sitio. Escríbelo aquí y su respuesta aparecerá aquí mismo.';
     }
-    const countEl = page.querySelector('#mdNotesCount');
-    if (!list.dataset.ready) list.innerHTML = '<p class="md-notes__hint">Cargando mensajes…</p>';
+    const input = page.querySelector('#mdThreadInput');
+    if (input) {
+      input.placeholder = isAdmin
+        ? 'Responde aquí; lo leerá en cuanto entre...'
+        : 'Escríbeme lo que sientas, llegará directo a mí...';
+    }
+    const countEl = page.querySelector('#mdThreadCount');
+    if (!list.dataset.ready) list.innerHTML = '<p class="md-thread__hint">Cargando la conversación…</p>';
 
-    const [res] = await Promise.allSettled([isAdmin ? db.getAllMaldiaNotes() : db.getMyMaldiaNotes()]);
+    const [res] = await Promise.allSettled([db.getMaldiaConversation()]);
     if (!page.contains(section)) return; // la página se cerró mientras cargaba
 
-    const notes = res.status === 'fulfilled' && Array.isArray(res.value) ? res.value : [];
+    const items = res.status === 'fulfilled' && Array.isArray(res.value) ? res.value : [];
+    threadItems = items;
     list.dataset.ready = '1';
-    if (countEl) countEl.textContent = String(notes.length);
-    list.innerHTML = notes.length
-      ? notesHTML(notes.slice(0, 50))
-      : (isAdmin
-        ? '<p class="md-notes__empty">Todavía no hay notas. Las que se escriban en esta sección aparecerán aquí.</p>'
-        : '<p class="md-notes__empty">Aún no has enviado ningún mensaje. Escríbelo arriba y aparecerá aquí.</p>');
+    if (countEl) countEl.textContent = String(items.length);
+    list.innerHTML = items.length
+      ? threadHTML(items)
+      : '<p class="md-thread__empty">Todavía no hay mensajes. El primero que escribas aparecerá aquí.</p>';
+    // Lo último, a la vista (la ventana del chat es la que scrollea).
+    const stream = page.querySelector('#mdChatStream');
+    if (stream) stream.scrollTop = stream.scrollHeight;
   }
 
   function render() {
     page.innerHTML = `
-      <header class="scr-head">
-        <div class="md-head-main">
-          <button type="button" class="icon-btn md-back" data-back aria-label="Volver a Sentimientos">${icon('back', 18)}</button>
-          <div>
-            <h1 class="scr-title">Mal día</h1>
-            <p class="sub">No estás sola. Aquí estoy.</p>
-          </div>
+      <!-- Título de la página: en móvil lo pone la barra superior -->
+      <div class="scr-head md-page-head">
+        <div>
+          <h1 class="scr-title">Mal día</h1>
+          <p class="sub">No estás sola. Aquí estoy.</p>
         </div>
-      </header>
-
-      <!-- Frase del momento -->
-      <section class="md-section">
-        <div id="quoteCard">${quoteCardHTML()}</div>
-        <div class="md-actions">
-          <button type="button" class="btn btn-secondary" id="particlesBtn">${icon('star', 16)} Algo bonito</button>
-          <button type="button" class="btn" id="betterBtn">${icon('heart', 16)} Me siento mejor</button>
-        </div>
-      </section>
-
-      <!-- Música feliz -->
-      <div class="md-music">
-        <button type="button" class="md-music__play" id="musicPlayBtn" aria-label="Reproducir música" aria-pressed="false">${icon('play', 18)}</button>
-        <div class="md-music__body">
-          <b id="musicLabel">Música feliz</b>
-          <div class="md-music__wave" id="musicWave" aria-hidden="true">${'<i></i>'.repeat(14)}</div>
-        </div>
-        <div class="md-music__ctrl">
-          <button type="button" class="icon-btn" id="musicVolBtn" aria-label="Volumen 100%" title="Volumen">${icon('volume', 17)}</button>
-          <input type="range" class="md-music__vol" id="musicVolRange" min="0" max="100" step="1" value="100" aria-label="Volumen" title="Volumen">
-        </div>
-        <audio id="happyAudio" preload="none" loop>
-          <source src="https://res.cloudinary.com/dcsent4fs/video/upload/v1777746763/Zzoilo_Aitana_-_Mon_Amour_Remix_Letra_Lyrics_jrgcjv.m4a" type="audio/mpeg">
-        </audio>
       </div>
 
-      <!-- Nota para mí -->
-      <section class="md-section">
-        <p class="section-title">Déjame una nota</p>
-        <div class="md-note">
-          <input class="input" id="msgInput" type="text" maxlength="300"
-            placeholder="Escríbeme lo que sientas, llegará directo a mí..." aria-label="Escribe una nota para mí" />
-          <button type="button" class="btn" id="msgSendBtn" aria-label="Enviar nota">${icon('send', 17)}</button>
-        </div>
-        <p class="md-note__sent" id="msgSent" hidden>Nota enviada. Llegará directo a mí</p>
-      </section>
-
-      <!-- Mensajes: recibidas (admin) / enviadas por ella (solo lectura) -->
-      <section class="md-section md-notes" id="mdNotesSection" hidden aria-label="Notas recibidas">
-        <div class="md-notes__head">
-          <p class="section-title"><span id="mdNotesTitle">Notas recibidas</span> <span class="md-notes__count" id="mdNotesCount">0</span></p>
-          <button type="button" class="md-notes__refresh" id="mdNotesRefresh">Actualizar</button>
-        </div>
-        <p class="md-notes__sub" id="mdNotesSub" hidden></p>
-        <div class="md-notes__list" id="mdNotesList"></div>
-      </section>
-
-      <!-- Cosas que pueden ayudarte ahora -->
-      <section class="md-section">
-        <p class="section-title">Cosas que pueden ayudarte ahora</p>
-        <div class="md-help">
-          <button type="button" class="md-help__card" data-help="music">
-            <span class="md-help__ic">${icon('music', 20)}</span>
-            <b>Escuchar música</b>
-            <small>Tu playlist feliz</small>
-          </button>
-          <button type="button" class="md-help__card" data-help="recuerdos">
-            <span class="md-help__ic">${icon('image', 20)}</span>
-            <b>Ver recuerdos</b>
-            <small>La galería</small>
-          </button>
-          <button type="button" class="md-help__card" data-help="escribir">
-            <span class="md-help__ic">${icon('pencil', 20)}</span>
-            <b>Escribir</b>
-            <small>Saca lo que sientes</small>
-          </button>
-          <button type="button" class="md-help__card" data-help="respirar">
-            <span class="md-help__ic">${icon('flower', 20)}</span>
-            <b>Respiración guiada</b>
-            <small>Relájate</small>
-          </button>
-          <button type="button" class="md-help__card" data-help="paseo">
-            <span class="md-help__ic">${icon('run', 20)}</span>
-            <b>Dar un paseo</b>
-            <small>A despejar la mente</small>
-          </button>
-        </div>
-      </section>
-
-      <!-- Respiración guiada -->
-      <section class="md-section" id="maldiaBreathing">
-        <div class="md-breathe" id="mdBreathe">
-          <div class="md-breathe__main">
-            <p class="section-title">Respiración guiada</p>
-            <p class="md-breathe__sub">Tómate un momento para ti</p>
-            <div class="md-breathe__circle-wrap">
-              <svg class="md-breathe__ring" viewBox="0 0 140 140" aria-hidden="true">
-                <circle class="md-breathe__ring-bg" cx="70" cy="70" r="64"/>
-                <circle class="md-breathe__ring-fg" id="breatheRing" cx="70" cy="70" r="64"/>
-              </svg>
-              <div class="md-breathe__circle" id="breatheCircle">
-                <span class="md-breathe__phase" id="breathePhase">Inhala</span>
-                <span class="md-breathe__timer" id="breatheTimer">4s</span>
-              </div>
-            </div>
-            <button type="button" class="btn" id="breatheToggle">
-              ${icon('play', 16)}
-              <span id="breatheToggleLabel">Comenzar</span>
-            </button>
+      <div class="md-chat">
+        <header class="md-chat__head">
+          <button type="button" class="md-chat__back" data-back aria-label="Volver a Sentimientos">${icon('back', 20)}</button>
+          <span class="md-chat__avatar" aria-hidden="true">${icon('heart', 18)}</span>
+          <div class="md-chat__who">
+            <b>${userStore.isAdmin ? 'Princesa🤍' : 'Peluche🧸'}</b>
+            <small><i class="md-chat__dot"></i> en línea</small>
           </div>
-          <ol class="md-breathe__steps">
-            ${BREATH_PHASES.map((ph, i) => `
-              <li data-phase="${ph.key}" class="${i === 0 ? 'active' : ''}">
-                <span class="md-breathe__num">${i + 1}</span>
-                ${ph.label}
-              </li>`).join('')}
-          </ol>
+          <div class="md-chat__menu-wrap">
+            <button type="button" class="md-chat__tool" id="mdChatMenuBtn" aria-label="Más opciones"
+              aria-haspopup="menu" aria-expanded="false">${icon('more', 20)}</button>
+            <div class="md-chat__menu" id="mdChatMenu" role="menu" hidden>
+              <button type="button" class="md-chat__menu-item" role="menuitem" id="openBreatheBtn">
+                ${icon('flower', 16)}
+                <span>Respiración guiada</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="md-chat__body">
+          <div class="md-chat__stream" id="mdChatStream">
+            <!-- La conversación: sus notas y las respuestas del admin -->
+            <section class="md-thread" id="mdThreadSection" hidden aria-label="Nuestra conversación">
+              <p class="md-chat__day"><span>Nuestra conversación · <em id="mdThreadCount">0</em></span></p>
+              <p class="md-thread__sub" id="mdThreadSub" hidden></p>
+              <div class="md-thread__list" id="mdThreadList"></div>
+            </section>
+          </div>
+
+          <!-- Bajar / subir en la conversación -->
+          <div class="md-chat__jump">
+            <button type="button" class="md-chat__jumpbtn md-chat__jumpbtn--top" id="mdJumpTop" aria-label="Ir arriba del todo" title="Ir arriba">${icon('chev', 18)}</button>
+            <button type="button" class="md-chat__jumpbtn md-chat__jumpbtn--bottom" id="mdJumpBottom" aria-label="Ir abajo del todo" title="Ir abajo">${icon('chev', 18)}</button>
+          </div>
         </div>
-      </section>
+
+        <!-- Respuestas rápidas + música -->
+        <div class="md-chat__quick">
+          <button type="button" class="md-quick__chip" id="particlesBtn">${icon('star', 14)} Algo bonito</button>
+          <button type="button" class="md-quick__chip" id="betterBtn">${icon('heart', 14)} Me siento mejor</button>
+          <div class="md-audio-pill">
+            <button type="button" class="md-audio__play" id="musicPlayBtn" aria-label="Reproducir música" aria-pressed="false">${icon('play', 15)}</button>
+            <div class="md-audio__body">
+              <span class="md-audio__wave" id="musicWave" aria-hidden="true">${'<i></i>'.repeat(12)}</span>
+              <span class="md-audio__meta">
+                <b id="musicLabel">Música feliz</b>
+                <small id="musicState">en pausa</small>
+              </span>
+            </div>
+            <button type="button" class="md-audio__volbtn" id="musicVolBtn" aria-label="Volumen 100%" title="Volumen">${icon('volume', 15)}</button>
+            <input type="range" class="md-audio__range" id="musicVolRange" min="0" max="100" step="1" value="100" aria-label="Volumen" title="Volumen">
+          </div>
+          <audio id="happyAudio" preload="none" loop>
+            <source src="https://res.cloudinary.com/dcsent4fs/video/upload/v1777746763/Zzoilo_Aitana_-_Mon_Amour_Remix_Letra_Lyrics_jrgcjv.m4a" type="audio/mpeg">
+          </audio>
+        </div>
+
+        <div class="md-chat__reply" id="mdThreadReply" hidden>
+          <span class="md-chat__reply-text" id="mdThreadReplyText"></span>
+          <button type="button" class="md-chat__reply-cancel" id="mdThreadReplyCancel"
+            aria-label="Cancelar la respuesta">${icon('x', 14)}</button>
+        </div>
+
+        <div class="md-chat__compose" id="mdChatCompose">
+          <input class="md-chat__input" id="mdThreadInput" type="text" maxlength="300"
+            placeholder="Escríbeme lo que sientas, llegará directo a mí..." aria-label="Escribe un mensaje" autocomplete="off" />
+          <button type="button" class="md-chat__send" id="mdThreadSend" aria-label="Enviar mensaje">${icon('send', 18)}</button>
+        </div>
+      </div>
+
+      <!-- Respiración guiada: tarjeta flotante desde los 3 puntos -->
+      <div class="md-float" id="mdBreatheLayer" hidden>
+        <div class="md-float__backdrop" data-breathe-close></div>
+        <div class="md-float__card" id="maldiaBreathing" role="dialog" aria-modal="true" aria-labelledby="mdBreatheTitle">
+          <button type="button" class="md-float__close" data-breathe-close aria-label="Cerrar">${icon('x', 18)}</button>
+          <div class="md-breathe md-breathe--float" id="mdBreathe">
+            <div class="md-breathe__main">
+              <p class="section-title" id="mdBreatheTitle">Respiración guiada</p>
+              <p class="md-breathe__sub">Tómate un momento para ti</p>
+              <div class="md-breathe__circle-wrap">
+                <svg class="md-breathe__ring" viewBox="0 0 140 140" aria-hidden="true">
+                  <circle class="md-breathe__ring-bg" cx="70" cy="70" r="64"/>
+                  <circle class="md-breathe__ring-fg" id="breatheRing" cx="70" cy="70" r="64"/>
+                </svg>
+                <div class="md-breathe__circle" id="breatheCircle">
+                  <span class="md-breathe__phase" id="breathePhase">Inhala</span>
+                  <span class="md-breathe__timer" id="breatheTimer">4s</span>
+                </div>
+              </div>
+              <button type="button" class="btn" id="breatheToggle">
+                ${icon('play', 16)}
+                <span id="breatheToggleLabel">Comenzar</span>
+              </button>
+            </div>
+            <ol class="md-breathe__steps">
+              ${BREATH_PHASES.map((ph, i) => `
+                <li data-phase="${ph.key}" class="${i === 0 ? 'active' : ''}">
+                  <span class="md-breathe__num">${i + 1}</span>
+                  ${ph.label}
+                </li>`).join('')}
+            </ol>
+          </div>
+        </div>
+      </div>
     `;
   }
 
   render();
-  bindQuoteNav();
 
-  // Notas recibidas (solo Admin): onChange notifica ya con el estado actual,
-  // así que la sección aparece en cuanto el rol está resuelto.
-  notesOff = userStore.onChange(() => { renderNotes(); });
-  page.querySelector('#mdNotesRefresh')?.addEventListener('click', () => renderNotes());
-
-  // Carga frases gestionadas desde el Admin (fallback silencioso a las
-  // estáticas). También se invoca en tiempo real cuando el Admin las edita.
-  async function loadAdminContent() {
-    const [f] = await Promise.allSettled([db.getMaldiaFrases()]);
-    const frasesAdmin = (f.value || []).filter(x => typeof x === 'string' && x.trim());
-    if (frasesAdmin.length) {
-      frases = frasesAdmin;
-      if (phraseIdx >= frases.length) phraseIdx = 0;
-      renderQuoteCard();
-    }
-  }
-
-  loadAdminContent();
+  // onChange notifica ya con el estado actual, así que la conversación
+  // aparece en cuanto el rol está resuelto.
+  notesOff = userStore.onChange(() => { renderConversation(); });
 
   requestAnimationFrame(() => {
     audioPlayer = document.getElementById('happyAudio');
@@ -338,31 +335,59 @@ export function MalDiaPage(router) {
     page.querySelectorAll('[data-back]').forEach(btn =>
       btn.addEventListener('click', () => router.navigate('/sentimientos')));
 
-    // Favoritas de frases
-    page.addEventListener('click', (e) => {
-      const favBtn = e.target.closest('[data-quote-fav]');
-      if (!favBtn) return;
-      const i = parseInt(favBtn.dataset.quoteFav, 10);
-      const frase = frases[i];
-      if (!frase) return;
-      if (favPhrases.has(frase)) favPhrases.delete(frase);
-      else favPhrases.add(frase);
-      persistFavs();
-      favBtn.classList.toggle('is-fav', favPhrases.has(frase));
-      favBtn.setAttribute('aria-pressed', String(favPhrases.has(frase)));
-      favBtn.innerHTML = icon('heart', 17);
-      toast(favPhrases.has(frase) ? 'Frase guardada' : 'Frase quitada de favoritas');
-    });
-
     // Algo bonito
     document.getElementById('particlesBtn')?.addEventListener('click', () => {
       toast('Te quiero mucho, princesa');
     });
 
+    // Bajar / subir del todo en la conversación
+    const streamEl = document.getElementById('mdChatStream');
+    document.getElementById('mdJumpTop')?.addEventListener('click', () => {
+      streamEl?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    document.getElementById('mdJumpBottom')?.addEventListener('click', () => {
+      if (streamEl) streamEl.scrollTo({ top: streamEl.scrollHeight, behavior: 'smooth' });
+    });
+
+    // Menú de los 3 puntos (solo admin)
+    const menuBtn = document.getElementById('mdChatMenuBtn');
+    const menu = document.getElementById('mdChatMenu');
+    const closeMenu = () => {
+      if (!menu || menu.hidden) return;
+      menu.hidden = true;
+      menuBtn?.setAttribute('aria-expanded', 'false');
+    };
+    menuBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!menu) return;
+      menu.hidden = !menu.hidden;
+      menuBtn.setAttribute('aria-expanded', String(!menu.hidden));
+    });
+    page.addEventListener('click', (e) => {
+      if (!e.target.closest('.md-chat__menu-wrap')) closeMenu();
+    });
+
+    // Respiración guiada: se abre en una tarjeta flotante
+    const breatheLayer = document.getElementById('mdBreatheLayer');
+    const closeBreathing = () => {
+      if (!breatheLayer || breatheLayer.hidden) return;
+      stopBreathing();
+      breatheLayer.hidden = true;
+    };
+    document.getElementById('openBreatheBtn')?.addEventListener('click', () => {
+      closeMenu();
+      if (!breatheLayer) return;
+      breatheLayer.hidden = false;
+      toggleBtn?.focus();
+    });
+    breatheLayer?.querySelectorAll('[data-breathe-close]').forEach(el =>
+      el.addEventListener('click', closeBreathing));
+
     // Música: play/pausa + volumen (botón y deslizador)
     const playBtn = document.getElementById('musicPlayBtn');
     const volBtn = document.getElementById('musicVolBtn');
     const volRange = document.getElementById('musicVolRange');
+    const stateEl = document.getElementById('musicState');
     const VOL_STEPS = [1, 0.66, 0.33, 0];
     let volIdx = 0;
     let volume = 1; // volumen actual (0..1)
@@ -373,7 +398,7 @@ export function MalDiaPage(router) {
       if (volRange) volRange.value = String(Math.round(volume * 100));
       const pct = Math.round(volume * 100);
       volRange?.style.setProperty('--vol-fill', `${pct}%`);
-      volBtn.innerHTML = icon(volume === 0 ? 'muted' : (volume < 1 ? 'volumeLow' : 'volume'), 17);
+      volBtn.innerHTML = icon(volume === 0 ? 'muted' : (volume < 1 ? 'volumeLow' : 'volume'), 15);
       volBtn.setAttribute('aria-label', volume === 0 ? 'Activar volumen' : `Volumen ${pct}%`);
       volBtn.title = volume === 0 ? 'Volumen silenciado' : `Volumen ${pct}%`;
     }
@@ -384,15 +409,15 @@ export function MalDiaPage(router) {
         audioPlayer.pause();
         isMusicPlaying = false;
         document.getElementById('musicWave')?.classList.remove('playing');
-        document.getElementById('musicLabel').textContent = 'Pausada';
-        playBtn.innerHTML = icon('play', 18);
+        if (stateEl) stateEl.textContent = 'en pausa';
+        playBtn.innerHTML = icon('play', 15);
       } else {
         audioPlayer.volume = volume;
         audioPlayer.play().catch(() => {});
         isMusicPlaying = true;
         document.getElementById('musicWave')?.classList.add('playing');
-        document.getElementById('musicLabel').textContent = 'Sonando';
-        playBtn.innerHTML = icon('pause', 18);
+        if (stateEl) stateEl.textContent = 'sonando';
+        playBtn.innerHTML = icon('pause', 15);
       }
       playBtn.setAttribute('aria-pressed', String(isMusicPlaying));
       playBtn.setAttribute('aria-label', isMusicPlaying ? 'Pausar música' : 'Reproducir música');
@@ -407,44 +432,66 @@ export function MalDiaPage(router) {
       setVolume((parseInt(volRange.value, 10) || 0) / 100);
     });
 
-    // Nota para mí (llega al Admin)
-    const msgInput = document.getElementById('msgInput');
-    const msgSent = document.getElementById('msgSent');
+    // Enviar a la conversación. Mismo campo para los dos: ella deja una nota
+    // (user_progress) y él responde (content), y ambos leen la mezcla.
+    const threadInput = document.getElementById('mdThreadInput');
     const sendMsg = async () => {
-      const value = (msgInput?.value || '').trim();
-      if (!value) { toast('Escribe una nota antes de enviar'); return; }
+      const value = (threadInput?.value || '').trim();
+      if (!value) { toast('Escribe un mensaje antes de enviar'); return; }
+      const isAdmin = userStore.isAdmin;
       let saved;
       try {
-        saved = await db.saveMaldiaNote(value);
+        saved = isAdmin
+          ? await db.saveMaldiaReply(value, replyTarget)
+          : await db.saveMaldiaNote(value);
       } catch (err) {
-        toast(err?.message || 'No se pudo enviar la nota');
+        toast(err?.message || 'No se pudo enviar el mensaje');
         return;
       }
-      if (msgInput) msgInput.value = '';
-      // synced=false: la nota solo quedó en este dispositivo (sin sesión o
+      if (threadInput) threadInput.value = '';
+      showReplyTarget(null);
+      // synced=false: el mensaje solo quedó en este dispositivo (sin sesión o
       // sin respuesta del servidor), así que no se promete que llegue.
       const synced = saved?.synced !== false;
-      // Aviso al admin por push (024). Solo si la nota llegó al servidor: si se
-      // quedó en este dispositivo, un aviso que apunte a la base sería un
-      // aviso que abre una lista donde la nota todavía no está.
-      if (synced) notifyAdminOfNote().catch(() => { /* la nota ya está guardada */ });
-      if (synced && msgSent) {
-        msgSent.hidden = false;
-        msgSent.style.animation = 'none';
-        void msgSent.offsetWidth; // reinicia la animación
-        msgSent.style.animation = '';
-      } else if (msgSent) {
-        msgSent.hidden = true;
-      }
-      toast(synced
-        ? 'Nota enviada. Llegará directo a mí'
-        : 'Nota guardada aquí, pero no se pudo sincronizar. Inténtalo más tarde');
-      // Si quien la envía es el Admin (o está viendo la sección como Admin),
-      // la nota recién guardada aparece en la lista sin recargar.
-      renderNotes();
+      // Aviso al admin por push (024), solo para las notas de ella y solo si
+      // llegaron al servidor: un aviso de algo que sigue en el dispositivo
+      // abriría una conversación donde todavía no está.
+      if (synced && !isAdmin) notifyAdminOfNote().catch(() => { /* la nota ya está guardada */ });
+      toast(isAdmin
+        ? 'Respuesta enviada'
+        : (synced ? 'Mensaje enviado. Llegará directo a mí' : 'Guardado aquí, pero no se pudo sincronizar. Inténtalo más tarde'));
+      // Se repinta en el acto: el mensaje propio aparece al final sin recargar.
+      renderConversation();
     };
-    document.getElementById('msgSendBtn')?.addEventListener('click', sendMsg);
-    msgInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMsg(); });
+    document.getElementById('mdThreadSend')?.addEventListener('click', sendMsg);
+    threadInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMsg(); });
+    page.querySelector('#mdThreadReplyCancel')?.addEventListener('click', () => showReplyTarget(null));
+
+    // Responder a un mensaje concreto y borrarlo: delegado en la lista porque
+    // las burbujas se repintan cada vez que llega algo.
+    page.querySelector('#mdThreadList')?.addEventListener('click', async (e) => {
+      const replyBtn = e.target.closest('[data-reply-idx]');
+      if (replyBtn) {
+        const msg = threadItems[parseInt(replyBtn.dataset.replyIdx, 10)];
+        if (msg) showReplyTarget(msg);
+        return;
+      }
+
+      const delBtn = e.target.closest('[data-delete-idx]');
+      if (!delBtn) return;
+      const msg = threadItems[parseInt(delBtn.dataset.deleteIdx, 10)];
+      if (!msg) return;
+      if (!confirm('¿Eliminar este mensaje de la conversación?')) return;
+      try {
+        await db.deleteMaldiaMessage(msg);
+      } catch (err) {
+        toast(err?.message || 'No se pudo eliminar el mensaje');
+        return;
+      }
+      if (replyTarget && replyTarget.text === String(msg.text || '').slice(0, 140)) showReplyTarget(null);
+      toast('Mensaje eliminado');
+      renderConversation();
+    });
 
     // Me siento mejor (gatito) — el vídeo vive en el sheet del sistema
     document.getElementById('betterBtn')?.addEventListener('click', () => {
@@ -456,30 +503,6 @@ export function MalDiaPage(router) {
         });
         body.append(video, h('p', { class: 'md-better__msg' }, 'Siempre estaré aquí para ti mi reina.'));
         return body;
-      });
-    });
-
-    // ==========================================
-    // COSAS QUE PUEDEN AYUDARTE AHORA
-    // ==========================================
-    const breathingEl = document.getElementById('maldiaBreathing');
-    page.querySelectorAll('[data-help]').forEach(card => {
-      card.addEventListener('click', () => {
-        const action = card.dataset.help;
-        if (action === 'music') {
-          router.navigate('/canciones');
-        } else if (action === 'recuerdos') {
-          router.navigate('/galeria');
-        } else if (action === 'escribir') {
-          const inp = document.getElementById('msgInput');
-          inp?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          inp?.focus();
-        } else if (action === 'respirar') {
-          breathingEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          startBreathing();
-        } else if (action === 'paseo') {
-          toast('Sal a dar un paseo. El aire te sentará genial');
-        }
       });
     });
 
@@ -558,9 +581,12 @@ export function MalDiaPage(router) {
       else startBreathing();
     });
 
-    // ESC detiene la respiración (el sheet se cierra solo)
+    // ESC cierra la tarjeta (y detiene la respiración)
     onKeyDown = (e) => {
-      if (e.key === 'Escape') stopBreathing();
+      if (e.key !== 'Escape') return;
+      closeBreathing();
+      closeMenu();
+      stopBreathing();
     };
     document.addEventListener('keydown', onKeyDown);
   });
