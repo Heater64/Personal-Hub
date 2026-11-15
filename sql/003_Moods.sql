@@ -6,6 +6,12 @@
 -- 2. MOODS — Estados de ánimo diarios (datos personales)
 --    REGLA: cada usuario solo su propio historial (o admin)
 -- ==========================================
+-- Nota (selección múltiple): una fila puede guardar VARIAS emociones a la
+-- vez. En ese caso `mood`, `label` y `emoji` llevan la lista unida por «|»
+-- (p. ej. mood = 'triste|cansada') y `score` es la media de sus puntuaciones.
+-- Una fila con una sola emoción se guarda exactamente igual que siempre, así
+-- que no hace falta migrar el histórico. La codificación vive en
+-- personal-hub/src/data/moods.data.js.
 CREATE TABLE IF NOT EXISTS moods (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,

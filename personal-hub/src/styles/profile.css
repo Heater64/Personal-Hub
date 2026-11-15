@@ -459,6 +459,90 @@
   padding: 0 var(--sp-16) var(--sp-8);
 }
 
+/* Atajos + desplegable «Otras» (mismo modelo que Sentimientos). */
+.prof-mood-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+.prof-mood-extra {
+  margin-top: var(--sp-12);
+  padding: var(--sp-12);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface-pressed);
+}
+
+.prof-mood-extra[hidden] { display: none; }
+
+.prof-mood-extra-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+.prof-mood-custom {
+  display: flex;
+  gap: var(--sp-8);
+  margin-top: var(--sp-12);
+}
+
+.prof-mood-custom-input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--theme-divider-strong);
+  background: var(--theme-surface);
+  color: var(--theme-text-primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.prof-mood-custom-input:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+.prof-mood-custom-add {
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--theme-accent);
+  background: var(--theme-accent-dim);
+  color: var(--theme-accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.prof-mood-custom-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  margin-top: var(--sp-10);
+}
+
+.prof-mood-custom-chips:empty { display: none; }
+
+.prof-mood-custom-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-6) var(--sp-10);
+  border-radius: var(--r-full);
+  border: 1px solid var(--theme-accent);
+  background: var(--theme-accent-dim);
+  color: var(--theme-accent);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.prof-mood-custom-x { opacity: 0.7; }
+
 .prof-mood-btn {
   position: relative;
   flex: 1 1 calc(33% - var(--sp-8));

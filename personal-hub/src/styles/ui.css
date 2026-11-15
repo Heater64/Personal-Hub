@@ -715,6 +715,66 @@ textarea.form-input {
 /* ==========================================
    OVERLAY · BOTTOM SHEET
    ========================================== */
+/* Modal clásico (diálogo centrado). Base compartida por los modales de la
+   sección Series: editor de contenido, Top 5 y confirmación de borrado. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  background: var(--overlay-heavy);
+  -webkit-backdrop-filter: blur(var(--blur-overlay));
+  backdrop-filter: blur(var(--blur-overlay));
+  animation: ui-fade 0.18s ease-out;
+}
+
+.modal-content {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  padding: var(--sp-24);
+  background: var(--theme-surface-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-l);
+  animation: ui-pop 0.18s ease-out;
+}
+
+.modal-content h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  margin: 0 0 var(--sp-16);
+}
+
+.close-modal {
+  position: absolute;
+  top: var(--sp-14);
+  right: var(--sp-14);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-fast);
+}
+
+.close-modal:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+  transform: rotate(90deg);
+}
+
 .overlay {
   position: fixed;
   inset: 0;

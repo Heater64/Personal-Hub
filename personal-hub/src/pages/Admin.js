@@ -20,7 +20,12 @@ import { decorOptions, videoModeOptions, THEME_EMOJIS, MAX_GALLERY, MAX_EMOJIS }
 import { escapeHtml } from '../utils/escape.js';
 import { labelForPath } from '../routes.js';
 import { isValidUrlField, todayISO, hourInSpain, timeInSpain } from '../utils/format.js';
-import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, daysUntilDate, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS } from '../utils/specialDates.js';
+import {
+  buildSessions, sectionUsage, userUsage, sessionSummary,
+  hourlyHeatmap, dayParts, streaks, uniqueDays,
+  openWhenReadIds, isOpenWhenReadVisit
+} from '../utils/stats-metrics.js';
+import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, daysUntilDate, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS, eventTemplateFor, EVENT_TEMPLATES } from '../utils/specialDates.js';
 import { cleanEventActions, MAX_EVENT_ACTIONS } from '../utils/event-actions.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import {
@@ -92,17 +97,86 @@ const UI = {
 // vuelve a declararlo: si se duplica, las gráficas se desincronizan del
 // historial en cuanto se añade un estado nuevo.
 // ==========================================
-// Orden de las barras: primero el catálogo vigente, detrás el histórico.
-const MOOD_ORDER = [...moodStore.getMoods(), ...(moodStore.getLegacyMoods() || [])].map(m => m.id);
-const moodInfo = (id) => moodStore.resolveMood({ mood: id }) || { emoji: '—', label: String(id || '—'), score: 0 };
+// Orden de las barras: catálogo vigente, emoción escrita a mano e histórico.
+const MOOD_ORDER = [...moodStore.getMoods(), moodStore.getCustomMood(), ...(moodStore.getLegacyMoods() || [])].map(m => m.id);
 
-// El panel Admin muestra SOLO las estadísticas de este usuario (dada):
-// ánimos, visitas, dónde pasa el tiempo y últimas conexiones. El resto de
-// métricas (contenido, fechas…) son independientes del usuario, y el detalle
-// al tocar una tarjeta de usuario sigue mostrando sus datos individuales.
-// Cambia este id si quieres ver las de otra persona.
-const STATS_USER_ID = '6fadf968-f3e8-465c-816d-f41978e00704';
-const isStatsUser = (id) => id === STATS_USER_ID;
+// La emoción escrita a mano se agrupa POR SU TEXTO, no toda bajo «Otras»: en
+// el panel tiene que leerse lo que escribió ella. Estas claves solo existen
+// aquí (en la base de datos la fila sigue usando el id `custom`).
+const MOOD_CUSTOM_PREFIX = 'custom:';
+const moodAggKey = (item) => (item?.id === moodStore.getCustomMood().id ? `${MOOD_CUSTOM_PREFIX}${item.label}` : item?.id);
+
+const moodInfo = (key) => {
+  if (typeof key === 'string' && key.startsWith(MOOD_CUSTOM_PREFIX)) {
+    const custom = moodStore.getCustomMood();
+    return { emoji: custom.emoji, label: key.slice(MOOD_CUSTOM_PREFIX.length), score: custom.score, custom: true };
+  }
+  return moodStore.resolveMood({ mood: key }) || { emoji: '—', label: String(key || '—'), score: 0 };
+};
+
+/** Posición de una clave en las barras: catálogo → textos libres → histórico. */
+const moodRank = (key) => {
+  const idx = MOOD_ORDER.indexOf(key);
+  if (idx >= 0) return idx;
+  const customIdx = MOOD_ORDER.indexOf(moodStore.getCustomMood().id);
+  return (customIdx >= 0 ? customIdx : MOOD_ORDER.length) + 0.5;
+};
+
+/** Clase de color de la barra: las emociones escritas comparten el tono de «Otras». */
+const moodBarClass = (key) => (typeof key === 'string' && key.startsWith(MOOD_CUSTOM_PREFIX) ? 'custom' : key);
+
+/**
+ * Emociones de una fila de `moods`. Una fila puede traer varias codificadas
+ * («triste|cansada»), así que las estadísticas cuentan cada una por separado
+ * en vez de inventar un estado combinado que no existe en el catálogo.
+ */
+const moodRowItems = (row) => moodStore.resolveMood({
+  mood: row?.mood,
+  label: row?.label,
+  emoji: row?.emoji,
+  score: row?.score
+})?.items || [];
+
+// Usuario cuyas estadísticas se ven: dada por defecto, «Todos» o cualquiera
+// del selector del panel. La elección se recuerda entre visitas, así que ya no
+// hay que tocar código para mirar las de otra persona.
+const STATS_ALL = 'all';
+const STATS_USER_PREF = 'ph.admin.statsUser';
+const DEFAULT_STATS_USER_ID = '6fadf968-f3e8-465c-816d-f41978e00704';
+let statsUserId = (() => {
+  try { return localStorage.getItem(STATS_USER_PREF) || DEFAULT_STATS_USER_ID; }
+  catch { return DEFAULT_STATS_USER_ID; }
+})();
+const isStatsUser = (id) => statsUserId === STATS_ALL || (id || '') === statsUserId;
+
+function setStatsUser(id) {
+  statsUserId = id || DEFAULT_STATS_USER_ID;
+  try { localStorage.setItem(STATS_USER_PREF, statsUserId); } catch { /* sin almacenamiento */ }
+}
+
+/** Opciones del selector: la principal, «Todos» y cada cuenta real. */
+function statsUserOptions(users = []) {
+  const principal = (users || []).find(u => u.id === DEFAULT_STATS_USER_ID);
+  const principalName = principal?.name || principal?.email?.split('@')[0] || 'dada';
+  const opts = [
+    { id: DEFAULT_STATS_USER_ID, label: principalName },
+    { id: STATS_ALL, label: 'Todos los usuarios' }
+  ];
+  (users || []).forEach(u => {
+    if (!u?.id || u.id === DEFAULT_STATS_USER_ID || u.id.startsWith('local_') || u.id.length <= 10) return;
+    opts.push({ id: u.id, label: u.name || (u.email ? u.email.split('@')[0] : u.id.slice(0, 8)) });
+  });
+  return opts;
+}
+
+function statsUserSelectHTML(users = [], id = 'statsUserSelect') {
+  const opts = statsUserOptions(users);
+  // Si el usuario guardado ya no existe, se vuelve a la cuenta principal.
+  if (!opts.some(o => o.id === statsUserId)) statsUserId = DEFAULT_STATS_USER_ID;
+  return `<select class="dash-range-select" id="${id}" aria-label="Usuario de las estadísticas">
+    ${opts.map(o => `<option value="${escapeHtml(o.id)}"${o.id === statsUserId ? ' selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
+  </select>`;
+}
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ==========================================
@@ -111,12 +185,6 @@ const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto
 // Los nombres de las secciones salen del registro de rutas (labelForPath),
 // no de una lista paralela que se quedaba corta al añadir una página.
 // ==========================================
-
-/** Sección raíz de una página: '/canciones?v=x' → '/canciones', '/juegos/online/1' → '/juegos' */
-function basePageOf(p) {
-  const base = String(p || '/').split('?')[0].replace(/\/+$/, '') || '/';
-  return '/' + (base.split('/').filter(Boolean)[0] || '');
-}
 
 /** Duración legible a partir de ms. */
 function fmtDuration(ms) {
@@ -208,17 +276,9 @@ const SECTION_HINTS = {
   config:         'Apariencia, fechas especiales y base de datos.'
 };
 
-// Colores disponibles para una bienvenida. El id va a SPECIAL_EVENT_TYPES y
-// el tono a SPECIAL_EVENT_TONES: el Admin y la hoja leen los dos.
-const EVENT_TYPE_OPTIONS = [
-  { id: 'custom',      label: 'Hub (rosa)' },
-  { id: 'birthday',    label: 'Cumpleaños' },
-  { id: 'anniversary', label: 'Aniversario' },
-  { id: 'memory',      label: 'Recuerdo' },
-  { id: 'halloween',   label: 'Halloween (naranja)' },
-  { id: 'christmas',   label: 'Navidad (verde)' },
-  { id: 'valentine',   label: 'San Valentín (rojo)' }
-];
+// Las plantillas de una bienvenida viven en utils/event-templates.js: nombre,
+// tono, emoji y composición salen de ahí para el editor y para la hoja, y así
+// no pueden desincronizarse.
 
 // ==========================================
 // SKELETON LOADER
@@ -339,7 +399,7 @@ export function AdminPage(router) {
   // El admin no entra por la pantalla diaria: el panel abre directamente la
   // gestión de fechas y eventos (Configuración → Eventos), que es su casa. El
   // resumen de estadísticas sigue a un clic, en el menú.
-  const S = { section: 'moods', moodDate: new Date(), contentSub: 'razones', calMonth: null, calDay: null, configTab: 'eventos' };
+  const S = { section: 'moods', moodDate: new Date(), moodMonthData: null, contentSub: 'razones', calMonth: null, calDay: null, configTab: 'eventos' };
 
   const content = page.querySelector('#adminContent');
 
@@ -582,13 +642,16 @@ export function AdminPage(router) {
 
     const [
       reasons, songs, giftsData, users, audios, news,
-      maldiaFrases, maldiaMensajes, owLetters, activity, allMoods, seriesCatalog, visits, maldiaNotes
+      maldiaFrases, maldiaMensajes, owLetters, activity, allMoods, seriesCatalog, visits, maldiaNotes,
+      giftResponses
     ] = await Promise.all([
       safe(db.getReasons(), []), safe(db.getSongs(), []), safe(db.getGifts(), { gifts: [] }),
       safe(db.listUsers(), []), safe(db.getAudios(), []), safe(db.getNews(), []),
       safe(db.getMaldiaFrases(), []), safe(db.getMaldiaMensajes(), []), safe(db.getOpenWhenLetters(), []),
       safe(db.getActivity(200), []), safe(db.getAllMoods('2024-01-01', today), []), safe(loadCatalog(), null),
-      safe(db.getPageVisits(2000), []), safe(db.getAllMaldiaNotes(), [])
+      // 2000 visitas se quedaban cortas para rangos largos y recortaban el pasado.
+      safe(db.getPageVisits(5000), []), safe(db.getAllMaldiaNotes(), []),
+      safe(db.getAllGiftResponses(), {})
     ]);
 
     // Fechas especiales configurables (aniversario, inicio del Hub, cumpleaños)
@@ -608,6 +671,11 @@ export function AdminPage(router) {
     const maldiaNotesList = arr(maldiaNotes);
     const owLettersList = arr(owLetters);
     const visitsList = arr(visits).filter(v => isStatsUser(v.user_id));
+    // Las marcas de carta Open When abierta no son navegación: se apartan para
+    // que no sumen secciones, tiempos ni horas punta.
+    const letterReads = openWhenReadIds(visitsList);
+    const navVisits = visitsList.filter(v => !isOpenWhenReadVisit(v));
+    const giftResponsesMap = (giftResponses && typeof giftResponses === 'object') ? giftResponses : {};
     const audiosList = arr(audios);
     const activityList = arr(activity);
     const giftsCount = (giftsData?.gifts || []).length;
@@ -643,7 +711,7 @@ export function AdminPage(router) {
         days.push({ ds, count: 0, label: d.toLocaleDateString('es', { day: 'numeric', month: 'short' }) });
       }
       const byDay = new Map(days.map(x => [x.ds, x]));
-      const source = metric === 'mood' ? moods : metric === 'visits' ? visitsList : activityList;
+      const source = metric === 'mood' ? moods : metric === 'visits' ? navVisits : activityList;
       source.forEach(e => {
         const ts = metric === 'mood' ? (e.date || '') : e.timestamp;
         if (!ts) return;
@@ -821,7 +889,18 @@ export function AdminPage(router) {
 
     // ---- Tendencia de ánimo ----
     const moodCounts = {};
-    moods.forEach(m => { const k = m.mood || m.status || 'good'; moodCounts[k] = (moodCounts[k] || 0) + 1; });
+    moods.forEach(m => {
+      const items = moodRowItems(m);
+      if (!items.length) {
+        const k = m.mood || m.status || 'good';
+        moodCounts[k] = (moodCounts[k] || 0) + 1;
+        return;
+      }
+      items.forEach(item => {
+        const key = moodAggKey(item);
+        moodCounts[key] = (moodCounts[key] || 0) + 1;
+      });
+    });
     const dominant = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
     const domKey = dominant ? dominant[0] : 'good';
     // Etiqueta y emoji del catalogs real: con el mapa local anterior, un
@@ -857,8 +936,8 @@ export function AdminPage(router) {
     // lista local solo traía los ids ANTIGUOS y pintaba con un vocabulario
     // inventado ("Enamorada", "Feliz"), así que los ánimos vigentes
     // (preocupada, enfadada, triste, bien, cariño) no aparecían nunca.
-    const moodDist = MOOD_ORDER
-      .filter(k => moodCounts[k])
+    const moodDist = Object.keys(moodCounts)
+      .sort((a, b) => moodRank(a) - moodRank(b) || moodInfo(a).label.localeCompare(moodInfo(b).label, 'es'))
       .map(k => ({ k, n: moodCounts[k], info: moodInfo(k) }));
     const moodDistMax = Math.max(...moodDist.map(d => d.n), 1);
     const moodDistHtml = moodDist.length ? moodDist.map(d => `
@@ -969,34 +1048,16 @@ export function AdminPage(router) {
       { icon: '📝', label: 'Notas', count: audiosList.length, section: 'contenido', sub: 'audios' }
     ];
 
-    // ---- Uso de la app: tiempo por sección y últimas conexiones ----
-    const perSection = {};
-    const perUser = {};
-    const byPerson = {};
-    const sortedVisits = [...visitsList].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    sortedVisits.forEach(v => {
-      const uid = v.user_id || 'anon';
-      const bp = basePageOf(v.page);
-      const ts = new Date(v.timestamp).getTime() || 0;
-      (perSection[bp] = perSection[bp] || { count: 0, ms: 0 }).count++;
-      const u = (perUser[uid] = perUser[uid] || { count: 0, msBySection: {}, lastTs: 0 });
-      u.count++;
-      u.lastTs = Math.max(u.lastTs, ts);
-      (byPerson[uid] = byPerson[uid] || []).push({ bp, ts, uid });
-    });
-    // Atribución: el tiempo de cada visita es el hueco hasta la siguiente de
-    // la misma persona (máx. 30 min; si hay más, es una nueva sesión).
-    Object.values(byPerson).forEach(list => {
-      list.sort((a, b) => a.ts - b.ts);
-      for (let i = 0; i < list.length - 1; i++) {
-        const gap = list[i + 1].ts - list[i].ts;
-        if (gap > 0 && gap <= 30 * 60 * 1000) {
-          perSection[list[i].bp].ms += gap;
-          const u = perUser[list[i].uid];
-          if (u) u.msBySection[list[i].bp] = (u.msBySection[list[i].bp] || 0) + gap;
-        }
-      }
-    });
+    // ---- Uso de la app: sesiones, tiempo por sección y últimas conexiones ----
+    // El tiempo de cada visita es el hueco hasta la siguiente de la misma
+    // persona. La última página de cada sesión recibe una estimación (mediana
+    // de sus huecos, entre 45 s y 2 min) en vez de quedarse en 0 ms porque no
+    // llegaba ninguna visita después.
+    const sessions = buildSessions(navVisits);
+    const perSection = sectionUsage(sessions);
+    const perUser = userUsage(sessions);
+    const sessionStats = sessionSummary(sessions);
+    const sortedVisits = [...navVisits].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const topSections = Object.entries(perSection)
       .filter(([, s]) => s.count > 0)
       .sort((a, b) => b[1].ms - a[1].ms || b[1].count - a[1].count)
@@ -1037,11 +1098,56 @@ export function AdminPage(router) {
         </div>`).join('')
       : '<p class="muted-text" style="margin:0">Sin conexiones registradas todavía.</p>';
 
+    // ---- Horas punta: matriz 24 h x día de la semana ----
+    const heat = hourlyHeatmap(navVisits);
+    const heatParts = dayParts(heat);
+    const heatMax = Math.max(...heat.matrix.flat(), 1);
+    const heatDays = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+    const heatRows = heat.matrix.map((row, d) => `
+      <div class="dash-heat-row">
+        <span class="dash-heat-day">${heatDays[d]}</span>
+        ${row.map((n, h) => `<span class="dash-heat-cell${n ? ' has' : ''}" style="--heat:${n ? (0.18 + 0.82 * (n / heatMax)).toFixed(2) : 0}" title="${heatDays[d]} ${String(h).padStart(2, '0')}:00 · ${n} visita${n === 1 ? '' : 's'}"></span>`).join('')}
+      </div>`).join('');
+    const hourAxis = `<div class="dash-heat-row dash-heat-axis"><span class="dash-heat-day"></span>${Array.from({ length: 24 }, (_, h) => `<span class="dash-heat-hour">${h % 3 === 0 ? h : ''}</span>`).join('')}</div>`;
+    const peakText = heat.peakHour === null
+      ? 'Sin visitas todavía'
+      : `${String(heat.peakHour).padStart(2, '0')}:00–${String((heat.peakHour + 1) % 24).padStart(2, '0')}:00`;
+    const heatTotal = heatParts.reduce((sum, p) => sum + p.count, 0) || 1;
+    const partsHtml = heatParts.map(p => `<span class="dash-part-chip"><strong>${p.label}</strong> ${p.count} · ${Math.round(p.count / heatTotal * 100)}%</span>`).join('');
+
+    // ---- Rachas y constancia ----
+    const visitDays = uniqueDays(navVisits.map(v => v.timestamp));
+    const visitStreak = streaks(visitDays, today);
+    const moodStreak = streaks(uniqueDays(moods.map(m => m.date)), today);
+    const streakDays = Math.max(visitStreak.current, moodStreak.current);
+    const activeThisMonth = visitDays.filter(d => d.slice(0, 7) === today.slice(0, 7)).length;
+    const streakBadge = streakDays > 0
+      ? `<span class="dash-streak" title="Visitas: ${visitStreak.current} día(s) seguidos · Ánimos: ${moodStreak.current} día(s) seguidos">🔥 Racha activa: ${streakDays} día${streakDays === 1 ? '' : 's'}</span>`
+      : '';
+
+    // ---- Engagement con el contenido ----
+    const askedGifts = (giftsData?.gifts || []).filter(g => g?.data?.question);
+    const answeredGifts = askedGifts.filter(g => (giftResponsesMap[g.id] || []).length > 0);
+    // Total real de cartas: las del catálogo fijo más las que se añadan desde
+    // el panel (un id repetido cuenta una sola vez).
+    const owTotal = new Set([...LETTERS.map(l => l.id), ...owLettersList.map(l => l.id)]).size;
+    const engagementHtml = `<div class="dash-eng-grid">
+      <div class="dash-eng"><span class="dash-eng-num">${visitStreak.current} <span class="dash-eng-sub">/ ${visitStreak.longest}</span></span><span class="dash-eng-label">racha de visitas (actual / mejor)</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${moodStreak.current} <span class="dash-eng-sub">/ ${moodStreak.longest}</span></span><span class="dash-eng-label">racha de ánimos (actual / mejor)</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${activeThisMonth}</span><span class="dash-eng-label">días activos este mes</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${sessionStats.sessions ? fmtDuration(sessionStats.avgMs) : '—'}</span><span class="dash-eng-label">media por sesión · ${sessionStats.sessions} sesión${sessionStats.sessions === 1 ? '' : 'es'}</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${maldiaNotesList.length}</span><span class="dash-eng-label">notas de Mal Día</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${answeredGifts.length} <span class="dash-eng-sub">/ ${askedGifts.length}</span></span><span class="dash-eng-label">preguntas de regalos contestadas</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${letterReads.size} <span class="dash-eng-sub">/ ${owTotal}</span></span><span class="dash-eng-label">cartas Open When abiertas</span></div>
+    </div>`;
+
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header">
           <h2>${UI.dash} Resumen general</h2>
           <div class="dash-header-tools">
+            ${streakBadge}
+            ${statsUserSelectHTML(realUsers)}
             <span class="dash-conn-pill" id="dashConnPill">Comprobando…</span>
             <button class="admin-btn-ghost" id="refreshDashboard" title="Actualizar">${UI.refresh}</button>
           </div>
@@ -1090,6 +1196,7 @@ export function AdminPage(router) {
                 <option value="7">7 días</option>
                 <option value="14" selected>14 días</option>
                 <option value="30">30 días</option>
+                <option value="90">90 días</option>
               </select>
             </div>
             <div id="dashActivityChart"></div>
@@ -1157,6 +1264,21 @@ export function AdminPage(router) {
         <div class="admin-dash-grid">
           <div class="admin-panel">
             <div class="admin-panel-head">
+              <h4>Horas punta</h4>
+              <span class="admin-panel-badge">Hora más activa: ${peakText}</span>
+            </div>
+            <div class="dash-heat">${hourAxis}${heatRows}</div>
+            <div class="dash-parts">${partsHtml}</div>
+          </div>
+          <div class="admin-panel">
+            <div class="admin-panel-head"><h4>Constancia y engagement</h4></div>
+            ${engagementHtml}
+          </div>
+        </div>
+
+        <div class="admin-dash-grid">
+          <div class="admin-panel">
+            <div class="admin-panel-head">
               <h4>Notas de Mal Día</h4>
               <div class="dash-panel-actions">
                 <button class="dash-link" id="dashMaldiaNotesAll">Ver todas →</button>
@@ -1189,6 +1311,12 @@ export function AdminPage(router) {
     `;
 
     page.querySelector('#refreshDashboard')?.addEventListener('click', loadDashboard);
+
+    // Selector de usuario de las estadísticas (se aplica sin recargar).
+    page.querySelector('#statsUserSelect')?.addEventListener('change', (e) => {
+      setStatsUser(e.target.value);
+      loadDashboard();
+    });
 
     // Estado de la conexión (chip del dashboard)
     db.checkConnection().then(status => {
@@ -1258,10 +1386,154 @@ export function AdminPage(router) {
   // ==========================================
   // 2. ESTADO DE ÁNIMO
   // ==========================================
+  /** Fecha local en ISO (YYYY-MM-DD), sin pasar por UTC. */
+  const isoDayOf = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+  /**
+   * Lleva el detalle a otro día. Si cae en un mes distinto, carga ese mes
+   * antes de abrirlo (y el calendario de detrás se mueve con él, para que al
+   * cerrar el modal no quede un mes que no es el que estabas mirando).
+   */
+  async function goToMoodDay(dateStr) {
+    const loadedMonth = `${S.moodDate.getFullYear()}-${String(S.moodDate.getMonth() + 1).padStart(2, '0')}`;
+    if (!S.moodMonthData || dateStr.slice(0, 7) !== loadedMonth) {
+      S.moodDate = new Date(Number(dateStr.slice(0, 4)), Number(dateStr.slice(5, 7)) - 1, 1);
+      await renderMoodMonth(S.moodDate);
+    }
+    openMoodDayDetail(dateStr);
+  }
+
+  /**
+   * Salta al día CON registro más cercano en una dirección (delta -1 ó 1).
+   * Primero pregunta al servidor (una consulta ordenada por fecha) y, si no
+   * hay conexión, busca en el mes que ya está cargado.
+   */
+  async function goToNearestMoodDay(anchorStr, delta) {
+    const date = new Date(`${anchorStr}T12:00:00`);
+    const from = isoDayOf(new Date(date.getFullYear(), date.getMonth(), date.getDate() + delta));
+
+    if (delta > 0 && from > todayISO()) {
+      showToast('No hay días posteriores con registro', 'info');
+      return;
+    }
+
+    const userId = statsUserId === STATS_ALL ? null : statsUserId;
+    let target = await safe(db.getNearestMoodDate({
+      from,
+      direction: delta < 0 ? 'prev' : 'next',
+      userId
+    }), null);
+
+    // Sin red queda el mes que ya está en pantalla: sus días se conocen sin
+    // volver a consultar nada.
+    if (!target) {
+      const days = Object.keys(S.moodMonthData || {})
+        .filter(ds => (S.moodMonthData[ds] || []).some(row => moodRowItems(row).length))
+        .sort();
+      target = delta < 0
+        ? [...days].reverse().find(ds => ds <= from) || null
+        : days.find(ds => ds >= from) || null;
+    }
+
+    // Nunca hacia el futuro: allí no puede haber nada registrado.
+    const usable = target && (delta < 0 || target <= todayISO()) ? target : null;
+    if (!usable) {
+      showToast(delta < 0 ? 'No hay días anteriores con registro' : 'No hay días posteriores con registro', 'info');
+      return;
+    }
+    await goToMoodDay(usable);
+  }
+
+  /**
+   * Todas las emociones de un día, en detalle. La celda del calendario solo
+   * cabía tres emojis y un «+N», así que no había forma de saber cuáles eran
+   * las demás. Aquí se leen todas, con el texto real de las escritas a mano.
+   *
+   * Las flechas saltan al día con registro más cercano: el ánimo se mira
+   * seguido y parar en cada día vacío era recorrer el calendario a mano.
+   */
+  function openMoodDayDetail(dateStr) {
+    const rows = S.moodMonthData?.[dateStr] || [];
+    const items = rows.flatMap(moodRowItems);
+    const dayDate = new Date(`${dateStr}T12:00:00`);
+    const dateLabel = dayDate.toLocaleDateString('es', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+    const prevStr = isoDayOf(new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate() - 1));
+    const nextStr = isoDayOf(new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate() + 1));
+    // Mirar al futuro no sirve: todavía no puede haber nada registrado.
+    const canGoNext = nextStr <= todayISO();
+    const isToday = dateStr === todayISO();
+
+    const navHtml = `
+      <div class="mood-day-nav">
+        <button type="button" class="mood-day-nav-btn" data-mood-day-prev="${prevStr}" aria-label="Día anterior con registro">‹</button>
+        <span class="mood-day-nav-label">${esc(dateLabel)}</span>
+        <button type="button" class="mood-day-nav-btn" data-mood-day-next="${nextStr}" aria-label="Día siguiente con registro"${canGoNext ? '' : ' disabled'}>›</button>
+      </div>
+      ${isToday ? '' : '<div class="mood-day-tools"><button type="button" class="mood-day-today" data-mood-day-today aria-label="Ir al día de hoy">Hoy</button></div>'}`;
+
+    // Las flechas saltan los días vacíos: van al registro más cercano.
+    const bindNav = () => {
+      modal.body.querySelector('[data-mood-day-prev]')?.addEventListener('click', () => goToNearestMoodDay(dateStr, -1));
+      if (canGoNext) {
+        modal.body.querySelector('[data-mood-day-next]')?.addEventListener('click', () => goToNearestMoodDay(dateStr, 1));
+      }
+      // Volver al día actual sin recorrer el calendario a mano.
+      modal.body.querySelector('[data-mood-day-today]')?.addEventListener('click', () => goToMoodDay(todayISO()));
+    };
+
+    if (!items.length) {
+      modal.open('Ánimo del día', `
+        <div class="mood-day-detail">
+          ${navHtml}
+          <p class="mood-day-empty">Ese día no tiene ningún registro de ánimo.</p>
+        </div>
+      `);
+      bindNav();
+      return;
+    }
+
+    // Se agrupa por emoción (las escritas, por su texto) y se cuentan: si el
+    // día tiene varios estados, el mismo ánimo puede repetirse.
+    const counts = new Map();
+    for (const item of items) {
+      const key = moodAggKey(item);
+      const prev = counts.get(key);
+      counts.set(key, { info: moodInfo(key), n: (prev?.n || 0) + 1 });
+    }
+    const list = [...counts.entries()].sort((a, b) => moodRank(a[0]) - moodRank(b[0]));
+    const summary = `${items.length} ${items.length === 1 ? 'emoción' : 'emociones'}`
+      + ` · ${rows.length} ${rows.length === 1 ? 'registro' : 'registros'} ese día`;
+
+    modal.open('Ánimo del día', `
+      <div class="mood-day-detail">
+        ${navHtml}
+        <p class="mood-day-summary">${esc(summary)}</p>
+        <div class="mood-day-chips">
+          ${list.map(([, entry]) => `
+            <span class="mood-day-chip">
+              <span aria-hidden="true">${esc(entry.info.emoji)}</span>
+              ${esc(entry.info.label)}
+              ${entry.n > 1 ? `<span class="mood-day-chip-count">×${entry.n}</span>` : ''}
+            </span>`).join('')}
+        </div>
+        ${rows.length > 1 ? '<p class="mood-day-hint">Ese día registró su ánimo más de una vez: se cuentan todas las emociones que marcó.</p>' : ''}
+      </div>
+    `);
+    bindNav();
+  }
+
   async function loadMoods() {
+    const token = sectionToken;
+    const moodUsers = await safe(db.listUsers(), []);
+    if (token !== sectionToken) return;
     content.innerHTML = `
       <section class="admin-section active">
-        <div class="admin-section-header"><h2>${UI.heart} Estado de Ánimo</h2></div>
+        <div class="admin-section-header">
+          <h2>${UI.heart} Estado de Ánimo</h2>
+          <div class="dash-header-tools">${statsUserSelectHTML(moodUsers, 'statsMoodUserSelect')}</div>
+        </div>
         <p class="admin-section-hint">${SECTION_HINTS.moods}</p>
         <div class="moods-chart-section">
           <div class="moods-chart-header">
@@ -1276,22 +1548,126 @@ export function AdminPage(router) {
           <div class="moods-stats" id="moodStats"></div>
           <div class="moods-breakdown" id="moodBreakdown"></div>
         </div>
+        <!-- El resumen semanal cierra la sección: calendario → desglose → 7 días. -->
+        <div class="moods-week" id="moodWeek">${skeletonCard('140px')}</div>
       </section>
     `;
 
     const render = () => renderMoodMonth(S.moodDate);
     render();
+    renderMoodWeek();
     // Refresca el calendario en vivo cuando la usuaria registra/quita un ánimo
     // en el mes que se muestra (evento realtime o polling de seguridad).
     if (moodRealTimeOff) moodRealTimeOff();
     moodRealTimeOff = onMoodChange((mood) => {
       const ds = mood?.date;
+      // El resumen semanal cambia con cualquier día de la última semana.
+      renderMoodWeek();
       if (!ds) { render(); return; }
       const displayed = `${S.moodDate.getFullYear()}-${String(S.moodDate.getMonth() + 1).padStart(2, '0')}`;
       if (ds.slice(0, 7) === displayed) render();
     });
+    // Un día se abre para ver el detalle completo de sus emociones.
+    const calendarEl = page.querySelector('#moodCalendar');
+    calendarEl?.addEventListener('click', (event) => {
+      const cell = event.target.closest('[data-mood-day]');
+      if (cell) openMoodDayDetail(cell.dataset.moodDay);
+    });
+    calendarEl?.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const cell = event.target.closest('[data-mood-day]');
+      if (!cell) return;
+      event.preventDefault();
+      openMoodDayDetail(cell.dataset.moodDay);
+    });
+
     page.querySelector('#moodPrev').onclick = () => { S.moodDate.setMonth(S.moodDate.getMonth() - 1); render(); };
     page.querySelector('#moodNext').onclick = () => { S.moodDate.setMonth(S.moodDate.getMonth() + 1); render(); };
+    page.querySelector('#statsMoodUserSelect')?.addEventListener('change', (e) => {
+      setStatsUser(e.target.value);
+      loadMoods();
+    });
+  }
+
+  /**
+   * Resumen de los últimos siete días (hoy incluido): qué emociones se
+   * repiten más. Cuenta cada emoción marcada, no cada fila, y las escritas a
+   * mano por su texto; respeta el selector de usuario del panel.
+   */
+  async function renderMoodWeek() {
+    const box = page.querySelector('#moodWeek');
+    if (!box) return;
+    const token = sectionToken;
+    const today = todayISO();
+    const start = new Date(`${today}T12:00:00`);
+    start.setDate(start.getDate() - 6); // siete días contando hoy
+    const startISO = isoDayOf(start);
+
+    const rows = await safe(db.getAllMoods(startISO, today), []);
+    if (token !== sectionToken || !box.isConnected) return;
+
+    const counts = new Map();
+    const days = new Set();
+    let total = 0;
+    for (const row of rows || []) {
+      if (!isStatsUser(row.user_id)) continue;
+      const items = moodRowItems(row);
+      if (!items.length) continue;
+      days.add(row.date);
+      for (const item of items) {
+        const key = moodAggKey(item);
+        counts.set(key, (counts.get(key) || 0) + 1);
+        total++;
+      }
+    }
+
+    const rangeLabel = `${start.toLocaleDateString('es', { day: 'numeric', month: 'short' })} – ${new Date(`${today}T12:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'short' })}`;
+    const header = `
+      <div class="moods-chart-header">
+        <h3>Últimos 7 días</h3>
+        <span class="moods-week-range">${esc(rangeLabel)}</span>
+      </div>`;
+
+    if (!total) {
+      box.innerHTML = `${header}<div class="admin-empty">Todavía no hay emociones en los últimos siete días</div>`;
+      return;
+    }
+
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1] || moodRank(a[0]) - moodRank(b[0]));
+    // Empate: nombrar solo una mentiría, así que se enseñan todas las que
+    // comparten el máximo (igual que en el desglose del mes).
+    const maxCount = sorted[0][1];
+    const tops = sorted.filter(([, n]) => n === maxCount);
+    const topFaces = tops.map(([key]) => moodInfo(key).emoji).join('');
+    const topLabel = tops.length === 1 ? moodInfo(tops[0][0]).label : `${tops.length} empatadas`;
+
+    box.innerHTML = `
+      ${header}
+      <div class="moods-stats-row">
+        <div class="moods-stat">
+          <span class="moods-stat-num">${days.size}<span class="moods-stat-avg">/7</span></span>
+          <span class="moods-stat-label">días con registro</span>
+        </div>
+        <div class="moods-stat">
+          <span class="moods-stat-num">${total}</span>
+          <span class="moods-stat-label">${total === 1 ? 'emoción marcada' : 'emociones marcadas'}</span>
+        </div>
+        <div class="moods-stat" title="${esc(topLabel)}: ${maxCount} de ${total} emociones">
+          <span class="moods-stat-num">${esc(topFaces)}</span>
+          <span class="moods-stat-label">la más repetida · ${esc(topLabel)} (${maxCount})</span>
+        </div>
+      </div>
+      <div class="moods-week-bars">
+        ${sorted.map(([key, n]) => {
+          const pct = Math.round(n / total * 100);
+          const info = moodInfo(key);
+          return `<div class="moods-bar-row" title="${esc(info.label)}: ${n} de ${total} (${pct} %)">
+            <span class="moods-bar-label">${esc(info.emoji)} ${esc(info.label)}</span>
+            <div class="moods-bar-track"><div class="moods-bar-fill mood-${moodBarClass(key)}" style="width:${pct}%"></div></div>
+            <span class="moods-bar-pct">${n} · ${pct}%</span>
+          </div>`;
+        }).join('')}
+      </div>`;
   }
 
   async function renderMoodMonth(date) {
@@ -1312,6 +1688,10 @@ export function AdminPage(router) {
       monthMoods[ds] = monthMoods[ds].filter(m => isStatsUser(m.user_id));
     });
     if (token !== sectionToken || renderToken !== moodRenderToken) return; // sección o render obsoletos
+    // Lo que se acaba de pintar es lo que abre el detalle del día: así el
+    // modal enseña exactamente el mismo ánimo (y el mismo usuario) que la
+    // rejilla, sin volver a consultar ni mezclar cuentas.
+    S.moodMonthData = monthMoods;
     const daysInMonth = new Date(year, month, 0).getDate();
     const firstDay = new Date(year, month - 1, 1).getDay();
     const todayStr = todayISO();
@@ -1330,14 +1710,22 @@ export function AdminPage(router) {
       let emojiHtml = '';
       let titleText = `${ds}: Sin registro`;
       if (hasMood) {
-        const emojis = dailyMoods.slice(0, 3).map(m => esc(m.emoji || moodInfo(m.mood).emoji)).join('');
-        const extra = dailyMoods.length > 3 ? `<span style="font-size:0.6rem;opacity:0.8">+${dailyMoods.length - 3}</span>` : '';
+        // Cada fila puede traer varias emociones: se juntan todas en la celda.
+        const items = dailyMoods.flatMap(moodRowItems);
+        const emojis = items.slice(0, 3).map(item => esc(item.emoji)).join('');
+        const extra = items.length > 3 ? `<span style="font-size:0.6rem;opacity:0.8">+${items.length - 3}</span>` : '';
         emojiHtml = `<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:1px;font-size:0.8rem;line-height:1">${emojis}${extra}</div>`;
-        const labels = dailyMoods.map(m => esc(m.label || moodInfo(m.mood).label)).join(', ');
+        const labels = items.map(item => esc(item.label)).join(', ');
         titleText = `${esc(ds)}: ${labels}`;
       }
 
-      html += `<div class="moods-cal-cell${isToday?' today':''}${hasMood?' has-mood':''}${isFuture?' future':''}" title="${titleText}">
+      // Los días CON registro se pueden abrir: la celda solo cabía tres
+      // emojis y un «+N», así que el resto no se podía consultar en ningún
+      // sitio. Los días vacíos no son un botón (no habría nada que enseñar).
+      const openable = hasMood;
+      html += `<div class="moods-cal-cell${isToday?' today':''}${hasMood?' has-mood':''}${isFuture?' future':''}${openable?' is-openable':''}"
+        ${openable ? `data-mood-day="${ds}" role="button" tabindex="0" aria-label="${titleText}"` : ''}
+        title="${titleText}">
         <span class="moods-cal-day">${day}</span>${emojiHtml}
       </div>`;
     }
@@ -1353,10 +1741,17 @@ export function AdminPage(router) {
 
     const counts = {};
     let totalScore = 0;
+    let totalEmotions = 0;
     entries.forEach((m) => {
-      const k = m.mood || 'unknown';
-      counts[k] = (counts[k] || 0) + 1;
-      totalScore += moodInfo(m.mood).score;
+      const resolved = moodStore.resolveMood({ mood: m.mood, label: m.label, emoji: m.emoji, score: m.score });
+      const items = resolved?.items || [];
+      if (!items.length) return;
+      items.forEach(item => {
+        const key = moodAggKey(item);
+        counts[key] = (counts[key] || 0) + 1;
+        totalEmotions++;
+      });
+      totalScore += typeof resolved.score === 'number' ? resolved.score : 2;
     });
     const avg = totalScore / entries.length;
     const avgEmoji = avg >= 3.5 ? '🤍🤍🤍' : avg >= 2.5 ? '😊' : avg >= 1.5 ? '😕' : avg >= 0.5 ? '😔' : '❤️';
@@ -1386,9 +1781,11 @@ export function AdminPage(router) {
     // salían las 10 filas del catálogo y con dos registros ocho marcaban 0 %,
     // y los ids antiguo y vigente comparten nombre ("Necesito cariño",
     // "Bien"), así que había filas duplicadas sin explicación.
-    const rows = MOOD_ORDER
-      .filter(k => counts[k])
-      .sort((a, b) => counts[b] - counts[a] || MOOD_ORDER.indexOf(a) - MOOD_ORDER.indexOf(b));
+    const rows = Object.keys(counts)
+      .sort((a, b) => counts[b] - counts[a] || moodRank(a) - moodRank(b));
+    // Denominador de los porcentajes: emociones marcadas, no filas. Un día con
+    // dos emociones aporta dos marcas, y con el total de filas sumarían > 100 %.
+    const emotionBase = totalEmotions || entries.length;
     // Si TODO el mes es del catálogo antiguo, decirlo una vez en la cabecera
     // es mejor que repetir "antiguo" en cada fila; si está mezclado, la
     // etiqueta por fila es la que explica cuál es cuál.
@@ -1397,12 +1794,12 @@ export function AdminPage(router) {
     breakdown.innerHTML = rows.length
       ? `<h4>Desglose${allLegacy ? ' <span class="moods-breakdown-note">estados antiguos</span>' : ''}</h4>` + rows.map(k => {
         const count = counts[k];
-        const pct = Math.round(count / entries.length * 100);
+        const pct = Math.round(count / emotionBase * 100);
         const info = moodInfo(k);
         const tag = info.legacy && anyCurrent ? ' <span class="moods-bar-legacy">antiguo</span>' : '';
-        return `<div class="moods-bar-row" title="${esc(info.label)}: ${count} de ${entries.length} (${pct} %)${info.legacy ? ' · estado antiguo' : ''}">
+        return `<div class="moods-bar-row" title="${esc(info.label)}: ${count} de ${emotionBase} (${pct} %)${info.legacy ? ' · estado antiguo' : ''}">
           <span class="moods-bar-label">${esc(info.emoji)} ${esc(info.label)}${tag}</span>
-          <div class="moods-bar-track"><div class="moods-bar-fill mood-${k}" style="width:${pct}%"></div></div>
+          <div class="moods-bar-track"><div class="moods-bar-fill mood-${moodBarClass(k)}" style="width:${pct}%"></div></div>
           <span class="moods-bar-pct">${count} · ${pct}%</span>
         </div>`;
       }).join('')
@@ -1431,38 +1828,27 @@ export function AdminPage(router) {
       safe(db.getPageVisits(3000), [])
     ]);
 
-    // Actividad de uso por usuario: visitas, última conexión y tiempo por sección.
-    const visitStats = {};
-    [...visits].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).forEach(v => {
-      const uid = v.user_id || 'anon';
-      const bp = basePageOf(v.page);
-      const ts = new Date(v.timestamp).getTime() || 0;
-      const st = (visitStats[uid] = visitStats[uid] || { count: 0, lastTs: 0, msBySection: {}, order: [] });
-      st.count++;
-      st.lastTs = Math.max(st.lastTs, ts);
-      st.order.push({ bp, ts });
-    });
-    Object.values(visitStats).forEach(st => {
-      const list = st.order.sort((a, b) => a.ts - b.ts);
-      for (let i = 0; i < list.length - 1; i++) {
-        const gap = list[i + 1].ts - list[i].ts;
-        if (gap > 0 && gap <= 30 * 60 * 1000) {
-          st.msBySection[list[i].bp] = (st.msBySection[list[i].bp] || 0) + gap;
-        }
-      }
-      delete st.order;
-    });
+    // Actividad de uso por usuario: mismas sesiones que el dashboard, para que
+    // el detalle no diga otra cosa que el resumen.
+    const visitStats = userUsage(buildSessions(visits.filter(v => !isOpenWhenReadVisit(v))));
 
     const userMoodStats = {};
     allMoods.forEach(m => {
       const uid = m.user_id || 'local';
       if (!userMoodStats[uid]) {
-        userMoodStats[uid] = { total: 0, moods: {}, lastDate: '' };
+        userMoodStats[uid] = { total: 0, emotions: 0, moods: {}, lastDate: '' };
       }
-      userMoodStats[uid].total++;
-      const moodId = m.mood || 'unknown';
-      userMoodStats[uid].moods[moodId] = (userMoodStats[uid].moods[moodId] || 0) + 1;
-      if (m.date > userMoodStats[uid].lastDate) userMoodStats[uid].lastDate = m.date;
+      const stat = userMoodStats[uid];
+      stat.total++;
+      // Cada emoción de la fila cuenta por separado (multi-selección).
+      const items = moodRowItems(m);
+      // La clave de una emoción escrita es su texto (ver moodAggKey).
+      const ids = items.length ? items.map(moodAggKey) : [m.mood || 'unknown'];
+      ids.forEach(moodId => {
+        stat.moods[moodId] = (stat.moods[moodId] || 0) + 1;
+        stat.emotions++;
+      });
+      if (m.date > stat.lastDate) stat.lastDate = m.date;
     });
 
     // La sección pudo cambiar mientras cargaban los datos — abortar la escritura
@@ -1612,7 +1998,10 @@ export function AdminPage(router) {
     // sin decir de qué, y además a la carta entre dos estados igualados.
     const max = Math.max(...Object.values(stats.moods));
     const tops = Object.entries(stats.moods).filter(([, n]) => n === max);
-    const pct = Math.round(max / stats.total * 100);
+    // Base de emociones, no de registros: con varias emociones por día los
+    // porcentajes sobre el total de filas mentían.
+    const emoBase = stats.emotions || stats.total;
+    const pct = Math.round(max / emoBase * 100);
     const topFaces = tops.map(([id]) => moodInfo(id).emoji).join('');
     const topNames = tops.map(([id]) => moodInfo(id).label).join(' / ');
     // Línea de texto y no etiquetas: la columna mide ~250 px (los botones de
@@ -1622,7 +2011,7 @@ export function AdminPage(router) {
       ? `${esc(moodInfo(tops[0][0]).label)} <span class="user-mood-pct">(${pct} %)</span>`
       : `<strong>${tops.length} estados</strong> empatados <span class="user-mood-pct">(${pct} %)</span>`;
     return `<span class="user-mood-line"
-      title="Ánimo más repetido: ${esc(topNames)} — ${max} de ${stats.total} registros (${pct} %)">
+      title="Ánimo más repetido: ${esc(topNames)} — ${max} de ${emoBase} emociones (${pct} %)">
       ${esc(topFaces)} <strong>${stats.total}</strong> ${stats.total === 1 ? 'registro' : 'registros'} · ${topText}
     </span>`;
   }
@@ -1658,20 +2047,21 @@ export function AdminPage(router) {
 
     let moodHtml = '<p style="color:var(--theme-text-secondary);font-size:0.82rem;margin-bottom:12px;">Sin registros de ánimo</p>';
     if (stats && stats.total > 0) {
-      const order = MOOD_ORDER;
+      const order = Object.keys(stats.moods).sort((a, b) => moodRank(a) - moodRank(b));
+      const detailBase = stats.emotions || stats.total;
       const rows = order.map(k => {
         const count = stats.moods[k] || 0;
-        const pct = Math.round(count / stats.total * 100);
+        const pct = Math.round(count / detailBase * 100);
         if (count === 0) return '';
         const info = moodInfo(k);
         return `<div class="moods-bar-row">
           <span class="moods-bar-label" style="min-width:140px">${esc(info.emoji)} ${esc(info.label)}</span>
-          <div class="moods-bar-track"><div class="moods-bar-fill mood-${k}" style="width:${pct}%"></div></div>
+          <div class="moods-bar-track"><div class="moods-bar-fill mood-${moodBarClass(k)}" style="width:${pct}%"></div></div>
           <span class="moods-bar-pct">${count} (${pct}%)</span>
         </div>`;
       }).filter(Boolean).join('');
 
-      const avgScore = order.reduce((sum, k) => sum + (moodInfo(k).score || 0) * (stats.moods[k] || 0), 0) / stats.total;
+      const avgScore = order.reduce((sum, k) => sum + (moodInfo(k).score || 0) * (stats.moods[k] || 0), 0) / detailBase;
       const avgEmoji = avgScore >= 3.5 ? '🤍🤍🤍' : avgScore >= 2.5 ? '😊' : avgScore >= 1.5 ? '😕' : '😔';
 
       moodHtml = `
@@ -4142,7 +4532,7 @@ export function AdminPage(router) {
           <div class="config-pane" data-config-pane="eventos" hidden>
             <div class="dates-events">
               <span class="dates-events-title">✨ Próximas cosas</span>
-              <p class="muted-text">Eventos con fecha: salen en la bienvenida del Inicio el día que cae, una sola vez. Usa «Hoy» para poner la fecha de hoy y 🎬 para ver la bienvenida sin esperar.</p>
+              <p class="muted-text">Cada evento es una tarjeta: ábrela para editarlo en orden (datos, plantilla, ambiente y acciones) y ver cuándo aparece, incluido el aviso previo de 7 días. El día que cae, el Inicio muestra un banner para volver a abrir su bienvenida.</p>
               <div id="datesEventsList"></div>
               <button type="button" class="admin-btn admin-btn-ghost" id="addDatesEventBtn">${UI.plus} Añadir evento</button>
               <div class="dates-events-foot">
@@ -4514,34 +4904,90 @@ export function AdminPage(router) {
       })));
     }
 
-    // Los mismos campos para los cuatro días, los eventos y los temáticos: la
-    // tarjeta se rellena igual en los tres sitios.
-    const mediaFieldsHTML = (look = {}) => `
-      <label class="dates-look-field">
-        <span>Ambiente al abrir</span>
-        <select class="dates-look-decor" aria-label="Decoración de la bienvenida">${decorOptions(look.decor)}</select>
-      </label>
-      <label class="dates-look-field dates-look-field--wide">
-        <span>Emojis que caen</span>
-        <input type="text" class="dates-look-emojis" value="${esc(look.emojis || '')}" placeholder="${esc(THEME_EMOJIS[look.type] || THEME_EMOJIS.custom)}" aria-label="Emojis que caen al abrir">
-        <small class="dates-look-note">Si lo dejas vacío caen los de la fiesta, los que se ven de ejemplo.</small>
-      </label>
-      <label class="dates-look-field dates-look-field--wide">
-        <span>Vídeo (URL)</span>
-        <input type="url" class="dates-look-video" value="${esc(look.video || '')}" placeholder="https://…mp4" aria-label="Vídeo de la bienvenida">
-      </label>
-      <label class="dates-look-field">
-        <span>El vídeo va…</span>
-        <select class="dates-look-videomode" aria-label="Dónde se ve el vídeo">${videoModeOptions(look.videoMode)}</select>
-      </label>
-      <label class="dates-look-field dates-look-field--wide">
-        <span>Más fotos (una URL por línea)</span>
-        <textarea class="dates-look-gallery" rows="2" placeholder="https://…&#10;https://…" aria-label="Fotos de la tirita">${esc((look.gallery || []).join('\n'))}</textarea>
-      </label>`;
+    // ---- Catálogo de plantillas, compartido con la hoja ----
+    const templates = Object.values(EVENT_TEMPLATES);
+    const tonePair = (value) => SPECIAL_EVENT_TONES[eventTemplateFor(value).id] || SPECIAL_EVENT_TONES.custom;
+
+    /**
+     * Selector visual de plantilla. Los botones son lo que se ve y se elige
+     * (rol de radio); el valor sigue viajando en un input oculto con la clase
+     * de siempre, así lo que lee y guarda el formulario no cambia.
+     */
+    const templatePickerHTML = (value) => {
+      const current = eventTemplateFor(value);
+      return `
+        <div class="dates-templates">
+          <div class="dates-templates-grid" role="radiogroup" aria-label="Plantilla de ocasión">
+            ${templates.map(template => `
+              <button type="button" class="dates-template-option" role="radio" data-template-set="${template.id}"
+                aria-checked="${template.id === current.id}" style="--t-accent:${template.tone[0]};--t-soft:${template.tone[1]}">
+                <span class="dates-template-option__emoji" aria-hidden="true">${template.icon}</span>
+                <span class="dates-template-option__text">
+                  <b>${template.label}</b>
+                  <small>${template.short}</small>
+                </span>
+              </button>`).join('')}
+          </div>
+          <input type="hidden" class="dates-look-type" value="${current.id}">
+          <p class="dates-template-hint">${current.editorHint}</p>
+        </div>`;
+    };
+    /** Conecta los botones de plantilla de un contenedor con su input oculto. */
+    const bindTemplatePickers = (scope, onPick) => {
+      scope.querySelectorAll('[data-template-set]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const picker = btn.closest('.dates-templates');
+          const hidden = picker?.querySelector('.dates-look-type');
+          if (!hidden) return;
+          hidden.value = btn.dataset.templateSet;
+          picker.querySelectorAll('[data-template-set]').forEach(b => b.setAttribute('aria-checked', String(b === btn)));
+          const hint = picker.querySelector('.dates-template-hint');
+          if (hint) hint.textContent = eventTemplateFor(hidden.value).editorHint;
+          markDirty();
+          onPick?.(hidden.value);
+        });
+      });
+    };
+
+    // El ambiente es todo lo que llena la bienvenida: emoji, lluvia, decoración,
+    // texto y media. Se agrupa y se etiqueta, en vez de una fila de iconos.
+    const ambienceFieldsHTML = (look = {}) => `
+      <div class="dates-field-grid">
+        <label class="dates-look-field">
+          <span>Emoji principal</span>
+          <input type="text" class="dates-look-icon" value="${esc(look.icon || '')}" placeholder="${esc(eventTemplateFor(look.type).defaultEmoji)}" maxlength="4" aria-label="Emoji principal">
+        </label>
+        <label class="dates-look-field">
+          <span>Ambiente al abrir</span>
+          <select class="dates-look-decor" aria-label="Ambiente de la bienvenida">${decorOptions(look.decor)}</select>
+        </label>
+        <label class="dates-look-field dates-look-field--wide">
+          <span>Lluvia de emojis</span>
+          <input type="text" class="dates-look-emojis" value="${esc(look.emojis || '')}" placeholder="${esc(THEME_EMOJIS[look.type] || THEME_EMOJIS.custom)}" aria-label="Emojis que caen al abrir">
+          <small class="dates-look-note">Vacío: caen los de la plantilla. Sepáralos con espacios.</small>
+        </label>
+        <label class="dates-look-field dates-look-field--wide">
+          <span>Texto de la bienvenida</span>
+          <textarea class="dates-look-desc" rows="2" maxlength="180" placeholder="Lo que se lea ese día" aria-label="Texto de la bienvenida">${esc(look.description || '')}</textarea>
+        </label>
+        <label class="dates-look-field dates-look-field--wide">
+          <span>Foto principal (URL)</span>
+          <input type="url" class="dates-look-image" value="${esc(look.image || '')}" placeholder="https://…" aria-label="Foto principal">
+        </label>
+        <label class="dates-look-field dates-look-field--wide">
+          <span>Vídeo (URL)</span>
+          <input type="url" class="dates-look-video" value="${esc(look.video || '')}" placeholder="https://…mp4" aria-label="Vídeo de la bienvenida">
+        </label>
+        <label class="dates-look-field">
+          <span>El vídeo va…</span>
+          <select class="dates-look-videomode" aria-label="Dónde se ve el vídeo">${videoModeOptions(look.videoMode)}</select>
+        </label>
+        <label class="dates-look-field dates-look-field--wide">
+          <span>Galería (una URL por línea)</span>
+          <textarea class="dates-look-gallery" rows="2" placeholder="https://…&#10;https://…" aria-label="Fotos de la galería">${esc((look.gallery || []).join('\n'))}</textarea>
+        </label>
+      </div>`;
     let editingDates = (hubDates.events || []).map(e => ({ ...e }));
-    const typeOptions = (value) => EVENT_TYPE_OPTIONS
-      .map(t => `<option value="${t.id}"${t.id === value ? ' selected' : ''}>${t.label}</option>`)
-      .join('');
 
     // ---- Ver la bienvenida sin esperar al día ----
     // Antes solo se veía el día que de verdad caía, y un evento con la
@@ -4565,7 +5011,8 @@ export function AdminPage(router) {
     /** Lo que pinta la hoja, ledío de una fila del editor. */
     const draftFromRow = (row, seasonal = false) => ({
       title: row.querySelector(seasonal ? '.dates-se-title' : '.dates-event-title')?.value.trim() || '',
-      icon: row.querySelector('.dates-look-icon')?.value.trim() || '✨',
+      // Vacío = el emoji de la plantilla elegida, igual que en el día real.
+      icon: row.querySelector('.dates-look-icon')?.value.trim() || '',
       type: row.querySelector('.dates-look-type')?.value || 'custom',
       description: row.querySelector('.dates-look-desc')?.value.trim() || '',
       image: row.querySelector('.dates-look-image')?.value.trim() || '',
@@ -4587,53 +5034,112 @@ export function AdminPage(router) {
         description: draft.description || 'Así se verá este día en la bienvenida.'
       }], router, { preview: true });
     };
-    /** Estado de un evento con fecha completa: hoy, cuándo, o por qué no sale. */
+    /** '2026-09-02' con un desfase en días (para calcular el aviso de 7 días). */
+    const isoShift = (iso, days) => {
+      const [y, m, d] = String(iso || '').split('-').map(Number);
+      if (!y || !m || !d) return '';
+      const date = new Date(y, m - 1, d + days);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    /** Lo que se ve en la tarjeta y lo que se explica dentro del editor. */
     const whenForEvent = (row) => {
       const title = row.querySelector('.dates-event-title')?.value.trim() || '';
       const date = row.querySelector('.dates-event-date')?.value || '';
       const repeats = row.querySelector('.dates-event-recur-cb')?.checked === true;
-      if (!title) return ['warn', 'Falta el nombre: sin él no se guarda.'];
-      if (!date) return ['muted', 'Ponle una fecha para saber cuándo sale.'];
+      if (!title) return { tone: 'warn', text: 'Falta el nombre: sin él no se guarda.', forecast: 'Paso 1: ponle un nombre para poder guardarlo.' };
+      if (!date) return { tone: 'muted', text: 'Ponle una fecha para saber cuándo sale.', forecast: 'Paso 1: sin fecha no hay día en el que aparezca.' };
       const today = todayISO();
-      if (date === today) return ['ok', '✓ Sale hoy en el Inicio.'];
+      if (date === today) {
+        return {
+          tone: 'ok',
+          text: '✓ Sale hoy en el Inicio.',
+          forecast: 'Hoy: la bienvenida se abre una vez al entrar. Después, el banner del Inicio permite volver a verla cuando quieras.'
+        };
+      }
       if (date > today) {
         // Un evento del panel se anuncia unos días antes: quien lo escriba
         // tiene que saber que ya va a salir, no esperar a su víspera.
         const faltan = daysUntilDate(date, today);
+        const desde = readableDate(isoShift(date, -7));
         return faltan !== null && faltan <= 7
-          ? ['info', `Sale el ${readableDate(date)}: se anuncia desde una semana antes.`]
-          : ['info', `Sale el ${readableDate(date)}.`];
+          ? {
+              tone: 'info',
+              text: `Sale el ${readableDate(date)}: ya se anuncia (faltan ${faltan} ${faltan === 1 ? 'día' : 'días'}).`,
+              forecast: `Próximamente: desde el ${desde} se anuncia en el Inicio (aviso previo de 7 días) y su día vuelve a abrir la bienvenida.`
+            }
+          : {
+              tone: 'info',
+              text: `Sale el ${readableDate(date)}.`,
+              forecast: `Aparecerá el ${readableDate(date)}. El aviso previo empieza 7 días antes, el ${desde}.`
+            };
       }
       return repeats
-        ? ['warn', `La fecha ya pasó (${readableDate(date)}), pero con ♻️ repetirá el ${readableMonthDay(date.slice(5))}.`]
-        : ['warn', `⚠️ La fecha ya pasó (${readableDate(date)}): no volverá a salir.`];
+        ? {
+            tone: 'warn',
+            text: `La fecha ya pasó (${readableDate(date)}), pero con ♻️ repetirá el ${readableMonthDay(date.slice(5))}.`,
+            forecast: `La fecha original ya pasó. Al repetirse cada año, volverá el ${readableMonthDay(date.slice(5))}, con su aviso previo de 7 días.`
+          }
+        : {
+            tone: 'warn',
+            text: `⚠️ La fecha ya pasó (${readableDate(date)}): no volverá a salir.`,
+            forecast: 'La fecha ya pasó y no se repite, así que no volverá a aparecer. Activa la repetición anual o elige otra fecha.'
+          };
     };
     /** Lo mismo para un día temático, que se fecha con mes-día. */
     const whenForSeasonal = (row) => {
       const title = row.querySelector('.dates-se-title')?.value.trim() || '';
       const monthDay = row.querySelector('.dates-se-monthday')?.value.trim() || '';
       const enabled = row.querySelector('.dates-se-enabled')?.checked === true;
-      if (!enabled) return ['muted', 'Apagado: ese día no saltará.'];
-      if (!title) return ['warn', 'Falta el nombre: sin él no se guarda.'];
+      if (!enabled) return { tone: 'muted', text: 'Apagado: ese día no saltará.', forecast: 'Apagado: no aparecerá aunque llegue su fecha.' };
+      if (!title) return { tone: 'warn', text: 'Falta el nombre: sin él no se guarda.', forecast: 'Ponle un nombre para poder guardarlo.' };
       const cada = readableMonthDay(monthDay);
-      if (!cada) return ['muted', 'Pon el mes y el día (p. ej. 10-31).'];
+      if (!cada) return { tone: 'muted', text: 'Pon el mes y el día (p. ej. 10-31).', forecast: 'Necesita un mes y un día válidos, como 10-31.' };
       const hoyMD = todayISO().slice(5);
-      if (monthDay === hoyMD) return ['ok', '✓ Sale hoy en el Inicio.'];
+      if (monthDay === hoyMD) return { tone: 'ok', text: '✓ Sale hoy en el Inicio.', forecast: 'Hoy: se abre la bienvenida y el banner del Inicio permite volver a verla.' };
       return monthDay > hoyMD
-        ? ['info', `Sale el ${cada}.`]
-        : ['warn', `Este año ya pasó: el año que viene, el ${cada}.`];
+        ? { tone: 'info', text: `Sale el ${cada}.`, forecast: `Cada ${cada}. Los días temáticos no se anuncian antes: la bienvenida aparece solo ese día.` }
+        : { tone: 'warn', text: `Este año ya pasó: el año que viene, el ${cada}.`, forecast: `Cada ${cada}; este año ya pasó. La bienvenida vuelve el año que viene, solo ese día.` };
     };
-    /** Pinta la línea de estado de todas las filas de las dos listas. */
+    /** La tarjeta resume lo que hay escrito ahora mismo, sin guardar. */
+    const refreshCardSummary = (row, seasonal = false) => {
+      const val = sel => row.querySelector(sel)?.value.trim() || '';
+      const title = val(seasonal ? '.dates-se-title' : '.dates-event-title');
+      const type = val('.dates-look-type') || 'custom';
+      const template = eventTemplateFor(type);
+      const icon = val('.dates-look-icon') || template.defaultEmoji;
+      const date = seasonal ? val('.dates-se-monthday') : val('.dates-event-date');
+      const repeats = seasonal ? true : row.querySelector('.dates-event-recur-cb')?.checked === true;
+      const gallery = val('.dates-look-gallery').split('\n').map(url => url.trim()).filter(Boolean);
+      const partes = [
+        seasonal ? (readableMonthDay(date) || 'Sin fecha') : (readableDate(date) || 'Sin fecha'),
+        repeats ? 'cada año' : 'una sola vez',
+        template.label
+      ];
+      if (gallery.length) partes.push(`${gallery.length} ${gallery.length === 1 ? 'foto' : 'fotos'}`);
+      if (val('.dates-look-video')) partes.push('vídeo');
+      const titleEl = row.querySelector('.dates-card-title');
+      if (titleEl) titleEl.textContent = title || (seasonal ? 'Día temático sin nombre' : 'Evento sin nombre');
+      const metaEl = row.querySelector('.dates-card-meta');
+      if (metaEl) metaEl.textContent = partes.join(' · ');
+      const iconEl = row.querySelector('.dates-card-emoji');
+      if (iconEl) iconEl.textContent = icon;
+      renderLookPreview(row, title);
+    };
+    /** Pinta el estado y el pronóstico de todas las filas de las dos listas. */
     const refreshWhens = () => {
-      const paint = (selector, calc) => page.querySelectorAll(selector).forEach(row => {
+      const paint = (selector, calc, seasonal) => page.querySelectorAll(selector).forEach(row => {
+        const info = calc(row);
         const out = row.querySelector('.dates-when');
-        if (!out) return;
-        const [tone, text] = calc(row);
-        out.className = `dates-when dates-when--${tone}`;
-        out.textContent = text;
+        if (out) {
+          out.className = `dates-when dates-when--${info.tone}`;
+          out.textContent = info.text;
+        }
+        const forecast = row.querySelector('.dates-forecast');
+        if (forecast) forecast.textContent = info.forecast;
+        refreshCardSummary(row, seasonal);
       });
-      paint('#datesEventsList .dates-event-row', whenForEvent);
-      paint('#datesSeasonalList .dates-event-row', whenForSeasonal);
+      paint('#datesEventsList .dates-event-row', whenForEvent, false);
+      paint('#datesSeasonalList .dates-event-row', whenForSeasonal, true);
     };
     // Se repinta solo mientras se escribe: el estado se lee sin guardar.
     page.querySelectorAll('#datesEventsList, #datesSeasonalList').forEach(list => {
@@ -4641,9 +5147,9 @@ export function AdminPage(router) {
       list.addEventListener('change', refreshWhens);
     });
 
-    // Cada evento lleva lo mínimo (título + fecha) y, al desplegarlo, todo lo
-    // que pinta la bienvenida: texto, emoji, color y foto. Con foto vacía se
-    // guarda sin foto y la hoja sale sin ella.
+    // Un evento ya no es una fila de campos e iconos: es una tarjeta que
+    // resume lo guardado y, al abrirse, un flujo en cinco pasos con etiquetas
+    // explícitas, vista previa y un resumen de cuándo aparecerá.
     /** Una acción de la hoja: el texto del botón y a dónde lleva. */
     const dateActionRow = (a = {}) => `
       <div class="dates-action-row">
@@ -4654,58 +5160,87 @@ export function AdminPage(router) {
 
     const dateEventRow = (e) => {
       const uid = e.id || 'ev' + Math.random().toString(36).slice(2, 8);
-      const hasDetail = !!(e.description || e.icon || e.image || e.type || (e.actions || []).length);
+      const hasDetail = !!(e.description || e.icon || e.image || e.video || e.type || (e.gallery || []).length || (e.actions || []).length);
       return `
-        <div class="dates-event-row${hasDetail ? ' is-open' : ''}" data-ev-id="${uid}">
-          <div class="dates-event-main">
-            <input type="text" class="dates-event-title" placeholder="Qué es (p. ej. Viaje a la playa)" value="${esc(e.title || '')}" maxlength="60" aria-label="Nombre del evento">
-            <input type="date" class="dates-event-date" value="${esc(e.date || '')}" aria-label="Fecha del evento">
-            <label class="dates-event-recur" title="Se repite cada año"><input type="checkbox" class="dates-event-recur-cb" ${e.recurring === true ? 'checked' : ''}><span>♻️</span></label>
-            <button type="button" class="dates-event-today" title="Poner la fecha de hoy">Hoy</button>
-            <button type="button" class="dates-event-toggle" aria-label="Editar el aspecto y las acciones de la bienvenida" title="Aspecto y acciones en la bienvenida">🎨</button>
-            <button type="button" class="dates-event-preview" title="Ver la bienvenida" aria-label="Ver la bienvenida">🎬</button>
-            <button type="button" class="dates-event-del" aria-label="Quitar evento">✕</button>
-          </div>
+        <article class="dates-event-row dates-event-card${hasDetail ? ' is-open' : ''}" data-ev-id="${uid}">
+          <header class="dates-card-head">
+            <span class="dates-card-emoji" aria-hidden="true">${esc(e.icon || eventTemplateFor(e.type).defaultEmoji)}</span>
+            <div class="dates-card-body">
+              <b class="dates-card-title">${esc(e.title || 'Evento sin nombre')}</b>
+              <span class="dates-card-meta"></span>
+            </div>
+            <div class="dates-card-actions">
+              <button type="button" class="dates-event-edit" aria-expanded="${hasDetail}" aria-controls="ev-editor-${uid}">Editar</button>
+              <button type="button" class="dates-event-preview" title="Ver la bienvenida" aria-label="Ver la bienvenida">Ver</button>
+              <button type="button" class="dates-event-del" aria-label="Quitar evento">Quitar</button>
+            </div>
+          </header>
           <p class="dates-when"></p>
-          <div class="dates-event-look"${hasDetail ? '' : ' hidden'}>
-            <label class="dates-look-field">
-              <span>Emoji</span>
-              <input type="text" class="dates-look-icon" value="${esc(e.icon || '✨')}" maxlength="4" aria-label="Emoji del evento">
-            </label>
-            <label class="dates-look-field">
-              <span>Color</span>
-              <select class="dates-look-type" aria-label="Color del evento">${typeOptions(e.type || 'custom')}</select>
-            </label>
-            <label class="dates-look-field dates-look-field--wide">
-              <span>Texto de la bienvenida</span>
-              <textarea class="dates-look-desc" rows="2" maxlength="180" placeholder="Lo que se lea ese día" aria-label="Texto de la bienvenida">${esc(e.description || '')}</textarea>
-            </label>
-            <label class="dates-look-field dates-look-field--wide">
-              <span>Foto (URL)</span>
-              <input type="url" class="dates-look-image" value="${esc(e.image || '')}" placeholder="https://…" aria-label="Foto del evento">
-            </label>
-            ${mediaFieldsHTML(e)}
-            <div class="dates-actions">
-              <p class="dates-actions-title">Acciones de la hoja (opcional)</p>
-              <small class="dates-look-note">Los botones que verá ese día. Si no pones ninguna, sale el de siempre («Abrir el calendario»).</small>
+          <div class="dates-event-editor" id="ev-editor-${uid}"${hasDetail ? '' : ' hidden'}>
+            <fieldset class="dates-fieldset">
+              <legend>1 · Datos esenciales</legend>
+              <div class="dates-field-grid">
+                <label class="dates-look-field dates-look-field--wide">
+                  <span>Nombre del evento</span>
+                  <input type="text" class="dates-event-title" placeholder="Qué es (p. ej. Viaje a la playa)" value="${esc(e.title || '')}" maxlength="60" aria-label="Nombre del evento">
+                </label>
+                <label class="dates-look-field">
+                  <span>Fecha</span>
+                  <input type="date" class="dates-event-date" value="${esc(e.date || '')}" aria-label="Fecha del evento">
+                </label>
+                <div class="dates-field-actions">
+                  <label class="dates-check"><input type="checkbox" class="dates-event-recur-cb" ${e.recurring === true ? 'checked' : ''}><span>Se repite cada año</span></label>
+                  <button type="button" class="dates-event-today">Usar hoy</button>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="dates-fieldset">
+              <legend>2 · Plantilla de ocasión</legend>
+              ${templatePickerHTML(e.type || 'custom')}
+            </fieldset>
+
+            <fieldset class="dates-fieldset">
+              <legend>3 · Ambiente</legend>
+              ${ambienceFieldsHTML(e)}
+            </fieldset>
+
+            <fieldset class="dates-fieldset">
+              <legend>4 · Acciones de la bienvenida <span class="dates-optional">(opcional)</span></legend>
+              <p class="dates-look-note">Los botones que verá ese día. Si no pones ninguna, sale el de siempre («Abrir el calendario»).</p>
               <div class="dates-actions-list" data-actions-list>${(e.actions || []).map(dateActionRow).join('')}</div>
               <button type="button" class="admin-btn admin-btn-ghost dates-action-add">${UI.plus} Añadir acción</button>
-            </div>
-            <p class="dates-look-preview" data-preview-for="${uid}"></p>
+            </fieldset>
+
+            <fieldset class="dates-fieldset">
+              <legend>5 · Cuándo aparece</legend>
+              <p class="dates-forecast"></p>
+              <p class="dates-look-preview" data-preview-for="${uid}"></p>
+              <button type="button" class="dates-event-open-preview">Ver la bienvenida</button>
+            </fieldset>
           </div>
-        </div>`;
+        </article>`;
     };
 
-    // Vista previa en vivo de la hoja: sin salir del panel se ve cómo queda.
+    // Vista previa en vivo de la hoja: plantilla, texto y media, sin abrirla.
     const renderLookPreview = (row, title) => {
       const out = row.querySelector('[data-preview-for]');
       if (!out) return;
       const val = sel => row.querySelector(sel)?.value.trim() || '';
-      const icon = val('.dates-look-icon') || '✨';
       const type = val('.dates-look-type') || 'custom';
+      const template = eventTemplateFor(type);
+      const icon = val('.dates-look-icon') || template.defaultEmoji;
       const desc = val('.dates-look-desc');
       const image = val('.dates-look-image');
-      const [accent, soft] = SPECIAL_EVENT_TONES[type] || SPECIAL_EVENT_TONES.custom;
+      const gallery = val('.dates-look-gallery').split('\n').map(url => url.trim()).filter(Boolean);
+      const acciones = readActions(row).length;
+      const [accent, soft] = tonePair(template.id);
+      const piezas = [
+        image ? 'foto principal' : 'sin foto',
+        gallery.length ? `${gallery.length} en galería` : '',
+        val('.dates-look-video') ? 'vídeo' : '',
+        acciones ? `${acciones} ${acciones === 1 ? 'acción' : 'acciones'}` : ''
+      ].filter(Boolean);
       out.innerHTML = `
         <span class="dates-look-chip" style="--event-accent:${accent};--event-soft:${soft}">
           ${image ? `<img class="dates-look-chip-photo" src="${esc(image)}" alt="" loading="lazy">` : ''}
@@ -4713,7 +5248,9 @@ export function AdminPage(router) {
         </span>
         <span class="dates-look-chip-text">
           <b>${esc(title || 'Día especial')}</b>
-          ${desc ? `<small>${esc(desc)}</small>` : '<small class="muted-text">Sin texto: se usará el de fábrica.</small>'}
+          <small>${template.label} · ${template.short}</small>
+          ${desc ? `<small>${esc(desc)}</small>` : '<small class="muted-text">Sin texto: se usará el de la plantilla.</small>'}
+          <small class="dates-look-chip-meta">${piezas.join(' · ')}</small>
         </span>`;
     };
 
@@ -4737,12 +5274,12 @@ export function AdminPage(router) {
       const list = page.querySelector('#datesEventsList');
       if (!list) return;
       list.innerHTML = editingDates.map(dateEventRow).join('');
-      // Las acciones se añaden y se quitan dentro de su propia fila: repintar
-      // la lista entera se llevaría por delante lo escrito en las demás.
+      // Las acciones se añaden y se quitan dentro de su propia tarjeta:
+      // repintar la lista entera se llevaría por delante lo escrito.
       list.querySelectorAll('.dates-event-row').forEach((row, i) => paintActions(row, editingDates[i]?.actions || []));
       list.querySelectorAll('.dates-action-add').forEach(btn => {
         btn.addEventListener('click', () => {
-          const box = btn.closest('.dates-actions')?.querySelector('[data-actions-list]');
+          const box = btn.closest('.dates-fieldset')?.querySelector('[data-actions-list]');
           if (!box) return;
           if (box.children.length >= MAX_EVENT_ACTIONS) {
             showToast(`Máximo ${MAX_EVENT_ACTIONS} acciones por evento`, 'info');
@@ -4761,18 +5298,20 @@ export function AdminPage(router) {
           // llevarse el texto ni las acciones de los otros.
           editingDates = collectDates().events;
           const idx = editingDates.findIndex(e => (e.id || '') === row.dataset.evId);
-          if (idx >= 0) { editingDates.splice(idx, 1); renderDateEvents(); refreshWhens(); }
+          if (idx >= 0) { editingDates.splice(idx, 1); renderDateEvents(); }
         });
       });
-      list.querySelectorAll('.dates-event-toggle').forEach(btn => {
+      list.querySelectorAll('.dates-event-edit').forEach(btn => {
         btn.addEventListener('click', () => {
           const row = btn.closest('.dates-event-row');
-          const look = row.querySelector('.dates-event-look');
-          if (!look) return;
-          const open = look.hidden;
-          look.hidden = !open;
+          const editor = row.querySelector('.dates-event-editor');
+          if (!editor) return;
+          const open = editor.hidden;
+          editor.hidden = !open;
+          btn.setAttribute('aria-expanded', String(open));
+          btn.textContent = open ? 'Cerrar' : 'Editar';
           row.classList.toggle('is-open', open);
-          if (open) renderLookPreview(row, row.querySelector('.dates-event-title')?.value);
+          if (open) refreshWhens();
         });
       });
       list.querySelectorAll('.dates-event-today').forEach(btn => {
@@ -4783,14 +5322,11 @@ export function AdminPage(router) {
           refreshWhens();
         });
       });
-      list.querySelectorAll('.dates-event-preview').forEach(btn => {
+      // Dos formas de ver la bienvenida: la del encabezado y la del resumen.
+      list.querySelectorAll('.dates-event-preview, .dates-event-open-preview').forEach(btn => {
         btn.addEventListener('click', () => openDraftSheet(btn.closest('.dates-event-row')));
       });
-      // La vista previa se refresca mientras se escribe, sin guardar.
-      list.querySelectorAll('.dates-event-row').forEach(row => {
-        const look = row.querySelector('.dates-event-look');
-        if (look && !look.hidden) renderLookPreview(row, row.querySelector('.dates-event-title')?.value);
-      });
+      bindTemplatePickers(list, () => refreshWhens());
       refreshWhens();
     };
     renderDateEvents();
@@ -4814,9 +5350,12 @@ export function AdminPage(router) {
     page.querySelector('#addDatesEventBtn')?.addEventListener('click', () => {
       editingDates.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '', icon: '✨', type: 'custom', description: '', image: '' });
       renderDateEvents();
-      // El nuevo sale ya desplegado: es la parte que hay que rellenar.
+      // El nuevo sale ya desplegado y con el cursor en el nombre: es la parte
+      // que hay que rellenar para que aparezca.
       const rows = page.querySelectorAll('.dates-event-row');
-      rows[rows.length - 1]?.querySelector('.dates-event-toggle')?.click();
+      const last = rows[rows.length - 1];
+      last?.querySelector('.dates-event-edit')?.click();
+      last?.querySelector('.dates-event-title')?.focus();
     });
 
     // ---- Aspecto de los cuatro días principales ----
@@ -4827,37 +5366,24 @@ export function AdminPage(router) {
       if (!list) return;
       list.innerHTML = FIXED_EVENT_FIELDS.map(field => {
         const look = hubDates.looks?.[field.id] || {};
+        const type = look.type || field.type;
         return `
         <div class="dates-look-row" data-look-id="${field.id}">
-          <span class="dates-emoji-label">${field.icon}</span>
-          <label class="dates-look-field">
-            <span>Emoji</span>
-            <input type="text" class="dates-look-icon" value="${esc(look.icon || field.icon)}" maxlength="4" aria-label="Emoji de ${esc(field.label)}">
-          </label>
-          <label class="dates-look-field">
-            <span>Color</span>
-            <select class="dates-look-type" aria-label="Color de ${esc(field.label)}">${typeOptions(look.type || field.type)}</select>
-          </label>
-          <label class="dates-look-field dates-look-field--wide">
-            <span>Texto de la bienvenida</span>
-            <textarea class="dates-look-desc" rows="2" maxlength="180" placeholder="${esc(field.description)}" aria-label="Texto de ${esc(field.label)}">${esc(look.description || '')}</textarea>
-          </label>
-          <label class="dates-look-field dates-look-field--wide">
-            <span>Foto (URL)</span>
-            <input type="url" class="dates-look-image" value="${esc(look.image || '')}" placeholder="${esc(field.description ? 'Sin foto por defecto' : 'https://…')}" aria-label="Foto de ${esc(field.label)}">
-          </label>
-          ${mediaFieldsHTML(look)}
-          <p class="dates-look-preview" data-preview-for="${field.id}"></p>
+          <span class="dates-card-emoji" aria-hidden="true">${esc(look.icon || field.icon)}</span>
+          <div class="dates-look-row-body">
+            <p class="dates-look-row-title">${esc(field.label)} <small>· ${eventTemplateFor(type).label}</small></p>
+            ${templatePickerHTML(type)}
+            ${ambienceFieldsHTML(look)}
+            <p class="dates-look-preview" data-preview-for="${field.id}"></p>
+          </div>
         </div>`;
       }).join('');
       list.querySelectorAll('.dates-look-row').forEach(row => {
-        renderLookPreview(row, page.querySelector(`#date${fieldIdToInput(row.dataset.lookId)}Title`)?.value);
-      });
-      // Se repinta al escribir, para ver el resultado mientras se edita.
-      list.querySelectorAll('.dates-look-row').forEach(row => {
-        row.addEventListener('input', () => {
-          renderLookPreview(row, page.querySelector(`#date${fieldIdToInput(row.dataset.lookId)}Title`)?.value);
-        });
+        const title = () => page.querySelector(`#date${fieldIdToInput(row.dataset.lookId)}Title`)?.value;
+        renderLookPreview(row, title());
+        // La vista previa se refresca al escribir, sin guardar.
+        row.addEventListener('input', () => renderLookPreview(row, title()));
+        bindTemplatePickers(row, () => renderLookPreview(row, title()));
       });
     };
     // anniversary -> Anniversary, userBirthday -> UserBirthday (el input usa CamelCase)
@@ -4874,37 +5400,55 @@ export function AdminPage(router) {
     const seasonalRow = (s) => {
       const uid = s.id || 'se' + Math.random().toString(36).slice(2, 8);
       return `
-        <div class="dates-event-row is-open" data-se-id="${uid}">
-          <div class="dates-event-main">
-            <input type="text" class="dates-se-title" placeholder="Nombre (p. ej. Halloween)" value="${esc(s.title || '')}" maxlength="40" aria-label="Nombre del día temático">
-            <input type="text" class="dates-se-monthday" placeholder="MM-DD" value="${esc(s.monthDay || '')}" maxlength="5" pattern="[0-9]{2}-[0-9]{2}" aria-label="Mes y día, tipo 10-31">
-            <label class="dates-event-recur" title="Este día está activo"><input type="checkbox" class="dates-se-enabled" ${s.enabled !== false ? 'checked' : ''}><span>Activo</span></label>
-            <button type="button" class="dates-se-today" title="Poner el mes y el día de hoy">Hoy</button>
-            <button type="button" class="dates-se-preview" title="Ver la bienvenida" aria-label="Ver la bienvenida">🎬</button>
-            <button type="button" class="dates-event-del" aria-label="Quitar día temático">✕</button>
-          </div>
+        <article class="dates-event-row dates-event-card is-open" data-se-id="${uid}">
+          <header class="dates-card-head">
+            <span class="dates-card-emoji" aria-hidden="true">${esc(s.icon || '✨')}</span>
+            <div class="dates-card-body">
+              <b class="dates-card-title">${esc(s.title || 'Día temático sin nombre')}</b>
+              <span class="dates-card-meta"></span>
+            </div>
+            <div class="dates-card-actions">
+              <button type="button" class="dates-se-preview" title="Ver la bienvenida" aria-label="Ver la bienvenida">Ver</button>
+              <button type="button" class="dates-event-del" aria-label="Quitar día temático">Quitar</button>
+            </div>
+          </header>
           <p class="dates-when"></p>
-          <div class="dates-event-look">
-            <label class="dates-look-field">
-              <span>Emoji</span>
-              <input type="text" class="dates-look-icon" value="${esc(s.icon || '✨')}" maxlength="4" aria-label="Emoji del día temático">
-            </label>
-            <label class="dates-look-field">
-              <span>Color</span>
-              <select class="dates-look-type" aria-label="Color del día temático">${typeOptions(s.type || 'custom')}</select>
-            </label>
-            <label class="dates-look-field dates-look-field--wide">
-              <span>Texto de la bienvenida</span>
-              <textarea class="dates-look-desc" rows="2" maxlength="180" placeholder="Lo que se lea ese día" aria-label="Texto de la bienvenida">${esc(s.description || '')}</textarea>
-            </label>
-            <label class="dates-look-field dates-look-field--wide">
-              <span>Foto (URL)</span>
-              <input type="url" class="dates-look-image" value="${esc(s.image || '')}" placeholder="https://…" aria-label="Foto del día temático">
-            </label>
-            ${mediaFieldsHTML(s)}
-            <p class="dates-look-preview" data-preview-for="${uid}"></p>
+          <div class="dates-event-editor">
+            <fieldset class="dates-fieldset">
+              <legend>1 · Datos esenciales</legend>
+              <div class="dates-field-grid">
+                <label class="dates-look-field dates-look-field--wide">
+                  <span>Nombre</span>
+                  <input type="text" class="dates-se-title" placeholder="Nombre (p. ej. Halloween)" value="${esc(s.title || '')}" maxlength="40" aria-label="Nombre del día temático">
+                </label>
+                <label class="dates-look-field">
+                  <span>Mes y día</span>
+                  <input type="text" class="dates-se-monthday" placeholder="MM-DD" value="${esc(s.monthDay || '')}" maxlength="5" pattern="[0-9]{2}-[0-9]{2}" aria-label="Mes y día, tipo 10-31">
+                </label>
+                <div class="dates-field-actions">
+                  <label class="dates-check"><input type="checkbox" class="dates-se-enabled" ${s.enabled !== false ? 'checked' : ''}><span>Activo este año</span></label>
+                  <button type="button" class="dates-se-today">Usar hoy</button>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="dates-fieldset">
+              <legend>2 · Plantilla de ocasión</legend>
+              ${templatePickerHTML(s.type || 'custom')}
+            </fieldset>
+
+            <fieldset class="dates-fieldset">
+              <legend>3 · Ambiente</legend>
+              ${ambienceFieldsHTML(s)}
+            </fieldset>
+
+            <fieldset class="dates-fieldset">
+              <legend>4 · Cuándo aparece</legend>
+              <p class="dates-forecast"></p>
+              <p class="dates-look-preview" data-preview-for="${uid}"></p>
+            </fieldset>
           </div>
-        </div>`;
+        </article>`;
     };
     const renderSeasonal = () => {
       const list = page.querySelector('#datesSeasonalList');
@@ -4928,10 +5472,7 @@ export function AdminPage(router) {
       list.querySelectorAll('.dates-se-preview').forEach(btn => {
         btn.addEventListener('click', () => openDraftSheet(btn.closest('.dates-event-row'), true));
       });
-      list.querySelectorAll('.dates-event-row').forEach(row => {
-        renderLookPreview(row, row.querySelector('.dates-se-title')?.value);
-        row.addEventListener('input', () => renderLookPreview(row, row.querySelector('.dates-se-title')?.value));
-      });
+      bindTemplatePickers(list, () => refreshWhens());
       refreshWhens();
     };
     renderSeasonal();

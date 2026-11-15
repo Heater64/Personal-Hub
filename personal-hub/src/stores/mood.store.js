@@ -11,7 +11,7 @@ import { todayISO } from '../utils/format.js';
 
 // Catálogo y resolución viven en un módulo sin dependencias, para poder
 // probarlas en aislamiento y no duplicarlas en cada página.
-import { MOODS, LEGACY_MOODS, ALL_MOODS, findMood, resolveMood, moodEmoji } from '../data/moods.data.js';
+import { MOODS, LEGACY_MOODS, ALL_MOODS, QUICK_MOODS, PALETTE_MOODS, CUSTOM_MOOD, findMood, resolveMood, moodEmoji, encodeMood } from '../data/moods.data.js';
 
 // Ventana de edición de un estado: dentro de estos 5 minutos los cambios
 // sobreescriben el MISMO estado (los toques rápidos de prueba colapsan en
@@ -65,6 +65,21 @@ class MoodStore {
     return MOODS;
   }
 
+  /** Las que se ofrecen sin abrir el desplegable «Otras». */
+  getQuickMoods() {
+    return QUICK_MOODS;
+  }
+
+  /** Las del desplegable «Otras» (la lista larga). */
+  getPaletteMoods() {
+    return PALETTE_MOODS;
+  }
+
+  /** La emoción escrita a mano; su id es `custom`. */
+  getCustomMood() {
+    return CUSTOM_MOOD;
+  }
+
   /** Catálogo anterior: solo para leer lo ya registrado. */
   getLegacyMoods() {
     return LEGACY_MOODS;
@@ -109,7 +124,20 @@ class MoodStore {
    * del día (cada uno es una fila en la tabla moods).
    */
   async saveMood(moodId) {
-    const mood = this.getMoodById(moodId);
+    return this.saveMoods([moodId]);
+  }
+
+  /**
+   * Guarda la selección del día: una o VARIAS emociones a la vez. Acepta ids
+   * sueltos o entradas { id: 'custom', label: 'lo que escribió' }.
+   *
+   * La fila de `moods` guarda la lista codificada (ver moods.data.js), así que
+   * el modelo de estados y la ventana de 5 minutos siguen funcionando igual.
+   */
+  async saveMoods(selection) {
+    const encoded = encodeMood(selection);
+    if (!encoded) throw new Error('Elige al menos una emoción');
+    const mood = resolveMood(encoded);
     if (!mood) throw new Error('Estado de ánimo inválido');
 
     const user = userStore.getUser();
@@ -126,10 +154,10 @@ class MoodStore {
 
     if (current && fresh) {
       // Cambio dentro de la ventana → actualiza el mismo estado (solo el último cuenta)
-      current.mood = mood.id;
-      current.label = mood.label;
-      current.emoji = mood.emoji;
-      current.score = mood.score;
+      current.mood = encoded.mood;
+      current.label = encoded.label;
+      current.emoji = encoded.emoji;
+      current.score = encoded.score;
       current.updatedAt = now;
       await this._updateSupabaseState(current);
     } else {
@@ -137,10 +165,10 @@ class MoodStore {
       const state = {
         id: null, // id de la fila en Supabase (se rellena tras el INSERT)
         date: today,
-        mood: mood.id,
-        label: mood.label,
-        emoji: mood.emoji,
-        score: mood.score,
+        mood: encoded.mood,
+        label: encoded.label,
+        emoji: encoded.emoji,
+        score: encoded.score,
         createdAt: now,
         updatedAt: now
       };
@@ -149,7 +177,7 @@ class MoodStore {
     }
 
     this._persistTodayStates(states);
-    this._finalizeLocalState(states, today, mood);
+    this._finalizeLocalState(states, today, encoded);
     this._notifyMood(mood);
     // Push al admin desde el servidor (llega aunque su web esté cerrada).
     // Solo al guardar: quitar el ánimo no avisa al admin.
@@ -203,8 +231,9 @@ class MoodStore {
     states.pop();
     this._persistTodayStates(states);
 
-    const prev = states.length ? this._stateToMood(states[states.length - 1]) : null;
-    this._finalizeLocalState(states, today, prev);
+    const prevState = states.length ? states[states.length - 1] : null;
+    const prev = this._stateToMood(prevState);
+    this._finalizeLocalState(states, today, prevState);
     // Si queda otro estado anterior, el día no está "sin ánimo": el aviso
     // habla del que ha quedado, no de uno que ya no existe.
     this._notifyMood(prev);
@@ -284,12 +313,18 @@ class MoodStore {
     }
   }
 
-  /** Refresca el estado "visible" de la usuaria + historial + fallback admin */
-  _finalizeLocalState(states, today, mood) {
+  /**
+   * Refresca el estado "visible" de la usuaria + historial + fallback admin.
+   * Recibe el estado TAL COMO SE GUARDA (columnas de la fila, posiblemente
+   * varias emociones codificadas): es lo único que se puede volver a resolver
+   * sin perder la lista.
+   */
+  _finalizeLocalState(states, today, stored) {
+    const mood = stored ? resolveMood(stored) : null;
     this.todayMood = mood;
     this.markSeen();
-    if (mood) {
-      localStorage.setItem(getMoodKey(), JSON.stringify(mood));
+    if (stored) {
+      localStorage.setItem(getMoodKey(), JSON.stringify(stored));
     } else {
       localStorage.removeItem(getMoodKey());
     }
@@ -298,10 +333,10 @@ class MoodStore {
     // fallback local del Admin (Ánimo) cuando Supabase no está disponible.
     try {
       const shared = JSON.parse(localStorage.getItem('ph.data.moods') || '{}');
-      if (mood) {
+      if (stored) {
         shared[today] = {
-          mood: mood.id, label: mood.label, emoji: mood.emoji,
-          score: mood.score, updatedAt: new Date().toISOString()
+          mood: stored.mood, label: stored.label, emoji: stored.emoji,
+          score: stored.score, updatedAt: new Date().toISOString()
         };
       } else {
         delete shared[today];
@@ -312,10 +347,11 @@ class MoodStore {
     // Historial local (upsert por día con el último estado)
     const history = this.getHistory();
     const existingIdx = history.findIndex(h => h.date === today);
-    if (mood) {
+    if (stored) {
       // Se guarda la etiqueta y el emoji, no solo el id: si mañana cambia el
       // catálogo, los días de hoy siguen leyéndose tal como se registraron.
-      const entry = { moodId: mood.id, date: today, label: mood.label, emoji: mood.emoji, score: mood.score };
+      const entry = { moodId: stored.mood, date: today, label: stored.label, emoji: stored.emoji, score: stored.score };
+      entry.moodIds = mood?.ids || [stored.mood];
       if (existingIdx >= 0) history[existingIdx] = entry;
       else history.push(entry);
     } else if (existingIdx >= 0) {
@@ -366,15 +402,18 @@ class MoodStore {
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
-        const mood = this.resolveMood({
+        // Se guarda la fila codificada tal cual: resolverla para mostrarla y
+        // cachear lo resuelto perdería las emociones sueltas de la lista.
+        const stored = {
           mood: data.mood,
           label: data.label,
           emoji: data.emoji,
           score: data.score
-        });
+        };
+        const mood = this.resolveMood(stored);
         this.todayMood = mood;
         this.markSeen();
-        localStorage.setItem(getMoodKey(), JSON.stringify(mood));
+        localStorage.setItem(getMoodKey(), JSON.stringify(stored));
 
         // Siembra los estados locales de hoy con la fila más reciente para que
         // la ventana de 5 min siga funcionando tras recargar/cambiar de dispositivo.

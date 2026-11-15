@@ -18,6 +18,7 @@ import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { userPrefKey } from '../utils/userStorage.js';
 import { todayISO } from '../utils/format.js';
 import { onContentChange } from '../services/realtime.service.js';
+import { userStore } from '../stores/user.store.js';
 
 const FAV_KEY = () => userPrefKey('razonesFavoritas');
 const READ_KEY = () => userPrefKey('razonesRead');
@@ -122,6 +123,25 @@ export function RazonesPage() {
     );
     favoritos = [...new Set(migrated)];
     saveFavs(favoritos);
+  }
+
+  // ==========================================
+  // FAVORITAS ENTRE DISPOSITIVOS
+  // Mismo patrón que las favoritas de Series: la fila de la cuenta manda; si
+  // todavía no existe, se sube la copia local (primera vez en esta cuenta).
+  // ==========================================
+  async function hydrateFavs() {
+    const remote = await db.getRazonesFavorites().catch(() => null);
+    if (Array.isArray(remote)) {
+      favoritos = [...new Set(remote.map(String))];
+      saveFavs(favoritos);
+    } else if (favoritos.length) {
+      db.saveRazonesFavorites(favoritos).catch(() => { /* sin red: queda local */ });
+    }
+  }
+
+  function pushFavs() {
+    db.saveRazonesFavorites(favoritos).catch(() => { /* sin red: queda local */ });
   }
 
   // ==========================================
@@ -276,6 +296,35 @@ export function RazonesPage() {
     });
     fav.addEventListener('click', () => toggleFav(r.id));
 
+    if (userStore.isAdmin) {
+      const editBtn = h('button', {
+        class: 'razon-action-btn',
+        type: 'button',
+        title: 'Editar razón',
+        'aria-label': 'Editar razón',
+        html: icon('edit', 14)
+      });
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openReasonEditor(r);
+      });
+
+      const delBtn = h('button', {
+        class: 'razon-action-btn is-delete',
+        type: 'button',
+        title: 'Eliminar razón',
+        'aria-label': 'Eliminar razón',
+        html: icon('trash', 14)
+      });
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteReason(r.id);
+      });
+
+      const adminWrap = h('div', { class: 'razon-row__admin' }, editBtn, delBtn);
+      return h('div', { class: `razon-row${isNew ? ' is-new' : ''}` }, open, adminWrap, fav);
+    }
+
     return h('div', { class: `razon-row${isNew ? ' is-new' : ''}` }, open, fav);
   }
 
@@ -311,6 +360,7 @@ export function RazonesPage() {
       toast('Guardada entre tus favoritas ♥');
     }
     saveFavs(favoritos);
+    pushFavs();
     updateMeta();
     renderFeatured();
     if (currentFilter === 'favoritas') renderGrid();
@@ -375,6 +425,94 @@ export function RazonesPage() {
     const tabFavs = page.querySelector('#tabFavs');
     const favCount = tabFavs?.querySelector('.razones-chip__count');
     if (favCount) favCount.textContent = favoritos.length;
+  }
+
+
+  // ==========================================
+  // GESTIÓN IN-SITU (ADMIN)
+  // ==========================================
+  function openReasonEditor(reasonToEdit = null) {
+    if (!userStore.isAdmin) return;
+    const isNew = !reasonToEdit;
+
+    openSheet(isNew ? 'Nueva razón' : 'Editar razón', () => {
+      const body = document.createElement('div');
+      body.className = 'ow-editor-form razon-editor-form';
+
+      body.innerHTML = `
+        <div class="ow-form-field">
+          <label>¿Por qué la amas? (Texto de la razón)</label>
+          <textarea id="razonText" rows="4" placeholder="Por tu sonrisa, por cómo me cuidas...">${escapeHtml(reasonToEdit?.text || '')}</textarea>
+        </div>
+        <div class="ow-form-field">
+          <label>Fecha de desbloqueo (opcional)</label>
+          <input type="date" id="razonDate" value="${escapeHtml(reasonToEdit?.date || '')}" />
+          <small style="color:var(--text-3);font-size:var(--fs-caption);margin-top:2px;">
+            Si se deja vacío, la razón estará desbloqueada de inmediato. Si pones una fecha futura, aparecerá bloqueada con candado hasta ese día.
+          </small>
+        </div>
+        <div class="ow-editor-actions">
+          <button type="button" class="btn btn-secondary" id="razonCancelBtn">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="razonSaveBtn">${isNew ? 'Guardar razón' : 'Actualizar'}</button>
+        </div>
+      `;
+
+      body.querySelector('#razonCancelBtn').addEventListener('click', closeSheets);
+
+      body.querySelector('#razonSaveBtn').addEventListener('click', async () => {
+        const text = body.querySelector('#razonText').value.trim();
+        const date = body.querySelector('#razonDate').value;
+        if (!text) { toast('Por favor escribe el motivo o razón'); return; }
+
+        const id = reasonToEdit?.id || ('r_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+        const updatedReason = { id, text, date };
+
+        let nextRazones = [...razones];
+        if (isNew) {
+          nextRazones.push(updatedReason);
+        } else {
+          const idx = nextRazones.findIndex(x => x.id === id);
+          if (idx >= 0) nextRazones[idx] = updatedReason;
+          else nextRazones.push(updatedReason);
+        }
+
+        try {
+          await db.saveReasons(nextRazones);
+          razones = nextRazones;
+          updateMeta();
+          renderFeatured();
+          renderGrid();
+          closeSheets();
+          toast(isNew ? 'Razón añadida con éxito ♥' : 'Razón actualizada correctamente ✓');
+        } catch (err) {
+          toast('Error al guardar razón: ' + (err.message || 'Error'));
+        }
+      });
+
+      return body;
+    });
+  }
+
+  async function deleteReason(id) {
+    if (!userStore.isAdmin) return;
+    const r = razones.find(x => x.id === id);
+    if (!r) return;
+    if (!confirm(`¿Eliminar la razón: "${r.text.slice(0, 50)}..."?`)) return;
+
+    try {
+      const nextRazones = razones.filter(x => x.id !== id);
+      await db.saveReasons(nextRazones);
+      razones = nextRazones;
+      favoritos = favoritos.filter(fId => fId !== id);
+      saveFavs(favoritos);
+      pushFavs();
+      updateMeta();
+      renderFeatured();
+      renderGrid();
+      toast('Razón eliminada ✓');
+    } catch (err) {
+      toast('No se pudo eliminar: ' + (err.message || 'Error'));
+    }
   }
 
   // ==========================================
@@ -471,6 +609,7 @@ export function RazonesPage() {
         <p class="sub" id="razonesMeta"></p>
       </div>
       <div class="head-actions">
+        ${userStore.isAdmin ? `<button type="button" class="razones-admin-btn" id="newRazonBtn">${icon('plus', 15)} <span>Añadir razón</span></button>` : ''}
         <button type="button" class="icon-btn" id="randomBtn" aria-label="Razón aleatoria" title="Razón aleatoria">${icon('spark', 19)}</button>
       </div>
     </header>
@@ -494,6 +633,7 @@ export function RazonesPage() {
   });
 
   page.querySelector('#randomBtn').addEventListener('click', openRandom);
+  page.querySelector('#newRazonBtn')?.addEventListener('click', () => openReasonEditor(null));
 
   // Carga de datos y primer render
   const firstPaint = () => {
@@ -502,10 +642,12 @@ export function RazonesPage() {
     renderGrid();
   };
 
-  loadRazones().then(firstPaint).catch(() => {
-    razones = DEFAULT_RAZONES.map((text, i) => ({ id: `r${i}`, text, date: '' }));
-    firstPaint();
-  });
+  loadRazones()
+    .catch(() => {
+      razones = DEFAULT_RAZONES.map((text, i) => ({ id: `r${i}`, text, date: '' }));
+    })
+    .then(hydrateFavs)
+    .then(firstPaint);
 
   // Tiempo real: si el Admin edita las razones, se recargan al instante.
   // (Si hay una razón abierta en el sheet, no interrumpir la lectura.)

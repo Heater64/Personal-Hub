@@ -23,6 +23,7 @@ import { initListenTogether, onListenTogether, getListenTogetherState, initListe
 import { player } from '../services/player.service.js';
 import { showToast } from './Toast.js';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
+import { startPresence, stopPresence } from '../services/presence.service.js';
 import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref, getUserId } from '../utils/userStorage.js';
 import { todayISO, hourInSpain, spainMsOnDate, nextDayISO } from '../utils/format.js';
 
@@ -200,7 +201,10 @@ export function AppShell(router) {
       const mood = e?.detail;
       if (!mood) return;
       if (mood.user_id === getUserId()) return; // no avisar por el propio admin
-      showToast(`${mood.emoji || '🫶'} ${mood.label || 'Ánimo registrado'}`, 'info', 4000);
+      // La fila puede traer varias emociones codificadas: el aviso habla en
+      // lenguaje normal, no en el formato de almacenamiento.
+      const parsed = moodStore.resolveMood({ mood: mood.mood, label: mood.label, emoji: mood.emoji, score: mood.score });
+      showToast(`${parsed?.emoji || '🫶'} ${parsed?.label || 'Ánimo registrado'}`, 'info', 4000);
     };
     window.addEventListener('ph:mood-changed', onMood);
     return () => window.removeEventListener('ph:mood-changed', onMood);
@@ -388,7 +392,10 @@ export function AppShell(router) {
       }
     });
     currentWelcomeOverlay = ws;
-    document.getElementById('app').appendChild(ws);
+    // Al body y no a #app: el shell pone `position: relative` a sus hijos y
+    // eso dejaba la bienvenida desplazada y recortada en vez de a pantalla
+    // completa. El overlay ya se crea suelto por el mismo motivo.
+    document.body.appendChild(ws);
     setMoodWelcomeState('showing');
     return true;
   }
@@ -468,6 +475,11 @@ export function AppShell(router) {
       // Tiempo real: los cambios del Admin se propagan a todos los usuarios
       // (Realtime + polling). Se inicia al loguearse y se detiene al salir.
       initRealtime();
+      // Presencia real (quién está conectado): la usa el chat de Mal Día.
+      startPresence({
+        userId: userStore.getUser().id,
+        isAdmin: userStore.isAdmin
+      });
       // Aviso al Admin cuando la usuaria registra su estado de ánimo.
       // Sólo el admin escucha: el usuario ya se avisa a sí mismo en el store.
       if (userStore.isAdmin && !moodNotifCleanup) {
@@ -487,6 +499,7 @@ export function AppShell(router) {
       moodSyncPromise = null;
       // Logout: desactiva todo (incluida la sincronización en tiempo real)
       stopRealtime();
+      stopPresence();
       syncReminderState();
       if (moodNotifCleanup) { moodNotifCleanup(); moodNotifCleanup = null; }
     }

@@ -677,8 +677,7 @@ export const DEFAULT_CATALOG = [
     titulo: 'Obsesión',
     tipo: 'serie',
     descripcion: 'William, un respetado cirujano, inicia un apasionado y peligroso romance con Anna, la hija de su prometida, que amenaza con destruir a ambas familias. Serie de suspense erótico basada en la novela \u201CDaño\u201D de Josephine Hart.',
-    portada: '',
-    banner: '',
+    ...TMDB('8nQmxCYvidrCMxYCPdhuls94cl9'),
     anio: 2023,
     generos: ['Suspense', 'Drama', 'Romance'],
     recurso: TMDB_SEARCH('Obsesión'),
@@ -718,8 +717,10 @@ export const DEFAULT_CATALOG = [
     titulo: 'KiberSport (Esports)',
     tipo: 'serie',
     descripcion: 'Serie sobre el mundo de los deportes electrónicos: jóvenes jugadores, equipos, torneos y la vida dentro y fuera de los videojuegos.',
-    portada: '',
-    banner: '',
+    // La ficha se creó sin serie concreta detrás (solo «esports»), así que la
+    // portada es la de Gamebreakers (Prime Video, 2021), la serie documental
+    // sobre jugadores y profesionales de los esports de ese mismo año.
+    ...TMDB('4SWWoI3WiR4oejQcqfXamYKnagB'),
     anio: 2021,
     generos: ['Drama', 'Deporte'],
     recurso: TMDB_SEARCH('esports'),

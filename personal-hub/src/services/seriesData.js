@@ -30,6 +30,27 @@ const FAVS_KEY = () => userPrefKey('seriesFavorites');
 // → semilla inicial (Dragon Ball).
 // ==========================================
 
+// Portadas de la semilla por id: si la fila de Supabase se quedó con la
+// portada vacía (fichas creadas antes de tener imagen), la app usa la de la
+// semilla en vez de mostrar el hueco con el icono de respaldo.
+const SEED_COVERS = new Map(
+  defaultCatalog().map(i => [i.id, { portada: i.portada || '', banner: i.banner || '' }])
+);
+
+function fillMissingCovers(list) {
+  if (!Array.isArray(list)) return list;
+  return list.map(item => {
+    if (!item || (item.portada && item.banner)) return item;
+    const seed = SEED_COVERS.get(item.id);
+    if (!seed || (!seed.portada && !seed.banner)) return item;
+    return {
+      ...item,
+      portada: item.portada || seed.portada,
+      banner: item.banner || seed.banner
+    };
+  });
+}
+
 function readMirror() {
   try {
     const raw = localStorage.getItem('ph.config.series');
@@ -44,6 +65,7 @@ export async function loadCatalog() {
   try {
     const remote = await db.getSeries();
     if (Array.isArray(remote?.series) && remote.series.length) {
+      remote.series = fillMissingCovers(remote.series);
       // Mantener el espejo local al día (ph.config.series): las tarjetas de
       // Inicio/Rincón leen de él de forma síncrona (getCatalogSync).
       try { localStorage.setItem('ph.config.series', JSON.stringify({ series: remote.series })); } catch { /* cuota llena: ignorar */ }
@@ -68,8 +90,14 @@ export function loadPodio() {
   catch { return { series: [], movies: [] }; }
 }
 
+function writePodio(podio) {
+  try { localStorage.setItem(PODIO_KEY(), JSON.stringify(podio)); } catch { /* cuota llena */ }
+}
+
+/** Top 5 local → y a la cuenta (viaja entre dispositivos). */
 export function savePodio(podio) {
-  localStorage.setItem(PODIO_KEY(), JSON.stringify(podio));
+  writePodio(podio);
+  scheduleSyncPush();
 }
 
 export function loadFavorites() {
@@ -77,8 +105,14 @@ export function loadFavorites() {
   catch { return new Set(); }
 }
 
+function writeFavorites(set) {
+  try { localStorage.setItem(FAVS_KEY(), JSON.stringify([...set])); } catch { /* cuota llena */ }
+}
+
+/** Favoritas local → y a la cuenta (viaja entre dispositivos). */
 export function saveFavorites(favs) {
-  localStorage.setItem(FAVS_KEY(), JSON.stringify([...favs]));
+  writeFavorites(favs);
+  scheduleSyncPush();
 }
 
 export function loadProgressFor(itemId) {
@@ -98,7 +132,7 @@ export function getCatalogSync() {
   try {
     const raw = localStorage.getItem('ph.config.series');
     const parsed = raw ? JSON.parse(raw) : null;
-    if (Array.isArray(parsed?.series) && parsed.series.length) return parsed.series;
+    if (Array.isArray(parsed?.series) && parsed.series.length) return fillMissingCovers(parsed.series);
   } catch { /* espejo corrupto: usar semilla */ }
   return defaultCatalog();
 }
@@ -137,50 +171,83 @@ function writeAllProgress(all) {
   try { localStorage.setItem(PROGRESS_KEY(), JSON.stringify(all)); } catch { /* cuota llena: ignorar */ }
 }
 
-// Un solo temporizador: si se marcan varios capítulos seguidos se sube el
-// progreso completo una vez, no una por clic.
-let progressPushTimer = null;
+// Un solo temporizador: marcar varios capítulos o favoritas seguidos sube el
+// estado una vez, no una por clic. Se sincronizan los tres bloques de la
+// sección (progreso, favoritas y Top 5) en la misma fila por usuario.
+let syncPushTimer = null;
 
-/** Sube el progreso completo de la cuenta (una fila por usuario en Supabase). */
-function scheduleProgressPush() {
-  if (progressPushTimer) clearTimeout(progressPushTimer);
-  progressPushTimer = setTimeout(() => {
-    progressPushTimer = null;
+function scheduleSyncPush() {
+  if (syncPushTimer) clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(() => {
+    syncPushTimer = null;
+    const favoritesList = [...loadFavorites()];
     db.saveSeriesProgress(readAllProgress()).catch(() => { /* sin red: queda local */ });
+    db.saveSeriesFavorites(favoritesList).catch(() => { /* sin red: queda local */ });
+    db.saveSeriesPodio(loadPodio()).catch(() => { /* sin red: queda local */ });
   }, 500);
 }
 
 /**
- * Trae el progreso de la cuenta desde Supabase y lo mezcla con el local:
- * lo remoto manda por título (es lo último que se vio en otro dispositivo) y
- * lo que solo existe aquí (sin conexión) se conserva y se vuelve a subir.
- * Sin sesión o sin Supabase devuelve lo local tal cual.
+ * Trae el estado de la cuenta desde Supabase y lo mezcla con el local.
+ * Progreso: se une por título (lo remoto manda, lo de este dispositivo se
+ * conserva). Favoritas y Top 5: manda la fila de la cuenta, para que también
+ * viaje el haber quitado algo en otro dispositivo. Sin sesión o sin Supabase
+ * devuelve lo local tal cual.
  */
 export async function hydrateProgress() {
-  const local = readAllProgress();
-  const remote = await db.getSeriesProgress();
-  if (!remote) {
+  const localProgress = readAllProgress();
+  const localFavs = [...loadFavorites()];
+  const localPodio = loadPodio();
+
+  const [remoteProgress, remoteFavs, remotePodio] = await Promise.all([
+    db.getSeriesProgress().catch(() => null),
+    db.getSeriesFavorites().catch(() => null),
+    db.getSeriesPodio().catch(() => null)
+  ]);
+
+  let push = false;
+
+  if (remoteProgress) {
+    const merged = { ...localProgress, ...remoteProgress };
+    writeAllProgress(merged);
+    if (JSON.stringify(localProgress) !== JSON.stringify(merged)) push = true;
+  } else if (Object.keys(localProgress).length) {
     // Primera vez de esta cuenta en la nube: se sube lo que ya hubiera aquí.
-    if (Object.keys(local).length) scheduleProgressPush();
-    return local;
+    push = true;
   }
-  const merged = { ...local, ...remote };
-  writeAllProgress(merged);
-  if (JSON.stringify(local) !== JSON.stringify(merged)) scheduleProgressPush();
-  return merged;
+
+  if (Array.isArray(remoteFavs)) {
+    if (JSON.stringify(localFavs) !== JSON.stringify(remoteFavs)) {
+      writeFavorites(new Set(remoteFavs));
+    }
+  } else if (localFavs.length) {
+    push = true;
+  }
+
+  if (remotePodio && typeof remotePodio === 'object') {
+    const remoteList = [...(remotePodio.series || []), ...(remotePodio.movies || [])];
+    const localList = [...(localPodio.series || []), ...(localPodio.movies || [])];
+    if (JSON.stringify(localList) !== JSON.stringify(remoteList)) writePodio(remotePodio);
+  } else if ((localPodio.series || []).length || (localPodio.movies || []).length) {
+    push = true;
+  }
+
+  if (push) scheduleSyncPush();
+  return readAllProgress();
 }
 
 export function saveProgressFor(itemId, data) {
   const all = readAllProgress();
   all[itemId] = data;
   writeAllProgress(all);
-  scheduleProgressPush();
+  scheduleSyncPush();
 }
 
 /**
- * Series empezadas (con algún capítulo visto), incluidas las completadas.
- * Devuelve [{ item, watched, total, percent }]; las que siguen en marcha van
- * primero y las completadas al final.
+ * Series empezadas que siguen EN MARCHA: con algún capítulo visto y alguno
+ * pendiente. Las completadas no salen: en Inicio ya no hay nada que seguir
+ * (allí se marcan como completadas y desaparecen de «Estás viendo»).
+ * Devuelve [{ item, watched, total, percent }].
  */
 export function getStartedSeries() {
   const catalog = getCatalogSync();
@@ -192,12 +259,11 @@ export function getStartedSeries() {
     if (!item || item.tipo !== 'serie') continue;
     const total = getTotal(item);
     const watched = Math.min(Array.isArray(d?.watched) ? d.watched.length : 0, total);
-    if (total > 0 && watched > 0) {
+    if (total > 0 && watched > 0 && watched < total) {
       out.push({ item, watched, total, percent: Math.round((watched / total) * 100) });
     }
   }
-  const done = (x) => (x.watched >= x.total ? 1 : 0);
-  return out.sort((a, b) => done(a) - done(b) || String(a.item.titulo || '').localeCompare(String(b.item.titulo || ''), 'es'));
+  return out.sort((a, b) => String(a.item.titulo || '').localeCompare(String(b.item.titulo || ''), 'es'));
 }
 
 /**
@@ -216,6 +282,41 @@ export function bumpWatched(itemId, delta = 1) {
   const watched = Array.from({ length: next }, (_, i) => i + 1);
   saveProgressFor(itemId, { ...p, watched });
   return { watched: next, total };
+}
+
+/** ¿Está marcada como vista esta película? */
+export function isMovieWatched(itemId) {
+  return loadProgressFor(itemId).movieWatched === true;
+}
+
+/**
+ * Marca o desmarca una película como vista. Las películas no tienen
+ * episodios, así que su estado se guarda en el mismo progreso por usuario que
+ * las series (con la misma sincronización entre dispositivos).
+ */
+export function setMovieWatched(itemId, watched) {
+  const next = { ...loadProgressFor(itemId) };
+  if (watched) next.movieWatched = true;
+  else delete next.movieWatched;
+
+  const hasEpisodes = Array.isArray(next.watched) && next.watched.length > 0;
+  if (!next.movieWatched && !hasEpisodes) {
+    // Sin nada que contar se borra la entrada: no queda basura en el progreso.
+    const all = readAllProgress();
+    if (all[itemId]) {
+      delete all[itemId];
+      writeAllProgress(all);
+      scheduleSyncPush();
+    }
+  } else {
+    saveProgressFor(itemId, next);
+  }
+  return !!next.movieWatched;
+}
+
+/** Alterna vista / no vista. Devuelve el estado nuevo. */
+export function toggleMovieWatched(itemId) {
+  return setMovieWatched(itemId, !isMovieWatched(itemId));
 }
 
 export function createId() {

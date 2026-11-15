@@ -100,6 +100,169 @@
 
 .sent-mood-btn.is-loading { pointer-events: none; opacity: 0.6; }
 
+/* «Otras»: contador de emociones elegidas fuera de los atajos */
+.sent-mood-btn--more { position: relative; }
+
+.sent-mood-more-count {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--r-full);
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.sent-mood-more-count[hidden] { display: none; }
+
+/* Desplegable con el catálogo largo + texto libre */
+.sent-mood-extra {
+  margin-top: var(--sp-12);
+  padding: var(--sp-12);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.sent-mood-extra[hidden] { display: none; }
+
+.sent-mood-extra-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-6);
+  margin-bottom: var(--sp-10);
+}
+
+.sent-mood-extra-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sent-mood-extra-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.sent-mood-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--sp-8);
+}
+
+.sent-mood-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-8) var(--sp-10);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-caption);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast);
+}
+
+.sent-mood-chip:hover {
+  border-color: var(--primary-softer);
+  background: var(--surface);
+}
+
+.sent-mood-chip.is-active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sent-mood-chip-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sent-mood-chip-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.sent-mood-chip-check {
+  font-size: 11px;
+  opacity: 0;
+}
+
+.sent-mood-chip.is-active .sent-mood-chip-check { opacity: 1; }
+
+.sent-mood-custom {
+  display: flex;
+  gap: var(--sp-8);
+  margin-top: var(--sp-12);
+}
+
+.sent-mood-custom-input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.sent-mood-custom-input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.sent-mood-custom-add {
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sent-mood-custom-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  margin-top: var(--sp-10);
+}
+
+.sent-mood-custom-chips:empty { display: none; }
+
+.sent-mood-custom-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-6) var(--sp-10);
+  border-radius: var(--r-full);
+  border: 1px solid var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sent-mood-custom-chip-x { opacity: 0.7; }
+
 .sent-mood-emoji {
   font-size: 26px;
   line-height: 1;
@@ -403,4 +566,11 @@
 @media (prefers-reduced-motion: reduce) {
   .sentimientos-page > * { animation: none; }
   .sent-mood-emoji { transition: none; }
+}
+
+/* Varios emojis en un mismo día: que quepan dentro de la celda. */
+.sent-hist-emoji {
+  max-width: 100%;
+  overflow: hidden;
+  letter-spacing: -2px;
 }

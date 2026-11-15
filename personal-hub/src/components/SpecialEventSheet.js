@@ -5,6 +5,12 @@
    cumpleaños, Halloween, Navidad, o lo que se
    haya configurado en Admin → Configuración).
 
+   Cada plantilla (`type`) no cambia solo el
+   color: cambia la composición. El catálogo de
+   utils/event-templates.js dice qué familia le
+   toca y aquí se montan cuatro escenas distintas
+   con los mismos datos guardados.
+
    Lleva su decoración (confeti, nieve, hojas,
    corazones o estrellas), un vídeo de portada
    o de fondo y una tira de fotos.
@@ -16,7 +22,7 @@
    toda la portada.
    ========================================== */
 
-import { specialEventsForDate, specialEventsToday, specialEventsToAnnounce, daysUntilDate, resolveEventPreview, SPECIAL_EVENT_TONES } from '../utils/specialDates.js';
+import { specialEventsForDate, specialEventsToday, specialEventsToAnnounce, daysUntilDate, resolveEventPreview, SPECIAL_EVENT_TONES, eventTemplateFor, compositionFor } from '../utils/specialDates.js';
 import { isExternalAction } from '../utils/event-actions.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { openSheet, closeSheets, h } from './ui.js';
@@ -96,12 +102,17 @@ function longDate(iso) {
 /**
  * Abre la hoja temática de una lista de eventos (el primero es el titular).
  * `preview` añade una aviso de que es una simulación, no el día real.
+ *
+ * Semántica intacta: se abre una vez por ocurrencia, los eventos simultáneos
+ * se listan como secundarios y las acciones son las que definió el admin.
  */
 export function openSpecialEventSheet(events, router, { preview = false } = {}) {
   const event = events[0];
   if (!event) return null;
   stopSheetMedia();
-  const [accent, soft] = SPECIAL_EVENT_TONES[event.type] || SPECIAL_EVENT_TONES.custom;
+  const template = eventTemplateFor(event.type);
+  const composition = compositionFor(event.type);
+  const [accent, soft] = SPECIAL_EVENT_TONES[template.id] || SPECIAL_EVENT_TONES.custom;
   const decor = normalizeDecor(event.decor);
   const video = event.video || '';
   const videoMode = normalizeVideoMode(event.videoMode);
@@ -140,75 +151,130 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
     // fondo, la foto grande va delante y las miniaturas la cambian (el vídeo
     // se ve alrededor), que es como se leen mejor las fotos.
     const conVideoPortada = Boolean(video) && videoMode === 'portada';
+    const conVideoFondo = Boolean(video) && videoMode === 'fondo';
 
-    return h('div', { class: `special-event special-event--${event.type} special-event--media-${video && videoMode === 'fondo' ? 'fondo' : 'limpio'}` },
-      // El vídeo va detrás de todo cuando es fondo, y es la portada cuando no.
-      video && videoMode === 'fondo'
-        ? h('video', {
-            class: 'special-event__film',
+    // Las piezas se crean una vez y cada composición las coloca a su manera.
+    const filmNode = conVideoFondo
+      ? h('video', {
+          class: 'special-event__film',
+          src: video,
+          poster: portada || null,
+          autoplay: true, muted: true, loop: true, playsinline: true,
+          preload: 'metadata', 'aria-hidden': 'true'
+        })
+      : null;
+    const scrimNode = conVideoFondo ? h('div', { class: 'special-event__scrim' }) : null;
+    const videoNode = conVideoPortada
+      ? h('div', { class: 'special-event__video' },
+          h('video', {
             src: video,
             poster: portada || null,
             autoplay: true, muted: true, loop: true, playsinline: true,
-            preload: 'metadata', 'aria-hidden': 'true'
-          })
-        : null,
-      video && videoMode === 'fondo' ? h('div', { class: 'special-event__scrim' }) : null,
-      conVideoPortada
-        ? h('div', { class: 'special-event__video' },
-            h('video', {
-              src: video,
-              poster: portada || null,
-              autoplay: true, muted: true, loop: true, playsinline: true,
-              controls: true, preload: 'metadata'
-            }))
-        : null,
-      !conVideoPortada && portada
-        ? h('div', { class: 'special-event__photo' },
-            h('img', { src: portada, alt: '', loading: 'lazy', decoding: 'async' }))
-        : null,
-      h('p', { class: 'special-event__kicker' }, cuando.kicker),
-      h('div', { class: 'special-event__icon', 'aria-hidden': 'true' }, event.icon),
-      event.description
-        ? h('p', { class: 'special-event__message' }, event.description)
-        : null,
+            controls: true, preload: 'metadata'
+          }))
+      : null;
+    const photoNode = !conVideoPortada && portada
+      ? h('div', { class: 'special-event__photo' },
+          h('img', { src: portada, alt: '', loading: 'lazy', decoding: 'async' }))
+      : null;
+    const mediaNode = videoNode || photoNode;
 
-      resto.length && !conVideoPortada
-        ? h('div', { class: 'special-event__gallery', role: 'group', 'aria-label': 'Fotos de este día' },
-            ...resto.map((src, i) => h('button', {
-              class: 'special-event__thumb', type: 'button',
-              'data-gallery-index': String(i),
-              'aria-label': `Mostrar foto ${i + 2}`,
-              'aria-pressed': 'false',
-              onclick: (ev) => {
-                const galleryRoot = ev.currentTarget.closest('.special-event');
-                galleryRoot?.querySelector('.special-event__photo img')?.setAttribute('src', src);
-                galleryRoot?.querySelectorAll('.special-event__thumb').forEach(button => {
-                  button.setAttribute('aria-pressed', String(button === ev.currentTarget));
-                });
-              }
-            }, h('img', { src, alt: '', loading: 'lazy', decoding: 'async' }))))
-        : null,
-      events.length > 1 ? h('div', { class: 'special-event__list' }, ...events.slice(1).map(item =>
-        h('div', { class: 'special-event__item' },
-          h('span', { class: 'special-event__item-icon', 'aria-hidden': 'true' }, item.icon),
-          h('span', { class: 'special-event__item-body' },
-            h('b', null, item.title),
-            // Los que aún no han llegado dicen cuándo son.
-            item.days > 0 ? h('small', null, longDate(item.date)) : null,
-            item.description ? h('small', null, item.description) : null,
-            item.image ? h('img', { class: 'special-event__item-photo', src: item.image, alt: '', loading: 'lazy', decoding: 'async' }) : null
-          )
+    const iconNode = h('div', { class: 'special-event__icon', 'aria-hidden': 'true' }, event.icon || template.defaultEmoji || template.icon);
+    const kickerNode = h('p', { class: 'special-event__kicker' }, cuando.kicker);
+    const messageNode = event.description
+      ? h('p', { class: 'special-event__message' }, event.description)
+      : null;
+
+    const galleryNode = resto.length && !conVideoPortada
+      ? h('div', {
+          class: `special-event__gallery special-event__gallery--${composition.id}`,
+          role: 'group', 'aria-label': 'Fotos de este día'
+        },
+          ...resto.map((src, i) => h('button', {
+            class: 'special-event__thumb', type: 'button',
+            'data-gallery-index': String(i),
+            'aria-label': `Mostrar foto ${i + 2}`,
+            'aria-pressed': 'false',
+            onclick: (ev) => {
+              const galleryRoot = ev.currentTarget.closest('.special-event');
+              galleryRoot?.querySelector('.special-event__photo img')?.setAttribute('src', src);
+              galleryRoot?.querySelectorAll('.special-event__thumb').forEach(button => {
+                button.setAttribute('aria-pressed', String(button === ev.currentTarget));
+              });
+            }
+          }, h('img', { src, alt: '', loading: 'lazy', decoding: 'async' }))))
+      : null;
+    const listNode = events.length > 1 ? h('div', { class: 'special-event__list' }, ...events.slice(1).map(item =>
+      h('div', { class: 'special-event__item' },
+        h('span', { class: 'special-event__item-icon', 'aria-hidden': 'true' }, item.icon),
+        h('span', { class: 'special-event__item-body' },
+          h('b', null, item.title),
+          // Los que aún no han llegado dicen cuándo son.
+          item.days > 0 ? h('small', null, longDate(item.date)) : null,
+          item.description ? h('small', null, item.description) : null,
+          item.image ? h('img', { class: 'special-event__item-photo', src: item.image, alt: '', loading: 'lazy', decoding: 'async' }) : null
         )
-      )) : null,
-      preview
-        ? h('p', { class: 'special-event__note special-event__note--preview' }, 'Vista previa. Así se presentará este día.')
-        // Cuando aún no es su día, la nota dice cuándo es: es lo que se mira
-        // justo antes de pulsar.
-        : h('p', { class: 'special-event__note' }, cuando.texto ? `${cuando.texto}.` : 'Marcado en el calendario.'),
-      h('div', { class: 'special-event__actions' },
-        ...(acciones.length
-          ? acciones.map(action => actionButton(action.label, () => irA(action.route)))
-          : [actionButton('Abrir el calendario', () => irA('/calendario'))]))
+      )
+    )) : null;
+    const noteNode = preview
+      ? h('p', { class: 'special-event__note special-event__note--preview' }, 'Vista previa. Así se presentará este día.')
+      // Cuando aún no es su día, la nota dice cuándo es: es lo que se mira
+      // justo antes de pulsar.
+      : h('p', { class: 'special-event__note' }, cuando.texto ? `${cuando.texto}.` : 'Marcado en el calendario.');
+    const actionsNode = h('div', { class: 'special-event__actions' },
+      ...(acciones.length
+        ? acciones.map(action => actionButton(action.label, () => irA(action.route)))
+        : [actionButton('Abrir el calendario', () => irA('/calendario'))]));
+
+    // ---- Composición por plantilla ----
+    // Cada familia ordena las mismas piezas de otra forma y con otro ritmo:
+    // editorial (aniversario/recuerdo), celebración (cumpleaños), temática
+    // (Halloween/Navidad/San Valentín) y neutra (personalizada).
+    let body;
+    if (composition.id === 'editorial') {
+      body = [
+        mediaNode,
+        h('div', { class: 'special-event__story' },
+          h('div', { class: 'special-event__stamp' }, iconNode),
+          kickerNode,
+          messageNode
+        )
+      ];
+    } else if (composition.id === 'celebratory') {
+      body = [
+        h('div', { class: 'special-event__hero' },
+          iconNode,
+          h('div', { class: 'special-event__identity' }, kickerNode, messageNode)
+        ),
+        mediaNode
+      ];
+    } else if (composition.id === 'themed') {
+      body = [
+        h('div', { class: 'special-event__panel' },
+          iconNode,
+          h('div', { class: 'special-event__identity' }, kickerNode, messageNode)
+        ),
+        mediaNode
+      ];
+    } else {
+      body = [
+        mediaNode,
+        h('div', { class: 'special-event__identity' }, kickerNode, iconNode),
+        messageNode
+      ];
+    }
+
+    return h('div', {
+      class: `special-event special-event--${template.id} special-event--composition-${composition.id} special-event--media-${conVideoFondo ? 'fondo' : 'limpio'}`
+    },
+      // El vídeo va detrás de todo cuando es fondo, y es la portada cuando no.
+      filmNode,
+      scrimNode,
+      ...body.filter(Boolean),
+      galleryNode,
+      listNode,
+      noteNode,
+      actionsNode
     );
   }, stopSheetMedia);
   overlay.classList.add('overlay--special-event');
@@ -234,7 +300,7 @@ export function openSpecialEventSheet(events, router, { preview = false } = {}) 
   });
   // Los emojis que caen: los que se escribieron para ese día y, si no hay,
   // los de su fiesta (Halloween de calabazas y fantasmas, Navidad de árboles…).
-  const emojis = emojisFor(event.emojis, event.type);
+  const emojis = emojisFor(event.emojis, template.id);
   const eventContent = overlay.querySelector('.special-event');
   const celebration = { decor, accent, emojis, root: eventContent };
   if (!preview) playCelebration({ ...celebration, amount: videoMode === 'fondo' ? 28 : 48 });
@@ -277,7 +343,7 @@ export function replaySpecialEventSheet(router) {
 export function maybeShowSpecialEvent(page, router) {
   const stored = getUserPref('specialEventsSeen', '{}');
   let seen = {};
-  try { seen = JSON.parse(stored || '{}') || {}; } catch { /* clave dañada */ }
+  try { seen = JSON.parse(stored || '{}'); } catch { /* clave dañada */ }
   const events = specialEventsToAnnounce().filter(item => !seen[item.key]);
   if (!events.length) return;
 

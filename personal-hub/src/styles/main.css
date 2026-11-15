@@ -79,7 +79,10 @@
 .ambient-decor span:nth-child(15) { top: 36%; left: 40%; font-size: 20px; }
 .ambient-decor span:nth-child(16) { top: 95%; left: 44%; font-size: 14px; }
 
-.app-shell > :not(.ambient-decor) { position: relative; z-index: 1; }
+/* El enlace de salto se queda fuera: es fijo y no debe ocupar alto en el
+   flujo. Antes esta regla le ganaba y dejaba una franja de 47 px en la parte
+   superior de todas las secciones. */
+.app-shell > :not(.ambient-decor):not(.skip-link) { position: relative; z-index: 1; }
 
 @media (max-width: 768px) {
   /* En móvil se reducen tamaño y número para no saturar pantallas estrechas */

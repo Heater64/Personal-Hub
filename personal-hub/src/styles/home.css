@@ -15,21 +15,53 @@
 .home-page > *:nth-child(5) { animation-delay: 0.16s; }
 .home-page > *:nth-child(6) { animation-delay: 0.2s; }
 .home-page > *:nth-child(7) { animation-delay: 0.24s; }
+/* La celebración ocupa la pantalla entera, igual que la bienvenida del ánimo:
+   no es una hoja que se asoma desde abajo, es la pantalla del día. El titular
+   y el cierre se quedan arriba, fijos, mientras la escena puede desplazarse. */
 .overlay--special-event {
   z-index: calc(var(--z-modal) + 1);
-  background: color-mix(in srgb, var(--overlay-light) 86%, transparent);
-  backdrop-filter: blur(10px);
+  align-items: stretch;
+  padding: 0;
+  background: var(--theme-bg-primary);
+  backdrop-filter: none;
 }
 .overlay--special-event .sheet {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  border: 1px solid var(--theme-divider-strong);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0 clamp(16px, 4vw, 40px) max(28px, env(safe-area-inset-bottom, 0px));
+  border: 0;
+  border-radius: 0;
   background: var(--theme-surface);
-  box-shadow: var(--elevation-3);
+  box-shadow: none;
+  overflow-y: auto;
+  animation: ui-fade 0.2s ease-out;
 }
-.overlay--special-event .sheet-head { position: relative; z-index: 2; }
+.overlay--special-event .grabber { display: none; }
+.overlay--special-event .sheet-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: max(14px, env(safe-area-inset-top, 0px)) 0 10px;
+  background: color-mix(in srgb, var(--theme-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
 .overlay--special-event .sheet-head h2 { color: var(--theme-text-primary); }
+.overlay--special-event .special-event {
+  width: 100%;
+  max-width: 760px;
+  margin: auto;
+  padding-top: var(--sp-14);
+}
 .special-event__celebration {
   position: absolute;
   inset: 0;
@@ -168,6 +200,7 @@
   box-shadow: var(--elevation-1);
   animation: special-event-enter var(--dur-smooth) both;
 }
+.special-event__identity { display: grid; justify-items: center; gap: var(--sp-10); }
 .special-event__message {
   max-width: 38ch;
   margin: 0;
@@ -175,6 +208,121 @@
   font-size: var(--fs-lg);
   line-height: 1.55;
   font-family: var(--font-display, var(--font-body));
+}
+/* ===== Composición por plantilla =====
+   Las plantillas comparten los datos guardados, no la puesta en escena. Cada
+   familia ordena las piezas de otra forma: editorial (aniversario/recuerdo),
+   celebración (cumpleaños), atmosfera temática (festivos) y neutra Umbra. */
+
+/* --- Editorial: la foto abre y el texto se lee como una dedicatoria --- */
+.special-event--composition-editorial {
+  justify-items: stretch;
+  gap: var(--sp-12);
+  padding: var(--sp-6) 0 var(--sp-10);
+  text-align: left;
+}
+.special-event--composition-editorial .special-event__photo {
+  max-width: 100%;
+  padding: 10px 10px 40px;
+  border-radius: 6px;
+  background: var(--surface-1);
+  transform: rotate(-.6deg);
+}
+.special-event--composition-editorial .special-event__photo img { aspect-ratio: 4 / 3; }
+.special-event--composition-editorial .special-event__story {
+  display: grid;
+  gap: var(--sp-8);
+  padding: 0 var(--sp-4);
+}
+.special-event--composition-editorial .special-event__stamp .special-event__icon {
+  width: 44px;
+  height: 44px;
+  font-size: 21px;
+  border-radius: var(--r-full);
+}
+.special-event--composition-editorial .special-event__kicker { justify-self: start; }
+.special-event--composition-editorial .special-event__message {
+  margin: 0;
+  max-width: 34ch;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: var(--fs-xl);
+  font-style: italic;
+  line-height: 1.35;
+}
+.special-event--composition-editorial .special-event__gallery { justify-content: flex-start; }
+.special-event--composition-editorial .special-event__actions { justify-items: stretch; }
+.special-event--composition-editorial .special-event__actions .special-event__action { max-width: none; }
+.special-event--composition-editorial .special-event__note { justify-self: start; }
+
+/* --- Celebración: emoji grande, mensaje corto y la foto después --- */
+.special-event--composition-celebratory { gap: var(--sp-14); }
+.special-event--composition-celebratory .special-event__hero {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-12);
+}
+.special-event--composition-celebratory .special-event__icon {
+  width: 78px;
+  height: 78px;
+  border-radius: var(--r-full);
+  background: var(--event-soft);
+  font-size: 38px;
+}
+.special-event--composition-celebratory .special-event__message {
+  max-width: 26ch;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.special-event--composition-celebratory .special-event__photo { max-width: 100%; }
+.special-event--composition-celebratory .special-event__photo img { aspect-ratio: 1 / 1; }
+.special-event--composition-celebratory .special-event__gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.special-event--composition-celebratory .special-event__thumb { border-radius: var(--r-md); }
+.special-event--composition-celebratory .special-event__thumb img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+/* --- Temática: un panel con el tono de la fiesta envuelve el texto --- */
+.special-event--composition-themed .special-event__panel {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-8);
+  width: 100%;
+  padding: var(--sp-18) var(--sp-14);
+  border: 1px solid color-mix(in srgb, var(--event-accent) 28%, transparent);
+  border-radius: var(--r-lg);
+  background: linear-gradient(165deg, var(--event-soft), transparent 72%);
+}
+.special-event--composition-themed .special-event__icon {
+  border-radius: var(--r-sm);
+  transform: rotate(-4deg);
+}
+.special-event--composition-themed .special-event__kicker {
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+}
+.special-event--composition-themed .special-event__message {
+  font-size: var(--fs-lg);
+  line-height: 1.5;
+}
+.special-event--composition-themed .special-event__photo { max-width: 100%; }
+.special-event--halloween.special-event--composition-themed { background: radial-gradient(circle at 50% 22%, var(--event-soft), transparent 52%); }
+.special-event--valentine.special-event--composition-themed .special-event__panel {
+  border-radius: var(--r-xl) var(--r-xl) var(--r-md) var(--r-md);
+}
+.special-event--christmas.special-event--composition-themed .special-event__panel {
+  background: linear-gradient(165deg, var(--event-soft), transparent 62%), var(--theme-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .special-event--composition-themed .special-event__icon,
+  .special-event--composition-editorial .special-event__photo { transform: none; }
 }
 .special-event__list { width: 100%; display: grid; gap: var(--sp-8); }
 .special-event__item {
@@ -214,7 +362,11 @@
   .special-event__thumb { transition: none; }
 }
 @media (max-width: 480px) {
-  .overlay--special-event .sheet { max-height: 92dvh; }
+  .overlay--special-event .sheet {
+    min-height: 100dvh;
+    max-height: 100dvh;
+    padding-inline: 16px;
+  }
   .special-event { gap: var(--sp-10); }
   .special-event__photo { max-width: 100%; }
   .special-event__message { font-size: var(--fs-md); }
@@ -387,6 +539,38 @@
 }
 /* Aviso de sorpresas del calendario (se inserta solo si hay algo hoy) */
 .home-banner { margin-top: var(--sp-12); }
+
+/* Una fecha especial no compite con el hero: se anuncia justo después de lo
+   que toca hoy y permite volver a su bienvenida sin depender del primer uso. */
+.home-event-banner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  margin-top: var(--sp-12);
+  padding: var(--sp-12);
+  border: 1px solid color-mix(in srgb, var(--event-banner-accent, var(--accent)) 34%, var(--divider));
+  border-radius: var(--r-lg);
+  background: linear-gradient(118deg, color-mix(in srgb, var(--event-banner-soft, var(--accent-dim)) 92%, var(--surface-1)), var(--surface-1));
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.home-event-banner:hover { transform: translateY(-2px); border-color: var(--event-banner-accent, var(--accent)); box-shadow: var(--elevation-2); }
+.home-event-banner:active { transform: scale(.98); }
+.home-event-banner:focus-visible { outline: 2px solid var(--event-banner-accent, var(--accent)); outline-offset: 3px; }
+.home-event-banner__icon { display: grid; place-items: center; flex: 0 0 48px; width: 48px; height: 48px; border-radius: var(--r-md); background: color-mix(in srgb, var(--event-banner-accent, var(--accent)) 14%, var(--surface-2)); font-size: 25px; }
+.home-event-banner__body { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.home-event-banner__eyebrow { color: var(--event-banner-accent, var(--accent)); font-size: var(--fs-caption); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.home-event-banner__body b { font-family: var(--font-display); font-size: var(--fs-md); line-height: 1.15; }
+.home-event-banner__body > span:last-child { color: var(--text-secondary); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-event-banner__cta { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; color: var(--event-banner-accent, var(--accent)); font-size: var(--fs-xs); font-weight: 700; }
+.home-event-banner--halloween { --event-banner-accent: #f28b36; --event-banner-soft: rgba(242,139,54,.16); }
+.home-event-banner--christmas { --event-banner-accent: #69b984; --event-banner-soft: rgba(105,185,132,.16); }
+.home-event-banner--valentine { --event-banner-accent: #e8614f; --event-banner-soft: rgba(232,97,79,.16); }
+@media (max-width: 480px) { .home-event-banner__cta { font-size: 0; } .home-event-banner__cta svg { width: 20px; height: 20px; } }
 /* ==========================================
    3 · DESTACADOS — rejilla visual
    ========================================== */

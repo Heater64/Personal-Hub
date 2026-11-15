@@ -98,6 +98,27 @@
   box-shadow: 0 0 0 2px var(--ok-soft);
 }
 
+/* Presencia real: el verde solo se enciende si la otra persona está
+   conectada ahora mismo (Supabase Presence). */
+.md-chat__status[data-online="false"] .md-chat__dot,
+.md-chat__status[data-online="unknown"] .md-chat__dot {
+  background: var(--text-3);
+  box-shadow: 0 0 0 2px var(--border-soft);
+}
+
+.md-chat__status[data-online="true"] .md-chat__dot {
+  animation: mdPresencePulse 2.6s ease-in-out infinite;
+}
+
+@keyframes mdPresencePulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--ok-soft); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-chat__status[data-online="true"] .md-chat__dot { animation: none; }
+}
+
 /* ==========================================
    LA CONVERSACIÓN (zona que scrollea)
    ========================================== */
@@ -995,3 +1016,147 @@
 }
 
 .md-chat__reply-cancel:hover { color: var(--primary); }
+
+/* ==========================================
+   "ALGO BONITO" — mensaje con confeti y emojis
+   saliendo de él
+   ========================================== */
+.md-love-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-toast, 1100);
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
+/* Se apaga a la vez que el mensaje: mismo desvanecido, mismo final. */
+.md-love-layer.is-fading { opacity: 0; }
+
+.md-love {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-toast, 1100);
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-6, 6px);
+  max-width: min(320px, 84vw);
+  padding: var(--sp-18, 18px) var(--sp-22, 22px);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--primary-border);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(var(--blur-sm, 8px));
+  -webkit-backdrop-filter: blur(var(--blur-sm, 8px));
+  box-shadow: var(--elevation-3);
+  text-align: center;
+  pointer-events: none;
+  animation: mdLoveIn 420ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+.md-love[hidden] { display: none; }
+
+.md-love.is-out { animation: mdLoveOut 420ms ease forwards; }
+
+.md-love__emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.md-love__text {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  line-height: 1.25;
+  color: var(--text);
+}
+
+/* Cada trozo de papel o emoji: sale del centro del mensaje hacia fuera. */
+.md-love-bit {
+  position: absolute;
+  width: 8px;
+  height: 13px;
+  margin: -6px 0 0 -4px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: mdLoveBit 1.15s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.md-love-bit--emoji {
+  width: auto;
+  height: auto;
+  margin: -11px 0 0 -11px;
+  background: none !important;
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Emojis repartidos por toda la pantalla: aparecen, flotan y se van. */
+.md-love-bit--scatter {
+  margin: 0;
+  animation: mdLoveScatter 900ms ease both;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes mdLoveScatter {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) rotate(-12deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes mdLoveBit {
+  0% {
+    transform: translate(0, 0) scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+  20% { opacity: 1; }
+  100% {
+    transform: translate(var(--dx, 0), var(--dy, 0)) scale(1) rotate(var(--rot, 0deg));
+    opacity: 1;
+  }
+}
+
+@keyframes mdLoveIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes mdLoveOut {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -54%) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Sin animación, pero con el confeti y los emojis quietos alrededor del
+     mensaje y por la pantalla (la sorpresa se ve, solo que sin movimiento). */
+  .md-love-bit {
+    animation: none;
+    opacity: 1;
+    transform: translate(var(--dx, 0), var(--dy, 0)) rotate(var(--rot, 0deg));
+  }
+  .md-love-bit--scatter { transform: none; }
+  /* Sin movimiento, pero la salida sigue siendo la misma para los dos:
+     mensaje y partículas se apagan y se van en el mismo instante. */
+  .md-love { animation: none; }
+  .md-love.is-out { animation: none; opacity: 0; }
+  .md-love-layer { transition: none; }
+}

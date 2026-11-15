@@ -12,6 +12,7 @@ import { db } from '../services/db.service.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { requestEnable, disable, isPushSupported, getNotifSettings, setNotifSettings, notifPermission, inQuietHours, sendTestNotification, syncReminderState } from '../services/notifications.service.js';
 import { escapeHtml } from '../utils/escape.js';
+import { MAX_CUSTOM_LABEL, makeCustomMood, toggleMoodSelection } from '../data/moods.data.js';
 import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/specialDates.js';
 
 // ==========================================
@@ -418,19 +419,25 @@ export function ProfilePage(router) {
   });
 
   // ===== MOOD =====
+  // Mismo modelo que Sentimientos y la bienvenida: atajos + desplegable
+  // «Otras» + texto libre, con multi-selección.
   const moodDisplay = page.querySelector('#profileMoodDisplay');
   const moodPicker = page.querySelector('#profileMoodPicker');
   const changeMoodBtn = page.querySelector('#changeMoodBtn');
   const saveMoodBtn = page.querySelector('#saveMoodBtn');
-  let selectedMood = null;
+  const quickMoods = moodStore.getQuickMoods();
+  const paletteMoods = moodStore.getPaletteMoods();
+  const customMood = moodStore.getCustomMood();
+  const quickIds = new Set(quickMoods.map(m => m.id));
+  let selection = [];
 
   function renderTodayMood() {
     const todayMood = moodStore.getTodayMood();
     if (todayMood) {
       moodDisplay.innerHTML = `
         <div class="prof-mood-badge">
-          <span class="prof-mood-emoji">${todayMood.emoji}</span>
-          <span class="prof-mood-label">${todayMood.label}</span>
+          <span class="prof-mood-emoji">${escapeHtml(todayMood.emoji)}</span>
+          <span class="prof-mood-label">${escapeHtml(todayMood.label)}</span>
         </div>
       `;
       changeMoodBtn.innerHTML = `${UI.edit} Cambiar estado`;
@@ -442,37 +449,103 @@ export function ProfilePage(router) {
     }
   }
 
-  function renderMoodPicker() {
-    const moods = moodStore.getMoods();
-    const todayMood = moodStore.getTodayMood();
-    selectedMood = todayMood ? todayMood.id : null;
+  const moodChipHTML = (mood) => `
+    <button type="button" class="prof-mood-btn" data-mood="${mood.id}" aria-pressed="false">
+      <span class="prof-mood-btn-emoji">${mood.emoji}</span>
+      <span class="prof-mood-btn-label">${mood.label}</span>
+      <span class="prof-mood-btn-check">✓</span>
+    </button>`;
 
-    moodPicker.innerHTML = moods.map(m => `
-      <button type="button" class="prof-mood-btn ${selectedMood === m.id ? 'selected' : ''}" data-mood="${m.id}">
-        <span class="prof-mood-btn-emoji">${m.emoji}</span>
-        <span class="prof-mood-btn-label">${m.label}</span>
-        <span class="prof-mood-btn-check">✓</span>
-      </button>
-    `).join('');
-    moodPicker.style.display = 'flex';
-
-    moodPicker.querySelectorAll('.prof-mood-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        // Tocar la emoción ya seleccionada la DESELECCIONA (puede quedar sin emoción)
-        if (btn.classList.contains('selected')) {
-          btn.classList.remove('selected');
-          selectedMood = null;
-          return;
-        }
-        moodPicker.querySelectorAll('.prof-mood-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        selectedMood = btn.dataset.mood;
-      });
+  function paintPicker() {
+    moodPicker.querySelectorAll('[data-mood]').forEach(btn => {
+      const active = selection.some(item => item.id === btn.dataset.mood);
+      btn.classList.toggle('selected', active);
+      btn.setAttribute('aria-pressed', String(active));
     });
+
+    const extras = selection.filter(item => !quickIds.has(item.id));
+    const moreBtn = moodPicker.querySelector('[data-more]');
+    const extra = moodPicker.querySelector('#profMoodExtra');
+    if (moreBtn) {
+      moreBtn.classList.toggle('selected', extras.length > 0);
+      moreBtn.setAttribute('aria-expanded', String(extra ? !extra.hidden : false));
+    }
+
+    const customItem = selection.find(item => item.id === customMood.id);
+    const chips = moodPicker.querySelector('#profMoodCustomChips');
+    if (chips) {
+      chips.innerHTML = customItem
+        ? `<button type="button" class="prof-mood-custom-chip" data-custom-remove aria-label="Quitar «${escapeHtml(customItem.label)}»"><span aria-hidden="true">${customItem.emoji}</span>${escapeHtml(customItem.label)}<span class="prof-mood-custom-x" aria-hidden="true">×</span></button>`
+        : '';
+    }
+    const submit = moodPicker.querySelector('.prof-mood-custom-add');
+    if (submit) submit.textContent = customItem ? 'Cambiar' : 'Añadir';
+  }
+
+  function renderMoodPicker() {
+    const todayMood = moodStore.getTodayMood();
+    selection = todayMood ? todayMood.items.map(item => ({ ...item })) : [];
+
+    moodPicker.innerHTML = `
+      <div class="prof-mood-grid">
+        ${quickMoods.map(moodChipHTML).join('')}
+        <button type="button" class="prof-mood-btn" data-more aria-expanded="false" aria-controls="profMoodExtra">
+          <span class="prof-mood-btn-emoji">${customMood.emoji}</span>
+          <span class="prof-mood-btn-label">Otras</span>
+          <span class="prof-mood-btn-check">✓</span>
+        </button>
+      </div>
+      <div class="prof-mood-extra" id="profMoodExtra" hidden>
+        <div class="prof-mood-extra-grid">
+          ${paletteMoods.map(moodChipHTML).join('')}
+        </div>
+        <form class="prof-mood-custom" id="profMoodCustomForm">
+          <input type="text" id="profMoodCustomInput" class="prof-mood-custom-input" maxlength="${MAX_CUSTOM_LABEL}" placeholder="¿No está? Escríbela tú…" aria-label="Escribe tú la emoción" autocomplete="off">
+          <button type="submit" class="prof-mood-custom-add">Añadir</button>
+        </form>
+        <div class="prof-mood-custom-chips" id="profMoodCustomChips"></div>
+      </div>
+    `;
+    moodPicker.style.display = 'block';
+
+    // Si hoy hay emociones fuera de los atajos, el desplegable arranca abierto.
+    const extra = moodPicker.querySelector('#profMoodExtra');
+    if (extra) extra.hidden = !selection.some(item => !quickIds.has(item.id));
+    paintPicker();
 
     saveMoodBtn.style.display = '';
     changeMoodBtn.style.display = 'none';
   }
+
+  // Delegado: atajos y desplegable comparten estado y se marcan juntos.
+  moodPicker.addEventListener('click', (event) => {
+    const removeCustom = event.target.closest('[data-custom-remove]');
+    if (removeCustom) {
+      selection = selection.filter(item => item.id !== customMood.id);
+      paintPicker();
+      return;
+    }
+    if (event.target.closest('[data-more]')) {
+      const extra = moodPicker.querySelector('#profMoodExtra');
+      if (extra) { extra.hidden = !extra.hidden; paintPicker(); }
+      return;
+    }
+    const btn = event.target.closest('[data-mood]');
+    if (!btn) return;
+    selection = toggleMoodSelection(selection, btn.dataset.mood);
+    paintPicker();
+  });
+
+  moodPicker.addEventListener('submit', (event) => {
+    if (event.target.id !== 'profMoodCustomForm') return;
+    event.preventDefault();
+    const input = moodPicker.querySelector('#profMoodCustomInput');
+    const item = makeCustomMood(input.value);
+    if (!item) { input.focus(); showToast('Escribe cómo te sientes', 'info'); return; }
+    selection = [...selection.filter(i => i.id !== customMood.id), item];
+    input.value = item.label;
+    paintPicker();
+  });
 
   renderTodayMood();
   moodStore.fetchTodayMood().then(() => renderTodayMood());
@@ -486,8 +559,8 @@ export function ProfilePage(router) {
     saveMoodBtn.textContent = 'Guardando...';
 
     try {
-      if (selectedMood) {
-        await moodStore.saveMood(selectedMood);
+      if (selection.length) {
+        await moodStore.saveMoods(selection);
         showToast('💖 ¡Estado de ánimo actualizado!', 'success');
       } else {
         // Sin emoción seleccionada → quita el estado de hoy (si está en su ventana)

@@ -289,6 +289,32 @@ async function getAllMoods(startDate, endDate) {
   }
 }
 
+/**
+ * Fecha del registro de ánimo más cercana en una dirección, para saltar los
+ * días vacíos del detalle del Admin. Una sola consulta: se pide la primera
+ * fila ordenada por fecha en vez de recorrer los días uno a uno.
+ *
+ * `direction` es 'next' (fecha >= from) o 'prev' (fecha <= from). `userId`
+ * limita a una cuenta; sin él se miran todas (opción «Todos» del panel).
+ * Devuelve 'YYYY-MM-DD' o null si no hay nada.
+ */
+async function getNearestMoodDate({ from, direction = 'next', userId = null } = {}) {
+  if (!from) return null;
+  try {
+    let query = supabase.from('moods').select('date');
+    query = direction === 'prev'
+      ? query.lte('date', from).order('date', { ascending: false })
+      : query.gte('date', from).order('date', { ascending: true });
+    if (userId) query = query.eq('user_id', userId);
+    const { data, error } = await query.limit(1);
+    if (error) throw error;
+    return data?.[0]?.date || null;
+  } catch (err) {
+    console.warn('[db] Could not find the nearest mood date:', err.message);
+    return null;
+  }
+}
+
 async function saveMood(date, moodData) {
   const moods = await getMoods();
   moods[date] = { ...moodData, updatedAt: new Date().toISOString() };
@@ -1416,9 +1442,11 @@ async function getAllGiftResponses() {
 // ==========================================
 
 const SERIES_PROGRESS_TYPE = 'series_progress';
+const SERIES_FAVORITES_TYPE = 'series_favorites';
+const SERIES_PODIO_TYPE = 'series_podio';
 
-/** Progreso de series del usuario ({ [itemId]: { watched: [...] } }). */
-async function getSeriesProgress() {
+/** Lee una fila del usuario en user_progress por tipo (null si no existe). */
+async function getSeriesUserData(type) {
   const userId = await getCurrentUserId();
   if (!userId || !isSupabaseConfigured()) return null;
   try {
@@ -1426,34 +1454,82 @@ async function getSeriesProgress() {
       .from('user_progress')
       .select('data')
       .eq('user_id', userId)
-      .eq('type', SERIES_PROGRESS_TYPE)
+      .eq('type', type)
       .maybeSingle();
     if (error && error.code !== 'PGRST116') throw error;
-    const value = data?.data;
-    return value && typeof value === 'object' ? value : null;
+    return data?.data ?? null;
   } catch (err) {
-    console.warn('Error loading series progress:', err);
+    console.warn(`Error loading "${type}":`, err);
     return null;
   }
 }
 
-/** Sube el progreso completo del usuario (una fila por cuenta). */
-async function saveSeriesProgress(all) {
+/** Escribe (upsert) una fila del usuario en user_progress por tipo. */
+async function saveSeriesUserData(type, data) {
   const userId = await getCurrentUserId();
   if (!userId || !isSupabaseConfigured()) return { synced: false };
   try {
     const { error } = await supabase
       .from('user_progress')
       .upsert(
-        { user_id: userId, type: SERIES_PROGRESS_TYPE, data: all, updated_at: new Date().toISOString() },
+        { user_id: userId, type, data, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,type' }
       );
     if (error) throw error;
     return { synced: true };
   } catch (err) {
-    console.warn('Error saving series progress:', err);
+    console.warn(`Error saving "${type}":`, err);
     return { synced: false };
   }
+}
+
+/** Progreso de series del usuario ({ [itemId]: { watched: [...] } }). */
+async function getSeriesProgress() {
+  const value = await getSeriesUserData(SERIES_PROGRESS_TYPE);
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+}
+
+function saveSeriesProgress(all) {
+  return saveSeriesUserData(SERIES_PROGRESS_TYPE, all);
+}
+
+/** Ids de favoritas ([...]). */
+async function getSeriesFavorites() {
+  const value = await getSeriesUserData(SERIES_FAVORITES_TYPE);
+  return Array.isArray(value) ? value : null;
+}
+
+function saveSeriesFavorites(list) {
+  return saveSeriesUserData(SERIES_FAVORITES_TYPE, list);
+}
+
+/** Top 5: { series: [{ itemId, position, titulo }], movies: [...] }. */
+async function getSeriesPodio() {
+  const value = await getSeriesUserData(SERIES_PODIO_TYPE);
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+}
+
+function saveSeriesPodio(podio) {
+  return saveSeriesUserData(SERIES_PODIO_TYPE, podio);
+}
+
+// ==========================================
+// RAZONES — favoritas de la cuenta
+// Una fila por usuario en user_progress (type='razones_favorites') con los ids
+// guardados, para que las favoritas viajen entre dispositivos. La copia local
+// sigue siendo la caché y la red de seguridad sin conexión.
+// ==========================================
+
+const RAZONES_FAVORITES_TYPE = 'razones_favorites';
+
+/** Ids de las razones favoritas del usuario actual (null si aún no hay fila). */
+async function getRazonesFavorites() {
+  const value = await getSeriesUserData(RAZONES_FAVORITES_TYPE);
+  return Array.isArray(value) ? value : null;
+}
+
+function saveRazonesFavorites(ids) {
+  return saveSeriesUserData(RAZONES_FAVORITES_TYPE, Array.isArray(ids) ? ids : []);
 }
 
 // ==========================================
@@ -1853,7 +1929,7 @@ function formatAction(action) {
 // ==========================================
 
 export const db = {
-  getMoods, saveMood, getMoodMonth, getAllMoods, getUserMoods,
+  getMoods, saveMood, getMoodMonth, getNearestMoodDate, getAllMoods, getUserMoods,
   getReasons, saveReasons,
   getRinconCovers, saveRinconCovers,
   getHubDates, saveHubDates,
@@ -1864,6 +1940,9 @@ export const db = {
   getSeries, saveSeries,
   getOpenWhenLetters, saveOpenWhenLetters,
   getSeriesProgress, saveSeriesProgress,
+  getSeriesFavorites, saveSeriesFavorites,
+  getSeriesPodio, saveSeriesPodio,
+  getRazonesFavorites, saveRazonesFavorites,
   getMaldiaFrases, getMaldiaMensajes, saveMaldiaFrases, saveMaldiaMensajes,
   logActivity, getActivity, formatAction, isKnownAction,
   trackVisit, getAnalytics, getPageVisits,

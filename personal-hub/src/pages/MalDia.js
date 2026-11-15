@@ -6,6 +6,7 @@
 import { h, icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { db } from '../services/db.service.js';
 import { onContentChange } from '../services/realtime.service.js';
+import { watchPartnerPresence } from '../services/presence.service.js';
 import { userStore } from '../stores/user.store.js';
 import { notifyAdminOfNote } from '../services/notifications.service.js';
 
@@ -21,6 +22,78 @@ function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// "Algo bonito": confeti y emojis de la web saliendo del mensaje.
+const LOVE_EMOJIS = ['🤍', '❤️', '✨', '🌸', '⭐', '🧸', '💫'];
+const LOVE_COLORS = ['#ff6b8b', '#ffb03a', '#ffe66d', '#7bd88f', '#6fb7ff', '#c58fff'];
+// Un solo reloj para el mensaje y las partículas: aparecen y se van juntos.
+const LOVE_MS = 3200;
+const LOVE_FADE = 420;
+let loveTimer = null;
+let loveFadeTimer = null;
+
+/** Lanza una explosión de confeti + emojis desde el centro del mensaje. */
+function loveBurst(card) {
+  const layer = document.getElementById('mdLoveLayer');
+  if (!layer || !card) return;
+  const rect = card.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const bits = 36;
+  for (let i = 0; i < bits; i++) {
+    const isEmoji = i % 3 === 0;
+    const bit = document.createElement('span');
+    bit.className = isEmoji ? 'md-love-bit md-love-bit--emoji' : 'md-love-bit';
+    if (isEmoji) bit.textContent = LOVE_EMOJIS[i % LOVE_EMOJIS.length];
+    else bit.style.background = LOVE_COLORS[i % LOVE_COLORS.length];
+    const angle = (Math.PI * 2 * i) / bits + Math.random() * 0.35;
+    const dist = 100 + Math.random() * 170;
+    bit.style.left = `${cx}px`;
+    bit.style.top = `${cy}px`;
+    bit.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+    bit.style.setProperty('--dy', `${Math.sin(angle) * dist - 60}px`);
+    bit.style.setProperty('--rot', `${(Math.random() - 0.5) * 620}deg`);
+    bit.style.setProperty('--delay', `${Math.random() * 120}ms`);
+    layer.appendChild(bit);
+  }
+
+  // Y emojis repartidos por TODA la pantalla, no solo alrededor del mensaje.
+  const screenEmojis = window.innerWidth < 520 ? 12 : 20;
+  for (let i = 0; i < screenEmojis; i++) {
+    const star = document.createElement('span');
+    star.className = 'md-love-bit md-love-bit--emoji md-love-bit--scatter';
+    star.textContent = LOVE_EMOJIS[i % LOVE_EMOJIS.length];
+    star.style.left = `${4 + Math.random() * 92}vw`;
+    star.style.top = `${6 + Math.random() * 84}vh`;
+    star.style.fontSize = `${18 + Math.random() * 12}px`;
+    star.style.setProperty('--delay', `${Math.random() * 420}ms`);
+    layer.appendChild(star);
+  }
+}
+
+/** Muestra el mensaje y hace saltar el confeti desde él. */
+function showLove() {
+  const card = document.getElementById('mdLove');
+  const layer = document.getElementById('mdLoveLayer');
+  if (!card || !layer) return;
+  clearTimeout(loveTimer);
+  clearTimeout(loveFadeTimer);
+  layer.classList.remove('is-fading');
+  layer.innerHTML = '';
+  card.hidden = false;
+  card.classList.remove('is-out');
+  loveBurst(card);
+  // El mensaje y las partículas se desvanecen a la vez y desaparecen a la vez.
+  loveFadeTimer = setTimeout(() => {
+    card.classList.add('is-out');
+    layer.classList.add('is-fading');
+  }, LOVE_MS - LOVE_FADE);
+  loveTimer = setTimeout(() => {
+    card.hidden = true;
+    layer.classList.remove('is-fading');
+    layer.innerHTML = '';
+  }, LOVE_MS);
 }
 
 export function MalDiaPage(router) {
@@ -42,6 +115,7 @@ export function MalDiaPage(router) {
   let notesOff = null;   // suscripción al rol de usuario (sección de notas)
   let threadItems = [];  // mensajes pintados ahora mismo (para responder/borrar)
   let replyTarget = null; // mensaje citado en la respuesta que se está escribiendo
+  let offPresence = null; // estado en línea del otro lado
 
   // Las respuestas del admin viven en `content`, así que Realtime ya las
   // empuja a los dos: la conversación se repinta sin pulsar «Actualizar».
@@ -49,6 +123,7 @@ export function MalDiaPage(router) {
 
   page.cleanup = () => {
     offThread();
+    if (offPresence) { offPresence(); offPresence = null; }
     if (onKeyDown) document.removeEventListener('keydown', onKeyDown);
     if (breathingInterval) { clearInterval(breathingInterval); breathingInterval = null; }
     if (audioPlayer) { audioPlayer.pause(); audioPlayer = null; }
@@ -220,7 +295,7 @@ export function MalDiaPage(router) {
           <span class="md-chat__avatar" aria-hidden="true">${icon('heart', 18)}</span>
           <div class="md-chat__who">
             <b>${userStore.isAdmin ? 'Princesa🤍' : 'Peluche🧸'}</b>
-            <small><i class="md-chat__dot"></i> en línea</small>
+            <small class="md-chat__status" id="mdChatStatus" data-online="unknown"><i class="md-chat__dot"></i> <span id="mdChatStatusText">comprobando…</span></small>
           </div>
           <div class="md-chat__menu-wrap">
             <button type="button" class="md-chat__tool" id="mdChatMenuBtn" aria-label="Más opciones"
@@ -319,10 +394,39 @@ export function MalDiaPage(router) {
           </div>
         </div>
       </div>
+
+      <!-- "Algo bonito": el mensaje, con confeti y emojis saliendo de él -->
+      <div class="md-love-layer" id="mdLoveLayer" aria-hidden="true"></div>
+      <div class="md-love" id="mdLove" role="status" aria-live="polite" hidden>
+        <span class="md-love__emoji" aria-hidden="true">🤍</span>
+        <p class="md-love__text">Te quiero mucho mi princesa</p>
+      </div>
     `;
   }
 
   render();
+
+  // "Algo bonito" por delegación: sobrevive a los repintados internos de la
+  // página y no depende de que el botón exista al enlazar.
+  page.addEventListener('click', (e) => {
+    if (e.target.closest('#particlesBtn')) showLove();
+  });
+
+  // Estado real del otro lado: latido en Supabase, verde solo si ha dado
+  // señales en el último minuto y medio.
+  const statusEl = page.querySelector('#mdChatStatus');
+  const statusText = page.querySelector('#mdChatStatusText');
+  const paintStatus = ({ online, at } = {}) => {
+    const isOn = !!online;
+    if (statusEl) {
+      statusEl.dataset.online = isOn ? 'true' : 'false';
+      statusEl.title = at
+        ? `${isOn ? 'Ahora' : 'Última señal'} · ${new Date(at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
+        : 'Sin datos de conexión todavía';
+    }
+    if (statusText) statusText.textContent = isOn ? 'en línea' : 'desconectada';
+  };
+  offPresence = watchPartnerPresence(paintStatus);
 
   // onChange notifica ya con el estado actual, así que la conversación
   // aparece en cuanto el rol está resuelto.
@@ -334,11 +438,6 @@ export function MalDiaPage(router) {
     // Volver
     page.querySelectorAll('[data-back]').forEach(btn =>
       btn.addEventListener('click', () => router.navigate('/sentimientos')));
-
-    // Algo bonito
-    document.getElementById('particlesBtn')?.addEventListener('click', () => {
-      toast('Te quiero mucho, princesa');
-    });
 
     // Bajar / subir del todo en la conversación
     const streamEl = document.getElementById('mdChatStream');

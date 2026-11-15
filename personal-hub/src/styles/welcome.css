@@ -13,23 +13,34 @@
   backdrop-filter: blur(var(--blur-md));
 }
 
+/* La bienvenida ocupa la pantalla entera: no es una tarjeta flotante sobre
+   el Inicio, es la primera pantalla del día. El contenido se centra en una
+   columna legible, pero el fondo y el borde llegan a los cuatro lados. */
 .welcome-modal {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 100%;
-  max-width: 420px;
-  max-height: 90vh;
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
   overflow-y: auto;
-  padding: 40px 28px 32px;
+  padding: max(28px, env(safe-area-inset-top, 0px)) 24px max(28px, env(safe-area-inset-bottom, 0px));
   background: var(--theme-bg-primary);
-  border-radius: var(--r-lg);
-  border: 1px solid var(--theme-divider-strong);
-  box-shadow: var(--elevation-3);
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
   animation: slide-up var(--dur-slow) forwards;
 }
 
 .welcome-content {
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
 }
 
 .welcome-greeting {
@@ -136,6 +147,134 @@
   color: #fff;
   opacity: 1;
 }
+
+/* «Otras» + desplegable de emociones */
+.mood-btn.is-open {
+  border-color: var(--theme-border-accent);
+  background: var(--theme-surface-elevated);
+}
+
+.welcome-extra {
+  margin: -6px 0 20px;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border-accent);
+  animation: slide-up var(--dur-mid) both;
+}
+
+.welcome-extra[hidden] { display: none; }
+
+.welcome-extra-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.welcome-extra-hint {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--theme-text-secondary);
+}
+
+.welcome-extra-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.mood-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: var(--theme-surface-elevated);
+  color: var(--theme-text-primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.mood-chip:hover { border-color: var(--theme-border-accent); }
+
+.mood-chip.selected {
+  background: var(--accent-dim);
+  border-color: var(--theme-border-accent);
+  font-weight: 600;
+}
+
+.mood-chip__emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.mood-chip__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mood-chip__check {
+  font-size: 0.75rem;
+  opacity: 0;
+}
+
+.mood-chip.selected .mood-chip__check { opacity: 1; }
+
+/* Emoción escrita a mano */
+.welcome-custom {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.welcome-custom-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--theme-border-accent);
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.welcome-custom-input:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+.welcome-custom-add {
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--theme-border-accent);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.welcome-custom-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.welcome-custom-chips:empty { display: none; }
 
 /* CTA */
 .welcome-cta {
@@ -273,9 +412,9 @@
    ========================================== */
 @media (max-width: 768px) {
   .welcome-modal {
-    max-width: 380px;
+    max-width: none;
     padding: 32px 24px 28px;
-    border-radius: var(--r-lg);
+    border-radius: 0;
   }
 
   .welcome-title {
@@ -294,10 +433,10 @@
 
 @media (max-width: 480px) {
   .welcome-modal {
-    max-width: 100%;
-    margin: 0 12px;
-    padding: 28px 18px 24px;
-    border-radius: var(--r-lg);
+    max-width: none;
+    margin: 0;
+    padding: max(24px, env(safe-area-inset-top, 0px)) 18px max(24px, env(safe-area-inset-bottom, 0px));
+    border-radius: 0;
   }
 
   .welcome-title {
@@ -370,10 +509,12 @@
 
 @media (min-width: 1025px) {
   .welcome-modal {
-    max-width: 480px;
+    max-width: none;
     padding: 48px 36px 36px;
-    border-radius: var(--r-lg);
+    border-radius: 0;
   }
+
+  .welcome-content { max-width: 620px; }
 
   .welcome-title {
     font-size: var(--fs-3xl);

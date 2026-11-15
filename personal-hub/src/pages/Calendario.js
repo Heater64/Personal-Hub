@@ -16,7 +16,7 @@ import {
   h, icon, emptyState, openSheet, closeSheets, toast
 } from '../components/ui.js';
 import { createLightbox, openLightbox, buildVideoPlayer } from '../components/MediaLightbox.js';
-import { loadGiftsCatalog } from '../services/gifts.service.js';
+import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { db } from '../services/db.service.js';
 import { userStore } from '../stores/user.store.js';
 import { onContentChange } from '../services/realtime.service.js';
@@ -158,6 +158,32 @@ function loadMyResponses() {
     .then((data) => { responsesMap = data || {}; return responsesMap; })
     .catch(() => { /* se conserva lo que hubiera: el distintivo es lo de menos */ });
 }
+
+/**
+ * Respuestas que ha recibido cada regalo, de todas las cuentas. Solo el Admin
+ * las puede leer (la RLS del servidor lo refuerza), así que la usuaria nunca
+ * las pide. Sirve para que, en la cuenta del Admin, el calendario muestre qué
+ * contestó ella en cada regalo: el sobre de la tarjeta y la hoja del regalo.
+ */
+let receivedMap = {};   // { [giftId]: [{ userId, email, text, respondedAt }] }
+let receivedLoaded = false;
+
+function loadReceivedResponses() {
+  if (!userStore.isAdmin) return Promise.resolve(receivedMap);
+  return db.getAllGiftResponses()
+    .then((all) => { receivedMap = all || {}; receivedLoaded = true; return receivedMap; })
+    .catch(() => { /* sin red: se queda lo que hubiera */ });
+}
+
+/**
+ * Respuestas recibidas de un regalo concreto, sin las del propio Admin: aquí
+ * interesa lo que contestó ella, no lo que se escribió a sí mismo.
+ */
+const receivedOf = (giftId) => {
+  const entries = receivedMap[giftId] || [];
+  const myId = userStore.user?.id;
+  return myId ? entries.filter((entry) => entry?.userId !== myId) : entries;
+};
 
 /* ==========================================
    HELPERS DE FECHA
@@ -435,6 +461,7 @@ export function CalendarioPage(router) {
           </div>
         </article>
       `;
+      host.querySelector('#calInSituAddBtn')?.addEventListener('click', () => openInSituGiftEditor(null, dateStr));
       return;
     }
 
@@ -708,7 +735,10 @@ export function CalendarioPage(router) {
 
     if (!ids.length) {
       host.innerHTML = `
-        <p class="section-title">${escapeHtml(prettyDate(dateStr))}</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-12);">
+          <p class="section-title" style="margin:0;">${escapeHtml(prettyDate(dateStr))}</p>
+          ${userStore.isAdmin ? `<button type="button" class="cal-admin-btn" id="calInSituAddDayBtn">${icon('plus', 14)} <span>Añadir regalo</span></button>` : ''}
+        </div>
         ${emptyState('gift', 'Ese día no tiene regalo', isToday ? 'Hoy no hay nada programado.' : 'Este día todavía no tiene nada asignado.', isToday ? 'Ver el primer regalo' : 'Ir al siguiente', () => {
           const target = nextDayWithContent(dateStr) || nextDayWithContent(todayISO());
           if (!target) return;
@@ -719,6 +749,10 @@ export function CalendarioPage(router) {
           page.querySelector('#calDay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }).outerHTML}
       `;
+      // El botón de cabecera abre el editor in situ también cuando el día
+      // está vacío (antes el id no coincidía con el del listener y no hacía
+      // nada).
+      host.querySelector('#calInSituAddDayBtn')?.addEventListener('click', () => openInSituGiftEditor(null, dateStr));
       return;
     }
 
@@ -739,16 +773,28 @@ export function CalendarioPage(router) {
     const dayPct = Math.round((abiertos / ids.length) * 100);
     const contestadas = ids.filter(id => alreadyAnswered(giftOf(id))).length;
     const sinResponder = ids.filter(id => pendingAnswer(giftOf(id))).length;
+    // Respuestas de ella en los regalos de este día (solo cuenta el Admin).
+    const recibidas = userStore.isAdmin
+      ? ids.reduce((total, id) => total + receivedOf(id).length, 0)
+      : 0;
+    const adminDayHeaderBtn = userStore.isAdmin
+      ? `<button type="button" class="cal-admin-btn" id="calInSituAddDayBtn">${icon('plus', 14)} <span>Añadir regalo</span></button>`
+      : '';
+
     host.innerHTML = `
-      <p class="section-title">${escapeHtml(prettyDate(dateStr))}
-        <span class="section-title__aside">${abiertos === ids.length ? 'Todo abierto ✓' : `${abiertos} de ${ids.length}`}</span>
-      </p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-12);">
+        <p class="section-title" style="margin:0;">${escapeHtml(prettyDate(dateStr))}
+          <span class="section-title__aside">${abiertos === ids.length ? 'Todo abierto ✓' : `${abiertos} de ${ids.length}`}</span>
+        </p>
+        ${adminDayHeaderBtn}
+      </div>
       ${abiertos > 0 ? `<div class="cal-dayprogress${abiertos === ids.length ? ' is-done' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${ids.length}" aria-valuenow="${abiertos}">
         <div class="cal-dayprogress__bar"><span style="width:${dayPct}%"></span></div>
       </div>` : ''}
       ${contestadas || sinResponder ? `<p class="cal-dayask">${sinResponder
         ? `💌 ${sinResponder === 1 ? 'Te queda 1 por responder' : `Te quedan ${sinResponder} por responder`}`
         : `💌 ${contestadas === 1 ? '1 respuesta guardada' : `${contestadas} respuestas guardadas`}`}</p>` : ''}
+      ${recibidas ? `<p class="cal-dayask">${icon('mail', 13)} ${recibidas === 1 ? '1 respuesta recibida' : `${recibidas} respuestas recibidas`}</p>` : ''}
     `;
 
     if (requestedGiftId && requestedDay === dateStr && ids.includes(requestedGiftId)
@@ -764,23 +810,50 @@ export function CalendarioPage(router) {
       const isOpen = !!progressMap[id]?.opened;
       const pendiente = pendingAnswer(gift);
       const contestada = alreadyAnswered(gift);
+      const recibidasDelRegalo = receivedOf(id).length;
       const tone = toneOf(gift.type);
       const caption = gift.data?.caption || gift.data?.message || '';
       const extraLabel = isOpen ? ', ya abierto' : '';
       const askLabel = pendiente ? ', tiene una pregunta sin contestar' : contestada ? ', pregunta respondida' : '';
+      const recibidasLabel = recibidasDelRegalo
+        ? (recibidasDelRegalo === 1 ? ', tiene una respuesta' : `, tiene ${recibidasDelRegalo} respuestas`)
+        : '';
 
-      const card = h('button', {
+      const card = h('div', {
         class: `cal-gift${isOpen ? ' is-open' : ''}${pendiente ? ' is-ask' : ''}`,
-        type: 'button',
-        'aria-label': `${gift.title || meta.label}${extraLabel}${askLabel}`,
+        role: 'button',
+        tabindex: '0',
+        'aria-label': `${gift.title || meta.label}${extraLabel}${askLabel}${recibidasLabel}`,
         onclick: () => openExperience(gift, dateStr)
       },
+        userStore.isAdmin ? h('div', { class: 'cal-gift__admin', onclick: (e) => e.stopPropagation() },
+          h('button', {
+            type: 'button',
+            class: 'cal-gift-action-btn',
+            title: 'Editar sorpresa',
+            'aria-label': 'Editar sorpresa',
+            html: icon('edit', 14),
+            onclick: (e) => { e.stopPropagation(); openInSituGiftEditor(gift, dateStr); }
+          }),
+          h('button', {
+            type: 'button',
+            class: 'cal-gift-action-btn is-delete',
+            title: 'Eliminar sorpresa',
+            'aria-label': 'Eliminar sorpresa',
+            html: icon('trash', 14),
+            onclick: (e) => { e.stopPropagation(); deleteInSituGift(id, dateStr); }
+          })
+        ) : null,
         h('div', { class: 'cal-gift__media' },
           h('div', { class: `cal-gift__art cal-gift__art--tone is-${tone}` }, h('span', { html: icon(meta.icon, 30) })),
           h('span', { class: 'cal-gift__tag' }, meta.label),
           isOpen ? h('span', { class: 'cal-gift__ok', html: icon('check', 13) }) : null,
           // El sobre avisa de que hay algo que responder sin abrir el regalo.
-          pendiente ? h('span', { class: 'cal-gift__ask', html: icon('mail', 12) }) : null
+          pendiente ? h('span', { class: 'cal-gift__ask', html: icon('mail', 12) }) : null,
+          // Al Admin: sobre con borde = ese regalo ya tiene la respuesta de ella.
+          recibidasDelRegalo
+            ? h('span', { class: 'cal-gift__reply', title: 'Ya tiene respuesta', html: icon('mail', 12) })
+            : null
         ),
         h('div', { class: 'cal-gift__body' },
           h('b', null, gift.title || meta.label),
@@ -790,6 +863,7 @@ export function CalendarioPage(router) {
       grid.append(card);
     }
     host.append(grid);
+    host.querySelector('#calInSituAddDayBtn')?.addEventListener('click', () => openInSituGiftEditor(null, dateStr));
   }
 
   /**
@@ -798,6 +872,280 @@ export function CalendarioPage(router) {
    * entre sus regalos, que marca cada uno como visto) no dice nada, porque si
    * no el lector repite el panel entero en cada flecha.
    */
+
+  // ==========================================
+  // GESTIÓN IN-SITU (ADMIN) - CALENDARIO
+  // ==========================================
+  function openInSituGiftEditor(gift = null, dateStr = selectedDay.value) {
+    if (!userStore.isAdmin) return;
+    const isNew = !gift;
+    const initialType = gift?.type || 'letter';
+
+    const types = [
+      ['letter', '💌 Carta'],
+      ['affirmation', '💬 Mensaje / Afirmación'],
+      ['polaroid', '📸 Foto Polaroid'],
+      ['video', '🎥 Vídeo'],
+      ['cassette', '🎵 Música / Cassette'],
+      ['challenge', '🧩 Reto'],
+      ['relax', '🌸 Desconexión / Relax'],
+      ['riddle', '🔍 Acertijo'],
+      ['curiosity', '💡 Curiosidad'],
+      ['surprise', '⭐ Sorpresa'],
+      ['coupon', '🏷️ Vale de amor'],
+      ['craft', '✂️ Manualidad'],
+      ['giftBox', '🎁 Regalo / Paquete'],
+      ['game', '🎮 Minijuego'],
+      ['math', '✏️ Reto matemático']
+    ];
+
+    openSheet(isNew ? `Añadir sorpresa · ${prettyDate(dateStr)}` : `Editar sorpresa`, () => {
+      const container = document.createElement('div');
+      container.className = 'ow-editor-form';
+
+      container.innerHTML = `
+        <div class="ow-form-field">
+          <label>Título de la sorpresa *</label>
+          <input type="text" id="cgTitle" placeholder="Ej: Un recuerdo de los dos" value="${escapeHtml(gift?.title || '')}" />
+        </div>
+        <div class="ow-form-grid">
+          <div class="ow-form-field">
+            <label>Tipo de sorpresa</label>
+            <select id="cgType">
+              ${types.map(([tId, tLabel]) => `<option value="${tId}" ${tId === initialType ? 'selected' : ''}>${tLabel}</option>`).join('')}
+            </select>
+          </div>
+          <div class="ow-form-field">
+            <label>Fecha asignada</label>
+            <input type="date" id="cgDate" value="${escapeHtml(dateStr)}" />
+          </div>
+        </div>
+        <div id="cgDynamicFields"></div>
+        <div class="ow-form-field">
+          <label>Pregunta para ella (opcional) 💌</label>
+          <input type="text" id="cgQuestion" placeholder="Ej: ¿Te acuerdas de este día?" value="${escapeHtml(gift?.data?.question || '')}" />
+          <small style="color:var(--text-3);font-size:var(--fs-caption);">Aparecerá un sobrecito para que ella te deje una respuesta.</small>
+        </div>
+        <div class="ow-editor-actions">
+          <button type="button" class="btn btn-secondary" id="cgCancelBtn">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="cgSaveBtn">${isNew ? 'Guardar sorpresa' : 'Actualizar'}</button>
+        </div>
+      `;
+
+      const typeSelect = container.querySelector('#cgType');
+      const dynamicFields = container.querySelector('#cgDynamicFields');
+
+      function updateFields() {
+        const type = typeSelect.value;
+        const d = (gift && gift.type === type ? gift.data : {}) || {};
+
+        if (type === 'letter' || type === 'affirmation' || type === 'surprise' || type === 'relax') {
+          dynamicFields.innerHTML = `
+            <div class="ow-form-field">
+              <label>Mensaje / Carta *</label>
+              <textarea id="cgMessage" rows="5" placeholder="Escribe el mensaje bonito...">${escapeHtml(d.message || '')}</textarea>
+            </div>
+          `;
+        } else if (type === 'polaroid') {
+          dynamicFields.innerHTML = `
+            <div class="ow-form-field">
+              <label>URL de la imagen *</label>
+              <input type="url" id="cgImage" placeholder="https://..." value="${escapeHtml(d.image || '')}" />
+            </div>
+            <div class="ow-form-field">
+              <label>Pie de foto (caption)</label>
+              <input type="text" id="cgCaption" placeholder="Un momento inolvidable..." value="${escapeHtml(d.caption || '')}" />
+            </div>
+          `;
+        } else if (type === 'video') {
+          dynamicFields.innerHTML = `
+            <div class="ow-form-field">
+              <label>URL del vídeo (mp4) *</label>
+              <input type="url" id="cgVideoUrl" placeholder="https://..." value="${escapeHtml(d.videoUrl || '')}" />
+            </div>
+            <div class="ow-form-field">
+              <label>Descripción del vídeo</label>
+              <input type="text" id="cgCaption" placeholder="Mira esto con atención..." value="${escapeHtml(d.caption || '')}" />
+            </div>
+          `;
+        } else if (type === 'cassette') {
+          dynamicFields.innerHTML = `
+            <div class="ow-form-field">
+              <label>Nota o título de la canción</label>
+              <input type="text" id="cgMessage" placeholder="Nuestra canción..." value="${escapeHtml(d.message || '')}" />
+            </div>
+            <div class="ow-form-field">
+              <label>URL del archivo de audio (mp3)</label>
+              <input type="url" id="cgAudioUrl" placeholder="https://..." value="${escapeHtml(d.audioUrl || '')}" />
+            </div>
+          `;
+        } else if (type === 'challenge') {
+          dynamicFields.innerHTML = `
+            <div class="ow-form-field">
+              <label>El reto *</label>
+              <textarea id="cgMessage" rows="3" placeholder="Tu reto de hoy es...">${escapeHtml(d.message || '')}</textarea>
+            </div>
+            <div class="ow-form-field">
+              <label>Instrucciones adicionales</label>
+              <input type="text" id="cgInstructions" placeholder="Cómo completarlo..." value="${escapeHtml(d.instructions || '')}" />
+            </div>
+          `;
+        } else if (type === 'riddle') {
+          dynamicFields.innerHTML = `
+            <div class="ow-form-field">
+              <label>Acertijo o adivinanza *</label>
+              <textarea id="cgQuestionField" rows="3" placeholder="¿Qué es...?">${escapeHtml(d.question || '')}</textarea>
+            </div>
+            <div class="ow-form-field">
+              <label>Respuesta</label>
+              <input type="text" id="cgAnswer" placeholder="La solución es..." value="${escapeHtml(d.answer || '')}" />
+            </div>
+          `;
+        } else if (type === 'curiosity') {
+          dynamicFields.innerHTML = `
+            <div class="ow-form-field">
+              <label>Dato curioso o anécdota *</label>
+              <textarea id="cgFact" rows="4" placeholder="¿Sabías que...?">${escapeHtml(d.fact || '')}</textarea>
+            </div>
+          `;
+        } else {
+          dynamicFields.innerHTML = `
+            <div class="ow-form-field">
+              <label>Contenido / Mensaje *</label>
+              <textarea id="cgMessage" rows="4" placeholder="Contenido...">${escapeHtml(d.message || '')}</textarea>
+            </div>
+          `;
+        }
+      }
+
+      typeSelect.addEventListener('change', updateFields);
+      updateFields();
+
+      container.querySelector('#cgCancelBtn').addEventListener('click', closeSheets);
+
+      container.querySelector('#cgSaveBtn').addEventListener('click', async () => {
+        const title = container.querySelector('#cgTitle').value.trim();
+        const type = typeSelect.value;
+        const targetDate = container.querySelector('#cgDate').value;
+        const question = container.querySelector('#cgQuestion')?.value.trim();
+
+        if (!title) { toast('Por favor introduce un título'); return; }
+        if (!targetDate) { toast('Por favor selecciona una fecha'); return; }
+
+        const payloadData = {};
+        if (question) payloadData.question = question;
+
+        const msgEl = container.querySelector('#cgMessage');
+        if (msgEl) payloadData.message = msgEl.value.trim();
+        const imgEl = container.querySelector('#cgImage');
+        if (imgEl) payloadData.image = imgEl.value.trim();
+        const capEl = container.querySelector('#cgCaption');
+        if (capEl) payloadData.caption = capEl.value.trim();
+        const vidEl = container.querySelector('#cgVideoUrl');
+        if (vidEl) payloadData.videoUrl = vidEl.value.trim();
+        const audEl = container.querySelector('#cgAudioUrl');
+        if (audEl) payloadData.audioUrl = audEl.value.trim();
+        const instEl = container.querySelector('#cgInstructions');
+        if (instEl) payloadData.instructions = instEl.value.trim();
+        const factEl = container.querySelector('#cgFact');
+        if (factEl) payloadData.fact = factEl.value.trim();
+        const qEl = container.querySelector('#cgQuestionField');
+        if (qEl) payloadData.question = qEl.value.trim();
+        const ansEl = container.querySelector('#cgAnswer');
+        if (ansEl) payloadData.answer = ansEl.value.trim();
+
+        try {
+          const currentCatalog = JSON.parse(JSON.stringify(catalog));
+          currentCatalog.months = currentCatalog.months || {};
+          currentCatalog.gifts = Array.isArray(currentCatalog.gifts) ? currentCatalog.gifts : [];
+
+          const monthKey = targetDate.slice(0, 7);
+          const dayNum = String(parseInt(targetDate.slice(8), 10));
+
+          if (!currentCatalog.months[monthKey]) {
+            currentCatalog.months[monthKey] = { label: monthLabel(monthKey), calendarMapping: {} };
+          }
+          if (!currentCatalog.months[monthKey].calendarMapping) {
+            currentCatalog.months[monthKey].calendarMapping = {};
+          }
+
+          if (isNew) {
+            const id = 'gift_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            const newGift = {
+              id,
+              title,
+              type,
+              unlock: { mode: 'date', value: targetDate },
+              redirect: false,
+              data: payloadData
+            };
+            currentCatalog.gifts.push(newGift);
+
+            const mapping = currentCatalog.months[monthKey].calendarMapping;
+            const currentDayMapping = mapping[dayNum];
+            const currentIds = Array.isArray(currentDayMapping) ? currentDayMapping : currentDayMapping ? [currentDayMapping] : [];
+            currentIds.push(id);
+            mapping[dayNum] = currentIds.length === 1 ? currentIds[0] : currentIds;
+          } else {
+            const idx = currentCatalog.gifts.findIndex(x => x.id === gift.id);
+            if (idx >= 0) {
+              currentCatalog.gifts[idx] = { ...currentCatalog.gifts[idx], title, type, data: payloadData };
+            }
+          }
+
+          await db.saveGifts(currentCatalog);
+          invalidateGiftsCache();
+          catalog = await loadGiftsCatalog();
+          searchIndex = null;
+          selectedDay.value = targetDate;
+          view.monthKey = monthKey;
+          paintMonth();
+          paintDay();
+          closeSheets();
+          toast(isNew ? 'Sorpresa guardada en el calendario ♥' : 'Sorpresa actualizada ✓');
+        } catch (err) {
+          toast('Error al guardar: ' + (err.message || 'Error'));
+        }
+      });
+
+      return container;
+    });
+  }
+
+  async function deleteInSituGift(id, dateStr) {
+    if (!userStore.isAdmin) return;
+    const gift = giftOf(id);
+    if (!gift) return;
+    if (!confirm(`¿Eliminar la sorpresa "${gift.title}" del calendario?`)) return;
+
+    try {
+      const currentCatalog = JSON.parse(JSON.stringify(catalog));
+      currentCatalog.gifts = (currentCatalog.gifts || []).filter(x => x.id !== id);
+
+      const monthKey = dateStr.slice(0, 7);
+      const dayNum = String(parseInt(dateStr.slice(8), 10));
+      if (currentCatalog.months?.[monthKey]?.calendarMapping?.[dayNum]) {
+        const val = currentCatalog.months[monthKey].calendarMapping[dayNum];
+        const ids = (Array.isArray(val) ? val : [val]).filter(x => x !== id);
+        if (ids.length === 0) {
+          delete currentCatalog.months[monthKey].calendarMapping[dayNum];
+        } else {
+          currentCatalog.months[monthKey].calendarMapping[dayNum] = ids.length === 1 ? ids[0] : ids;
+        }
+      }
+
+      await db.saveGifts(currentCatalog);
+      invalidateGiftsCache();
+      catalog = await loadGiftsCatalog();
+      searchIndex = null;
+      paintMonth();
+      paintDay();
+      toast('Sorpresa eliminada ✓');
+    } catch (err) {
+      toast('No se pudo eliminar: ' + (err.message || 'Error'));
+    }
+  }
+
   let lastAnnouncedDay = null;
   function announceDay(dateStr, ids) {
     // Antes de que llegue el catálogo el día parece vacío: si se anunciara
@@ -960,6 +1308,8 @@ export function CalendarioPage(router) {
       if (content) stage.append(content);
       const ask = renderAsk(actual.gift);
       if (ask) stage.append(ask);
+      const received = renderReceived(actual.gift);
+      if (received) stage.append(received);
 
       // La altura nueva es la del contenido, no la del bloque: si no, el
       // growth se queda bloqueado en la altura anterior.
@@ -1333,6 +1683,27 @@ export function CalendarioPage(router) {
         body.append(lista);
       }
 
+      // Al Admin: las respuestas que ella ha dejado en cada regalo.
+      if (userStore.isAdmin) {
+        const recibidas = conFecha.filter((e) => receivedOf(e.gift.id).length);
+        if (recibidas.length) {
+          body.append(h('p', { class: 'exp-title' }, `Lo que te ha respondido (${recibidas.length})`));
+          const lista = h('ul', { class: 'exp-list' });
+          for (const { gift, date } of recibidas) {
+            for (const entry of receivedOf(gift.id)) {
+              if (!entry?.text) continue;
+              lista.append(h('li', null,
+                h('span', { class: 'exp-answers__q' }, gift.data.question),
+                h('span', { class: 'exp-answers__text' }, entry.text),
+                h('span', { class: 'exp-answers__meta' },
+                  `${simpleDay(entry.respondedAt) || (date ? prettyDate(date) : '')} · ${gift.title || metaOf(gift.type).label}`)
+              ));
+            }
+          }
+          body.append(lista);
+        }
+      }
+
       body.append(h('p', { class: 'exp-note' },
         'Para cambiar lo que escribiste, abre el regalo otra vez.'));
       body.append(h('button', {
@@ -1560,6 +1931,48 @@ export function CalendarioPage(router) {
     return wrap;
   }
 
+  /**
+   * Lo que ha contestado ella en este regalo. Solo para el Admin: la usuaria
+   * ya ve su propia respuesta en la cajita de arriba. Sin esto, abrir desde
+   * la cuenta del Admin un regalo que ella contestó no mostraba nada.
+   */
+  function renderReceived(gift) {
+    if (!userStore.isAdmin) return null;
+
+    const wrap = h('div', { class: 'exp exp-received' });
+    const rellenar = () => {
+      const entries = receivedOf(gift?.id).filter((entry) => entry?.text);
+      if (!entries.length) { wrap.hidden = true; return; }
+      wrap.hidden = false;
+      wrap.replaceChildren(
+        h('p', { class: 'exp-title' }, entries.length === 1
+          ? 'Su respuesta'
+          : `Sus respuestas (${entries.length})`),
+        h('ul', { class: 'exp-list' }, entries.map((entry) => h('li', null,
+          h('span', { class: 'exp-answers__text' }, entry.text),
+          h('span', { class: 'exp-answers__meta' }, simpleDay(entry.respondedAt))
+        )))
+      );
+    };
+
+    // Abrir un regalo por enlace directo puede llegar antes de que el servidor
+    // devuelva las respuestas: en ese caso se rellena en cuanto estén.
+    if (receivedLoaded) {
+      rellenar();
+    } else {
+      wrap.hidden = true;
+      loadReceivedResponses().then(rellenar);
+    }
+    return wrap;
+  }
+
+  /** Fecha corta de una respuesta (ISO → «25 de agosto»); vacío si no vale. */
+  function simpleDay(iso) {
+    const when = iso ? new Date(iso) : null;
+    if (!when || Number.isNaN(when.getTime())) return '';
+    return when.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+  }
+
   /* ==========================================
      MODO REVISIÓN (overrides locales)
      ========================================== */
@@ -1634,7 +2047,9 @@ export function CalendarioPage(router) {
   document.addEventListener('keydown', onShortcut);
 
   loadProgress();
-  loadMyResponses().then(() => { if (pageActive) paintAll(); });
+  loadMyResponses()
+    .then(loadReceivedResponses)
+    .then(() => { if (pageActive) paintAll(); });
 
   // Un override creado antes (p. ej. como admin) no debe seguir alterando
   // el calendario en una cuenta de usuaria: se limpia al detectar que ya

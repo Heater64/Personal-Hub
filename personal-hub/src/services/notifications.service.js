@@ -644,6 +644,67 @@ const MOOD_LINES = {
     'Aquí estoy, como siempre que me necesites 🤍',
     'Guardado. Pídelo sin vergüenza, que para eso estoy.',
     'Te mando un abrazo de los que funcionan ❤️'
+  ],
+  emocionada: [
+    '¡Qué bonito leerte así! Guardo este momento contigo ✨',
+    'Se nota que hoy algo te hace brillar 🤩',
+    'Me encanta cuando estás así de ilusionada.'
+  ],
+  decepcionada: [
+    'Guardado. No pasa nada por esperar otra cosa 🤍',
+    'Lo que esperabas no llegó. Aquí sigo.',
+    'Te leo. Los chascos también se cuentan.'
+  ],
+  molesta: [
+    'Guardado. Tienes todo el derecho a estar molesta.',
+    'Hoy algo te ha tocado las narices. Lo apunto sin juzgar.',
+    'Respira. Yo me quedo aquí a tu lado.'
+  ],
+  miedo: [
+    'Con miedo también se puede, y no estás sola 🤍',
+    'Guardado. Si quieres, lo hablamos despacio.',
+    'Aquí estoy para cuando quieras contarlo.'
+  ],
+  asustada: [
+    'Te leo y me quedo cerca. Nada de esto lo tienes que pasar sola.',
+    'Guardado. Respira conmigo un momento 🤍',
+    'Da miedo, y aun así lo has contado. Eso ya es mucho.'
+  ],
+  dolor: [
+    'Guardado. Ojalá se te pase pronto 🤍',
+    'Duele, y se entiende. Descansa todo lo que puedas.',
+    'Me quedo cerca para lo que necesites.'
+  ],
+  nauseas: [
+    'Guardado. Bebe agua y tómatelo con calma 🤍',
+    'Qué mal cuerpo. Descansa, que hoy no hay prisa.',
+    'Te leo. Cuídate mucho.'
+  ],
+  cansada: [
+    'Guardado. Hoy toca descansar sin culpa 😴',
+    'Estás cansada y se entiende. Para un rato.',
+    'Descansa, que el mundo puede esperar.'
+  ],
+  estresada: [
+    'Guardado. Una cosa a la vez, nada más 🤍',
+    'Respira. No tienes que poder con todo hoy.',
+    'Te leo. Suelta lo que puedas y déjame el resto.'
+  ],
+  enferma: [
+    'Guardado. Abrigo, agua y a recuperarse 🤍',
+    'Qué mal estar enferma. Descansa mucho.',
+    'Te leo. Ojalá te encuentres mejor pronto.'
+  ],
+  muyfeliz: [
+    '¡MUUUY FELIZ! Me alegra muchísimo leerte así 🥳',
+    'Guardado con confeti. Este día se queda.',
+    'Así me gusta verte. ¿Qué ha pasado?'
+  ],
+  // Emociones escritas a mano: una frase general que sirve para cualquiera.
+  general: [
+    'Guardado 🤍 Me quedo con cómo estás hoy.',
+    'Registrado. Aquí estoy para lo que necesites.',
+    'Te leo. Gracias por contármelo.'
   ]
 };
 
@@ -652,7 +713,13 @@ const MOOD_LINES = {
  * toca el mismo ánimo dos veces, no ve dos textos distintos.
  */
 function moodLine(mood) {
-  const pool = MOOD_LINES[mood?.id] || ['Guardado 🤍'];
+  // Con varias emociones se usa la que más necesita compañía (la de menor
+  // score); si es una escrita a mano, la frase general.
+  const items = mood?.items || [];
+  const main = items.length
+    ? items.reduce((worst, item) => (item.score < worst.score ? item : worst))
+    : null;
+  const pool = MOOD_LINES[main?.id] || MOOD_LINES.general;
   const day = Number(String(todayISO()).replace(/-/g, '')) || 0;
   return pool[day % pool.length];
 }

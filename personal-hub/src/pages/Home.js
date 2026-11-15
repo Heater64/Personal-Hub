@@ -14,8 +14,8 @@ import { userPrefKey, migrateUserPref, getUserPref, setUserPref } from '../utils
 import { hourInSpain, todayISO } from '../utils/format.js';
 import { getContinueWatching, getCatalogSync, getStartedSeries, hydrateProgress, bumpWatched } from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
-import { daysSinceAnniversary, loadSpecialDates, nextSpecialDate } from '../utils/specialDates.js';
-import { maybeShowSpecialEvent, previewSpecialEventSheet } from '../components/SpecialEventSheet.js';
+import { daysSinceAnniversary, loadSpecialDates, nextSpecialDate, specialEventsToday, eventTemplateFor, SPECIAL_EVENT_TONES } from '../utils/specialDates.js';
+import { maybeShowSpecialEvent, previewSpecialEventSheet, replaySpecialEventSheet } from '../components/SpecialEventSheet.js';
 import { icon } from '../components/ui.js';
 import { moodStore } from '../stores/mood.store.js';
 import { userStore } from '../stores/user.store.js';
@@ -175,6 +175,16 @@ function readMood() {
   } catch { return null; }
 }
 
+/**
+ * Etiqueta corta del ánimo. Con varias emociones no caben todas en la tarjeta:
+ * se enseña la primera y cuántas más hay.
+ */
+function moodLabel(mood) {
+  if (!mood) return 'Registrado';
+  if (mood.count > 1) return `${mood.items[0].label} +${mood.count - 1}`;
+  return mood.label || 'Registrado';
+}
+
 // ==========================================
 // BLOQUES DE MARCADO
 // ==========================================
@@ -190,7 +200,7 @@ function todayCards() {
     <button class="home-stat" type="button" data-route="/sentimientos" aria-label="Estado de ánimo de hoy">
       <span class="home-stat__ic">${icon('smile', 17)}</span>
       <span class="home-stat__num${mood ? ' home-stat__num--emoji' : ''}">${mood ? escapeHtml(mood.emoji || '🤍') : '—'}</span>
-      <span class="home-stat__label">${escapeHtml(mood ? (mood.label || 'Registrado') : 'Sin registrar')}</span>
+      <span class="home-stat__label">${escapeHtml(mood ? moodLabel(mood) : 'Sin registrar')}</span>
       <span class="home-stat__sub">${mood ? 'Cómo estás hoy' : 'Toca para registrar'}</span>
     </button>
     <button class="home-stat" type="button" data-route="/calendario">
@@ -198,6 +208,31 @@ function todayCards() {
       <span class="home-stat__num">${next ? escapeHtml(countdownLabel(next.days)) : '—'}</span>
       <span class="home-stat__label">${escapeHtml(next ? next.title : 'Sin fechas aún')}</span>
       <span class="home-stat__sub">${next ? escapeHtml(shortDate(next.date)) : 'Añádelas desde el perfil'}</span>
+    </button>
+  `;
+}
+
+/**
+ * El día especial de hoy, en el Inicio y siempre visible: la hoja se abre una
+ * sola vez sola, así que este banner es la forma de volver a verla cuando
+ * apetezca. Solo aparece si hoy cae algo; nunca anuncia fechas futuras.
+ */
+function todayEventBanner() {
+  const events = specialEventsToday();
+  const event = events[0];
+  if (!event) return '';
+  const template = eventTemplateFor(event.type);
+  const [accent, soft] = SPECIAL_EVENT_TONES[template.id] || SPECIAL_EVENT_TONES.custom;
+  const extra = events.length > 1 ? ` y ${events.length - 1} más` : '';
+  return `
+    <button class="home-event-banner home-event-banner--${escapeHtml(template.id)}" type="button" data-special-event style="--event-banner-accent:${accent};--event-banner-soft:${soft}" aria-label="Volver a abrir la celebración de ${escapeHtml(event.title)}">
+      <span class="home-event-banner__icon" aria-hidden="true">${escapeHtml(event.icon || template.defaultEmoji || template.icon)}</span>
+      <span class="home-event-banner__body">
+        <span class="home-event-banner__eyebrow">Hoy es especial${escapeHtml(extra)}</span>
+        <b>${escapeHtml(event.title)}</b>
+        <span>${escapeHtml(template.label)} · ${escapeHtml(event.description || template.defaultDescription)}</span>
+      </span>
+      <span class="home-event-banner__cta">Ver celebración ${icon('chev', 16)}</span>
     </button>
   `;
 }
@@ -389,6 +424,7 @@ export function HomePage(router) {
     </section>
 
     <div class="home-stats">${todayCards()}</div>
+    <div id="homeSpecialEventSlot">${todayEventBanner()}</div>
 
     ${shortcutsHTML()}
 
@@ -413,6 +449,8 @@ export function HomePage(router) {
     if (el) animateNumber(el, daysSinceAnniversary());
     const stats = page.querySelector('.home-stats');
     if (stats) stats.innerHTML = todayCards();
+    const eventSlot = page.querySelector('#homeSpecialEventSlot');
+    if (eventSlot) eventSlot.innerHTML = todayEventBanner();
     // Espera las fechas sincronizadas para detectar también aniversarios y
     // eventos personalizados configurados en otro dispositivo.
     if (!previewRequestedEvent(router)) maybeShowSpecialEvent(page, router);
@@ -422,6 +460,11 @@ export function HomePage(router) {
 
   // Navegación delegada: cualquier [data-route] navega (también lo insertado después)
   page.addEventListener('click', (event) => {
+    const special = event.target.closest('[data-special-event]');
+    if (special && page.contains(special)) {
+      replaySpecialEventSheet(router);
+      return;
+    }
     const target = event.target.closest('[data-route]');
     if (target && page.contains(target)) router.navigate(target.dataset.route);
   });

@@ -1171,6 +1171,32 @@
 
 .cal-gift.is-ask { border-color: var(--primary-border); }
 
+/* Al Admin: el regalo ya tiene la respuesta de ella. Va junto al sobre de
+   "por responder" porque las dos cosas pueden darse a la vez. */
+.cal-gift__reply {
+  position: absolute;
+  top: 6px;
+  left: 34px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Respuestas recibidas dentro de la hoja del regalo (solo Admin). */
+.exp-received { margin-top: var(--sp-16); }
+.exp-received .exp-list li {
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
 .cal-dayask {
   display: flex;
   align-items: center;
@@ -1593,4 +1619,72 @@
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-3);
+}
+
+
+/* ==========================================
+   GESTION IN-SITU (ADMIN) - CALENDARIO
+   ========================================== */
+.cal-admin-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-left: auto;
+}
+
+.cal-admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  background: var(--surface-1, #111114);
+  border: 1px solid var(--theme-divider-strong, rgba(255,255,255,0.12));
+  color: var(--accent, #e8735a);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.cal-admin-btn:hover {
+  background: var(--accent-dim, rgba(232,115,90,0.12));
+  border-color: var(--accent, #e8735a);
+  box-shadow: 0 0 16px rgba(232,115,90,0.2);
+}
+
+.cal-gift__admin {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 5;
+}
+
+.cal-gift-action-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+  background: var(--surface-2, #19191d);
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.08));
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.cal-gift-action-btn:hover {
+  color: var(--accent, #e8735a);
+  background: var(--surface-3, #222228);
+  border-color: var(--accent, #e8735a);
+}
+
+.cal-gift-action-btn.is-delete:hover {
+  color: #ff5c5c;
+  background: rgba(255, 92, 92, 0.12);
+  border-color: #ff5c5c;
 }

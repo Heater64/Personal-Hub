@@ -447,9 +447,22 @@ export function adminAlertPrefFor(kind) {
  * `mood_update` (corrección dentro de la ventana de 5 min) conserva la marca
  * de que es una corrección, pero se envía igual que las demás.
  */
+/**
+ * Una fila con VARIAS emociones guarda la lista con `|` en sus columnas (ver
+ * src/data/moods.data.js). El aviso habla en lenguaje normal: aquí se
+ * deshace el formato de almacenamiento.
+ */
+function splitMoodField(value, separator = '') {
+  return String(value ?? '')
+    .split('|')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .join(separator);
+}
+
 export function adminMoodPayload(mood, kind = 'mood') {
-  const emoji = mood?.emoji || '💬';
-  const label = mood?.label || 'Ánimo registrado';
+  const emoji = splitMoodField(mood?.emoji) || '💬';
+  const label = splitMoodField(mood?.label, ' · ') || 'Ánimo registrado';
   if (kind === 'mood_change') {
     return {
       title: `${emoji} ${label} · ha cambiado`,

@@ -3,6 +3,11 @@
    Cabecera del sistema + registro de ánimo + historial
    mensual + accesos. Sin hero propio ni decoración:
    el saludo es el título y el ánimo manda.
+
+   El ánimo admite VARIAS emociones a la vez: los atajos van en la
+   rejilla y el resto (más la que ella escriba) en el desplegable
+   «Otras». Cada cambio se guarda solo, con la misma ventana de
+   5 minutos del modelo de estados.
    ========================================== */
 
 import '../styles/sentimientos.css';
@@ -12,6 +17,7 @@ import { renderPageHeader } from '../components/PageHeader.js';
 import { icon, toast } from '../components/ui.js';
 import { escapeHtml } from '../utils/escape.js';
 import { todayISO, hourInSpain } from '../utils/format.js';
+import { MAX_CUSTOM_LABEL, encodeMood, makeCustomMood, toggleMoodSelection } from '../data/moods.data.js';
 
 const CARDS = [
   { id: 'razones', icon: 'spark', title: 'Razones', desc: 'Una razón nueva para quererte', href: '/razones', color: 'var(--violet-c)' },
@@ -42,8 +48,13 @@ export function SentimientosPage(router) {
   const page = document.createElement('div');
   page.className = 'sentimientos-page';
 
-  const allMoods = moodStore.getMoods();
+  const quickMoods = moodStore.getQuickMoods();
+  const paletteMoods = moodStore.getPaletteMoods();
+  const customMood = moodStore.getCustomMood();
+  const quickIds = new Set(quickMoods.map(m => m.id));
+
   let todayMood = moodStore.getTodayMood();
+  let selection = todayMood ? todayMood.items.map(item => ({ ...item })) : [];
 
   /* ==========================================
      HISTORIAL — una sola fuente para el mes y las cifras.
@@ -57,11 +68,14 @@ export function SentimientosPage(router) {
      ========================================== */
   const historyMap = {};
   let histMonth = new Date();
-  for (const entry of moodStore.getHistory() || []) {      if (entry?.date && entry.moodId) {
+  for (const entry of moodStore.getHistory() || []) {
+    if (entry?.date && entry.moodId) {
       historyMap[entry.date] = { mood: entry.moodId, label: entry.label, emoji: entry.emoji, score: entry.score };
     }
-  }    if (todayMood?.id) {
-    historyMap[todayISO()] = { mood: todayMood.id, label: todayMood.label, emoji: todayMood.emoji, score: todayMood.score };
+  }
+  if (todayMood?.id) {
+    const stored = encodeMood(todayMood.items);
+    if (stored) historyMap[todayISO()] = stored;
   }
 
   function computeStats() {
@@ -78,8 +92,13 @@ export function SentimientosPage(router) {
       cursor.setDate(cursor.getDate() - 1);
     }
 
+    // Cada emoción marcada cuenta: un día con «Triste + Cansada» suma uno a
+    // cada una, no uno a un estado combinado que no existe en el catálogo.
     const counts = {};
-    dates.forEach(date => { const id = historyMap[date]?.mood; if (id) counts[id] = (counts[id] || 0) + 1; });
+    dates.forEach(date => {
+      const ids = moodStore.resolveMood(historyMap[date])?.ids || [];
+      ids.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+    });
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
 
     return {
@@ -99,14 +118,49 @@ export function SentimientosPage(router) {
         <h2 class="sent-mood-title" id="sentMoodTitle">¿Cómo te sientes hoy?</h2>
         <span class="sent-mood-saved" id="moodSaved" hidden></span>
       </div>
-      <div class="sent-mood-grid" id="moodGrid" role="group" aria-label="Elige cómo te sientes hoy">
-        ${allMoods.map(m => `
-          <button type="button" class="sent-mood-btn${todayMood?.id === m.id ? ' is-active' : ''}" data-mood="${m.id}" aria-pressed="${todayMood?.id === m.id}">
+      <div class="sent-mood-grid" id="moodGrid" role="group" aria-label="Elige cómo te sientes hoy. Puedes marcar varias">
+        ${quickMoods.map(m => `
+          <button type="button" class="sent-mood-btn" data-mood="${m.id}" aria-pressed="false">
             <span class="sent-mood-emoji" aria-hidden="true">${m.emoji}</span>
             <span class="sent-mood-label">${m.label}</span>
           </button>
         `).join('')}
+        <button type="button" class="sent-mood-btn sent-mood-btn--more" id="moodMoreBtn" aria-expanded="false" aria-controls="moodExtra">
+          <span class="sent-mood-emoji" aria-hidden="true">${customMood.emoji}</span>
+          <span class="sent-mood-label">Otras</span>
+          <span class="sent-mood-more-count" id="moodExtraCount" hidden></span>
+        </button>
       </div>
+
+      <div class="sent-mood-extra" id="moodExtra" hidden>
+        <div class="sent-mood-extra-head">
+          <span class="sent-mood-extra-title">Más emociones</span>
+          <small class="sent-mood-extra-hint">Puedes marcar varias · toca otra vez para quitar</small>
+        </div>
+        <div class="sent-mood-palette" id="moodPalette">
+          ${paletteMoods.map(m => `
+            <button type="button" class="sent-mood-chip" data-mood="${m.id}" aria-pressed="false">
+              <span class="sent-mood-chip-emoji" aria-hidden="true">${m.emoji}</span>
+              <span class="sent-mood-chip-label">${m.label}</span>
+              <span class="sent-mood-chip-check" aria-hidden="true">✓</span>
+            </button>
+          `).join('')}
+        </div>
+        <form class="sent-mood-custom" id="moodCustomForm">
+          <input
+            type="text"
+            id="moodCustomInput"
+            class="sent-mood-custom-input"
+            maxlength="${MAX_CUSTOM_LABEL}"
+            placeholder="¿No está? Escríbela tú…"
+            aria-label="Escribe tú la emoción"
+            autocomplete="off"
+          >
+          <button type="submit" class="sent-mood-custom-add">Añadir</button>
+        </form>
+        <div class="sent-mood-custom-chips" id="moodCustomChips"></div>
+      </div>
+
       <p class="sent-mood-feedback" id="moodFeedback" hidden>
         <span class="sent-mood-feedback-icon" aria-hidden="true"></span>
         <span class="sent-mood-feedback-text"></span>
@@ -147,20 +201,57 @@ export function SentimientosPage(router) {
     </div>
   `;
 
+  const moreBtn = page.querySelector('#moodMoreBtn');
+  const extraPanel = page.querySelector('#moodExtra');
+  const customInput = page.querySelector('#moodCustomInput');
+  const customForm = page.querySelector('#moodCustomForm');
+
+  // ==========================================
+  // SELECCIÓN — atajos y desplegable comparten estado
+  // ==========================================
+  function paintSelection() {
+    page.querySelectorAll('[data-mood]').forEach(btn => {
+      const active = selection.some(item => item.id === btn.dataset.mood);
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+
+    // El botón «Otras» se marca cuando hay algo elegido que no es un atajo.
+    const extras = selection.filter(item => !quickIds.has(item.id));
+    moreBtn.classList.toggle('is-active', extras.length > 0);
+    const countEl = page.querySelector('#moodExtraCount');
+    if (countEl) {
+      countEl.hidden = extras.length === 0;
+      countEl.textContent = extras.length > 1 ? String(extras.length) : '';
+    }
+
+    const customChips = page.querySelector('#moodCustomChips');
+    const customItem = selection.find(item => item.id === customMood.id);
+    customChips.innerHTML = customItem
+      ? `<button type="button" class="sent-mood-custom-chip" data-custom-remove aria-label="Quitar «${escapeHtml(customItem.label)}»">
+          <span aria-hidden="true">${customItem.emoji}</span>${escapeHtml(customItem.label)}
+          <span class="sent-mood-custom-chip-x" aria-hidden="true">×</span>
+        </button>`
+      : '';
+    page.querySelector('.sent-mood-custom-add').textContent = customItem ? 'Cambiar' : 'Añadir';
+  }
+
   // ==========================================
   // ÁNIMO — pintar el estado guardado
   // ==========================================
   function applyMoodUI(mood) {
-    todayMood = mood;
-    const today = todayISO();
-    if (mood) historyMap[today] = mood.id;
-    else delete historyMap[today];
+    todayMood = mood || null;
+    selection = mood ? mood.items.map(item => ({ ...item })) : [];
 
-    page.querySelectorAll('.sent-mood-btn').forEach(btn => {
-      const active = btn.dataset.mood === mood?.id;
-      btn.classList.toggle('is-active', active);
-      btn.setAttribute('aria-pressed', String(active));
-    });
+    const today = todayISO();
+    if (mood) {
+      const stored = encodeMood(mood.items);
+      if (stored) historyMap[today] = stored;
+    } else {
+      delete historyMap[today];
+    }
+
+    paintSelection();
 
     const saved = page.querySelector('#moodSaved');
     const feedback = page.querySelector('#moodFeedback');
@@ -175,6 +266,70 @@ export function SentimientosPage(router) {
       if (saved) saved.hidden = true;
       if (feedback) feedback.hidden = true;
     }
+  }
+
+  // ==========================================
+  // GUARDADO — un cambio, un guardado (con cola para no pisarse)
+  // ==========================================
+  let saveTimer = null;
+  let saving = false;
+  let queued = null;
+
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => flushSave(selection.slice()), 400);
+  }
+
+  async function flushSave(snapshot) {
+    queued = snapshot;
+    if (saving) return;
+    saving = true;
+    try {
+      while (queued) {
+        const items = queued;
+        queued = null;
+        await persist(items);
+      }
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function persist(items) {
+    try {
+      let mood;
+      if (!items.length) {
+        // Sin nada marcado el día se queda sin emoción (si sigue en su ventana).
+        const res = await moodStore.removeTodayMood();
+        if (res.locked) {
+          queued = null;
+          applyMoodUI(res.mood);
+          refreshMoodSide();
+          toast('Este ánimo ya quedó registrado 🤍');
+          return;
+        }
+        mood = res.mood;
+      } else {
+        mood = await moodStore.saveMoods(items);
+      }
+      if (queued) { todayMood = mood; return; } // hay un cambio más nuevo esperando
+      applyMoodUI(mood);
+      refreshMoodSide();
+    } catch {
+      toast('No se pudo guardar el ánimo', 'error');
+      applyMoodUI(moodStore.getTodayMood());
+    }
+  }
+
+  function refreshMoodSide() {
+    renderStats();
+    renderHistory();
+  }
+
+  function openPalette(open) {
+    extraPanel.hidden = !open;
+    moreBtn.setAttribute('aria-expanded', String(open));
+    moreBtn.classList.toggle('is-open', open);
   }
 
   // ==========================================
@@ -241,16 +396,17 @@ export function SentimientosPage(router) {
     `;
 
     if (legend) {
-      const present = [...new Set(monthEntries.map(date => historyMap[date]?.mood))]
-        .filter(Boolean)
-        .map(id => {
-          // Se busca una entrada real del mes para recuperar su etiqueta.
-          const entry = monthEntries.map(date => historyMap[date]).find(e => e?.mood === id);
-          return moodStore.resolveMood(entry || { mood: id });
-        })
-        .filter(Boolean);
-      legend.innerHTML = present.length
-        ? present.map(mood => `<span class="sent-hist-legend-item"><span aria-hidden="true">${escapeHtml(mood.emoji)}</span>${escapeHtml(mood.label)}</span>`).join('')
+      // Una entrada por emoción DISTINTA del mes, con la etiqueta real: la de
+      // «Otras» es la que escribió ella, no la palabra «Otras».
+      const present = new Map();
+      for (const date of monthEntries) {
+        const resolved = moodStore.resolveMood(historyMap[date]);
+        for (const item of resolved?.items || []) {
+          if (!present.has(item.id)) present.set(item.id, item);
+        }
+      }
+      legend.innerHTML = present.size
+        ? [...present.values()].map(mood => `<span class="sent-hist-legend-item"><span aria-hidden="true">${escapeHtml(mood.emoji)}</span>${escapeHtml(mood.label)}</span>`).join('')
         : '';
     }
     if (sub) sub.textContent = monthEntries.length
@@ -271,7 +427,7 @@ export function SentimientosPage(router) {
         // Vienen de la más reciente a la más antigua: el primer estado de cada
         // día es el último que se guardó, que es el que cuenta.
         if (!row?.date || !row.mood || historyMap[row.date]) continue;
-        historyMap[row.date] = moodStore.resolveMood({ mood: row.mood, label: row.label, emoji: row.emoji, score: row.score });
+        historyMap[row.date] = { mood: row.mood, label: row.label, emoji: row.emoji, score: row.score };
         changed = true;
       }
       if (changed) { renderStats(); renderHistory(); }
@@ -282,39 +438,42 @@ export function SentimientosPage(router) {
     card.addEventListener('click', () => router.navigate(card.dataset.href));
   });
 
-  page.querySelectorAll('.sent-mood-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const moodId = btn.dataset.mood;
-      btn.classList.add('is-loading');
-
-      // Tocar la emoción ya activa la quita: no tiene que haber una puesta
-      // sí o sí. Si el estado lleva más de 5 min, quedó bloqueado.
-      const removing = btn.classList.contains('is-active');
-      try {
-        if (removing) {
-          const res = await moodStore.removeTodayMood();
-          if (res.locked) {
-            toast('Este ánimo ya quedó registrado 🤍');
-          } else {
-            applyMoodUI(res.mood);
-            refreshMoodSide();
-            toast(res.mood ? 'Ánimo actualizado' : 'Ánimo eliminado · hoy sin emoción');
-          }
-        } else {
-          await moodStore.saveMood(moodId);
-          applyMoodUI(moodStore.getMoodById(moodId));
-          refreshMoodSide();
-        }
-      } catch { /* offline: se reintenta al volver */ }
-
-      btn.classList.remove('is-loading');
-    });
+  // ==========================================
+  // EVENTOS DE LA TARJETA
+  // ==========================================
+  page.addEventListener('click', (event) => {
+    const removeCustom = event.target.closest('[data-custom-remove]');
+    if (removeCustom && page.contains(removeCustom)) {
+      selection = selection.filter(item => item.id !== customMood.id);
+      customInput.value = '';
+      paintSelection();
+      scheduleSave();
+      return;
+    }
+    const btn = event.target.closest('[data-mood]');
+    if (!btn || !page.contains(btn)) return;
+    // Tocar una emoción ya marcada la quita: puede quedar sin ninguna, y
+    // entonces el día vuelve a estar sin emoción.
+    selection = toggleMoodSelection(selection, btn.dataset.mood);
+    paintSelection();
+    scheduleSave();
   });
 
-  function refreshMoodSide() {
-    renderStats();
-    renderHistory();
-  }
+  moreBtn.addEventListener('click', () => openPalette(extraPanel.hidden));
+
+  customForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const item = makeCustomMood(customInput.value);
+    if (!item) {
+      customInput.focus();
+      toast('Escribe cómo te sientes', 'info');
+      return;
+    }
+    selection = [...selection.filter(i => i.id !== customMood.id), item];
+    customInput.value = item.label;
+    paintSelection();
+    scheduleSave();
+  });
 
   // Meses del historial
   page.querySelector('#histPrev')?.addEventListener('click', () => {
@@ -328,6 +487,9 @@ export function SentimientosPage(router) {
 
   // Estado inicial
   applyMoodUI(todayMood);
+  // Si hoy hay emociones que no son atajos, el desplegable arranca abierto:
+  // si no, parecería que solo hay una marcada.
+  openPalette(selection.some(item => !quickIds.has(item.id)));
   renderStats();
   renderHistory();
   loadRemoteHistory();
@@ -335,7 +497,10 @@ export function SentimientosPage(router) {
   // El ánimo puede haber cambiado en otro dispositivo mientras mirábamos
   moodStore.fetchTodayMood().then(remoteMood => {
     if (!page.isConnected) return;
-    if ((remoteMood?.id || null) !== (todayMood?.id || null)) applyMoodUI(remoteMood);
+    if ((remoteMood?.id || null) !== (todayMood?.id || null)) {
+      applyMoodUI(remoteMood);
+      refreshMoodSide();
+    }
   });
 
   return page;

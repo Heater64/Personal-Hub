@@ -16,7 +16,7 @@ import {
   loadFavorites, saveFavorites, loadProgressFor, saveProgressFor,
   createId, getSeasons, getTotal, getCompletedCount, getPercent,
   getStatusText, detectGenres, typeLabel, deleteCatalogItem, playUrl,
-  hydrateProgress
+  hydrateProgress, isMovieWatched, toggleMovieWatched
 } from '../services/seriesData.js';
 import { seasonEditorHTML, collectSeasons, emptySeasonHTML, bindSeasonEditorEvents } from '../services/seriesEditor.js';
 import { isValidUrlField } from '../utils/format.js';
@@ -26,6 +26,7 @@ let catalog = [];
 let podioData = { series: [], movies: [] };
 let favorites = new Set();
 let currentFilter = 'todo';
+let currentSort = 'recent';
 let searchTerm = '';
 let currentView = 'home';           // home | catalog | top5
 let currentDetailId = null;
@@ -45,10 +46,11 @@ let heroMode = 'random';            // 'random' | 'continue' (Seguir viendo)
 async function loadData() {
   // Catálogo COMPARTIDO (Supabase): ambos usuarios ven el mismo.
   catalog = await loadCatalog();
+  // Progreso, favoritas y Top 5 por cuenta: lo hecho en otro dispositivo llega
+  // antes de pintar (por eso se hidrata antes de leer favoritas y podio).
+  await hydrateProgress().catch(() => { /* sin red: se queda lo local */ });
   podioData = loadPodio();
   favorites = loadFavorites();
-  // Progreso por cuenta: lo visto en otro dispositivo llega antes de pintar.
-  await hydrateProgress().catch(() => { /* sin red: se queda lo local */ });
 }
 
 async function saveData() { await saveCatalog(catalog); }
@@ -60,26 +62,40 @@ function getFeatured() { return catalog.find(i => i.destacado) || catalog.find(i
 // ==========================================
 // CARD (portada 2:3, mínima)
 // ==========================================
+const initialOf = (item) => escapeHtml((item.titulo || '?')[0]);
+
 function cardHTML(item) {
   const hasCover = !!item.portada;
   const isFav = favorites.has(item.id);
+  const percent = item.tipo === 'serie' ? getPercent(item) : 0;
+  // Las películas no tienen episodios: su estado se marca a mano.
+  const seenMovie = item.tipo === 'pelicula' && isMovieWatched(item.id);
+  // Serie terminada: se queda en el catálogo, marcada como completada.
+  const doneSeries = item.tipo === 'serie' && percent >= 100;
+  const coverBadge = seenMovie ? '✓ Vista' : doneSeries ? '✓ Completada' : '';
+  const title = escapeHtml(item.titulo || 'Sin título');
   return `
-    <div class="series-card" data-id="${escapeHtml(item.id)}" data-tipo="${escapeHtml(item.tipo)}" role="button" tabindex="0" aria-label="${escapeHtml(item.titulo || 'Sin título')}, ${typeLabel(item)}">
+    <div class="series-card" data-id="${escapeHtml(item.id)}" data-tipo="${escapeHtml(item.tipo)}">
       <div class="series-card-cover">
         ${hasCover ? `<img src="${escapeHtml(item.portada)}" alt="" class="series-card-img" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
-        <div class="series-card-fallback" style="${hasCover ? 'display:none' : 'display:flex'}">${escapeHtml((item.titulo || '?')[0])}</div>
+        <div class="series-card-fallback" style="${hasCover ? 'display:none' : 'display:flex'}">${initialOf(item)}</div>
         <div class="series-card-shade"></div>
-        <!-- Overlay estilo Netflix: aparece en hover/focus con play + favorita -->
-        <div class="series-card-overlay">
-          <button type="button" class="series-card-play" data-card-play aria-label="Abrir ${escapeHtml(item.titulo || 'Sin título')}" title="Abrir">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          </button>
-          <button type="button" class="series-card-heart ${isFav ? 'is-on' : ''}" data-card-fav aria-label="${isFav ? 'Quitar de favoritas' : 'Añadir a favoritas'}" title="${isFav ? 'Quitar de favoritas' : 'Añadir a favoritas'}">${isFav ? '❤' : '🤍'}</button>
-        </div>
-        ${item.tipo === 'serie' && getPercent(item) > 0 ? `<div class="series-card-progress"><div style="width:${getPercent(item)}%"></div></div>` : ''}
+        ${coverBadge ? `<span class="series-card-watched">${coverBadge}</span>` : ''}
+        ${item.tipo === 'serie' && percent > 0 ? `<div class="series-card-progress"><div style="width:${percent}%"></div></div>` : ''}
+        <!-- Favorita siempre visible y clicable, fuera del overlay de hover -->
+        <button type="button" class="series-card-heart ${isFav ? 'is-on' : ''}" data-card-fav aria-label="${isFav ? 'Quitar de favoritas' : 'Añadir a favoritas'}" title="${isFav ? 'Quitar de favoritas' : 'Añadir a favoritas'}">${isFav ? '❤' : '🤍'}</button>
+      </div>
+      <!-- Botón que cubre la tarjeta: mantiene el clic completo sin anidar
+           botones dentro de un role="button". -->
+      <button type="button" class="series-card-open" data-card-open aria-label="Abrir ${title}, ${typeLabel(item)}"></button>
+      <!-- Overlay estilo Netflix: el play aparece al pasar el ratón -->
+      <div class="series-card-overlay">
+        <button type="button" class="series-card-play" data-card-play aria-label="Abrir ${title}" title="Abrir">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
       </div>
       <div class="series-card-meta">
-        <div class="series-card-title">${escapeHtml(item.titulo || 'Sin título')}</div>
+        <div class="series-card-title">${title}</div>
         <div class="series-card-sub">
           <span>${typeLabel(item)}</span>
           ${item.tipo === 'serie' && getTotal(item) > 0 ? `<span class="dot">·</span><span>${getTotal(item)} ep</span>` : ''}
@@ -87,6 +103,73 @@ function cardHTML(item) {
       </div>
     </div>
   `;
+}
+
+/**
+ * Tarjeta de "Seguir viendo": añade el siguiente capítulo y un botón para
+ * marcarlo visto sin entrar a la ficha.
+ */
+function continueCardHTML(c) {
+  const total = c.total;
+  const done = c.watched;
+  const complete = done >= total;
+  const nextEp = Math.min(total, done + 1);
+  const title = escapeHtml(c.item.titulo || 'Sin título');
+  return `
+    <div class="series-card series-card--continue" data-id="${escapeHtml(c.item.id)}" data-tipo="serie">
+      <div class="series-card-cover">
+        ${c.item.portada ? `<img src="${escapeHtml(c.item.portada)}" alt="" class="series-card-img" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <div class="series-card-fallback" style="${c.item.portada ? 'display:none' : 'display:flex'}">${initialOf(c.item)}</div>
+        <div class="series-card-shade"></div>
+        <span class="series-card-next">${complete ? 'Completa' : `Siguiente · ep. ${nextEp}`}</span>
+        <div class="series-card-progress"><div style="width:${Math.max(c.percent, 3)}%"></div></div>
+        <button type="button" class="series-card-heart ${favorites.has(c.item.id) ? 'is-on' : ''}" data-card-fav aria-label="${favorites.has(c.item.id) ? 'Quitar de favoritas' : 'Añadir a favoritas'}" title="Favorito">${favorites.has(c.item.id) ? '❤' : '🤍'}</button>
+      </div>
+      <button type="button" class="series-card-open" data-card-open aria-label="Abrir ${title}"></button>
+      <div class="series-card-overlay">
+        <button type="button" class="series-card-play" data-card-play aria-label="Abrir ${title}" title="Abrir">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+      </div>
+      <div class="series-card-meta">
+        <div class="series-card-title">${title}</div>
+        <div class="series-card-sub series-card-sub--continue">
+          <span>Ep. ${done} de ${total}</span>
+          ${complete ? '' : `<button type="button" class="series-card-mark" data-continue-add="${escapeHtml(c.item.id)}" aria-label="Marcar capítulo ${nextEp} de ${title} como visto" title="Marcar ep. ${nextEp} como visto">✓ ${nextEp}</button>`}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/** Fila "Seguir viendo" con sus tarjetas accionables. */
+function continueSectionHTML(items) {
+  if (!items.length) return '';
+  return `
+    <section class="sr-row" id="srContinueWatching" aria-label="Seguir viendo">
+      <div class="sr-row-head">
+        <h3 class="sr-row-title"><span class="sr-row-emoji">▶</span>Seguir viendo</h3>
+        <span class="sr-row-count">${items.length}</span>
+      </div>
+      <div class="series-flat-grid">${items.map(continueCardHTML).join('')}</div>
+    </section>
+  `;
+}
+
+/** Marca el siguiente capítulo de una serie (desde "Seguir viendo"). */
+function markNextEpisode(itemId) {
+  const item = catalog.find(i => i.id === itemId);
+  if (!item) return;
+  const total = getTotal(item);
+  const done = getCompletedCount(itemId, total);
+  if (total <= 0 || done >= total) return;
+  saveProgressFor(itemId, {
+    ...loadProgressFor(itemId),
+    watched: Array.from({ length: done + 1 }, (_, i) => i + 1)
+  });
+  showToast(`Episodio ${done + 1} marcado ✓`, 'success');
+  if (currentDetailId === itemId) renderDetail(item);
+  else renderAll();
 }
 
 // ==========================================
@@ -116,28 +199,47 @@ function renderFeatured() {
   container.style.display = 'block';
   const isFav = favorites.has(featured.id);
   const isContinue = heroMode === 'continue';
+  const total = featured.tipo === 'serie' ? getTotal(featured) : 0;
+  const done = total > 0 ? getCompletedCount(featured.id, total) : 0;
+  const nextEp = done > 0 && done < total ? done + 1 : 0;
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   container.innerHTML = `
     <div class="sr-hero" data-id="${escapeHtml(featured.id)}">
       ${featured.banner || featured.portada
-        ? `<img src="${escapeHtml(featured.banner || featured.portada)}" alt="" class="sr-hero-bg" loading="eager" fetchpriority="high" decoding="async" onerror="if(this.src!==this.dataset.fb){this.dataset.fb=this.src;this.src='${escapeHtml(featured.portada || '')}';}">`
+        ? `<img src="${escapeHtml(featured.banner || featured.portada)}" alt="" class="sr-hero-bg" loading="eager" fetchpriority="high" decoding="async" data-cover="${escapeHtml(featured.portada || '')}">`
         : ''}
       <div class="sr-hero-shade"></div>
       <div class="sr-hero-body">
         <div class="sr-hero-tags">
           ${isContinue ? '<span class="sr-hero-badge">▶ Seguir viendo</span>' : ''}
           <span class="sr-hero-badge">${typeLabel(featured)}</span>
-          ${featured.tipo === 'serie' && getTotal(featured) > 0 ? `<span class="sr-hero-badge">${getTotal(featured)} ep</span>` : ''}
+          ${featured.tipo === 'serie' && total > 0 ? `<span class="sr-hero-badge">${total} ep</span>` : ''}
+          ${isContinue && percent > 0 ? `<span class="sr-hero-badge sr-hero-badge--percent">${percent}%</span>` : ''}
         </div>
         <h2 class="sr-hero-title">${escapeHtml(featured.titulo || 'Sin título')}</h2>
         <p class="sr-hero-desc">${escapeHtml(featured.descripcion || (featured.tipo === 'serie' ? `${getStatusText(featured) || ''} — Explora esta serie y marca tus episodios vistos.` : 'Disfruta de esta película cuando quieras.'))}</p>
         <div class="sr-hero-actions">
-          <button class="sr-hero-play" data-hero="play">▶ ${isContinue ? 'Continuar' : (featured.tipo === 'serie' && getTotal(featured) > 0 ? 'Ver' : 'Reproducir')}</button>
+          <button class="sr-hero-play" data-hero="play">▶ ${isContinue && nextEp ? `Continuar ep. ${nextEp}` : (featured.tipo === 'serie' && total > 0 ? 'Ver' : 'Reproducir')}</button>
           <button class="sr-hero-fav ${isFav ? 'is-on' : ''}" data-hero="fav" aria-label="Favorito">${isFav ? '❤' : '🤍'}</button>
         </div>
       </div>
     </div>
   `;
+
+  // Imagen del hero: si el banner falla se cae a la portada (sin onerror inline).
+  const heroImg = container.querySelector('.sr-hero-bg');
+  if (heroImg) {
+    heroImg.addEventListener('error', () => {
+      const fallback = heroImg.dataset.cover;
+      if (fallback && !heroImg.dataset.fb) {
+        heroImg.dataset.fb = '1';
+        heroImg.src = fallback;
+      } else {
+        heroImg.style.display = 'none';
+      }
+    });
+  }
 
   // Clic en la tarjeta: en modo Seguir viendo lleva a la sección; si no, abre el detalle
   container.querySelector('.sr-hero')?.addEventListener('click', () => {
@@ -168,13 +270,28 @@ function clearHeroTimer() {
   if (heroTimer) { clearInterval(heroTimer); heroTimer = null; }
 }
 
+/** Arranca la rotación del hero solo si hay varios títulos y la pestaña está visible. */
+function startHeroTimer() {
+  clearHeroTimer();
+  if (heroPool.length < 2) return;
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+  heroTimer = window.setInterval(rotateHero, 10000);
+}
+
 // ==========================================
 // HOME (Inicio streaming)
 // ==========================================
 function renderHome() {
   const root = page.querySelector('#srViewHome');
   if (!root) return;
-  const inProgress = catalog.filter(i => { const t = getTotal(i); return t > 0 && getCompletedCount(i.id, t) > 0 && getCompletedCount(i.id, t) < t; });
+  // { item, watched, total, percent } — lo que consume la fila "Seguir viendo".
+  const inProgress = catalog
+    .map(item => {
+      const total = getTotal(item);
+      return { item, total, watched: getCompletedCount(item.id, total) };
+    })
+    .filter(c => c.total > 0 && c.watched > 0 && c.watched < c.total)
+    .map(c => ({ ...c, percent: Math.round((c.watched / c.total) * 100) }));
   const lastAdded = [...catalog].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 12);
 
   const hero = document.createElement('div');
@@ -187,10 +304,10 @@ function renderHome() {
   // Hero rotatorio: si hay algo en progreso lo muestra (rotando entre ellos si
   // hay varios); si no, títulos aleatorios del catálogo. Cambia suavemente cada 10s.
   heroMode = inProgress.length ? 'continue' : 'random';
-  heroPool = heroMode === 'continue' ? [...inProgress] : [...catalog].sort(() => Math.random() - 0.5);
+  heroPool = heroMode === 'continue' ? inProgress.map(c => c.item) : [...catalog].sort(() => Math.random() - 0.5);
   heroIndex = 0;
   clearHeroTimer();
-  if (heroPool.length > 1) heroTimer = window.setInterval(rotateHero, 10000);
+  startHeroTimer();
   hero.style.transition = 'opacity 0.6s ease';
   hero.style.opacity = '1';
   renderFeatured();
@@ -215,7 +332,7 @@ function renderHome() {
     .join('');
 
   root.insertAdjacentHTML('beforeend',
-    gridSectionHTML('Seguir viendo', inProgress, '▶', 'srContinueWatching') +
+    continueSectionHTML(inProgress) +
     gridSectionHTML('Últimas añadidas', lastAdded) +
     catRows
   );
@@ -239,38 +356,98 @@ function renderHome() {
 // ==========================================
 // CATÁLOGO (grid + búsqueda agrupada)
 // ==========================================
+const SORTERS = {
+  recent: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+  az: (a, b) => String(a.titulo || '').localeCompare(String(b.titulo || ''), 'es', { sensitivity: 'base' }),
+  progress: (a, b) => getPercent(b) - getPercent(a),
+  rating: (a, b) => (Number(b.valoracion) || 0) - (Number(a.valoracion) || 0)
+};
+
+const FILTER_LABELS = {
+  todo: 'Todo',
+  serie: 'Series',
+  pelicula: 'Películas',
+  favoritas: 'Favoritas',
+  encurso: 'En curso',
+  vistas: 'Vistas',
+  porver: 'Películas por ver'
+};
+
+const EMPTY_COPY = {
+  favoritas: ['Aún no tienes favoritas', 'Toca el corazón de cualquier título para guardarlo aquí.'],
+  encurso: ['Nada en curso', 'Marca el primer capítulo de una serie y aparecerá aquí.'],
+  vistas: ['Nada visto todavía', 'Termina una serie o marca una película como vista y aparecerá aquí.'],
+  porver: ['No te queda ninguna película', 'Todo lo que tienes en el catálogo ya está marcado como visto.']
+};
+
+/** Minúsculas y sin acentos: «obsesion» encuentra «Obsesión». */
+function normalizeText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function hasProgress(item) {
+  if (item.tipo !== 'serie') return false;
+  const total = getTotal(item);
+  const done = getCompletedCount(item.id, total);
+  return total > 0 && done > 0;
+}
+
+function isInProgress(item) {
+  if (!hasProgress(item)) return false;
+  const total = getTotal(item);
+  return getCompletedCount(item.id, total) < total;
+}
+
+/** ¿Ya se ha visto entero? Serie con todos los capítulos o película marcada. */
+function isSeenItem(item) {
+  if (item.tipo === 'pelicula') return isMovieWatched(item.id);
+  const total = getTotal(item);
+  return total > 0 && getCompletedCount(item.id, total) >= total;
+}
+
 function renderCatalog() {
   const root = page.querySelector('#srCatalogResults');
   if (!root) return;
   let filtered = [...catalog];
-  if (searchTerm) {
-    const q = searchTerm.toLowerCase();
+  const q = normalizeText(searchTerm.trim());
+  if (q) {
     filtered = filtered.filter(i =>
-      (i.titulo || '').toLowerCase().includes(q) ||
-      (i.descripcion || '').toLowerCase().includes(q) ||
+      normalizeText(i.titulo).includes(q) ||
+      normalizeText(i.descripcion).includes(q) ||
       String(i.anio || '').includes(q) ||
-      detectGenres(i).some(g => g.toLowerCase().includes(q)) ||
-      (i.webUrl || '').toLowerCase().includes(q)
+      normalizeText(i.categoria).includes(q) ||
+      detectGenres(i).some(g => normalizeText(g).includes(q)) ||
+      normalizeText(i.webUrl).includes(q)
     );
   }
   if (currentFilter === 'serie') filtered = filtered.filter(i => i.tipo === 'serie');
   else if (currentFilter === 'pelicula') filtered = filtered.filter(i => i.tipo === 'pelicula');
   else if (currentFilter === 'favoritas') filtered = filtered.filter(i => favorites.has(i.id));
+  else if (currentFilter === 'encurso') filtered = filtered.filter(isInProgress);
+  else if (currentFilter === 'vistas') filtered = filtered.filter(isSeenItem);
+  else if (currentFilter === 'porver') filtered = filtered.filter(i => i.tipo === 'pelicula' && !isMovieWatched(i.id));
+
+  filtered.sort(SORTERS[currentSort] || SORTERS.recent);
+
+  const filterNote = currentFilter === 'todo' ? '' : ` · ${escapeHtml(FILTER_LABELS[currentFilter] || '')}`;
 
   // Resultados agrupados por tipo cuando hay búsqueda
-  if (searchTerm) {
+  if (q) {
     const series = filtered.filter(i => i.tipo === 'serie');
     const movies = filtered.filter(i => i.tipo === 'pelicula');
     if (!filtered.length) {
       root.innerHTML = `
         <div class="sr-search-empty">
           <div class="sr-empty-icon">🔍</div>
-          <h3>Sin resultados para «${escapeHtml(searchTerm)}»</h3>
-          <p>Prueba con otro título, género, año o descripción.</p>
+          <h3>Sin resultados para «${escapeHtml(searchTerm.trim())}»</h3>
+          <p>Prueba con otro título, género, año o descripción; o quita el filtro.</p>
         </div>`;
       return;
     }
-    let html = `<div class="sr-search-summary">${filtered.length} resultado${filtered.length === 1 ? '' : 's'} para «${escapeHtml(searchTerm)}»</div>`;
+    let html = `<div class="sr-search-summary">${filtered.length} resultado${filtered.length === 1 ? '' : 's'} para «${escapeHtml(searchTerm.trim())}»${filterNote}</div>`;
     if (series.length) html += `<div class="sr-group"><div class="sr-group-title">Series <span>${series.length}</span></div><div class="series-flat-grid">${series.map(cardHTML).join('')}</div></div>`;
     if (movies.length) html += `<div class="sr-group"><div class="sr-group-title">Películas <span>${movies.length}</span></div><div class="series-flat-grid">${movies.map(cardHTML).join('')}</div></div>`;
     root.innerHTML = html;
@@ -279,16 +456,19 @@ function renderCatalog() {
   }
 
   if (!filtered.length) {
+    const [title, text] = EMPTY_COPY[currentFilter] || ['Aún no hay contenido', 'Añade tu primera serie o película desde el botón +.'];
     root.innerHTML = `
       <div class="sr-empty">
         <div class="sr-empty-icon">🎞️</div>
-        <h3>${currentFilter === 'favoritas' ? 'Aún no tienes favoritas' : 'Aún no hay contenido'}</h3>
-        <p>${currentFilter === 'favoritas' ? 'Toca el corazón de cualquier título para guardarlo aquí.' : 'Añade tu primera serie o película desde el botón +.'}</p>
+        <h3>${title}</h3>
+        <p>${text}</p>
       </div>`;
     return;
   }
 
-  root.innerHTML = `<div class="series-flat-grid">${filtered.map(cardHTML).join('')}</div>`;
+  root.innerHTML = `
+    <div class="sr-results-summary">${filtered.length} título${filtered.length === 1 ? '' : 's'}${filterNote}</div>
+    <div class="series-flat-grid">${filtered.map(cardHTML).join('')}</div>`;
   bindCards(root);
 }
 
@@ -463,12 +643,13 @@ function renderDetail(item) {
   const prog = loadProgressFor(item.id);
   const watched = prog.watched || [];
   const isFav = favorites.has(item.id);
+  const seenMovie = !isSeries && isMovieWatched(item.id);
   const related = catalog.filter(i => i.id !== item.id && detectGenres(i).some(g => detectGenres(item).includes(g))).slice(0, 10);
 
   page.innerHTML = `
     <div class="sr-detail">
       <div class="sr-detail-hero">
-        ${item.banner || item.portada ? `<img src="${escapeHtml(item.banner || item.portada)}" alt="" class="sr-detail-hero-bg" fetchpriority="high" decoding="async" onerror="if(this.src!==this.dataset.fb){this.dataset.fb=this.src;this.src='${escapeHtml(item.portada || '')}';}">` : ''}
+        ${item.banner || item.portada ? `<img src="${escapeHtml(item.banner || item.portada)}" alt="" class="sr-detail-hero-bg" fetchpriority="high" decoding="async" data-cover="${escapeHtml(item.portada || '')}">` : ''}
         <div class="sr-detail-hero-shade"></div>
         <button class="sr-detail-back" id="srBackBtn" aria-label="Volver">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -482,6 +663,7 @@ function renderDetail(item) {
             <div class="sr-detail-tags">
               <span class="sr-hero-badge">${typeLabel(item)}</span>
               ${item.tipo === 'serie' && total > 0 ? `<span class="sr-hero-badge">${total} ep</span>` : ''}
+              ${seenMovie ? '<span class="sr-hero-badge">✓ Vista</span>' : ''}
             </div>
             <h1 class="sr-detail-title">${escapeHtml(item.titulo || 'Sin título')}</h1>
             ${item.descripcion ? `<p class="sr-detail-desc">${escapeHtml(item.descripcion)}</p>` : ''}
@@ -494,6 +676,7 @@ function renderDetail(item) {
               ${playUrl(item)
                 ? `<a class="sr-detail-play" href="${escapeHtml(playUrl(item))}" target="_blank" rel="noopener">▶ ${isSeries ? 'Ver' : 'Reproducir'}</a>`
                 : `<button class="sr-detail-play" id="srDetailNoPlay">▶ ${isSeries ? 'Ver episodios' : 'Ver'}</button>`}
+              ${!isSeries ? `<button type="button" class="sr-detail-seen ${seenMovie ? 'is-on' : ''}" id="srDetailSeen" aria-pressed="${seenMovie}">${seenMovie ? '✓ Vista' : 'Marcar como vista'}</button>` : ''}
               <button class="sr-detail-fav ${isFav ? 'is-on' : ''}" id="srDetailFav" aria-label="Favorito">${isFav ? '❤' : '🤍'}</button>
               ${userStore.isAdmin ? `<button class="sr-detail-edit" id="srDetailEdit" aria-label="Editar">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -531,8 +714,29 @@ function renderDetail(item) {
     </div>
   `;
 
+  // Banner de la ficha: si falla cae a la portada (sin onerror inline).
+  const detailBg = page.querySelector('.sr-detail-hero-bg');
+  if (detailBg) {
+    detailBg.addEventListener('error', () => {
+      const fallback = detailBg.dataset.cover;
+      if (fallback && !detailBg.dataset.fb) {
+        detailBg.dataset.fb = '1';
+        detailBg.src = fallback;
+      } else {
+        detailBg.style.display = 'none';
+      }
+    });
+  }
+
   page.querySelector('#srBackBtn')?.addEventListener('click', () => { currentDetailId = null; collapsedDetailSeasons.clear(); render(); renderAll(); });
   page.querySelector('#srDetailFav')?.addEventListener('click', () => toggleFavorite(item.id));
+  // Películas: marcar como vista o desmarcarla (no tienen episodios).
+  page.querySelector('#srDetailSeen')?.addEventListener('click', () => {
+    const seen = toggleMovieWatched(item.id);
+    showToast(seen ? 'Película marcada como vista ✓' : 'Película desmarcada', 'success');
+    const cur = catalog.find(c => c.id === item.id);
+    if (cur) renderDetail(cur);
+  });
   page.querySelector('#srDetailEdit')?.addEventListener('click', () => { currentDetailId = null; render(); renderAll(); setTimeout(() => openEditor(item.id), 100); });
   page.querySelector('#srDetailDel')?.addEventListener('click', () => openDeleteConfirm(item));
   page.querySelector('#srDelCancel')?.addEventListener('click', closeDeleteConfirm);
@@ -564,11 +768,48 @@ function renderDetail(item) {
       if (cur) renderDetail(cur);
     });
   });
-  // Continuar → salta al siguiente capítulo sin ver
+  // Barra fija: marcar el siguiente capítulo sin salir de la ficha.
+  page.querySelector('#srStickyMark')?.addEventListener('click', () => {
+    const totalN = getTotal(item);
+    const done = getCompletedCount(item.id, totalN);
+    if (done >= totalN) return;
+    saveProgressFor(item.id, {
+      ...loadProgressFor(item.id),
+      watched: Array.from({ length: done + 1 }, (_, i) => i + 1)
+    });
+    const cur = catalog.find(c => c.id === item.id);
+    if (cur) renderDetail(cur);
+    showToast(`Episodio ${done + 1} marcado ✓`, 'success');
+  });
+  // "Ver episodio" → salta al siguiente capítulo sin ver.
   page.querySelector('#srStickyGoNext')?.addEventListener('click', () => {
     const next = (prog.watched || []).length + 1;
     const target = page.querySelector(`.sr-ep-card[data-ep="${next}"]`) || page.querySelector('.sr-season');
     target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  // Marcar / desmarcar una temporada completa.
+  page.querySelectorAll('[data-season-mark]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const si = Number(btn.dataset.seasonMark);
+      const allSeasons = getSeasons(item);
+      let start = 0;
+      for (let k = 0; k < si; k++) start += (allSeasons[k].episodios || []).length;
+      const count = (allSeasons[si].episodios || []).length;
+      if (!count) return;
+      const end = start + count;
+      const p = loadProgressFor(item.id);
+      const w = p.watched || [];
+      const maxWatched = w.length ? Math.max(...w) : 0;
+      // Si la temporada ya está completa se desmarca (vuelve al inicio de ella).
+      const next = maxWatched >= end
+        ? Array.from({ length: start }, (_, i) => i + 1)
+        : Array.from({ length: end }, (_, i) => i + 1);
+      saveProgressFor(item.id, { ...p, watched: next });
+      const cur = catalog.find(c => c.id === item.id);
+      if (cur) renderDetail(cur);
+    });
   });
 
   // Temporadas colapsables en el detalle (estado persistente entre re-renders)
@@ -603,25 +844,25 @@ function renderDetail(item) {
     });
   });
   // Relacionados (overlay de tarjeta incluido)
-  page.querySelectorAll('.sr-detail-related .series-card').forEach(card => {
-    const open = () => openDetail(card.dataset.id);
-    card.addEventListener('click', open);
-    card.querySelector('[data-card-play]')?.addEventListener('click', (e) => { e.stopPropagation(); open(); });
-    card.querySelector('[data-card-fav]')?.addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(card.dataset.id); });
-  });
+  bindCards(page.querySelector('.sr-detail-related'));
 }
 
 function renderStickyProgress(item, total, watched, percent) {
   const done = watched.length;
   const next = done < total ? done + 1 : total;
-  const status = done >= total ? 'Completada' : `Vas por el capítulo ${next} de ${total}`;
-  const label = done >= total ? '✓ ' + status : `▶ ${status} · ${Math.round(percent)}%`;
+  const finished = done >= total;
+  const status = finished ? 'Completada' : `Vas por el capítulo ${next} de ${total}`;
   return `
     <div class="sr-sticky-progress" id="srStickyProgress">
       <div class="sr-sticky-progress-fill" style="width:${percent}%"></div>
       <div class="sr-sticky-progress-body">
-        <span class="sr-sticky-progress-label">${label}</span>
-        ${done < total ? `<button class="sr-sticky-progress-btn" id="srStickyGoNext">Continuar <span>→</span></button>` : ''}
+        <span class="sr-sticky-progress-label">${finished ? '✓ ' : '▶ '}${status} · ${Math.round(percent)}%</span>
+        <div class="sr-sticky-progress-actions">
+          ${finished
+            ? '<span class="sr-sticky-progress-done">✓ Vista completa</span>'
+            : `<button type="button" class="sr-sticky-progress-btn" id="srStickyMark">✓ Marcar ep. ${next}</button>
+               <button type="button" class="sr-sticky-progress-link" id="srStickyGoNext">Ver episodio →</button>`}
+        </div>
       </div>
     </div>
   `;
@@ -663,13 +904,18 @@ function renderSeasonsSection(item, seasons, watched) {
         }).join('');
         const watchedInSeason = watched.filter(n => n > start && n <= globalNum).length;
         const isCollapsed = collapsedDetailSeasons.has(si);
+        const seasonName = escapeHtml(season.titulo || `Temporada ${si + 1}`);
+        const seasonDone = eps.length > 0 && watchedInSeason >= eps.length;
         return `
         <div class="sr-season ${isCollapsed ? 'is-collapsed' : ''}" data-season="${si}">
-          <button type="button" class="sr-season-head" data-season-toggle-view aria-expanded="${!isCollapsed}" aria-controls="srSeasonEpisodes${si}">
-            <svg class="sr-season-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            <span class="sr-season-name">${escapeHtml(season.titulo || `Temporada ${si + 1}`)}</span>
-            <span class="sr-season-count">${watchedInSeason}/${eps.length} · ${eps.length} ep</span>
-          </button>
+          <div class="sr-season-headrow">
+            <button type="button" class="sr-season-head" data-season-toggle-view aria-expanded="${!isCollapsed}" aria-controls="srSeasonEpisodes${si}">
+              <svg class="sr-season-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="sr-season-name">${seasonName}</span>
+              <span class="sr-season-count">${watchedInSeason}/${eps.length} · ${eps.length} ep</span>
+            </button>
+            ${eps.length ? `<button type="button" class="sr-season-mark" data-season-mark="${si}" aria-label="${seasonDone ? `Desmarcar ${seasonName}` : `Marcar ${seasonName} completa como vista`}">${seasonDone ? 'Desmarcar' : '✓ Temporada'}</button>` : ''}
+          </div>
           <div class="sr-episodes-grid" id="srSeasonEpisodes${si}">${epsHtml}</div>
         </div>`;
       }).join('')}
@@ -811,15 +1057,15 @@ function render() {
         </div>` : ''}
       </div>
 
-      <div class="sr-view-tabs" role="tablist">
-        <button class="sr-view-tab ${currentView === 'home' ? 'active' : ''}" data-view="home" role="tab">Inicio</button>
-        <button class="sr-view-tab ${currentView === 'catalog' ? 'active' : ''}" data-view="catalog" role="tab">Catálogo</button>
-        <button class="sr-view-tab ${currentView === 'top5' ? 'active' : ''}" data-view="top5" role="tab">Mi Top 5</button>
+      <div class="sr-view-tabs" role="tablist" aria-label="Vistas de la sección">
+        <button class="sr-view-tab ${currentView === 'home' ? 'active' : ''}" data-view="home" role="tab" id="srTabHome" aria-controls="srViewHome" aria-selected="${currentView === 'home'}" tabindex="${currentView === 'home' ? 0 : -1}">Inicio</button>
+        <button class="sr-view-tab ${currentView === 'catalog' ? 'active' : ''}" data-view="catalog" role="tab" id="srTabCatalog" aria-controls="srViewCatalog" aria-selected="${currentView === 'catalog'}" tabindex="${currentView === 'catalog' ? 0 : -1}">Catálogo</button>
+        <button class="sr-view-tab ${currentView === 'top5' ? 'active' : ''}" data-view="top5" role="tab" id="srTabTop5" aria-controls="srViewTop5" aria-selected="${currentView === 'top5'}" tabindex="${currentView === 'top5' ? 0 : -1}">Mi Top 5</button>
       </div>
 
-      <div id="srViewHome" class="sr-view ${currentView === 'home' ? 'is-active' : ''}"></div>
+      <div id="srViewHome" class="sr-view ${currentView === 'home' ? 'is-active' : ''}" role="tabpanel" aria-labelledby="srTabHome"></div>
 
-      <div id="srViewCatalog" class="sr-view ${currentView === 'catalog' ? 'is-active' : ''}">
+      <div id="srViewCatalog" class="sr-view ${currentView === 'catalog' ? 'is-active' : ''}" role="tabpanel" aria-labelledby="srTabCatalog">
         <div class="sr-catalog-toolbar">
           <div class="sr-search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sr-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -831,12 +1077,26 @@ function render() {
             <button class="sr-chip ${currentFilter === 'serie' ? 'active' : ''}" data-filter="serie">Series</button>
             <button class="sr-chip ${currentFilter === 'pelicula' ? 'active' : ''}" data-filter="pelicula">Películas</button>
             <button class="sr-chip ${currentFilter === 'favoritas' ? 'active' : ''}" data-filter="favoritas">❤ Favoritas</button>
+            <button class="sr-chip ${currentFilter === 'encurso' ? 'active' : ''}" data-filter="encurso">En curso</button>
+            <button class="sr-chip ${currentFilter === 'vistas' ? 'active' : ''}" data-filter="vistas">✓ Vistas</button>
+            <button class="sr-chip ${currentFilter === 'porver' ? 'active' : ''}" data-filter="porver">Por ver</button>
           </div>
+        </div>
+        <div class="sr-catalog-tools">
+          <label class="sr-sort" for="srSort">
+            <span class="sr-sort-label">Ordenar</span>
+            <select id="srSort" class="sr-sort-select">
+              <option value="recent" ${currentSort === 'recent' ? 'selected' : ''}>Recientes</option>
+              <option value="az" ${currentSort === 'az' ? 'selected' : ''}>A – Z</option>
+              <option value="progress" ${currentSort === 'progress' ? 'selected' : ''}>Más avanzadas</option>
+              <option value="rating" ${currentSort === 'rating' ? 'selected' : ''}>Mejor valoradas</option>
+            </select>
+          </label>
         </div>
         <div id="srCatalogResults"></div>
       </div>
 
-      <div id="srViewTop5" class="sr-view ${currentView === 'top5' ? 'is-active' : ''}"></div>
+      <div id="srViewTop5" class="sr-view ${currentView === 'top5' ? 'is-active' : ''}" role="tabpanel" aria-labelledby="srTabTop5"></div>
     </div>
 
     <!-- Editor completo -->
@@ -890,16 +1150,34 @@ function render() {
 
   `;
 
-  // Nav views
-  page.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => {
-    page.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+  // Nav views (tabs accesibles: aria-selected + flechas ← →)
+  const viewTabs = [...page.querySelectorAll('[data-view]')];
+  const activateView = (btn) => {
+    viewTabs.forEach(b => {
+      const on = b === btn;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    });
     currentView = btn.dataset.view;
     page.querySelectorAll('.sr-view').forEach(v => v.classList.remove('is-active'));
     const target = page.querySelector('#srView' + (currentView === 'home' ? 'Home' : currentView === 'catalog' ? 'Catalog' : 'Top5'));
     if (target) target.classList.add('is-active');
+    // El hero solo rota mientras se ve el Inicio.
+    if (currentView !== 'home') clearHeroTimer();
     renderAll();
-  }));
+  };
+  viewTabs.forEach(btn => btn.addEventListener('click', () => activateView(btn)));
+  page.querySelector('.sr-view-tabs')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const idx = viewTabs.indexOf(document.activeElement);
+    const from = idx === -1 ? viewTabs.findIndex(b => b.dataset.view === currentView) : idx;
+    const step = e.key === 'ArrowRight' ? 1 : -1;
+    const next = viewTabs[(from + step + viewTabs.length) % viewTabs.length];
+    next.focus();
+    activateView(next);
+  });
 
   page.querySelector('#srAddBtn')?.addEventListener('click', () => openEditor(null));
 
@@ -935,6 +1213,12 @@ function render() {
     currentFilter = btn.dataset.filter;
     renderCatalog();
   }));
+
+  // Orden del catálogo
+  page.querySelector('#srSort')?.addEventListener('change', (e) => {
+    currentSort = e.target.value;
+    renderCatalog();
+  });
 
   // Editor save
   page.querySelector('#srSaveBtn')?.addEventListener('click', async () => {
@@ -1023,13 +1307,24 @@ function render() {
 // BINDINGS COMUNES
 // ==========================================
 function bindCards(root) {
+  if (!root) return;
   root.querySelectorAll('.series-card').forEach(card => {
     const open = () => openDetail(card.dataset.id);
-    card.addEventListener('click', open);
-    card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    // Un solo manejador: el botón que cubre la tarjeta (accesible con
+    // teclado) y cualquier zona libre abren la ficha; las acciones propias
+    // (favorito, play, ✓ +1) las gestionan sus botones.
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('[data-card-fav], [data-card-play], [data-continue-add]')) return;
+      open();
+    });
     // Overlay estilo Netflix: play abre el detalle, corazón alterna favorita
     card.querySelector('[data-card-play]')?.addEventListener('click', (e) => { e.stopPropagation(); open(); });
     card.querySelector('[data-card-fav]')?.addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(card.dataset.id); });
+    // "Seguir viendo": marca el siguiente capítulo desde la propia tarjeta.
+    card.querySelector('[data-continue-add]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      markNextEpisode(card.dataset.id);
+    });
   });
 }
 
@@ -1068,8 +1363,19 @@ export function SeriesPage(router) {
     render();
     renderAll();
   });
+  // El hero deja de rotar al ocultar la pestaña del navegador y vuelve al
+  // mostrarla (si seguimos en Inicio).
+  const onVisibility = () => {
+    if (document.visibilityState === 'hidden') clearHeroTimer();
+    else if (page.isConnected && currentView === 'home' && !currentDetailId) startHeroTimer();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
   const origCleanup = page.cleanup;
-  page.cleanup = () => { offSeries(); if (origCleanup) origCleanup(); };
+  page.cleanup = () => {
+    offSeries();
+    document.removeEventListener('visibilitychange', onVisibility);
+    if (origCleanup) origCleanup();
+  };
 
   // Carga compartida: skeleton mientras llega Supabase
   page.innerHTML = `<div class="route-loading" role="status" aria-live="polite">

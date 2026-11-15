@@ -11,6 +11,8 @@ import { db } from '../services/db.service.js';
 import { normalizeDecor, normalizeVideoMode, mediaList } from './celebration.js';
 import { cleanEventActions } from './event-actions.js';
 import { todayISO } from './format.js';
+import { EVENT_TEMPLATE_IDS, EVENT_TEMPLATES } from './event-templates.js';
+export { EVENT_COMPOSITIONS, EVENT_TEMPLATE_LIST, EVENT_TEMPLATES, eventTemplateFor, compositionFor } from './event-templates.js';
 
 // Días temáticos de fábrica (Halloween, Navidad). Editables desde Admin:
 // su mes/día, título, texto, emoji, foto y color se guardan en la config y
@@ -30,20 +32,17 @@ const FIXED_EVENT_META = {
   userBirthday: { icon: '🎉', type: 'birthday', description: 'Hoy el día va de celebrar a alguien muy especial: tú.' }
 };
 
-// Tipos válidos: deciden el color con el que se pinta la bienvenida.
-// Fuente única: la usan la hoja (SpecialEventSheet) y el selector del Admin,
-// para que el color que eliges sea el que sale.
-export const SPECIAL_EVENT_TYPES = ['custom', 'birthday', 'anniversary', 'memory', 'halloween', 'christmas', 'valentine'];
+// Tipos válidos: son los ids del catálogo de plantillas. Se leen de ahí y no
+// de una lista paralela, para que añadir una plantilla no deje al Admin
+// ofreciendo algo que la hoja no sabe pintar (ni al revés).
+export const SPECIAL_EVENT_TYPES = EVENT_TEMPLATE_IDS;
 
-export const SPECIAL_EVENT_TONES = {
-  halloween: ['#f28b36', 'rgba(242,139,54,.16)'],
-  valentine: ['#e8614f', 'rgba(232,97,79,.16)'],
-  christmas: ['#69b984', 'rgba(105,185,132,.16)'],
-  birthday: ['var(--primary)', 'var(--primary-soft)'],
-  anniversary: ['var(--primary)', 'var(--primary-soft)'],
-  memory: ['var(--primary)', 'var(--primary-soft)'],
-  custom: ['var(--primary)', 'var(--primary-soft)']
-};
+// El tono de cada plantilla sale del mismo catálogo: la hoja y el selector del
+// Admin comparten acento y fondo suave, así que el color que se elige es el
+// que sale. El formato [acento, fondo suave] no cambia.
+export const SPECIAL_EVENT_TONES = Object.fromEntries(
+  Object.values(EVENT_TEMPLATES).map(template => [template.id, template.tone])
+);
 
 // Los cuatro días principales, en el orden en que se editan.
 export const FIXED_IDS = ['anniversary', 'hubStart', 'birthday', 'userBirthday'];

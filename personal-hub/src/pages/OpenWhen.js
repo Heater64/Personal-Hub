@@ -5,10 +5,12 @@
    ========================================== */
 
 import '../styles/openwhen.css';
-import { icon, openSheet, closeSheets } from '../components/ui.js';
+import { icon, openSheet, closeSheets, toast } from '../components/ui.js';
+import { userStore } from '../stores/user.store.js';
 import { createLightbox, openLightbox, closeLightbox } from '../components/MediaLightbox.js';
 import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
+import { OPENWHEN_READ_PREFIX } from '../utils/stats-metrics.js';
 import { db } from '../services/db.service.js';
 
 import { CATEGORIES, TYPE_META, LETTERS, loadAllOpenWhenLetters } from '../data/openwhen.data.js';
@@ -319,8 +321,16 @@ export function OpenWhenPage(router) {
     // cerraba la tarjeta al encontrar la primera miniatura y las fotos
     // quedaban fuera. Un div con role="button" (más la activación de
     // teclado del listener de keydown) deja los botones interiores válidos.
+    const adminActions = userStore.isAdmin
+      ? `<div class="ow-card__admin">
+          <button type="button" class="ow-card-action-btn" data-edit-letter="${letter.id}" title="Editar carta">${icon('edit', 14)}</button>
+          <button type="button" class="ow-card-action-btn is-delete" data-delete-letter="${letter.id}" title="Eliminar carta">${icon('trash', 14)}</button>
+        </div>`
+      : '';
+
     return `
       <div class="ow-card${fresh ? ' is-new' : ''}" role="button" tabindex="0" data-open="${letter.id}">
+        ${adminActions}
         <span class="ow-card__ic">${meta.emoji}</span>
         <span class="ow-card__body">
           <span class="ow-card__top">
@@ -356,12 +366,21 @@ export function OpenWhenPage(router) {
       ? `${letters.length} cartas · ${n} ${n === 1 ? 'sin ver' : 'sin ver'}`
       : `${letters.length} ${letters.length === 1 ? 'carta' : 'cartas'} · todo visto`;
 
+    const adminBtn = userStore.isAdmin
+      ? `<div class="ow-head-actions">
+          <button type="button" class="ow-admin-btn" data-new-letter>
+            ${icon('plus', 15)} <span>Escribir carta</span>
+          </button>
+        </div>`
+      : '';
+
     return `
       <header class="scr-head">
         <div>
           <h1 class="scr-title">Open When</h1>
           <p class="sub">${escapeHtml(sub)}</p>
         </div>
+        ${adminBtn}
       </header>
 
       <section class="ow-section">
@@ -377,6 +396,14 @@ export function OpenWhenPage(router) {
     const news = all.filter(isNew);
     const olds = all.filter(l => !isNew(l));
 
+    const adminBtn = userStore.isAdmin
+      ? `<div class="ow-head-actions">
+          <button type="button" class="ow-admin-btn" data-new-letter="${catId}">
+            ${icon('plus', 15)} <span>Nueva en ${escapeHtml(cat.title)}</span>
+          </button>
+        </div>`
+      : '';
+
     return `
       <header class="scr-head">
         <div class="ow-head-main">
@@ -386,6 +413,7 @@ export function OpenWhenPage(router) {
             <p class="sub">${escapeHtml(cat.tagline)}</p>
           </div>
         </div>
+        ${adminBtn}
       </header>
 
       ${news.length ? `
@@ -483,6 +511,9 @@ export function OpenWhenPage(router) {
     if (wasNew) {
       seen.push(id);
       persist();
+      // Rastro para el panel: `analytics_visits` solo lo puede leer el admin,
+      // así que abrir una carta se registra como visita a una ruta reservada.
+      db.trackVisit(`${OPENWHEN_READ_PREFIX}${id}`).catch(() => {});
       // Repinta antes de abrir el sheet: así la carta pasa sola a "Vistas"
       // y los contadores de las categorías quedan al día.
       render();
@@ -542,8 +573,216 @@ export function OpenWhenPage(router) {
     history.pushState({ ...(history.state || {}), __phInPage: true, __owView: catId }, '');
   }
 
+
+  /* ---------- Editor In-Situ (Admin) ---------- */
+  function openEditor(letterToEdit = null, defaultCat = null) {
+    if (!userStore.isAdmin) return;
+    const isNew = !letterToEdit;
+    const initialCat = letterToEdit?.category || defaultCat || CATEGORIES[0].id;
+    const initialType = letterToEdit?.type || 'carta';
+    const initialMediaKind = letterToEdit?.media?.kind || '';
+
+    openSheet(isNew ? 'Escribir nueva carta' : 'Editar carta', () => {
+      const container = document.createElement('div');
+      container.className = 'ow-editor-form';
+
+      container.innerHTML = `
+        <div class="ow-form-field">
+          <label>Título (Ábrela cuando...)</label>
+          <input type="text" id="owTitle" placeholder="Ej: ...estés triste y me extrañes" value="${escapeHtml(letterToEdit?.title || '')}" />
+        </div>
+        <div class="ow-form-field">
+          <label>Subtítulo / Nota corta</label>
+          <input type="text" id="owNote" placeholder="Ej: Para leer con una taza de café" value="${escapeHtml(letterToEdit?.note || '')}" />
+        </div>
+        <div class="ow-form-grid">
+          <div class="ow-form-field">
+            <label>Categoría</label>
+            <select id="owCategory">
+              ${CATEGORIES.map(c => `<option value="${c.id}" ${c.id === initialCat ? 'selected' : ''}>${c.emoji} ${escapeHtml(c.title)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="ow-form-field">
+            <label>Tipo de carta</label>
+            <select id="owType">
+              <option value="carta" ${initialType === 'carta' ? 'selected' : ''}>💌 Carta</option>
+              <option value="mensaje" ${initialType === 'mensaje' ? 'selected' : ''}>💬 Mensaje</option>
+              <option value="reto" ${initialType === 'reto' ? 'selected' : ''}>🧩 Reto</option>
+              <option value="juego" ${initialType === 'juego' ? 'selected' : ''}>🎮 Juego</option>
+              <option value="sorpresa" ${initialType === 'sorpresa' ? 'selected' : ''}>🎁 Sorpresa</option>
+            </select>
+          </div>
+        </div>
+        <div class="ow-form-field">
+          <label>Contenido del mensaje</label>
+          <textarea id="owMessage" rows="6" placeholder="Escribe aquí tus palabras más bonitas...">${escapeHtml(letterToEdit?.message || '')}</textarea>
+        </div>
+        <div class="ow-form-field">
+          <label>Multimedia (opcional)</label>
+          <select id="owMediaKind">
+            <option value="" ${!initialMediaKind ? 'selected' : ''}>Sin multimedia</option>
+            <option value="audio" ${initialMediaKind === 'audio' ? 'selected' : ''}>🎙️ Audio (URL directa mp3)</option>
+            <option value="album" ${initialMediaKind === 'album' ? 'selected' : ''}>📸 Fotos (URLs por línea)</option>
+            <option value="video" ${initialMediaKind === 'video' ? 'selected' : ''}>🎥 Vídeo (URL directa mp4)</option>
+            <option value="nota" ${initialMediaKind === 'nota' ? 'selected' : ''}>🗣️ Nota de voz generada</option>
+            <option value="cancion" ${initialMediaKind === 'cancion' ? 'selected' : ''}>🎵 Melodía cajita musical</option>
+          </select>
+        </div>
+        <div id="owMediaExtra"></div>
+
+        <div class="ow-editor-actions">
+          <button type="button" class="btn btn-secondary" id="owCancelBtn">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="owSaveBtn">${isNew ? 'Guardar carta' : 'Actualizar'}</button>
+        </div>
+      `;
+
+      const kindSelect = container.querySelector('#owMediaKind');
+      const extraDiv = container.querySelector('#owMediaExtra');
+
+      function updateMediaExtra() {
+        const val = kindSelect.value;
+        if (val === 'audio' || val === 'video') {
+          const currentUrl = (letterToEdit?.media?.kind === val ? letterToEdit.media.url : '') || '';
+          extraDiv.innerHTML = `
+            <div class="ow-form-field">
+              <label>URL del ${val === 'audio' ? 'Audio' : 'Vídeo'}</label>
+              <input type="url" id="owMediaUrl" placeholder="https://..." value="${escapeHtml(currentUrl)}" />
+            </div>
+          `;
+        } else if (val === 'album') {
+          const urls = (letterToEdit?.media?.kind === 'album' ? (letterToEdit.media.urls || []).join('\n') : '');
+          extraDiv.innerHTML = `
+            <div class="ow-form-field">
+              <label>URLs de las imágenes (una por línea)</label>
+              <textarea id="owMediaUrls" rows="3" placeholder="https://...\nhttps://...">${escapeHtml(urls)}</textarea>
+            </div>
+          `;
+        } else if (val === 'cancion') {
+          const melody = letterToEdit?.media?.melody || 'cuna';
+          extraDiv.innerHTML = `
+            <div class="ow-form-field">
+              <label>Melodía de la cajita</label>
+              <select id="owMelody">
+                <option value="cuna" ${melody === 'cuna' ? 'selected' : ''}>Estrellita dónde estás</option>
+                <option value="alegre" ${melody === 'alegre' ? 'selected' : ''}>Campanitas alegres</option>
+              </select>
+            </div>
+          `;
+        } else {
+          extraDiv.innerHTML = '';
+        }
+      }
+
+      kindSelect.addEventListener('change', updateMediaExtra);
+      updateMediaExtra();
+
+      container.querySelector('#owCancelBtn').addEventListener('click', closeSheets);
+
+      container.querySelector('#owSaveBtn').addEventListener('click', async () => {
+        const title = container.querySelector('#owTitle').value.trim();
+        const message = container.querySelector('#owMessage').value.trim();
+        const note = container.querySelector('#owNote').value.trim();
+        const category = container.querySelector('#owCategory').value;
+        const type = container.querySelector('#owType').value;
+        const mediaKind = kindSelect.value;
+
+        if (!title) { toast('Por favor introduce un título'); return; }
+        if (!message) { toast('Por favor escribe el mensaje de la carta'); return; }
+
+        let media = null;
+        if (mediaKind === 'audio' || mediaKind === 'video') {
+          const url = container.querySelector('#owMediaUrl')?.value?.trim();
+          if (!url) { toast('Falta la URL del multimedia'); return; }
+          media = { kind: mediaKind, url };
+        } else if (mediaKind === 'album') {
+          const urls = (container.querySelector('#owMediaUrls')?.value || '')
+            .split('\n').map(u => u.trim()).filter(Boolean);
+          if (!urls.length) { toast('Añade al menos una foto'); return; }
+          media = { kind: 'album', urls };
+        } else if (mediaKind === 'nota') {
+          media = { kind: 'nota' };
+        } else if (mediaKind === 'cancion') {
+          media = { kind: 'cancion', melody: container.querySelector('#owMelody')?.value || 'cuna' };
+        }
+
+        const id = letterToEdit?.id || db.generateId();
+        const letterObj = {
+          id,
+          category,
+          type,
+          title,
+          note,
+          message,
+          ...(media ? { media } : {})
+        };
+
+        const currentCustom = await db.getOpenWhenLetters().catch(() => []);
+        const idx = currentCustom.findIndex(x => x.id === id);
+        let nextCustom;
+        if (idx >= 0) {
+          nextCustom = [...currentCustom];
+          nextCustom[idx] = letterObj;
+        } else {
+          nextCustom = [...currentCustom, letterObj];
+        }
+
+        try {
+          await db.saveOpenWhenLetters(nextCustom);
+          letters = await loadAllOpenWhenLetters();
+          render();
+          closeSheets();
+          toast(isNew ? 'Carta guardada con éxito ♥' : 'Carta actualizada correctamente ✓');
+        } catch (err) {
+          toast('Error al guardar carta: ' + (err.message || 'Error desconocido'));
+        }
+      });
+
+      return container;
+    });
+  }
+
+  async function deleteLetter(id) {
+    if (!userStore.isAdmin) return;
+    const letter = letterById(id);
+    if (!letter) return;
+    if (!confirm(`¿Eliminar la carta "${letter.title}"?`)) return;
+
+    try {
+      const currentCustom = await db.getOpenWhenLetters().catch(() => []);
+      const nextCustom = currentCustom.filter(x => x.id !== id);
+      await db.saveOpenWhenLetters(nextCustom);
+      letters = await loadAllOpenWhenLetters();
+      render();
+      toast('Carta eliminada ✓');
+    } catch (err) {
+      toast('No se pudo eliminar: ' + (err.message || 'Error'));
+    }
+  }
+
   /* ---------- eventos ---------- */
   page.addEventListener('click', (e) => {
+    const newBtn = e.target.closest('[data-new-letter]');
+    if (newBtn) {
+      e.stopPropagation();
+      openEditor(null, newBtn.dataset.newLetter || null);
+      return;
+    }
+
+    const editBtn = e.target.closest('[data-edit-letter]');
+    if (editBtn) {
+      e.stopPropagation();
+      const letId = editBtn.dataset.editLetter;
+      openEditor(letterById(letId));
+      return;
+    }
+
+    const delBtn = e.target.closest('[data-delete-letter]');
+    if (delBtn) {
+      e.stopPropagation();
+      deleteLetter(delBtn.dataset.deleteLetter);
+      return;
+    }
+
     const back = e.target.closest('[data-back]');
     if (back) {
       // Si la categoría dejó su entrada de historial, se deshace con el

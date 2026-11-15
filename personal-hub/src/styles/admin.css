@@ -725,6 +725,22 @@
    MOOD CALENDAR — Premium
    ========================================== */
 .moods-chart-section { margin-top: 8px; }
+/* Resumen de los últimos siete días: cierra la sección, debajo del desglose */
+.moods-week {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--theme-divider, rgba(255, 255, 255, 0.08));
+}
+.moods-week-range {
+  font-size: var(--fs-xs);
+  color: var(--theme-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.moods-week-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .moods-chart-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 16px;
@@ -817,6 +833,119 @@
   font-weight: 500;
 }
 .moods-cal-emoji { font-size: 0.75rem; line-height: 1; }
+/* Un día se puede abrir para ver TODAS sus emociones (la celda solo cabía
+   tres emojis y un «+N»). */
+.moods-cal-cell.is-openable { cursor: pointer; }
+.moods-cal-cell.is-openable:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 1px;
+}
+/* Detalle del día (modal) */
+.mood-day-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Flechas de día anterior / siguiente dentro del detalle */
+.mood-day-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mood-day-nav-btn {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--theme-divider, rgba(255, 255, 255, 0.08));
+  background: var(--theme-surface-elevated);
+  color: var(--theme-text-primary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.mood-day-nav-btn:hover:not(:disabled) {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+}
+.mood-day-nav-btn:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+.mood-day-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.mood-day-nav-label {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  text-transform: capitalize;
+}
+/* Atajo al día de hoy (solo cuando miras otro día) */
+.mood-day-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+.mood-day-today {
+  padding: 6px 14px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border-accent, rgba(255, 255, 255, 0.14));
+  background: var(--accent-dim, rgba(255, 255, 255, 0.06));
+  color: var(--theme-accent);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.mood-day-today:hover { border-color: var(--theme-accent); }
+.mood-day-today:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+.mood-day-summary {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--theme-text-secondary);
+}
+.mood-day-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mood-day-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--r-full);
+  background: var(--theme-surface-elevated);
+  border: 1px solid var(--theme-divider, rgba(255, 255, 255, 0.08));
+  font-size: var(--fs-sm);
+  color: var(--theme-text-primary);
+}
+.mood-day-chip-count {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--theme-accent);
+}
+.mood-day-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--theme-text-secondary);
+  line-height: 1.5;
+}
+.mood-day-empty {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--theme-text-secondary);
+}
 /* Moods stats row */
 .moods-stats-row {
   display: grid;
@@ -915,6 +1044,20 @@
 .moods-bar-fill.mood-triste { background: linear-gradient(90deg, #ff9800, #ffb74d); }
 .moods-bar-fill.mood-preocupada { background: linear-gradient(90deg, #42a5f5, #64b5f6); }
 .moods-bar-fill.mood-enfadada { background: linear-gradient(90deg, #e53935, #ef5350); }
+/* Catálogo ampliado: un color por emoción, agrupado por familia (positivas
+   rosas/verdes, neutras azules, malestar ámbares/rojos). */
+.moods-bar-fill.mood-emocionada { background: linear-gradient(90deg, #e91e63, #f48fb1); }
+.moods-bar-fill.mood-decepcionada { background: linear-gradient(90deg, #7e57c2, #b39ddb); }
+.moods-bar-fill.mood-molesta { background: linear-gradient(90deg, #ef5350, #ff8a80); }
+.moods-bar-fill.mood-miedo { background: linear-gradient(90deg, #5c6bc0, #9fa8da); }
+.moods-bar-fill.mood-asustada { background: linear-gradient(90deg, #3949ab, #7986cb); }
+.moods-bar-fill.mood-dolor { background: linear-gradient(90deg, #d84315, #ff8a65); }
+.moods-bar-fill.mood-nauseas { background: linear-gradient(90deg, #558b2f, #9ccc65); }
+.moods-bar-fill.mood-cansada { background: linear-gradient(90deg, #78909c, #b0bec5); }
+.moods-bar-fill.mood-estresada { background: linear-gradient(90deg, #f4511e, #ffab91); }
+.moods-bar-fill.mood-enferma { background: linear-gradient(90deg, #00897b, #4db6ac); }
+.moods-bar-fill.mood-muyfeliz { background: linear-gradient(90deg, #fdd835, #ffb300); }
+.moods-bar-fill.mood-custom { background: linear-gradient(90deg, var(--theme-accent), #dc5078); }
 .moods-bar-pct {
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   min-width: 40px; text-align: right;
@@ -2855,83 +2998,187 @@
   border-top: 1px solid var(--theme-divider);
   font-size: 12px;
 }
-.dates-event-row {
+/* ===== Tarjeta resumen de un día =====
+   La lista ya no es una fila compacta de campos e iconos: cada evento es una
+   tarjeta que se lee de un vistazo y se abre en pasos numerados. */
+.dates-event-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  align-items: stretch;
-  padding: 8px;
-  border-radius: 12px;
-  border: 1px solid transparent;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--theme-divider);
+  border-radius: 14px;
+  background: var(--theme-surface);
 }
-.dates-event-row.is-open {
-  border-color: var(--theme-divider-strong);
-  background: var(--theme-surface-2, rgba(255,255,255,.02));
-}
-/* La fila colapsada solo enseña título + fecha + los botones. En pantallas
-   estrechas los botones bajan a su propia línea antes que estrujar el campo. */
-.dates-event-main {
+.dates-event-card.is-open { border-color: var(--theme-divider-strong); }
+.dates-card-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
   align-items: center;
+  gap: 10px;
 }
-.dates-event-row input[type="text"] {
-  /* Base ancha: si no cabe todo en una línea, la fecha baja antes que el
-     nombre, que es el campo que de verdad hay que leer. */
-  flex: 1 1 170px;
-  min-width: 0;
-  padding: 9px 11px;
-  border-radius: 10px;
-  border: 1px solid var(--theme-divider-strong);
-  background: var(--theme-surface);
+.dates-card-emoji {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--theme-surface-2, rgba(255, 255, 255, .04));
+  font-size: 22px;
+  line-height: 1;
+}
+.dates-card-body { flex: 1 1 150px; min-width: 0; display: grid; gap: 2px; }
+.dates-card-title {
+  font-size: 14px;
+  line-height: 1.3;
   color: var(--theme-text-primary);
-  font: inherit;
+  overflow-wrap: anywhere;
 }
-.dates-event-row input[type="date"] {
-  /* Estrecho a propósito: el campo de fecha tiene un ancho mínimo propio
-     (los separadores y el icono del navegador) y, si se le deja, empuja el
-     botón de quitar a otra línea. */
-  flex: 0 1 122px;
-  width: 122px;
-  min-width: 0;
-  padding: 9px 11px;
-  border-radius: 10px;
-  border: 1px solid var(--theme-divider-strong);
-  background: var(--theme-surface);
-  color: var(--theme-text-primary);
-  font: inherit;
-  color-scheme: dark;
-}
-.dates-event-del {
-  flex-shrink: 0;
-  width: 34px;
-  height: 40px;
+.dates-card-meta { font-size: 12px; line-height: 1.35; color: var(--theme-text-secondary); }
+.dates-card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Botones explícitos, con texto y 44 px: nada de iconos que haya que adivinar. */
+.dates-event-edit,
+.dates-event-preview,
+.dates-event-del,
+.dates-se-preview,
+.dates-event-today,
+.dates-se-today,
+.dates-event-open-preview {
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--theme-divider-strong);
   border-radius: 10px;
   background: transparent;
-  color: var(--theme-error, #ff6b6b);
+  color: var(--theme-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.dates-event-toggle {
-  flex-shrink: 0;
-  width: 34px;
-  height: 40px;
-  border: 1px solid var(--theme-divider-strong);
-  border-radius: 10px;
-  background: transparent;
+.dates-event-edit:hover,
+.dates-event-preview:hover,
+.dates-se-preview:hover,
+.dates-event-today:hover,
+.dates-se-today:hover,
+.dates-event-open-preview:hover {
+  color: var(--theme-accent, #e8614f);
+  border-color: var(--theme-accent, #e8614f);
+}
+.dates-event-edit[aria-expanded="true"] {
+  color: var(--theme-accent, #e8614f);
+  border-color: var(--theme-accent, #e8614f);
+}
+.dates-event-del { color: var(--theme-error, #ff6b6b); }
+.dates-event-edit:focus-visible,
+.dates-event-preview:focus-visible,
+.dates-event-del:focus-visible,
+.dates-se-preview:focus-visible,
+.dates-event-today:focus-visible,
+.dates-se-today:focus-visible,
+.dates-event-open-preview:focus-visible {
+  outline: 2px solid var(--theme-accent, #e8614f);
+  outline-offset: 2px;
+}
+/* El editor: pasos numerados, cada uno con sus etiquetas explícitas. */
+.dates-event-editor { display: grid; gap: 12px; }
+.dates-fieldset {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--theme-divider);
+  border-radius: 12px;
+  background: var(--theme-surface-2, rgba(255, 255, 255, .02));
+}
+.dates-fieldset > legend {
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--theme-text-secondary);
+}
+.dates-optional { font-weight: 500; text-transform: none; letter-spacing: 0; opacity: .8; }
+.dates-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.dates-field-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.dates-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 13px;
+  color: var(--theme-text-secondary);
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+}
+.dates-check input { width: 18px; height: 18px; accent-color: var(--theme-accent, #e8614f); }
+.dates-forecast {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--theme-text-secondary);
 }
 /* El mes-día de los temáticos es corto: "10-31", no un campo de texto largo. */
 .dates-event-row .dates-se-monthday {
-  flex: 0 0 96px;
   text-align: center;
   letter-spacing: .04em;
 }
-.dates-event-row.is-open .dates-event-toggle {
+/* ===== Selector visual de plantilla =====
+   Botones con emoji, nombre y una línea de qué hace cada una; el valor real
+   viaja en el input oculto de siempre. */
+.dates-templates { display: grid; gap: 8px; }
+.dates-templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+.dates-template-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-divider-strong);
+  border-radius: 12px;
   background: var(--theme-surface);
+  color: var(--theme-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dates-template-option__emoji {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--t-soft, var(--theme-surface-2));
+  font-size: 18px;
+  line-height: 1;
+}
+.dates-template-option__text { display: grid; gap: 2px; min-width: 0; }
+.dates-template-option__text b { font-size: 13px; }
+.dates-template-option__text small { font-size: 11px; line-height: 1.3; color: var(--theme-text-secondary); }
+.dates-template-option[aria-checked="true"] {
+  border-color: var(--t-accent, var(--theme-accent));
+  box-shadow: 0 0 0 1px var(--t-accent, var(--theme-accent));
+}
+.dates-template-option:focus-visible {
+  outline: 2px solid var(--t-accent, var(--theme-accent));
+  outline-offset: 2px;
+}
+.dates-template-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-text-secondary);
 }
 /* ===== Acciones de un evento importante =====
    Los botones que la hoja ofrece ese día: los escribe aquí el admin. Cada
@@ -2981,45 +3228,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 /* ===== Comprobar la bienvenida sin esperar al día =====
-   «Hoy» rellena la fecha con el día de hoy y 🎬 abre la hoja tal cual
-   quedaría, aunque la fecha ya haya pasado. */
+   «Usar hoy» rellena la fecha y «Ver» abre la hoja tal cual quedaría, aunque
+   la fecha ya haya pasado. Comparten el botón de tarjeta de arriba. */
 .dates-event-today,
-.dates-se-today {
-  flex-shrink: 0;
-  padding: 0 10px;
-  height: 40px;
-  border: 1px solid var(--theme-divider-strong);
-  border-radius: 10px;
-  background: var(--theme-surface);
-  color: var(--theme-text-secondary);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.dates-event-today:hover,
-.dates-se-today:hover {
-  color: var(--theme-accent, #e8614f);
-  border-color: var(--theme-accent, #e8614f);
-}
+.dates-se-today { justify-self: start; }
 .dates-event-preview,
-.dates-se-preview {
-  flex-shrink: 0;
-  width: 34px;
-  height: 40px;
-  border: 1px solid var(--theme-divider-strong);
-  border-radius: 10px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
-  -webkit-tap-highlight-color: transparent;
-}
-.dates-event-preview:hover,
-.dates-se-preview:hover {
-  border-color: var(--theme-accent, #e8614f);
-}
+.dates-se-preview { justify-self: start; }
 /* Línea de estado: dice si ese día sale hoy, cuándo o por qué no sale. */
 .dates-when {
   display: flex;
@@ -3070,6 +3284,7 @@
   text-transform: uppercase;
   letter-spacing: .04em;
 }
+.dates-look-note { color: var(--theme-text-secondary); font-size: var(--fs-xs); line-height: 1.35; }
 .dates-look-field--wide { grid-column: 1 / -1; }
 .dates-look-field input,
 .dates-look-field select,
@@ -3122,6 +3337,21 @@
 .dates-look-chip-text b { font-size: 14px; }
 .dates-look-chip-text small { font-size: 12px; line-height: 1.4; color: var(--theme-text-secondary); }
 .dates-emoji-label { font-size: 18px; line-height: 1; }
+/* Cada día principal también agrupa su plantilla y su ambiente en vertical. */
+.dates-look-row {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+.dates-look-row-body { display: grid; gap: 10px; min-width: 0; }
+.dates-look-row-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--theme-text-primary); }
+.dates-look-row-title small { font-weight: 500; color: var(--theme-text-secondary); }
+.dates-look-chip-meta { color: var(--theme-text-secondary); font-size: 11px; }
+/* Controles cómodos de tocar en el móvil (44 px). */
+.dates-look-field input,
+.dates-look-field select { min-height: 44px; }
+@media (prefers-reduced-motion: reduce) {
+  .dates-template-option, .dates-event-edit, .dates-event-preview { transition: none; }
+}
 .dates-event-recur input[type="checkbox"] {
   width: 16px;
   height: 16px;
@@ -3187,4 +3417,73 @@
   flex: 0 0 auto; min-width: 26px; text-align: right;
   font-variant-numeric: tabular-nums; font-weight: 600;
   color: var(--theme-text-primary);
+}
+
+/* ---- Selector de usuario de las estadísticas + racha ---- */
+.dash-header-tools { flex-wrap: wrap; justify-content: flex-end; }
+.dash-streak {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 11px; border-radius: 999px;
+  font-size: var(--fs-xs, 12px); font-weight: 600;
+  color: var(--theme-text-primary);
+  background: var(--theme-surface-elevated);
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.08));
+  white-space: nowrap;
+}
+
+/* ---- Mapa de calor horario ---- */
+.dash-heat { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+.dash-heat-row { display: grid; grid-template-columns: 16px repeat(24, minmax(0, 1fr)); gap: 2px; align-items: center; }
+.dash-heat-day {
+  font-size: 10px; font-weight: 600; text-align: center;
+  color: var(--theme-text-secondary);
+}
+.dash-heat-cell {
+  display: block; height: 13px; border-radius: 3px;
+  background: var(--theme-surface-elevated);
+  transition: background 0.2s ease;
+}
+.dash-heat-cell.has {
+  background: color-mix(in srgb, var(--theme-accent, #e8614f) calc(var(--heat, 0.3) * 100%), var(--theme-surface-elevated));
+}
+.dash-heat-axis { margin-top: 2px; }
+.dash-heat-hour {
+  font-size: 9px; text-align: center; line-height: 1;
+  color: var(--theme-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.dash-parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.dash-part-chip {
+  padding: 4px 9px; border-radius: 999px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--theme-text-secondary);
+  background: var(--theme-surface-elevated);
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.06));
+}
+.dash-part-chip strong { color: var(--theme-text-primary); font-weight: 600; }
+
+/* ---- Constancia y engagement ---- */
+.dash-eng-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+.dash-eng {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 10px 12px; border-radius: 12px;
+  background: var(--theme-surface-elevated);
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.06));
+}
+.dash-eng-num {
+  font-size: 1.15rem; font-weight: 700; line-height: 1.1;
+  color: var(--theme-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.dash-eng-sub { font-size: 0.78rem; font-weight: 500; color: var(--theme-text-secondary); }
+.dash-eng-label { font-size: var(--fs-xs, 12px); color: var(--theme-text-secondary); line-height: 1.3; }
+
+@media (max-width: 640px) {
+  .dash-heat-cell { height: 10px; }
+  .dash-heat-hour { font-size: 8px; }
+  .dash-heat-row { grid-template-columns: 12px repeat(24, minmax(0, 1fr)); gap: 1px; }
+  .dash-streak { order: 3; }
 }

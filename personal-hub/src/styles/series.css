@@ -388,19 +388,30 @@
    ========================================== */
 .series-card-overlay {
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto 0;
+  aspect-ratio: 2 / 3;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(to top, rgba(8, 8, 12, 0.78) 0%, rgba(8, 8, 12, 0.28) 55%, transparent 100%);
   opacity: 0;
+  /* Invisible en reposo: los clics pasan al botón que abre la ficha.
+     Sin esto el overlay se come todos los clics de la portada. */
+  pointer-events: none;
   transition: opacity var(--dur-smooth);
 }
 
 .series-card:hover .series-card-overlay,
-.series-card:focus-visible .series-card-overlay {
+.series-card:focus-within .series-card-overlay {
   opacity: 1;
+}
+
+/* Solo los botones del overlay reciben clic: el fondo sigue dejando pasar
+   el clic a la tarjeta (abrir la ficha). */
+.series-card:hover .series-card-overlay > *,
+.series-card:focus-within .series-card-overlay > * {
+  pointer-events: auto;
 }
 
 .series-card-play {
@@ -433,6 +444,9 @@
   position: absolute;
   top: var(--sp-8);
   right: var(--sp-8);
+  /* Por encima del botón que cubre la tarjeta: siempre clicable. */
+  z-index: 4;
+  pointer-events: auto;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -463,6 +477,7 @@
     opacity: 0 !important;
     pointer-events: none;
   }
+  .series-card-overlay > * { pointer-events: none; }
 }
 
 .series-card-fav {
@@ -575,41 +590,67 @@
 
 .sr-search-clear:hover { background: var(--accent-dim); color: var(--theme-accent); }
 
+/* Filtros principales: una sola «pista» con dos grupos separados por una
+   línea fina — tipo (Todo · Series · Películas) y estado (Favoritas, En
+   curso, Vistas, Por ver). Así se leen como dos familias y no como siete
+   botones sueltos. */
 .sr-filter-chips {
   display: flex;
-  gap: var(--sp-8);
+  align-items: center;
   flex-wrap: wrap;
+  gap: 6px 8px;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 4px;
+  border-radius: calc(var(--r-full) + 4px);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface);
 }
 
 .sr-chip {
-  padding: 8px 18px;
+  position: relative;
+  padding: 7px 14px;
   border-radius: var(--r-full);
-  border: 1px solid var(--theme-divider);
-  background: var(--theme-surface);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--theme-text-secondary);
   font-family: inherit;
   font-size: var(--fs-xs);
   font-weight: 500;
+  line-height: 1.25;
   cursor: pointer;
-  transition: all var(--dur-fast);
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
 }
 
-.sr-chip:hover { border-color: var(--theme-border-accent); color: var(--theme-text-primary); }
+.sr-chip:hover { background: var(--theme-surface-elevated); color: var(--theme-text-primary); }
 .sr-chip.active {
   background: var(--accent-dim);
-  border-color: var(--theme-accent);
+  border-color: transparent;
   color: var(--theme-accent);
   font-weight: 600;
+}
+
+/* Separador entre «tipo» y «estado» (el 4.º chip abre el grupo de estado). */
+.sr-filter-chips > .sr-chip:nth-child(4)::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 16px;
+  background: var(--theme-divider);
+  pointer-events: none;
 }
 
 .series-flat-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--sp-14, 14px);
-  /* Rendering perezoso: catálogos grandes (7+ títulos) sin coste
-     de layout/pintado de lo que no está en pantalla. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 260px;
+  /* Sin content-visibility: las tarjetas llevan botones propios (abrir,
+     favorito, ✓ +1) y un subárbol omitido deja de ser clicable. Las
+     imágenes ya son loading="lazy", que es donde está el coste real. */
 }
 
 /* Grupos de búsqueda */
@@ -1084,6 +1125,28 @@
 }
 
 .sr-detail-fav { font-size: 1.15rem; }
+
+/* Películas: botón de vista (las series se marcan por episodios) */
+.sr-detail-seen {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6, 6px);
+  padding: 12px 20px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--dur-fast);
+}
+
+.sr-detail-seen:hover { background: rgba(255, 255, 255, 0.15); transform: scale(1.03); }
+.sr-detail-seen.is-on { background: var(--theme-accent); border-color: var(--theme-accent); }
 .sr-detail-fav:hover, .sr-detail-edit:hover, .sr-detail-del:hover { background: rgba(255,255,255,0.15); transform: scale(1.06); }
 .sr-detail-fav.is-on { background: var(--theme-accent); border-color: var(--theme-accent); }
 
@@ -1280,10 +1343,8 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--sp-8);
-  /* Dragon Ball Z tiene 291 tarjetas de episodio: render perezoso
-     de las que están fuera de pantalla. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 96px;
+  /* Sin content-visibility: cada episodio es un botón y un subárbol
+     omitido se vuelve inclicable (Dragon Ball Z tiene 291). */
 }
 
 .sr-ep-card {
@@ -1301,6 +1362,23 @@
 .sr-ep-card:hover { border-color: var(--theme-border-accent); background: var(--theme-surface-elevated); }
 .sr-ep-card.is-watched { border-color: color-mix(in srgb, var(--green) 35%, transparent); background: color-mix(in srgb, var(--green) 6%, transparent); }
 
+/* Película marcada como vista (arriba a la izquierda, la portada sigue libre) */
+.series-card-watched {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  pointer-events: none;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  background: rgba(8, 8, 12, 0.72);
+  color: #fff;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
 /* Barra de progreso sobre la portada de la tarjeta */
 .series-card-progress {
   position: absolute;
@@ -1308,6 +1386,7 @@
   height: 3px;
   background: rgba(255, 255, 255, 0.18);
   z-index: 3;
+  pointer-events: none;
 }
 
 .series-card-progress div {
@@ -1798,4 +1877,220 @@
 @media (max-width: 360px) {
   .sr-hero-title { font-size: var(--fs-lg); }
   .sr-top-rank { font-size: var(--fs-xl); min-width: 44px; }
+}
+
+/* ==========================================
+   TARJETAS ACCIONABLES Y "SEGUIR VIENDO"
+   ========================================== */
+/* Botón transparente que cubre la tarjeta: recibe clic y teclado sin anidar
+   botones dentro de un role="button". El overlay (play/corazón) va encima. */
+.series-card-open {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  cursor: pointer;
+}
+
+.series-card-open:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+  border-radius: var(--r-md);
+}
+
+.series-card-next {
+  position: absolute;
+  left: 10px;
+  bottom: 14px;
+  z-index: 1;
+  pointer-events: none;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  background: rgba(8, 8, 12, 0.72);
+  color: #fff;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.series-card-sub--continue {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6, 6px);
+}
+
+/* ✓ +1: marca el siguiente capítulo desde la fila "Seguir viendo". */
+.series-card-mark {
+  position: relative;
+  z-index: 3;
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--theme-border-accent);
+  border-radius: var(--r-full);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.series-card-mark:hover {
+  background: var(--theme-accent);
+  border-color: var(--theme-accent);
+  color: var(--theme-text-inverse);
+}
+
+/* ==========================================
+   CATÁLOGO — orden y géneros
+   ========================================== */
+.sr-catalog-tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+  margin-bottom: var(--sp-16);
+}
+
+@media (min-width: 900px) {
+  .sr-catalog-tools {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-16) var(--sp-20);
+  }
+}
+
+
+.sr-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-shrink: 0;
+}
+
+.sr-sort-label {
+  font-size: var(--fs-caption);
+  color: var(--theme-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sr-sort-select {
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--theme-divider);
+  background: var(--theme-surface);
+  color: var(--theme-text-primary);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--dur-fast);
+}
+
+.sr-sort-select:hover { border-color: var(--theme-border-accent); }
+.sr-sort-select:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+.sr-results-summary {
+  font-size: var(--fs-sm);
+  color: var(--theme-text-secondary);
+  margin-bottom: var(--sp-16);
+}
+
+/* ==========================================
+   BARRA FIJA DEL DETALLE — marcar el siguiente
+   ========================================== */
+.sr-sticky-progress-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-sticky-progress-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-shrink: 0;
+}
+
+.sr-sticky-progress-link {
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  color: var(--theme-text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+
+.sr-sticky-progress-link:hover { color: var(--theme-accent); }
+
+.sr-sticky-progress-done {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--theme-accent);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  /* En móvil manda la acción principal; el atajo al episodio sobra. */
+  .sr-sticky-progress-link { display: none; }
+}
+
+/* ==========================================
+   TEMPORADAS — marcar temporada completa
+   ========================================== */
+.sr-season-headrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-bottom: var(--sp-12);
+}
+
+.sr-season-headrow .sr-season-head {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.sr-season-mark {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border: 1px solid var(--theme-divider);
+  border-radius: var(--r-full);
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.sr-season-mark:hover {
+  border-color: var(--theme-border-accent);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+}
+
+.sr-season-mark:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+.sr-hero-badge--percent {
+  background: var(--accent-dim);
+  color: var(--theme-accent);
 }

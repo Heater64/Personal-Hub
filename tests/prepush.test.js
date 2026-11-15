@@ -4,6 +4,71 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EVENT_COMPOSITIONS, EVENT_TEMPLATES, eventTemplateFor } from '../personal-hub/src/utils/event-templates.js';
+
+test('las plantillas de días especiales cubren los tipos guardados y degradan a personalizada', () => {
+  for (const type of ['custom', 'birthday', 'anniversary', 'memory', 'halloween', 'christmas', 'valentine']) {
+    assert.ok(EVENT_TEMPLATES[type], `falta la plantilla ${type}`);
+    assert.equal(eventTemplateFor(type).id, type);
+  }
+  assert.equal(eventTemplateFor('tipo-antiguo').id, 'custom');
+  assert.ok(eventTemplateFor('anniversary').editorHint.length > 0);
+  // El metadato que comparten Admin y bienvenida: sin él, una plantilla nueva
+  // se elige pero la hoja no sabe cómo montarla.
+  for (const template of Object.values(EVENT_TEMPLATES)) {
+    assert.ok(EVENT_COMPOSITIONS[template.composition], `composición desconocida en ${template.id}`);
+    assert.equal(template.tone.length, 2, 'cada plantilla tiene acento y fondo suave');
+    assert.ok(template.defaultEmoji && template.defaultDescription && template.short,
+      `${template.id} necesita emoji, texto y resumen para el editor`);
+  }
+  assert.equal(eventTemplateFor('anniversary').composition, 'editorial');
+  assert.equal(eventTemplateFor('memory').composition, 'editorial');
+  assert.equal(eventTemplateFor('birthday').composition, 'celebratory');
+  assert.equal(eventTemplateFor('halloween').composition, 'themed');
+  assert.equal(eventTemplateFor('christmas').composition, 'themed');
+  assert.equal(eventTemplateFor('valentine').composition, 'themed');
+  assert.equal(eventTemplateFor('custom').composition, 'neutral');
+});
+
+test('cada plantilla cambia la composición de la bienvenida y el Inicio deja volver a verla', async () => {
+  const sheet = await readFile(hub('src', 'components', 'SpecialEventSheet.js'), 'utf8');
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
+
+  // La hoja monta las cuatro familias y la clase lleva la composición, no
+  // solo el tipo: es lo que hace que cada plantilla se vea distinta.
+  assert.match(sheet, /special-event--composition-\$\{composition\.id\}/);
+  for (const composition of ['editorial', 'celebratory', 'themed']) {
+    assert.ok(sheet.includes(`composition.id === '${composition}'`), `la hoja monta ${composition}`);
+    assert.match(css, new RegExp(`\\.special-event--composition-${composition}`), `hay estilos de ${composition}`);
+  }
+  // La personalizada es el camino neutro: mismos datos, composición de casa.
+  assert.ok(EVENT_COMPOSITIONS.neutral, 'la plantilla personalizada tiene composición propia');
+  assert.match(sheet, /special-event__identity' \}, kickerNode, iconNode/);
+
+  // El día que cae deja un banner en Inicio que reabre la misma hoja (la
+  // bienvenida solo se abre sola una vez).
+  assert.match(home, /function todayEventBanner\(\)/);
+  assert.match(home, /data-special-event/);
+  assert.match(home, /replaySpecialEventSheet\(router\)/);
+  assert.match(home, /specialEventsToday\(\)\[0\]|specialEventsToday\(\);/);
+  assert.match(css, /\.home-event-banner \{/);
+  assert.match(css, /\.home-event-banner:focus-visible/);
+
+  // El editor guiado: tarjetas resumen y pasos con etiquetas explícitas.
+  assert.match(admin, /class="dates-event-row dates-event-card/);
+  assert.match(admin, /role="radiogroup" aria-label="Plantilla de ocasión"/);
+  assert.match(admin, /class="dates-fieldset"/);
+  assert.match(admin, /1 · Datos esenciales/);
+  assert.match(admin, /2 · Plantilla de ocasión/);
+  assert.match(admin, /3 · Ambiente/);
+  assert.match(admin, /4 · Acciones de la bienvenida/);
+  assert.match(admin, /5 · Cuándo aparece/);
+  assert.match(admin, /aviso previo de 7 días/);
+  assert.doesNotMatch(admin, /dates-event-toggle/);
+  assert.doesNotMatch(admin, /mediaFieldsHTML|typeOptions|templateHint/);
+});
 
 import { expandCalendarCatalog } from '../personal-hub/src/data/calendar-expansion.js';
 import { calendarPayloadForCatalog } from '../api/push.js';
@@ -614,20 +679,30 @@ test('el README documenta el orden de migraciones y el rollback', async () => {
 });
 
 test('el catálogo de ánimos es el nuevo y el histórico conserva el antiguo', async () => {
-  const { MOODS, LEGACY_MOODS, ALL_MOODS, findMood } = await import('../personal-hub/src/data/moods.data.js');
+  const { MOODS, QUICK_MOODS, PALETTE_MOODS, LEGACY_MOODS, ALL_MOODS, findMood, resolveMood } = await import('../personal-hub/src/data/moods.data.js');
 
-  // Lo que se puede registrar AHORA: los cinco nuevos, en el orden pedido.
-  assert.deepEqual(MOODS.map(m => m.id), ['preocupada', 'enfadada', 'triste', 'bien', 'carino']);
-  assert.deepEqual(MOODS.map(m => m.emoji), ['😟', '😡', '🥺', '😊', '🤍']);
-  assert.deepEqual(MOODS.map(m => m.label), ['Preocupada', 'Enfadada', 'Triste', 'Bien', 'Necesito cariño']);
-  const { resolveMood } = await import('../personal-hub/src/data/moods.data.js');
+  // Atajos de la tarjeta de bienvenida (el quinto botón, «Otras», no es una
+  // emoción: abre el catálogo largo).
+  assert.deepEqual(QUICK_MOODS.map(m => m.id), ['preocupada', 'enfadada', 'triste', 'carino']);
+  assert.deepEqual(QUICK_MOODS.map(m => m.emoji), ['😟', '😡', '🥺', '🤍']);
+  assert.deepEqual(QUICK_MOODS.map(m => m.label), ['Preocupada', 'Enfadada', 'Triste', 'Necesito cariño']);
+  assert.deepEqual(QUICK_MOODS, MOODS.filter(m => m.quick), 'los atajos salen del mismo catálogo');
+
+  // Catálogo largo: lo que aparece al abrir «Otras», en el orden pedido.
+  assert.deepEqual(PALETTE_MOODS.map(m => m.id), [
+    'bien', 'emocionada', 'decepcionada', 'molesta', 'miedo', 'asustada',
+    'dolor', 'nauseas', 'cansada', 'estresada', 'enferma', 'muyfeliz'
+  ]);
+  assert.deepEqual(PALETTE_MOODS.map(m => m.emoji), ['😊', '🤩', '😔', '😤', '👻', '😰', '🤕', '🤢', '😴', '🫩', '🤧', '🥳']);
   assert.equal(resolveMood({ mood: 'triste', emoji: '🥹' }).emoji, '🥺', 'los registros históricos muestran el emoji nuevo');
 
   // Escala 0..4 (4 = mejor) para que las medias sigan siendo comparables.
   const scores = MOODS.map(m => m.score);
   assert.equal(Math.max(...scores), 4);
   assert.equal(Math.min(...scores), 0);
-  assert.equal(new Set(scores).size, scores.length, 'cada estado tiene su score');
+  for (const m of MOODS) {
+    assert.ok(Number.isInteger(m.score) && m.score >= 0 && m.score <= 4, `${m.id} se sale de la escala 0-4`);
+  }
 
   // El catálogo anterior se conserva para LEER, no para ofrecer.
   assert.equal(LEGACY_MOODS.length, 5);
@@ -641,9 +716,44 @@ test('el catálogo de ánimos es el nuevo y el histórico conserva el antiguo', 
   for (const m of MOODS) assert.ok(!idsAntiguos.has(m.id), `${m.id} colisiona con el catálogo antiguo`);
 
   // Unificado: primero el vigente, detrás el histórico (orden de las barras).
-  assert.equal(ALL_MOODS.length, 10);
-  assert.deepEqual(ALL_MOODS.slice(0, 5).map(m => m.id), MOODS.map(m => m.id));
-  assert.deepEqual(ALL_MOODS.slice(5).map(m => m.id), LEGACY_MOODS.map(m => m.id));
+  assert.equal(ALL_MOODS.length, MOODS.length + LEGACY_MOODS.length);
+  assert.deepEqual(ALL_MOODS.slice(0, MOODS.length).map(m => m.id), MOODS.map(m => m.id));
+  assert.deepEqual(ALL_MOODS.slice(MOODS.length).map(m => m.id), LEGACY_MOODS.map(m => m.id));
+});
+
+test('se pueden elegir varias emociones y caben en una sola fila', async () => {
+  const { encodeMood, resolveMood, toggleMoodSelection, makeCustomMood, CUSTOM_MOOD_ID } = await import('../personal-hub/src/data/moods.data.js');
+
+  // Una sola emoción se guarda EXACTAMENTE como antes: el histórico no cambia.
+  assert.deepEqual(encodeMood(['triste']), { mood: 'triste', label: 'Triste', emoji: '🥺', score: 2 });
+
+  // Varias: la fila guarda la lista y el score es la media (escala 0-4).
+  const varias = encodeMood(['triste', 'cansada']);
+  assert.equal(varias.mood, 'triste|cansada');
+  assert.equal(varias.label, 'Triste|Cansada');
+  assert.equal(varias.score, 2);
+
+  const back = resolveMood(varias);
+  assert.deepEqual(back.ids, ['triste', 'cansada']);
+  assert.equal(back.count, 2);
+  assert.equal(back.label, 'Triste · Cansada');
+  assert.equal(back.emoji, '🥺😴');
+
+  // Sin duplicados y sin inventarse ids que no existen.
+  assert.deepEqual(resolveMood(encodeMood(['bien', 'bien', 'no-existe'])).ids, ['bien']);
+
+  // Texto libre: ocupa el id reservado y sustituye al anterior.
+  let sel = toggleMoodSelection(['bien'], 'triste');
+  sel = toggleMoodSelection(sel, makeCustomMood('  con   sueño '));
+  assert.deepEqual(sel.map(i => i.label), ['Bien', 'Triste', 'con sueño']);
+  sel = toggleMoodSelection(sel, makeCustomMood('otra cosa'));
+  assert.equal(sel.filter(i => i.id === CUSTOM_MOOD_ID).length, 1, 'solo una emoción escrita a mano');
+  assert.equal(sel.find(i => i.id === CUSTOM_MOOD_ID).label, 'otra cosa');
+
+  // Tocar la misma emoción la quita, y el separador no se puede colar.
+  assert.deepEqual(toggleMoodSelection(['bien'], 'bien'), []);
+  assert.equal(makeCustomMood('a|b').label, 'a/b');
+  assert.equal(makeCustomMood('   '), null);
 });
 
 test('un estado ya registrado se sigue viendo tal cual se puso', async () => {
@@ -691,7 +801,7 @@ test('el historial guarda la etiqueta, no solo el id, y acepta el formato viejo'
   const store = await readFile(hub('src', 'stores', 'mood.store.js'), 'utf8');
 
   // Si se guardara solo el id, cambiar el catálogo dejaría el pasado mudo.
-  assert.match(store, /const entry = \{ moodId: mood\.id, date: today, label: mood\.label, emoji: mood\.emoji, score: mood\.score \};/);
+  assert.match(store, /const entry = \{ moodId: stored\.mood, date: today, label: stored\.label, emoji: stored\.emoji, score: stored\.score \};/);
   assert.match(store, /e\.moodId \|\| e\.mood/, 'getHistory debe aceptar mood y moodId');
 });
 
@@ -712,6 +822,71 @@ test('el admin no vuelve a declarar el catálogo de ánimos', async () => {
   for (const id of ['bien', 'carino', 'triste', 'preocupada', 'enfadada']) {
     assert.ok(css.includes(`.moods-bar-fill.mood-${id}`), `falta el color de la barra .mood-${id}`);
   }
+});
+
+test('el calendario de ánimos abre el día con todas sus emociones', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  // La celda solo cabía tres emojis y un «+N»: el resto de emociones no se
+  // podía consultar en ningún sitio, así que el día se abre en detalle.
+  assert.match(admin, /data-mood-day="\$\{ds\}"/, 'la celda lleva el día que abre');
+  assert.match(admin, /function openMoodDayDetail\(dateStr\)/, 'existe el detalle del día');
+  assert.match(admin, /rows\.flatMap\(moodRowItems\)/, 'junta TODAS las emociones de las filas del día');
+  assert.match(admin, /openMoodDayDetail\(cell\.dataset\.moodDay\)/, 'tocar el día abre el detalle');
+  // Y se puede pasar de día con las flechas, sin cerrar y abrir el modal.
+  assert.match(admin, /data-mood-day-prev="\$\{prevStr\}"/, 'flecha al día anterior');
+  assert.match(admin, /data-mood-day-next="\$\{nextStr\}"/, 'flecha al día siguiente');
+  // Las flechas saltan al día con registro más cercano, no al día contiguo.
+  assert.match(admin, /goToNearestMoodDay\(dateStr, -1\)/);
+  assert.match(admin, /goToNearestMoodDay\(dateStr, 1\)/);
+  assert.match(admin, /db\.getNearestMoodDate\(/);
+  // El siguiente se para en hoy: el futuro no tiene registros.
+  assert.match(admin, /const canGoNext = nextStr <= todayISO\(\);/);
+  // Y hay un atajo para volver al día actual (solo si miras otro día).
+  assert.match(admin, /data-mood-day-today/, 'botón «Hoy» en el detalle');
+  assert.match(admin, /goToMoodDay\(todayISO\(\)\)/, 'el botón vuelve al día de hoy');
+  assert.match(admin, /\$\{isToday \? '' : '<div class="mood-day-tools">/, 'no se muestra si ya estás en hoy');
+  // Y las escritas a mano se leen por su texto, no como «Otras».
+  assert.match(admin, /const key = moodAggKey\(item\);/);
+});
+
+test('el panel de ánimo resume los últimos siete días', async () => {
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+
+  assert.match(admin, /async function renderMoodWeek\(\)/);
+  assert.match(admin, /start\.setDate\(start\.getDate\(\) - 6\)/, 'siete días contando hoy');
+  assert.match(admin, /db\.getAllMoods\(startISO, today\)/);
+  assert.ok(admin.includes('counts.set(key, (counts.get(key) || 0) + 1)'),
+    'cuenta cada emoción marcada, no cada fila');
+  assert.ok(admin.includes('if (!isStatsUser(row.user_id)) continue;'),
+    'respeta el selector de usuario del panel');
+  assert.ok(admin.includes('renderMoodWeek();'), 'se pinta al abrir la sección y se refresca en vivo');
+});
+
+test('una serie completada sale de Inicio y las películas se marcan como vistas', async () => {
+  const data = await readFile(hub('src', 'services', 'seriesData.js'), 'utf8');
+  const series = await readFile(hub('src', 'pages', 'Series.js'), 'utf8');
+
+  // getStartedSeries es lo que pinta «Estás viendo» en Inicio: solo las que
+  // siguen en marcha; al completarlas dejan de aparecer.
+  assert.match(data, /watched > 0 && watched < total/, 'solo series con algo pendiente');
+  assert.doesNotMatch(data, /incluidas las completadas/, 'el comentario ya no promete completadas');
+
+  // Las películas no tienen episodios: botón de vista sí / no en su ficha.
+  assert.match(data, /export function isMovieWatched/);
+  assert.match(data, /export function toggleMovieWatched/);
+  assert.match(series, /id="srDetailSeen"/, 'la ficha de película tiene el botón');
+  assert.match(series, /toggleMovieWatched\(item\.id\)/, 'el botón guarda el estado');
+  assert.match(series, /series-card-watched/, 'la tarjeta marca las películas ya vistas');
+});
+
+test('el catálogo de Series filtra vistas y pendientes', async () => {
+  const series = await readFile(hub('src', 'pages', 'Series.js'), 'utf8');
+  assert.match(series, /data-filter="vistas"/, 'chip de vistas');
+  assert.match(series, /data-filter="porver"/, 'chip de pendientes');
+  assert.match(series, /'vistas'\) filtered = filtered\.filter\(isSeenItem\)/, 'vistas = series terminadas y películas vistas');
+  assert.match(series, /function isSeenItem\(item\) \{[\s\S]{0,220}getCompletedCount\(item\.id, total\) >= total/, 'una serie acabada cuenta como vista');
+  assert.match(series, /'porver'\) filtered = filtered\.filter\(i => i\.tipo === 'pelicula' && !isMovieWatched\(i\.id\)\)/, 'por ver = películas pendientes');
 });
 
 test('las tarjetas de Explorar en Sentimientos van de una en una', async () => {
@@ -744,7 +919,7 @@ test('el historial de sentimientos escapa lo que viene de la base de datos', asy
   assert.ok(sent.includes('escapeHtml(mood.emoji)'), 'el emoji del calendario va escapado');
   // Y se resuelve, no se busca por catálogo: así el pasado no depende del actual.
   assert.ok(sent.includes('moodStore.resolveMood(historyMap[dateStr])'));
-  assert.equal((sent.match(/getMoodById/g) || []).length, 1, 'getMoodById solo para el estado recién elegido');
+  assert.equal((sent.match(/getMoodById/g) || []).length, 0, 'el ánimo se resuelve desde la fila guardada, no desde el catálogo');
 });
 
 test('el apodo del saludo va en letra elegante, no en la de la interfaz', async () => {
@@ -1220,12 +1395,12 @@ test('los eventos especiales abren una bienvenida temática única por usuario',
   assert.match(dates, /for \(const event of cfg\.events \|\| \[\]\)/);
   assert.match(dates, /key: `event:\$\{identity\}:\$\{suffix\}`/);
   // La hoja vive en su propio componente: Inicio solo la dispara.
-  assert.match(home, /import \{ maybeShowSpecialEvent, previewSpecialEventSheet \} from '\.\.\/components\/SpecialEventSheet\.js'/);
+  assert.match(home, /import \{ maybeShowSpecialEvent, previewSpecialEventSheet, replaySpecialEventSheet \} from '\.\.\/components\/SpecialEventSheet\.js'/);
   assert.match(home, /maybeShowSpecialEvent\(page, router\)/);
   assert.match(sheet, /specialEventsToAnnounce\(\)\.filter\(item => !seen\[item\.key\]\)/);
   assert.match(sheet, /getUserPref\('specialEventsSeen', '\{\}'\)/);
   assert.match(sheet, /setUserPref\('specialEventsSeen', JSON\.stringify\(seen\)\)/);
-  assert.match(sheet, /class: `special-event special-event--\$\{event\.type} special-event--media-/);
+  assert.match(sheet, /class: `special-event special-event--\$\{template\.id} special-event--composition-\$\{composition\.id} special-event--media-/);
   assert.match(sheet, /Abrir el calendario/);
   assert.match(css, /\.overlay--special-event \.sheet/);
   assert.match(css, /\.special-event__icon/);
@@ -1264,6 +1439,11 @@ async function eventActionsSource() {
   return (await readFile(hub('src', 'utils', 'event-actions.js'), 'utf8')).replace(/^export /gm, '');
 }
 
+// El catálogo de plantillas tampoco importa nada: se pega igual, sin `export`.
+async function eventTemplateSource() {
+  return (await readFile(hub('src', 'utils', 'event-templates.js'), 'utf8')).replace(/^export /gm, '');
+}
+
 async function loadSpecialDates() {
   let src = await readFile(hub('src', 'utils', 'specialDates.js'), 'utf8');
   src = src
@@ -1274,7 +1454,10 @@ async function loadSpecialDates() {
     .replace("import { normalizeDecor, normalizeVideoMode, mediaList } from './celebration.js';",
       await celebrationSource())
     .replace("import { cleanEventActions } from './event-actions.js';",
-      await eventActionsSource());
+      await eventActionsSource())
+    .replace("import { EVENT_TEMPLATE_IDS, EVENT_TEMPLATES } from './event-templates.js';",
+      await eventTemplateSource())
+    .replace("export { EVENT_COMPOSITIONS, EVENT_TEMPLATE_LIST, EVENT_TEMPLATES, eventTemplateFor, compositionFor } from './event-templates.js';", '');
   const mod = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
   // specialDates() lee de una caché: hay que recargarla con cada config.
   return { ...mod, use: async cfg => { globalThis.__CFG__ = cfg; await mod.loadSpecialDates(); } };
@@ -1960,7 +2143,7 @@ test('los emojis que caen son los del día o los de su fiesta', async () => {
   }
   // Si el día trae los suyos, mandan esos; si no, los de su fiesta.
   assert.match(cel, /return own\.length \? own : \(THEME_EMOJIS\[type\] \|\| THEME_EMOJIS\.custom\)/);
-  assert.match(sheet, /const emojis = emojisFor\(event\.emojis, event\.type\);/);
+  assert.match(sheet, /const emojis = emojisFor\(event\.emojis, template\.id\);/);
   // Y el canvas sabe pintarlos.
   assert.match(engine, /p\.kind === 'glyph'/);
   assert.match(engine, /if \(glyphs\.length\) p\.glyph = glyphs\[\(Math\.random\(\) \* glyphs\.length\) \| 0\];/);
@@ -1999,7 +2182,7 @@ test('las fotos del día hacen una tira que cambia la grande', async () => {
   // La primera foto es la grande; el resto, miniaturas que la cambian.
   assert.match(sheet, /const portada = event\.image \|\| gallery\[0\] \|\| '';/);
   assert.match(sheet, /const resto = event\.image \? gallery : gallery\.slice\(1\);/);
-  assert.match(sheet, /class: 'special-event__gallery'/);
+  assert.match(sheet, /class: `special-event__gallery special-event__gallery--\$\{composition\.id\}`/);
   assert.match(sheet, /querySelector\('\.special-event__photo img'\)[\s\S]*?\.setAttribute\('src', src\)/);
   // Y el Admin ofrece los campos: vídeo, modo, fotos y emojis.
   assert.match(admin, /class="dates-look-video"/);
@@ -2112,8 +2295,8 @@ test('el check-in de ánimo aparece en el primer inicio diario y se reinicia al 
     'la notificación local sale solo 1 vez al día; el modal se repite en cada entrada hasta responder');
   assert.match(app, /setUserPref\('welcomeShownDate', today\)/,
     'se evita duplicar el modal en el mismo día');
-  assert.match(welcome, /await moodStore\.saveMood\(selectedMood\)/,
-    'la selección guarda el estado de ánimo diario');
+  assert.match(welcome, /await moodStore\.saveMoods\(selection\)/,
+    'la selección (una o varias emociones) guarda el estado de ánimo diario');
   assert.doesNotMatch(welcome, /welcomeSkipBtn|Pregúntame luego|onSkip/,
     'sin opción de posponer: se pregunta cada día hasta que responde');
 });
@@ -2235,6 +2418,17 @@ test('las notificaciones llevan al regalo o contenido anunciado y nunca caen en 
   assert.match(openWhen, /requestedLetterId/);
   assert.match(openWhen, /openRequestedLetter\(\)/,
     'Open When entra en la categoría y abre la carta indicada');
+
+  // Abrir una carta deja rastro para las estadísticas, pero como marca aparte:
+  // si contara como navegación inflaría secciones, tiempos y horas punta.
+  const adminPage = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const statsMetrics = await readFile(hub('src', 'utils', 'stats-metrics.js'), 'utf8');
+  assert.match(openWhen, /db\.trackVisit\(`\$\{OPENWHEN_READ_PREFIX\}\$\{id\}`\)/,
+    'abrir una carta la registra para el panel de estadísticas');
+  assert.ok(statsMetrics.includes("'/openwhen/leido/'"),
+    'la ruta reservada vive en un único sitio, compartida por panel y página');
+  assert.match(adminPage, /openWhenReadIds\(visitsList\)/);
+  assert.match(adminPage, /isOpenWhenReadVisit\(v\)/, 'las lecturas no cuentan como visitas de navegación');
   assert.ok(pushApi.includes(".from('content')"), 'el cron usa el catálogo dinámico guardado por Admin');
   assert.ok(pushApi.includes(".eq('id', 'gifts')"));
 

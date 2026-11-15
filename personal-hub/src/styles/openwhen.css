@@ -380,3 +380,134 @@
 @media (max-width: 520px) {
   .ow-cats, .ow-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ==========================================
+   GESTION IN-SITU (ADMIN) - ESTILO UMBRA
+   ========================================== */
+.ow-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-left: auto;
+}
+
+.ow-admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: 8px 14px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  background: var(--surface-1, #111114);
+  border: 1px solid var(--theme-divider-strong, rgba(255,255,255,0.12));
+  color: var(--accent, #e8735a);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.ow-admin-btn:hover {
+  background: var(--accent-dim, rgba(232,115,90,0.12));
+  border-color: var(--accent, #e8735a);
+  box-shadow: 0 0 16px rgba(232,115,90,0.2);
+}
+
+.ow-card__admin {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
+  opacity: 0.7;
+  transition: opacity var(--dur-fast);
+}
+
+.ow-card:hover .ow-card__admin {
+  opacity: 1;
+}
+
+.ow-card-action-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+  background: var(--surface-2, #19191d);
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.08));
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.ow-card-action-btn:hover {
+  color: var(--accent, #e8735a);
+  background: var(--surface-3, #222228);
+  border-color: var(--accent, #e8735a);
+}
+
+.ow-card-action-btn.is-delete:hover {
+  color: #ff5c5c;
+  border-color: #ff5c5c;
+  background: rgba(255, 92, 92, 0.12);
+}
+
+.ow-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-14);
+}
+
+.ow-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ow-form-field label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-2);
+}
+
+.ow-form-field input,
+.ow-form-field select,
+.ow-form-field textarea {
+  width: 100%;
+  background: var(--surface-2, #19191d);
+  border: 1px solid var(--theme-divider, rgba(255,255,255,0.08));
+  border-radius: var(--r-md, 12px);
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: var(--fs-base, 14px);
+  color: var(--text);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.ow-form-field input:focus,
+.ow-form-field select:focus,
+.ow-form-field textarea:focus {
+  border-color: var(--accent, #e8735a);
+  box-shadow: 0 0 0 3px var(--accent-dim, rgba(232,115,90,0.15));
+}
+
+.ow-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-12);
+}
+
+.ow-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-10);
+  margin-top: var(--sp-8);
+}
