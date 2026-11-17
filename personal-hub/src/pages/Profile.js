@@ -1021,8 +1021,10 @@ export function ProfilePage(router) {
         permNote.hidden = false;
         permNote.textContent = 'Tu navegador no soporta notificaciones. Prueba desde Chrome o Safari actualizado.';
       } else if (p === 'denied') {
+        // Bloqueado de verdad: el navegador ya no vuelve a preguntar, así que
+        // no se ofrece botón (pulsarlo solo daría otro «sin permiso»).
         permNote.hidden = false;
-        permNote.textContent = 'Las notificaciones están bloqueadas. Actívalas en los ajustes del navegador para esta web.';
+        permNote.textContent = 'Las notificaciones están bloqueadas para esta web. Pulsa el candado 🔒 junto a la dirección → Notificaciones → Permitir, y recarga la página. En el móvil no hace falta: la app tiene sus propios avisos.';
       } else if (p === 'default') {
         permNote.hidden = false;
         permNote.textContent = 'Concede el permiso para recibir avisos en este dispositivo.';
@@ -1037,7 +1039,7 @@ export function ProfilePage(router) {
             showToast('🔔 Notificaciones activadas', 'success');
             drawPerm();
           } else {
-            showToast('Permiso denegado. Actívalo en el navegador', 'error');
+            showToast('Permiso denegado. Ábrelo con el candado 🔒 → Notificaciones → Permitir', 'error');
           }
         });
         permNote.append(ask);
