@@ -177,6 +177,11 @@ export async function initNativeApp() {
 
 let pushStarted = false;
 let pushNavigate = null;
+// Resuelve cuando los listeners del plugin ya están puestos. `registerNativePush`
+// la espera: si la sesión se restauraba antes de tiempo, el plugin emitía
+// `registration` antes de que hubiera listener y el token se perdía hasta el
+// siguiente arranque (o hasta volver del segundo plano).
+let pushReady = null;
 
 /**
  * Prepara las notificaciones de la app Android.
@@ -187,32 +192,39 @@ let pushNavigate = null;
  * al iniciar sesión y al volver del segundo plano.
  */
 export async function initNativePush({ onNavigate } = {}) {
-  if (pushStarted || !isNative()) return;
+  if (!isNative()) return;
+  if (pushStarted) return pushReady;
   pushStarted = true;
   pushNavigate = typeof onNavigate === 'function' ? onNavigate : null;
 
-  const mod = await loadPush();
-  if (!mod) return;
-  const { PushNotifications } = mod;
+  pushReady = (async () => {
+    const mod = await loadPush();
+    if (!mod) return;
+    const { PushNotifications } = mod;
 
-  // El plugin devuelve el token cada vez que se registra (también al
-  // renovarse): es el único momento en que sabemos que cambió.
-  PushNotifications.addListener('registration', ({ value }) => {
-    if (value) saveTokenToServer(value);
-  });
-  PushNotifications.addListener('registrationError', err => {
-    console.warn('[native] alta de notificaciones fallida:', err?.error);
-  });
+    // El plugin devuelve el token cada vez que se registra (también al
+    // renovarse): es el único momento en que sabemos que cambió.
+    PushNotifications.addListener('registration', ({ value }) => {
+      if (value) saveTokenToServer(value);
+    });
+    PushNotifications.addListener('registrationError', err => {
+      console.warn('[native] alta de notificaciones fallida:', err?.error);
+    });
 
-  // Toque en un aviso: abre la sección exacta, igual que el service worker
-  // hace en la web con { type: 'NAVIGATE', url }.
-  PushNotifications.addListener('pushNotificationActionPerformed', action => {
-    const url = action?.notification?.data?.url;
-    if (!url || !pushNavigate) return;
-    pushNavigate(url.startsWith('/') ? url : `/${url}`);
-  });
+    // Toque en un aviso: abre la sección exacta, igual que el service worker
+    // hace en la web con { type: 'NAVIGATE', url }.
+    PushNotifications.addListener('pushNotificationActionPerformed', action => {
+      const url = action?.notification?.data?.url;
+      if (!url || !pushNavigate) return;
+      pushNavigate(url.startsWith('/') ? url : `/${url}`);
+    });
+  })();
 
-  // Volver a la app es buen momento para reintentar el alta si faltaba.
+  await pushReady;
+
+  // Volver a la app es buen momento para reintentar el alta si faltaba. Se
+  // engancha DESPUÉS de pushReady para que este listener no pueda esperar a la
+  // promesa que él mismo está resolviendo.
   const AppMod = await loadApp();
   AppMod?.App.addListener('appStateChange', ({ isActive }) => {
     if (isActive) registerNativePush();
@@ -227,6 +239,15 @@ export async function initNativePush({ onNavigate } = {}) {
  */
 export async function registerNativePush() {
   if (!isNative()) return false;
+  // Nunca registrar antes de que los listeners estén puestos: el token viaja
+  // en ese evento y, sin listener, se pierde sin dejar rastro.
+  if (pushReady) {
+    try {
+      await pushReady;
+    } catch {
+      /* el plugin no cargó: se intenta igual, register() fallará y se registra el aviso */
+    }
+  }
   const mod = await loadPush();
   if (!mod) return false;
   const { PushNotifications } = mod;
