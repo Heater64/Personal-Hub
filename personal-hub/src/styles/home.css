@@ -1322,3 +1322,24 @@ button.home-map:focus-visible {
   font-size: 11px;
   text-align: center;
 }
+
+/* Vista previa del widget «tiempo juntos» */
+.wprev--together {
+  background: linear-gradient(160deg, #2b2230, #0e0b10);
+  color: #fff;
+}
+.wprev__triple {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  font-size: 10px;
+  opacity: 0.92;
+}
+.wprev__triple span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+}
+.wprev__triple b {
+  font-size: 20px;
+}

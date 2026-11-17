@@ -27,6 +27,8 @@ public class WidgetBridgePlugin extends Plugin {
             DaysCompactWidgetProvider.class,
             DistanceWidgetProvider.class,
             DistanceCompactWidgetProvider.class,
+            TogetherWidgetProvider.class,
+            TogetherCompactWidgetProvider.class,
     };
 
     @PluginMethod
@@ -51,6 +53,8 @@ public class WidgetBridgePlugin extends Plugin {
         Class<?> provider;
         if ("days".equals(widget)) {
             provider = compact ? DaysCompactWidgetProvider.class : DaysWidgetProvider.class;
+        } else if ("together".equals(widget)) {
+            provider = compact ? TogetherCompactWidgetProvider.class : TogetherWidgetProvider.class;
         } else {
             provider = compact ? DistanceCompactWidgetProvider.class : DistanceWidgetProvider.class;
         }

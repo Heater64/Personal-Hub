@@ -41,13 +41,28 @@ const WIDGETS = [
       </div>`,
     sizes: { compact: 'Pequeño', wide: 'Grande' },
   },
+  {
+    id: 'together',
+    title: 'Tiempo juntos',
+    desc: 'Años, meses y días sueltos.',
+    preview: (me, partner, stats) => `
+      <div class="wprev wprev--together">
+        <p class="wprev__label">han estado juntos por</p>
+        <p class="wprev__triple">
+          <span><b>${stats?.years ?? 1}</b>a</span>
+          <span><b>${stats?.months ?? 4}</b>m</span>
+          <span><b>${stats?.days ?? 13}</b>d</span>
+        </p>
+      </div>`,
+    sizes: { compact: 'Pequeño', wide: 'Grande' },
+  },
 ];
 
 /**
  * Abre la hoja de widgets.
  * `me` y `partner` son `{ name, avatar }` para las vistas previas.
  */
-export function openWidgetsSheet({ me, partner } = {}) {
+export function openWidgetsSheet({ me, partner, stats } = {}) {
   openSheet('Widgets', () => {
     const wrap = document.createElement('div');
     wrap.className = 'wsheet';
@@ -56,7 +71,7 @@ export function openWidgetsSheet({ me, partner } = {}) {
       ${WIDGETS.map(
         (w, i) => `
         <article class="wsheet__item" data-widget-card="${w.id}">
-          <div class="wsheet__preview">${w.preview(me, partner)}</div>
+          <div class="wsheet__preview">${w.preview(me, partner, stats)}</div>
           <div class="wsheet__info">
             <h3>${escapeHtml(w.title)}</h3>
             <p>${escapeHtml(w.desc)}</p>

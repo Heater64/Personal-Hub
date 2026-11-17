@@ -48,7 +48,11 @@ import {
 } from '../services/location.service.js';
 import { openDistanceMap } from '../components/DistanceMapSheet.js';
 import { openWidgetsSheet } from '../components/WidgetsSheet.js';
-import { saveDaysWidget, saveDistanceWidget } from '../services/widgets.service.js';
+import {
+  saveDaysWidget,
+  saveDistanceWidget,
+  togetherBreakdown,
+} from '../services/widgets.service.js';
 import { isNative } from '../services/native.service.js';
 
 // ==========================================
@@ -727,8 +731,8 @@ function initWidgetsSection(page, getAvatars) {
 
   openers.forEach(btn => {
     btn.addEventListener('click', () => {
-      const { me, partner } = getAvatars?.() || {};
-      openWidgetsSheet({ me, partner });
+      const { me, partner, stats } = getAvatars?.() || {};
+      openWidgetsSheet({ me, partner, stats });
     });
   });
 }
@@ -809,17 +813,18 @@ export function HomePage(router) {
 
   // Datos de los widgets: se guardan cada vez que cambian las caras o la
   // distancia, porque el widget no puede calcularlos por su cuenta.
-  let widgetAvatars = { me: null, partner: null };
-  const months = Math.floor(daysSince / 30.4375);
+  const widgetStats = togetherBreakdown(daysSince);
+  let widgetAvatars = { me: null, partner: null, stats: widgetStats };
 
   const handleDistanceChange = state => {
-    widgetAvatars = { me: state.me, partner: state.partner };
+    widgetAvatars = { me: state.me, partner: state.partner, stats: widgetStats };
     if (!isNative()) return;
     saveDaysWidget({
       days: daysSince,
-      months,
+      months: widgetStats.months,
       weeks: Math.floor(daysSince / 7),
-      years: Math.floor(months / 12),
+      years: widgetStats.years,
+      breakdown: widgetStats,
       me: state.me,
       partner: state.partner,
     });

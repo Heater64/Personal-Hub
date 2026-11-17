@@ -20,8 +20,46 @@ final class WidgetRenderer {
         boolean compact = name.contains("Compact");
         if (name.startsWith("Days")) {
             renderDays(context, manager, ids, compact);
+        } else if (name.startsWith("Together")) {
+            renderTogether(context, manager, ids, compact);
         } else {
             renderDistance(context, manager, ids, compact);
+        }
+    }
+
+    // ==========================================
+    // TIEMPO JUNTOS — años, meses y días sueltos
+    // ==========================================
+    static void renderTogether(Context context, AppWidgetManager manager, int[] ids, boolean compact) {
+        JSONObject data = WidgetSupport.read(context, "widget_days");
+        int years = data == null ? 0 : data.optInt("y", 0);
+        int months = data == null ? 0 : data.optInt("m", 0);
+        int days = data == null ? 0 : data.optInt("d", 0);
+
+        for (int id : ids) {
+            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_together);
+            views.setTextViewText(R.id.widget_together_years, String.valueOf(years));
+            views.setTextViewText(R.id.widget_together_months, String.valueOf(months));
+            views.setTextViewText(R.id.widget_together_days, String.valueOf(days));
+
+            int big = compact ? 22 : 30;
+            int small = compact ? 11 : 13;
+            views.setTextViewTextSize(R.id.widget_together_years, android.util.TypedValue.COMPLEX_UNIT_SP, big);
+            views.setTextViewTextSize(R.id.widget_together_months, android.util.TypedValue.COMPLEX_UNIT_SP, big);
+            views.setTextViewTextSize(R.id.widget_together_days, android.util.TypedValue.COMPLEX_UNIT_SP, big);
+            views.setTextViewTextSize(R.id.widget_together_years_unit, android.util.TypedValue.COMPLEX_UNIT_SP, small);
+            views.setTextViewTextSize(R.id.widget_together_months_unit, android.util.TypedValue.COMPLEX_UNIT_SP, small);
+            views.setTextViewTextSize(R.id.widget_together_days_unit, android.util.TypedValue.COMPLEX_UNIT_SP, small);
+            views.setTextViewTextSize(R.id.widget_together_label, android.util.TypedValue.COMPLEX_UNIT_SP, small - 2);
+            views.setTextViewTextSize(R.id.widget_together_caption, android.util.TypedValue.COMPLEX_UNIT_SP, small - 1);
+
+            // En el tamaño pequeño los años no caben: se ocultan sus dos vistas.
+            int yearVisibility = compact ? android.view.View.GONE : android.view.View.VISIBLE;
+            views.setViewVisibility(R.id.widget_together_years, yearVisibility);
+            views.setViewVisibility(R.id.widget_together_years_unit, yearVisibility);
+
+            WidgetSupport.openApp(context, views, R.id.widget_together_root);
+            manager.updateAppWidget(id, views);
         }
     }
 

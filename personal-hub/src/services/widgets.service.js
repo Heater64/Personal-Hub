@@ -59,7 +59,7 @@ export async function pinWidget(widget, size = 'wide') {
  * Guarda los datos de «días juntos»: lo que el widget oscuro enseña.
  * `stats` viene de utils/specialDates (años, meses, semanas, días).
  */
-export async function saveDaysWidget({ days, years, months, weeks, me, partner }) {
+export async function saveDaysWidget({ days, years, months, weeks, me, partner, breakdown }) {
   const Preferences = await prefs();
   if (!Preferences) return;
   await Preferences.set({
@@ -69,12 +69,45 @@ export async function saveDaysWidget({ days, years, months, weeks, me, partner }
       years: Number(years) || 0,
       months: Number(months) || 0,
       weeks: Number(weeks) || 0,
+      // Desglose exacto para el widget «tiempo juntos»: cuántos años, cuántos
+      // meses y los días que sobran (no el total).
+      y: Number(breakdown?.years) || 0,
+      m: Number(breakdown?.months) || 0,
+      d: Number(breakdown?.days) || 0,
       me: { name: me?.name || '', avatar: me?.avatar || '' },
       partner: { name: partner?.name || '', avatar: partner?.avatar || '' },
       at: new Date().toISOString(),
     }),
   });
   refreshWidgets();
+}
+
+/**
+ * Años, meses y días sueltos desde la fecha de aniversario.
+ *
+ * Se calcula con el calendario, no dividiendo: dividir 502 días entre 30,44
+ * da «1 año 4 meses» y luego días que no cuadran con lo que se ve en la app.
+ */
+export function togetherBreakdown(totalDays) {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  start.setDate(start.getDate() - Math.max(0, Math.floor(totalDays)));
+
+  let years = today.getFullYear() - start.getFullYear();
+  let months = today.getMonth() - start.getMonth();
+  let days = today.getDate() - start.getDate();
+
+  if (days < 0) {
+    months -= 1;
+    // Días del mes anterior al de hoy.
+    days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  return { years: Math.max(0, years), months: Math.max(0, months), days: Math.max(0, days) };
 }
 
 /** Guarda los datos de la distancia (el widget claro). */
