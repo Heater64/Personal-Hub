@@ -6,7 +6,8 @@ import android.content.Context;
 
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
-import com.getcapacitor.annotation.PluginMethod;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
  * Puente mínimo para que la web pueda refrescar el widget en el momento.
@@ -16,7 +17,7 @@ import com.getcapacitor.annotation.PluginMethod;
  * llama a `window.Capacitor.Plugins.WidgetBridge.refresh()` justo después de
  * guardar la distancia.
  */
-@com.getcapacitor.annotation.CapacitorPlugin(name = "WidgetBridge")
+@CapacitorPlugin(name = "WidgetBridge")
 public class WidgetBridgePlugin extends Plugin {
 
     @PluginMethod

@@ -58,4 +58,12 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Mapa de la distancia. El plugin @capacitor/geolocation NO las declara
+         en su propio manifiesto (está vacío), así que sin esto
+         requestPermissions() devuelve «denegado» siempre y la distancia nunca
+         funciona dentro de la app. ACCESS_COARSE basta para la distancia;
+         la fina se pide porque el plugin la exige en su configuración. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 </manifest>

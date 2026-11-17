@@ -71,3 +71,7 @@ fcm-service-account-oneline.txt
 # Repos de referencia descargados
 /external/
 obscura/
+
+# Servidor de desarrollo local (artefactos del agente)
+.dev-server.log
+.dev-server.pid
