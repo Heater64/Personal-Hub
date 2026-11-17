@@ -38,6 +38,12 @@ revoke all on public.push_tokens from anon;
 revoke insert, update on public.push_tokens from authenticated;
 grant select, delete on public.push_tokens to authenticated;
 
+-- La API escribe con la clave de servicio. Saltarse la RLS NO basta: además
+-- necesita privilegios de tabla, y esta tabla no los tenía concedidos a
+-- service_role, así que el alta de tokens fallaba con 42501
+-- (`permission denied for table push_tokens`) y el móvil nunca se registraba.
+grant select, insert, update, delete on public.push_tokens to service_role;
+
 drop policy if exists push_tokens_select_own on public.push_tokens;
 create policy push_tokens_select_own on public.push_tokens
   for select using (user_id = auth.uid());
@@ -48,4 +54,5 @@ create policy push_tokens_delete_own on public.push_tokens
 
 -- Comprobación rápida tras aplicar:
 --   select relrowsecurity from pg_class where relname = 'push_tokens';  -- t
+--   select has_table_privilege('service_role', 'public.push_tokens', 'insert');  -- t
 --   select count(*) from push_tokens;

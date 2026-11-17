@@ -52,7 +52,7 @@ function requireVapid(res) {
   res.status(500).json({
     error: vapidConfigError
       ? `VAPID keys not configured: ${vapidConfigError}`
-      : 'VAPID keys not configured'
+      : 'VAPID keys not configured',
   });
   return true;
 }
@@ -82,7 +82,7 @@ function getSupabase() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('Missing Supabase credentials');
   return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false }
+    auth: { autoRefreshToken: false, persistSession: false },
   });
 }
 
@@ -127,7 +127,7 @@ const ADMIN_ALERT_PREF = {
   mood_update: 'adminMood',
   mood_change: 'adminMoodChanges',
   note: 'adminNotes',
-  health: 'adminHealth'
+  health: 'adminHealth',
 };
 const MALDIA_NOTES_TYPE = 'maldia_notes';
 
@@ -136,13 +136,25 @@ const MALDIA_NOTES_TYPE = 'maldia_notes';
 // bundle de la función), así que guarda su copia y un test exige que las dos
 // coincidan. Si se añade una sección al menú, el test lo dice.
 const ADMIN_SECTION_IDS = [
-  'dashboard', 'contenido', 'multimedia',
-  'moods', 'usuarios',
-  'notificaciones', 'recordatorios', 'actividad', 'config'
+  'dashboard',
+  'contenido',
+  'multimedia',
+  'moods',
+  'usuarios',
+  'notificaciones',
+  'recordatorios',
+  'actividad',
+  'config',
 ];
 const ADMIN_CONTENT_SUB_IDS = [
-  'razones', 'canciones', 'regalos', 'noticias',
-  'maldia', 'series', 'openwhen', 'audios'
+  'razones',
+  'canciones',
+  'regalos',
+  'noticias',
+  'maldia',
+  'series',
+  'openwhen',
+  'audios',
 ];
 
 /** La sección del panel de un aviso de ánimo: es donde se lee el ánimo del día. */
@@ -204,7 +216,7 @@ async function getSubscriptions() {
       userId: row.user_id,
       endpoint: row.endpoint,
       keys: { p256dh: row.p256dh, auth: row.auth },
-      createdAt: row.created_at
+      createdAt: row.created_at,
     }));
   }
 
@@ -233,7 +245,7 @@ async function saveSubscriptions(subscriptions) {
     p256dh: sub.keys?.p256dh || '',
     auth: sub.keys?.auth || '',
     created_at: sub.createdAt || new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   }));
 
   // Solo hay algo que hacer si la lista no está vacía: un DELETE sin
@@ -252,16 +264,11 @@ async function saveSubscriptions(subscriptions) {
   // propio unsubscribe) se eliminan aquí. Sin esto se acumularían filas
   // muertas para siempre.
   const keep = new Set(rows.map(r => r.endpoint));
-  const { data: current, error: readError } = await supabase
-    .from(PUSH_TABLE)
-    .select('endpoint');
+  const { data: current, error: readError } = await supabase.from(PUSH_TABLE).select('endpoint');
   if (!readError && current) {
     const stale = current.filter(row => !keep.has(row.endpoint)).map(row => row.endpoint);
     if (stale.length > 0) {
-      const { error: delError } = await supabase
-        .from(PUSH_TABLE)
-        .delete()
-        .in('endpoint', stale);
+      const { error: delError } = await supabase.from(PUSH_TABLE).delete().in('endpoint', stale);
       if (delError && delError.code === '42P01') {
         return saveLegacySubscriptions(subscriptions);
       }
@@ -291,7 +298,7 @@ function todayServerStr(date = new Date()) {
     timeZone: 'Europe/Madrid',
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit'
+    day: '2-digit',
   }).format(date);
 }
 
@@ -314,7 +321,7 @@ function madridParts(date) {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    hourCycle: 'h23'
+    hourCycle: 'h23',
   }).formatToParts(date);
   const value = type => Number(parts.find(part => part.type === type)?.value ?? 0);
   return {
@@ -322,7 +329,7 @@ function madridParts(date) {
     month: value('month'),
     day: value('day'),
     hour: value('hour'),
-    minute: value('minute')
+    minute: value('minute'),
   };
 }
 
@@ -378,9 +385,7 @@ export function inQuietHours(now, quietFrom, quietTo) {
   const to = parseHHMM(quietTo);
   if (from === null || to === null || from === to) return false;
   const minutes = madridMinutes(now instanceof Date ? now : new Date(now));
-  return from < to
-    ? minutes >= from && minutes < to
-    : minutes >= from || minutes < to;
+  return from < to ? minutes >= from && minutes < to : minutes >= from || minutes < to;
 }
 
 /**
@@ -402,7 +407,7 @@ function quietEndsAt(now, quietTo) {
       month: next.getUTCMonth() + 1,
       day: next.getUTCDate(),
       hour,
-      minute
+      minute,
     });
   }
   return end.toISOString();
@@ -469,7 +474,7 @@ export function adminMoodPayload(mood, kind = 'mood') {
       title: `${emoji} ${label} · ha cambiado`,
       body: `Ahora está en «${label}» ${emoji}. Lo que viste antes ya no es su estado actual.`,
       url: ADMIN_MOOD_DESTINATION,
-      tag: 'admin-mood'
+      tag: 'admin-mood',
     };
   }
   if (kind === 'mood_update') {
@@ -477,7 +482,7 @@ export function adminMoodPayload(mood, kind = 'mood') {
       title: `${emoji} ${label} · actualizado`,
       body: `Acaba de corregir su ánimo de hoy: ahora está en «${label}» ${emoji}.`,
       url: ADMIN_MOOD_DESTINATION,
-      tag: 'admin-mood'
+      tag: 'admin-mood',
     };
   }
   if (isBadDayMood(mood?.score)) {
@@ -486,14 +491,14 @@ export function adminMoodPayload(mood, kind = 'mood') {
       body: 'Ha marcado un mal día. Puede que le venga bien un mensaje tuyo ahora.',
       url: ADMIN_MOOD_DESTINATION,
       tag: 'admin-mood-bad',
-      requireInteraction: true
+      requireInteraction: true,
     };
   }
   return {
     title: `${emoji} ${label}`,
     body: `Su ánimo de hoy es «${label}» ${emoji}.`,
     url: ADMIN_MOOD_DESTINATION,
-    tag: 'admin-mood'
+    tag: 'admin-mood',
   };
 }
 
@@ -502,13 +507,16 @@ export function adminMoodPayload(mood, kind = 'mood') {
  * notificación es un aviso para entrar, no el sitio donde leerla entera.
  */
 export function adminNotePayload(text) {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  const clean = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return {
     title: '💌 Nota nueva en Mal Día',
-    body: clean.length > 160 ? `${clean.slice(0, 157)}…` : (clean || 'Ha dejado una nota en Mal Día.'),
+    body:
+      clean.length > 160 ? `${clean.slice(0, 157)}…` : clean || 'Ha dejado una nota en Mal Día.',
     url: ADMIN_NOTES_DESTINATION,
     tag: 'admin-note',
-    requireInteraction: true
+    requireInteraction: true,
   };
 }
 
@@ -520,7 +528,8 @@ export function adminHealthPayload(summary) {
   const failed = Number(summary?.failed) || 0;
   const removed = Number(summary?.removed) || 0;
   const partes = [];
-  if (failed > 0) partes.push(`${failed} envío${failed === 1 ? '' : 's'} fallido${failed === 1 ? '' : 's'}`);
+  if (failed > 0)
+    partes.push(`${failed} envío${failed === 1 ? '' : 's'} fallido${failed === 1 ? '' : 's'}`);
   if (removed > 0) partes.push(`${removed} dispositivo${removed === 1 ? '' : 's'} sin suscripción`);
   return {
     title: '⚠️ Aviso técnico del hub',
@@ -531,7 +540,7 @@ export function adminHealthPayload(summary) {
       : 'Algo no se pudo entregar. Revisa los recordatorios en el panel.',
     url: ADMIN_LOGS_DESTINATION,
     tag: 'admin-health',
-    requireInteraction: true
+    requireInteraction: true,
   };
 }
 
@@ -550,9 +559,18 @@ export function splitRecipients(subscriptions, prefsById, now, category) {
   const off = [];
   for (const sub of subscriptions || []) {
     const prefs = prefsById?.get(String(sub.userId));
-    if (!prefs) { allowed.push(sub); continue; }
-    if (prefs[category] === false) { off.push(sub); continue; }
-    if (inQuietHours(now, prefs.quietFrom, prefs.quietTo)) { quiet.push(sub); continue; }
+    if (!prefs) {
+      allowed.push(sub);
+      continue;
+    }
+    if (prefs[category] === false) {
+      off.push(sub);
+      continue;
+    }
+    if (inQuietHours(now, prefs.quietFrom, prefs.quietTo)) {
+      quiet.push(sub);
+      continue;
+    }
     allowed.push(sub);
   }
   return { allowed, quiet, off };
@@ -597,7 +615,7 @@ export function nextRunFor(nextRunAtIso, recurrence, now = new Date()) {
       month: target.getUTCMonth() + 1,
       day: target.getUTCDate(),
       hour: local.hour,
-      minute: local.minute
+      minute: local.minute,
     });
     if (cursor.getTime() > nowMs) return cursor.toISOString();
   }
@@ -649,7 +667,10 @@ export function cleanReminderInput(input = {}) {
     return { ok: false, error: 'La fecha de envío no es válida' };
   }
 
-  return { ok: true, value: { title, body, targetUrl, recurrence, scheduledAt: scheduledAt.toISOString() } };
+  return {
+    ok: true,
+    value: { title, body, targetUrl, recurrence, scheduledAt: scheduledAt.toISOString() },
+  };
 }
 
 /**
@@ -660,12 +681,14 @@ function findGiftsCatalog() {
   const candidates = [
     path.join(process.cwd(), 'personal-hub', 'public', 'data', 'gifts.json'),
     path.join(process.cwd(), 'public', 'data', 'gifts.json'),
-    path.join(process.cwd(), 'data', 'gifts.json')
+    path.join(process.cwd(), 'data', 'gifts.json'),
   ];
   for (const p of candidates) {
     try {
       return JSON.parse(readFileSync(p, 'utf8'));
-    } catch { /* siguiente candidata */ }
+    } catch {
+      /* siguiente candidata */
+    }
   }
   return null;
 }
@@ -679,24 +702,35 @@ async function loadCalendarCatalog() {
       .eq('id', 'gifts')
       .maybeSingle();
     if (!error && data?.data && typeof data.data === 'object') return data.data;
-  } catch { /* la API puede ejecutarse sin credenciales locales */ }
+  } catch {
+    /* la API puede ejecutarse sin credenciales locales */
+  }
   return findGiftsCatalog();
 }
 
 export function calendarPayloadForCatalog(catalog, today = todayServerStr()) {
-  if (!catalog || typeof today !== 'string' || today.length !== 10 || today[4] !== '-' || today[7] !== '-') return null;
+  if (
+    !catalog ||
+    typeof today !== 'string' ||
+    today.length !== 10 ||
+    today[4] !== '-' ||
+    today[7] !== '-'
+  )
+    return null;
   const dayNum = String(parseInt(today.slice(8), 10));
   const rawIds = catalog.months?.[today.slice(0, 7)]?.calendarMapping?.[dayNum];
   const giftIds = Array.isArray(rawIds) ? rawIds : rawIds ? [rawIds] : [];
   const giftsById = { ...(catalog.giftsById || {}) };
-  (catalog.gifts || []).forEach(gift => { if (gift?.id) giftsById[gift.id] = gift; });
+  (catalog.gifts || []).forEach(gift => {
+    if (gift?.id) giftsById[gift.id] = gift;
+  });
   const giftId = giftIds.find(id => giftsById[id]);
   if (!giftId) return null;
   return {
     title: 'Hay una sorpresa esperándote 🎁',
     body: 'Tu calendario te espera hoy. Ábrela cuando quieras ❤️',
     url: `/calendario?day=${today}&gift=${encodeURIComponent(giftId)}`,
-    tag: 'daily-novelties'
+    tag: 'daily-novelties',
   };
 }
 
@@ -726,12 +760,15 @@ const ANNOUNCE_PREF = {
   openwhen: 'letters',
   calendar: 'daily',
   reason: 'daily',
-  content: 'daily'
+  content: 'daily',
 };
 
 /** Nombre de la sección, recortado y sin caracteres de control. */
 function cleanSection(value) {
-  const text = String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  const text = String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   return text.slice(0, 40);
 }
 
@@ -747,19 +784,23 @@ export function announcePayload(kind, { count = 1, section = '', url = '' } = {}
   if (kind === 'openwhen') {
     return {
       title: n === 1 ? 'Nueva carta en Open When 💌' : `${n} cartas nuevas en Open When 💌`,
-      body: n === 1 ? 'Tienes una carta sin abrir esperándote.' : 'Tienes cartas sin abrir esperándote.',
+      body:
+        n === 1
+          ? 'Tienes una carta sin abrir esperándote.'
+          : 'Tienes cartas sin abrir esperándote.',
       url: '/openwhen',
-      tag: 'openwhen-new'
+      tag: 'openwhen-new',
     };
   }
   if (kind === 'calendar') {
     return {
       title: n === 1 ? 'Hay una sorpresa nueva 🎁' : 'Hay sorpresas nuevas 🎁',
-      body: n === 1
-        ? 'El calendario tiene un regalo nuevo. Ábrelo cuando quieras.'
-        : `El calendario tiene ${n} regalos nuevos.`,
+      body:
+        n === 1
+          ? 'El calendario tiene un regalo nuevo. Ábrelo cuando quieras.'
+          : `El calendario tiene ${n} regalos nuevos.`,
       url: '/calendario',
-      tag: 'calendar-new'
+      tag: 'calendar-new',
     };
   }
   if (kind === 'reason') {
@@ -767,7 +808,7 @@ export function announcePayload(kind, { count = 1, section = '', url = '' } = {}
       title: n === 1 ? 'Razón nueva 💛' : `${n} razones nuevas 💛`,
       body: 'Hay algo nuevo para ti en Razones.',
       url: '/razones',
-      tag: 'reason-new'
+      tag: 'reason-new',
     };
   }
   const where = cleanSection(section);
@@ -775,7 +816,7 @@ export function announcePayload(kind, { count = 1, section = '', url = '' } = {}
     title: where ? `Contenido nuevo: ${where}` : 'Contenido nuevo en el hub ✨',
     body: 'Hay cosas nuevas esperándote. Ábrelo cuando quieras.',
     url: isAllowedNotificationPath(url) ? url.trim() : '/',
-    tag: 'content-new'
+    tag: 'content-new',
   };
 }
 
@@ -787,7 +828,7 @@ function hourInSpain(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Madrid',
     hour: '2-digit',
-    hourCycle: 'h23'
+    hourCycle: 'h23',
   }).formatToParts(date);
   return Number(parts.find(part => part.type === 'hour')?.value || 0);
 }
@@ -842,7 +883,12 @@ export default async function handler(req, res) {
       case 'token':
         return await handleRegisterToken(req, res);
       default:
-        return res.status(400).json({ error: 'Invalid action. Use: subscribe, unsubscribe, send, notify-admin, announce, reminders, run-reminders, ack, token' });
+        return res
+          .status(400)
+          .json({
+            error:
+              'Invalid action. Use: subscribe, unsubscribe, send, notify-admin, announce, reminders, run-reminders, ack, token',
+          });
     }
   } catch (err) {
     console.error('[api/push] error:', err.message);
@@ -868,7 +914,10 @@ async function authenticate(req, res) {
   }
 
   const supabase = getSupabase();
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
   if (error || !user) {
     res.status(401).json({ error: 'Invalid or expired session' });
     return null;
@@ -902,9 +951,11 @@ async function isAdminUser(user) {
     .select('role, enabled')
     .eq('id', user.id)
     .maybeSingle();
-  return profile?.role === 'admin'
-    && profile?.enabled !== false
-    && !!(user.email_confirmed_at || user.confirmed_at);
+  return (
+    profile?.role === 'admin' &&
+    profile?.enabled !== false &&
+    !!(user.email_confirmed_at || user.confirmed_at)
+  );
 }
 
 /** Sesión de admin o null (ya respondió el error). */
@@ -926,8 +977,8 @@ async function requireAdmin(req, res) {
 function cronSecretMatches(req) {
   const expected = process.env.CRON_SECRET;
   if (!expected) return false;
-  const provided = req.headers['x-cron-secret']
-    || (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const provided =
+    req.headers['x-cron-secret'] || (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   return provided === expected;
 }
 
@@ -957,17 +1008,24 @@ async function handleRegisterToken(req, res) {
       token,
       platform: platform === 'ios' ? 'ios' : 'android',
       enabled: true,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     },
     { onConflict: 'token' }
   );
 
   if (error) {
-    // 42P01: falta sql/026. Se avisa con la instrucción en vez de un 500 opaco.
-    return res.status(503).json({
-      error: error.code === '42P01'
+    // El motivo se registra y se devuelve: un 503 genérico costó una tarde
+    // entera de diagnóstico cuando la tabla existía pero service_role no
+    // tenía privilegios (42501).
+    console.error('[push] no se pudo guardar el token:', error.code, error.message);
+
+    // 42P01 / PGRST205: falta sql/026 (o PostgREST aún no la ve).
+    const missing = error.code === '42P01' || error.code === 'PGRST205';
+    return res.status(missing ? 503 : 500).json({
+      error: missing
         ? 'Aplica sql/026_push_tokens.sql en Supabase'
-        : 'No se pudo guardar el token'
+        : `No se pudo guardar el token (${error.code || 'error'}): ${error.message || 'sin detalle'}`,
+      code: error.code || null,
     });
   }
 
@@ -998,9 +1056,9 @@ async function handleSubscribe(req, res) {
       endpoint: subscription.endpoint,
       keys: {
         p256dh: subscription.keys?.p256dh || '',
-        auth: subscription.keys?.auth || ''
+        auth: subscription.keys?.auth || '',
       },
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     });
 
     await saveSubscriptions(filtered);
@@ -1055,7 +1113,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 function missingDeliveryColumns(res, err) {
   if (err?.code !== '42703') return false;
   res.status(503).json({
-    error: 'El acuse de entrega necesita la migración sql/025_push_log_delivery.sql aplicada en Supabase'
+    error:
+      'El acuse de entrega necesita la migración sql/025_push_log_delivery.sql aplicada en Supabase',
   });
   return true;
 }
@@ -1159,12 +1218,17 @@ async function handleNotifyAdmin(req, res) {
 
   const prefsById = await loadPrefsByIds(adminIds);
   const { allowed, quiet, off } = splitRecipients(
-    adminSubscriptions, prefsById, new Date(), adminAlertPrefFor(kind)
+    adminSubscriptions,
+    prefsById,
+    new Date(),
+    adminAlertPrefFor(kind)
   );
   // En silencio se incluye: el service worker ya lo silencia en el dispositivo.
   const recipients = [...allowed, ...quiet];
   if (recipients.length === 0) {
-    return res.status(200).json({ success: true, sent: 0, filtered: off.length, message: 'Admin alert off' });
+    return res
+      .status(200)
+      .json({ success: true, sent: 0, filtered: off.length, message: 'Admin alert off' });
   }
 
   const payload = JSON.stringify({ ...alert, timestamp: Date.now() });
@@ -1203,7 +1267,7 @@ async function handleAnnounce(req, res) {
   const alert = announcePayload(kind, {
     count: req.body?.count,
     section: req.body?.section,
-    url: req.body?.url
+    url: req.body?.url,
   });
 
   const supabase = getSupabase();
@@ -1231,7 +1295,7 @@ async function handleAnnounce(req, res) {
       quiet: quiet.length,
       until: deferUntilFor(quiet, prefsById, now),
       filtered: off.length,
-      message: quiet.length > 0 ? 'Quiet hours' : 'Announcement off'
+      message: quiet.length > 0 ? 'Quiet hours' : 'Announcement off',
     });
   }
 
@@ -1245,7 +1309,7 @@ async function handleAnnounce(req, res) {
     success: true,
     ...results,
     quiet: quiet.length,
-    filtered: off.length
+    filtered: off.length,
   });
 }
 
@@ -1267,9 +1331,10 @@ async function lastMaldiaNote(supabase, userId) {
   if (notes.length === 0) return null;
   // La más reciente por marca de tiempo; si el dato es antiguo y no la trae,
   // se queda la última de la lista, que es el orden en que se escriben.
-  const newest = notes.reduce((best, n) => (
-    Date.parse(n.createdAt) > Date.parse(best.createdAt) ? n : best
-  ), notes[0]);
+  const newest = notes.reduce(
+    (best, n) => (Date.parse(n.createdAt) > Date.parse(best.createdAt) ? n : best),
+    notes[0]
+  );
   return newest.text.trim();
 }
 
@@ -1302,7 +1367,10 @@ async function notifyAdminsOfHealth(summary) {
 
     const prefsById = await loadPrefsByIds(adminIds);
     const { allowed, quiet } = splitRecipients(
-      adminSubscriptions, prefsById, new Date(), adminAlertPrefFor('health')
+      adminSubscriptions,
+      prefsById,
+      new Date(),
+      adminAlertPrefFor('health')
     );
     const recipients = [...allowed, ...quiet];
     if (recipients.length === 0) return null;
@@ -1314,10 +1382,10 @@ async function notifyAdminsOfHealth(summary) {
     console.warn('[api/push] no se pudo avisar de los fallos:', err?.message);
     return null;
   }
-}  /**
-   * Envía a cada suscripción y devuelve los endpoints caducados.
-   * El payload puede ser una cadena o una función de la suscripción.
-   */
+} /**
+ * Envía a cada suscripción y devuelve los endpoints caducados.
+ * El payload puede ser una cadena o una función de la suscripción.
+ */
 async function deliverPush(subscriptions, payload, onResult) {
   const results = { sent: 0, failed: 0, removed: 0 };
   const expired = [];
@@ -1340,12 +1408,16 @@ async function deliverPush(subscriptions, payload, onResult) {
         if (onResult) {
           await onResult(sub, {
             expired: true,
-            error: isVapidMismatchError(err) ? 'vapid_mismatch' : String(err.statusCode)
+            error: isVapidMismatchError(err) ? 'vapid_mismatch' : String(err.statusCode),
           });
         }
       } else {
         results.failed++;
-        if (onResult) await onResult(sub, { expired: false, error: String(err.statusCode || err.message || 'push_error') });
+        if (onResult)
+          await onResult(sub, {
+            expired: false,
+            error: String(err.statusCode || err.message || 'push_error'),
+          });
       }
     }
   }
@@ -1422,7 +1494,8 @@ async function sendTokensToUsers(userIds, payload) {
 function missingRemindersTable(res, err) {
   if (err?.code !== '42P01') return false;
   res.status(503).json({
-    error: 'Los recordatorios necesitan la migración sql/022_push_reminders.sql aplicada en Supabase'
+    error:
+      'Los recordatorios necesitan la migración sql/022_push_reminders.sql aplicada en Supabase',
   });
   return true;
 }
@@ -1496,7 +1569,7 @@ function reminderPayload(reminder, deliveryId) {
     url: reminder.target_url || '/',
     tag: `reminder-${reminder.id}`,
     ...(deliveryId ? { delivery: deliveryId } : {}),
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
 }
 
@@ -1513,7 +1586,7 @@ async function deliverReminder(reminder, subscriptions, skipped = []) {
     user_id: sub.userId,
     endpoint: sub.endpoint,
     status: 'skipped',
-    error: reason
+    error: reason,
   }));
   // Un token de acuse por dispositivo: el payload lo lleva y la fila del
   // historial lo guarda, así que cuando el dispositivo confirme se sabe
@@ -1535,26 +1608,29 @@ async function deliverReminder(reminder, subscriptions, skipped = []) {
       endpoint: sub.endpoint,
       status: 'queued',
       error: null,
-      delivery_id: deliveries.get(sub.endpoint)
-    }))
+      delivery_id: deliveries.get(sub.endpoint),
+    })),
   ]);
 
   const { results, expired } = await deliverPush(
     subscriptions,
-    (sub) => reminderPayload(reminder, deliveries.get(sub.endpoint)),
+    sub => reminderPayload(reminder, deliveries.get(sub.endpoint)),
     // Con el registro previo hecho, cada fila se cierra con el resultado de SU
     // dispositivo. Si no se pudo registrar antes (025 sin aplicar), se acumula
     // y se registra al final con el estado definitivo y sin token: la forma de
     // antes, que no pierde el historial.
-    (sub, failure) => (registroPrevio
-      ? settleDelivery(deliveries.get(sub.endpoint), failure)
-      : Promise.resolve(entries.push({
-        reminder_id: reminder.id,
-        user_id: sub.userId,
-        endpoint: sub.endpoint,
-        status: failure ? 'failed' : 'sent',
-        error: failure ? failure.error : null
-      })))
+    (sub, failure) =>
+      registroPrevio
+        ? settleDelivery(deliveries.get(sub.endpoint), failure)
+        : Promise.resolve(
+            entries.push({
+              reminder_id: reminder.id,
+              user_id: sub.userId,
+              endpoint: sub.endpoint,
+              status: failure ? 'failed' : 'sent',
+              error: failure ? failure.error : null,
+            })
+          )
   );
 
   if (!registroPrevio) await logReminderPush(entries, { allowLegacy: true });
@@ -1575,7 +1651,7 @@ async function settleDelivery(deliveryId, failure) {
       .from(LOGS_TABLE)
       .update({
         status: failure ? 'failed' : 'sent',
-        error: failure ? failure.error : null
+        error: failure ? failure.error : null,
       })
       .eq('delivery_id', deliveryId);
     if (error) console.warn('[api/push] no se pudo cerrar el registro del envío:', error.message);
@@ -1597,21 +1673,25 @@ async function loadPrefsByIds(userIds) {
     // lectura falla (42703) y el mapa vuelve vacío, que significa «entregar».
     const { data, error } = await getSupabase()
       .from(PREFS_TABLE)
-      .select('user_id, daily, letters, moods, reminders, admin_mood, admin_mood_changes, admin_notes, admin_health, quiet_from, quiet_to')
+      .select(
+        'user_id, daily, letters, moods, reminders, admin_mood, admin_mood_changes, admin_notes, admin_health, quiet_from, quiet_to'
+      )
       .in('user_id', userIds);
     if (error) return prefsById;
-    (data || []).forEach(row => prefsById.set(String(row.user_id), {
-      daily: row.daily,
-      letters: row.letters,
-      moods: row.moods,
-      reminders: row.reminders,
-      adminMood: row.admin_mood,
-      adminMoodChanges: row.admin_mood_changes,
-      adminNotes: row.admin_notes,
-      adminHealth: row.admin_health,
-      quietFrom: row.quiet_from,
-      quietTo: row.quiet_to
-    }));
+    (data || []).forEach(row =>
+      prefsById.set(String(row.user_id), {
+        daily: row.daily,
+        letters: row.letters,
+        moods: row.moods,
+        reminders: row.reminders,
+        adminMood: row.admin_mood,
+        adminMoodChanges: row.admin_mood_changes,
+        adminNotes: row.admin_notes,
+        adminHealth: row.admin_health,
+        quietFrom: row.quiet_from,
+        quietTo: row.quiet_to,
+      })
+    );
   } catch {
     return prefsById;
   }
@@ -1627,7 +1707,15 @@ async function loadPrefsByIds(userIds) {
  */
 async function runDueReminders(now = new Date()) {
   const supabase = getSupabase();
-  const summary = { reminders: 0, sent: 0, failed: 0, removed: 0, skipped: 0, deferred: 0, filtered: 0 };
+  const summary = {
+    reminders: 0,
+    sent: 0,
+    failed: 0,
+    removed: 0,
+    skipped: 0,
+    deferred: 0,
+    filtered: 0,
+  };
 
   const { data: pending, error } = await supabase
     .from(REMINDERS_TABLE)
@@ -1645,7 +1733,9 @@ async function runDueReminders(now = new Date()) {
   // filtrada, o el filtro de cuentas deshabilitadas borraría sus suscripciones.
   const all = await getSubscriptions();
   let subscriptions = await excludeDisabledUsers(all);
-  const prefsById = await loadPrefsByIds([...new Set(subscriptions.map(sub => String(sub.userId)))]);
+  const prefsById = await loadPrefsByIds([
+    ...new Set(subscriptions.map(sub => String(sub.userId))),
+  ]);
 
   for (const reminder of due) {
     const stamp = new Date().toISOString();
@@ -1675,7 +1765,11 @@ async function runDueReminders(now = new Date()) {
     const nextRunAt = nextRunFor(reminder.next_run_at, reminder.recurrence, now);
     const { error: updateError } = await supabase
       .from(REMINDERS_TABLE)
-      .update(nextRunAt ? { next_run_at: nextRunAt, updated_at: stamp } : { active: false, updated_at: stamp })
+      .update(
+        nextRunAt
+          ? { next_run_at: nextRunAt, updated_at: stamp }
+          : { active: false, updated_at: stamp }
+      )
       .eq('id', reminder.id);
     if (updateError) {
       console.error('[api/push] no se pudo reprogramar el recordatorio:', updateError.message);
@@ -1686,11 +1780,14 @@ async function runDueReminders(now = new Date()) {
     summary.reminders++;
     summary.filtered += quiet.length + off.length;
 
-    if (allowed.length === 0) { summary.skipped++; continue; }
+    if (allowed.length === 0) {
+      summary.skipped++;
+      continue;
+    }
 
     const skipped = [
       ...quiet.map(sub => ({ sub, reason: 'quiet_hours' })),
-      ...off.map(sub => ({ sub, reason: 'prefs_off' }))
+      ...off.map(sub => ({ sub, reason: 'prefs_off' })),
     ];
     const { results, expired } = await deliverReminder(reminder, allowed, skipped);
     summary.sent += results.sent;
@@ -1743,7 +1840,9 @@ async function handleReminders(req, res) {
     if (req.method === 'GET') {
       const { data, error } = await supabase
         .from(REMINDERS_TABLE)
-        .select('id, title, body, target_url, scheduled_at, recurrence, active, next_run_at, created_at')
+        .select(
+          'id, title, body, target_url, scheduled_at, recurrence, active, next_run_at, created_at'
+        )
         .order('next_run_at', { ascending: true })
         .limit(200);
       if (error) throw error;
@@ -1817,7 +1916,15 @@ async function handleReminders(req, res) {
 
       const subscriptions = await excludeDisabledUsers(await getSubscriptions());
       if (subscriptions.length === 0) {
-        return res.status(200).json({ success: true, sent: 0, failed: 0, removed: 0, message: 'No hay dispositivos suscritos' });
+        return res
+          .status(200)
+          .json({
+            success: true,
+            sent: 0,
+            failed: 0,
+            removed: 0,
+            message: 'No hay dispositivos suscritos',
+          });
       }
 
       // Enviarlo a mano no toca su calendario: la programación sigue igual.
@@ -1826,7 +1933,9 @@ async function handleReminders(req, res) {
     }
 
     if (action !== 'create' && action !== 'update') {
-      return res.status(400).json({ error: 'Invalid action. Use: create, update, toggle, delete, run' });
+      return res
+        .status(400)
+        .json({ error: 'Invalid action. Use: create, update, toggle, delete, run' });
     }
     if (action === 'update' && !id) {
       return res.status(400).json({ error: 'Falta el id del recordatorio' });
@@ -1845,14 +1954,18 @@ async function handleReminders(req, res) {
       // Editar fija la próxima ejecución en la fecha del formulario: es la
       // que el admin acaba de elegir. Encender o apagar es `toggle`.
       next_run_at: scheduledAt,
-      updated_at: stamp
+      updated_at: stamp,
     };
     if (typeof req.body?.active === 'boolean') row.active = req.body.active;
 
     if (action === 'create') {
       row.active = row.active !== false;
       row.created_by = user.id;
-      const { data, error } = await supabase.from(REMINDERS_TABLE).insert(row).select('id').maybeSingle();
+      const { data, error } = await supabase
+        .from(REMINDERS_TABLE)
+        .insert(row)
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
       return res.status(200).json({ success: true, id: data?.id || null });
     }
@@ -1874,8 +1987,8 @@ async function handleReminders(req, res) {
 async function handleSend(req, res) {
   // Proteger con secret simple (no crítico para notificaciones anónimas,
   // pero evita abuso)
-  const cronSecret = req.headers['x-cron-secret']
-    || (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const cronSecret =
+    req.headers['x-cron-secret'] || (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const expectedSecret = process.env.CRON_SECRET;
 
   // También permitir llamadas autenticadas por admin
@@ -1886,7 +1999,9 @@ async function handleSend(req, res) {
   if (token) {
     try {
       const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser(token);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser(token);
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -1895,11 +2010,14 @@ async function handleSend(req, res) {
           .maybeSingle();
         // Mismo criterio que public.is_admin() (017): rol admin, email
         // confirmado y cuenta habilitada.
-        isAdmin = profile?.role === 'admin'
-          && profile?.enabled !== false
-          && !!(user.email_confirmed_at || user.confirmed_at);
+        isAdmin =
+          profile?.role === 'admin' &&
+          profile?.enabled !== false &&
+          !!(user.email_confirmed_at || user.confirmed_at);
       }
-    } catch { /* not authenticated */ }
+    } catch {
+      /* not authenticated */
+    }
   }
 
   // No se permite ningún secreto por defecto: una configuración ausente
@@ -1929,7 +2047,9 @@ async function handleSend(req, res) {
   // 06:00 UTC: equivale a 08:00 en verano y 07:00 en invierno en Madrid.
   // Aceptamos ambas horas para que la notificación no se pierda por DST.
   if (!isAdmin && ![7, 8].includes(hourInSpain())) {
-    return res.status(200).json({ success: true, skipped: true, reason: 'Outside delivery window', reminders });
+    return res
+      .status(200)
+      .json({ success: true, skipped: true, reason: 'Outside delivery window', reminders });
   }
 
   if (requireVapid(res)) return;
@@ -1951,7 +2071,9 @@ async function handleSend(req, res) {
   // El silencio solo se respeta en el envío del cron. Un envío manual del
   // admin es una decisión expresa de mandarlo AHORA y no debe desaparecer sin
   // explicación: si él lo manda a las 23:30, se manda.
-  const prefsById = await loadPrefsByIds([...new Set(allSubscriptions.map(sub => String(sub.userId)))]);
+  const prefsById = await loadPrefsByIds([
+    ...new Set(allSubscriptions.map(sub => String(sub.userId))),
+  ]);
   const { allowed, quiet, off } = splitRecipients(allSubscriptions, prefsById, new Date(), 'daily');
   const recipients = isAdmin ? [...allowed, ...quiet] : allowed;
   const filtered = off.length + (isAdmin ? 0 : quiet.length);
@@ -1962,7 +2084,7 @@ async function handleSend(req, res) {
       sent: 0,
       filtered,
       message: 'Ningún destinatario tiene activo este aviso',
-      reminders
+      reminders,
     });
   }
 
@@ -1975,9 +2097,9 @@ async function handleSend(req, res) {
       title: customTitle || '¡Buenos días! ☀️',
       body: customBody || 'Es hora de tu check-in diario de estado de ánimo.',
       url: req.body?.url || '/',
-      tag: 'daily-welcome'
+      tag: 'daily-welcome',
     }),
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
 
   const results = { sent: 0, failed: 0, removed: 0 };
@@ -1989,7 +2111,7 @@ async function handleSend(req, res) {
       await webpush.sendNotification(
         {
           endpoint: sub.endpoint,
-          keys: sub.keys
+          keys: sub.keys,
         },
         payload
       );
@@ -2032,7 +2154,9 @@ async function handleSend(req, res) {
   // así que pasarle solo los destinatarios (quien no está en silencio y tiene
   // el aviso encendido) daría de baja a los demás cada mañana.
   if (expiredEndpoints.length > 0) {
-    await saveSubscriptions(allSubscriptions.filter(sub => !expiredEndpoints.includes(sub.endpoint)));
+    await saveSubscriptions(
+      allSubscriptions.filter(sub => !expiredEndpoints.includes(sub.endpoint))
+    );
   }
 
   // Los fallos del propio saludo diario también son un aviso técnico.
@@ -2046,6 +2170,6 @@ async function handleSend(req, res) {
     stale: staleEndpoints.length,
     filtered,
     total: allSubscriptions.length,
-    reminders
+    reminders,
   });
 }

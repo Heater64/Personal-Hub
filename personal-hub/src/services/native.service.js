@@ -334,9 +334,21 @@ async function saveTokenToServer(token) {
       body: JSON.stringify({ token, platform: 'android' }),
     });
 
+    // El motivo del rechazo se muestra tal cual en Perfil → Notificaciones:
+    // «HTTP 500» no sirve para arreglar nada.
+    let detail = `HTTP ${res.status}`;
+    if (!res.ok) {
+      try {
+        const body = await res.json();
+        if (body?.error) detail = body.error;
+      } catch {
+        /* respuesta sin JSON: se queda el código */
+      }
+    }
+
     lastToken = token;
     tokenSaved = res.ok;
-    tokenError = res.ok ? null : `HTTP ${res.status}`;
+    tokenError = res.ok ? null : detail;
 
     if (!res.ok) {
       console.warn('[native] el servidor no guardó el token:', res.status);
