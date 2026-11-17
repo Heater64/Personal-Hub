@@ -24,6 +24,38 @@
   inset: 0;
   z-index: 0;
 }
+
+/* La foto elegida (public/fondos/<id>.<ext>). Sin foto, esta capa no pinta. */
+.juntos__photo {
+  position: absolute;
+  inset: 0;
+  background-image: var(--j-photo, none);
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.juntos-page.is-photo .juntos__photo {
+  opacity: 1;
+}
+
+/* Velo: oscurece arriba y abajo para que fecha y cifras se lean siempre. */
+.juntos__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 5, 12, 0.55) 0%,
+    rgba(8, 5, 12, 0.12) 34%,
+    rgba(8, 5, 12, 0.18) 62%,
+    rgba(8, 5, 12, 0.78) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.juntos-page.is-photo .juntos__shade {
+  opacity: 1;
+}
 .juntos__glow {
   position: absolute;
   border-radius: 50%;
@@ -207,7 +239,10 @@
   overflow: hidden;
   border: 1px solid var(--border-soft, rgba(127, 127, 127, 0.25));
   border-radius: 14px;
-  background: var(--j-base, #0b0710);
+  background-color: var(--j-base, #0b0710);
+  background-image: var(--j-photo, none);
+  background-position: center;
+  background-size: cover;
   color: #fff;
   cursor: pointer;
   transition:

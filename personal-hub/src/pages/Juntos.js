@@ -33,8 +33,11 @@ const MESES = [
 ];
 
 /**
- * Ambientes del fondo. Cada uno son tres focos y un color base: la misma
- * composición que la versión original, con otra luz.
+ * Ambientes del fondo.
+ *
+ * Cada uno busca su imagen en `/fondos/<id>.webp|jpg|jpeg|png` (carpeta
+ * `personal-hub/public/fondos`). Si no existe, queda el degradado de focos
+ * de `base`/`a`/`b`/`c`: nunca se rompe, solo se ve más soso.
  */
 const FONDOS = [
   { id: 'plaza', label: 'Plaza', base: '#0b0710', a: '#f0b23c', b: '#7b4bb3', c: '#a8462f' },
@@ -46,13 +49,60 @@ const FONDOS = [
 
 const PREF_FONDO = 'juntosTheme';
 
+const EXT_FOTO = ['webp', 'jpg', 'jpeg', 'png'];
+
+// Versión de las imágenes. El service worker se queda con la primera copia
+// que ve: al cambiar una foto de `public/fondos`, sube este número para que
+// las instaladas dejen de enseñar la anterior.
+const V_FONDOS = 1;
+
+/** id → url de la imagen, o null si ese fondo no tiene foto. */
+const fotos = new Map();
+
+function existe(url) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+
+/** Busca la foto de cada fondo una sola vez por sesión. */
+async function resolverFotos() {
+  await Promise.all(
+    FONDOS.map(async fondo => {
+      if (fotos.has(fondo.id)) return;
+      for (const ext of EXT_FOTO) {
+        const url = `/fondos/${fondo.id}.${ext}?v=${V_FONDOS}`;
+        if (await existe(url)) {
+          fotos.set(fondo.id, url);
+          return;
+        }
+      }
+      fotos.set(fondo.id, null);
+    })
+  );
+}
+
+function fotoDe(fondo) {
+  return fotos.get(fondo.id) || null;
+}
+
 function fondoActual() {
   const id = getUserPref(PREF_FONDO, 'plaza');
   return FONDOS.find(f => f.id === id) || FONDOS[0];
 }
 
 function estiloFondo(fondo) {
-  return `--j-base:${fondo.base};--j-a:${fondo.a};--j-b:${fondo.b};--j-c:${fondo.c}`;
+  const foto = fotoDe(fondo);
+  return [
+    `--j-base:${fondo.base}`,
+    `--j-a:${fondo.a}`,
+    `--j-b:${fondo.b}`,
+    `--j-c:${fondo.c}`,
+    `--j-photo:${foto ? `url("${foto}")` : 'none'}`,
+  ].join(';');
 }
 
 function fechaLarga(iso) {
@@ -92,9 +142,12 @@ export function JuntosPage(router) {
     const fondo = fondoActual();
 
     page.style.cssText = estiloFondo(fondo);
+    page.classList.toggle('is-photo', Boolean(fotoDe(fondo)));
 
     page.innerHTML = `
       <div class="juntos__bg" aria-hidden="true">
+        <span class="juntos__photo"></span>
+        <span class="juntos__shade"></span>
         <span class="juntos__glow juntos__glow--a"></span>
         <span class="juntos__glow juntos__glow--b"></span>
         <span class="juntos__glow juntos__glow--c"></span>
@@ -142,8 +195,8 @@ export function JuntosPage(router) {
             f => `
             <button type="button" class="jthumb${f.id === activo ? ' is-on' : ''}" role="listitem"
               data-fondo="${f.id}" style="${estiloFondo(f)}" aria-pressed="${f.id === activo}">
-              <span class="jthumb__dot jthumb__dot--a"></span>
-              <span class="jthumb__dot jthumb__dot--b"></span>
+              ${fotoDe(f) ? '' : '<span class="jthumb__dot jthumb__dot--a"></span>'}
+              ${fotoDe(f) ? '' : '<span class="jthumb__dot jthumb__dot--b"></span>'}
               <span class="jthumb__name">${f.label}</span>
             </button>`
           ).join('')}
@@ -170,6 +223,7 @@ export function JuntosPage(router) {
           const fondo = FONDOS.find(f => f.id === id) || FONDOS[0];
           setUserPref(PREF_FONDO, fondo.id);
           page.style.cssText = estiloFondo(fondo);
+          page.classList.toggle('is-photo', Boolean(fotoDe(fondo)));
           wrap.querySelectorAll('[data-fondo]').forEach(b => {
             const on = b === btn;
             b.classList.toggle('is-on', on);
@@ -187,6 +241,9 @@ export function JuntosPage(router) {
   };
 
   render();
+
+  // Cuando aparecen las imágenes de `public/fondos`, se repinta con ellas.
+  resolverFotos().then(() => render());
 
   // Las fechas reales llegan de Supabase: si el aniversario cambió en el panel,
   // esta pantalla tiene que decir lo mismo que la portada.

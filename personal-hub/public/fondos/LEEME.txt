@@ -1,0 +1,15 @@
+Fondos de la pantalla «Juntos».
+
+Deja aquí estas cinco imágenes (webp, jpg, jpeg o png):
+
+  plaza.*    → el ambiente cálido por defecto
+  luna.*     → azul noche
+  bosque.*   → verde
+  corazon.*  → rosa
+  rosa.*     → lila rosado
+
+Ejemplo: plaza.webp, luna.jpg, bosque.png.
+
+Si alguna falta, esa opción se ve con el degradado de focos: no se rompe nada.
+Tamaño recomendado: 1080 × 1920 (vertical) y que la zona central no tenga
+detalles importantes (ahí va la píldora translúcida).
