@@ -1,15 +1,25 @@
 {
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/push-notifications": "^8.1.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "@supabase/supabase-js": "^2.111.0",
     "cloudinary": "^2.10.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2",
     "@eslint/js": "^9.39.5",
     "eslint": "^9.39.5",
     "globals": "^15.15.0",
     "playwright": "^1.59.1",
     "prettier": "^3.9.9",
+    "typescript": "^7.0.2",
     "vite": "^8.1.5"
   },
   "name": "personal-hub",
@@ -20,6 +30,10 @@
     "dev": "npx vite personal-hub",
     "build": "npx vite build personal-hub",
     "preview": "npx vite preview personal-hub",
+    "cap:add": "cap add android",
+    "cap:sync": "npm run build && cap sync android",
+    "cap:open": "cap open android",
+    "cap:run": "npm run cap:sync && cap run android",
     "test": "node --test tests/prepush.test.js tests/notification-route.test.js tests/routes-registry.test.js tests/push-reminders.test.js tests/notification-prefs.test.js tests/admin-alerts.test.js tests/delivery-log.test.js tests/vapid-keys.test.js tests/push-key-rotation.test.js tests/announce.test.js tests/rls-hardening.test.js tests/stats-metrics.test.js",
     "check:push": "node scripts/check-push.js",
     "postinstall": "node -e \"try{require('fs').chmodSync('node_modules/.bin/vite',0o755)}catch(e){}\"",

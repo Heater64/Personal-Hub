@@ -9,6 +9,7 @@ import { userStore } from '../stores/user.store.js';
 import { setUserPref } from '../utils/userStorage.js';
 import { icon, avatarEl } from './ui.js';
 import { bottomNavItems, roleFor, sectionFor } from '../routes.js';
+import { hapticTap } from '../services/native.service.js';
 
 export function BottomNav(router) {
   const nav = document.createElement('nav');
@@ -50,7 +51,11 @@ export function BottomNav(router) {
 
     nav.querySelectorAll('.bn-item[data-nav]').forEach(btn => {
       const item = items.find(i => i.id === btn.dataset.nav);
-      btn.addEventListener('click', () => router.navigate(item?.href || '/'));
+      btn.addEventListener('click', () => {
+        // En el APK cada pestaña responde con el toque del sistema; en la web no hace nada.
+        hapticTap('light');
+        router.navigate(item?.href || '/');
+      });
     });
   }
 

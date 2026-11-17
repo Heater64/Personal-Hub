@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { sendFcmToTokens, fcmConfigured } from './_fcm.js';
 
 // VAPID keys desde variables de entorno
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
@@ -838,8 +839,10 @@ export default async function handler(req, res) {
         return await handleRunReminders(req, res);
       case 'ack':
         return await handleAck(req, res);
+      case 'token':
+        return await handleRegisterToken(req, res);
       default:
-        return res.status(400).json({ error: 'Invalid action. Use: subscribe, unsubscribe, send, notify-admin, announce, reminders, run-reminders, ack' });
+        return res.status(400).json({ error: 'Invalid action. Use: subscribe, unsubscribe, send, notify-admin, announce, reminders, run-reminders, ack, token' });
     }
   } catch (err) {
     console.error('[api/push] error:', err.message);
@@ -926,6 +929,49 @@ function cronSecretMatches(req) {
   const provided = req.headers['x-cron-secret']
     || (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   return provided === expected;
+}
+
+// ==========================================
+// TOKEN DE LA APP NATIVA (FCM)
+// ==========================================
+/**
+ * Alta de un token de FCM que manda la app Android.
+ *
+ * Mismo guardia que `subscribe`: sesión válida y cuenta habilitada. El token
+ * es único en la tabla, así que si el móvil cambia de cuenta la fila se
+ * reasigna (`onConflict: 'token'`) en vez de quedar huérfana.
+ */
+async function handleRegisterToken(req, res) {
+  const { token, platform } = req.body || {};
+  if (!token || typeof token !== 'string' || token.length < 20) {
+    return res.status(400).json({ error: 'Invalid token' });
+  }
+
+  const user = await authenticate(req, res);
+  if (!user) return; // ya respondió con el error
+
+  const supabase = getSupabase();
+  const { error } = await supabase.from('push_tokens').upsert(
+    {
+      user_id: user.id,
+      token,
+      platform: platform === 'ios' ? 'ios' : 'android',
+      enabled: true,
+      updated_at: new Date().toISOString()
+    },
+    { onConflict: 'token' }
+  );
+
+  if (error) {
+    // 42P01: falta sql/026. Se avisa con la instrucción en vez de un 500 opaco.
+    return res.status(503).json({
+      error: error.code === '42P01'
+        ? 'Aplica sql/026_push_tokens.sql en Supabase'
+        : 'No se pudo guardar el token'
+    });
+  }
+
+  return res.status(200).json({ success: true });
 }
 
 // ==========================================
@@ -1303,7 +1349,55 @@ async function deliverPush(subscriptions, payload, onResult) {
       }
     }
   }
+  // El mismo aviso, también a la app Android. Es un canal aparte: que falle
+  // FCM no invalida lo que ya salió por Web Push.
+  await deliverFcmForSubscriptions(subscriptions, payloadFor).catch(() => null);
   return { results, expired };
+}
+
+/**
+ * Envía el aviso a los tokens FCM de los dueños de esas suscripciones.
+ *
+ * El payload de Web Push puede depender del dispositivo (el `delivery_id`
+ * del acuse). Un mensaje nativo no tiene ese canal de vuelta, así que se
+ * compone uno genérico: sirve igual para el texto y la URL.
+ */
+async function deliverFcmForSubscriptions(subscriptions, payloadFor) {
+  if (!fcmConfigured()) return null;
+  const userIds = [...new Set((subscriptions || []).map(sub => sub.userId).filter(Boolean))];
+  if (userIds.length === 0) return null;
+
+  let payload;
+  try {
+    const raw = payloadFor({ userId: userIds[0], endpoint: 'fcm', keys: null });
+    payload = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+
+  return sendTokensToUsers(userIds, payload);
+}
+
+/** Lee los tokens activos de esos usuarios, envía y borra los caducados. */
+async function sendTokensToUsers(userIds, payload) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('push_tokens')
+    .select('token')
+    .in('user_id', userIds)
+    .eq('enabled', true);
+
+  // 42P01: migración 026 sin aplicar. La app sigue con Web Push.
+  if (error) return null;
+
+  const tokens = (data || []).map(row => row.token).filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  const result = await sendFcmToTokens(tokens, payload);
+  if (result.removed?.length) {
+    await supabase.from('push_tokens').delete().in('token', result.removed);
+  }
+  return result;
 }
 
 // ==========================================
@@ -1913,6 +2007,16 @@ async function handleSend(req, res) {
         // Keep subscription for retry (temporary error)
         results.failed++;
       }
+    }
+  }
+
+  // El saludo diario también suena en la app Android (FCM).
+  const fcmRecipients = [...new Set(recipients.map(sub => sub.userId).filter(Boolean))];
+  if (fcmRecipients.length > 0) {
+    try {
+      await sendTokensToUsers(fcmRecipients, JSON.parse(payload));
+    } catch {
+      /* FCM es un extra: nunca tumba el envío web */
     }
   }
 

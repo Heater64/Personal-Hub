@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Nombre corto: el que se ve bajo el icono. -->
+    <string name="app_name">Hub🧸</string>
+    <!-- Nombre largo: título de la tarea y de Ajustes. -->
+    <string name="title_activity_main">Personalhub</string>
+    <string name="package_name">com.heater64.personalhub</string>
+    <string name="custom_url_scheme">com.heater64.personalhub</string>
+
+    <!-- Widget de días (prueba) -->
+    <string name="widget_days_label">🤍 días juntos</string>
+    <string name="widget_days_caption">desde el 03/07/2025</string>
+    <string name="widget_days_description">Contador de días juntos</string>
+</resources>

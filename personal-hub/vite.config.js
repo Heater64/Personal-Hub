@@ -19,6 +19,12 @@ export default defineConfig({
           if (id.includes('@supabase/supabase-js')) {
             return 'supabase';
           }
+          // Los plugins nativos (Capacitor) solo se piden dentro del APK:
+          // dejarlos fuera de `vendor` mantiene el import() diferido de
+          // verdad, así la web no descarga ni un byte de ellos.
+          if (id.includes('@capacitor/')) {
+            return undefined;
+          }
           // Group all node_modules dependencies into vendor chunk
           if (id.includes('node_modules')) {
             return 'vendor';

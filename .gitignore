@@ -24,6 +24,8 @@ dist/
 # AI tool configs (no van al repo)
 .mcp.json
 opencode.json
+# Adjuntos del chat: pueden contener claves (cuenta de servicio de FCM)
+.cloud-attachments/
 
 # Security scan results
 strix_runs/
@@ -46,6 +48,25 @@ npm-debug.log*
 vite-*.out
 vite-*.err
 vite-dev.pid
+
+# Android (Capacitor) — se versiona el proyecto, no lo que genera Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/capacitor.build.gradle
+*.jks
+*.keystore
+*.apk
+
+# Credenciales de Firebase (cuenta de servicio: secreto, va en Vercel)
+firebase-service-account.json
+fcm-service-account-oneline.txt
+*firebase-adminsdk*.json
 
 # Repos de referencia descargados
 /external/

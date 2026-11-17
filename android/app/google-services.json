@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "708238329796",
+    "project_id": "personal-hub-c08d9",
+    "storage_bucket": "personal-hub-c08d9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:708238329796:android:eb0b560cfee1bfe4d4c691",
+        "android_client_info": {
+          "package_name": "com.heater64.personalhub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTme6pIWIBlWSS5UL0bEAsMbz7MR1XpTc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mismo tono que el fondo de index.html (variable surface 0), para que el
+         salto entre splash, barra de estado y primer frame de la web no se note. -->
+    <color name="app_background">#0A0A0C</color>
+</resources>

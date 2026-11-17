@@ -16,6 +16,7 @@ import { WelcomeScreen } from './WelcomeScreen.js';
 import { setMoodWelcomeState } from './SpecialEventSheet.js';
 import { moodStore } from '../stores/mood.store.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
+import { initNativeApp, initNativePush, registerNativePush } from '../services/native.service.js';
 import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters, syncNotifPrefs, getNotifSettings } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
@@ -491,6 +492,8 @@ export function AppShell(router) {
       // silencio de IndexedDB — al revés se quedaría con el horario viejo.
       syncNotifPrefs().finally(() => syncReminderState());
       resyncPushSubscription();
+      // En la app Android el canal es FCM: el alta se reintenta con cada inicio de sesión.
+      registerNativePush();
       // Notificación diaria de novedades (dedupe 1/día + puerta 8 AM)
       notifyTodayNovelties();
       // Cartas nuevas de Open When sin abrir (dedupe: 1 aviso por carta)
@@ -545,6 +548,12 @@ export function AppShell(router) {
   // Initial navigation state
   updateNavigation(router.getCurrentPath());
   updateMobileTopBar(router.getCurrentPath());
+
+  // ── Inicializar capa nativa (Capacitor) ──
+  // No-op en el navegador: allí no se descarga ningún paquete @capacitor/*.
+  initNativeApp();
+  // Notificaciones de la app Android: tocar un aviso abre su sección.
+  initNativePush({ onNavigate: url => router.navigate(url) });
 
   // ── Inicializar PWA ──
   // Pequeño delay para no bloquear la carga inicial

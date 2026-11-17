@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <!-- El fondo del hueco que dejan la barra de estado y el recorte: sin
+             esto, con edge-to-edge (obligatorio desde targetSdk 35) se vería
+             el blanco por defecto del tema en el notch. -->
+        <item name="android:windowBackground">@color/app_background</item>
+        <!-- El recorte (notch) deja de recortar el contenido en horizontal. -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
+    <!-- Pantalla de arranque.
+         Android 12+ ignora `android:background` y pinta su propia splash del
+         sistema: ahí mandan windowSplashScreenBackground / AnimatedIcon. En
+         versiones anteriores se usa el drawable a pantalla completa que genera
+         @capacitor/assets desde assets/splash.png. -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@drawable/splash</item>
+
+        <item name="windowSplashScreenBackground">@color/app_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
+</resources>
