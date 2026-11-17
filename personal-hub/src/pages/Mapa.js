@@ -40,7 +40,11 @@ export function MapaPage(router) {
   let pintados = 0;
   let identidad = null;
 
-  const limpiarMapa = () => body.querySelector('.distmap')?._map?.remove();
+  const limpiarMapa = () => {
+    const nodo = body.querySelector('.distmap');
+    nodo?._offStatus?.();
+    nodo?._map?.remove();
+  };
 
   const pintar = ({ me, partner, km }) => {
     limpiarMapa();

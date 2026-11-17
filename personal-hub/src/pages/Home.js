@@ -784,8 +784,6 @@ export function HomePage(router) {
   page.innerHTML = `
     <h1 class="sr-only">Inicio</h1>
 
-    ${distancePanelHTML()}
-
     <section class="home-hero" aria-label="Tiempo juntos">
       <p class="home-hero__greet">${escapeHtml(saludo)}, <span class="home-hero__greet-name">${escapeHtml(apodo)}</span></p>
       <div class="home-hero__main">
@@ -802,6 +800,8 @@ export function HomePage(router) {
     <div id="homeSpecialEventSlot">${todayEventBanner()}</div>
 
     ${shortcutsHTML()}
+
+    ${distancePanelHTML()}
 
     <div id="homeWatchSlot">${watchSectionHTML()}</div>
 

@@ -17,6 +17,7 @@ public class MainActivity extends BridgeActivity {
         // Plugin propio: refresca el widget de la distancia en cuanto la web
         // guarda un valor nuevo. Hay que registrarlo ANTES de super.onCreate.
         registerPlugin(WidgetBridgePlugin.class);
+        registerPlugin(DeviceStatusPlugin.class);
 
         super.onCreate(savedInstanceState);
 

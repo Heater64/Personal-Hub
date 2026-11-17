@@ -13,28 +13,22 @@
 import { openSheet } from './ui.js';
 import { escapeHtml } from '../utils/escape.js';
 import { formatDistance } from '../services/location.service.js';
+import {
+  getDeviceStatus,
+  onDeviceStatus,
+  networkLabel,
+  timeAgo,
+  isStale,
+  enableBackgroundTracking,
+  disableBackgroundTracking,
+  openDeviceSettings,
+  refreshBackgroundStatus,
+} from '../services/device.service.js';
+import { isNative } from '../services/native.service.js';
 import 'leaflet/dist/leaflet.css';
 
 const TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTR = '© OpenStreetMap';
-
-const NET_NAMES = {
-  wifi: 'Wi-Fi',
-  ethernet: 'Cable',
-  cellular: 'Datos',
-  '4g': '4G',
-  '3g': '3G',
-  '2g': '2G',
-  slow2g: '2G',
-};
-
-function netLabel(person) {
-  const key = String(person.net || '').toLowerCase();
-  const base = NET_NAMES[key] || (key ? key.toUpperCase() : '');
-  return Number.isFinite(person.mbps) && person.mbps > 0
-    ? `${base} · ${Math.round(person.mbps)} Mbps`
-    : base;
-}
 
 /** Una fila con la cara y los datos que ese móvil comparte. */
 function cardHTML(person, fallbackName) {
@@ -42,20 +36,128 @@ function cardHTML(person, fallbackName) {
   const bits = [];
   if (Number.isFinite(person.battery))
     bits.push(`${person.charging ? '⚡' : '🔋'} ${person.battery}%`);
-  const net = netLabel(person);
+  const net = networkLabel(person);
   if (net) bits.push(net);
   if (Number.isFinite(person.speed)) bits.push(`${person.speed} km/h`);
+  if (Number.isFinite(person.accuracy)) bits.push(`±${Math.round(person.accuracy)} m`);
+
+  const updated = timeAgo(person.at);
+  const stale = isStale(person.at);
+  const stamp = updated
+    ? stale
+      ? `Última vez ${updated}`
+      : `${person.bg ? 'Seguimiento activo' : 'Al abrir la app'} · ${updated}`
+    : '';
 
   return `
-    <article class="distmap__card">
+    <article class="distmap__card${stale ? ' is-stale' : ''}">
       <span class="distmap__ava">
         ${person.avatar ? `<img src="${escapeHtml(person.avatar)}" alt="">` : '<span aria-hidden="true">♥</span>'}
       </span>
       <div class="distmap__body">
         <strong>${escapeHtml(person.name || fallbackName)}</strong>
         <span>${bits.length ? escapeHtml(bits.join(' · ')) : 'sin datos del móvil'}</span>
+        ${stamp ? `<span class="distmap__stamp${stale ? ' is-stale' : ''}">${escapeHtml(stamp)}</span>` : ''}
       </div>
     </article>`;
+}
+
+/** Control del seguimiento en segundo plano (solo tiene sentido en el APK). */
+function trackingPanelHTML() {
+  if (!isNative()) {
+    return `<p class="distmap__note">En el navegador el estado solo se actualiza con la app abierta. En la app de Android puedes mantenerlo siempre.</p>`;
+  }
+  return `
+    <section class="distmap__track" aria-label="Seguimiento en segundo plano">
+      <div class="distmap__track-head">
+        <span class="distmap__dot" data-bg-dot></span>
+        <b>Seguimiento siempre</b>
+        <span class="distmap__track-state" data-bg-state>…</span>
+      </div>
+      <p class="distmap__track-note" data-bg-note>Batería, conexión y ubicación también con la app cerrada.</p>
+      <ul class="distmap__track-chips" data-bg-chips></ul>
+      <div class="distmap__track-actions">
+        <button class="distmap__track-btn" type="button" data-bg-toggle>Activar</button>
+        <button class="distmap__track-link" type="button" data-bg-settings hidden>Ajustes de Android</button>
+      </div>
+    </section>`;
+}
+
+/** Pinta el panel con el estado real y conecta el botón de activar/parar. */
+function wireTracking(wrap) {
+  const toggle = wrap.querySelector('[data-bg-toggle]');
+  if (!toggle) return () => {};
+
+  const dot = wrap.querySelector('[data-bg-dot]');
+  const stateEl = wrap.querySelector('[data-bg-state]');
+  const note = wrap.querySelector('[data-bg-note]');
+  const chips = wrap.querySelector('[data-bg-chips]');
+  const settings = wrap.querySelector('[data-bg-settings]');
+  let busy = false;
+
+  const render = status => {
+    const bg = status?.background || {};
+    const on = !!bg.enabled;
+    toggle.textContent = on ? 'Desactivar' : 'Activar';
+    stateEl.textContent = on ? 'Activo' : 'Inactivo';
+    dot.classList.toggle('is-on', on);
+
+    const items = [];
+    if (Number.isFinite(status?.battery))
+      items.push(`${status.charging ? '⚡' : '🔋'} ${status.battery}%`);
+    const net = networkLabel(status || {});
+    if (net) items.push(`📶 ${net}`);
+    if (status?.online === false) items.push('Sin conexión');
+    if (status?.locationPermission === 'denied') items.push('Ubicación bloqueada');
+    chips.innerHTML = items.map(text => `<li>${escapeHtml(text)}</li>`).join('');
+
+    const needsPermission = on && bg.background !== 'granted';
+    settings.hidden = !needsPermission;
+    if (needsPermission) {
+      note.textContent =
+        'Para seguir con la app cerrada, concede «Permitir todo el tiempo» en los ajustes de la app.';
+    } else if (on && bg.batteryUnrestricted === false) {
+      note.textContent =
+        'Activo. Android puede pausarlo para ahorrar batería; quita la optimización en los ajustes para que no lo haga.';
+    } else {
+      note.textContent = on
+        ? 'Batería, conexión y ubicación se actualizan también con la app cerrada.'
+        : 'Se actualiza solo con la app abierta. Actívalo para que siga en segundo plano.';
+    }
+  };
+
+  render(getDeviceStatus());
+  const off = onDeviceStatus(render);
+
+  toggle.addEventListener('click', async () => {
+    if (busy) return;
+    busy = true;
+    toggle.disabled = true;
+    try {
+      if (getDeviceStatus().background.enabled) {
+        await disableBackgroundTracking();
+      } else {
+        const result = await enableBackgroundTracking();
+        if (!result.ok) {
+          note.textContent =
+            result.reason === 'denied'
+              ? 'Sin permiso de ubicación no se puede compartir la posición.'
+              : result.reason === 'web'
+                ? 'El seguimiento en segundo plano solo existe en la app de Android.'
+                : 'No se pudo activar el seguimiento. Inténtalo otra vez.';
+        }
+      }
+      await refreshBackgroundStatus();
+      render(getDeviceStatus());
+    } finally {
+      busy = false;
+      toggle.disabled = false;
+    }
+  });
+
+  settings.addEventListener('click', () => void openDeviceSettings());
+
+  return off;
 }
 
 /** Chincheta circular con la foto. */
@@ -139,8 +241,9 @@ export function distanceMapBody({ me, partner, km, meName } = {}) {
           ${cardHTML(me, meName || 'Tú')}
           ${cardHTML(partner, 'La otra persona')}
         </div>
-        <p class="distmap__note">Las posiciones son las últimas que compartió cada móvil al abrir la app.</p>
+        ${trackingPanelHTML()}
       `;
+  wrap._offStatus = wireTracking(wrap);
   requestAnimationFrame(() => void paint(wrap, me, partner));
   return wrap;
 }
@@ -151,8 +254,9 @@ export function openDistanceMap({ me, partner, km, meName } = {}) {
     'Dónde estáis',
     () => distanceMapBody({ me, partner, km, meName }),
     () => {
-      const map = document.querySelector('.distmap')?._map;
-      map?.remove();
+      const body = document.querySelector('.distmap');
+      body?._offStatus?.();
+      body?._map?.remove();
     }
   );
 }

@@ -8,12 +8,14 @@
      · admin    → `content` id `location_admin` (lectura abierta a todos)
      · usuaria  → `user_progress` type `location` (el admin la lee por RLS)
 
-   La posición se pide al abrir la portada y al volver a primer plano. No hay
-   seguimiento en segundo plano: la app nunca sabe dónde estás si no la abres.
+   La web pide la posición al abrir la portada y al volver a primer plano.
+   Dentro del APK, `DeviceStatusService` sigue enviando batería, red y
+   ubicación con la app cerrada, en la misma fila que esto.
    ========================================== */
 
 import { supabase } from './supabase.js';
 import { isNative } from './native.service.js';
+import { deviceFactsSnapshot } from './device.service.js';
 
 const ADMIN_ROW_ID = 'location_admin';
 const SHARE_MS = 120000; // repite tu posición cada 2 min en uso
@@ -90,22 +92,38 @@ async function deviceFacts(pos) {
 
   const speed = pos?.coords?.speed;
   if (Number.isFinite(speed) && speed >= 0) facts.speed = Math.round(speed * 3.6); // km/h
+  if (Number.isFinite(pos?.coords?.accuracy)) facts.accuracy = Math.round(pos.coords.accuracy);
 
-  try {
-    const battery = await navigator.getBattery?.();
-    if (battery) {
-      facts.battery = Math.round(battery.level * 100);
-      facts.charging = !!battery.charging;
+  // La fuente es el monitor compartido (device.service): así la posición y el
+  // panel cuentan exactamente lo mismo, sin leer dos veces los sensores.
+  const shared = deviceFactsSnapshot();
+  if (Number.isFinite(shared.battery)) {
+    facts.battery = shared.battery;
+    facts.charging = shared.charging;
+  }
+  if (shared.net) facts.net = shared.net;
+  if (Number.isFinite(shared.mbps)) facts.mbps = shared.mbps;
+
+  // Si el monitor aún no ha arrancado, se pregunta al navegador una vez.
+  if (!Number.isFinite(facts.battery)) {
+    try {
+      const battery = await navigator.getBattery?.();
+      if (battery) {
+        facts.battery = Math.round(battery.level * 100);
+        facts.charging = !!battery.charging;
+      }
+    } catch {
+      /* sin Battery Status API */
     }
-  } catch {
-    /* sin Battery Status API */
   }
 
-  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if (conn) {
-    const type = conn.type && conn.type !== 'unknown' ? conn.type : conn.effectiveType;
-    if (type) facts.net = String(type);
-    if (Number.isFinite(conn.downlink)) facts.mbps = conn.downlink;
+  if (!facts.net) {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn) {
+      const type = conn.type && conn.type !== 'unknown' ? conn.type : conn.effectiveType;
+      if (type) facts.net = String(type);
+      if (Number.isFinite(conn.downlink)) facts.mbps = conn.downlink;
+    }
   }
 
   return facts;
@@ -264,6 +282,9 @@ function toLocation(data, userId) {
     net: data?.net || '',
     mbps: Number.isFinite(Number(data?.mbps)) ? Number(data.mbps) : null,
     speed: Number.isFinite(Number(data?.speed)) ? Number(data.speed) : null,
+    accuracy: Number.isFinite(Number(data?.accuracy)) ? Math.round(Number(data.accuracy)) : null,
+    // true = la fila la escribió el servicio en segundo plano del APK.
+    bg: data?.bg === true,
   };
 }
 

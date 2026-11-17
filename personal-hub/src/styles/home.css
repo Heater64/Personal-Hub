@@ -1167,16 +1167,36 @@
    MAPA — la distancia entre los dos
    ==========================================
    El mapa es decorativo (no son tus calles reales): da contexto al número.
-   Va claro siempre, también en tema oscuro, como en el diseño. */
+   Va oscuro siempre: una lámina casi blanca deslumbra con poca luz. El tono
+   no es fijo, sale de la paleta activa (coral cálido, frambuesa rosado,
+   azul frío), y el fondo se apaga con un filtro; el número pasa a claro. */
 .home-map {
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  margin-top: var(--sp-14);
   margin-bottom: var(--sp-14);
   border: 1px solid var(--border-soft);
   border-radius: var(--r-xl);
-  background: #eef1ea;
+  --map-base: color-mix(in srgb, var(--primary) 12%, #15171b);
+  --map-tint: color-mix(in srgb, var(--primary) 26%, transparent);
+  background: var(--map-base);
   box-shadow: var(--sh-s);
+}
+/* Velo de color de la paleta sobre el dibujo: el verde del mapa se neutraliza
+   en el filtro y vuelve a coger el tono del tema. */
+.home-map::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    155deg,
+    var(--map-tint) 0%,
+    color-mix(in srgb, var(--primary) 8%, transparent) 62%,
+    transparent 100%
+  );
 }
 .home-map__art {
   position: absolute;
@@ -1184,6 +1204,8 @@
   z-index: 0;
   width: 100%;
   height: 100%;
+  /* Solo el dibujo: las caras y el número quedan por encima, sin filtrar. */
+  filter: brightness(0.46) saturate(0.18) contrast(1.05);
 }
 .home-map__canvas {
   position: relative;
@@ -1202,11 +1224,11 @@
   width: clamp(66px, 21vw, 86px);
   height: clamp(66px, 21vw, 86px);
   overflow: hidden;
-  border: 3px solid #ff9db3;
+  border: 3px solid var(--primary);
   border-radius: 50%;
-  background: #d7e7f2;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.7);
-  color: #8a5b66;
+  background: color-mix(in srgb, var(--primary) 20%, #eef2f1);
+  box-shadow: 0 0 0 4px color-mix(in srgb, #ffffff 45%, transparent);
+  color: color-mix(in srgb, var(--primary) 52%, #2c2f33);
   font-size: 22px;
   font-weight: 600;
   font-family: var(--font-serif, inherit);
@@ -1219,7 +1241,7 @@
 }
 .home-map__dist {
   text-align: center;
-  color: #26261f;
+  color: #f4f5f0;
   line-height: 1.15;
 }
 .home-map__dist strong {
@@ -1232,7 +1254,7 @@
 .home-map__dist span {
   display: block;
   margin-top: 2px;
-  color: #6a6a62;
+  color: #b7bab1;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -1243,7 +1265,7 @@
   z-index: 1;
   margin: 0;
   padding: 0 16px 12px;
-  color: #6a6a62;
+  color: #b7bab1;
   font-size: 11px;
   text-align: center;
 }
@@ -1263,7 +1285,7 @@ button.home-map:active {
   transform: scale(0.995);
 }
 button.home-map:focus-visible {
-  outline: 2px solid #ff9db3;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -1360,6 +1382,108 @@ button.home-map:focus-visible {
   color: var(--text-secondary);
   font-size: var(--fs-xs, 12px);
 }
+.distmap__stamp {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.distmap__stamp.is-stale {
+  color: var(--warm-amber, #ffb347);
+}
+.distmap__card.is-stale {
+  border-style: dashed;
+}
+
+/* Seguimiento en segundo plano: estado real y un solo interruptor. */
+.distmap__track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-m);
+  background: var(--surface-2, var(--surface));
+}
+.distmap__track-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+.distmap__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+.distmap__dot.is-on {
+  background: var(--green, #4ade80);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green, #4ade80) 22%, transparent);
+}
+.distmap__track-state {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.distmap__track-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+.distmap__track-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.distmap__track-chips li {
+  padding: 3px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-3, var(--surface));
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.distmap__track-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8);
+}
+.distmap__track-btn {
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  background: var(--primary);
+  color: var(--on-accent, #fff);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.distmap__track-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.distmap__track-link {
+  padding: 7px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.distmap__track-link[hidden] {
+  display: none;
+}
 .distmap__note {
   margin: 0;
   color: var(--text-tertiary);
@@ -1371,10 +1495,10 @@ button.home-map:focus-visible {
 .home-map__allow {
   margin-left: 6px;
   padding: 3px 10px;
-  border: 1px solid #ff9db3;
+  border: 1px solid var(--primary);
   border-radius: 999px;
-  background: rgba(255, 157, 179, 0.16);
-  color: #7a3547;
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+  color: color-mix(in srgb, var(--primary) 35%, #ffffff);
   font: inherit;
   font-size: 11px;
   font-weight: 600;

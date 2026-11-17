@@ -54,6 +54,11 @@ import { showToast } from './Toast.js';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
 import { startPresence, stopPresence } from '../services/presence.service.js';
 import {
+  startDeviceMonitor,
+  syncBackgroundTracking,
+  disableBackgroundTracking,
+} from '../services/device.service.js';
+import {
   getUserPref,
   setUserPref,
   removeUserPref,
@@ -542,6 +547,9 @@ export function AppShell(router) {
         userId: userStore.getUser().id,
         isAdmin: userStore.isAdmin,
       });
+      // Seguimiento del móvil: si ya estaba activo, se refrescan las
+      // credenciales para que el servicio nativo pueda seguir enviando.
+      void syncBackgroundTracking();
       // Aviso al Admin cuando la usuaria registra su estado de ánimo.
       // Sólo el admin escucha: el usuario ya se avisa a sí mismo en el store.
       if (userStore.isAdmin && !moodNotifCleanup) {
@@ -564,6 +572,8 @@ export function AppShell(router) {
       // Logout: desactiva todo (incluida la sincronización en tiempo real)
       stopRealtime();
       stopPresence();
+      // Sin sesión no hay dónde escribir: el servicio en segundo plano se para.
+      void disableBackgroundTracking();
       syncReminderState();
       if (moodNotifCleanup) {
         moodNotifCleanup();
@@ -616,6 +626,8 @@ export function AppShell(router) {
   // ── Inicializar capa nativa (Capacitor) ──
   // No-op en el navegador: allí no se descarga ningún paquete @capacitor/*.
   initNativeApp();
+  // Batería, conexión, ubicación y permisos: una sola fuente para toda la app.
+  startDeviceMonitor();
   // Tocar un widget abre su pantalla (personalhub://juntos).
   initDeepLinks(router);
   // Notificaciones de la app Android: tocar un aviso abre su sección.

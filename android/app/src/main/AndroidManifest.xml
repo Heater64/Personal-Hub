@@ -82,6 +82,23 @@
                 android:resource="@xml/widget_distance_compact_info" />
         </receiver>
 
+        <!-- Estado del móvil en segundo plano. El tipo «location» es el que
+             permite leer ubicaciones fuera de la app. -->
+        <service
+            android:name=".DeviceStatusService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <!-- Al reiniciar el móvil se retoma el seguimiento si estaba activo. -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -102,4 +119,15 @@
          la fina se pide porque el plugin la exige en su configuración. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- Seguimiento del móvil: el servicio en primer plano mantiene ubicación,
+         batería y red al día con la app cerrada. Android 10+ exige el permiso
+         de ubicación «todo el tiempo» y Android 14+ declara el tipo de
+         servicio; el aviso fijo es obligatorio. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 </manifest>
