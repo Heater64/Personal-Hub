@@ -21,29 +21,28 @@
         </activity>
 
         <!-- Contador de días juntos en la pantalla de inicio (widget de prueba). -->
+        <!-- Widgets: exported=true es OBLIGATORIO. El launcher es otra app y es
+             quien pide la lista y envía los APPWIDGET_UPDATE; con false no
+             aparecen en el cajón de widgets. -->
         <receiver
             android:name=".DaysWidgetProvider"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/widget_days_description">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_days_info" />
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_days_info" />
         </receiver>
 
         <!-- Distancia entre los dos: lee la última que calculó la app. -->
         <receiver
             android:name=".DistanceWidgetProvider"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/widget_distance_description">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_distance_info" />
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_distance_info" />
         </receiver>
 
         <provider

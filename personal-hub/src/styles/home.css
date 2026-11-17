@@ -1115,3 +1115,65 @@ button.home-map:focus-visible {
   opacity: 0.6;
   cursor: default;
 }
+
+/* ==========================================
+   WIDGETS — colocarlos desde Inicio
+   ========================================== */
+.home-widgets {
+  margin-top: var(--sp-18);
+}
+.home-widgets__card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-l);
+  background: var(--surface);
+}
+.home-widgets__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-12);
+  padding: 14px var(--sp-16);
+}
+.home-widgets__row + .home-widgets__row {
+  border-top: 1px solid var(--border-soft);
+}
+.home-widgets__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.home-widgets__body b {
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.home-widgets__body span {
+  color: var(--text-secondary);
+  font-size: var(--fs-xs, 12px);
+}
+.home-widgets__add {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.home-widgets__add:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+.home-widgets__note {
+  margin: 8px 0 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  text-align: center;
+}

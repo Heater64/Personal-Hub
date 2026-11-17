@@ -47,6 +47,7 @@ import {
   formatDistance,
 } from '../services/location.service.js';
 import { openDistanceMap } from '../components/DistanceMapSheet.js';
+import { isNative } from '../services/native.service.js';
 
 // ==========================================
 // SEED — contenido que cambia cada día
@@ -687,6 +688,68 @@ function initDistancePanel(page) {
 }
 
 // ==========================================
+// WIDGETS — colocarlos desde la app
+// ==========================================
+// Android no deja añadir un widget desde código: lo que sí puede hacer la app
+// es abrir el diálogo de confirmación del sistema (requestPinAppWidget). Solo
+// tiene sentido dentro del APK, así que en el navegador no se pinta nada.
+function widgetsSectionHTML() {
+  if (!isNative()) return '';
+  const rows = [
+    ['distance', 'Distancia', 'Los kilómetros, en tu pantalla de inicio'],
+    ['days', 'Días juntos', 'El contador de la portada'],
+  ];
+  return `
+    <section class="home-widgets" aria-label="Widgets">
+      <h2 class="section-title">Widgets</h2>
+      <div class="home-widgets__card">
+        ${rows
+          .map(
+            ([id, title, sub]) => `
+          <div class="home-widgets__row">
+            <span class="home-widgets__body">
+              <b>${title}</b>
+              <span>${sub}</span>
+            </span>
+            <button type="button" class="home-widgets__add" data-pin-widget="${id}">Añadir</button>
+          </div>`
+          )
+          .join('')}
+      </div>
+      <p class="home-widgets__note">Si no sale el diálogo, mantén pulsado un hueco del escritorio → Widgets → Hub🧸.</p>
+    </section>
+  `;
+}
+
+function initWidgetsSection(page) {
+  page.querySelectorAll('[data-pin-widget]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const bridge = window.Capacitor?.Plugins?.WidgetBridge;
+      const original = btn.textContent;
+
+      if (!bridge?.requestPin) {
+        btn.textContent = 'No disponible';
+        setTimeout(() => (btn.textContent = original), 2500);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Abriendo…';
+      try {
+        const result = await bridge.requestPin({ widget: btn.dataset.pinWidget });
+        btn.textContent = result?.pinned ? 'Listo ✓' : 'Hazlo a mano';
+      } catch {
+        btn.textContent = 'Hazlo a mano';
+      }
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = original;
+      }, 3000);
+    });
+  });
+}
+
+// ==========================================
 // MAIN
 // ==========================================
 export function HomePage(router) {
@@ -756,10 +819,15 @@ export function HomePage(router) {
       ${tileSeries(continueList, posters, continueFirst)}
       ${tileSong(song)}
     </div>
+
+    ${widgetsSectionHTML()}
   `;
 
   // Distancia: se pide la posición al entrar y se para al salir de la página
   const stopDistance = initDistancePanel(page);
+
+  // Botones «Añadir» de los widgets (solo existen dentro del APK)
+  initWidgetsSection(page);
 
   // Contador — arranca ya y se corrige cuando llegan las fechas reales
   animateNumber(page.querySelector('#homeCounter'), daysSince);
