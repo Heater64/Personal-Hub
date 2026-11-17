@@ -236,6 +236,8 @@ export const ROUTES = [
     sidebarGroup: 'sentimientos',
   },
   {
+    // Pantalla completa: sin sidebar, sin barra inferior y sin barra de
+    // vuelta. Se sale con la flecha de la conversación o deslizando.
     path: '/maldia',
     label: 'Mal Día',
     icon: 'sun',
@@ -244,6 +246,7 @@ export const ROUTES = [
     section: 'sentimientos',
     parent: '/sentimientos',
     sidebarGroup: 'sentimientos',
+    chrome: false,
   },
   {
     path: '/menstruacion',

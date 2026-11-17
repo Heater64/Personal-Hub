@@ -531,11 +531,13 @@ test('Mal Día: el admin responde a un mensaje concreto y puede borrarlo', async
   assert.match(service, /text: String\(replyTo\.text\)\.trim\(\)\.slice\(0, 140\)/);
   assert.match(maldia, /md-bubble__quote/);
 
-  // Responder y borrar solo existen en la vista del admin: los botones se
-  // generan dentro de la rama `iAmAdmin ?`.
-  assert.match(maldia, /const tools = iAmAdmin \? `/, 'las herramientas son solo del admin');
-  assert.match(maldia, /data-reply-idx="\$\{idx\}"/);
-  assert.match(maldia, /data-delete-idx="\$\{idx\}"/);
+  // Responder y borrar ya no se pintan en cada burbuja: se abren al tocar el
+  // mensaje, y solo el admin tiene el asa que abre sus acciones.
+  assert.match(maldia, /const canAct = iAmAdmin \?/, 'las acciones son solo del admin');
+  assert.match(maldia, /data-msg-idx="\$\{idx\}"/, 'la burbuja del admin se puede tocar');
+  assert.match(maldia, /id="mdMsgSheet"/, 'un solo menú de acciones para toda la conversación');
+  assert.match(maldia, /data-msg-action="reply"/);
+  assert.match(maldia, /data-msg-action="delete"/);
 
   // Borrar cubre las dos fuentes: respuestas en content y notas en la fila de
   // ella, con lápida para que su copia local no la resucite.

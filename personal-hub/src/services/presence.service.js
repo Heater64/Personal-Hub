@@ -5,6 +5,10 @@
    latido cada 30 s y el otro lo lee por polling: si el último latido tiene
    más de 75 s, la persona está desconectada.
 
+   El mismo latido lleva el aviso de "escribiendo": `setTyping()` escribe la
+   marca y el otro lado la considera vigente 5 s. No hay cambio de esquema;
+   es el mismo JSON de siempre con un campo más.
+
    Sin cambios de esquema. La tabla `user_progress` ya es genérica y su RLS
    deja al admin leer las filas de la otra persona
    (`user_progress_select_own` incluye `OR public.is_admin()`), pero la
@@ -17,39 +21,49 @@
 import { supabase } from './supabase.js';
 
 const BEAT_MS = 30000;
-const STALE_MS = 75000;      // sin latido en 75 s → desconectado
+const STALE_MS = 75000;       // sin latido en 75 s → desconectado
+const TYPING_MS = 5000;       // "escribiendo…" dura 5 s desde el último aviso
+const TYPING_WRITE_MS = 2500; // no escribir en red más de una vez cada 2,5 s
 const ADMIN_ROW_ID = 'presence_admin';
 
 let beatTimer = null;
 let self = null;             // { userId, isAdmin }
 let onVisible = null;
+let typingAt = null;         // ISO del último "escribiendo" de este lado
+let lastTypingWrite = 0;
 
 const isDbReady = () => !!supabase;
 
-/** Escribe el latido de este dispositivo donde el otro puede leerlo. */
-async function beat() {
+/** Escribe la fila de presencia con el latido y, si toca, el "escribiendo". */
+async function writePresence() {
   if (!self?.userId || !isDbReady()) return;
   const at = new Date().toISOString();
+  const data = { at };
+  if (typingAt) data.typing_at = typingAt;
   try {
     if (self.isAdmin) {
       await supabase.from('content').upsert(
-        { id: ADMIN_ROW_ID, data: { at, user_id: self.userId }, updated_at: at },
+        { id: ADMIN_ROW_ID, data: { ...data, user_id: self.userId }, updated_at: at },
         { onConflict: 'id' }
       );
     } else {
       await supabase.from('user_progress').upsert(
-        { user_id: self.userId, type: 'presence', data: { at }, updated_at: at },
+        { user_id: self.userId, type: 'presence', data, updated_at: at },
         { onConflict: 'user_id,type' }
       );
     }
   } catch { /* sin conexión: el siguiente latido lo reintenta */ }
 }
 
+function beat() { writePresence(); }
+
 /** Empieza a latir (idempotente). Se llama al iniciar sesión. */
 export function startPresence({ userId, isAdmin } = {}) {
   if (!userId || !isDbReady()) return;
   stopPresence();
   self = { userId: String(userId), isAdmin: !!isAdmin };
+  typingAt = null;
+  lastTypingWrite = 0;
   beat();
   beatTimer = setInterval(beat, BEAT_MS);
   onVisible = () => { if (document.visibilityState === 'visible') beat(); };
@@ -61,9 +75,32 @@ export function stopPresence() {
   if (beatTimer) { clearInterval(beatTimer); beatTimer = null; }
   if (onVisible) { document.removeEventListener('visibilitychange', onVisible); onVisible = null; }
   self = null;
+  typingAt = null;
+  lastTypingWrite = 0;
 }
 
-/** Lee el último latido de la otra persona: { at, userId } o null. */
+/**
+ * Avisa de que esta persona está escribiendo (`setTyping()`), o de que ha
+ * dejado de hacerlo (`setTyping(false)`). El aviso viaja en el mismo latido
+ * que ya se escribe cada 30 s, así que no hay peticiones de más.
+ */
+export function setTyping(active = true) {
+  if (!self?.userId || !isDbReady()) return;
+  const now = Date.now();
+  if (!active) {
+    if (!typingAt) return;          // no había nada que apagar
+    typingAt = null;
+    lastTypingWrite = 0;
+    writePresence();
+    return;
+  }
+  if (now - lastTypingWrite < TYPING_WRITE_MS) return; // throttle
+  lastTypingWrite = now;
+  typingAt = new Date(now).toISOString();
+  writePresence();
+}
+
+/** Lee el último latido de la otra persona: { at, typingAt, userId } o null. */
 export async function fetchPartnerPresence() {
   if (!self?.userId || !isDbReady()) return null;
   try {
@@ -78,7 +115,9 @@ export async function fetchPartnerPresence() {
         .limit(1);
       if (error) throw error;
       const row = data?.[0];
-      return row ? { at: row.data?.at || row.updated_at, userId: row.user_id } : null;
+      return row
+        ? { at: row.data?.at || row.updated_at, typingAt: row.data?.typing_at || null, userId: row.user_id }
+        : null;
     }
     // La otra persona es el admin: su latido vive en content.
     const { data, error } = await supabase
@@ -87,7 +126,41 @@ export async function fetchPartnerPresence() {
       .eq('id', ADMIN_ROW_ID)
       .maybeSingle();
     if (error) throw error;
-    return data ? { at: data.data?.at || data.updated_at, userId: data.data?.user_id || null } : null;
+    return data
+      ? { at: data.data?.at || data.updated_at, typingAt: data.data?.typing_at || null, userId: data.data?.user_id || null }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Nombre y foto de la otra persona: su perfil de verdad (tabla `profiles`,
+ * la misma que usan Inicio y el mapa). El id sale del latido, que cada rol
+ * escribe donde el otro puede leerlo.
+ */
+export async function fetchPartnerProfile(userId = null) {
+  if (!isDbReady()) return null;
+  try {
+    let id = userId || (await fetchPartnerPresence())?.userId;
+    // Sin latido (recién instalado, o nunca abrió la app) se busca su perfil
+    // por descarte: cualquier perfil que no sea el mío.
+    if (!id && self?.userId) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .neq('id', self.userId)
+        .limit(1);
+      id = data?.[0]?.id || null;
+    }
+    if (!id) return null;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('name, avatar_url')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? { name: data.name || '', avatar: data.avatar_url || '' } : null;
   } catch {
     return null;
   }
@@ -100,8 +173,15 @@ export function isRecent(iso) {
   return Number.isFinite(t) && Date.now() - t < STALE_MS;
 }
 
+/** ¿Ese aviso de "escribiendo" sigue vigente? */
+export function isTyping(iso) {
+  if (!iso) return false;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) && Date.now() - t < TYPING_MS;
+}
+
 /**
- * Vigila la presencia de la otra persona y avisa con { online, at }:
+ * Vigila la presencia de la otra persona y avisa con { online, at, typing }:
  * una vez al empezar, cada `intervalMs` y al volver a la pestaña.
  * Devuelve la función para dejar de vigilar (page.cleanup).
  */
@@ -110,7 +190,12 @@ export function watchPartnerPresence(handler, { intervalMs = 20000 } = {}) {
   const tick = async () => {
     const partner = await fetchPartnerPresence();
     if (!alive) return;
-    handler({ online: isRecent(partner?.at), at: partner?.at || null });
+    handler({
+      online: isRecent(partner?.at),
+      at: partner?.at || null,
+      typing: isTyping(partner?.typingAt),
+      userId: partner?.userId || null
+    });
   };
   tick();
   const timer = setInterval(tick, intervalMs);
