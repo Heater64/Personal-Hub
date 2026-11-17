@@ -814,10 +814,22 @@ export function HomePage(router) {
   // Datos de los widgets: se guardan cada vez que cambian las caras o la
   // distancia, porque el widget no puede calcularlos por su cuenta.
   const widgetStats = togetherBreakdown(daysSince);
-  let widgetAvatars = { me: null, partner: null, stats: widgetStats };
+  let widgetAvatars = {
+    me: null,
+    partner: null,
+    stats: widgetStats,
+    days: daysSince,
+    km: null,
+  };
 
   const handleDistanceChange = state => {
-    widgetAvatars = { me: state.me, partner: state.partner, stats: widgetStats };
+    widgetAvatars = {
+      me: state.me,
+      partner: state.partner,
+      stats: widgetStats,
+      days: daysSince,
+      km: Number.isFinite(state.km) ? formatDistance(state.km) : null,
+    };
     if (!isNative()) return;
     saveDaysWidget({
       days: daysSince,

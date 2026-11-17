@@ -2,19 +2,23 @@ package com.heater64.personalhub;
 
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONObject;
 
 /**
- * Pinta los dos widgets. Está todo aquí para que los cuatro providers
- * (días/distancia × pequeño/grande) solo digan cuál son.
+ * Pinta los widgets.
+ *
+ * Cada tamaño tiene su PROPIO layout: el pequeño no es el grande con letra
+ * menor (eso se veía igual y no servía de nada elegir). Los tamaños de texto
+ * viven en el XML, no se tocan desde aquí, para que lo que se ve en la app sea
+ * exactamente lo que se ve en la pantalla de inicio.
  */
 final class WidgetRenderer {
 
     private WidgetRenderer() {}
 
-    /** Repinta los ids del provider indicado, en el tamaño que le toque. */
     static void refresh(Context context, AppWidgetManager manager, Class<?> provider, int[] ids) {
         String name = provider.getSimpleName();
         boolean compact = name.contains("Compact");
@@ -28,7 +32,90 @@ final class WidgetRenderer {
     }
 
     // ==========================================
-    // TIEMPO JUNTOS — años, meses y días sueltos
+    // DÍAS JUNTOS
+    //   grande: caras + «501 días / juntos»
+    //   pequeño: solo el número
+    // ==========================================
+    static void renderDays(Context context, AppWidgetManager manager, int[] ids, boolean compact) {
+        JSONObject data = WidgetSupport.read(context, "widget_days");
+        int days = data == null ? 0 : data.optInt("days", 0);
+
+        for (int id : ids) {
+            RemoteViews views = compact
+                    ? new RemoteViews(context.getPackageName(), R.layout.widget_days_compact)
+                    : new RemoteViews(context.getPackageName(), R.layout.widget_days);
+
+            views.setTextViewText(R.id.widget_days_count, String.valueOf(days));
+
+            if (!compact) {
+                String me = WidgetSupport.faceUrl(data, "me");
+                String partner = WidgetSupport.faceUrl(data, "partner");
+
+                if (me.isEmpty()) WidgetSupport.clearFace(views, R.id.widget_days_me);
+                else WidgetSupport.setFace(views, context, R.id.widget_days_me, me);
+
+                if (partner.isEmpty()) WidgetSupport.clearFace(views, R.id.widget_days_partner);
+                else WidgetSupport.setFace(views, context, R.id.widget_days_partner, partner);
+
+                views.setViewVisibility(
+                        R.id.widget_days_faces,
+                        me.isEmpty() && partner.isEmpty() ? View.GONE : View.VISIBLE);
+            }
+
+            WidgetSupport.openApp(context, views, R.id.widget_days_root);
+            manager.updateAppWidget(id, views);
+        }
+
+        if (!compact) scheduleFaceRefresh(context, data, DaysWidgetProvider.class);
+    }
+
+    // ==========================================
+    // DISTANCIA
+    //   grande: «estáis a / 301 km / caras / hace 2 min»
+    //   pequeño: solo «301 km»
+    // ==========================================
+    static void renderDistance(Context context, AppWidgetManager manager, int[] ids, boolean compact) {
+        JSONObject data = WidgetSupport.read(context, "widget_distance");
+        String text = data == null ? "" : data.optString("text", "");
+        String value = text.isEmpty() ? "—" : text;
+
+        for (int id : ids) {
+            RemoteViews views = compact
+                    ? new RemoteViews(context.getPackageName(), R.layout.widget_distance_compact)
+                    : new RemoteViews(context.getPackageName(), R.layout.widget_distance);
+
+            views.setTextViewText(R.id.widget_distance_value, value);
+
+            if (!compact) {
+                views.setTextViewText(
+                        R.id.widget_distance_caption,
+                        text.isEmpty() ? context.getString(R.string.widget_distance_empty) : agoLabel(data));
+
+                String me = WidgetSupport.faceUrl(data, "me");
+                String partner = WidgetSupport.faceUrl(data, "partner");
+
+                if (me.isEmpty()) WidgetSupport.clearFace(views, R.id.widget_distance_me);
+                else WidgetSupport.setFace(views, context, R.id.widget_distance_me, me);
+
+                if (partner.isEmpty()) WidgetSupport.clearFace(views, R.id.widget_distance_partner);
+                else WidgetSupport.setFace(views, context, R.id.widget_distance_partner, partner);
+
+                views.setViewVisibility(
+                        R.id.widget_distance_faces,
+                        me.isEmpty() && partner.isEmpty() ? View.GONE : View.VISIBLE);
+            }
+
+            WidgetSupport.openApp(context, views, R.id.widget_distance_root);
+            manager.updateAppWidget(id, views);
+        }
+
+        if (!compact) scheduleFaceRefresh(context, data, DistanceWidgetProvider.class);
+    }
+
+    // ==========================================
+    // TIEMPO JUNTOS
+    //   grande: años + meses + días
+    //   pequeño: meses + días
     // ==========================================
     static void renderTogether(Context context, AppWidgetManager manager, int[] ids, boolean compact) {
         JSONObject data = WidgetSupport.read(context, "widget_days");
@@ -37,120 +124,22 @@ final class WidgetRenderer {
         int days = data == null ? 0 : data.optInt("d", 0);
 
         for (int id : ids) {
-            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_together);
-            views.setTextViewText(R.id.widget_together_years, String.valueOf(years));
+            RemoteViews views = compact
+                    ? new RemoteViews(context.getPackageName(), R.layout.widget_together_compact)
+                    : new RemoteViews(context.getPackageName(), R.layout.widget_together);
+
             views.setTextViewText(R.id.widget_together_months, String.valueOf(months));
             views.setTextViewText(R.id.widget_together_days, String.valueOf(days));
-
-            int big = compact ? 22 : 30;
-            int small = compact ? 11 : 13;
-            views.setTextViewTextSize(R.id.widget_together_years, android.util.TypedValue.COMPLEX_UNIT_SP, big);
-            views.setTextViewTextSize(R.id.widget_together_months, android.util.TypedValue.COMPLEX_UNIT_SP, big);
-            views.setTextViewTextSize(R.id.widget_together_days, android.util.TypedValue.COMPLEX_UNIT_SP, big);
-            views.setTextViewTextSize(R.id.widget_together_years_unit, android.util.TypedValue.COMPLEX_UNIT_SP, small);
-            views.setTextViewTextSize(R.id.widget_together_months_unit, android.util.TypedValue.COMPLEX_UNIT_SP, small);
-            views.setTextViewTextSize(R.id.widget_together_days_unit, android.util.TypedValue.COMPLEX_UNIT_SP, small);
-            views.setTextViewTextSize(R.id.widget_together_label, android.util.TypedValue.COMPLEX_UNIT_SP, small - 2);
-            views.setTextViewTextSize(R.id.widget_together_caption, android.util.TypedValue.COMPLEX_UNIT_SP, small - 1);
-
-            // En el tamaño pequeño los años no caben: se ocultan sus dos vistas.
-            int yearVisibility = compact ? android.view.View.GONE : android.view.View.VISIBLE;
-            views.setViewVisibility(R.id.widget_together_years, yearVisibility);
-            views.setViewVisibility(R.id.widget_together_years_unit, yearVisibility);
+            if (!compact) views.setTextViewText(R.id.widget_together_years, String.valueOf(years));
 
             WidgetSupport.openApp(context, views, R.id.widget_together_root);
             manager.updateAppWidget(id, views);
         }
     }
 
-    // ==========================================
-    // DÍAS JUNTOS — tarjeta oscura con las dos caras
-    // ==========================================
-    static void renderDays(Context context, AppWidgetManager manager, int[] ids, boolean compact) {
-        JSONObject data = WidgetSupport.read(context, "widget_days");
-        int days = data == null ? 0 : data.optInt("days", 0);
-
-        for (int id : ids) {
-            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_days);
-            views.setTextViewText(R.id.widget_days_count, String.valueOf(days));
-
-            int big = compact ? 30 : 44;
-            int small = compact ? 12 : 15;
-            views.setTextViewTextSize(R.id.widget_days_count, android.util.TypedValue.COMPLEX_UNIT_SP, big);
-            views.setTextViewTextSize(R.id.widget_days_unit, android.util.TypedValue.COMPLEX_UNIT_SP, small + 2);
-            views.setTextViewTextSize(R.id.widget_days_caption, android.util.TypedValue.COMPLEX_UNIT_SP, small);
-
-            boolean hasMe = data != null && !WidgetSupport.faceUrl(data, "me").isEmpty();
-            boolean hasThem = data != null && !WidgetSupport.faceUrl(data, "partner").isEmpty();
-
-            if (hasMe) {
-                WidgetSupport.setFace(views, context, R.id.widget_days_me, WidgetSupport.faceUrl(data, "me"));
-            } else {
-                WidgetSupport.clearFace(views, R.id.widget_days_me);
-            }
-            if (hasThem) {
-                WidgetSupport.setFace(views, context, R.id.widget_days_partner, WidgetSupport.faceUrl(data, "partner"));
-            } else {
-                WidgetSupport.clearFace(views, R.id.widget_days_partner);
-            }
-
-            views.setViewVisibility(R.id.widget_days_faces,
-                    hasMe || hasThem ? android.view.View.VISIBLE : android.view.View.GONE);
-
-            WidgetSupport.openApp(context, views, R.id.widget_days_root);
-            manager.updateAppWidget(id, views);
-        }
-
-        // Si falta alguna foto, el descargador avisa y se repinta.
-        scheduleFaceRefresh(context, data, DaysWidgetProvider.class);
-    }
-
-    // ==========================================
-    // DISTANCIA — tarjeta clara con el número
-    // ==========================================
-    static void renderDistance(Context context, AppWidgetManager manager, int[] ids, boolean compact) {
-        JSONObject data = WidgetSupport.read(context, "widget_distance");
-        String text = data == null ? null : data.optString("text", null);
-
-        for (int id : ids) {
-            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_distance);
-            views.setTextViewText(R.id.widget_distance_value, text == null || text.isEmpty() ? "—" : text);
-
-            int big = compact ? 26 : 38;
-            int small = compact ? 10 : 12;
-            views.setTextViewTextSize(R.id.widget_distance_value, android.util.TypedValue.COMPLEX_UNIT_SP, big);
-            views.setTextViewTextSize(R.id.widget_distance_label, android.util.TypedValue.COMPLEX_UNIT_SP, small);
-            views.setTextViewTextSize(R.id.widget_distance_caption, android.util.TypedValue.COMPLEX_UNIT_SP, small - 1);
-
-            views.setTextViewText(
-                    R.id.widget_distance_caption,
-                    text == null ? context.getString(R.string.widget_distance_empty) : agoLabel(data));
-
-            boolean hasMe = data != null && !WidgetSupport.faceUrl(data, "me").isEmpty();
-            boolean hasThem = data != null && !WidgetSupport.faceUrl(data, "partner").isEmpty();
-
-            if (hasMe) {
-                WidgetSupport.setFace(views, context, R.id.widget_distance_me, WidgetSupport.faceUrl(data, "me"));
-            } else {
-                WidgetSupport.clearFace(views, R.id.widget_distance_me);
-            }
-            if (hasThem) {
-                WidgetSupport.setFace(views, context, R.id.widget_distance_partner, WidgetSupport.faceUrl(data, "partner"));
-            } else {
-                WidgetSupport.clearFace(views, R.id.widget_distance_partner);
-            }
-
-            WidgetSupport.openApp(context, views, R.id.widget_distance_root);
-            manager.updateAppWidget(id, views);
-        }
-
-        scheduleFaceRefresh(context, data, DistanceWidgetProvider.class);
-    }
-
     /** «hace 5 min», «hace 2 h» o «abre la app». */
     private static String agoLabel(JSONObject data) {
-        String iso = data == null ? "" : data.optString("at", "");
-        long at = parseIso(iso);
+        long at = parseIso(data == null ? "" : data.optString("at", ""));
         if (at <= 0L) return "sin actualizar";
 
         long minutes = Math.max(0L, (System.currentTimeMillis() - at) / 60000L);
@@ -178,10 +167,7 @@ final class WidgetRenderer {
         return 0L;
     }
 
-    /**
-     * Las fotos se descargan una sola vez: si aún no están en caché, se lanza
-     * la descarga y, al terminar, se repinta el widget.
-     */
+    /** Descarga las caras que falten y repinta al terminar. */
     private static void scheduleFaceRefresh(Context context, JSONObject data, Class<?> provider) {
         if (data == null) return;
         String[] urls = { WidgetSupport.faceUrl(data, "me"), WidgetSupport.faceUrl(data, "partner") };

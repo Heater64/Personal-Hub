@@ -1363,3 +1363,130 @@ button.home-map:focus-visible {
   line-height: 1.2;
   text-align: center;
 }
+
+/* ==========================================
+   VISTA PREVIA FIEL: cada tamaño con su forma
+   ==========================================
+   El widget grande es apaisado (~2,2:1) y el pequeño cuadrado, así que la
+   miniatura también. Va encima del texto para que se lea como el real. */
+.wsheet__item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-10);
+}
+.wsheet__preview {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  flex: none;
+}
+.wprev {
+  width: 100%;
+  max-width: 340px;
+  justify-content: center;
+  gap: 4px;
+}
+.wprev--wide {
+  aspect-ratio: 2.2 / 1;
+}
+.wprev--compact {
+  max-width: 152px;
+  aspect-ratio: 1 / 1;
+}
+.wprev__faces {
+  gap: 0;
+}
+.wprev__face {
+  width: 40px;
+  height: 40px;
+}
+.wprev--compact .wprev__face {
+  width: 30px;
+  height: 30px;
+}
+.wprev__big {
+  font-size: 13px;
+}
+.wprev__big b {
+  font-size: 34px;
+}
+.wprev--compact .wprev__big b {
+  font-size: 30px;
+}
+.wprev__sub {
+  font-size: 13px;
+}
+.wprev--distance .wprev__big b {
+  font-size: 32px;
+}
+.wprev--compact.wprev--distance .wprev__big b {
+  font-size: 28px;
+}
+.wprev__label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+.wprev__caption {
+  margin: 0;
+  font-size: 9px;
+  opacity: 0.7;
+}
+.wprev__triple {
+  gap: 10px;
+  font-size: 11px;
+}
+.wprev__triple b {
+  font-size: 26px;
+}
+.wprev--compact .wprev__triple {
+  gap: 8px;
+}
+.wprev--compact .wprev__triple b {
+  font-size: 22px;
+}
+.wprev--compact .wprev__label {
+  font-size: 7px;
+}
+.wprev--compact .wprev__caption {
+  font-size: 7px;
+}
+
+/* La tipografía global pinta <b> en blanco: dentro del widget manda su color. */
+.wprev b,
+.wprev strong {
+  color: inherit;
+  font-weight: 700;
+}
+.wprev--compact {
+  max-width: 140px;
+  gap: 3px;
+}
+.wprev--compact .wprev__triple {
+  gap: 6px;
+  font-size: 9px;
+}
+.wprev--compact .wprev__triple b {
+  font-size: 18px;
+}
+.wprev--compact .wprev__caption {
+  display: none;
+}
+.wprev--compact .wprev__label {
+  font-size: 8px;
+}
+
+/* Y por si alguna regla global gana: color explícito por tarjeta. */
+.wprev--days b,
+.wprev--together b {
+  color: #ffffff;
+}
+.wprev--distance b {
+  color: #7a3a44;
+}
+.wprev--days,
+.wprev--together {
+  color: #ffffff;
+}
+.wprev--distance {
+  color: #7a3a44;
+}
