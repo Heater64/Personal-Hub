@@ -6,16 +6,18 @@
    fecha, la píldora de cristal con años/meses/días y, abajo, el mismo tiempo
    dicho de otra forma.
 
-   Arriba a la derecha hay un engranaje: elige fondo (cinco ambientes) y lleva
-   a la fecha del aniversario cuando quien mira es el admin.
+   Arriba a la derecha hay un engranaje: elegir fondo (cinco ambientes con
+   imagen propia), poner una foto del móvil como fondo, y la fecha del
+   aniversario con acceso al panel.
    ========================================== */
 
 import { daysSinceAnniversary, loadSpecialDates, specialDates } from '../utils/specialDates.js';
 import { togetherBreakdown } from '../services/widgets.service.js';
-import { icon, openSheet } from '../components/ui.js';
+import { subirFondoJuntos, borrarFondoJuntos } from '../services/fondos.service.js';
+import { icon, openSheet, closeSheets } from '../components/ui.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userStore } from '../stores/user.store.js';
-import { getUserPref, setUserPref } from '../utils/userStorage.js';
+import { getUserPref, setUserPref, removeUserPref } from '../utils/userStorage.js';
 
 const MESES = [
   'enero',
@@ -48,6 +50,8 @@ const FONDOS = [
 ];
 
 const PREF_FONDO = 'juntosTheme';
+// Foto propia (URL de Supabase). Manda sobre el ambiente elegido.
+const PREF_FOTO = 'juntosFoto';
 
 const EXT_FOTO = ['webp', 'jpg', 'jpeg', 'png'];
 
@@ -89,13 +93,18 @@ function fotoDe(fondo) {
   return fotos.get(fondo.id) || null;
 }
 
+/** La foto que se ve: la propia si la hay, si no la del ambiente. */
+function fotoVisible(fondo) {
+  return getUserPref(PREF_FOTO) || fotoDe(fondo);
+}
+
 function fondoActual() {
   const id = getUserPref(PREF_FONDO, 'plaza');
   return FONDOS.find(f => f.id === id) || FONDOS[0];
 }
 
 function estiloFondo(fondo) {
-  const foto = fotoDe(fondo);
+  const foto = fotoVisible(fondo);
   return [
     `--j-base:${fondo.base}`,
     `--j-a:${fondo.a}`,
@@ -136,13 +145,20 @@ export function JuntosPage(router) {
   const page = document.createElement('div');
   page.className = 'juntos-page';
 
+  /** Pinta el fondo que toque (foto propia > imagen del ambiente > degradado). */
+  const pintarFondo = () => {
+    const fondo = fondoActual();
+    page.style.cssText = estiloFondo(fondo);
+    page.classList.toggle('is-photo', Boolean(fotoVisible(fondo)));
+    // Foto del móvil: se ve tal cual, sin luces ni velo encima.
+    page.classList.toggle('is-foto-propia', Boolean(getUserPref(PREF_FOTO)));
+  };
+
   const render = () => {
     const m = medidas();
     const aniversario = fechaLarga(specialDates().anniversary);
-    const fondo = fondoActual();
 
-    page.style.cssText = estiloFondo(fondo);
-    page.classList.toggle('is-photo', Boolean(fotoDe(fondo)));
+    pintarFondo();
 
     page.innerHTML = `
       <div class="juntos__bg" aria-hidden="true">
@@ -181,7 +197,7 @@ export function JuntosPage(router) {
     `;
   };
 
-  /** Engranaje: fondo y fecha del aniversario. */
+  /** Engranaje: fondos, foto propia y fecha del aniversario. */
   const abrirAjustes = () => {
     openSheet('Ajustes', () => {
       const wrap = document.createElement('div');
@@ -202,6 +218,18 @@ export function JuntosPage(router) {
           ).join('')}
         </div>
 
+        <p class="jsettings__group">elige entre fotos</p>
+        <div class="jsettings__row">
+          <span class="jsettings__row-body">
+            <b data-foto-titulo>Una foto de tu móvil</b>
+            <span data-foto-sub>Se usa como fondo de esta pantalla</span>
+          </span>
+          <button type="button" class="jsettings__go" data-foto-pick>Elegir</button>
+        </div>
+        <button type="button" class="jsettings__ghost" data-foto-clear hidden>Quitar mi foto</button>
+        <input type="file" accept="image/*" data-foto-input hidden>
+        <p class="jsettings__hint" data-foto-hint hidden></p>
+
         <p class="jsettings__group">aniversario</p>
         <div class="jsettings__row">
           <span class="jsettings__row-body">
@@ -216,26 +244,93 @@ export function JuntosPage(router) {
         </div>
       `;
 
-      // Elegir fondo: se guarda por usuario y se repinta en el acto.
-      wrap.querySelectorAll('[data-fondo]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.dataset.fondo;
-          const fondo = FONDOS.find(f => f.id === id) || FONDOS[0];
+      const botones = [...wrap.querySelectorAll('[data-fondo]')];
+      const tituloFoto = wrap.querySelector('[data-foto-titulo]');
+      const subFoto = wrap.querySelector('[data-foto-sub]');
+      const btnElegir = wrap.querySelector('[data-foto-pick]');
+      const btnQuitar = wrap.querySelector('[data-foto-clear]');
+      const input = wrap.querySelector('[data-foto-input]');
+      const hint = wrap.querySelector('[data-foto-hint]');
+
+      /** Deja la hoja y la pantalla de acuerdo con lo guardado. */
+      const sincronizar = () => {
+        const elegido = fondoActual();
+        const propia = Boolean(getUserPref(PREF_FOTO));
+
+        botones.forEach(b => {
+          const on = b.dataset.fondo === elegido.id && !propia;
+          b.classList.toggle('is-on', on);
+          b.setAttribute('aria-pressed', String(on));
+        });
+
+        tituloFoto.textContent = propia ? 'Foto tuya' : 'Una foto de tu móvil';
+        subFoto.textContent = propia
+          ? 'Es tu fondo ahora mismo'
+          : 'Se usa como fondo de esta pantalla';
+        btnElegir.textContent = propia ? 'Cambiar' : 'Elegir';
+        btnQuitar.hidden = !propia;
+
+        pintarFondo();
+      };
+
+      const aviso = texto => {
+        hint.hidden = !texto;
+        hint.textContent = texto || '';
+      };
+
+      // Ambiente: quita la foto propia, para que se vea lo que acabas de elegir.
+      botones.forEach(b => {
+        b.addEventListener('click', () => {
+          const fondo = FONDOS.find(f => f.id === b.dataset.fondo) || FONDOS[0];
           setUserPref(PREF_FONDO, fondo.id);
-          page.style.cssText = estiloFondo(fondo);
-          page.classList.toggle('is-photo', Boolean(fotoDe(fondo)));
-          wrap.querySelectorAll('[data-fondo]').forEach(b => {
-            const on = b === btn;
-            b.classList.toggle('is-on', on);
-            b.setAttribute('aria-pressed', String(on));
-          });
+          if (getUserPref(PREF_FOTO)) {
+            removeUserPref(PREF_FOTO);
+            borrarFondoJuntos().catch(() => {});
+          }
+          aviso('');
+          sincronizar();
         });
       });
 
-      wrap
-        .querySelector('[data-go-admin]')
-        ?.addEventListener('click', () => router.navigate('/admin'));
+      // Foto del móvil (o del ordenador): input file, que el WebView del APK
+      // abre con la galería del sistema.
+      btnElegir.addEventListener('click', () => input.click());
 
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        input.value = '';
+        if (!file) return;
+
+        btnElegir.disabled = true;
+        btnElegir.textContent = 'Subiendo…';
+        aviso('Preparando y subiendo tu foto…');
+
+        try {
+          const url = await subirFondoJuntos(file);
+          setUserPref(PREF_FOTO, url);
+          aviso('Listo: tu foto ya es el fondo.');
+          pintarFondo();
+        } catch (err) {
+          aviso(err?.message || 'No se pudo subir la foto.');
+        } finally {
+          btnElegir.disabled = false;
+          sincronizar();
+        }
+      });
+
+      btnQuitar.addEventListener('click', async () => {
+        removeUserPref(PREF_FOTO);
+        sincronizar();
+        aviso('Fondo quitado.');
+        await borrarFondoJuntos().catch(() => {});
+      });
+
+      wrap.querySelector('[data-go-admin]')?.addEventListener('click', () => {
+        closeSheets();
+        router.navigate('/admin');
+      });
+
+      sincronizar();
       return wrap;
     });
   };

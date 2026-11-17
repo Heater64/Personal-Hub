@@ -314,3 +314,40 @@
   font-size: 13px;
   cursor: pointer;
 }
+
+/* «Quitar mi foto» y el aviso de subida. */
+.jsettings__ghost {
+  align-self: flex-start;
+  padding: 6px 2px;
+  border: 0;
+  background: none;
+  color: var(--muted, #8a8a93);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.jsettings__hint {
+  margin: 0;
+  color: var(--muted, #8a8a93);
+  font-size: 12px;
+}
+.jsettings__go[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Foto elegida por ti: la pantalla se queda limpia, sin luces ni velo.
+   La píldora mantiene su propio cristal, que es lo que hace legibles las
+   cifras sobre cualquier imagen. */
+.juntos-page.is-foto-propia .juntos__glow,
+.juntos-page.is-foto-propia .juntos__shade {
+  display: none;
+}
+
+/* Sin velo, una foto clara podría comerse el texto: una sombra suave en las
+   letras (no en la foto) lo mantiene legible en cualquier imagen. */
+.juntos-page.is-foto-propia .juntos__date,
+.juntos-page.is-foto-propia .juntos__verse-label,
+.juntos-page.is-foto-propia .juntos__verse-numbers {
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+}
