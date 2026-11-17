@@ -171,6 +171,43 @@ export async function initNativeApp() {
   }
 }
 
+/**
+ * Deep links de los widgets.
+ *
+ * El widget de días lanza `personalhub://juntos`; Capacitor lo entrega como
+ * `appUrlOpen` (o como URL de arranque si la app estaba cerrada) y aquí se
+ * traduce a una ruta de la web. Sin esto, tocar el widget abre la portada.
+ */
+export async function initDeepLinks(router) {
+  if (!isNative() || !router) return;
+  const AppMod = await loadApp();
+  const { App } = AppMod || {};
+  if (!App) return;
+
+  const go = raw => {
+    try {
+      const url = new URL(raw);
+      // personalhub://juntos → host «juntos» → ruta «/juntos»
+      const route = url.hostname
+        ? `/${url.hostname}${url.pathname === '/' ? '' : url.pathname}`
+        : '';
+      if (route) router.navigate(route);
+    } catch {
+      /* url rara: se ignora */
+    }
+  };
+
+  App.addListener('appUrlOpen', ({ url }) => go(url));
+
+  // Arranque en frío desde el widget: la URL viene en el intent inicial.
+  try {
+    const launch = await App.getLaunchUrl();
+    if (launch?.url) go(launch.url);
+  } catch {
+    /* sin URL de arranque */
+  }
+}
+
 /* ==========================================
    NOTIFICACIONES NATIVAS (FCM)
    ========================================== */

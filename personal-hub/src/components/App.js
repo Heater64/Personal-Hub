@@ -10,24 +10,58 @@ import { db } from '../services/db.service.js';
 import { BottomNav } from './BottomNav.js';
 import { Sidebar } from './Sidebar.js';
 import { renderPageIcon } from './PageHeader.js';
-import { isChromeHidden, isMobileRoot, mobileTopbarMeta, mobileBackTarget, homePathFor, isVisibleTo, roleFor } from '../routes.js';
+import {
+  isChromeHidden,
+  isMobileRoot,
+  mobileTopbarMeta,
+  mobileBackTarget,
+  homePathFor,
+  isVisibleTo,
+  roleFor,
+} from '../routes.js';
 import { NowPlayingBar } from './NowPlayingBar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
 import { setMoodWelcomeState } from './SpecialEventSheet.js';
 import { moodStore } from '../stores/mood.store.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
-import { initNativeApp, initNativePush, registerNativePush } from '../services/native.service.js';
-import { syncReminderState, showDailyNotification, markWelcomeShownToday, resyncPushSubscription, notifyTodayNovelties, notifyNewOpenWhenLetters, syncNotifPrefs, getNotifSettings } from '../services/notifications.service.js';
+import {
+  initNativeApp,
+  initNativePush,
+  initDeepLinks,
+  registerNativePush,
+} from '../services/native.service.js';
+import {
+  syncReminderState,
+  showDailyNotification,
+  markWelcomeShownToday,
+  resyncPushSubscription,
+  notifyTodayNovelties,
+  notifyNewOpenWhenLetters,
+  syncNotifPrefs,
+  getNotifSettings,
+} from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
-import { initListenTogether, onListenTogether, getListenTogetherState, initListenStateRealtime, stopListenStateRealtime } from '../services/listenTogether.service.js';
+import {
+  initListenTogether,
+  onListenTogether,
+  getListenTogetherState,
+  initListenStateRealtime,
+  stopListenStateRealtime,
+} from '../services/listenTogether.service.js';
 import { player } from '../services/player.service.js';
 import { showToast } from './Toast.js';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
 import { startPresence, stopPresence } from '../services/presence.service.js';
-import { getUserPref, setUserPref, removeUserPref, cleanupLegacyKeys, migrateUserPref, getUserId } from '../utils/userStorage.js';
+import {
+  getUserPref,
+  setUserPref,
+  removeUserPref,
+  cleanupLegacyKeys,
+  migrateUserPref,
+  getUserId,
+} from '../utils/userStorage.js';
 import { todayISO, hourInSpain, spainMsOnDate, nextDayISO } from '../utils/format.js';
-
 
 export function AppShell(router) {
   const app = document.getElementById('app');
@@ -40,7 +74,7 @@ export function AppShell(router) {
   skipLink.className = 'skip-link';
   skipLink.href = '#app-content';
   skipLink.textContent = 'Saltar al contenido';
-  skipLink.addEventListener('click', (e) => {
+  skipLink.addEventListener('click', e => {
     e.preventDefault();
     contentEl.focus({ preventScroll: false });
   });
@@ -61,13 +95,25 @@ export function AppShell(router) {
   ambientDecor.className = 'ambient-decor';
   ambientDecor.setAttribute('aria-hidden', 'true');
   ambientDecor.innerHTML = [
-    ['🤍', 'heart-white'], ['⭐', 'star'], ['🧸', 'bear'],
-    ['❤️', 'heart-red'], ['✨', 'sparkle'], ['🐻', 'bear'],
-    ['🌸', 'flower'], ['💗', 'heart-pink'], ['✧', 'sparkle'],
-    ['🌟', 'star'], ['🌷', 'flower'], ['🤍', 'heart-white'],
-    ['🧸', 'bear'], ['💫', 'sparkle'], ['❤️', 'heart-red'],
-    ['⭐', 'star']
-  ].map(([ch, tone]) => `<span class="${tone}">${ch}</span>`).join('');
+    ['🤍', 'heart-white'],
+    ['⭐', 'star'],
+    ['🧸', 'bear'],
+    ['❤️', 'heart-red'],
+    ['✨', 'sparkle'],
+    ['🐻', 'bear'],
+    ['🌸', 'flower'],
+    ['💗', 'heart-pink'],
+    ['✧', 'sparkle'],
+    ['🌟', 'star'],
+    ['🌷', 'flower'],
+    ['🤍', 'heart-white'],
+    ['🧸', 'bear'],
+    ['💫', 'sparkle'],
+    ['❤️', 'heart-red'],
+    ['⭐', 'star'],
+  ]
+    .map(([ch, tone]) => `<span class="${tone}">${ch}</span>`)
+    .join('');
   app.appendChild(ambientDecor);
 
   // Contenido: el router monta dentro de .shell > .main > .content.
@@ -134,26 +180,28 @@ export function AppShell(router) {
       if (!payload?.song_key) return;
       // Lazy-import del catálogo: solo se carga la primera vez que llega un
       // evento 'listen' (evita arrastrar el módulo de Canciones al arranque).
-      import('../pages/Canciones.js').then(mod => {
-        _findSongByKey = mod.findSongByKey;
-        const song = _findSongByKey(payload.song_key);
-        if (!song) return;
-        player.setInfo({ title: song.title, artist: song.artist || '', cover: song.cover || '' });
-        if (player.audio.src !== song.audio) {
-          player.audio.src = song.audio;
-          player.audio.currentTime = 0;
-        }
-        if (Number.isFinite(payload.position) && payload.position > 0) {
-          if (Math.abs(player.audio.currentTime - payload.position) > 2) {
-            player.audio.currentTime = payload.position;
+      import('../pages/Canciones.js')
+        .then(mod => {
+          _findSongByKey = mod.findSongByKey;
+          const song = _findSongByKey(payload.song_key);
+          if (!song) return;
+          player.setInfo({ title: song.title, artist: song.artist || '', cover: song.cover || '' });
+          if (player.audio.src !== song.audio) {
+            player.audio.src = song.audio;
+            player.audio.currentTime = 0;
           }
-        }
-        if (payload.playing === true && player.audio.paused) {
-          player.audio.play().catch(() => {});
-        } else if (payload.playing === false && !player.audio.paused) {
-          player.audio.pause();
-        }
-      }).catch(() => {});
+          if (Number.isFinite(payload.position) && payload.position > 0) {
+            if (Math.abs(player.audio.currentTime - payload.position) > 2) {
+              player.audio.currentTime = payload.position;
+            }
+          }
+          if (payload.playing === true && player.audio.paused) {
+            player.audio.play().catch(() => {});
+          } else if (payload.playing === false && !player.audio.paused) {
+            player.audio.pause();
+          }
+        })
+        .catch(() => {});
     }
   });
 
@@ -198,13 +246,18 @@ export function AppShell(router) {
   // El aviso de sistema llega por push desde el servidor (notify-admin), así
   // que llegue o no la web abierta. Filtra los propios ánimos del admin.
   const attachAdminMoodListener = () => {
-    const onMood = (e) => {
+    const onMood = e => {
       const mood = e?.detail;
       if (!mood) return;
       if (mood.user_id === getUserId()) return; // no avisar por el propio admin
       // La fila puede traer varias emociones codificadas: el aviso habla en
       // lenguaje normal, no en el formato de almacenamiento.
-      const parsed = moodStore.resolveMood({ mood: mood.mood, label: mood.label, emoji: mood.emoji, score: mood.score });
+      const parsed = moodStore.resolveMood({
+        mood: mood.mood,
+        label: mood.label,
+        emoji: mood.emoji,
+        score: mood.score,
+      });
       showToast(`${parsed?.emoji || '🫶'} ${parsed?.label || 'Ánimo registrado'}`, 'info', 4000);
     };
     window.addEventListener('ph:mood-changed', onMood);
@@ -309,7 +362,7 @@ export function AppShell(router) {
   });
 
   // Update navigation on route change
-  router.afterEach((path) => {
+  router.afterEach(path => {
     updateNavigation(path);
     updateMobileTopBar(path);
     scheduleMoodCheck();
@@ -339,7 +392,11 @@ export function AppShell(router) {
   // Wait for any in-progress mood sync before deciding whether to show the welcome screen
   async function awaitMoodSync() {
     if (moodSyncPromise) {
-      try { await moodSyncPromise; } catch (e) { /* ignore */ }
+      try {
+        await moodSyncPromise;
+      } catch (e) {
+        /* ignore */
+      }
     }
   }
 
@@ -379,8 +436,12 @@ export function AppShell(router) {
       // solo las novedades y el push del servidor.
       if (getNotifSettings().daily) {
         const hour = hourInSpain();
-        const greeting = hour < 12 ? '¡Buenos días! ☀️' : hour < 19 ? '¡Buenas tardes! 🌤️' : '¡Buenas noches! 🌙';
-        showDailyNotification(greeting, '¿Cómo te sientes hoy? Abre Personal Hub para registrarlo.');
+        const greeting =
+          hour < 12 ? '¡Buenos días! ☀️' : hour < 19 ? '¡Buenas tardes! 🌤️' : '¡Buenas noches! 🌙';
+        showDailyNotification(
+          greeting,
+          '¿Cómo te sientes hoy? Abre Personal Hub para registrarlo.'
+        );
         // Marca el día para que el SW (app cerrada) no la duplique: 1 vez/día
         markWelcomeShownToday();
       }
@@ -390,7 +451,7 @@ export function AppShell(router) {
       onDone: () => {
         currentWelcomeOverlay = null;
         setMoodWelcomeState('clear');
-      }
+      },
     });
     currentWelcomeOverlay = ws;
     // Al body y no a #app: el shell pone `position: relative` a sus hijos y
@@ -443,7 +504,7 @@ export function AppShell(router) {
   // El SW envía { type: 'NAVIGATE', url } al tocar una notificación
   // (el click en la notificación abre la sección correspondiente).
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
+    navigator.serviceWorker.addEventListener('message', event => {
       const data = event.data || {};
       if (data.type === 'NAVIGATE' && data.url) {
         router.navigate(data.url);
@@ -479,7 +540,7 @@ export function AppShell(router) {
       // Presencia real (quién está conectado): la usa el chat de Mal Día.
       startPresence({
         userId: userStore.getUser().id,
-        isAdmin: userStore.isAdmin
+        isAdmin: userStore.isAdmin,
       });
       // Aviso al Admin cuando la usuaria registra su estado de ánimo.
       // Sólo el admin escucha: el usuario ya se avisa a sí mismo en el store.
@@ -504,7 +565,10 @@ export function AppShell(router) {
       stopRealtime();
       stopPresence();
       syncReminderState();
-      if (moodNotifCleanup) { moodNotifCleanup(); moodNotifCleanup = null; }
+      if (moodNotifCleanup) {
+        moodNotifCleanup();
+        moodNotifCleanup = null;
+      }
     }
 
     // Debounce: avoid scheduling multiple checks when onChange fires rapidly
@@ -552,6 +616,8 @@ export function AppShell(router) {
   // ── Inicializar capa nativa (Capacitor) ──
   // No-op en el navegador: allí no se descarga ningún paquete @capacitor/*.
   initNativeApp();
+  // Tocar un widget abre su pantalla (personalhub://juntos).
+  initDeepLinks(router);
   // Notificaciones de la app Android: tocar un aviso abre su sección.
   initNativePush({ onNavigate: url => router.navigate(url) });
 

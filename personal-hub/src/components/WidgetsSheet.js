@@ -13,7 +13,6 @@ import { pinWidget } from '../services/widgets.service.js';
 const WIDGETS = [
   { id: 'days', title: 'Días juntos', desc: 'El contador con vuestras caras.' },
   { id: 'distance', title: 'Distancia', desc: 'Los kilómetros que os separan.' },
-  { id: 'together', title: 'Tiempo juntos', desc: 'Años, meses y días sueltos.' },
 ];
 
 const SIZES = { compact: 'Pequeño', wide: 'Grande' };
@@ -23,7 +22,7 @@ const face = person =>
 
 /** Dibuja la miniatura de un widget en el tamaño indicado. */
 function preview(id, size, data) {
-  const { me, partner, stats, days, km, ago } = data;
+  const { me, partner, days, km, ago } = data;
   const wide = size === 'wide';
   const total = Number.isFinite(days) ? days : 501;
   const distance = km ?? '301 km';
@@ -53,33 +52,15 @@ function preview(id, size, data) {
       </div>`;
   }
 
-  const y = stats?.years ?? 1;
-  const m = stats?.months ?? 4;
-  const d = stats?.days ?? 13;
-
-  return wide
-    ? `
-      <div class="wprev wprev--together wprev--wide">
-        <p class="wprev__label">han estado juntos por</p>
-        <p class="wprev__triple">
-          <span><b>${y}</b>años</span><span><b>${m}</b>meses</span><span><b>${d}</b>días</span>
-        </p>
-        <p class="wprev__caption">años, meses y días</p>
-      </div>`
-    : `
-      <div class="wprev wprev--together wprev--compact">
-        <p class="wprev__triple"><span><b>${m}</b>meses</span><span><b>${d}</b>días</span></p>
-        <p class="wprev__caption">han estado juntos por</p>
-      </div>`;
+  return '';
 }
 
 /**
  * Abre la hoja de widgets.
- * `me`/`partner`: { name, avatar } · `stats`: { years, months, days } ·
- * `days`: total · `km`: texto de la distancia.
+ * `me`/`partner`: { name, avatar } · `days`: total · `km`: texto de la distancia.
  */
-export function openWidgetsSheet({ me, partner, stats, days, km } = {}) {
-  const data = { me, partner, stats, days, km, ago: '' };
+export function openWidgetsSheet({ me, partner, days, km } = {}) {
+  const data = { me, partner, days, km, ago: '' };
 
   openSheet('Widgets', () => {
     const wrap = document.createElement('div');

@@ -30,11 +30,4 @@
     <string name="widget_distance_description_compact">Distancia (pequeño)</string>
     <string name="widget_distance_description_wide">Distancia (grande)</string>
 
-    <!-- Widget de tiempo juntos -->
-    <string name="widget_together_label">han estado juntos por</string>
-    <string name="widget_together_years">años</string>
-    <string name="widget_together_months">meses</string>
-    <string name="widget_together_caption">años, meses y días</string>
-    <string name="widget_together_description_wide">Tiempo juntos (grande)</string>
-    <string name="widget_together_description_compact">Tiempo juntos (pequeño)</string>
 </resources>

@@ -11,6 +11,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Shader;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.RemoteViews;
@@ -62,8 +63,27 @@ final class WidgetSupport {
     }
 
     static void openApp(Context context, RemoteViews views, int viewId) {
-        Intent intent = new Intent(context, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        openApp(context, views, viewId, null);
+    }
+
+    /**
+     * Tocar el widget abre la app. Con `route`, en vez de la portada se abre esa
+     * pantalla mediante el deep link personalhub://<route> (el widget de días
+     * lleva a /juntos, la pantalla del aniversario).
+     */
+    static void openApp(Context context, RemoteViews views, int viewId, String route) {
+        Intent intent;
+        if (route == null || route.isEmpty()) {
+            intent = new Intent(context, MainActivity.class);
+        } else {
+            intent = new Intent(Intent.ACTION_VIEW, Uri.parse("com.heater64.personalhub://" + route));
+            intent.setPackage(context.getPackageName());
+        }
+
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
         PendingIntent pending = PendingIntent.getActivity(
                 context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(viewId, pending);

@@ -1,0 +1,169 @@
+/* ==========================================
+   JUNTOS — pantalla del aniversario
+   ==========================================
+   A pantalla completa, sin barra ni menú: fondo oscuro con luces cálidas,
+   la píldora de cristal en medio y las cifras abajo. */
+.juntos-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px
+    calc(env(safe-area-inset-bottom, 0px) + 34px);
+  overflow: hidden;
+  background: #0b0710;
+  color: #fff;
+}
+
+/* Fondo: tres focos cálidos difuminados, como las luces de la plaza. */
+.juntos__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.juntos__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(46px);
+  opacity: 0.75;
+}
+.juntos__glow--a {
+  top: -10%;
+  left: -20%;
+  width: 310px;
+  height: 310px;
+  background: radial-gradient(circle, #f0b23c 0%, rgba(240, 178, 60, 0) 70%);
+}
+.juntos__glow--b {
+  top: 18%;
+  right: -25%;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, #7b4bb3 0%, rgba(123, 75, 179, 0) 72%);
+}
+.juntos__glow--c {
+  bottom: -12%;
+  left: 5%;
+  width: 380px;
+  height: 300px;
+  background: radial-gradient(circle, #a8462f 0%, rgba(168, 70, 47, 0) 70%);
+}
+
+.juntos__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+.juntos__back {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+}
+.juntos__back svg {
+  transform: rotate(90deg);
+}
+.juntos__date {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+}
+.juntos__spacer {
+  width: 38px;
+}
+
+/* Píldora de cristal. */
+.juntos__pill {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  margin-top: 22px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+.juntos__pill-label {
+  margin: 0 0 8px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.juntos__pill-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px 14px;
+  margin: 0;
+}
+.juntos__pill-value b {
+  font-size: clamp(26px, 8vw, 36px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.juntos__pill-value span {
+  margin-left: 4px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(13px, 3.6vw, 16px);
+}
+
+/* Cifras de abajo. */
+.juntos__verse {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding-top: 40px;
+  text-align: center;
+}
+.juntos__verse-label {
+  margin: 0 0 14px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.juntos__verse-numbers {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+}
+.juntos__verse-numbers span {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.juntos__verse-numbers b {
+  font-size: clamp(24px, 7vw, 30px);
+  font-weight: 400;
+}
+.juntos__verse-numbers span span,
+.juntos__verse-numbers span i {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  font-style: normal;
+}
+.juntos__verse-numbers .juntos__dot {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 18px;
+}

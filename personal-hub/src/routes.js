@@ -52,7 +52,7 @@ export const ROUTES = [
     section: 'home',
     mobileRoot: true,
     bottomNav: true,
-    sidebar: true
+    sidebar: true,
   },
   {
     path: '/login',
@@ -63,7 +63,7 @@ export const ROUTES = [
     // vivía en NO_NAV_ROUTES y skipMood/protected en main.js.
     public: true,
     skipMood: true,
-    chrome: false
+    chrome: false,
   },
   {
     path: '/perfil',
@@ -73,7 +73,7 @@ export const ROUTES = [
     skipMood: true,
     section: 'perfil',
     mobileRoot: true,
-    bottomNav: true
+    bottomNav: true,
   },
   {
     path: '/admin',
@@ -86,7 +86,7 @@ export const ROUTES = [
     roles: [ROLE_ADMIN],
     section: 'admin',
     mobileRoot: true,
-    bottomNav: true
+    bottomNav: true,
   },
   {
     path: '/rincon',
@@ -98,7 +98,7 @@ export const ROUTES = [
     mobileRoot: true,
     bottomNav: true,
     sidebar: true,
-    sidebarGroup: 'rincon'
+    sidebarGroup: 'rincon',
   },
   {
     path: '/galeria',
@@ -108,7 +108,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'galeria'
+    sidebarGroup: 'galeria',
   },
   {
     path: '/memes',
@@ -118,7 +118,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'galeria'
+    sidebarGroup: 'galeria',
   },
   {
     path: '/audios',
@@ -128,7 +128,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'galeria'
+    sidebarGroup: 'galeria',
   },
   {
     path: '/minecraft',
@@ -139,7 +139,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'galeria'
+    sidebarGroup: 'galeria',
   },
   {
     path: '/curiosidades',
@@ -149,7 +149,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'curiosidades'
+    sidebarGroup: 'curiosidades',
   },
   {
     path: '/canciones',
@@ -160,7 +160,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'musica'
+    sidebarGroup: 'musica',
   },
   {
     path: '/razones',
@@ -170,7 +170,7 @@ export const ROUTES = [
     title: 'Razones · Personal Hub',
     section: 'sentimientos',
     parent: '/sentimientos',
-    sidebarGroup: 'sentimientos'
+    sidebarGroup: 'sentimientos',
   },
   {
     path: '/sentimientos',
@@ -182,7 +182,7 @@ export const ROUTES = [
     mobileRoot: true,
     bottomNav: true,
     sidebar: true,
-    sidebarGroup: 'sentimientos'
+    sidebarGroup: 'sentimientos',
   },
   {
     path: '/juegos',
@@ -193,7 +193,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'rincon'
+    sidebarGroup: 'rincon',
   },
   {
     path: '/juegos/online/:gameId',
@@ -203,7 +203,17 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/juegos',
-    genericTopbar: true
+    genericTopbar: true,
+  },
+  {
+    // Se abre al tocar el widget de días en la pantalla de inicio
+    // (deep link personalhub://juntos). A pantalla completa, sin menús.
+    path: '/juntos',
+    label: 'Juntos',
+    icon: 'heart',
+    title: 'Juntos · Personal Hub',
+    lazy: true,
+    chrome: false,
   },
   {
     path: '/calendario',
@@ -214,7 +224,7 @@ export const ROUTES = [
     lazy: true,
     section: 'sentimientos',
     parent: '/sentimientos',
-    sidebarGroup: 'sentimientos'
+    sidebarGroup: 'sentimientos',
   },
   {
     path: '/maldia',
@@ -224,7 +234,7 @@ export const ROUTES = [
     title: 'Mal Día · Personal Hub',
     section: 'sentimientos',
     parent: '/sentimientos',
-    sidebarGroup: 'sentimientos'
+    sidebarGroup: 'sentimientos',
   },
   {
     path: '/openwhen',
@@ -235,7 +245,7 @@ export const ROUTES = [
     lazy: true,
     section: 'sentimientos',
     parent: '/sentimientos',
-    sidebarGroup: 'sentimientos'
+    sidebarGroup: 'sentimientos',
   },
   {
     path: '/series',
@@ -246,7 +256,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'rincon'
+    sidebarGroup: 'rincon',
   },
   {
     path: '/thoseeyes',
@@ -257,7 +267,7 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'rincon'
+    sidebarGroup: 'rincon',
   },
   {
     path: '/justthewayyouare',
@@ -265,7 +275,7 @@ export const ROUTES = [
     icon: 'music',
     title: 'Just The Way You Are · Personal Hub',
     lazy: true,
-    genericTopbar: true
+    genericTopbar: true,
   },
   {
     path: '/ositos',
@@ -275,8 +285,8 @@ export const ROUTES = [
     lazy: true,
     section: 'rincon',
     parent: '/rincon',
-    sidebarGroup: 'rincon'
-  }
+    sidebarGroup: 'rincon',
+  },
 ];
 
 // ==========================================
@@ -294,8 +304,8 @@ const SIDEBAR_GROUPS = [
       { label: 'Biblioteca', icon: 'book', href: '/canciones?v=biblioteca' },
       { label: 'Favoritas', icon: 'heart', href: '/canciones?v=favoritas' },
       { label: 'Playlists', icon: 'list', href: '/canciones?v=playlists' },
-      { label: 'Historial', icon: 'clock', href: '/canciones?v=historial' }
-    ]
+      { label: 'Historial', icon: 'clock', href: '/canciones?v=historial' },
+    ],
   },
   {
     id: 'rincon',
@@ -308,8 +318,8 @@ const SIDEBAR_GROUPS = [
       { label: 'Canciones', icon: 'music', href: '/canciones' },
       { label: 'Those Eyes', icon: 'spark', href: '/thoseeyes' },
       { label: 'Series', icon: 'book', href: '/series' },
-      { label: 'OsitosWorld', icon: 'star', href: '/ositos' }
-    ]
+      { label: 'OsitosWorld', icon: 'star', href: '/ositos' },
+    ],
   },
   {
     id: 'galeria',
@@ -318,8 +328,8 @@ const SIDEBAR_GROUPS = [
       { label: 'Galería', icon: 'image', href: '/galeria' },
       { label: 'Memes', icon: 'smile', href: '/memes' },
       { label: 'Audios', icon: 'mic', href: '/audios' },
-      { label: 'Minecraft', icon: 'game', href: '/minecraft' }
-    ]
+      { label: 'Minecraft', icon: 'game', href: '/minecraft' },
+    ],
   },
   {
     id: 'curiosidades',
@@ -327,8 +337,8 @@ const SIDEBAR_GROUPS = [
     items: [
       { label: 'San Juan Pueblo', icon: 'map', href: '/curiosidades?cat=spb' },
       { label: 'San Petersburgo', icon: 'compass', href: '/curiosidades?cat=sp' },
-      { label: 'Enciclopedia Gatuna', icon: 'paw', href: '/curiosidades?cat=gatos' }
-    ]
+      { label: 'Enciclopedia Gatuna', icon: 'paw', href: '/curiosidades?cat=gatos' },
+    ],
   },
   {
     id: 'sentimientos',
@@ -337,9 +347,9 @@ const SIDEBAR_GROUPS = [
       { label: 'Razones', icon: 'spark', href: '/razones' },
       { label: 'Open When', icon: 'mail', href: '/openwhen' },
       { label: 'Calendario', icon: 'calendar', href: '/calendario' },
-      { label: 'Mal Día', icon: 'sun', href: '/maldia' }
-    ]
-  }
+      { label: 'Mal Día', icon: 'sun', href: '/maldia' },
+    ],
+  },
 ];
 
 // Pestañas de la barra inferior, en orden. El admin no ve «Inicio» y ve
@@ -364,12 +374,14 @@ export function routeFor(path) {
   if (exacta) return exacta;
 
   const buscada = base.split('/').filter(Boolean);
-  return ROUTES.find(r => {
-    if (!r.path.includes(':')) return false;
-    const suya = r.path.split('/').filter(Boolean);
-    if (suya.length !== buscada.length) return false;
-    return suya.every((seg, i) => seg.startsWith(':') || seg === buscada[i]);
-  }) || null;
+  return (
+    ROUTES.find(r => {
+      if (!r.path.includes(':')) return false;
+      const suya = r.path.split('/').filter(Boolean);
+      if (suya.length !== buscada.length) return false;
+      return suya.every((seg, i) => seg.startsWith(':') || seg === buscada[i]);
+    }) || null
+  );
 }
 
 /** Rol de navegación a partir de si la sesión es admin. */
@@ -394,7 +406,9 @@ export function homePathFor(role) {
 
 /** Sin sidebar ni barra inferior (login y sus subrutas). */
 export function isChromeHidden(path) {
-  return ROUTES.some(r => r.chrome === false && (path === r.path || String(path).startsWith(`${r.path}/`)));
+  return ROUTES.some(
+    r => r.chrome === false && (path === r.path || String(path).startsWith(`${r.path}/`))
+  );
 }
 
 /** Raíz de sección: en móvil no lleva barra de vuelta. */
@@ -422,17 +436,19 @@ export function sectionFor(path) {
 
 /** Pestañas de la barra inferior para un rol. */
 export function bottomNavItems(role) {
-  return BOTTOM_NAV_PATHS
-    .map(p => routeFor(p))
+  return BOTTOM_NAV_PATHS.map(p => routeFor(p))
     .filter(r => r && r.bottomNav === true && visiblePara(r, role))
     .map(r => ({ id: r.section, label: r.label, icon: r.icon, href: r.path }));
 }
 
 /** Items principales del menú lateral para un rol. */
 export function sidebarItems(role) {
-  return ROUTES
-    .filter(r => r.sidebar === true && visiblePara(r, role))
-    .map(r => ({ id: r.section, href: r.path, label: r.label, icon: r.icon }));
+  return ROUTES.filter(r => r.sidebar === true && visiblePara(r, role)).map(r => ({
+    id: r.section,
+    href: r.path,
+    label: r.label,
+    icon: r.icon,
+  }));
 }
 
 /** Un item de navegación suelto (así el panel de admin sale de aquí). */

@@ -18,7 +18,7 @@ import { MalDiaPage } from './pages/MalDia.js';
 // Lazy loader para páginas pesadas → code-splitting
 // Uso: lazy(() => import('./pages/X.js').then(m => m.XPage))
 // El router resuelve el Promise y muestra el skeleton mientras carga
-const lazy = (loader) => async (router) => (await loader())(router);
+const lazy = loader => async router => (await loader())(router);
 
 // Página que pinta cada ruta. Todo lo demás que sabe una ruta (título,
 // permiso de admin, navegación, a dónde vuelve el Atrás) vive en
@@ -26,11 +26,11 @@ const lazy = (loader) => async (router) => (await loader())(router);
 // dice QUÉ componente se monta. Las pesadas se cargan al vuelo para no
 // engordar el arranque.
 const PAGES = {
-  '/login': (router) => LoginPage(router),
-  '/': (router) => HomePage(router),
-  '/perfil': (router) => ProfilePage(router),
-  '/razones': (router) => RazonesPage(router),
-  '/maldia': (router) => MalDiaPage(router),
+  '/login': router => LoginPage(router),
+  '/': router => HomePage(router),
+  '/perfil': router => ProfilePage(router),
+  '/razones': router => RazonesPage(router),
+  '/maldia': router => MalDiaPage(router),
   '/admin': lazy(() => import('./pages/Admin.js').then(m => m.AdminPage)),
   '/rincon': lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)),
   '/galeria': lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)),
@@ -46,8 +46,11 @@ const PAGES = {
   '/openwhen': lazy(() => import('./pages/OpenWhen.js').then(m => m.OpenWhenPage)),
   '/series': lazy(() => import('./pages/Series.js').then(m => m.SeriesPage)),
   '/thoseeyes': lazy(() => import('./pages/ThoseEyes.js').then(m => m.ThoseEyesPage)),
-  '/justthewayyouare': lazy(() => import('./pages/JustTheWayYouAre.js').then(m => m.JustTheWayYouArePage)),
-  '/ositos': lazy(() => import('./pages/OsitosWorld.js').then(m => m.OsitosWorldPage))
+  '/justthewayyouare': lazy(() =>
+    import('./pages/JustTheWayYouAre.js').then(m => m.JustTheWayYouArePage)
+  ),
+  '/ositos': lazy(() => import('./pages/OsitosWorld.js').then(m => m.OsitosWorldPage)),
+  '/juntos': lazy(() => import('./pages/Juntos.js').then(m => m.JuntosPage)),
 };
 
 function init() {
@@ -56,13 +59,14 @@ function init() {
 
   // Create router
   const router = new Router({
-    container: document.getElementById('app')
+    container: document.getElementById('app'),
   });
 
   // Ninguna ruta se queda sin página ni ninguna página sin ruta: el registro
   // y este mapa tienen que hablar exactamente de las mismas.
   const sinPagina = Object.keys(PAGES).filter(p => !ROUTES.some(r => r.path === p));
-  if (sinPagina.length) console.error('[routes] páginas sin ruta en el registro:', sinPagina.join(', '));
+  if (sinPagina.length)
+    console.error('[routes] páginas sin ruta en el registro:', sinPagina.join(', '));
 
   for (const route of ROUTES) {
     const load = PAGES[route.path];
@@ -76,7 +80,7 @@ function init() {
       title: route.title,
       protected: route.public !== true,
       adminOnly: route.adminOnly === true,
-      skipMood: route.skipMood === true
+      skipMood: route.skipMood === true,
     });
   }
 

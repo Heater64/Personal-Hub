@@ -24,8 +24,6 @@ final class WidgetRenderer {
         boolean compact = name.contains("Compact");
         if (name.startsWith("Days")) {
             renderDays(context, manager, ids, compact);
-        } else if (name.startsWith("Together")) {
-            renderTogether(context, manager, ids, compact);
         } else {
             renderDistance(context, manager, ids, compact);
         }
@@ -62,7 +60,8 @@ final class WidgetRenderer {
                         me.isEmpty() && partner.isEmpty() ? View.GONE : View.VISIBLE);
             }
 
-            WidgetSupport.openApp(context, views, R.id.widget_days_root);
+            // El widget de días abre la pantalla del aniversario.
+            WidgetSupport.openApp(context, views, R.id.widget_days_root, "juntos");
             manager.updateAppWidget(id, views);
         }
 
@@ -110,31 +109,6 @@ final class WidgetRenderer {
         }
 
         if (!compact) scheduleFaceRefresh(context, data, DistanceWidgetProvider.class);
-    }
-
-    // ==========================================
-    // TIEMPO JUNTOS
-    //   grande: años + meses + días
-    //   pequeño: meses + días
-    // ==========================================
-    static void renderTogether(Context context, AppWidgetManager manager, int[] ids, boolean compact) {
-        JSONObject data = WidgetSupport.read(context, "widget_days");
-        int years = data == null ? 0 : data.optInt("y", 0);
-        int months = data == null ? 0 : data.optInt("m", 0);
-        int days = data == null ? 0 : data.optInt("d", 0);
-
-        for (int id : ids) {
-            RemoteViews views = compact
-                    ? new RemoteViews(context.getPackageName(), R.layout.widget_together_compact)
-                    : new RemoteViews(context.getPackageName(), R.layout.widget_together);
-
-            views.setTextViewText(R.id.widget_together_months, String.valueOf(months));
-            views.setTextViewText(R.id.widget_together_days, String.valueOf(days));
-            if (!compact) views.setTextViewText(R.id.widget_together_years, String.valueOf(years));
-
-            WidgetSupport.openApp(context, views, R.id.widget_together_root);
-            manager.updateAppWidget(id, views);
-        }
     }
 
     /** «hace 5 min», «hace 2 h» o «abre la app». */
