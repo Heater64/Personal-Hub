@@ -216,6 +216,15 @@ export const ROUTES = [
     chrome: false,
   },
   {
+    // Se abre al tocar el widget de distancia (deep link personalhub://mapa).
+    path: '/mapa',
+    label: 'Mapa',
+    icon: 'map',
+    title: 'Dónde estáis · Personal Hub',
+    lazy: true,
+    chrome: false,
+  },
+  {
     path: '/calendario',
     label: 'Calendario',
     icon: 'calendar',
@@ -232,6 +241,16 @@ export const ROUTES = [
     icon: 'sun',
     topbarIcon: 'heart',
     title: 'Mal Día · Personal Hub',
+    section: 'sentimientos',
+    parent: '/sentimientos',
+    sidebarGroup: 'sentimientos',
+  },
+  {
+    path: '/menstruacion',
+    label: 'Menstruación',
+    icon: 'droplet',
+    title: 'Menstruación · Personal Hub',
+    lazy: true,
     section: 'sentimientos',
     parent: '/sentimientos',
     sidebarGroup: 'sentimientos',
@@ -348,6 +367,7 @@ const SIDEBAR_GROUPS = [
       { label: 'Open When', icon: 'mail', href: '/openwhen' },
       { label: 'Calendario', icon: 'calendar', href: '/calendario' },
       { label: 'Mal Día', icon: 'sun', href: '/maldia' },
+      { label: 'Menstruación', icon: 'droplet', href: '/menstruacion' },
     ],
   },
 ];

@@ -1,0 +1,67 @@
+/* ==========================================
+   MAPA — pantalla completa del widget de distancia
+   ==========================================
+   El mismo mapa de la hoja de la portada, pero ocupando toda la pantalla:
+   cabecera propia con el botón de volver y el mapa creciendo hasta abajo. */
+.mapa-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.mapa-page__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+}
+.mapa-page__back {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.mapa-page__back svg {
+  transform: rotate(90deg);
+}
+.mapa-page__title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
+.mapa-page__spacer {
+  width: 38px;
+}
+
+.mapa-page__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+.mapa-page__loading {
+  margin: auto;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+/* El mapa ocupa todo el alto que sobre. */
+.mapa-page .distmap {
+  flex: 1;
+}
+.mapa-page .distmap__canvas {
+  flex: 1;
+  height: auto;
+  min-height: 320px;
+}

@@ -121,16 +121,14 @@ async function paint(wrap, me, partner) {
 }
 
 /**
- * Abre la hoja del mapa.
+ * El contenido del mapa (sin hoja): lo usan la hoja de la portada y la
+ * pantalla /mapa que abre el widget de distancia.
  * `me` y `partner` son `{ lat, lng, name, avatar, battery, charging, net, mbps, speed }`.
  */
-export function openDistanceMap({ me, partner, km, meName } = {}) {
-  openSheet(
-    'Dónde estáis',
-    () => {
-      const wrap = document.createElement('div');
-      wrap.className = 'distmap';
-      wrap.innerHTML = `
+export function distanceMapBody({ me, partner, km, meName } = {}) {
+  const wrap = document.createElement('div');
+  wrap.className = 'distmap';
+  wrap.innerHTML = `
         <p class="distmap__km">${
           Number.isFinite(km)
             ? `${escapeHtml(formatDistance(km))} de distancia`
@@ -143,9 +141,15 @@ export function openDistanceMap({ me, partner, km, meName } = {}) {
         </div>
         <p class="distmap__note">Las posiciones son las últimas que compartió cada móvil al abrir la app.</p>
       `;
-      requestAnimationFrame(() => void paint(wrap, me, partner));
-      return wrap;
-    },
+  requestAnimationFrame(() => void paint(wrap, me, partner));
+  return wrap;
+}
+
+/** Abre la hoja del mapa (desde el panel de la portada). */
+export function openDistanceMap({ me, partner, km, meName } = {}) {
+  openSheet(
+    'Dónde estáis',
+    () => distanceMapBody({ me, partner, km, meName }),
     () => {
       const map = document.querySelector('.distmap')?._map;
       map?.remove();

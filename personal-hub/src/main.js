@@ -18,7 +18,7 @@ import { MalDiaPage } from './pages/MalDia.js';
 // Lazy loader para páginas pesadas → code-splitting
 // Uso: lazy(() => import('./pages/X.js').then(m => m.XPage))
 // El router resuelve el Promise y muestra el skeleton mientras carga
-const lazy = loader => async router => (await loader())(router);
+const lazy = (loader) => async (router) => (await loader())(router);
 
 // Página que pinta cada ruta. Todo lo demás que sabe una ruta (título,
 // permiso de admin, navegación, a dónde vuelve el Atrás) vive en
@@ -31,6 +31,7 @@ const PAGES = {
   '/perfil': router => ProfilePage(router),
   '/razones': router => RazonesPage(router),
   '/maldia': router => MalDiaPage(router),
+  '/menstruacion': lazy(() => import('./pages/Menstruacion.js').then(m => m.MenstruacionPage)),
   '/admin': lazy(() => import('./pages/Admin.js').then(m => m.AdminPage)),
   '/rincon': lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)),
   '/galeria': lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)),
@@ -51,6 +52,7 @@ const PAGES = {
   ),
   '/ositos': lazy(() => import('./pages/OsitosWorld.js').then(m => m.OsitosWorldPage)),
   '/juntos': lazy(() => import('./pages/Juntos.js').then(m => m.JuntosPage)),
+  '/mapa': lazy(() => import('./pages/Mapa.js').then(m => m.MapaPage)),
 };
 
 function init() {

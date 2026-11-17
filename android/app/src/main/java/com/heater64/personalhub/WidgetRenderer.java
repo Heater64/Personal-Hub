@@ -104,7 +104,8 @@ final class WidgetRenderer {
                         me.isEmpty() && partner.isEmpty() ? View.GONE : View.VISIBLE);
             }
 
-            WidgetSupport.openApp(context, views, R.id.widget_distance_root);
+            // El widget de distancia abre el mapa a pantalla completa.
+            WidgetSupport.openApp(context, views, R.id.widget_distance_root, "mapa");
             manager.updateAppWidget(id, views);
         }
 
