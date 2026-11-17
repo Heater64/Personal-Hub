@@ -5,12 +5,17 @@
    `personalhub://juntos`). Es la versión a pantalla completa del contador:
    fecha, la píldora de cristal con años/meses/días y, abajo, el mismo tiempo
    dicho de otra forma.
+
+   Arriba a la derecha hay un engranaje: elige fondo (cinco ambientes) y lleva
+   a la fecha del aniversario cuando quien mira es el admin.
    ========================================== */
 
 import { daysSinceAnniversary, loadSpecialDates, specialDates } from '../utils/specialDates.js';
 import { togetherBreakdown } from '../services/widgets.service.js';
-import { icon } from '../components/ui.js';
+import { icon, openSheet } from '../components/ui.js';
 import { escapeHtml } from '../utils/escape.js';
+import { userStore } from '../stores/user.store.js';
+import { getUserPref, setUserPref } from '../utils/userStorage.js';
 
 const MESES = [
   'enero',
@@ -26,6 +31,29 @@ const MESES = [
   'noviembre',
   'diciembre',
 ];
+
+/**
+ * Ambientes del fondo. Cada uno son tres focos y un color base: la misma
+ * composición que la versión original, con otra luz.
+ */
+const FONDOS = [
+  { id: 'plaza', label: 'Plaza', base: '#0b0710', a: '#f0b23c', b: '#7b4bb3', c: '#a8462f' },
+  { id: 'luna', label: 'Luna', base: '#06081a', a: '#8ea8ff', b: '#3a4fd0', c: '#1b2560' },
+  { id: 'bosque', label: 'Bosque', base: '#050d0b', a: '#4fbf8b', b: '#1f6b5a', c: '#c8a24a' },
+  { id: 'corazon', label: 'Corazón', base: '#12040c', a: '#ff8fb1', b: '#c0306a', c: '#5a1140' },
+  { id: 'rosa', label: 'Rosa', base: '#0d0a12', a: '#d4789b', b: '#6a2f7d', c: '#e0a3b7' },
+];
+
+const PREF_FONDO = 'juntosTheme';
+
+function fondoActual() {
+  const id = getUserPref(PREF_FONDO, 'plaza');
+  return FONDOS.find(f => f.id === id) || FONDOS[0];
+}
+
+function estiloFondo(fondo) {
+  return `--j-base:${fondo.base};--j-a:${fondo.a};--j-b:${fondo.b};--j-c:${fondo.c}`;
+}
 
 function fechaLarga(iso) {
   const [year, month, day] = String(iso || '')
@@ -61,6 +89,9 @@ export function JuntosPage(router) {
   const render = () => {
     const m = medidas();
     const aniversario = fechaLarga(specialDates().anniversary);
+    const fondo = fondoActual();
+
+    page.style.cssText = estiloFondo(fondo);
 
     page.innerHTML = `
       <div class="juntos__bg" aria-hidden="true">
@@ -72,7 +103,7 @@ export function JuntosPage(router) {
       <header class="juntos__top">
         <button class="juntos__back" type="button" data-back aria-label="Volver">${icon('chev', 20)}</button>
         <p class="juntos__date">${escapeHtml(aniversario)}</p>
-        <span class="juntos__spacer" aria-hidden="true"></span>
+        <button class="juntos__gear" type="button" data-settings aria-label="Ajustes">${icon('gear', 19)}</button>
       </header>
 
       <section class="juntos__pill" aria-label="Tiempo juntos">
@@ -97,6 +128,64 @@ export function JuntosPage(router) {
     `;
   };
 
+  /** Engranaje: fondo y fecha del aniversario. */
+  const abrirAjustes = () => {
+    openSheet('Ajustes', () => {
+      const wrap = document.createElement('div');
+      wrap.className = 'jsettings';
+
+      const activo = fondoActual().id;
+      wrap.innerHTML = `
+        <p class="jsettings__group">cambiar fondo</p>
+        <div class="jsettings__grid" role="list">
+          ${FONDOS.map(
+            f => `
+            <button type="button" class="jthumb${f.id === activo ? ' is-on' : ''}" role="listitem"
+              data-fondo="${f.id}" style="${estiloFondo(f)}" aria-pressed="${f.id === activo}">
+              <span class="jthumb__dot jthumb__dot--a"></span>
+              <span class="jthumb__dot jthumb__dot--b"></span>
+              <span class="jthumb__name">${f.label}</span>
+            </button>`
+          ).join('')}
+        </div>
+
+        <p class="jsettings__group">aniversario</p>
+        <div class="jsettings__row">
+          <span class="jsettings__row-body">
+            <b>${escapeHtml(fechaLarga(specialDates().anniversary) || 'Sin fecha')}</b>
+            <span>${userStore.isAdmin ? 'Cámbiala en el panel' : 'Solo el admin puede cambiarla'}</span>
+          </span>
+          ${
+            userStore.isAdmin
+              ? '<button type="button" class="jsettings__go" data-go-admin>Ir al panel</button>'
+              : ''
+          }
+        </div>
+      `;
+
+      // Elegir fondo: se guarda por usuario y se repinta en el acto.
+      wrap.querySelectorAll('[data-fondo]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.fondo;
+          const fondo = FONDOS.find(f => f.id === id) || FONDOS[0];
+          setUserPref(PREF_FONDO, fondo.id);
+          page.style.cssText = estiloFondo(fondo);
+          wrap.querySelectorAll('[data-fondo]').forEach(b => {
+            const on = b === btn;
+            b.classList.toggle('is-on', on);
+            b.setAttribute('aria-pressed', String(on));
+          });
+        });
+      });
+
+      wrap
+        .querySelector('[data-go-admin]')
+        ?.addEventListener('click', () => router.navigate('/admin'));
+
+      return wrap;
+    });
+  };
+
   render();
 
   // Las fechas reales llegan de Supabase: si el aniversario cambió en el panel,
@@ -107,6 +196,7 @@ export function JuntosPage(router) {
 
   page.addEventListener('click', event => {
     if (event.target.closest('[data-back]')) router.navigate('/');
+    if (event.target.closest('[data-settings]')) abrirAjustes();
   });
 
   page.cleanup = () => {};

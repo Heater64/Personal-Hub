@@ -13,7 +13,8 @@
   padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px
     calc(env(safe-area-inset-bottom, 0px) + 34px);
   overflow: hidden;
-  background: #0b0710;
+  /* Los colores cambian con el fondo elegido en Ajustes. */
+  background: var(--j-base, #0b0710);
   color: #fff;
 }
 
@@ -34,21 +35,21 @@
   left: -20%;
   width: 310px;
   height: 310px;
-  background: radial-gradient(circle, #f0b23c 0%, rgba(240, 178, 60, 0) 70%);
+  background: radial-gradient(circle, var(--j-a, #f0b23c) 0%, transparent 70%);
 }
 .juntos__glow--b {
   top: 18%;
   right: -25%;
   width: 340px;
   height: 340px;
-  background: radial-gradient(circle, #7b4bb3 0%, rgba(123, 75, 179, 0) 72%);
+  background: radial-gradient(circle, var(--j-b, #7b4bb3) 0%, transparent 72%);
 }
 .juntos__glow--c {
   bottom: -12%;
   left: 5%;
   width: 380px;
   height: 300px;
-  background: radial-gradient(circle, #a8462f 0%, rgba(168, 70, 47, 0) 70%);
+  background: radial-gradient(circle, var(--j-c, #a8462f) 0%, transparent 70%);
 }
 
 .juntos__top {
@@ -60,7 +61,8 @@
   width: 100%;
   gap: 10px;
 }
-.juntos__back {
+.juntos__back,
+.juntos__gear {
   display: grid;
   place-items: center;
   width: 38px;
@@ -70,6 +72,14 @@
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   cursor: pointer;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+.juntos__back:active,
+.juntos__gear:active {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(0.94);
 }
 .juntos__back svg {
   transform: rotate(90deg);
@@ -78,9 +88,6 @@
   margin: 0;
   color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
-}
-.juntos__spacer {
-  width: 38px;
 }
 
 /* Píldora de cristal. */
@@ -166,4 +173,109 @@
 .juntos__verse-numbers .juntos__dot {
   color: rgba(255, 255, 255, 0.5);
   font-size: 18px;
+}
+
+/* ==========================================
+   Ajustes del aniversario (hoja del engranaje)
+   ========================================== */
+.jsettings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+.jsettings__group {
+  margin: 6px 0 0;
+  color: var(--muted, #8a8a93);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Cinco ambientes, como miniaturas. */
+.jsettings__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.jthumb {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: 82px;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft, rgba(127, 127, 127, 0.25));
+  border-radius: 14px;
+  background: var(--j-base, #0b0710);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.jthumb:active {
+  transform: scale(0.97);
+}
+.jthumb.is-on {
+  box-shadow: 0 0 0 2px #ff6fa5 inset;
+}
+.jthumb__dot {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(9px);
+}
+.jthumb__dot--a {
+  top: -12px;
+  left: -8px;
+  width: 62px;
+  height: 62px;
+  background: var(--j-a, #f0b23c);
+}
+.jthumb__dot--b {
+  right: -10px;
+  bottom: -14px;
+  width: 70px;
+  height: 70px;
+  background: var(--j-b, #7b4bb3);
+}
+.jthumb__name {
+  position: relative;
+  font-size: 12px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+
+/* Fila de la fecha del aniversario. */
+.jsettings__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft, rgba(127, 127, 127, 0.25));
+  border-radius: 14px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.06));
+}
+.jsettings__row-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+.jsettings__row-body b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.jsettings__row-body span {
+  color: var(--muted, #8a8a93);
+  font-size: 12px;
+}
+.jsettings__go {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent, #ff6fa5);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
 }
