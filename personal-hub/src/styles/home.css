@@ -1343,3 +1343,23 @@ button.home-map:focus-visible {
 .wprev__triple b {
   font-size: 20px;
 }
+
+/* Ajustes finos de las miniaturas dentro de la hoja */
+.wprev__big b {
+  margin-right: 3px;
+  letter-spacing: -0.02em;
+}
+.wprev__big span {
+  font-size: 10px;
+  font-weight: 600;
+}
+.wprev--days .wprev__sub {
+  color: #E3D6E8;
+  letter-spacing: 0.04em;
+}
+.wprev--together .wprev__label {
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-align: center;
+}
