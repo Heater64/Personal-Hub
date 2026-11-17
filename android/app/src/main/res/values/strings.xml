@@ -11,4 +11,9 @@
     <string name="widget_days_label">🤍 días juntos</string>
     <string name="widget_days_caption">desde el 03/07/2025</string>
     <string name="widget_days_description">Contador de días juntos</string>
+
+    <!-- Widget de la distancia -->
+    <string name="widget_distance_label">📍 distancia</string>
+    <string name="widget_distance_empty">abre la app</string>
+    <string name="widget_distance_description">Distancia entre vosotros</string>
 </resources>

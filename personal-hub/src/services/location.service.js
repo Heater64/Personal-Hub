@@ -169,6 +169,42 @@ export function startLocationSharing({ userId, isAdmin, name, avatar } = {}, onS
   document.addEventListener('visibilitychange', onVisible);
 }
 
+/**
+ * Pide el permiso de ubicación de forma explícita y, si lo concede, comparte
+ * la posición en el acto.
+ *
+ * En el APK lo pide el plugin nativo (el WebView no sabe hacerlo solo); en el
+ * navegador basta con llamar a getCurrentPosition, que es lo que abre el
+ * diálogo del sitio. Devuelve true si quedó concedido.
+ */
+export async function requestLocationPermission(onStatus) {
+  if (!self) return false;
+
+  if (isNative()) {
+    const mod = await import('@capacitor/geolocation').catch(() => null);
+    if (mod) {
+      try {
+        const perm = await mod.Geolocation.requestPermissions();
+        const granted = perm.location === 'granted';
+        if (granted) await push(self, onStatus);
+        onStatus?.(granted ? 'ok' : 'denied');
+        return granted;
+      } catch {
+        /* cae al camino del navegador */
+      }
+    }
+  }
+
+  try {
+    await currentPosition();
+    await push(self, onStatus);
+    return true;
+  } catch (err) {
+    onStatus?.(err?.code === 1 ? 'denied' : 'error');
+    return false;
+  }
+}
+
 export function stopLocationSharing() {
   if (shareTimer) {
     clearInterval(shareTimer);
@@ -343,6 +379,17 @@ async function saveForWidget(state) {
         at: new Date().toISOString(),
       }),
     });
+
+    // Y que el widget se repinte ya: sin esto solo se actualiza cada 30 min
+    // (el mínimo que permite Android con updatePeriodMillis).
+    const bridge = window.Capacitor?.Plugins?.WidgetBridge;
+    if (bridge?.refresh) {
+      try {
+        await bridge.refresh();
+      } catch {
+        /* plugin ausente en una build antigua */
+      }
+    }
   } catch {
     /* sin Preferences: el widget se queda con lo último */
   }

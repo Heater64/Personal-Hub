@@ -43,6 +43,7 @@ import {
   fetchPartnerIdentity,
   fetchProfile,
   fetchMyLocation,
+  requestLocationPermission,
   formatDistance,
 } from '../services/location.service.js';
 import { openDistanceMap } from '../components/DistanceMapSheet.js';
@@ -561,10 +562,44 @@ function initDistancePanel(page) {
 
   let stopped = false;
 
-  const setHint = text => {
+  // El aviso de permiso no es un texto pasivo: lleva su botón, que es lo que
+  // dispara el diálogo del sistema (o del navegador) cuando toca.
+  const setHint = (text, withAction) => {
     if (!hintEl) return;
     hintEl.hidden = !text;
-    hintEl.textContent = text || '';
+    hintEl.innerHTML = '';
+    if (!text) return;
+    hintEl.append(document.createTextNode(text));
+    if (!withAction) return;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'home-map__allow';
+    btn.textContent = 'Permitir';
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Pidiendo…';
+      const granted = await requestLocationPermission(handleStatus);
+      if (!granted) {
+        btn.disabled = false;
+        btn.textContent = 'Reintentar';
+      }
+    });
+    hintEl.append(btn);
+  };
+
+  const handleStatus = status => {
+    if (stopped) return;
+    if (status === 'ok') {
+      setHint('');
+      return;
+    }
+    if (status === 'denied') {
+      // Ya denegado: el diálogo no vuelve a salir, hay que ir a ajustes.
+      setHint('Ubicación bloqueada. Actívala en los ajustes del móvil o del navegador.', false);
+      return;
+    }
+    setHint('Comparte tu ubicación para ver la distancia', true);
   };
 
   // Una cara: foto si la hay; si no, la inicial (o el corazón).
@@ -581,11 +616,7 @@ function initDistancePanel(page) {
   // puede leerlos de `profiles`, así que los manda quien los conoce.
   startLocationSharing(
     { userId: me?.id, isAdmin: userStore.isAdmin, name: me?.name, avatar: me?.avatar },
-    status => {
-      if (stopped) return;
-      if (status === 'denied') setHint('Activa la ubicación para ver la distancia');
-      else if (status === 'ok') setHint('');
-    }
+    handleStatus
   );
 
   // Lo que necesita el mapa al abrirse: última distancia y datos de cada uno.

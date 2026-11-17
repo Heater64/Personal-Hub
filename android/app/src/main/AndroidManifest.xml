@@ -33,6 +33,19 @@
                 android:resource="@xml/widget_days_info" />
         </receiver>
 
+        <!-- Distancia entre los dos: lee la última que calculó la app. -->
+        <receiver
+            android:name=".DistanceWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_distance_description">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_distance_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

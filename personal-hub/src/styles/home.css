@@ -1096,3 +1096,22 @@ button.home-map:focus-visible {
   font-size: 11px;
   text-align: center;
 }
+
+/* Botón de permiso dentro del aviso del mapa. */
+.home-map__allow {
+  margin-left: 6px;
+  padding: 3px 10px;
+  border: 1px solid #ff9db3;
+  border-radius: 999px;
+  background: rgba(255, 157, 179, 0.16);
+  color: #7a3547;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.home-map__allow:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

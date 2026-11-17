@@ -14,6 +14,10 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Plugin propio: refresca el widget de la distancia en cuanto la web
+        // guarda un valor nuevo. Hay que registrarlo ANTES de super.onCreate.
+        registerPlugin(WidgetBridgePlugin.class);
+
         super.onCreate(savedInstanceState);
 
         // Desde targetSdk 35 (Android 15) el sistema obliga a dibujar de borde
