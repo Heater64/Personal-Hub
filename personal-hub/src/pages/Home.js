@@ -42,8 +42,10 @@ import {
   watchDistance,
   fetchPartnerIdentity,
   fetchProfile,
+  fetchMyLocation,
   formatDistance,
 } from '../services/location.service.js';
+import { openDistanceMap } from '../components/DistanceMapSheet.js';
 
 // ==========================================
 // SEED — contenido que cambia cada día
@@ -506,9 +508,9 @@ function watchSectionHTML() {
 // ==========================================
 // MAPA — distancia entre los dos
 // ==========================================
-// Dos círculos con las fotos y el número en medio, como el diseño. El mapa es
-// decorativo a propósito: con posición real haría falta un proveedor de mapas
-// (y su clave), y aquí solo interesa el número y las caras.
+// Dos círculos con las fotos y el número en medio, como el diseño. Este de
+// aquí es un dibujo ligero que se ve siempre; al tocarlo se abre el mapa real
+// (DistanceMapSheet), que es el único sitio donde se cargan las teselas.
 function avatarCircle(who, { name = '', avatar = '' } = {}) {
   const initial = (name || '').trim().charAt(0).toUpperCase();
   const label = who === 'me' ? 'Tú' : 'Tu pareja';
@@ -521,7 +523,7 @@ function avatarCircle(who, { name = '', avatar = '' } = {}) {
 function distancePanelHTML() {
   const me = userStore.getUser() || {};
   return `
-    <section class="home-map" aria-label="Distancia entre vosotros">
+    <button type="button" class="home-map" id="homeMapOpen" aria-label="Ver el mapa con las dos ubicaciones">
       <svg class="home-map__art" viewBox="0 0 360 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
         <rect width="360" height="160" fill="#eef1ea"/>
         <path d="M0 122 L118 100 L236 112 L360 92 L360 160 L0 160Z" fill="#e3ebd9"/>
@@ -542,7 +544,7 @@ function distancePanelHTML() {
         ${avatarCircle('them')}
       </div>
       <p class="home-map__hint" id="homeMapHint" hidden></p>
-    </section>
+    </button>
   `;
 }
 
@@ -575,11 +577,23 @@ function initDistancePanel(page) {
       : `<span aria-hidden="true">${escapeHtml(initial || '♥')}</span>`;
   };
 
-  startLocationSharing({ userId: me?.id, isAdmin: userStore.isAdmin }, status => {
-    if (stopped) return;
-    if (status === 'denied') setHint('Activa la ubicación para ver la distancia');
-    else if (status === 'ok') setHint('');
-  });
+  // El nombre y la foto viajan con la posición: la otra cuenta no siempre
+  // puede leerlos de `profiles`, así que los manda quien los conoce.
+  startLocationSharing(
+    { userId: me?.id, isAdmin: userStore.isAdmin, name: me?.name, avatar: me?.avatar },
+    status => {
+      if (stopped) return;
+      if (status === 'denied') setHint('Activa la ubicación para ver la distancia');
+      else if (status === 'ok') setHint('');
+    }
+  );
+
+  // Lo que necesita el mapa al abrirse: última distancia y datos de cada uno.
+  const state = {
+    km: null,
+    partner: null,
+    me: { name: me?.name || 'Tú', avatar: me?.avatar || '' },
+  };
 
   // Las dos caras se pintan de entrada, sin esperar a la ubicación: la foto se
   // ve siempre, aunque la otra cuenta no haya compartido dónde está.
@@ -587,15 +601,51 @@ function initDistancePanel(page) {
     const [mine, partnerId] = await Promise.all([fetchProfile(me?.id), fetchPartnerIdentity()]);
     if (stopped) return;
     fill(meEl, mine, me?.avatar);
+    state.me = { name: mine?.name || me?.name || 'Tú', avatar: mine?.avatar || me?.avatar || '' };
     if (!partnerId) return;
     const partner = await fetchProfile(partnerId);
     if (stopped) return;
-    fill(themEl, partner, '');
+    // Si la RLS no deja leer su perfil, el nombre y la foto llegan igual con
+    // la posición (los escribe su propio móvil).
+    const known = state.partner?.name || state.partner?.avatar ? state.partner : null;
+    fill(themEl, partner || known, '');
+    if (partner?.name || partner?.avatar || known) {
+      state.partner = {
+        ...(state.partner || {}),
+        name: partner?.name || known?.name || '',
+        avatar: partner?.avatar || known?.avatar || '',
+      };
+    }
   })();
 
-  const stopWatch = watchDistance(({ km }) => {
+  const stopWatch = watchDistance(({ km, partner }) => {
     if (stopped) return;
     if (valueEl) valueEl.textContent = formatDistance(km);
+    state.km = km;
+    if (partner) {
+      state.partner = {
+        ...(state.partner || {}),
+        ...partner,
+        // Un campo vacío no debe borrar lo que ya sabíamos de la otra cara.
+        name: partner.name || state.partner?.name || '',
+        avatar: partner.avatar || state.partner?.avatar || '',
+      };
+      if (!themEl?.querySelector('img') && (partner.avatar || partner.name)) {
+        fill(themEl, { name: partner.name, avatar: partner.avatar }, '');
+      }
+    }
+  });
+
+  // Tocar el panel abre el mapa real con las dos posiciones y los datos de
+  // cada móvil (batería, red, velocidad).
+  page.querySelector('#homeMapOpen')?.addEventListener('click', () => {
+    const mine = fetchMyLocation();
+    openDistanceMap({
+      me: mine ? { ...state.me, ...mine } : null,
+      partner: state.partner,
+      km: state.km,
+      meName: state.me?.name,
+    });
   });
 
   return () => {

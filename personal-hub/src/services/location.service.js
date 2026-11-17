@@ -78,6 +78,39 @@ async function currentPosition() {
   });
 }
 
+/**
+ * Lo que acompaña a la posición: batería, tipo de red y velocidad.
+ *
+ * Todo es opcional y best-effort. En un WebView puede faltar el sensor de
+ * batería o la Network Information API; si falta, el campo no viaja y la otra
+ * persona ve menos datos, nunca un cero inventado.
+ */
+async function deviceFacts(pos) {
+  const facts = {};
+
+  const speed = pos?.coords?.speed;
+  if (Number.isFinite(speed) && speed >= 0) facts.speed = Math.round(speed * 3.6); // km/h
+
+  try {
+    const battery = await navigator.getBattery?.();
+    if (battery) {
+      facts.battery = Math.round(battery.level * 100);
+      facts.charging = !!battery.charging;
+    }
+  } catch {
+    /* sin Battery Status API */
+  }
+
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    const type = conn.type && conn.type !== 'unknown' ? conn.type : conn.effectiveType;
+    if (type) facts.net = String(type);
+    if (Number.isFinite(conn.downlink)) facts.mbps = conn.downlink;
+  }
+
+  return facts;
+}
+
 /** Escribe tu posición donde la otra persona puede leerla. */
 async function push({ userId, isAdmin }, setStatus) {
   if (!userId || !supabase) return;
@@ -89,6 +122,12 @@ async function push({ userId, isAdmin }, setStatus) {
       lng: Number(pos.coords.longitude.toFixed(5)),
       at,
       user_id: userId,
+      // El nombre y la foto viajan con la posición: la cuenta de ella no
+      // puede leer la fila de `profiles` del admin (RLS), así que si esto
+      // dependiera de esa lectura el mapa se quedaría sin nombre ni cara.
+      name: self?.name || '',
+      avatar: self?.avatar || '',
+      ...(await deviceFacts(pos)),
     };
 
     if (isAdmin) {
@@ -103,9 +142,9 @@ async function push({ userId, isAdmin }, setStatus) {
           { onConflict: 'user_id,type' }
         );
     }
-    // La propia se guarda en memoria: el panel calcula con ella sin volver a
-    // encender el GPS cada minuto.
-    myLocation = { lat: data.lat, lng: data.lng };
+    // La propia se guarda entera en memoria: el panel calcula con ella sin
+    // volver a encender el GPS cada minuto y el mapa enseña tus datos.
+    myLocation = data;
     setStatus?.('ok');
   } catch (err) {
     // 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
@@ -117,10 +156,10 @@ async function push({ userId, isAdmin }, setStatus) {
  * Empieza a compartir tu posición (idempotente).
  * Se llama al montar la portada; `stopLocationSharing` al salir.
  */
-export function startLocationSharing({ userId, isAdmin } = {}, onStatus) {
+export function startLocationSharing({ userId, isAdmin, name, avatar } = {}, onStatus) {
   stopLocationSharing();
   if (!userId || !supabase) return;
-  self = { userId: String(userId), isAdmin: !!isAdmin };
+  self = { userId: String(userId), isAdmin: !!isAdmin, name: name || '', avatar: avatar || '' };
 
   push(self, onStatus);
   shareTimer = setInterval(() => push(self, onStatus), SHARE_MS);
@@ -176,7 +215,20 @@ function toLocation(data, userId) {
   const lat = Number(data?.lat);
   const lng = Number(data?.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng, at: data?.at || null, userId: data?.user_id || userId || null };
+  return {
+    lat,
+    lng,
+    at: data?.at || null,
+    userId: data?.user_id || userId || null,
+    name: data?.name || '',
+    avatar: data?.avatar || '',
+    // Datos del dispositivo: viajan con la posición, si el móvil los da.
+    battery: Number.isFinite(Number(data?.battery)) ? Number(data.battery) : null,
+    charging: data?.charging === true,
+    net: data?.net || '',
+    mbps: Number.isFinite(Number(data?.mbps)) ? Number(data.mbps) : null,
+    speed: Number.isFinite(Number(data?.speed)) ? Number(data.speed) : null,
+  };
 }
 
 /** Nombre y foto de un perfil: lo que se pinta en cada círculo. */
@@ -272,6 +324,31 @@ export function formatDistance(km) {
 }
 
 /**
+ * Deja la distancia escrita en las preferencias del dispositivo.
+ *
+ * El widget de Android no puede ejecutar JavaScript: lee este JSON desde
+ * SharedPreferences cuando se refresca. En el navegador no hace nada.
+ */
+async function saveForWidget(state) {
+  if (!isNative()) return;
+  try {
+    const mod = await import('@capacitor/preferences').catch(() => null);
+    if (!mod) return;
+    await mod.Preferences.set({
+      key: 'widget_distance',
+      value: JSON.stringify({
+        km: Number.isFinite(state.km) ? Number(state.km.toFixed(2)) : null,
+        text: formatDistance(state.km),
+        partnerAt: state.partnerAt || null,
+        at: new Date().toISOString(),
+      }),
+    });
+  } catch {
+    /* sin Preferences: el widget se queda con lo último */
+  }
+}
+
+/**
  * Vigila la distancia y avisa con `{ km, partner, stale }`.
  *
  * Una vez al empezar, cada `intervalMs` y al volver a la pestaña. Devuelve la
@@ -285,6 +362,7 @@ export function watchDistance(handler, { intervalMs = 60000 } = {}) {
     if (!alive) return;
     if (!partner) {
       handler({ km: null, partner: null, partnerId: null, stale: false });
+      saveForWidget({ km: null });
       return;
     }
     // La primera vez el GPS puede tardar más que la lectura del otro lado:
@@ -295,12 +373,14 @@ export function watchDistance(handler, { intervalMs = 60000 } = {}) {
       if (!alive) return;
       me = fetchMyLocation();
     }
+    const km = me ? distanceKm(me, partner) : null;
     handler({
-      km: me ? distanceKm(me, partner) : null,
+      km,
       partner,
       partnerId: partner.userId,
       stale: !isFresh(partner.at),
     });
+    saveForWidget({ km, partnerAt: partner.at });
   };
 
   tick();

@@ -25,6 +25,12 @@ export default defineConfig({
           if (id.includes('@capacitor/')) {
             return undefined;
           }
+          // Leaflet solo se usa al abrir el mapa de la distancia. Si cae en
+          // `vendor` se descarga siempre; fuera de él viaja en el chunk de la
+          // hoja y el resto de la app no lo paga.
+          if (id.includes('node_modules/leaflet')) {
+            return undefined;
+          }
           // Group all node_modules dependencies into vendor chunk
           if (id.includes('node_modules')) {
             return 'vendor';
