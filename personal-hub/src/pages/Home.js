@@ -47,6 +47,8 @@ import {
   formatDistance,
 } from '../services/location.service.js';
 import { openDistanceMap } from '../components/DistanceMapSheet.js';
+import { openWidgetsSheet } from '../components/WidgetsSheet.js';
+import { saveDaysWidget, saveDistanceWidget } from '../services/widgets.service.js';
 import { isNative } from '../services/native.service.js';
 
 // ==========================================
@@ -554,7 +556,7 @@ function distancePanelHTML() {
  * Arranca el panel: comparte tu posición, pinta la de la otra persona y
  * actualiza el número. Devuelve la función para parar (page.cleanup).
  */
-function initDistancePanel(page) {
+function initDistancePanel(page, onChange) {
   const valueEl = page.querySelector('#homeDistanceValue');
   const meEl = page.querySelector('.home-map__avatar--me');
   const themEl = page.querySelector('.home-map__avatar--them');
@@ -634,6 +636,7 @@ function initDistancePanel(page) {
     if (stopped) return;
     fill(meEl, mine, me?.avatar);
     state.me = { name: mine?.name || me?.name || 'Tú', avatar: mine?.avatar || me?.avatar || '' };
+    onChange?.(state);
     if (!partnerId) return;
     const partner = await fetchProfile(partnerId);
     if (stopped) return;
@@ -647,6 +650,7 @@ function initDistancePanel(page) {
         name: partner?.name || known?.name || '',
         avatar: partner?.avatar || known?.avatar || '',
       };
+      onChange?.(state);
     }
   })();
 
@@ -665,6 +669,7 @@ function initDistancePanel(page) {
       if (!themEl?.querySelector('img') && (partner.avatar || partner.name)) {
         fill(themEl, { name: partner.name, avatar: partner.avatar }, '');
       }
+      onChange?.(state);
     }
   });
 
@@ -695,56 +700,35 @@ function initDistancePanel(page) {
 // tiene sentido dentro del APK, así que en el navegador no se pinta nada.
 function widgetsSectionHTML() {
   if (!isNative()) return '';
-  const rows = [
-    ['distance', 'Distancia', 'Los kilómetros, en tu pantalla de inicio'],
-    ['days', 'Días juntos', 'El contador de la portada'],
-  ];
   return `
     <section class="home-widgets" aria-label="Widgets">
-      <h2 class="section-title">Widgets</h2>
-      <div class="home-widgets__card">
-        ${rows
-          .map(
-            ([id, title, sub]) => `
-          <div class="home-widgets__row">
-            <span class="home-widgets__body">
-              <b>${title}</b>
-              <span>${sub}</span>
-            </span>
-            <button type="button" class="home-widgets__add" data-pin-widget="${id}">Añadir</button>
-          </div>`
-          )
-          .join('')}
+      <h2 class="section-title">Widgets
+        <button class="link" type="button" id="homeWidgetsOpen">Ver todos</button>
+      </h2>
+      <div class="home-widgets__previews">
+        <button type="button" class="home-widgets__preview" id="homeWidgetsOpen2">
+          <span class="wp-mini wp-mini--days"><b>501</b> días</span>
+          <span class="home-widgets__name">Días juntos</span>
+        </button>
+        <button type="button" class="home-widgets__preview" id="homeWidgetsOpen3">
+          <span class="wp-mini wp-mini--distance">301 km</span>
+          <span class="home-widgets__name">Distancia</span>
+        </button>
       </div>
-      <p class="home-widgets__note">Si no sale el diálogo, mantén pulsado un hueco del escritorio → Widgets → Hub🧸.</p>
+      <p class="home-widgets__note">Elige tamaño y colócalos en tu pantalla de inicio.</p>
     </section>
   `;
 }
 
-function initWidgetsSection(page) {
-  page.querySelectorAll('[data-pin-widget]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const bridge = window.Capacitor?.Plugins?.WidgetBridge;
-      const original = btn.textContent;
+function initWidgetsSection(page, getAvatars) {
+  const openers = ['#homeWidgetsOpen', '#homeWidgetsOpen2', '#homeWidgetsOpen3']
+    .map(sel => page.querySelector(sel))
+    .filter(Boolean);
 
-      if (!bridge?.requestPin) {
-        btn.textContent = 'No disponible';
-        setTimeout(() => (btn.textContent = original), 2500);
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = 'Abriendo…';
-      try {
-        const result = await bridge.requestPin({ widget: btn.dataset.pinWidget });
-        btn.textContent = result?.pinned ? 'Listo ✓' : 'Hazlo a mano';
-      } catch {
-        btn.textContent = 'Hazlo a mano';
-      }
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.textContent = original;
-      }, 3000);
+  openers.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const { me, partner } = getAvatars?.() || {};
+      openWidgetsSheet({ me, partner });
     });
   });
 }
@@ -823,11 +807,30 @@ export function HomePage(router) {
     ${widgetsSectionHTML()}
   `;
 
-  // Distancia: se pide la posición al entrar y se para al salir de la página
-  const stopDistance = initDistancePanel(page);
+  // Datos de los widgets: se guardan cada vez que cambian las caras o la
+  // distancia, porque el widget no puede calcularlos por su cuenta.
+  let widgetAvatars = { me: null, partner: null };
+  const months = Math.floor(daysSince / 30.4375);
 
-  // Botones «Añadir» de los widgets (solo existen dentro del APK)
-  initWidgetsSection(page);
+  const handleDistanceChange = state => {
+    widgetAvatars = { me: state.me, partner: state.partner };
+    if (!isNative()) return;
+    saveDaysWidget({
+      days: daysSince,
+      months,
+      weeks: Math.floor(daysSince / 7),
+      years: Math.floor(months / 12),
+      me: state.me,
+      partner: state.partner,
+    });
+    saveDistanceWidget({ km: state.km, me: state.me, partner: state.partner });
+  };
+
+  // Distancia: se pide la posición al entrar y se para al salir de la página
+  const stopDistance = initDistancePanel(page, handleDistanceChange);
+
+  // Pestaña de widgets (solo existe dentro del APK)
+  initWidgetsSection(page, () => widgetAvatars);
 
   // Contador — arranca ya y se corrige cuando llegan las fechas reales
   animateNumber(page.querySelector('#homeCounter'), daysSince);

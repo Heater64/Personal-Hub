@@ -16,4 +16,17 @@
     <string name="widget_distance_label">📍 distancia</string>
     <string name="widget_distance_empty">abre la app</string>
     <string name="widget_distance_description">Distancia entre vosotros</string>
+
+    <!-- Textos del rediseño -->
+    <string name="widget_days_unit">días</string>
+    <string name="widget_days_caption2">juntos</string>
+    <string name="widget_days_me">Tu foto</string>
+    <string name="widget_days_partner">Su foto</string>
+    <string name="widget_distance_label2">estáis a</string>
+
+    <!-- Variantes de tamaño -->
+    <string name="widget_days_description_compact">Días juntos (pequeño)</string>
+    <string name="widget_days_description_wide">Días juntos (grande)</string>
+    <string name="widget_distance_description_compact">Distancia (pequeño)</string>
+    <string name="widget_distance_description_wide">Distancia (grande)</string>
 </resources>

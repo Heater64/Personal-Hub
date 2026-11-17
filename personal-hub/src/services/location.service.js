@@ -359,41 +359,8 @@ export function formatDistance(km) {
   return `${value.replace(/,0$/, '')} km`;
 }
 
-/**
- * Deja la distancia escrita en las preferencias del dispositivo.
- *
- * El widget de Android no puede ejecutar JavaScript: lee este JSON desde
- * SharedPreferences cuando se refresca. En el navegador no hace nada.
- */
-async function saveForWidget(state) {
-  if (!isNative()) return;
-  try {
-    const mod = await import('@capacitor/preferences').catch(() => null);
-    if (!mod) return;
-    await mod.Preferences.set({
-      key: 'widget_distance',
-      value: JSON.stringify({
-        km: Number.isFinite(state.km) ? Number(state.km.toFixed(2)) : null,
-        text: formatDistance(state.km),
-        partnerAt: state.partnerAt || null,
-        at: new Date().toISOString(),
-      }),
-    });
-
-    // Y que el widget se repinte ya: sin esto solo se actualiza cada 30 min
-    // (el mínimo que permite Android con updatePeriodMillis).
-    const bridge = window.Capacitor?.Plugins?.WidgetBridge;
-    if (bridge?.refresh) {
-      try {
-        await bridge.refresh();
-      } catch {
-        /* plugin ausente en una build antigua */
-      }
-    }
-  } catch {
-    /* sin Preferences: el widget se queda con lo último */
-  }
-}
+// Los datos del widget los guarda widgets.service.js: aquí solo se calcula la
+// distancia. Tenerlo en un único sitio evita que dos escritores se pisen.
 
 /**
  * Vigila la distancia y avisa con `{ km, partner, stale }`.
@@ -409,7 +376,6 @@ export function watchDistance(handler, { intervalMs = 60000 } = {}) {
     if (!alive) return;
     if (!partner) {
       handler({ km: null, partner: null, partnerId: null, stale: false });
-      saveForWidget({ km: null });
       return;
     }
     // La primera vez el GPS puede tardar más que la lectura del otro lado:
@@ -427,7 +393,6 @@ export function watchDistance(handler, { intervalMs = 60000 } = {}) {
       partnerId: partner.userId,
       stale: !isFresh(partner.at),
     });
-    saveForWidget({ km, partnerAt: partner.at });
   };
 
   tick();

@@ -123,6 +123,33 @@
   max-width: 52ch;
 }
 
+/* Constelación tenue: el mundo se intuye detrás del texto sin salirse de los
+   tokens de la app (solo superficie y acento suaves). */
+.os-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  background-image: radial-gradient(var(--border-soft) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.55;
+  -webkit-mask-image: linear-gradient(105deg, transparent 35%, #000 100%);
+  mask-image: linear-gradient(105deg, transparent 35%, #000 100%);
+  pointer-events: none;
+}
+
+/* El contenido del hero va por encima de la trama de puntos. */
+.os-hero > * { z-index: 1; }
+
+.os-hero__lore {
+  position: relative;
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  color: var(--text-2);
+  max-width: 58ch;
+  margin: 0 0 var(--sp-16);
+}
+
 .os-hero__actions { position: relative; display: flex; flex-wrap: wrap; gap: var(--sp-8); }
 
 /* ==========================================
@@ -162,6 +189,129 @@
 }
 
 .os-stat.is-accent b { color: var(--primary); }
+
+/* ==========================================
+   LUGARES DEL MUNDO
+   ========================================== */
+.os-places {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-22, 22px);
+}
+
+.os-place {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-14);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-s);
+  overflow: hidden;
+}
+
+.os-place::before {
+  content: '';
+  position: absolute;
+  top: -34px;
+  right: -26px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--primary-soft), transparent 70%);
+  pointer-events: none;
+}
+
+.os-place__emoji {
+  position: relative;
+  font-size: 24px;
+  line-height: 1.2;
+  margin-bottom: var(--sp-2, 2px);
+}
+
+.os-place__name {
+  position: relative;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.os-place__text {
+  position: relative;
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+/* ==========================================
+   SAGAS (vista rápida en Inicio)
+   ========================================== */
+.os-sagas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-22, 22px);
+}
+
+.os-saga {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-12);
+  padding: var(--sp-14);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-s);
+  cursor: pointer;
+  transition: transform var(--dur-fast), border-color var(--dur-fast);
+}
+
+.os-saga:hover { transform: translateY(-2px); border-color: var(--primary); }
+
+.os-saga__emoji {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-soft);
+  font-size: 21px;
+}
+
+.os-saga__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.os-saga__title {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.os-saga__meta {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.os-saga__desc {
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 /* ==========================================
    REJILLA DE PERSONAJES
@@ -274,6 +424,107 @@
 .os-book p { font-size: var(--fs-sm); color: var(--text-2); line-height: 1.6; margin: 0; }
 .os-book .btn { margin-top: var(--sp-6); }
 
+/* Libros de la biblioteca, con sus capítulos */
+.os-books {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-22, 22px);
+}
+
+.os-book-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-10);
+}
+
+.os-book-card__emoji {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-soft);
+  font-size: 23px;
+}
+
+.os-book-card__titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.os-book-card__title {
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.os-book-card__sub {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.os-book-card__count { margin-left: auto; flex: none; }
+
+.os-book-card__desc {
+  margin: 0 0 var(--sp-12);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+.os-chapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.os-chapter {
+  display: flex;
+  gap: var(--sp-10);
+  padding: var(--sp-10) var(--sp-12);
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+}
+
+.os-chapter__num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.os-chapter__body { min-width: 0; }
+
+.os-chapter__title {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.os-chapter__teaser {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
 /* ==========================================
    SHEET DE PERSONAJE
    ========================================== */
@@ -361,4 +612,6 @@
   .os-hero { padding: var(--sp-18, 18px) var(--sp-16); }
   .os-hero__title { font-size: var(--fs-lg); }
   .os-sheet__img { aspect-ratio: 1; }
+  .os-places, .os-sagas { grid-template-columns: minmax(0, 1fr); }
+  .os-book-card__count { display: none; }
 }

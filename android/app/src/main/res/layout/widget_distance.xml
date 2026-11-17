@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Distancia: tarjeta clara con el número y las dos caras. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_distance_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_days_bg"
+    android:background="@drawable/widget_bg_distance"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="14dp">
@@ -12,9 +13,10 @@
         android:id="@+id/widget_distance_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/widget_distance_label"
-        android:textColor="#E8E6E3"
-        android:textSize="12sp" />
+        android:text="@string/widget_distance_label2"
+        android:textColor="#8A615A"
+        android:textSize="12sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/widget_distance_value"
@@ -22,16 +24,43 @@
         android:layout_height="wrap_content"
         android:includeFontPadding="false"
         android:text="—"
-        android:textColor="#E8735A"
-        android:textSize="30sp"
+        android:textColor="#7A3A44"
+        android:textSize="38sp"
         android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/widget_distance_faces"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/widget_distance_me"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/widget_face_ring"
+            android:contentDescription="@string/widget_days_me"
+            android:scaleType="centerInside" />
+
+        <ImageView
+            android:id="@+id/widget_distance_partner"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="-8dp"
+            android:background="@drawable/widget_face_ring"
+            android:contentDescription="@string/widget_days_partner"
+            android:scaleType="centerInside" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/widget_distance_caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
         android:text="@string/widget_distance_empty"
-        android:textColor="#9A9490"
+        android:textColor="#A9817A"
         android:textSize="11sp" />
 
 </LinearLayout>

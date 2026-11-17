@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hueco de la foto cuando todavía no se ha descargado. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#4A3A50" />
+    <stroke
+        android:width="2dp"
+        android:color="#F2EAF3" />
+</shape>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tarjeta clara rosa/crema del widget de distancia. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="26dp" />
+    <gradient
+        android:angle="270"
+        android:endColor="#F9C9D2"
+        android:startColor="#FFF0E9" />
+</shape>

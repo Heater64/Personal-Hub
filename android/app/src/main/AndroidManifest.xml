@@ -42,7 +42,34 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_distance_info" />
+                        <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_distance_info" />
+        </receiver>
+
+        <!-- Versiones pequeñas: mismo diseño, otra talla mínima. -->
+        <receiver
+            android:name=".DaysCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_days_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_days_compact_info" />
+        </receiver>
+
+        <receiver
+            android:name=".DistanceCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_distance_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_distance_compact_info" />
         </receiver>
 
         <provider

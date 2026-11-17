@@ -273,10 +273,9 @@ export const ROUTES = [
     icon: 'star',
     title: 'OsitosWorld · Personal Hub',
     lazy: true,
-    section: 'ositos',
-    mobileRoot: true,
-    bottomNav: true,
-    sidebar: true
+    section: 'rincon',
+    parent: '/rincon',
+    sidebarGroup: 'rincon'
   }
 ];
 
@@ -308,7 +307,8 @@ const SIDEBAR_GROUPS = [
       { label: 'Juegos', icon: 'game', href: '/juegos' },
       { label: 'Canciones', icon: 'music', href: '/canciones' },
       { label: 'Those Eyes', icon: 'spark', href: '/thoseeyes' },
-      { label: 'Series', icon: 'book', href: '/series' }
+      { label: 'Series', icon: 'book', href: '/series' },
+      { label: 'OsitosWorld', icon: 'star', href: '/ositos' }
     ]
   },
   {
@@ -344,7 +344,7 @@ const SIDEBAR_GROUPS = [
 
 // Pestañas de la barra inferior, en orden. El admin no ve «Inicio» y ve
 // «Admin» en su lugar: la lista se filtra por rol.
-export const BOTTOM_NAV_PATHS = ['/', '/admin', '/rincon', '/sentimientos', '/ositos', '/perfil'];
+export const BOTTOM_NAV_PATHS = ['/', '/admin', '/rincon', '/sentimientos', '/perfil'];
 
 // ==========================================
 // CONSULTAS

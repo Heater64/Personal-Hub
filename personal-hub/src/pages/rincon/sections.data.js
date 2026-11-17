@@ -141,5 +141,13 @@ export const SECTIONS = [
         continueList: cont
       };
     }
+  },
+  {
+    id: 'ositos',
+    icon: 'star',
+    emoji: '🧸',
+    title: 'OsitosWorld',
+    desc: 'Un mundo lleno de aventuras y personajes.',
+    href: '/ositos'
   }
 ];

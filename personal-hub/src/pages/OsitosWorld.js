@@ -11,7 +11,7 @@ import '../styles/ositos.css';
 import { h, icon, openSheet, closeSheets, toast, emptyState } from '../components/ui.js';
 import { buildVideoPlayer } from '../components/MediaLightbox.js';
 import { escapeHtml } from '../utils/escape.js';
-import { CHARACTERS } from '../data/ositos-data.js';
+import { CHARACTERS, LORE, WORLD_PLACES, SAGAS } from '../data/ositos-data.js';
 import { userPrefKey } from '../utils/userStorage.js';
 
 const INTRO_VIDEO_URL = 'https://res.cloudinary.com/dcsent4fs/video/upload/v1787071569/VID_20260802_150647_233_dcsau2.mp4';
@@ -132,6 +132,62 @@ export function OsitosWorldPage(router) {
   /* ==========================================
      VISTAS
      ========================================== */
+  /* ==========================================
+     LUGARES Y SAGAS
+     ========================================== */
+  function placeCardHTML(place) {
+    return `
+      <article class="os-place">
+        <span class="os-place__emoji">${place.emoji || '🌿'}</span>
+        <b class="os-place__name">${escapeHtml(place.name)}</b>
+        <p class="os-place__text">${escapeHtml(place.description)}</p>
+      </article>
+    `;
+  }
+
+  /** Tarjeta de saga para Inicio: lleva a la biblioteca. */
+  function sagaCardHTML(saga) {
+    const n = saga.chapters.length;
+    return `
+      <button type="button" class="os-saga" data-go="biblioteca" aria-label="Leer ${escapeHtml(saga.title)} en la biblioteca">
+        <span class="os-saga__emoji">${saga.emoji || '📖'}</span>
+        <span class="os-saga__body">
+          <b class="os-saga__title">${escapeHtml(saga.title)}</b>
+          <span class="os-saga__meta">${escapeHtml(saga.subtitle)} · ${n} ${n === 1 ? 'capítulo' : 'capítulos'}</span>
+          <span class="os-saga__desc">${escapeHtml(saga.description)}</span>
+        </span>
+      </button>
+    `;
+  }
+
+  /** Libro completo para la biblioteca, con sus capítulos. */
+  function sagaBookHTML(saga) {
+    return `
+      <article class="card os-book-card">
+        <header class="os-book-card__head">
+          <span class="os-book-card__emoji">${saga.emoji || '📖'}</span>
+          <div class="os-book-card__titles">
+            <b class="os-book-card__title">${escapeHtml(saga.title)}</b>
+            <span class="os-book-card__sub">${escapeHtml(saga.subtitle)}</span>
+          </div>
+          <span class="chip os-book-card__count">${saga.chapters.length} cap.</span>
+        </header>
+        <p class="os-book-card__desc">${escapeHtml(saga.description)}</p>
+        <ol class="os-chapters">
+          ${saga.chapters.map((ch, i) => `
+            <li class="os-chapter">
+              <span class="os-chapter__num">${i + 1}</span>
+              <div class="os-chapter__body">
+                <b class="os-chapter__title">${escapeHtml(ch.title)}</b>
+                <p class="os-chapter__teaser">${escapeHtml(ch.teaser)}</p>
+              </div>
+            </li>
+          `).join('')}
+        </ol>
+      </article>
+    `;
+  }
+
   function renderInicio() {
     const heroes = CHARACTERS.filter(c => c.role === 'heroe').length;
     const villanos = CHARACTERS.filter(c => c.role === 'villano').length;
@@ -141,8 +197,9 @@ export function OsitosWorldPage(router) {
     return `
       <article class="os-hero">
         <span class="os-hero__emoji">🧸</span>
-        <h2 class="os-hero__title">Bienvenida a Ositos World</h2>
-        <p class="os-hero__sub">Un pequeño universo de personajes mágicos e historias por descubrir.</p>
+        <h2 class="os-hero__title">Bienvenida a ${escapeHtml(LORE.name)}</h2>
+        <p class="os-hero__sub">${escapeHtml(LORE.tagline)}</p>
+        <p class="os-hero__lore">${escapeHtml(LORE.intro)}</p>
         <div class="os-hero__actions">
           <button type="button" class="btn" data-go="biblioteca">${icon('book', 16)} Biblioteca</button>
           <button type="button" class="btn btn-secondary" data-go="personajes">${icon('user', 16)} Personajes</button>
@@ -158,7 +215,13 @@ export function OsitosWorldPage(router) {
         <div class="os-stat is-accent"><b>${favorites.size}</b><span>Favoritos</span></div>
       </div>
 
-      <p class="section-title">Personajes destacados</p>
+      <p class="section-title">Lugares del mundo <span class="section-title__aside">${WORLD_PLACES.length} rincones</span></p>
+      <div class="os-places">${WORLD_PLACES.map(placeCardHTML).join('')}</div>
+
+      <p class="section-title">Sagas <span class="section-title__aside">${SAGAS.length} historias por abrir</span></p>
+      <div class="os-sagas">${SAGAS.map(sagaCardHTML).join('')}</div>
+
+      <p class="section-title">Personajes destacados <span class="section-title__aside">Toca para conocerlos</span></p>
       <div class="os-grid">${featured.map(charCardHTML).join('')}</div>
     `;
   }
@@ -185,13 +248,14 @@ export function OsitosWorldPage(router) {
   }
 
   function renderBiblioteca() {
-    // Los datos aún no traen capítulos: la biblioteca muestra el estado
-    // vacío con el vídeo de introducción mientras tanto.
+    const pages = SAGAS.reduce((n, s) => n + s.chapters.length, 0);
     return `
+      <p class="section-title">La biblioteca <span class="section-title__aside">${SAGAS.length} sagas · ${pages} capítulos</span></p>
+      <div class="os-books">${SAGAS.map(sagaBookHTML).join('')}</div>
       <div class="card os-book">
-        <div class="os-book__icon">${icon('book', 26)}</div>
-        <b>La biblioteca aún está en blanco</b>
-        <p>Cada saga será un libro y cada capítulo, una página por descubrir. Pronto llegarán las primeras historias.</p>
+        <div class="os-book__icon">${icon('video', 26)}</div>
+        <b>Entra en el mundo</b>
+        <p>Un minuto de vídeo para conocer a los ositos antes de abrir la primera página.</p>
         <button type="button" class="btn" data-intro>${icon('video', 16)} Ver el vídeo de introducción</button>
       </div>
     `;
@@ -255,6 +319,8 @@ export function OsitosWorldPage(router) {
       if (pers) body.append(pers);
       const curio = section('Curiosidad', c.curiosities);
       if (curio) body.append(curio);
+      const home = section('Vive en', c.home);
+      if (home) body.append(home);
 
       if (friends.length) {
         const chips = h('div', { class: 'os-sheet__chips' });

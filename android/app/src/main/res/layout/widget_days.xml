@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Días juntos: dos caras, número grande y «juntos», sobre degradado oscuro. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_days_root"
     android:layout_width="match_parent"
@@ -8,30 +9,66 @@
     android:orientation="vertical"
     android:padding="14dp">
 
-    <TextView
-        android:id="@+id/widget_days_label"
+    <LinearLayout
+        android:id="@+id/widget_days_faces"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/widget_days_label"
-        android:textColor="#E8E6E3"
-        android:textSize="12sp" />
+        android:gravity="center"
+        android:orientation="horizontal">
 
-    <TextView
-        android:id="@+id/widget_days_count"
+        <ImageView
+            android:id="@+id/widget_days_me"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:background="@drawable/widget_face_ring"
+            android:contentDescription="@string/widget_days_me"
+            android:scaleType="centerInside" />
+
+        <ImageView
+            android:id="@+id/widget_days_partner"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_marginStart="-12dp"
+            android:background="@drawable/widget_face_ring"
+            android:contentDescription="@string/widget_days_partner"
+            android:scaleType="centerInside" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:includeFontPadding="false"
-        android:text="0"
-        android:textColor="#E8735A"
-        android:textSize="36sp"
-        android:textStyle="bold" />
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical|center_horizontal"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_days_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:text="0"
+            android:textColor="#FFFFFF"
+            android:textSize="44sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_days_unit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:includeFontPadding="false"
+            android:text="@string/widget_days_unit"
+            android:textColor="#F0E2F2"
+            android:textSize="17sp" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/widget_days_caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/widget_days_caption"
-        android:textColor="#9A9490"
-        android:textSize="11sp" />
+        android:layout_marginTop="2dp"
+        android:text="@string/widget_days_caption2"
+        android:textColor="#D3C2D8"
+        android:textSize="15sp" />
 
 </LinearLayout>
