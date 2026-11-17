@@ -11,6 +11,7 @@ import { showToast } from '../components/Toast.js';
 import { db } from '../services/db.service.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { requestEnable, disable, isPushSupported, getNotifSettings, setNotifSettings, notifPermission, inQuietHours, sendTestNotification, syncReminderState } from '../services/notifications.service.js';
+import { getNativePushStatus, registerNativePush } from '../services/native.service.js';
 import { escapeHtml } from '../utils/escape.js';
 import { MAX_CUSTOM_LABEL, makeCustomMood, toggleMoodSelection } from '../data/moods.data.js';
 import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/specialDates.js';
@@ -975,9 +976,46 @@ export function ProfilePage(router) {
     if (!root) return;
     const $ = (sel) => root.querySelector(sel);
 
-    // Permiso: aviso contextual (bloqueado / sin conceder) o nada si está OK
+    // Permiso: aviso contextual (bloqueado / sin conceder) o nada si está OK.
+    // En el APK manda FCM, no Web Push: aquí se muestra el estado real del
+    // dispositivo (sin esto no había forma de saber si quedó registrado).
     const permNote = $('#notifPermNote');
-    const drawPerm = () => {
+    const drawPerm = async () => {
+      const native = await getNativePushStatus();
+      if (native) {
+        permNote.hidden = false;
+        permNote.textContent = '';
+
+        const retry = text => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'prof-btn prof-btn--primary';
+          btn.style.marginTop = '10px';
+          btn.textContent = text;
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            await registerNativePush();
+            drawPerm();
+          });
+          permNote.append(btn);
+        };
+
+        if (!native.plugin) {
+          permNote.textContent = 'Esta instalación de la app no incluye notificaciones nativas. Instala la APK con Firebase (hub-widget.apk).';
+        } else if (native.permission === 'denied') {
+          permNote.textContent = 'Notificaciones bloqueadas en el móvil. Actívalas en Ajustes → Aplicaciones → Hub🧸 → Notificaciones.';
+        } else if (native.permission !== 'granted') {
+          permNote.textContent = 'La app puede avisarte, pero todavía no has dado el permiso.';
+          retry('Activar notificaciones');
+        } else if (native.saved) {
+          permNote.textContent = '✅ Este móvil está registrado: recibirás los avisos de la app.';
+        } else {
+          permNote.textContent = `Permiso concedido, pero el servidor aún no tiene el token${native.error ? ` (${native.error})` : ''}.`;
+          retry('Reintentar registro');
+        }
+        return;
+      }
+
       const p = notifPermission();
       if (p === 'unsupported') {
         permNote.hidden = false;

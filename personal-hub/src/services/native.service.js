@@ -177,6 +177,12 @@ export async function initNativeApp() {
 
 let pushStarted = false;
 let pushNavigate = null;
+// Último token recibido y si el servidor lo aceptó. Alimenta el diagnóstico
+// de Perfil → Notificaciones: sin esto, en el APK no hay manera de saber si el
+// móvil quedó dado de alta.
+let lastToken = null;
+let tokenSaved = false;
+let tokenError = null;
 // Resuelve cuando los listeners del plugin ya están puestos. `registerNativePush`
 // la espera: si la sesión se restauraba antes de tiempo, el plugin emitía
 // `registration` antes de que hubiera listener y el token se perdía hasta el
@@ -268,23 +274,69 @@ export async function registerNativePush() {
 }
 
 /**
+ * Estado de las notificaciones de la app, para mostrarlo en Ajustes.
+ *
+ * Devuelve `null` en el navegador (ahí manda Web Push) y, dentro del APK:
+ *   plugin      → ¿esta build incluye @capacitor/push-notifications?
+ *   permission  → granted | denied | prompt
+ *   registered  → ¿el plugin ya emitió un token?
+ *   saved       → ¿el servidor lo aceptó? (si es false, mira `error`)
+ */
+export async function getNativePushStatus() {
+  if (!isNative()) return null;
+
+  const mod = await loadPush();
+  if (!mod) {
+    return {
+      plugin: false,
+      permission: 'unknown',
+      registered: false,
+      saved: false,
+      error: 'plugin',
+    };
+  }
+
+  let permission = 'unknown';
+  try {
+    const perm = await mod.PushNotifications.checkPermissions();
+    permission = perm.receive;
+  } catch {
+    /* el plugin existe pero no respondió: se queda en unknown */
+  }
+
+  return {
+    plugin: true,
+    permission,
+    registered: !!lastToken,
+    saved: tokenSaved,
+    error: tokenError,
+  };
+}
+
+/**
  * Guarda el token en el servidor (tabla push_tokens, migración 026).
  * Sin sesión no se envía: el token no vale de nada sin dueño.
  */
 async function saveTokenToServer(token) {
   try {
     const { supabase } = await import('./supabase.js');
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session?.access_token) return;
 
     const res = await fetch('/api/push?action=token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ token, platform: 'android' })
+      body: JSON.stringify({ token, platform: 'android' }),
     });
+
+    lastToken = token;
+    tokenSaved = res.ok;
+    tokenError = res.ok ? null : `HTTP ${res.status}`;
 
     if (!res.ok) {
       console.warn('[native] el servidor no guardó el token:', res.status);
