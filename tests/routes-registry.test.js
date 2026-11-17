@@ -26,7 +26,7 @@ const PATHS = [
   '/curiosidades', '/juegos', '/juegos/online/abc', '/canciones',
   '/canciones?v=favoritas', '/series', '/thoseeyes', '/razones', '/openwhen',
   '/calendario', '/calendario?day=2026-10-06', '/maldia', '/sentimientos',
-  '/ositos', '/perfil', '/admin', '/justthewayyouare'
+  '/menstruacion', '/ositos', '/perfil', '/admin', '/justthewayyouare'
 ];
 
 // ── Valores de antes (la navegación que ya existía) ──
@@ -34,24 +34,24 @@ const BOTTOM_ANTES = [
   { id: 'home', label: 'Inicio', icon: 'home', href: '/' },
   { id: 'rincon', label: 'Rincón', icon: 'heart', href: '/rincon' },
   { id: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: '/sentimientos' },
-  { id: 'ositos', label: 'OsitosWorld', icon: 'star', href: '/ositos' },
   { id: 'perfil', label: 'Perfil', icon: 'user', href: '/perfil' }
 ];
 
 const SIDEBAR_ANTES = [
   { id: 'home', label: 'Inicio', icon: 'home', href: '/' },
   { id: 'rincon', label: 'Rincón', icon: 'heart', href: '/rincon' },
-  { id: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: '/sentimientos' },
-  { id: 'ositos', label: 'OsitosWorld', icon: 'star', href: '/ositos' }
+  { id: 'sentimientos', label: 'Sentimientos', icon: 'heart-handshake', href: '/sentimientos' }
 ];
 
 const SECTION_PARENT_ANTES = {
   razones: 'sentimientos', openwhen: 'sentimientos', calendario: 'sentimientos', maldia: 'sentimientos',
+  menstruacion: 'sentimientos',
   galeria: 'rincon', memes: 'rincon', audios: 'rincon', minecraft: 'rincon',
-  curiosidades: 'rincon', juegos: 'rincon', canciones: 'rincon', series: 'rincon', thoseeyes: 'rincon'
+  curiosidades: 'rincon', juegos: 'rincon', canciones: 'rincon', series: 'rincon', thoseeyes: 'rincon',
+  ositos: 'rincon'
 };
 
-const MOBILE_ROOTS_ANTES = ['/', '/rincon', '/sentimientos', '/ositos', '/perfil'];
+const MOBILE_ROOTS_ANTES = ['/', '/rincon', '/sentimientos', '/perfil'];
 
 const META_ANTES = {
   '/galeria': { label: 'Galería', icon: 'image' },
@@ -66,11 +66,13 @@ const META_ANTES = {
   '/maldia': { label: 'Mal Día', icon: 'heart' },
   '/canciones': { label: 'Canciones', icon: 'mic' },
   '/series': { label: 'Series', icon: 'image' },
-  '/thoseeyes': { label: 'Those Eyes', icon: 'heart' }
+  '/thoseeyes': { label: 'Those Eyes', icon: 'heart' },
+  '/ositos': { label: 'OsitosWorld', icon: 'star' },
+  '/menstruacion': { label: 'Menstruación', icon: 'droplet' }
 };
 
-const RINCON_HIJOS_ANTES = ['/galeria', '/memes', '/audios', '/minecraft', '/curiosidades', '/juegos', '/canciones', '/series', '/thoseeyes'];
-const SENTIMIENTOS_HIJOS_ANTES = ['/razones', '/openwhen', '/calendario', '/maldia'];
+const RINCON_HIJOS_ANTES = ['/galeria', '/memes', '/audios', '/minecraft', '/curiosidades', '/juegos', '/canciones', '/series', '/thoseeyes', '/ositos'];
+const SENTIMIENTOS_HIJOS_ANTES = ['/razones', '/openwhen', '/calendario', '/maldia', '/menstruacion'];
 
 const baseOf = (p) => p.split('?')[0];
 
@@ -79,7 +81,7 @@ function seccionActivaAntes(path) {
   const id = baseOf(path).split('/')[1] || 'home';
   if (id === 'home') return 'home';
   if (id === 'perfil' || id === 'admin') return 'perfil'; // el admin marcaba Perfil
-  if (id === 'rincon' || id === 'sentimientos' || id === 'ositos') return id;
+  if (id === 'rincon' || id === 'sentimientos') return id;
   return SECTION_PARENT_ANTES[id];
 }
 
@@ -116,7 +118,7 @@ test('el registro describe cada ruta una sola vez y con lo que la navegación ne
 
   // Las pestañas que existen son las que la barra usa de verdad.
   const pestañas = new Set(bottomNavItems(ROLE_USER).map(i => i.id));
-  for (const id of ['home', 'rincon', 'sentimientos', 'ositos', 'perfil']) {
+  for (const id of ['home', 'rincon', 'sentimientos', 'perfil']) {
     assert.ok(pestañas.has(id), `falta la pestaña ${id}`);
   }
 });
@@ -153,10 +155,11 @@ test('los grupos contextuales del menú lateral no cambian', () => {
   const grupoDe = {
     '/canciones': 'Música',
     '/rincon': 'Rincón', '/juegos': 'Rincón', '/series': 'Rincón', '/thoseeyes': 'Rincón',
+    '/ositos': 'Rincón',
     '/galeria': 'Galería y Memes', '/memes': 'Galería y Memes', '/audios': 'Galería y Memes', '/minecraft': 'Galería y Memes',
     '/curiosidades': 'Curiosidades',
     '/sentimientos': 'Sentimientos', '/razones': 'Sentimientos', '/openwhen': 'Sentimientos',
-    '/calendario': 'Sentimientos', '/maldia': 'Sentimientos'
+    '/calendario': 'Sentimientos', '/maldia': 'Sentimientos', '/menstruacion': 'Sentimientos'
   };
   for (const [path, titulo] of Object.entries(grupoDe)) {
     assert.equal(sidebarGroupFor(path)?.title, titulo, `el grupo de ${path} cambió`);
@@ -244,8 +247,8 @@ test('el admin no usa la pantalla diaria como flujo por defecto, pero la tiene e
   assert.equal(homePathFor(ROLE_ADMIN), '/admin', 'su casa sigue siendo el panel');
   assert.equal(homePathFor(ROLE_USER), '/');
   assert.equal(bottomNavItems(ROLE_ADMIN)[0].href, '/', 'la primera pestaña del admin ahora es Inicio');
-  assert.equal(bottomNavItems(ROLE_ADMIN).length, 6, 'la barra del admin ahora tiene 6 pestañas (añadido Inicio)');
-  assert.deepEqual(bottomNavItems(ROLE_ADMIN).map(i => i.id), ['home', 'admin', 'rincon', 'sentimientos', 'ositos', 'perfil']);
+  assert.equal(bottomNavItems(ROLE_ADMIN).length, 5, 'la barra del admin ahora tiene 5 pestañas');
+  assert.deepEqual(bottomNavItems(ROLE_ADMIN).map(i => i.id), ['home', 'admin', 'rincon', 'sentimientos', 'perfil']);
 
   // Y el panel abre en el editor de fechas y eventos, no en el resumen.
   assert.equal(routeFor('/admin').mobileRoot, true, 'el panel es raíz: no lleva flecha de vuelta');
