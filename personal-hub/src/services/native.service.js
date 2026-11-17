@@ -217,6 +217,16 @@ export async function initNativePush({ onNavigate } = {}) {
       console.warn('[native] alta de notificaciones fallida:', err?.error);
     });
 
+    // Con la app ABIERTA, Android no pinta el aviso: entrega el mensaje aquí
+    // y, si nadie lo trata, desaparece sin dejar rastro. Por eso una prueba
+    // enviada con la app en primer plano «no llegaba». Se muestra como banner
+    // dentro de la app, que es lo que la capa web puede hacer sin un plugin
+    // de notificaciones locales.
+    PushNotifications.addListener('pushNotificationReceived', notification => {
+      if (document.visibilityState !== 'visible') return;
+      showInAppBanner(notification);
+    });
+
     // Toque en un aviso: abre la sección exacta, igual que el service worker
     // hace en la web con { type: 'NAVIGATE', url }.
     PushNotifications.addListener('pushNotificationActionPerformed', action => {
@@ -237,6 +247,75 @@ export async function initNativePush({ onNavigate } = {}) {
   });
 
   await registerNativePush();
+}
+
+/**
+ * Aviso recibido con la app en primer plano.
+ *
+ * No imita a una notificación del sistema (no puede): es un banner arriba,
+ * con el mismo texto, que se cierra solo a los 7 s o al tocarlo.
+ */
+function showInAppBanner(notification) {
+  if (!document.body) return;
+  const title = notification?.title || 'Hub🧸';
+  const body = notification?.body || '';
+  if (!body && !notification?.title) return;
+
+  document.querySelector('[data-native-push-banner]')?.remove();
+
+  const el = document.createElement('div');
+  el.setAttribute('data-native-push-banner', '');
+  el.setAttribute('role', 'status');
+  Object.assign(el.style, {
+    position: 'fixed',
+    top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+    left: '12px',
+    right: '12px',
+    zIndex: '9999',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    padding: '12px 16px',
+    borderRadius: '16px',
+    background: 'rgba(22, 22, 26, 0.96)',
+    color: '#fff',
+    boxShadow: '0 10px 28px rgba(0, 0, 0, 0.35)',
+    fontSize: '14px',
+    lineHeight: '1.35',
+    cursor: 'pointer',
+    opacity: '0',
+    transform: 'translateY(-8px)',
+    transition: 'opacity .25s ease, transform .25s ease',
+  });
+
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  strong.style.fontSize = '14px';
+
+  const text = document.createElement('span');
+  text.textContent = body;
+  text.style.opacity = '0.85';
+
+  el.append(strong, text);
+
+  const close = () => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-8px)';
+    setTimeout(() => el.remove(), 250);
+  };
+
+  el.addEventListener('click', () => {
+    const url = notification?.data?.url;
+    if (url && pushNavigate) pushNavigate(url.startsWith('/') ? url : `/${url}`);
+    close();
+  });
+
+  document.body.append(el);
+  requestAnimationFrame(() => {
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  });
+  setTimeout(close, 7000);
 }
 
 /**
