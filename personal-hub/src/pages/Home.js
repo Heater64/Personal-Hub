@@ -40,7 +40,8 @@ import {
   startLocationSharing,
   stopLocationSharing,
   watchDistance,
-  fetchPartnerProfile,
+  fetchPartnerIdentity,
+  fetchProfile,
   formatDistance,
 } from '../services/location.service.js';
 
@@ -551,11 +552,11 @@ function distancePanelHTML() {
  */
 function initDistancePanel(page) {
   const valueEl = page.querySelector('#homeDistanceValue');
+  const meEl = page.querySelector('.home-map__avatar--me');
   const themEl = page.querySelector('.home-map__avatar--them');
   const hintEl = page.querySelector('#homeMapHint');
   const me = userStore.getUser();
 
-  let paintedPartnerId = null;
   let stopped = false;
 
   const setHint = text => {
@@ -564,23 +565,37 @@ function initDistancePanel(page) {
     hintEl.textContent = text || '';
   };
 
+  // Una cara: foto si la hay; si no, la inicial (o el corazón).
+  const fill = (el, profile, fallbackAvatar) => {
+    if (!el) return;
+    const avatar = profile?.avatar || fallbackAvatar || '';
+    const initial = (profile?.name || '').trim().charAt(0).toUpperCase();
+    el.innerHTML = avatar
+      ? `<img src="${escapeHtml(avatar)}" alt="">`
+      : `<span aria-hidden="true">${escapeHtml(initial || '♥')}</span>`;
+  };
+
   startLocationSharing({ userId: me?.id, isAdmin: userStore.isAdmin }, status => {
     if (stopped) return;
     if (status === 'denied') setHint('Activa la ubicación para ver la distancia');
     else if (status === 'ok') setHint('');
   });
 
-  const stopWatch = watchDistance(async ({ km, partnerId }) => {
+  // Las dos caras se pintan de entrada, sin esperar a la ubicación: la foto se
+  // ve siempre, aunque la otra cuenta no haya compartido dónde está.
+  (async () => {
+    const [mine, partnerId] = await Promise.all([fetchProfile(me?.id), fetchPartnerIdentity()]);
+    if (stopped) return;
+    fill(meEl, mine, me?.avatar);
+    if (!partnerId) return;
+    const partner = await fetchProfile(partnerId);
+    if (stopped) return;
+    fill(themEl, partner, '');
+  })();
+
+  const stopWatch = watchDistance(({ km }) => {
     if (stopped) return;
     if (valueEl) valueEl.textContent = formatDistance(km);
-
-    if (!partnerId || paintedPartnerId === partnerId) return;
-    paintedPartnerId = partnerId;
-    const profile = await fetchPartnerProfile(partnerId);
-    if (stopped || !themEl) return;
-    themEl.innerHTML = profile?.avatar
-      ? `<img src="${escapeHtml(profile.avatar)}" alt="">`
-      : `<span aria-hidden="true">${escapeHtml((profile?.name || '').trim().charAt(0).toUpperCase() || '♥')}</span>`;
   });
 
   return () => {

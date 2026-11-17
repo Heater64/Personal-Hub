@@ -179,20 +179,76 @@ function toLocation(data, userId) {
   return { lat, lng, at: data?.at || null, userId: data?.user_id || userId || null };
 }
 
-/** Nombre y foto de la otra persona, para pintar su círculo. */
-export async function fetchPartnerProfile(partnerId) {
-  if (!partnerId || !supabase) return null;
+/** Nombre y foto de un perfil: lo que se pinta en cada círculo. */
+export async function fetchProfile(userId) {
+  if (!userId || !supabase) return null;
   try {
     const { data, error } = await supabase
       .from('profiles')
       .select('name, avatar_url')
-      .eq('id', partnerId)
+      .eq('id', userId)
       .maybeSingle();
     if (error) throw error;
     return data ? { name: data.name || '', avatar: data.avatar_url || '' } : null;
   } catch {
     return null;
   }
+}
+
+let cachedPartnerId = null;
+
+/**
+ * Quién es la otra persona.
+ *
+ * La foto tiene que verse SIEMPRE, no solo cuando la otra cuenta comparte
+ * ubicación, así que el id se busca por capas: su fila de ubicación, luego su
+ * latido de presencia y, si no, cualquier perfil que no sea el mío. Los ids
+ * salen de filas que los dos roles ya pueden leer.
+ */
+export async function fetchPartnerIdentity() {
+  if (!self?.userId || !supabase) return null;
+  if (cachedPartnerId) return cachedPartnerId;
+
+  const located = await fetchPartnerLocation();
+  if (located?.userId) {
+    cachedPartnerId = located.userId;
+    return cachedPartnerId;
+  }
+
+  try {
+    if (self.isAdmin) {
+      const { data } = await supabase
+        .from('user_progress')
+        .select('user_id')
+        .neq('user_id', self.userId)
+        .limit(1);
+      if (data?.[0]?.user_id) {
+        cachedPartnerId = data[0].user_id;
+        return cachedPartnerId;
+      }
+    } else {
+      const { data } = await supabase
+        .from('content')
+        .select('data')
+        .eq('id', 'presence_admin')
+        .maybeSingle();
+      if (data?.data?.user_id) {
+        cachedPartnerId = data.data.user_id;
+        return cachedPartnerId;
+      }
+    }
+  } catch {
+    /* sin latido legible: se prueba con los perfiles */
+  }
+
+  try {
+    const { data } = await supabase.from('profiles').select('id').neq('id', self.userId).limit(1);
+    if (data?.[0]?.id) cachedPartnerId = data[0].id;
+  } catch {
+    /* RLS sin acceso: el círculo se queda con el corazón */
+  }
+
+  return cachedPartnerId;
 }
 
 /** Distancia en km entre dos coordenadas (haversine). */
