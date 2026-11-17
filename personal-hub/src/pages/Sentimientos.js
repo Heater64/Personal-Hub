@@ -17,20 +17,74 @@ import { renderPageHeader } from '../components/PageHeader.js';
 import { icon, toast } from '../components/ui.js';
 import { escapeHtml } from '../utils/escape.js';
 import { todayISO, hourInSpain } from '../utils/format.js';
-import { MAX_CUSTOM_LABEL, encodeMood, makeCustomMood, toggleMoodSelection } from '../data/moods.data.js';
+import {
+  MAX_CUSTOM_LABEL,
+  encodeMood,
+  makeCustomMood,
+  toggleMoodSelection,
+} from '../data/moods.data.js';
 
 const CARDS = [
-  { id: 'razones', icon: 'spark', title: 'Razones', desc: 'Una razón nueva para quererte', href: '/razones', color: 'var(--violet-c)' },
-  { id: 'openwhen', icon: 'mail', title: 'Open When', desc: 'Cartas para cuando las necesites', href: '/openwhen', color: 'var(--primary)' },
-  { id: 'calendario', icon: 'calendar', title: 'Calendario', desc: 'Sorpresas y días especiales', href: '/calendario', color: 'var(--ok)' },
-  { id: 'maldia', icon: 'sun', title: 'Mal Día', desc: 'Un abrazo para el mal día', href: '/maldia', color: 'var(--warn)' }
+  {
+    id: 'razones',
+    icon: 'spark',
+    title: 'Razones',
+    desc: 'Una razón nueva para quererte',
+    href: '/razones',
+    color: 'var(--violet-c)',
+  },
+  {
+    id: 'openwhen',
+    icon: 'mail',
+    title: 'Open When',
+    desc: 'Cartas para cuando las necesites',
+    href: '/openwhen',
+    color: 'var(--primary)',
+  },
+  {
+    id: 'calendario',
+    icon: 'calendar',
+    title: 'Calendario',
+    desc: 'Sorpresas y días especiales',
+    href: '/calendario',
+    color: 'var(--ok)',
+  },
+  {
+    id: 'maldia',
+    icon: 'sun',
+    title: 'Mal Día',
+    desc: 'Un abrazo para el mal día',
+    href: '/maldia',
+    color: 'var(--warn)',
+  },
+  {
+    id: 'menstruacion',
+    icon: 'droplet',
+    title: 'Menstruación',
+    desc: 'Tu ciclo, con tus datos y tus reglas',
+    href: '/menstruacion',
+    color: 'var(--primary)',
+  },
 ];
 
-const HIST_MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const HIST_MONTHS = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
 // La semana empieza en lunes (como el resto de calendarios de la app)
 const HIST_WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
-const pad2 = (n) => String(n).padStart(2, '0');
+const pad2 = n => String(n).padStart(2, '0');
 
 function getGreeting() {
   const h = hourInSpain();
@@ -40,7 +94,11 @@ function getGreeting() {
 }
 
 function longDate(date = new Date()) {
-  const s = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(date);
+  const s = new Intl.DateTimeFormat('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(date);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -70,7 +128,12 @@ export function SentimientosPage(router) {
   let histMonth = new Date();
   for (const entry of moodStore.getHistory() || []) {
     if (entry?.date && entry.moodId) {
-      historyMap[entry.date] = { mood: entry.moodId, label: entry.label, emoji: entry.emoji, score: entry.score };
+      historyMap[entry.date] = {
+        mood: entry.moodId,
+        label: entry.label,
+        emoji: entry.emoji,
+        score: entry.score,
+      };
     }
   }
   if (todayMood?.id) {
@@ -97,7 +160,9 @@ export function SentimientosPage(router) {
     const counts = {};
     dates.forEach(date => {
       const ids = moodStore.resolveMood(historyMap[date])?.ids || [];
-      ids.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+      ids.forEach(id => {
+        counts[id] = (counts[id] || 0) + 1;
+      });
     });
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
 
@@ -105,7 +170,7 @@ export function SentimientosPage(router) {
       totalDays: dates.length,
       daysThisMonth: dates.filter(date => date.startsWith(thisMonth)).length,
       streak,
-      mostCommon: top ? moodStore.resolveMood({ mood: top[0] }) : null
+      mostCommon: top ? moodStore.resolveMood({ mood: top[0] }) : null,
     };
   }
 
@@ -119,12 +184,16 @@ export function SentimientosPage(router) {
         <span class="sent-mood-saved" id="moodSaved" hidden></span>
       </div>
       <div class="sent-mood-grid" id="moodGrid" role="group" aria-label="Elige cómo te sientes hoy. Puedes marcar varias">
-        ${quickMoods.map(m => `
+        ${quickMoods
+          .map(
+            m => `
           <button type="button" class="sent-mood-btn" data-mood="${m.id}" aria-pressed="false">
             <span class="sent-mood-emoji" aria-hidden="true">${m.emoji}</span>
             <span class="sent-mood-label">${m.label}</span>
           </button>
-        `).join('')}
+        `
+          )
+          .join('')}
         <button type="button" class="sent-mood-btn sent-mood-btn--more" id="moodMoreBtn" aria-expanded="false" aria-controls="moodExtra">
           <span class="sent-mood-emoji" aria-hidden="true">${customMood.emoji}</span>
           <span class="sent-mood-label">Otras</span>
@@ -138,13 +207,17 @@ export function SentimientosPage(router) {
           <small class="sent-mood-extra-hint">Puedes marcar varias · toca otra vez para quitar</small>
         </div>
         <div class="sent-mood-palette" id="moodPalette">
-          ${paletteMoods.map(m => `
+          ${paletteMoods
+            .map(
+              m => `
             <button type="button" class="sent-mood-chip" data-mood="${m.id}" aria-pressed="false">
               <span class="sent-mood-chip-emoji" aria-hidden="true">${m.emoji}</span>
               <span class="sent-mood-chip-label">${m.label}</span>
               <span class="sent-mood-chip-check" aria-hidden="true">✓</span>
             </button>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
         <form class="sent-mood-custom" id="moodCustomForm">
           <input
@@ -189,15 +262,22 @@ export function SentimientosPage(router) {
     <!-- ===== EXPLORAR ===== -->
     <h2 class="section-title">Explorar</h2>
     <div class="sent-cards-grid">
-      ${CARDS.map(card => `
+      ${CARDS.map(card => {
+        // El chico no tiene ciclo: su tarjeta lleva a lo que ella comparte.
+        const desc =
+          card.id === 'menstruacion' && userStore.isAdmin
+            ? 'Lo que ella comparte contigo'
+            : card.desc;
+        return `
         <button type="button" class="sent-card lift" data-href="${card.href}" style="--card-color:${card.color}">
           <span class="sent-card-cover">${icon(card.icon, 30)}</span>
           <span class="sent-card-body">
             <span class="sent-card-title">${card.title}</span>
-            <span class="sent-card-desc">${card.desc}</span>
+            <span class="sent-card-desc">${desc}</span>
           </span>
         </button>
-      `).join('')}
+      `;
+      }).join('')}
     </div>
   `;
 
@@ -256,10 +336,14 @@ export function SentimientosPage(router) {
     const saved = page.querySelector('#moodSaved');
     const feedback = page.querySelector('#moodFeedback');
     if (mood) {
-      if (saved) { saved.textContent = `Guardado · ${mood.emoji}`; saved.hidden = false; }
+      if (saved) {
+        saved.textContent = `Guardado · ${mood.emoji}`;
+        saved.hidden = false;
+      }
       if (feedback) {
         feedback.querySelector('.sent-mood-feedback-icon').textContent = mood.emoji;
-        feedback.querySelector('.sent-mood-feedback-text').textContent = `Hoy te sientes: ${mood.label}`;
+        feedback.querySelector('.sent-mood-feedback-text').textContent =
+          `Hoy te sientes: ${mood.label}`;
         feedback.hidden = false;
       }
     } else {
@@ -312,7 +396,10 @@ export function SentimientosPage(router) {
       } else {
         mood = await moodStore.saveMoods(items);
       }
-      if (queued) { todayMood = mood; return; } // hay un cambio más nuevo esperando
+      if (queued) {
+        todayMood = mood;
+        return;
+      } // hay un cambio más nuevo esperando
       applyMoodUI(mood);
       refreshMoodSide();
     } catch {
@@ -339,19 +426,34 @@ export function SentimientosPage(router) {
     const box = page.querySelector('#sentStats');
     if (!box) return;
     const stats = computeStats();
-    if (!stats.totalDays) { box.hidden = true; box.innerHTML = ''; return; }
+    if (!stats.totalDays) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
     const items = [
-      { value: stats.totalDays, label: stats.totalDays === 1 ? 'día registrado' : 'días registrados' },
+      {
+        value: stats.totalDays,
+        label: stats.totalDays === 1 ? 'día registrado' : 'días registrados',
+      },
       { value: stats.streak, label: stats.streak === 1 ? 'día seguido' : 'días seguidos' },
-      { value: escapeHtml(stats.mostCommon?.emoji) || '—', label: 'más frecuente', emoji: !!stats.mostCommon },
-      { value: stats.daysThisMonth, label: 'este mes' }
+      {
+        value: escapeHtml(stats.mostCommon?.emoji) || '—',
+        label: 'más frecuente',
+        emoji: !!stats.mostCommon,
+      },
+      { value: stats.daysThisMonth, label: 'este mes' },
     ];
-    box.innerHTML = items.map(item => `
+    box.innerHTML = items
+      .map(
+        item => `
       <div class="sent-stat">
         <span class="sent-stat-value${item.emoji ? ' sent-stat-value--emoji' : ''}">${item.value}</span>
         <span class="sent-stat-label">${item.label}</span>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
     box.hidden = false;
   }
 
@@ -373,7 +475,8 @@ export function SentimientosPage(router) {
     const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7; // lunes = 0
 
     let cells = '';
-    for (let i = 0; i < firstWeekday; i++) cells += '<span class="sent-hist-cell is-offset" aria-hidden="true"></span>';
+    for (let i = 0; i < firstWeekday; i++)
+      cells += '<span class="sent-hist-cell is-offset" aria-hidden="true"></span>';
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${monthKey}-${pad2(day)}`;
       const mood = historyMap[dateStr] ? moodStore.resolveMood(historyMap[dateStr]) : null;
@@ -406,12 +509,18 @@ export function SentimientosPage(router) {
         }
       }
       legend.innerHTML = present.size
-        ? [...present.values()].map(mood => `<span class="sent-hist-legend-item"><span aria-hidden="true">${escapeHtml(mood.emoji)}</span>${escapeHtml(mood.label)}</span>`).join('')
+        ? [...present.values()]
+            .map(
+              mood =>
+                `<span class="sent-hist-legend-item"><span aria-hidden="true">${escapeHtml(mood.emoji)}</span>${escapeHtml(mood.label)}</span>`
+            )
+            .join('')
         : '';
     }
-    if (sub) sub.textContent = monthEntries.length
-      ? `${monthEntries.length} ${monthEntries.length === 1 ? 'día guardado' : 'días guardados'} este mes`
-      : 'Todavía sin registros este mes';
+    if (sub)
+      sub.textContent = monthEntries.length
+        ? `${monthEntries.length} ${monthEntries.length === 1 ? 'día guardado' : 'días guardados'} este mes`
+        : 'Todavía sin registros este mes';
   }
 
   // Historial completo desde el servidor: una sola consulta para toda la vida
@@ -427,11 +536,21 @@ export function SentimientosPage(router) {
         // Vienen de la más reciente a la más antigua: el primer estado de cada
         // día es el último que se guardó, que es el que cuenta.
         if (!row?.date || !row.mood || historyMap[row.date]) continue;
-        historyMap[row.date] = { mood: row.mood, label: row.label, emoji: row.emoji, score: row.score };
+        historyMap[row.date] = {
+          mood: row.mood,
+          label: row.label,
+          emoji: row.emoji,
+          score: row.score,
+        };
         changed = true;
       }
-      if (changed) { renderStats(); renderHistory(); }
-    } catch { /* sin conexión: vale el historial local */ }
+      if (changed) {
+        renderStats();
+        renderHistory();
+      }
+    } catch {
+      /* sin conexión: vale el historial local */
+    }
   }
 
   page.querySelectorAll('.sent-card').forEach(card => {
@@ -441,7 +560,7 @@ export function SentimientosPage(router) {
   // ==========================================
   // EVENTOS DE LA TARJETA
   // ==========================================
-  page.addEventListener('click', (event) => {
+  page.addEventListener('click', event => {
     const removeCustom = event.target.closest('[data-custom-remove]');
     if (removeCustom && page.contains(removeCustom)) {
       selection = selection.filter(item => item.id !== customMood.id);
@@ -461,7 +580,7 @@ export function SentimientosPage(router) {
 
   moreBtn.addEventListener('click', () => openPalette(extraPanel.hidden));
 
-  customForm.addEventListener('submit', (event) => {
+  customForm.addEventListener('submit', event => {
     event.preventDefault();
     const item = makeCustomMood(customInput.value);
     if (!item) {

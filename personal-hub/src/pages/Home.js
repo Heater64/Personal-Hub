@@ -469,6 +469,14 @@ function shortcutsHTML() {
         </span>
         <span class="home-shortcut__chev">${icon('chev', 18)}</span>
       </button>
+      <button class="home-shortcut home-shortcut--wide" type="button" data-route="/menstruacion">
+        <span class="home-shortcut__ic">${icon('droplet', 18)}</span>
+        <span class="home-shortcut__body">
+          <b>Menstruación</b>
+          <small>Tu ciclo, día a día</small>
+        </span>
+        <span class="home-shortcut__chev">${icon('chev', 18)}</span>
+      </button>
     </div>
   `;
 }

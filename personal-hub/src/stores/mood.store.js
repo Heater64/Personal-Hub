@@ -433,7 +433,8 @@ class MoodStore {
         return mood;
       }
     } catch (err) {
-      console.warn('Error fetching today mood from Supabase:', err);
+      // Un objeto suelto se imprime como «Object» y no dice qué falló.
+      console.warn('Error fetching today mood from Supabase:', err?.message || err, err?.code || '');
     }
 
     // Fall back to locally cached mood

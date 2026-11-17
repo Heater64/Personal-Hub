@@ -1075,7 +1075,11 @@ async function listUsers() {
           headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
-        if (res.ok) {
+        // En dev (Vite) /api/users no existe y devuelve el HTML del SPA con
+        // 200: sin esta comprobación, res.json() fallaba y llenaba la consola
+        // de avisos que parecían errores reales.
+        const isJson = (res.headers.get('content-type') || '').includes('application/json');
+        if (res.ok && isJson) {
           const authUsers = await res.json();
           authUsers.forEach(u => {
             if (!existingIds.has(u.id)) {
@@ -1083,7 +1087,8 @@ async function listUsers() {
               existingIds.add(u.id);
             }
           });
-        } else {
+        } else if (isJson) {
+          // Solo un error de verdad del endpoint; el HTML del SPA de dev no.
           const err = await res.json().catch(() => ({}));
           console.warn('[db] /api/users failed:', res.status, err.error || res.statusText);
         }

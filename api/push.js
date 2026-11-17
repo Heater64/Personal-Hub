@@ -4,7 +4,8 @@
    - POST /api/push/unsubscribe — elimina subscripción
    - POST /api/push/send        — envía a todos (admin/cron)
    - POST /api/push?action=notify-admin — avisa a los admins de lo que ella hace
-     (body.kind: mood | mood_update | mood_change | note)
+     (body.kind: mood | mood_update | mood_change | note | cycle_period |
+     cycle_log | cycle_share)
    - GET/POST /api/push?action=reminders — recordatorios programados (admin)
    - POST /api/push?action=run-reminders — envía los vencidos (cron/admin)
    - POST /api/push?action=ack — el dispositivo confirma que recibió un push
@@ -121,12 +122,24 @@ const PREFS_TABLE = 'notification_prefs';
 // nota) más los avisos técnicos del hub. Cada clase mira su propio
 // interruptor en la fila de preferencias del admin; los nombres coinciden con
 // los del cliente para que el mismo objeto sirva en los dos lados.
-const ADMIN_ALERT_KINDS = ['mood', 'mood_update', 'mood_change', 'note', 'health'];
+const ADMIN_ALERT_KINDS = [
+  'mood',
+  'mood_update',
+  'mood_change',
+  'note',
+  'cycle_period',
+  'cycle_log',
+  'cycle_share',
+  'health',
+];
 const ADMIN_ALERT_PREF = {
   mood: 'adminMood',
   mood_update: 'adminMood',
   mood_change: 'adminMoodChanges',
   note: 'adminNotes',
+  cycle_period: 'adminCycle',
+  cycle_log: 'adminCycle',
+  cycle_share: 'adminCycle',
   health: 'adminHealth',
 };
 const MALDIA_NOTES_TYPE = 'maldia_notes';
@@ -163,6 +176,46 @@ const ADMIN_MOOD_DESTINATION = '/admin?section=moods';
 const ADMIN_NOTES_DESTINATION = '/admin?section=contenido&sub=maldia';
 /** El historial de envíos vive en Recordatorios. */
 const ADMIN_LOGS_DESTINATION = '/admin?section=recordatorios';
+/** El ciclo se lee en Menstruación, que para él es solo la vista de pareja. */
+const ADMIN_CYCLE_DESTINATION = '/menstruacion';
+
+// Nombres de los síntomas que la base guarda como id (catálogo de
+// src/data/cycle.data.js). El servidor no puede importar la SPA, así que
+// guarda su copia: si allí se renombra una etiqueta, aquí se ve el id tal cual
+// en vez de inventarse un texto. Los escritos a mano llegan como `custom:…`.
+const SYMPTOM_LABELS = {
+  colicos: 'Cólicos',
+  'dolor-abdominal': 'Dolor abdominal',
+  'dolor-cabeza': 'Dolor de cabeza',
+  'dolor-lumbar': 'Dolor lumbar',
+  cansancio: 'Cansancio',
+  'sensibilidad-mamaria': 'Sensibilidad mamaria',
+  hinchazon: 'Hinchazón',
+  nauseas: 'Náuseas',
+  acne: 'Acné',
+  apetito: 'Cambios en el apetito',
+  otros: 'Otros síntomas',
+};
+const FLOW_LABELS = { light: 'Ligero', medium: 'Medio', heavy: 'Abundante' };
+const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+
+/** '2026-11-17' → '17 nov'. Sin Intl: el texto debe ser el mismo en todo servidor. */
+function dayShort(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ''));
+  if (!m) return '';
+  return `${Number(m[3])} ${MONTHS_SHORT[Number(m[2]) - 1]}`;
+}
+
+/** Nombres legibles de una lista de síntomas (incluye los escritos por ella). */
+function symptomList(ids) {
+  return (Array.isArray(ids) ? ids : [])
+    .map(id => {
+      const key = String(id || '');
+      return key.startsWith('custom:') ? key.slice(7) : SYMPTOM_LABELS[key];
+    })
+    .filter(Boolean)
+    .filter((label, index, all) => all.indexOf(label) === index);
+}
 
 /**
  * ¿Se puede usar este destino en un aviso?
@@ -517,6 +570,83 @@ export function adminNotePayload(text) {
     url: ADMIN_NOTES_DESTINATION,
     tag: 'admin-note',
     requireInteraction: true,
+  };
+}
+
+/**
+ * Aviso de una menstruación registrada. Distingue «empieza» de «termina»
+ * porque para él son dos cosas distintas: una explica el ánimo de estos días y
+ * la otra que ya pasó.
+ */
+export function adminCyclePeriodPayload(period) {
+  const start = dayShort(period?.start_date) || 'su fecha de inicio';
+  const end = dayShort(period?.end_date);
+  return {
+    title: end ? '🌸 Menstruación terminada' : '🌸 Menstruación registrada',
+    body: end ? `Del ${start} al ${end}.` : `Empezó el ${start}.`,
+    url: ADMIN_CYCLE_DESTINATION,
+    tag: 'admin-cycle',
+  };
+}
+
+/**
+ * Aviso de un día del ciclo: flujo, síntomas y, si lo dejó, su nota. Es el
+ * aviso con más contexto de todos, porque es lo que ella apunta para que él
+ * sepa cómo está.
+ */
+export function adminCycleLogPayload(log) {
+  const parts = [];
+  if (log?.flow && FLOW_LABELS[log.flow]) parts.push(`Flujo ${FLOW_LABELS[log.flow].toLowerCase()}`);
+  if (log?.spotting) parts.push('manchado');
+  const symptoms = symptomList(log?.symptoms);
+  if (symptoms.length) {
+    const head = symptoms.slice(0, 3).join(', ');
+    parts.push(symptoms.length > 3 ? `${head} +${symptoms.length - 3}` : head);
+  }
+  const day = dayShort(log?.log_date);
+  const body = parts.length ? `${day} · ${parts.join(' · ')}` : `${day} · día registrado`;
+  const note = String(log?.notes || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return {
+    title: '🩸 Su día del ciclo',
+    body: note ? `${body}. «${note.length > 90 ? `${note.slice(0, 87)}…` : note}»` : body,
+    url: ADMIN_CYCLE_DESTINATION,
+    tag: 'admin-cycle-day',
+  };
+}
+
+/** Nombres de los campos de `cycle_sharing` en lenguaje normal. */
+const SHARED_FIELD_LABELS = {
+  next_period: 'próxima regla',
+  cycle_status: 'estado del ciclo',
+  cycle_day: 'día del ciclo',
+  period: 'menstruaciones',
+  symptoms: 'síntomas',
+  mood: 'ánimo',
+  notes: 'notas',
+  stats: 'medias',
+};
+
+/**
+ * Aviso de que ella ha abierto (o ampliado) lo que comparte. Sin esto él
+ * tendría que entrar a mirar a ciegas si ya puede ver algo.
+ */
+export function adminCycleSharePayload(sharing) {
+  const fields = (Array.isArray(sharing?.shared_fields) ? sharing.shared_fields : [])
+    .map(f => SHARED_FIELD_LABELS[f])
+    .filter(Boolean);
+  const listed =
+    fields.length > 4
+      ? `${fields.slice(0, 4).join(', ')} y ${fields.length - 4} más`
+      : fields.join(', ');
+  return {
+    title: '🔓 Comparte su ciclo contigo',
+    body: fields.length
+      ? `Ahora puedes ver: ${listed}.`
+      : 'Ha activado compartir su ciclo contigo.',
+    url: ADMIN_CYCLE_DESTINATION,
+    tag: 'admin-cycle-share',
   };
 }
 
@@ -1175,8 +1305,54 @@ async function handleNotifyAdmin(req, res) {
     return res.status(200).json({ success: true, sent: 0, skipped: true, reason: 'Admin event' });
   }
 
+  // Sin la migración del ciclo aplicada la lectura falla con 42P01; el aviso
+  // se salta en silencio en vez de devolver un 500 que parecería un fallo.
+  const missingTables = new Set(['42P01', '42883']);
+
   let alert;
-  if (kind === 'note') {
+  if (kind === 'cycle_period') {
+    const { data: period, error } = await supabase
+      .from('cycle_periods')
+      .select('start_date, end_date')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error && missingTables.has(error.code)) {
+      return res.status(200).json({ success: true, sent: 0, skipped: true, reason: 'No cycle tables' });
+    }
+    if (error) throw error;
+    if (!period) return res.status(404).json({ error: 'No cycle period found' });
+    alert = adminCyclePeriodPayload(period);
+  } else if (kind === 'cycle_share') {
+    const { data: sharing, error } = await supabase
+      .from('cycle_sharing')
+      .select('sharing_enabled, shared_fields')
+      .eq('owner_id', user.id)
+      .maybeSingle();
+    if (error && missingTables.has(error.code)) {
+      return res.status(200).json({ success: true, sent: 0, skipped: true, reason: 'No cycle tables' });
+    }
+    if (error) throw error;
+    if (!sharing?.sharing_enabled) {
+      return res.status(200).json({ success: true, sent: 0, skipped: true, reason: 'Not sharing' });
+    }
+    alert = adminCycleSharePayload(sharing);
+  } else if (kind === 'cycle_log') {
+    const { data: log, error } = await supabase
+      .from('cycle_daily_logs')
+      .select('log_date, flow, spotting, symptoms, notes')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error && missingTables.has(error.code)) {
+      return res.status(200).json({ success: true, sent: 0, skipped: true, reason: 'No cycle tables' });
+    }
+    if (error) throw error;
+    if (!log) return res.status(404).json({ error: 'No cycle log found' });
+    alert = adminCycleLogPayload(log);
+  } else if (kind === 'note') {
     const text = await lastMaldiaNote(supabase, user.id);
     if (text === null) {
       return res.status(404).json({ error: 'No maldia note found' });
@@ -1674,7 +1850,7 @@ async function loadPrefsByIds(userIds) {
     const { data, error } = await getSupabase()
       .from(PREFS_TABLE)
       .select(
-        'user_id, daily, letters, moods, reminders, admin_mood, admin_mood_changes, admin_notes, admin_health, quiet_from, quiet_to'
+        'user_id, daily, letters, moods, reminders, admin_mood, admin_mood_changes, admin_notes, admin_cycle, admin_health, quiet_from, quiet_to'
       )
       .in('user_id', userIds);
     if (error) return prefsById;
@@ -1687,6 +1863,7 @@ async function loadPrefsByIds(userIds) {
         adminMood: row.admin_mood,
         adminMoodChanges: row.admin_mood_changes,
         adminNotes: row.admin_notes,
+        adminCycle: row.admin_cycle,
         adminHealth: row.admin_health,
         quietFrom: row.quiet_from,
         quietTo: row.quiet_to,

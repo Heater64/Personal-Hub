@@ -43,6 +43,7 @@ const DEFAULT_NOTIF_SETTINGS = {
   adminMood: true,        // cada vez que ella registra su ánimo del día
   adminMoodChanges: true, // cuando cambia el ánimo de hoy más tarde
   adminNotes: true,       // cuando deja una nota en Mal Día
+  adminCycle: true,       // cuando registra su menstruación o un día del ciclo
   adminHealth: true,      // avisos técnicos: envíos fallidos, bajas de dispositivos
   quietFrom: '23:00', // silencio desde…
   quietTo: '08:00'    // …hasta
@@ -90,6 +91,7 @@ async function pushNotifPrefs(settings) {
       admin_mood: settings.adminMood !== false,
       admin_mood_changes: settings.adminMoodChanges !== false,
       admin_notes: settings.adminNotes !== false,
+      admin_cycle: settings.adminCycle !== false,
       admin_health: settings.adminHealth !== false,
       quiet_from: settings.quietFrom || '23:00',
       quiet_to: settings.quietTo || '08:00',
@@ -755,6 +757,9 @@ export async function notifyMoodSaved(mood) {
  *   'mood_update' — corrección dentro de los 5 min   (adminMood, solo si es mal día)
  *   'mood_change' — estado nuevo que sustituye al de antes (adminMoodChanges)
  *   'note'        — nota dejada en Mal Día           (adminNotes)
+ *   'cycle_period'— menstruación nueva o terminada   (adminCycle)
+ *   'cycle_log'   — día del ciclo con síntomas       (adminCycle)
+ *   'cycle_share' — activa o cambia lo que comparte  (adminCycle)
  *
  * Nunca lanza: un fallo del aviso no debe romper la acción de ella.
  */
@@ -790,6 +795,16 @@ export function notifyAdminOfMood(kind = 'mood') {
 /** Aviso al admin de que ella ha dejado una nota en Mal Día. */
 export function notifyAdminOfNote() {
   return notifyAdmin('note');
+}
+
+/**
+ * Aviso al admin de su ciclo: una menstruación registrada o un día con
+ * síntomas, flujo o notas. El texto lo compone el servidor leyendo la fila
+ * recién guardada, así que el aviso dice lo mismo que se ve en la app.
+ */
+export function notifyAdminOfCycle(kind = 'cycle_period') {
+  if (!['cycle_period', 'cycle_log', 'cycle_share'].includes(kind)) return Promise.resolve(false);
+  return notifyAdmin(kind);
 }
 
 /**

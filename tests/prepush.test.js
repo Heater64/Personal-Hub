@@ -473,7 +473,8 @@ test('cada página diferida importa su propio CSS y main.css solo trae lo compar
     'Juegos.js': 'juegos.css', 'OnlineGame.js': 'online-games.css',
     'Calendario.js': 'calendario.css', 'OpenWhen.js': 'openwhen.css',
     'Series.js': 'series.css', 'ThoseEyes.js': 'thoseeyes.css',
-    'JustTheWayYouAre.js': 'justthewayyouare.css', 'OsitosWorld.js': 'ositos.css'
+    'JustTheWayYouAre.js': 'justthewayyouare.css', 'OsitosWorld.js': 'ositos.css',
+    'Menstruacion.js': 'menstruacion.css'
   };
 
   for (const [page, css] of Object.entries(diferidas)) {
@@ -1815,22 +1816,26 @@ test('el saludo de inicio y los días juntos usan el mismo cuerpo grande', async
   assert.match(css, /\.home-hero__greet \{ font-size: clamp\(/, 'el saludo también se ajusta a pantallas estrechas');
 });
 
-test('el resumen abre con los atajos de gestión y sin tarjetas de métricas', async () => {
+test('el resumen enseña primero lo de hoy y deja los accesos al final', async () => {
   const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
   const css = await readFile(hub('src', 'styles', 'admin.css'), 'utf8');
   const dash = admin.slice(admin.indexOf('async function loadDashboard'), admin.indexOf('async function loadMoods'));
 
-  // Arriba del resumen va lo único accionable: accesos rápidos y atajos.
+  // Arriba del resumen va lo que se mira al entrar: la tira de «hoy».
+  assert.ok(dash.includes('dash-now-card'), 'la tira de hoy está en el resumen');
+  assert.ok(dash.includes('Última conexión') && dash.includes('Su ánimo hoy'), 'la tira dice lo importante del día');
+  assert.match(css, /\.dash-now\b/, 'la tira de hoy tiene su CSS');
   assert.ok(dash.includes('Atajos de gestión'), 'el bloque de atajos sigue en el resumen');
   assert.equal((dash.match(/data-shortcut=/g) || []).length, 1, 'el panel de atajos no debe estar dos veces');
-  // Los accesos rápidos se movieron al principio: primero lo accionable,
-  // después el resumen para mirar (gráfico, dona, actividad...). Se comparan
-  // los puntos donde se pintan, no los comentarios que los nombran.
+  // El orden es: hoy → gráficos → accesos. Se comparan los puntos donde se
+  // pintan, no los comentarios que los nombran.
+  const iHoy = dash.indexOf('class="dash-now"');
+  const iGrafico = dash.indexOf('dashActivityChart');
   const iAccesos = dash.indexOf('quickActions.map');
   const iAtajos = dash.indexOf('shortcuts.map');
-  const iGrafico = dash.indexOf('dashActivityChart');
+  assert.ok(iHoy !== -1 && iHoy < iGrafico, 'lo de hoy va antes que el gráfico');
+  assert.ok(iGrafico < iAccesos, 'los accesos van después del resumen');
   assert.ok(iAccesos < iAtajos, 'los accesos rápidos van antes que los atajos');
-  assert.ok(iAtajos < iGrafico, 'los accesos van antes que el gráfico');
   assert.equal((dash.match(/quickActions\.map/g) || []).length, 1, 'los accesos rápidos no deben estar dos veces');
   // La rejilla de métricas desaparece del panel (y su CSS con ella).
   assert.doesNotMatch(dash, /dash-metrics/, 'no debe quedar la rejilla de métricas');

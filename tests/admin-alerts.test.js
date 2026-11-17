@@ -197,8 +197,14 @@ test('el servidor lee el contenido de la base y no del cuerpo', async () => {
     pushApi.indexOf('async function lastMaldiaNote')
   );
 
-  // La clase viene del cliente, pero con lista blanca.
-  assert.match(pushApi, /const ADMIN_ALERT_KINDS = \['mood', 'mood_update', 'mood_change', 'note', 'health'\];/);
+  // La clase viene del cliente, pero con lista blanca. Incluye el ciclo: los
+  // avisos de Menstruación son seguimiento suyo, no contenido para ella.
+  for (const kind of ['mood', 'mood_update', 'mood_change', 'note', 'cycle_period', 'cycle_log', 'cycle_share', 'health']) {
+    assert.match(pushApi, new RegExp(`ADMIN_ALERT_KINDS = \\[[\\s\\S]{0,400}?'${kind}'`));
+  }
+  for (const kind of ['cycle_period', 'cycle_log', 'cycle_share']) {
+    assert.match(pushApi, new RegExp(`${kind}: 'adminCycle'`), 'los avisos del ciclo comparten interruptor');
+  }
   assert.match(handler, /ADMIN_ALERT_KINDS\.includes\(req\.body\?\.kind\) \? req\.body\.kind : 'mood'/);
   // El texto lo pone el servidor leyendo la fila del ánimo y la última nota.
   assert.match(handler, /adminMoodPayload\(mood, kind\)/);
@@ -229,7 +235,11 @@ test('el aviso del admin respeta SUS preferencias, y el silencio no lo descarta'
     pushApi.indexOf('async function lastMaldiaNote')
   );
 
-  assert.match(handler, /splitRecipients\(\s*\n?\s*adminSubscriptions, prefsById, new Date\(\), adminAlertPrefFor\(kind\)\s*\n?\s*\)/);
+  assert.match(
+    handler,
+    /splitRecipients\(\s*adminSubscriptions,\s*prefsById,\s*new Date\(\),\s*adminAlertPrefFor\(kind\)\s*\)/,
+    'cada clase de aviso mira SU interruptor'
+  );
   // La clase apagada se cuenta y se deja fuera.
   assert.match(handler, /const \{ allowed, quiet, off \} = splitRecipients/);
   assert.match(handler, /filtered: off\.length/);
@@ -239,10 +249,10 @@ test('el aviso del admin respeta SUS preferencias, y el silencio no lo descarta'
 
   // Y las columnas nuevas se leen con el resto.
   const loader = pushApi.slice(pushApi.indexOf('async function loadPrefsByIds'), pushApi.indexOf('async function runDueReminders'));
-  for (const columna of ['admin_mood', 'admin_mood_changes', 'admin_notes', 'admin_health']) {
+  for (const columna of ['admin_mood', 'admin_mood_changes', 'admin_notes', 'admin_cycle', 'admin_health']) {
     assert.match(loader, new RegExp(columna));
   }
-  for (const clave of ['adminMood', 'adminMoodChanges', 'adminNotes', 'adminHealth']) {
+  for (const clave of ['adminMood', 'adminMoodChanges', 'adminNotes', 'adminCycle', 'adminHealth']) {
     assert.match(loader, new RegExp(`${clave}: row\\.`));
   }
   // Un fallo de lectura sigue entregando (fail open), como el resto de 023.
@@ -349,7 +359,7 @@ test('la nota solo avisa si llegó al servidor', async () => {
   assert.match(maldia, /if \(synced && !isAdmin\) notifyAdminOfNote\(\)\.catch\(/);
 });
 
-test('el perfil ofrece los cuatro interruptores, y solo al admin', async () => {
+test('el perfil ofrece los interruptores de sus avisos, y solo al admin', async () => {
   const profile = await readFile(hub('src', 'pages', 'Profile.js'), 'utf8');
   assert.match(profile, /\$\{userStore\.isAdmin \? `/, 'la sección debe ser exclusiva del admin');
 
@@ -357,6 +367,7 @@ test('el perfil ofrece los cuatro interruptores, y solo al admin', async () => {
     ['notifAdminMood', 'adminMood'],
     ['notifAdminMoodChanges', 'adminMoodChanges'],
     ['notifAdminNotes', 'adminNotes'],
+    ['notifAdminCycle', 'adminCycle'],
     ['notifAdminHealth', 'adminHealth']
   ]) {
     assert.match(profile, new RegExp(`id="${id}"`), `falta el interruptor ${id}`);
@@ -365,7 +376,7 @@ test('el perfil ofrece los cuatro interruptores, y solo al admin', async () => {
   }
   // Los cuatro se enlazan desde una lista, no con cuatro copias del mismo código.
   assert.match(profile, /const ADMIN_TOGGLES = \[/);
-  for (const clave of ['adminMood', 'adminMoodChanges', 'adminNotes', 'adminHealth']) {
+  for (const clave of ['adminMood', 'adminMoodChanges', 'adminNotes', 'adminCycle', 'adminHealth']) {
     assert.ok(profile.includes(`'${clave}'`), `la lista de interruptores debe incluir ${clave}`);
   }
 });

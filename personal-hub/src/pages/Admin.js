@@ -164,7 +164,11 @@ function statsUserOptions(users = []) {
   ];
   (users || []).forEach(u => {
     if (!u?.id || u.id === DEFAULT_STATS_USER_ID || u.id.startsWith('local_') || u.id.length <= 10) return;
-    opts.push({ id: u.id, label: u.name || (u.email ? u.email.split('@')[0] : u.id.slice(0, 8)) });
+    // Cuentas de prueba del reproductor (`listen-test-…`): no son personas y
+    // ensuciaban el selector de estadísticas.
+    const name = u.name || (u.email ? u.email.split('@')[0] : '');
+    if (/^listen-test/i.test(name) || /^listen-test/i.test(u.email || '')) return;
+    opts.push({ id: u.id, label: name || u.id.slice(0, 8) });
   });
   return opts;
 }
@@ -399,7 +403,9 @@ export function AdminPage(router) {
   // El admin no entra por la pantalla diaria: el panel abre directamente la
   // gestión de fechas y eventos (Configuración → Eventos), que es su casa. El
   // resumen de estadísticas sigue a un clic, en el menú.
-  const S = { section: 'moods', moodDate: new Date(), moodMonthData: null, contentSub: 'razones', calMonth: null, calDay: null, configTab: 'eventos' };
+  // Abre en el resumen (lo útil de hoy) en vez de en Ánimo: desde ahí se salta
+  // a cualquier sección y es la primera pantalla que tiene sentido al entrar.
+  const S = { section: 'dashboard', moodDate: new Date(), moodMonthData: null, contentSub: 'razones', calMonth: null, calDay: null, configTab: 'eventos' };
 
   const content = page.querySelector('#adminContent');
 
@@ -1141,6 +1147,27 @@ export function AdminPage(router) {
       <div class="dash-eng"><span class="dash-eng-num">${letterReads.size} <span class="dash-eng-sub">/ ${owTotal}</span></span><span class="dash-eng-label">cartas Open When abiertas</span></div>
     </div>`;
 
+    // ---- Hoy: lo que se mira al entrar, antes de cualquier gráfico ----
+    const lastVisit = sortedVisits[sortedVisits.length - 1];
+    const visitsToday = navVisits.filter(v => todayISO(new Date(v.timestamp)) === today).length;
+    const todayMood = moods.find(m => (m.date || '').slice(0, 10) === today);
+    const todayMoodInfo = todayMood ? moodInfo(todayMood.mood || todayMood.status) : null;
+    const lastNote = maldiaNotesList[0];
+    const nowCards = [
+      { label: 'Última conexión',
+        value: lastVisit ? relTimeShort(new Date(lastVisit.timestamp).getTime()) : '—',
+        sub: `${visitsToday} visita${visitsToday === 1 ? '' : 's'} hoy` },
+      { label: 'Su ánimo hoy',
+        value: todayMoodInfo ? `${todayMoodInfo.emoji} ${todayMoodInfo.label}` : 'Sin registrar',
+        sub: todayMood ? 'registrado hoy' : 'todavía no ha entrado a ánimo' },
+      { label: 'Notas de Mal Día',
+        value: `${maldiaNotesList.length}`,
+        sub: lastNote?.createdAt ? `última ${relTimeShort(new Date(lastNote.createdAt).getTime())}` : 'ninguna todavía' },
+      { label: hubTitles.anniversary || 'Aniversario',
+        value: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`,
+        sub: fmtDate(anniv) }
+    ];
+
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header">
@@ -1154,34 +1181,15 @@ export function AdminPage(router) {
         </div>
         <p class="admin-section-hint">${SECTION_HINTS.dashboard}</p>
 
-        <!-- Arriba del todo, lo accionable: a qué ir y qué editar. El resto
-             del resumen es para mirar. -->
-        <div class="admin-panel dash-go-panel">
-          <div class="admin-panel-head">
-            <h4>Ir a</h4>
-            <span class="admin-panel-badge">Todo el panel a un clic</span>
-          </div>
-          <div class="dash-go">
-            <span class="dash-go-label">Secciones del panel</span>
-            <div class="quick-actions">
-              ${quickActions.map(q => `
-                <button type="button" class="quick-action" data-goto="${q.section}">
-                  <span class="quick-action-icon">${q.icon}</span>
-                  <span class="quick-action-label">${q.label}</span>
-                </button>`).join('')}
-            </div>
-          </div>
-          <div class="dash-go">
-            <span class="dash-go-label">Atajos de gestión</span>
-            <div class="dash-shortcuts">
-              ${shortcuts.map(s => `
-                <button type="button" class="dash-shortcut" data-shortcut='${JSON.stringify({ section: s.section || '', sub: s.sub || '' })}'>
-                  <span class="dash-shortcut-icon">${s.icon}</span>
-                  <span class="dash-shortcut-label">${s.label}</span>
-                  <span class="dash-shortcut-count">${s.count} ${s.count === 1 ? 'elemento' : 'elementos'}</span>
-                </button>`).join('')}
-            </div>
-          </div>
+        <!-- Lo primero que se mira al entrar: cómo está hoy. Los gráficos y
+             los accesos van después. -->
+        <div class="dash-now">
+          ${nowCards.map(c => `
+            <div class="dash-now-card">
+              <span class="dash-now-label">${esc(c.label)}</span>
+              <b class="dash-now-value">${esc(c.value)}</b>
+              <span class="dash-now-sub">${esc(c.sub)}</span>
+            </div>`).join('')}
         </div>
 
         <div class="admin-dash-grid">
@@ -1305,6 +1313,35 @@ export function AdminPage(router) {
                 </div>`).join('')}
             </div>
             <button class="dash-more-btn" data-goto="actividad">Ver toda la actividad →</button>
+          </div>
+        </div>
+
+        <!-- Al final, los accesos: el resumen ya ha enseñado lo importante. -->
+        <div class="admin-panel dash-go-panel">
+          <div class="admin-panel-head">
+            <h4>Ir a</h4>
+            <span class="admin-panel-badge">Todo el panel a un clic</span>
+          </div>
+          <div class="dash-go">
+            <span class="dash-go-label">Secciones del panel</span>
+            <div class="quick-actions">
+              ${quickActions.map(q => `
+                <button type="button" class="quick-action" data-goto="${q.section}">
+                  <span class="quick-action-icon">${q.icon}</span>
+                  <span class="quick-action-label">${q.label}</span>
+                </button>`).join('')}
+            </div>
+          </div>
+          <div class="dash-go">
+            <span class="dash-go-label">Atajos de gestión</span>
+            <div class="dash-shortcuts">
+              ${shortcuts.map(s => `
+                <button type="button" class="dash-shortcut" data-shortcut='${JSON.stringify({ section: s.section || '', sub: s.sub || '' })}'>
+                  <span class="dash-shortcut-icon">${s.icon}</span>
+                  <span class="dash-shortcut-label">${s.label}</span>
+                  <span class="dash-shortcut-count">${s.count} ${s.count === 1 ? 'elemento' : 'elementos'}</span>
+                </button>`).join('')}
+            </div>
           </div>
         </div>
       </section>
@@ -2650,11 +2687,11 @@ export function AdminPage(router) {
     return `${CAL_MONTHS_ES[m - 1]} ${y}`;
   }
 
-  function calDefaultMonth(catalog) {
-    const months = Object.keys(catalog?.months || {}).sort();
-    if (months.length) return months[months.length - 1];
-    const t = calTodayStr().slice(0, 7);
-    return t;
+  // Abre siempre en el mes en curso: antes elegía el último mes del catálogo
+  // y se abría un mes que no era el que estaba viviendo (y en el que ya no
+  // se podía crear contenido sin pulsar «Hoy»).
+  function calDefaultMonth() {
+    return calTodayStr().slice(0, 7);
   }
 
   function renderCalendarAdmin(sub, data) {
@@ -2662,7 +2699,9 @@ export function AdminPage(router) {
     const giftsById = {};
     (catalog.gifts || []).forEach(g => { if (g?.id) giftsById[g.id] = g; });
 
-    if (!S.calMonth || !catalog.months?.[S.calMonth]) S.calMonth = calDefaultMonth(catalog);
+    // No se exige que el mes exista en el catálogo: los meses vacíos también
+    // se pueden abrir, y ahí se crea contenido nuevo.
+    if (!S.calMonth) S.calMonth = calDefaultMonth();
     const monthKey = S.calMonth;
     const monthData = catalog.months?.[monthKey] || { calendarMapping: {} };
     const mapping = monthData.calendarMapping || {};
@@ -2676,10 +2715,12 @@ export function AdminPage(router) {
     }
 
     // Día seleccionado (por defecto el primero con contenido, o hoy si el mes es el actual)
+    // Siempre hay un día elegido, aunque el mes esté vacío: el panel de abajo
+    // es el único sitio desde el que se puede añadir contenido.
     if (!S.calDay || S.calDay > daysInMonth) {
       const today = calTodayStr();
-      const todayRow = today.startsWith(monthKey) ? dayRows.find(r => r.day === Number(today.slice(8))) : null;
-      S.calDay = (todayRow && !todayRow.empty) ? todayRow.day : (dayRows.find(r => !r.empty)?.day || null);
+      const sameMonth = today.startsWith(monthKey);
+      S.calDay = (sameMonth ? Number(today.slice(8)) : null) || dayRows.find(r => !r.empty)?.day || 1;
     }
     const selDay = S.calDay;
     const selIds = selDay ? calToIds(mapping[String(selDay)]).filter(id => giftsById[id]) : [];
@@ -2688,9 +2729,15 @@ export function AdminPage(router) {
     const totalGifts = (catalog.gifts || []).length;
     const daysWithContent = dayRows.filter(r => !r.empty).length;
 
+    // Hueco del primer día para que cada fecha caiga en su día de la semana
+    // (semana de lunes a domingo, como el resto de la app) y marca de hoy.
+    const firstDow = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1, 1).getDay();
+    const leadBlanks = (firstDow + 6) % 7;
+    const todayKey = calTodayStr();
+
     sub.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
-        <span style="color:var(--theme-text-secondary);font-size:var(--fs-sm);" id="calAdminCount">${daysWithContent} de ${daysInMonth} días · ${totalGifts} regalos</span>
+        <span style="color:var(--theme-text-secondary);font-size:var(--fs-sm);" id="calAdminCount">${daysWithContent} de ${daysInMonth} días con contenido · ${totalGifts} contenidos</span>
         <div style="display:flex;gap:8px;">
           <button class="admin-btn admin-btn-sm" id="calAdminRebuild" title="Regenera el calendario desde el esqueleto base (agosto empieza el 15, juegos en días seguidos)">♻️ Regenerar</button>
           <button class="admin-btn admin-btn-sm" id="calAdminResponses">💌 Respuestas</button>
@@ -2704,13 +2751,18 @@ export function AdminPage(router) {
         <button class="admin-btn admin-btn-sm admin-btn-secondary" id="calAdminToday">Hoy</button>
       </div>
 
+      <div class="admin-cal-week" aria-hidden="true">
+        ${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => `<span>${d}</span>`).join('')}
+      </div>
       <div class="admin-cal-grid" id="calAdminGrid">
+        ${'<span class="admin-cal-day is-blank" aria-hidden="true"></span>'.repeat(leadBlanks)}
         ${dayRows.map(({ day, ids, empty }) => `
-          <button class="admin-cal-day${empty ? ' is-empty' : ''}${day === selDay ? ' is-selected' : ''}" data-day="${day}">
+          <button class="admin-cal-day${empty ? ' is-empty' : ''}${day === selDay ? ' is-selected' : ''}${`${monthKey}-${calPad(day)}` === todayKey ? ' is-today' : ''}" data-day="${day}"
+            title="${day} · ${empty ? 'sin contenido' : `${ids.length} contenido${ids.length === 1 ? '' : 's'}`}">
             <span class="admin-cal-day__num">${day}</span>
             ${empty ? '' : `
               <span class="admin-cal-day__types">${ids.map(id => CAL_TYPES[giftsById[id]?.type]?.emoji || '✨').join('')}</span>
-              <span class="admin-cal-day__count">${ids.length}${ids.length > 1 ? ' contenidos' : ' contenido'}</span>
+              <span class="admin-cal-day__count">${ids.length}</span>
             `}
           </button>
         `).join('')}
@@ -2766,7 +2818,7 @@ export function AdminPage(router) {
     };
 
     // Selección de día
-    page.querySelectorAll('#calAdminGrid .admin-cal-day').forEach(btn => {
+    page.querySelectorAll('#calAdminGrid .admin-cal-day[data-day]').forEach(btn => {
       btn.addEventListener('click', () => {
         S.calDay = Number(btn.dataset.day);
         renderCalendarAdmin(sub, data);

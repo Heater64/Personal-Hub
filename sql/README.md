@@ -43,6 +43,8 @@ Los archivos **dependen entre sí** — ejecútalos en orden numérico.
 | 024 | `024_admin_alerts.sql` | Avisos del admin (ánimo, cambios, notas de Mal Día, técnicos) en columnas propias de `notification_prefs` | añade columnas |
 | 025 | `025_push_log_delivery.sql` | Acuse de entrega por dispositivo: `delivery_id` y `delivered_at` en `push_logs`, con `CHECK` del estado | añade columnas |
 | **026** | `026_rls_hardening.sql` | **Cierra la escalada por INSERT en `profiles`, el listado anónimo de Storage y los privilegios sobrantes** | 🔴 seguridad |
+| **027** | `027_ciclo_menstrual.sql` | **Seguimiento menstrual: `cycle_settings`, `cycle_periods`, `cycle_daily_logs`, `cycle_sharing` + vista de pareja filtrada por campo** | 🔴 seguridad / tablas nuevas |
+| 028 | `028_avisos_ciclo.sql` | Interruptor `admin_cycle`: avisos del ciclo hacia el admin (menstruación, día con síntomas, permiso de compartir) | añade columna |
 
 ---
 
@@ -107,6 +109,11 @@ aplicados) y subir solo lo nuevo:
    retira privilegios que nadie usa (`EXECUTE` de funciones de trigger,
    `TRUNCATE`/`REFERENCES`/`TRIGGER` de `anon` y `authenticated`). El bucket
    sigue siendo público: las imágenes se sirven por URL directa, como antes.
+10. `028_avisos_ciclo.sql` — añade `admin_cycle` a `notification_prefs`, con
+   `TRUE` por defecto. No toca datos: sin ella los avisos del ciclo llegan
+   igual (el servidor entrega cuando no encuentra la preferencia), pero el
+   admin no puede apagarlos; con ella los enciende y apaga desde Perfil →
+   Notificaciones, como el resto de avisos suyos.
 
 ### Orden recomendado para producción
 

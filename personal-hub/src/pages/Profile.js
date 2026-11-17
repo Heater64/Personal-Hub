@@ -946,6 +946,16 @@ export function ProfilePage(router) {
           </div>
           <div class="prof-row">
             <div class="prof-row-text">
+              <span class="prof-row-title">Su ciclo</span>
+              <span class="prof-row-sub">Cuando registra la menstruación o un día con síntomas</span>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="notifAdminCycle" ${s.adminCycle ? 'checked' : ''}>
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-row">
+            <div class="prof-row-text">
               <span class="prof-row-title">Avisos técnicos</span>
               <span class="prof-row-sub">Si un aviso no se pudo entregar o un dispositivo caducó</span>
             </div>
@@ -1075,6 +1085,7 @@ export function ProfilePage(router) {
       ['#notifAdminMood', 'adminMood', '🔔 Te aviso cuando registra su ánimo', '🔕 Ya no te aviso de su ánimo'],
       ['#notifAdminMoodChanges', 'adminMoodChanges', '🔔 Te aviso si cambia de ánimo', '🔕 Ya no te aviso de los cambios'],
       ['#notifAdminNotes', 'adminNotes', '💌 Te aviso cuando deja una nota', '🔕 Ya no te aviso de las notas'],
+      ['#notifAdminCycle', 'adminCycle', '🌸 Te aviso de su ciclo', '🔕 Ya no te aviso de su ciclo'],
       ['#notifAdminHealth', 'adminHealth', '⚠️ Avisos técnicos activados', '🔕 Avisos técnicos desactivados']
     ];
     for (const [selector, key, on, off] of ADMIN_TOGGLES) {

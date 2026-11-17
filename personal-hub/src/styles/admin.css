@@ -1882,10 +1882,34 @@
   text-align: center;
 }
 .admin-cal-nav .admin-btn-sm { min-width: 34px; }
+/* Cabecera de días de la semana (lunes primero, como la app). */
+.admin-cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 0 1px;
+}
+.admin-cal-week span {
+  text-align: center;
+  font-size: var(--fs-xs, 11px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--theme-text-secondary);
+}
 .admin-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
+}
+/* Sin min-width:0 las celdas no bajan de su texto y la séptima columna se
+   salía del panel: los días 6, 13, 20… desaparecían por la derecha. */
+.admin-cal-grid > * { min-width: 0; }
+.admin-cal-day.is-blank {
+  border: 0;
+  background: none;
+  pointer-events: none;
+  min-height: 0;
 }
 .admin-cal-day {
   display: flex;
@@ -1911,16 +1935,60 @@
 .admin-cal-day__count {
   font-size: var(--fs-xs, 11px);
   color: var(--theme-text-secondary);
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.2;
 }
+.admin-cal-day.is-today { border-color: var(--theme-accent); }
+.admin-cal-day.is-today .admin-cal-day__num { color: var(--theme-accent); }
 @media (max-width: 520px) {
-  .admin-cal-grid { gap: 5px; }
+  .admin-cal-grid,
+  .admin-cal-week { gap: 5px; }
   .admin-cal-day { min-height: 54px; padding: 6px 2px; }
   .admin-cal-day__count { font-size: 10px; }
 }
 /* ==========================================
    ADMIN · Dashboard v2 (mockup: sidebar app, métricas, charts)
    ========================================== */
+
+/* ---- «Hoy»: lo primero del resumen ---- */
+.dash-now {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.dash-now-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--theme-divider);
+  border-radius: var(--radius, 12px);
+  background: var(--theme-card);
+}
+.dash-now-label {
+  font-size: var(--fs-xs, 11px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--theme-text-secondary);
+}
+.dash-now-value {
+  font-size: var(--fs-lg, 18px);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.dash-now-sub {
+  font-size: var(--fs-xs, 11px);
+  color: var(--theme-text-secondary);
+}
+@media (max-width: 860px) {
+  .dash-now { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  .dash-now { grid-template-columns: 1fr; }
+}
 
 /* ---- Sidebar estilo app ---- */
 .admin-sidebar-brand {
