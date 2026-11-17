@@ -12,13 +12,37 @@ import { LETTERS } from '../data/openwhen.data.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userPrefKey, migrateUserPref, getUserPref, setUserPref } from '../utils/userStorage.js';
 import { hourInSpain, todayISO } from '../utils/format.js';
-import { getContinueWatching, getCatalogSync, getStartedSeries, hydrateProgress, bumpWatched } from '../services/seriesData.js';
+import {
+  getContinueWatching,
+  getCatalogSync,
+  getStartedSeries,
+  hydrateProgress,
+  bumpWatched,
+} from '../services/seriesData.js';
 import { startPosterRotation } from '../utils/posterRotator.js';
-import { daysSinceAnniversary, loadSpecialDates, nextSpecialDate, specialEventsToday, eventTemplateFor, SPECIAL_EVENT_TONES } from '../utils/specialDates.js';
-import { maybeShowSpecialEvent, previewSpecialEventSheet, replaySpecialEventSheet } from '../components/SpecialEventSheet.js';
+import {
+  daysSinceAnniversary,
+  loadSpecialDates,
+  nextSpecialDate,
+  specialEventsToday,
+  eventTemplateFor,
+  SPECIAL_EVENT_TONES,
+} from '../utils/specialDates.js';
+import {
+  maybeShowSpecialEvent,
+  previewSpecialEventSheet,
+  replaySpecialEventSheet,
+} from '../components/SpecialEventSheet.js';
 import { icon } from '../components/ui.js';
 import { moodStore } from '../stores/mood.store.js';
 import { userStore } from '../stores/user.store.js';
+import {
+  startLocationSharing,
+  stopLocationSharing,
+  watchDistance,
+  fetchPartnerProfile,
+  formatDistance,
+} from '../services/location.service.js';
 
 // ==========================================
 // SEED — contenido que cambia cada día
@@ -35,7 +59,10 @@ function dailySeed() {
 
 function seededRandom(seed) {
   let s = seed;
-  return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  return function () {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
 }
 
 function pickSeeded(arr, rng) {
@@ -48,35 +75,103 @@ function pickSeeded(arr, rng) {
 // La primera línea es el saludo; la segunda, la frase del día.
 // ==========================================
 const GREETINGS = {
-  morning:   ['Buenos días ☀️<br>Me alegra volver a verte.', 'Buenos días ☀️<br>Hoy también va a ser un día bonito.', 'Buenos días ☀️<br>El sol sale solo para verte sonreír.'],
-  afternoon: ['Buenas tardes 🌤️<br>Espero que estés teniendo un lindo día.', 'Buenas tardes 🌤️<br>¿Ya comiste? Cuídate mucho.', 'Buenas tardes 🌤️<br>Cada tarde es mejor si estás tú.'],
-  evening:   ['Buenas noches 🌙<br>Espero que hayas tenido un bonito día.', 'Buenas noches 🌙<br>Descansa, mañana hay más sorpresas.', 'Buenas noches 🌙<br>Gracias por estar otro día más conmigo.'],
-  night:     ['Buenas noches 🌙<br>Es tarde... pero nunca es tarde para decirte que te quiero.', 'Buenas noches 🌙<br>Que sueñes con cosas bonitas.', 'Buenas noches 🌙<br>Cierro los ojos y solo pienso en ti.']
+  morning: [
+    'Buenos días ☀️<br>Me alegra volver a verte.',
+    'Buenos días ☀️<br>Hoy también va a ser un día bonito.',
+    'Buenos días ☀️<br>El sol sale solo para verte sonreír.',
+  ],
+  afternoon: [
+    'Buenas tardes 🌤️<br>Espero que estés teniendo un lindo día.',
+    'Buenas tardes 🌤️<br>¿Ya comiste? Cuídate mucho.',
+    'Buenas tardes 🌤️<br>Cada tarde es mejor si estás tú.',
+  ],
+  evening: [
+    'Buenas noches 🌙<br>Espero que hayas tenido un bonito día.',
+    'Buenas noches 🌙<br>Descansa, mañana hay más sorpresas.',
+    'Buenas noches 🌙<br>Gracias por estar otro día más conmigo.',
+  ],
+  night: [
+    'Buenas noches 🌙<br>Es tarde... pero nunca es tarde para decirte que te quiero.',
+    'Buenas noches 🌙<br>Que sueñes con cosas bonitas.',
+    'Buenas noches 🌙<br>Cierro los ojos y solo pienso en ti.',
+  ],
 };
 
 // Saludo base por franja horaria (España). El apodo va aparte para poder
 // escribirlo con otro color en el marcado.
 const TIME_GREETING = {
-  morning:   'Buenos días ☀️',
+  morning: 'Buenos días ☀️',
   afternoon: 'Buenas tardes 🌤️',
-  evening:   'Buenas noches 🌙',
-  night:     'Buenas noches 🌙'
+  evening: 'Buenas noches 🌙',
+  night: 'Buenas noches 🌙',
 };
 
 // Portadas de canciones — fallback cuando aún no hay "seguir escuchando"
 const RANDOM_COVERS = [
-  { title: 'Si No Estás', artist: 'Iñigo Quintero', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/1200x1200bf-60.jpg' },
-  { title: 'Mi niña', artist: 'Wisin, Myke Towers', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(3).webp' },
-  { title: 'Rara vez', artist: 'Milo J, Taiu', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(4).webp' },
-  { title: 'Pareja del año', artist: 'Sebastián Yatra, Myke Towers', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(5).webp' },
-  { title: 'Cuando te vi', artist: 'Trueno, Maria Becerra', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/923cf890949406f52539a8ed4d16a352.1000x1000x1.png' },
-  { title: 'Todo de Ti', artist: 'Rauw Alejandro', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(7).webp' },
-  { title: 'Tacones Rojos', artist: 'Sebastián Yatra', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(8).webp' },
-  { title: 'Bailando', artist: 'Enrique Iglesias', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/R%20(1).png' },
-  { title: 'La Plena', artist: 'Beéle, Westcol', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/ab67616d0000b2734740100d84f3667f1eae6870.jpeg' },
-  { title: 'Cosas Que No Te Dije', artist: 'Saiko', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/ab67616d0000b273fb045f7dda9773e266437bc6.jpeg' },
-  { title: 'Indeciso', artist: 'Reik, J Balvin', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/R%20(3).jpeg' },
-  { title: 'Loco Enamorado', artist: 'Abraham Mateo, Farruko', cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/f53f05470b4146d4a202cf5df55b4ead.1000x1000x1.png' }
+  {
+    title: 'Si No Estás',
+    artist: 'Iñigo Quintero',
+    cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/1200x1200bf-60.jpg',
+  },
+  {
+    title: 'Mi niña',
+    artist: 'Wisin, Myke Towers',
+    cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(3).webp',
+  },
+  {
+    title: 'Rara vez',
+    artist: 'Milo J, Taiu',
+    cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(4).webp',
+  },
+  {
+    title: 'Pareja del año',
+    artist: 'Sebastián Yatra, Myke Towers',
+    cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(5).webp',
+  },
+  {
+    title: 'Cuando te vi',
+    artist: 'Trueno, Maria Becerra',
+    cover:
+      'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/923cf890949406f52539a8ed4d16a352.1000x1000x1.png',
+  },
+  {
+    title: 'Todo de Ti',
+    artist: 'Rauw Alejandro',
+    cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(7).webp',
+  },
+  {
+    title: 'Tacones Rojos',
+    artist: 'Sebastián Yatra',
+    cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/OIP%20(8).webp',
+  },
+  {
+    title: 'Bailando',
+    artist: 'Enrique Iglesias',
+    cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/R%20(1).png',
+  },
+  {
+    title: 'La Plena',
+    artist: 'Beéle, Westcol',
+    cover:
+      'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/ab67616d0000b2734740100d84f3667f1eae6870.jpeg',
+  },
+  {
+    title: 'Cosas Que No Te Dije',
+    artist: 'Saiko',
+    cover:
+      'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/ab67616d0000b273fb045f7dda9773e266437bc6.jpeg',
+  },
+  {
+    title: 'Indeciso',
+    artist: 'Reik, J Balvin',
+    cover: 'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/R%20(3).jpeg',
+  },
+  {
+    title: 'Loco Enamorado',
+    artist: 'Abraham Mateo, Farruko',
+    cover:
+      'https://canciones-que-me-recuerdan-a-ti.vercel.app/Fotos/f53f05470b4146d4a202cf5df55b4ead.1000x1000x1.png',
+  },
 ];
 
 // ==========================================
@@ -87,7 +182,9 @@ const nf = new Intl.NumberFormat('es-ES');
 function shortDate(iso) {
   const [y, m, d] = String(iso).split('-').map(Number);
   if (!y || !m || !d) return '';
-  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long' }).format(new Date(y, m - 1, d));
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long' }).format(
+    new Date(y, m - 1, d)
+  );
 }
 
 function countdownLabel(days) {
@@ -119,7 +216,10 @@ function previewRequestedEvent(router) {
 function animateNumber(el, to) {
   const from = Number(el.textContent.replace(/\D/g, '')) || 0;
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (reduce || from === to) { el.textContent = nf.format(to); return; }
+  if (reduce || from === to) {
+    el.textContent = nf.format(to);
+    return;
+  }
   const start = performance.now();
   const dur = 1500;
   function tick(now) {
@@ -138,7 +238,9 @@ function getMeme(rng) {
   const url = pickSeeded(urls, rng);
   const isVid = /\.(mp4|webm|mov)$/i.test(url);
   // Los memes de vídeo usan su póster (jpg), nunca el mp4 dentro de un <img>
-  const thumb = isVid ? getVideoPoster(url) : url.replace('/q_auto,f_auto,w_800/', '/q_auto:good,f_auto,w_600,c_fill,g_auto/');
+  const thumb = isVid
+    ? getVideoPoster(url)
+    : url.replace('/q_auto,f_auto,w_800/', '/q_auto:good,f_auto,w_600,c_fill,g_auto/');
   return { thumb, name, isVid };
 }
 
@@ -152,13 +254,31 @@ function getSong(rng) {
       try {
         const durs = JSON.parse(localStorage.getItem(userPrefKey('trackDurations')) || '{}');
         if (d.audio && durs[d.audio]) duration = durs[d.audio];
-      } catch { /* sin duración: barra neutra */ }
-      return { title: d.title, artist: d.artist || '', cover: d.cover || '', time: d.time || 0, duration, audio: d.audio || '' };
+      } catch {
+        /* sin duración: barra neutra */
+      }
+      return {
+        title: d.title,
+        artist: d.artist || '',
+        cover: d.cover || '',
+        time: d.time || 0,
+        duration,
+        audio: d.audio || '',
+      };
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   if (rng && RANDOM_COVERS.length) {
     const pick = pickSeeded(RANDOM_COVERS, rng);
-    return { title: pick.title, artist: pick.artist, cover: pick.cover, time: 0, duration: 0, audio: '' };
+    return {
+      title: pick.title,
+      artist: pick.artist,
+      cover: pick.cover,
+      time: 0,
+      duration: 0,
+      audio: '',
+    };
   }
   return null;
 }
@@ -172,7 +292,9 @@ function readMood() {
   try {
     const mood = moodStore.getTodayMood();
     return mood && (mood.label || mood.emoji) ? mood : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -293,7 +415,12 @@ function tileSeries(continueList, posters, continueFirst) {
 function tileSong(song) {
   if (!song) return '';
   const isContinue = song.time > 0 || song.duration > 0;
-  const pct = song.duration && song.time ? Math.min(100, Math.round((song.time / song.duration) * 100)) : (song.time > 0 ? 100 : 0);
+  const pct =
+    song.duration && song.time
+      ? Math.min(100, Math.round((song.time / song.duration) * 100))
+      : song.time > 0
+        ? 100
+        : 0;
   return `
     <button class="tile" type="button" data-route="${isContinue ? '/canciones?continue=1' : '/canciones'}">
       <span class="tile__media">
@@ -376,6 +503,94 @@ function watchSectionHTML() {
 }
 
 // ==========================================
+// MAPA — distancia entre los dos
+// ==========================================
+// Dos círculos con las fotos y el número en medio, como el diseño. El mapa es
+// decorativo a propósito: con posición real haría falta un proveedor de mapas
+// (y su clave), y aquí solo interesa el número y las caras.
+function avatarCircle(who, { name = '', avatar = '' } = {}) {
+  const initial = (name || '').trim().charAt(0).toUpperCase();
+  const label = who === 'me' ? 'Tú' : 'Tu pareja';
+  const inner = avatar
+    ? `<img src="${escapeHtml(avatar)}" alt="">`
+    : `<span aria-hidden="true">${escapeHtml(initial || '♥')}</span>`;
+  return `<span class="home-map__avatar home-map__avatar--${who}" aria-label="${escapeHtml(label)}">${inner}</span>`;
+}
+
+function distancePanelHTML() {
+  const me = userStore.getUser() || {};
+  return `
+    <section class="home-map" aria-label="Distancia entre vosotros">
+      <svg class="home-map__art" viewBox="0 0 360 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+        <rect width="360" height="160" fill="#eef1ea"/>
+        <path d="M0 122 L118 100 L236 112 L360 92 L360 160 L0 160Z" fill="#e3ebd9"/>
+        <circle cx="306" cy="34" r="30" fill="#dcead7"/>
+        <path d="M-10 44 L86 56 L182 38 L292 52 L370 34" stroke="#ffffff" stroke-width="11" fill="none"/>
+        <path d="M34 -10 L46 74 L34 160" stroke="#ffffff" stroke-width="7" fill="none"/>
+        <path d="M252 -10 L264 64 L252 150" stroke="#ffffff" stroke-width="7" fill="none"/>
+        <path d="M118 -10 L126 160" stroke="#f8f9f5" stroke-width="4" fill="none"/>
+        <path d="M0 92 L360 78" stroke="#f8f9f5" stroke-width="4" fill="none"/>
+        <circle cx="300" cy="126" r="24" fill="#d7e6f0"/>
+      </svg>
+      <div class="home-map__canvas">
+        ${avatarCircle('me', { name: me.name, avatar: me.avatar })}
+        <div class="home-map__dist">
+          <strong id="homeDistanceValue">—</strong>
+          <span>Distancia</span>
+        </div>
+        ${avatarCircle('them')}
+      </div>
+      <p class="home-map__hint" id="homeMapHint" hidden></p>
+    </section>
+  `;
+}
+
+/**
+ * Arranca el panel: comparte tu posición, pinta la de la otra persona y
+ * actualiza el número. Devuelve la función para parar (page.cleanup).
+ */
+function initDistancePanel(page) {
+  const valueEl = page.querySelector('#homeDistanceValue');
+  const themEl = page.querySelector('.home-map__avatar--them');
+  const hintEl = page.querySelector('#homeMapHint');
+  const me = userStore.getUser();
+
+  let paintedPartnerId = null;
+  let stopped = false;
+
+  const setHint = text => {
+    if (!hintEl) return;
+    hintEl.hidden = !text;
+    hintEl.textContent = text || '';
+  };
+
+  startLocationSharing({ userId: me?.id, isAdmin: userStore.isAdmin }, status => {
+    if (stopped) return;
+    if (status === 'denied') setHint('Activa la ubicación para ver la distancia');
+    else if (status === 'ok') setHint('');
+  });
+
+  const stopWatch = watchDistance(async ({ km, partnerId }) => {
+    if (stopped) return;
+    if (valueEl) valueEl.textContent = formatDistance(km);
+
+    if (!partnerId || paintedPartnerId === partnerId) return;
+    paintedPartnerId = partnerId;
+    const profile = await fetchPartnerProfile(partnerId);
+    if (stopped || !themEl) return;
+    themEl.innerHTML = profile?.avatar
+      ? `<img src="${escapeHtml(profile.avatar)}" alt="">`
+      : `<span aria-hidden="true">${escapeHtml((profile?.name || '').trim().charAt(0).toUpperCase() || '♥')}</span>`;
+  });
+
+  return () => {
+    stopped = true;
+    stopWatch();
+    stopLocationSharing();
+  };
+}
+
+// ==========================================
 // MAIN
 // ==========================================
 export function HomePage(router) {
@@ -404,12 +619,17 @@ export function HomePage(router) {
 
   const posterPool = continueList.length
     ? continueList.slice(0, 4)
-    : [...getCatalogSync()].sort(() => Math.random() - 0.5).map(item => ({ item })).slice(0, 4);
+    : [...getCatalogSync()]
+        .sort(() => Math.random() - 0.5)
+        .map(item => ({ item }))
+        .slice(0, 4);
   const posters = posterPool.map(c => c.item.portada).filter(Boolean);
   const continueFirst = continueList[0];
 
   page.innerHTML = `
     <h1 class="sr-only">Inicio</h1>
+
+    ${distancePanelHTML()}
 
     <section class="home-hero" aria-label="Tiempo juntos">
       <p class="home-hero__greet">${escapeHtml(saludo)}, <span class="home-hero__greet-name">${escapeHtml(apodo)}</span></p>
@@ -442,24 +662,29 @@ export function HomePage(router) {
     </div>
   `;
 
+  // Distancia: se pide la posición al entrar y se para al salir de la página
+  const stopDistance = initDistancePanel(page);
+
   // Contador — arranca ya y se corrige cuando llegan las fechas reales
   animateNumber(page.querySelector('#homeCounter'), daysSince);
-  loadSpecialDates().then(() => {
-    const el = page.querySelector('#homeCounter');
-    if (el) animateNumber(el, daysSinceAnniversary());
-    const stats = page.querySelector('.home-stats');
-    if (stats) stats.innerHTML = todayCards();
-    const eventSlot = page.querySelector('#homeSpecialEventSlot');
-    if (eventSlot) eventSlot.innerHTML = todayEventBanner();
-    // Espera las fechas sincronizadas para detectar también aniversarios y
-    // eventos personalizados configurados en otro dispositivo.
-    if (!previewRequestedEvent(router)) maybeShowSpecialEvent(page, router);
-  }).catch(() => {
-    if (!previewRequestedEvent(router)) maybeShowSpecialEvent(page, router);
-  });
+  loadSpecialDates()
+    .then(() => {
+      const el = page.querySelector('#homeCounter');
+      if (el) animateNumber(el, daysSinceAnniversary());
+      const stats = page.querySelector('.home-stats');
+      if (stats) stats.innerHTML = todayCards();
+      const eventSlot = page.querySelector('#homeSpecialEventSlot');
+      if (eventSlot) eventSlot.innerHTML = todayEventBanner();
+      // Espera las fechas sincronizadas para detectar también aniversarios y
+      // eventos personalizados configurados en otro dispositivo.
+      if (!previewRequestedEvent(router)) maybeShowSpecialEvent(page, router);
+    })
+    .catch(() => {
+      if (!previewRequestedEvent(router)) maybeShowSpecialEvent(page, router);
+    });
 
   // Navegación delegada: cualquier [data-route] navega (también lo insertado después)
-  page.addEventListener('click', (event) => {
+  page.addEventListener('click', event => {
     const special = event.target.closest('[data-special-event]');
     if (special && page.contains(special)) {
       replaySpecialEventSheet(router);
@@ -471,7 +696,7 @@ export function HomePage(router) {
 
   // + / − de "Estás viendo": guarda el capítulo y repinta la sección en el acto.
   const watchSlot = page.querySelector('#homeWatchSlot');
-  page.addEventListener('click', (event) => {
+  page.addEventListener('click', event => {
     const btn = event.target.closest('[data-watch-step]');
     if (!btn || !page.contains(btn)) return;
     const res = bumpWatched(btn.dataset.watchItem, Number(btn.dataset.watchStep));
@@ -500,14 +725,16 @@ export function HomePage(router) {
       if (watchSlot) watchSlot.innerHTML = watchSectionHTML();
       refreshContinueTile();
     })
-    .catch(() => { /* sin red: se queda lo local */ });
+    .catch(() => {
+      /* sin red: se queda lo local */
+    });
 
   // Rotación de portadas (10s) cuando no hay nada que seguir viendo
   const rotateEl = page.querySelector('[data-poster-rotate]');
   let stopRotation = () => {};
   if (rotateEl && posters.length > 1) {
     stopRotation = startPosterRotation(rotateEl, posters, {
-      onChange: (i) => {
+      onChange: i => {
         if (!continueList.length) return; // aleatorio: solo cambia la portada
         const c = continueList[i % continueList.length];
         if (!c) return;
@@ -517,7 +744,7 @@ export function HomePage(router) {
         if (t) t.textContent = c.item.titulo;
         if (s) s.textContent = `Ep. ${c.watched} de ${c.total} · ${c.percent}%`;
         if (bar) bar.style.width = `${Math.max(c.percent, 4)}%`;
-      }
+      },
     });
   }
 
@@ -538,7 +765,7 @@ export function HomePage(router) {
       await loadGiftsCatalog();
       return todayCalendarGifts();
     })
-    .then((count) => {
+    .then(count => {
       if (cancelled || !count.total) return;
       const banner = document.createElement('button');
       banner.type = 'button';
@@ -554,12 +781,15 @@ export function HomePage(router) {
       `;
       page.querySelector('.home-stats')?.after(banner);
     })
-    .catch(() => { /* sin catálogo: sin aviso */ });
+    .catch(() => {
+      /* sin catálogo: sin aviso */
+    });
 
   page.cleanup = () => {
     cancelled = true;
     unsubscribeMood();
     stopRotation();
+    stopDistance();
   };
 
   return page;

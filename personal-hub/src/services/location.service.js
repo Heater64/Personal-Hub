@@ -1,0 +1,267 @@
+/* ==========================================
+   location.service.js — Dónde está cada uno.
+
+   Misma idea que presence.service.js, y por la misma razón: la RLS de esta
+   app solo deja leer al admin, así que cada rol escribe donde el otro SÍ
+   puede leer, sin tocar el esquema.
+
+     · admin    → `content` id `location_admin` (lectura abierta a todos)
+     · usuaria  → `user_progress` type `location` (el admin la lee por RLS)
+
+   La posición se pide al abrir la portada y al volver a primer plano. No hay
+   seguimiento en segundo plano: la app nunca sabe dónde estás si no la abres.
+   ========================================== */
+
+import { supabase } from './supabase.js';
+import { isNative } from './native.service.js';
+
+const ADMIN_ROW_ID = 'location_admin';
+const SHARE_MS = 120000; // repite tu posición cada 2 min en uso
+const STALE_MS = 30 * 60000; // 30 min sin actualizar: no se muestra
+
+let self = null; // { userId, isAdmin }
+let shareTimer = null;
+let onVisible = null;
+let myLocation = null; // { lat, lng } de este dispositivo
+
+/** ¿La fila está lo bastante fresca para usarla? */
+export function isFresh(at) {
+  const t = at ? Date.parse(at) : NaN;
+  return Number.isFinite(t) && Date.now() - t < STALE_MS;
+}
+
+/**
+ * Posición actual del dispositivo.
+ *
+ * enableHighAccuracy va apagado a propósito: para una distancia entre dos
+ * ciudades sobra con la antena y gasta mucha menos batería que el GPS.
+ *
+ * Dentro del APK, `navigator.geolocation` no pide el permiso de Android por sí
+ * solo: el plugin nativo sí, y además devuelve el error tipado que el panel
+ * necesita para distinguir «denegado» de «sin cobertura».
+ */
+async function currentPosition() {
+  if (isNative()) {
+    const mod = await import('@capacitor/geolocation').catch(() => null);
+    if (mod) {
+      const { Geolocation } = mod;
+      try {
+        let perm = await Geolocation.checkPermissions();
+        if (perm.location !== 'granted') perm = await Geolocation.requestPermissions();
+        if (perm.location !== 'granted') {
+          const denied = new Error('permiso denegado');
+          denied.code = 1;
+          throw denied;
+        }
+        return await Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          timeout: 12000,
+          maximumAge: 60000,
+        });
+      } catch (err) {
+        if (err?.code === 1) throw err;
+        // Cualquier otro fallo cae al navegador antes de rendirse.
+      }
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('sin geolocalización'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      timeout: 12000,
+      maximumAge: 60000,
+    });
+  });
+}
+
+/** Escribe tu posición donde la otra persona puede leerla. */
+async function push({ userId, isAdmin }, setStatus) {
+  if (!userId || !supabase) return;
+  try {
+    const pos = await currentPosition();
+    const at = new Date().toISOString();
+    const data = {
+      lat: Number(pos.coords.latitude.toFixed(5)),
+      lng: Number(pos.coords.longitude.toFixed(5)),
+      at,
+      user_id: userId,
+    };
+
+    if (isAdmin) {
+      await supabase
+        .from('content')
+        .upsert({ id: ADMIN_ROW_ID, data, updated_at: at }, { onConflict: 'id' });
+    } else {
+      await supabase
+        .from('user_progress')
+        .upsert(
+          { user_id: userId, type: 'location', data, updated_at: at },
+          { onConflict: 'user_id,type' }
+        );
+    }
+    // La propia se guarda en memoria: el panel calcula con ella sin volver a
+    // encender el GPS cada minuto.
+    myLocation = { lat: data.lat, lng: data.lng };
+    setStatus?.('ok');
+  } catch (err) {
+    // 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
+    setStatus?.(err?.code === 1 ? 'denied' : 'error');
+  }
+}
+
+/**
+ * Empieza a compartir tu posición (idempotente).
+ * Se llama al montar la portada; `stopLocationSharing` al salir.
+ */
+export function startLocationSharing({ userId, isAdmin } = {}, onStatus) {
+  stopLocationSharing();
+  if (!userId || !supabase) return;
+  self = { userId: String(userId), isAdmin: !!isAdmin };
+
+  push(self, onStatus);
+  shareTimer = setInterval(() => push(self, onStatus), SHARE_MS);
+  onVisible = () => {
+    if (document.visibilityState === 'visible') push(self, onStatus);
+  };
+  document.addEventListener('visibilitychange', onVisible);
+}
+
+export function stopLocationSharing() {
+  if (shareTimer) {
+    clearInterval(shareTimer);
+    shareTimer = null;
+  }
+  if (onVisible) {
+    document.removeEventListener('visibilitychange', onVisible);
+    onVisible = null;
+  }
+  self = null;
+}
+
+/** Última posición conocida de la otra persona: { lat, lng, at, userId } o null. */
+export async function fetchPartnerLocation() {
+  if (!self?.userId || !supabase) return null;
+  try {
+    if (self.isAdmin) {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('user_id, data, updated_at')
+        .eq('type', 'location')
+        .neq('user_id', self.userId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const row = data?.[0];
+      if (!row?.data) return null;
+      return toLocation(row.data, row.user_id);
+    }
+
+    const { data, error } = await supabase
+      .from('content')
+      .select('data, updated_at')
+      .eq('id', ADMIN_ROW_ID)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.data ? toLocation(data.data, data.data.user_id) : null;
+  } catch {
+    return null;
+  }
+}
+
+function toLocation(data, userId) {
+  const lat = Number(data?.lat);
+  const lng = Number(data?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng, at: data?.at || null, userId: data?.user_id || userId || null };
+}
+
+/** Nombre y foto de la otra persona, para pintar su círculo. */
+export async function fetchPartnerProfile(partnerId) {
+  if (!partnerId || !supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('name, avatar_url')
+      .eq('id', partnerId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? { name: data.name || '', avatar: data.avatar_url || '' } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Distancia en km entre dos coordenadas (haversine). */
+export function distanceKm(a, b) {
+  if (!a || !b) return null;
+  const R = 6371;
+  const rad = deg => (deg * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** 0.85 → «850 m»; 3.2 → «3,2 km»; 42.6 → «43 km». */
+export function formatDistance(km) {
+  if (!Number.isFinite(km)) return '—';
+  if (km < 1) return `${Math.max(10, Math.round((km * 1000) / 10) * 10)} m`;
+  const value = km < 10 ? km.toFixed(1).replace('.', ',') : String(Math.round(km));
+  return `${value.replace(/,0$/, '')} km`;
+}
+
+/**
+ * Vigila la distancia y avisa con `{ km, partner, stale }`.
+ *
+ * Una vez al empezar, cada `intervalMs` y al volver a la pestaña. Devuelve la
+ * función para dejar de vigilar (page.cleanup).
+ */
+export function watchDistance(handler, { intervalMs = 60000 } = {}) {
+  let alive = true;
+
+  const tick = async () => {
+    const partner = await fetchPartnerLocation();
+    if (!alive) return;
+    if (!partner) {
+      handler({ km: null, partner: null, partnerId: null, stale: false });
+      return;
+    }
+    // La primera vez el GPS puede tardar más que la lectura del otro lado:
+    // se le da un margen antes de aceptar que no hay distancia.
+    let me = fetchMyLocation();
+    if (!me) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!alive) return;
+      me = fetchMyLocation();
+    }
+    handler({
+      km: me ? distanceKm(me, partner) : null,
+      partner,
+      partnerId: partner.userId,
+      stale: !isFresh(partner.at),
+    });
+  };
+
+  tick();
+  const timer = setInterval(tick, intervalMs);
+  const onVis = () => {
+    if (document.visibilityState === 'visible') tick();
+  };
+  document.addEventListener('visibilitychange', onVis);
+
+  return () => {
+    alive = false;
+    clearInterval(timer);
+    document.removeEventListener('visibilitychange', onVis);
+  };
+}
+
+/** Tu propia posición, la última que se escribió. */
+export function fetchMyLocation() {
+  return myLocation;
+}
