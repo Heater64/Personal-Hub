@@ -4,6 +4,7 @@
      El título arriba (recortado si es largo) y el número con «días» debajo.
      Sin fecha: en un cuadrado no cabe sin comerse el número. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_countdown_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -24,7 +25,8 @@
         android:text="@string/widget_countdown_empty"
         android:textColor="@color/widget_coral_soft"
         android:textSize="8sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="Nuestro aniversario"/>
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -42,7 +44,8 @@
             android:text="—"
             android:textColor="#FFFFFF"
             android:textSize="34sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="23"/>
 
         <TextView
             android:id="@+id/widget_countdown_unit"
@@ -54,7 +57,8 @@
             android:maxLines="1"
             android:text="@string/widget_countdown_unit"
             android:textColor="@color/widget_rose"
-            android:textSize="10sp" />
+            android:textSize="10sp"
+        tools:text="días"/>
     </LinearLayout>
 
 </LinearLayout>

@@ -5,6 +5,7 @@
      por fecha: título, cuándo cae y los días que faltan. Las filas comparten
      altura para que el widget no cambie de tamaño al añadir una fecha. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_countdown_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -23,7 +24,8 @@
         android:text="@string/widget_countdown_kicker"
         android:textColor="@color/widget_coral_soft"
         android:textSize="8sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="FALTAN"/>
 
     <LinearLayout
         android:id="@+id/widget_countdown_row1"
@@ -49,7 +51,8 @@
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+        tools:text="Aniversario"/>
 
             <TextView
                 android:id="@+id/widget_countdown_row1_date"
@@ -59,7 +62,8 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="8sp" />
+                android:textSize="8sp"
+        tools:text="3 jul 2026"/>
         </LinearLayout>
 
         <TextView
@@ -71,7 +75,8 @@
             android:maxLines="1"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="23"/>
 
         <TextView
             android:id="@+id/widget_countdown_row1_unit"
@@ -82,7 +87,8 @@
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp" />
+            android:textSize="9sp"
+        tools:text="días"/>
     </LinearLayout>
 
     <LinearLayout
@@ -109,7 +115,8 @@
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+        tools:text="Cumpleaños de dada"/>
 
             <TextView
                 android:id="@+id/widget_countdown_row2_date"
@@ -119,7 +126,8 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="8sp" />
+                android:textSize="8sp"
+        tools:text="12 sep 2026"/>
         </LinearLayout>
 
         <TextView
@@ -131,7 +139,8 @@
             android:maxLines="1"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="94"/>
 
         <TextView
             android:id="@+id/widget_countdown_row2_unit"
@@ -142,7 +151,8 @@
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp" />
+            android:textSize="9sp"
+        tools:text="días"/>
     </LinearLayout>
 
     <LinearLayout
@@ -169,7 +179,8 @@
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+        tools:text="Nuestro primer mensaje"/>
 
             <TextView
                 android:id="@+id/widget_countdown_row3_date"
@@ -179,7 +190,8 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="8sp" />
+                android:textSize="8sp"
+        tools:text="14 feb 2027"/>
         </LinearLayout>
 
         <TextView
@@ -191,7 +203,8 @@
             android:maxLines="1"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="249"/>
 
         <TextView
             android:id="@+id/widget_countdown_row3_unit"
@@ -202,7 +215,8 @@
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp" />
+            android:textSize="9sp"
+        tools:text="días"/>
     </LinearLayout>
 
 </LinearLayout>

@@ -6,6 +6,7 @@
      que se lee de un vistazo. Cuando no hay datos, el número pasa a «—» y
      aparece una salida: «abre la app». -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_days_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -22,9 +23,10 @@
         android:letterSpacing="0.14"
         android:maxLines="1"
         android:text="@string/widget_days_label_short"
-        android:textColor="#CCF3C5D0"
-        android:textSize="8sp"
-        android:textStyle="bold" />
+        android:textColor="@color/widget_coral"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        tools:text="DÍAS JUNTOS"/>
 
     <TextView
         android:id="@+id/widget_days_count"
@@ -36,7 +38,8 @@
         android:text="0"
         android:textColor="#FFFFFF"
         android:textSize="36sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="512"/>
 
     <TextView
         android:id="@+id/widget_days_hint"
@@ -48,6 +51,7 @@
         android:text="@string/widget_days_empty"
         android:textColor="@color/widget_text_muted"
         android:textSize="9sp"
-        android:visibility="gone" />
+        android:visibility="gone"
+        tools:text="abre la app"/>
 
 </LinearLayout>

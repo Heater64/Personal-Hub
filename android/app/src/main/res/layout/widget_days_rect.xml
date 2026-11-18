@@ -5,6 +5,7 @@
      número grande a la izquierda y las dos caras a la derecha. Debajo del
      número, el desglose («1 año y 4 meses») aporta algo que el total no dice. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_days_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -34,9 +35,10 @@
             android:letterSpacing="0.14"
             android:maxLines="1"
             android:text="@string/widget_days_label_short"
-            android:textColor="#CCF3C5D0"
-            android:textSize="8sp"
-            android:textStyle="bold" />
+            android:textColor="@color/widget_coral"
+            android:textSize="9sp"
+            android:textStyle="bold"
+        tools:text="DÍAS JUNTOS"/>
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -54,7 +56,8 @@
                 android:text="0"
                 android:textColor="#FFFFFF"
                 android:textSize="36sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+        tools:text="512"/>
 
             <TextView
                 android:id="@+id/widget_days_unit"
@@ -65,8 +68,9 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:text="@string/widget_days_unit_short"
-                android:textColor="@color/widget_rose"
-                android:textSize="12sp" />
+                android:textColor="@color/widget_coral"
+                android:textSize="12sp"
+        tools:text="días"/>
         </LinearLayout>
 
         <TextView
@@ -79,7 +83,8 @@
             android:maxLines="1"
             android:text="@string/widget_days_empty"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp" />
+            android:textSize="9sp"
+        tools:text="1 año y 4 meses"/>
     </LinearLayout>
 
     <LinearLayout
@@ -96,7 +101,8 @@
             android:layout_height="46dp"
             android:background="@drawable/widget_days_face_ring"
             android:contentDescription="@string/widget_days_me"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+        tools:src="@drawable/widget_days_face_empty"/>
 
         <ImageView
             android:id="@+id/widget_days_partner"
@@ -105,7 +111,8 @@
             android:layout_marginStart="-12dp"
             android:background="@drawable/widget_days_face_ring"
             android:contentDescription="@string/widget_days_partner"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+        tools:src="@drawable/widget_days_face_empty"/>
     </LinearLayout>
 
 </LinearLayout>

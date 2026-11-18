@@ -3,6 +3,7 @@
 
      Barra rosa y, a la izquierda, la fase, el día y cuánto falta. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_cycle_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -35,7 +36,8 @@
             android:text="@string/widget_cycle_kicker"
             android:textColor="@color/widget_coral_soft"
             android:textSize="8sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="CICLO"/>
 
         <TextView
             android:id="@+id/widget_cycle_phase"
@@ -47,7 +49,8 @@
             android:text="@string/widget_cycle_empty"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="Fase lútea"/>
 
         <TextView
             android:id="@+id/widget_cycle_day"
@@ -57,7 +60,8 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp" />
+            android:textSize="9sp"
+        tools:text="día 21 de 28"/>
 
         <TextView
             android:id="@+id/widget_cycle_next"
@@ -67,7 +71,8 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="8sp" />
+            android:textSize="8sp"
+        tools:text="próxima regla en 6 d · 24 nov"/>
     </LinearLayout>
 
 </LinearLayout>

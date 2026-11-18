@@ -2187,6 +2187,29 @@ button.home-map:focus-visible {
   width: 100%;
   flex: none;
 }
+/* Dentro del APK la miniatura es el widget real dibujado por Android. */
+.wsheet--real .wsheet__preview {
+  display: block;
+}
+.wsheet__preview-fail {
+  margin: 0;
+  padding: 18px 14px;
+  border-radius: var(--r-l);
+  border: 1px dashed var(--border-soft);
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.wsheet__real {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  margin: 0 auto;
+  border-radius: var(--r-l);
+  background: var(--surface-2);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
 .wprev {
   width: 100%;
   max-width: 340px;

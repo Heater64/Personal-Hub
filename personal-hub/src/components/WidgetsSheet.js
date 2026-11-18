@@ -12,7 +12,7 @@
 
 import { openSheet } from './ui.js';
 import { escapeHtml } from '../utils/escape.js';
-import { pinWidget } from '../services/widgets.service.js';
+import { pinWidget, widgetPreview } from '../services/widgets.service.js';
 import { isNative } from '../services/native.service.js';
 
 const SIZES = [
@@ -267,7 +267,13 @@ function preview(id, size, data) {
     const total = Number(gifts?.total) || 0;
     const pending = Number(gifts?.pending) || 0;
     const count = total ? String(pending) : '—';
-    const label = !total ? 'sin sorpresas hoy' : pending > 0 ? (pending === 1 ? 'sorpresa' : 'sorpresas') : 'ya las abriste';
+    const label = !total
+      ? 'sin sorpresas hoy'
+      : pending > 0
+        ? pending === 1
+          ? 'sorpresa'
+          : 'sorpresas'
+        : 'ya las abriste';
     const hint = !total ? '' : pending > 0 ? 'en el calendario' : 'vuelve mañana';
 
     if (compact) {
@@ -380,7 +386,19 @@ function preview(id, size, data) {
  * `me`/`partner`: { name, avatar } · `days`: total · `km`: texto de la
  * distancia · `kmAt`: cuándo se supo esa distancia.
  */
-export function openWidgetsSheet({ me, partner, days, breakdown, km, kmAt, next, mood, cycle, watch, gifts } = {}) {
+export function openWidgetsSheet({
+  me,
+  partner,
+  days,
+  breakdown,
+  km,
+  kmAt,
+  next,
+  mood,
+  cycle,
+  watch,
+  gifts,
+} = {}) {
   const data = { me, partner, days, breakdown, km, kmAt, next, mood, cycle, watch, gifts };
   const native = isNative();
 
@@ -393,12 +411,18 @@ export function openWidgetsSheet({ me, partner, days, breakdown, km, kmAt, next,
           ? 'Elige el widget y su tamaño. Android te pedirá confirmación antes de colocarlo.'
           : 'Elige el widget y su tamaño para revisarlo. Colocarlo en la pantalla de inicio se hace desde la app de Android.'
       }</p>
-      <div class="wsheet__fonts" role="group" aria-label="Tamaño de letra del sistema">
+      ${
+        // El simulador de letra solo tiene sentido fuera del APK: allí el
+        // widget se pinta con la letra real del móvil.
+        native
+          ? ''
+          : `<div class="wsheet__fonts" role="group" aria-label="Tamaño de letra del sistema">
         <span>Letra</span>
         <button type="button" data-font="1" class="is-on">1,0×</button>
         <button type="button" data-font="1.3">1,3×</button>
         <button type="button" data-font="1.5">1,5×</button>
-      </div>
+      </div>`
+      }
       ${WIDGETS.map(
         w => `
         <article class="wsheet__item" data-widget-card="${w.id}">
@@ -453,6 +477,33 @@ export function openWidgetsSheet({ me, partner, days, breakdown, km, kmAt, next,
         });
       });
     });
+
+    // Dentro del APK la miniatura es el widget de verdad: el lado nativo infla
+    // el mismo RemoteViews y lo devuelve como imagen. Si no responde, se queda
+    // la maqueta de arriba en vez de un hueco vacío.
+    if (native) {
+      wrap.classList.add('wsheet--real');
+      wrap.querySelectorAll('[data-widget-card]').forEach(card => {
+        const widget = card.dataset.widgetCard;
+        const holder = card.querySelector('.wsheet__preview');
+        const title = card.querySelector('h3')?.textContent || 'widget';
+        const draw = async () => {
+          const size = card.querySelector('.wsheet__size.is-on')?.dataset.size || 'rect';
+          const image = await widgetPreview(widget, size);
+          if (!holder.isConnected) return;
+          if (!image) {
+            // Si el widget no se deja dibujar aquí, se dice en vez de enseñar
+            // una maqueta que podría parecerse y no serlo.
+            holder.innerHTML =
+              '<p class="wsheet__preview-fail">No se pudo dibujar. Mira el widget ya colocado en la pantalla de inicio.</p>';
+            return;
+          }
+          holder.innerHTML = `<img class="wsheet__real" src="${image}" alt="Vista previa de ${escapeHtml(title)}">`;
+        };
+        draw();
+        card.querySelectorAll('.wsheet__size').forEach(btn => btn.addEventListener('click', draw));
+      });
+    }
 
     // Colocar el widget elegido (solo dentro del APK).
     wrap.querySelectorAll('[data-add-widget]').forEach(btn => {

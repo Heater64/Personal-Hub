@@ -3,6 +3,7 @@
 
      Barra coral, «HOY» y el número con lo que queda por abrir. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_gifts_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -34,7 +35,8 @@
             android:text="@string/widget_gifts_kicker"
             android:textColor="@color/widget_coral_soft"
             android:textSize="8sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="HOY"/>
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -51,7 +53,8 @@
                 android:text="—"
                 android:textColor="#FFFFFF"
                 android:textSize="26sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+        tools:text="2"/>
 
             <TextView
                 android:id="@+id/widget_gifts_unit"
@@ -63,7 +66,8 @@
                 android:maxLines="1"
                 android:text="@string/widget_gifts_unit"
                 android:textColor="@color/widget_rose"
-                android:textSize="10sp" />
+                android:textSize="10sp"
+        tools:text="sorpresas"/>
         </LinearLayout>
 
         <TextView
@@ -74,7 +78,8 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp" />
+            android:textSize="9sp"
+        tools:text="sorpresas"/>
     </LinearLayout>
 
 </LinearLayout>

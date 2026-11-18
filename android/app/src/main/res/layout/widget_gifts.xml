@@ -3,6 +3,7 @@
 
      «HOY», emoji grande, número y qué hacer con ellas. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_gifts_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -21,7 +22,8 @@
         android:text="@string/widget_gifts_kicker"
         android:textColor="@color/widget_coral_soft"
         android:textSize="8sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="HOY"/>
 
     <TextView
         android:id="@+id/widget_gifts_emoji"
@@ -31,7 +33,8 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="@string/widget_gifts_emoji"
-        android:textSize="30sp" />
+        android:textSize="30sp"
+        tools:text="🎁"/>
 
     <TextView
         android:id="@+id/widget_gifts_count"
@@ -42,7 +45,8 @@
         android:text="—"
         android:textColor="#FFFFFF"
         android:textSize="40sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="2"/>
 
     <TextView
         android:id="@+id/widget_gifts_label"
@@ -54,7 +58,8 @@
         android:maxLines="1"
         android:text="@string/widget_gifts_empty"
         android:textColor="@color/widget_rose"
-        android:textSize="10sp" />
+        android:textSize="10sp"
+        tools:text="sorpresas"/>
 
     <TextView
         android:id="@+id/widget_gifts_hint"
@@ -66,6 +71,7 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/widget_text_muted"
-        android:textSize="9sp" />
+        android:textSize="9sp"
+        tools:text="en el calendario"/>
 
 </LinearLayout>

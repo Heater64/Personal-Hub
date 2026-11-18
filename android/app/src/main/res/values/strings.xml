@@ -7,7 +7,13 @@
     <string name="package_name">com.heater64.personalhub</string>
     <string name="custom_url_scheme">com.heater64.personalhub</string>
 
-    <!-- Widget de días (prueba) -->
+    <!-- Estado del móvil / segundo plano -->
+    <string name="notification_channel_status">Conexión y estado</string>
+    <string name="notification_channel_status_desc">Mantiene la distancia, batería y widgets actualizados.</string>
+    <string name="notification_status_title">Personal Hub activo</string>
+    <string name="notification_status_desc">Conexión y distancia sincronizadas</string>
+    <string name="notification_status_battery">%1$d%%</string>
+    <string name="notification_status_charging">cargando</string>
     <string name="widget_days_label">🤍 días juntos</string>
     <string name="widget_days_caption">desde el 03/07/2025</string>
     <string name="widget_days_description">Contador de días juntos</string>

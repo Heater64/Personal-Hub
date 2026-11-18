@@ -24,7 +24,7 @@ try {
   /* sin .env: modo local */
 }
 
-const remoteUrl = (process.env.CAP_SERVER_URL || '').trim().replace(/\/+$/, '');
+const remoteUrl = '';
 
 const config: CapacitorConfig = {
   appId: 'com.heater64.personalhub',

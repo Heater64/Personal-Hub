@@ -3,6 +3,7 @@
 
      Emoji a la izquierda y, a la derecha, «HOY» + etiqueta + cuándo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_mood_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -19,7 +20,8 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="—"
-        android:textSize="36sp" />
+        android:textSize="36sp"
+        tools:text="🥰"/>
 
     <LinearLayout
         android:layout_width="0dp"
@@ -38,7 +40,8 @@
             android:text="@string/widget_mood_kicker"
             android:textColor="@color/widget_rose"
             android:textSize="8sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="HOY"/>
 
         <TextView
             android:id="@+id/widget_mood_label"
@@ -51,7 +54,8 @@
             android:text="@string/widget_mood_empty"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="Muy feliz"/>
 
         <TextView
             android:id="@+id/widget_mood_meta"
@@ -62,7 +66,8 @@
             android:maxLines="1"
             android:text="@string/widget_mood_hint"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp" />
+            android:textSize="9sp"
+        tools:text="hoy"/>
     </LinearLayout>
 
 </LinearLayout>

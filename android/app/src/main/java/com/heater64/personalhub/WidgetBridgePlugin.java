@@ -3,13 +3,17 @@ package com.heater64.personalhub;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Build;
+import android.util.Base64;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+
+import java.io.ByteArrayOutputStream;
 
 /**
  * Puente de los widgets.
@@ -26,6 +30,33 @@ public class WidgetBridgePlugin extends Plugin {
     public void refresh(PluginCall call) {
         WidgetRenderer.refreshAll(getContext());
         call.resolve();
+    }
+
+    @PluginMethod
+    public void setWidgetData(PluginCall call) {
+        String key = call.getString("key");
+        String value = call.getString("value");
+        if (key != null && value != null) {
+            getContext().getSharedPreferences(WidgetSupport.PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(key, value)
+                    .apply();
+            WidgetRenderer.refreshAll(getContext());
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getWidgetData(PluginCall call) {
+        String key = call.getString("key");
+        String value = null;
+        if (key != null) {
+            value = getContext().getSharedPreferences(WidgetSupport.PREFS_NAME, Context.MODE_PRIVATE)
+                    .getString(key, null);
+        }
+        JSObject result = new JSObject();
+        result.put("value", value);
+        call.resolve(result);
     }
 
     @PluginMethod
@@ -53,6 +84,30 @@ public class WidgetBridgePlugin extends Plugin {
 
         boolean started = manager.requestPinAppWidget(new ComponentName(context, provider), null, null);
         result.put("pinned", started);
+        call.resolve(result);
+    }
+
+    /**
+     * La vista previa real del widget: el mismo RemoteViews que se coloca en
+     * el escritorio, dibujado como PNG. La hoja de widgets la usa para que la
+     * miniatura no sea una maqueta aparte.
+     */
+    @PluginMethod
+    public void preview(PluginCall call) {
+        String widget = call.getString("widget", "days");
+        String size = call.getString("size", "rect");
+
+        Bitmap bitmap = WidgetPreview.render(getContext(), widget, size);
+        if (bitmap == null) {
+            call.reject("preview-unavailable");
+            return;
+        }
+
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, png);
+
+        JSObject result = new JSObject();
+        result.put("image", "data:image/png;base64," + Base64.encodeToString(png.toByteArray(), Base64.NO_WRAP));
         call.resolve(result);
     }
 

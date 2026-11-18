@@ -450,8 +450,10 @@ public class DeviceStatusService extends Service {
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager == null) return;
         NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID, "Estado del móvil", NotificationManager.IMPORTANCE_LOW);
-        channel.setDescription("Mantiene la batería, la red y la ubicación al día.");
+                CHANNEL_ID,
+                getString(R.string.notification_channel_status),
+                NotificationManager.IMPORTANCE_LOW);
+        channel.setDescription(getString(R.string.notification_channel_status_desc));
         channel.setShowBadge(false);
         manager.createNotificationChannel(channel);
     }
@@ -463,8 +465,8 @@ public class DeviceStatusService extends Service {
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, open, flags);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentTitle("Hub · estado del móvil")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(getString(R.string.notification_status_title))
                 .setContentText(text)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)

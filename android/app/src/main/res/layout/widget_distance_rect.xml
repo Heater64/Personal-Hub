@@ -4,6 +4,7 @@
      Composición horizontal: acento coral, cifra con su tiempo debajo y las dos
      caras a la derecha. Pensada para 110 dp de alto. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_distance_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -35,7 +36,8 @@
             android:text="@string/widget_distance_kicker"
             android:textColor="@color/widget_coral_soft"
             android:textSize="8sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="ESTÁIS A"/>
 
         <TextView
             android:id="@+id/widget_distance_value"
@@ -47,7 +49,8 @@
             android:text="—"
             android:textColor="#FFFFFF"
             android:textSize="34sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+        tools:text="24,8 km"/>
 
         <TextView
             android:id="@+id/widget_distance_caption"
@@ -58,7 +61,8 @@
             android:maxLines="1"
             android:text="@string/widget_distance_empty"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp" />
+            android:textSize="9sp"
+        tools:text="ahora mismo"/>
 
         <TextView
             android:id="@+id/widget_distance_device"
@@ -69,7 +73,8 @@
             android:maxLines="1"
             android:textColor="@color/widget_rose"
             android:textSize="8sp"
-            android:visibility="gone" />
+            android:visibility="gone"
+        tools:text="su móvil · 84 % · Wi-Fi"/>
     </LinearLayout>
 
     <LinearLayout
@@ -86,7 +91,8 @@
             android:layout_height="46dp"
             android:background="@drawable/widget_face_ring"
             android:contentDescription="@string/widget_days_me"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+        tools:src="@drawable/widget_face_empty"/>
 
         <ImageView
             android:id="@+id/widget_distance_partner"
@@ -95,7 +101,8 @@
             android:layout_marginStart="-12dp"
             android:background="@drawable/widget_face_ring"
             android:contentDescription="@string/widget_days_partner"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+        tools:src="@drawable/widget_face_empty"/>
     </LinearLayout>
 
 </LinearLayout>

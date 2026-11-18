@@ -4,6 +4,7 @@
      La fase arriba y el día del ciclo grande. Sin fechas ni nombres de fase
      largos: en un cuadrado solo cabe lo que se mira de reojo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_cycle_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -22,7 +23,8 @@
         android:text="@string/widget_cycle_kicker"
         android:textColor="@color/widget_rose"
         android:textSize="8sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="CICLO"/>
 
     <TextView
         android:id="@+id/widget_cycle_day"
@@ -34,7 +36,8 @@
         android:text="—"
         android:textColor="#FFFFFF"
         android:textSize="26sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="día 21 de 28"/>
 
     <TextView
         android:id="@+id/widget_cycle_phase"
@@ -46,6 +49,7 @@
         android:maxLines="1"
         android:text="@string/widget_cycle_empty"
         android:textColor="@color/widget_rose"
-        android:textSize="9sp" />
+        android:textSize="9sp"
+        tools:text="Fase lútea"/>
 
 </LinearLayout>

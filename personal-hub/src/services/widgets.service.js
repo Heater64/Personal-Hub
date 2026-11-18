@@ -26,12 +26,25 @@ const KEY_CYCLE = 'widget_cycle';
 const KEY_WATCHING = 'widget_watching';
 const KEY_GIFTS = 'widget_gifts';
 
-let prefsModule = null;
+async function setStorage(key, value) {
+  const plugin = bridge();
+  if (!plugin?.setWidgetData) return;
+  try {
+    await plugin.setWidgetData({ key, value });
+  } catch {
+    /* el widget se queda con lo último que se guardó */
+  }
+}
 
-async function prefs() {
-  if (!isNative()) return null;
-  if (!prefsModule) prefsModule = await import('@capacitor/preferences').catch(() => null);
-  return prefsModule?.Preferences || null;
+async function getStorage(key) {
+  const plugin = bridge();
+  if (!plugin?.getWidgetData) return null;
+  try {
+    const res = await plugin.getWidgetData({ key });
+    return res?.value || null;
+  } catch {
+    return null;
+  }
 }
 
 function bridge() {
@@ -47,6 +60,23 @@ export async function refreshWidgets() {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * La vista previa de verdad: el lado nativo infla el mismo RemoteViews que se
+ * colocaría en el escritorio y lo devuelve como PNG.
+ *
+ * En el navegador no hay imagen (devuelve ''): allí la hoja dibuja su maqueta.
+ */
+export async function widgetPreview(widget, size = 'rect') {
+  const plugin = bridge();
+  if (!plugin?.preview) return '';
+  try {
+    const result = await plugin.preview({ widget, size });
+    return result?.image || '';
+  } catch {
+    return '';
   }
 }
 
@@ -70,16 +100,15 @@ export async function pinWidget(widget, size = 'wide') {
  * `stats` viene de utils/specialDates (años, meses, semanas, días).
  */
 export async function saveDaysWidget({ days, years, months, weeks, me, partner, breakdown, since }) {
-  const Preferences = await prefs();
-  if (!Preferences) return;
+  if (!isNative()) return;
 
   // Al arrancar Inicio se guardan los días sin caras (la ubicación aún no ha
   // llegado). Ese guardado no debe borrar las fotos que ya estaban.
   let previous = null;
   if (!me || !partner) {
     try {
-      const stored = await Preferences.get({ key: KEY_DAYS });
-      previous = stored?.value ? JSON.parse(stored.value) : null;
+      const stored = await getStorage(KEY_DAYS);
+      previous = stored ? JSON.parse(stored) : null;
     } catch {
       previous = null;
     }
@@ -89,9 +118,9 @@ export async function saveDaysWidget({ days, years, months, weeks, me, partner, 
     avatar: who?.avatar || fallback?.avatar || '',
   });
 
-  await Preferences.set({
-    key: KEY_DAYS,
-    value: JSON.stringify({
+  await setStorage(
+    KEY_DAYS,
+    JSON.stringify({
       days: Number(days) || 0,
       years: Number(years) || 0,
       months: Number(months) || 0,
@@ -107,8 +136,8 @@ export async function saveDaysWidget({ days, years, months, weeks, me, partner, 
       me: person(me, previous?.me),
       partner: person(partner, previous?.partner),
       at: new Date().toISOString(),
-    }),
-  });
+    })
+  );
   refreshWidgets();
 }
 
@@ -148,12 +177,11 @@ export function togetherBreakdown(totalDays) {
  * último que se supo. Sin dato se guarda vacío para no enseñar el de ayer.
  */
 export async function saveDistanceWidget({ km, me, partner, device }) {
-  const Preferences = await prefs();
-  if (!Preferences) return;
+  if (!isNative()) return;
   const battery = Number(device?.battery);
-  await Preferences.set({
-    key: KEY_DISTANCE,
-    value: JSON.stringify({
+  await setStorage(
+    KEY_DISTANCE,
+    JSON.stringify({
       km: Number.isFinite(km) ? Number(km.toFixed(2)) : null,
       text: formatDistance(km),
       me: { name: me?.name || '', avatar: me?.avatar || '' },
@@ -166,8 +194,8 @@ export async function saveDistanceWidget({ km, me, partner, device }) {
           }
         : null,
       at: new Date().toISOString(),
-    }),
-  });
+    })
+  );
   refreshWidgets();
 }
 
@@ -184,8 +212,7 @@ export async function saveDistanceWidget({ km, me, partner, device }) {
  * atrás siga bajando aunque la app no se abra.
  */
 export async function saveCountdownWidget({ title, date, events }) {
-  const Preferences = await prefs();
-  if (!Preferences) return;
+  if (!isNative()) return;
 
   const list = (Array.isArray(events) ? events : [])
     .filter(event => event && event.date)
@@ -196,15 +223,15 @@ export async function saveCountdownWidget({ title, date, events }) {
       date: event.date || '',
     }));
 
-  await Preferences.set({
-    key: KEY_COUNTDOWN,
-    value: JSON.stringify({
+  await setStorage(
+    KEY_COUNTDOWN,
+    JSON.stringify({
       title: title || list[0]?.title || '',
       date: date || list[0]?.date || '',
       events: list,
       at: new Date().toISOString(),
-    }),
-  });
+    })
+  );
   refreshWidgets();
 }
 
@@ -213,17 +240,15 @@ export async function saveCountdownWidget({ title, date, events }) {
  * enseña su estado «sin registrar» en vez de la emoción de ayer.
  */
 export async function saveMoodWidget({ emoji, label, date }) {
-  const Preferences = await prefs();
-  if (!Preferences) return;
-  await Preferences.set({
-    key: KEY_MOOD,
-    value: JSON.stringify({
+  await setStorage(
+    KEY_MOOD,
+    JSON.stringify({
       emoji: emoji || '',
       label: label || '',
       date: date || '',
       at: new Date().toISOString(),
-    }),
-  });
+    })
+  );
   refreshWidgets();
 }
 
@@ -237,7 +262,7 @@ export async function saveMoodWidget({ emoji, label, date }) {
  * saber, no se toca lo guardado, que es lo único que evita enseñar el de él.
  */
 export async function saveHerMoodWidget() {
-  if (!(await prefs())) return;
+  if (!isNative()) return;
 
   const payload = await herMoodToday();
   if (!payload) return;
@@ -289,14 +314,13 @@ async function herMoodToday() {
  * se queda en su estado «sin datos» en vez de inventar una fase.
  */
 export async function saveCycleWidget({ phase, day, next, days, length }) {
-  const Preferences = await prefs();
-  if (!Preferences) return;
+  if (!isNative()) return;
 
   // La pantalla de ciclo recalcula al abrir cada vista: no se repinta el
   // widget si el paquete no cambió.
   try {
-    const stored = await Preferences.get({ key: KEY_CYCLE });
-    const prev = stored?.value ? JSON.parse(stored.value) : null;
+    const stored = await getStorage(KEY_CYCLE);
+    const prev = stored ? JSON.parse(stored) : null;
     if (prev
       && prev.phase === (phase || '')
       && prev.day === (Number(day) || 0)
@@ -305,51 +329,48 @@ export async function saveCycleWidget({ phase, day, next, days, length }) {
       && prev.length === (Number(length) || 0)) return;
   } catch { /* paquete roto: se reescribe */ }
 
-  await Preferences.set({
-    key: KEY_CYCLE,
-    value: JSON.stringify({
+  await setStorage(
+    KEY_CYCLE,
+    JSON.stringify({
       phase: phase || '',
       day: Number(day) || 0,
       next: next || '',
       days: Number.isFinite(days) ? Number(days) : null,
       length: Number(length) || 0,
       at: new Date().toISOString(),
-    }),
-  });
+    })
+  );
   refreshWidgets();
 }
 
 /** La serie que se está viendo: título, póster y episodio. */
 export async function saveWatchingWidget({ title, poster, watched, total, percent }) {
-  const Preferences = await prefs();
-  if (!Preferences) return;
+  if (!isNative()) return;
   const has = Boolean(title) && Number(total) > 0 && Number(watched) > 0;
-  await Preferences.set({
-    key: KEY_WATCHING,
-    value: JSON.stringify({
+  await setStorage(
+    KEY_WATCHING,
+    JSON.stringify({
       title: has ? title : '',
       poster: has ? poster || '' : '',
       watched: has ? Number(watched) : 0,
       total: has ? Number(total) : 0,
       percent: has ? Math.round(Number(percent) || 0) : 0,
       at: new Date().toISOString(),
-    }),
-  });
+    })
+  );
   refreshWidgets();
 }
 
 /** Sorpresas del calendario: cuántas hay hoy y cuántas quedan por abrir. */
 export async function saveGiftsWidget({ total, pending }) {
-  const Preferences = await prefs();
-  if (!Preferences) return;
-  await Preferences.set({
-    key: KEY_GIFTS,
-    value: JSON.stringify({
+  await setStorage(
+    KEY_GIFTS,
+    JSON.stringify({
       total: Math.max(0, Number(total) || 0),
       pending: Math.max(0, Number(pending) || 0),
       at: new Date().toISOString(),
-    }),
-  });
+    })
+  );
   refreshWidgets();
 }
 

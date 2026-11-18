@@ -3,11 +3,15 @@
      bloque widget-tokens de home.css. No editar a mano: cambia el CSS y
      vuelve a ejecutar el script. -->
 <resources>
-    <color name="widget_ink">#0F0F10</color>
+    <color name="widget_ink">#0A0A0C</color>
+    <color name="widget_surface">#111114</color>
+    <color name="widget_surface_elevated">#19191D</color>
     <color name="widget_plum">#25172A</color>
     <color name="widget_plum_light">#2E1B35</color>
-    <color name="widget_coral">#C65A3A</color>
-    <color name="widget_coral_soft">#E59277</color>
-    <color name="widget_rose">#F3C5D0</color>
-    <color name="widget_text_muted">#B3C9BBD1</color>
+    <color name="widget_coral">#E8735A</color>
+    <color name="widget_coral_soft">#FF8AA1</color>
+    <color name="widget_rose">#FFB347</color>
+    <color name="widget_text_muted">#A6FFFFFF</color>
+    <color name="widget_text_secondary">#A6FFFFFF</color>
+    <color name="widget_divider">#1AFFFFFF</color>
 </resources>

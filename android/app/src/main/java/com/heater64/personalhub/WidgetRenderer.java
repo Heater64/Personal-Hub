@@ -55,6 +55,67 @@ final class WidgetRenderer {
     private static final int DAYS_FACE_SIZE_PX = 160;
     private static final int DISTANCE_FACE_SIZE_PX = 160;
 
+    /**
+     * Vista previa dentro de la app.
+     *
+     * Mientras hay captura no se toca el escritorio: el repintado guarda el
+     * RemoteViews y la app lo dibuja como imagen. Así la miniatura es el
+     * widget de verdad —mismo layout, mismos textos, mismos tamaños— y no una
+     * maqueta aparte que se desincroniza.
+     */
+    private static final ThreadLocal<int[]> PREVIEW_BOX = new ThreadLocal<>();
+    private static final ThreadLocal<RemoteViews[]> PREVIEW_OUT = new ThreadLocal<>();
+
+    private static boolean previewing() {
+        return PREVIEW_BOX.get() != null;
+    }
+
+    private static void push(AppWidgetManager manager, int id, RemoteViews views) {
+        RemoteViews[] out = PREVIEW_OUT.get();
+        if (out != null) {
+            out[0] = views;
+            return;
+        }
+        manager.updateAppWidget(id, views);
+    }
+
+    /** El widget real, con los datos reales, sin tocar la pantalla de inicio. */
+    static RemoteViews capture(Context context, String widget, int[] box, Size size) {
+        PREVIEW_BOX.set(box);
+        PREVIEW_OUT.set(new RemoteViews[1]);
+        try {
+            switch (widget == null ? "" : widget) {
+                case "days":
+                    renderDays(context, null, new int[] { -1 }, size);
+                    break;
+                case "distance":
+                    renderDistance(context, null, new int[] { -1 }, size);
+                    break;
+                case "countdown":
+                    renderCountdown(context, null, new int[] { -1 }, size);
+                    break;
+                case "mood":
+                    renderMood(context, null, new int[] { -1 }, size);
+                    break;
+                case "cycle":
+                    renderCycle(context, null, new int[] { -1 }, size);
+                    break;
+                case "watching":
+                    renderWatching(context, null, new int[] { -1 }, size);
+                    break;
+                case "gifts":
+                    renderGifts(context, null, new int[] { -1 }, size);
+                    break;
+                default:
+                    return null;
+            }
+            return PREVIEW_OUT.get()[0];
+        } finally {
+            PREVIEW_BOX.remove();
+            PREVIEW_OUT.remove();
+        }
+    }
+
     private WidgetRenderer() {}
 
     /**
@@ -210,14 +271,10 @@ final class WidgetRenderer {
 
             // El widget de días abre la pantalla del aniversario.
             WidgetSupport.openApp(context, views, R.id.widget_days_root, "juntos");
-            manager.updateAppWidget(id, views);
+            push(manager, id, views);
         }
 
-        scheduleFaceRefresh(context, data,
-                defaultSize == Size.RECT ? DaysRectWidgetProvider.class
-                        : defaultSize == Size.COMPACT ? DaysCompactWidgetProvider.class
-                        : DaysWidgetProvider.class,
-                DAYS_FACE_SIZE_PX);
+        scheduleFaceRefresh(context, data, DAYS_FACE_SIZE_PX);
     }
 
     /**
@@ -226,9 +283,13 @@ final class WidgetRenderer {
      * 110 dp y era justo lo que se recortaba en 4×2.
      */
     private static int daysLayout(int[] box, Size defaultSize) {
+        if (defaultSize == Size.COMPACT) {
+            return R.layout.widget_days_compact;
+        }
+
         if (box[0] <= 0 && box[1] <= 0) {
-            return defaultSize == Size.COMPACT
-                    ? R.layout.widget_days_compact
+            return defaultSize == Size.LARGE
+                    ? R.layout.widget_days
                     : R.layout.widget_days_rect;
         }
 
@@ -304,14 +365,10 @@ final class WidgetRenderer {
 
             // El widget de distancia abre el mapa a pantalla completa.
             WidgetSupport.openApp(context, views, R.id.widget_distance_root, "mapa");
-            manager.updateAppWidget(id, views);
+            push(manager, id, views);
         }
 
-        scheduleFaceRefresh(context, data,
-                defaultSize == Size.RECT ? DistanceRectWidgetProvider.class
-                        : defaultSize == Size.COMPACT ? DistanceCompactWidgetProvider.class
-                        : DistanceWidgetProvider.class,
-                DISTANCE_FACE_SIZE_PX);
+        scheduleFaceRefresh(context, data, DISTANCE_FACE_SIZE_PX);
     }
 
     /**
@@ -409,7 +466,7 @@ final class WidgetRenderer {
             }
 
             WidgetSupport.openApp(context, views, R.id.widget_countdown_root, "calendario");
-            manager.updateAppWidget(id, views);
+            push(manager, id, views);
         }
     }
 
@@ -573,7 +630,7 @@ final class WidgetRenderer {
             }
 
             WidgetSupport.openApp(context, views, R.id.widget_mood_root, "sentimientos");
-            manager.updateAppWidget(id, views);
+            push(manager, id, views);
         }
     }
 
@@ -649,7 +706,7 @@ final class WidgetRenderer {
 
             // El ciclo vive dentro de Sentimientos.
             WidgetSupport.openApp(context, views, R.id.widget_cycle_root, "sentimientos");
-            manager.updateAppWidget(id, views);
+            push(manager, id, views);
         }
     }
 
@@ -707,10 +764,10 @@ final class WidgetRenderer {
             paintPoster(context, views, R.id.widget_watching_poster, known ? poster : "", layout);
 
             WidgetSupport.openApp(context, views, R.id.widget_watching_root, "rincon");
-            manager.updateAppWidget(id, views);
+            push(manager, id, views);
         }
 
-        if (known && !poster.isEmpty()) {
+        if (known && !poster.isEmpty() && !previewing()) {
             int[] size = posterSizePx(context, defaultSize);
             WidgetSupport.poster(context, poster, size[0], size[1],
                     () -> WidgetSupport.requestUpdate(context, watchingProvider(defaultSize)));
@@ -817,7 +874,7 @@ final class WidgetRenderer {
             if (!compact) setIfText(views, R.id.widget_gifts_hint, hint);
 
             WidgetSupport.openApp(context, views, R.id.widget_gifts_root, "calendario");
-            manager.updateAppWidget(id, views);
+            push(manager, id, views);
         }
     }
 
@@ -874,6 +931,9 @@ final class WidgetRenderer {
      * sabe todavía.
      */
     private static int[] box(Context context, AppWidgetManager manager, int id) {
+        int[] preview = PREVIEW_BOX.get();
+        if (preview != null) return preview;
+        if (manager == null) return new int[] { 0, 0 };
         try {
             Bundle options = manager.getAppWidgetOptions(id);
             if (options == null) return new int[] { 0, 0 };
@@ -1064,15 +1124,14 @@ final class WidgetRenderer {
         return 0L;
     }
 
-    /** Descarga las caras que falten y repinta al terminar. */
-    private static void scheduleFaceRefresh(
-            Context context, JSONObject data, Class<?> provider, int sizePx) {
-        if (data == null) return;
+    /** Descarga las caras que falten y repinta todos los widgets al terminar. */
+    private static void scheduleFaceRefresh(Context context, JSONObject data, int sizePx) {
+        if (data == null || previewing()) return;
         String[] urls = { WidgetSupport.faceUrl(data, "me"), WidgetSupport.faceUrl(data, "partner") };
         for (String url : urls) {
             if (url == null || url.isEmpty()) continue;
             WidgetSupport.face(context, url, sizePx,
-                    () -> WidgetSupport.requestUpdate(context, provider));
+                    () -> WidgetRenderer.refreshAll(context));
         }
     }
 }

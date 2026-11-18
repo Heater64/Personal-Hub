@@ -3,6 +3,7 @@
 
      Póster grande arriba, título y avance debajo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_watching_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -17,7 +18,8 @@
         android:layout_height="96dp"
         android:contentDescription="@string/widget_watching_poster"
         android:scaleType="centerCrop"
-        android:src="@drawable/widget_poster_empty" />
+        android:src="@drawable/widget_poster_empty"
+        tools:src="@drawable/widget_poster_empty"/>
 
     <TextView
         android:id="@+id/widget_watching_title"
@@ -31,7 +33,8 @@
         android:text="@string/widget_watching_empty"
         android:textColor="#FFFFFF"
         android:textSize="14sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="Severance"/>
 
     <TextView
         android:id="@+id/widget_watching_episode"
@@ -43,7 +46,8 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/widget_text_muted"
-        android:textSize="9sp" />
+        android:textSize="9sp"
+        tools:text="Ep. 4 de 10"/>
 
     <TextView
         android:id="@+id/widget_watching_percent"
@@ -55,6 +59,7 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/widget_rose"
-        android:textSize="10sp" />
+        android:textSize="10sp"
+        tools:text="40 % visto"/>
 
 </LinearLayout>
