@@ -438,11 +438,33 @@ export function cloudinaryThumb(src, width = 800) {
   return src.replace(/\/image\/upload\/(?:(?!v\d+\/)[^/]+\/)*/, `/image/upload/c_limit,w_${width},q_auto,f_auto/`);
 }
 
-// Helper: Get Cloudinary video poster
-export function getVideoPoster(src) {
+// Helper: Get Cloudinary video poster (el ancho importa: en un móvil no
+// hace falta un fotograma de 800 px para una celda de 160).
+export function getVideoPoster(src, width = 800) {
   if (!src) return '';
   if (src.includes('res.cloudinary.com') && src.includes('/video/upload/')) {
-    return src.replace(/\/video\/upload\/(?:(?!v\d+\/)[^/]+\/)*/, '/video/upload/so_auto,c_limit,w_800,f_jpg,q_auto/').replace(/\.(mp4|webm|mov)(\?.*)?$/i, '.jpg');
+    return src.replace(/\/video\/upload\/(?:(?!v\d+\/)[^/]+\/)*/, `/video/upload/so_auto,c_limit,w_${width},f_jpg,q_auto/`).replace(/\.(mp4|webm|mov)(\?.*)?$/i, '.jpg');
   }
   return '';
+}
+
+/**
+ * Miniatura de cualquier recurso al ancho pedido: las fotos se reescalan y
+ * los vídeos usan un fotograma. Acepta también un póster ya generado
+ * (…/video/upload/…w_800…) y le cambia el ancho.
+ */
+export function mediaThumb(src, width = 800) {
+  if (!src) return '';
+  if (isVideo(src)) return getVideoPoster(src, width);
+  if (src.includes('/video/upload/')) return src.replace(/w_\d+/, `w_${width}`);
+  return cloudinaryThumb(src, width);
+}
+
+/** srcset de Cloudinary (320w, 640w…). Cadena vacía si no aplica. */
+export function mediaSrcset(src, widths = [320, 640, 960]) {
+  const base = String(src || '');
+  if (!base.includes('res.cloudinary.com')) return '';
+  const urls = widths.map(w => mediaThumb(base, w)).filter(Boolean);
+  if (urls.length < 2 || urls[0] === urls[urls.length - 1]) return '';
+  return urls.map((url, i) => `${url} ${widths[i]}w`).join(', ');
 }

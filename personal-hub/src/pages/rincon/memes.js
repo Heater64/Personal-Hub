@@ -5,7 +5,8 @@
    este modulo exporta tambien lo que Galeria necesita.
    ========================================== */
 
-import { isVideo, getVideoPoster, buildMediaItems, cloudinaryThumb } from '../../services/rincon-data.js';
+import { isVideo, getVideoPoster, buildMediaItems, mediaThumb, mediaSrcset } from '../../services/rincon-data.js';
+import { hapticTap } from '../../services/native.service.js';
 import { db } from '../../services/db.service.js';
 import { showToast } from '../../components/Toast.js';
 import { escapeHtml, safeUrl } from '../../utils/escape.js';
@@ -35,13 +36,45 @@ export function createMemes(ctx) {
     if (!heroPhotos.length) return;
     const hero = container.querySelector('#galleryHero');
     if (!hero) return;
-    const slides = hero.querySelectorAll('.gallery-hero-slide');
-    const dots = hero.querySelectorAll('.gallery-hero-dot');
-    const show = (i) => {
-      slides.forEach((s, idx) => s.classList.toggle('is-active', idx === i));
-      dots.forEach((d, idx) => d.classList.toggle('is-active', idx === i));
+    const slides = [...hero.querySelectorAll('.gallery-hero-slide')];
+    const dots = [...hero.querySelectorAll('.gallery-hero-dot')];
+
+    // Cada diapositiva se descarga la primera vez que se muestra: el hero no
+    // arrastra cinco fotos grandes en la carga inicial.
+    const hydrate = (slide) => {
+      const img = slide?.querySelector('img[data-src]');
+      if (!img) return;
+      if (img.dataset.srcset) {
+        img.sizes = img.dataset.sizes || '';
+        img.srcset = img.dataset.srcset;
+      }
+      img.src = img.dataset.src;
+      delete img.dataset.src;
     };
+
+    const show = (i) => {
+      if (!slides.length) return;
+      const idx = ((i % slides.length) + slides.length) % slides.length;
+      hydrate(slides[idx]);
+      slides.forEach((s, n) => s.classList.toggle('is-active', n === idx));
+      dots.forEach((d, n) => d.classList.toggle('is-active', n === idx));
+    };
+
     dots.forEach(d => d.addEventListener('click', () => show(Number(d.dataset.dot))));
+
+    // Pasar de foto deslizando, como en la galería del propio móvil.
+    let startX = null;
+    hero.addEventListener('touchstart', (e) => {
+      startX = e.touches[0]?.clientX ?? null;
+    }, { passive: true });
+    hero.addEventListener('touchend', (e) => {
+      if (startX == null || slides.length < 2) { startX = null; return; }
+      const dx = (e.changedTouches[0]?.clientX ?? startX) - startX;
+      startX = null;
+      if (Math.abs(dx) < 45) return;
+      const current = Math.max(0, slides.findIndex(s => s.classList.contains('is-active')));
+      show(current + (dx < 0 ? 1 : -1));
+    });
   }
   
   // ----- Masonry con proporciones reales -----
@@ -75,6 +108,7 @@ export function createMemes(ctx) {
       const menuBtn = e.target.closest('.gallery-photo-menu');
       if (favBtn) { e.stopPropagation(); togglePhotoFav(favBtn.dataset.url); return; }
       if (menuBtn) { e.stopPropagation(); openPhotoMenu(menuBtn.dataset.url, menuBtn); return; }
+      hapticTap('light');
       openLightbox(mediaItems, Number(card.dataset.index));
     };
     grid._galMediaItems = mediaItems;
@@ -110,10 +144,15 @@ export function createMemes(ctx) {
         card.dataset.index = idx;
         const isFav = favs.has(src);
         const date = photoDate(src);
+        // La celda mide ~170 px en el móvil: se piden 640 px como mucho y el
+        // navegador elige del srcset según el ancho real y la densidad.
+        const mediaSrc = poster || src;
+        const thumb = mediaThumb(mediaSrc, 640);
+        const srcset = mediaSrcset(mediaSrc, [320, 640, 960]);
         card.innerHTML = `
           ${isVid && !poster
             ? `<span class="gallery-photo-placeholder" aria-hidden="true">${ICON_SVGS['play']}</span>`
-            : `<span class="gallery-photo-loader" aria-hidden="true"></span><img src="${escapeHtml(cloudinaryThumb(poster || src))}" data-key="${escapeHtml(src)}" alt="${escapeHtml(galleryAlbum().title)} ${idx + 1}" loading="${idx < 4 ? 'eager' : 'lazy'}"${idx < 4 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded');window.__galleryRemember && window.__galleryRemember(this)" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-photo-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`}
+            : `<span class="gallery-photo-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}"${srcset ? ` srcset="${escapeHtml(srcset)}" sizes="(max-width: 599px) 46vw, (max-width: 899px) 31vw, 24vw"` : ''} data-key="${escapeHtml(src)}" alt="${escapeHtml(galleryAlbum().title)} ${idx + 1}" loading="${idx < 2 ? 'eager' : 'lazy'}"${idx < 2 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded');window.__galleryRemember && window.__galleryRemember(this)" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-photo-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`}
           ${isVid ? `<span class="gallery-photo-play" aria-hidden="true">${ICON_SVGS['play']}</span>` : ''}
           <div class="gallery-photo-shade"></div>
           ${date ? `<span class="gallery-photo-date">${escapeHtml(date)}</span>` : ''}
@@ -351,9 +390,10 @@ export function createMemes(ctx) {
       onToggleFav: () => togglePhotoFav(m.src)
     }));
     container.querySelector('#viewAllGalleryBtn')?.addEventListener('click', () => {
-      const hero = container.querySelector('#galleryHero');
-      if (hero) hero.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      if (mediaItems.length) openLightbox(mediaItems, 0);
+      // «Ver todas» baja a la colección; para el visor ya está «Presentación».
+      const target = container.querySelector('#galleryFilters') || container.querySelector('#galeriaGrid');
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      target?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     });
     container.querySelector('#gallerySlideshowBtn')?.addEventListener('click', () => {
       if (!mediaItems.length) return;
@@ -364,11 +404,20 @@ export function createMemes(ctx) {
     container.querySelector('#galleryEditBtn')?.addEventListener('click', openAlbumEditor);
   
     // Filtros
+    // Al cambiar de álbum se vuelve a la cabecera de la colección: la vista
+    // nueva empieza arriba, como en una galería nativa.
+    const backToCollection = () => {
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      (container.querySelector('#galleryFilters') || container.querySelector('#galleryHero'))
+        ?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    };
+
     container.querySelectorAll('.gallery-filter').forEach(btn => {
       btn.addEventListener('click', () => {
         stopGalleryPlayback();
         state.galeriaFilter = btn.dataset.filter;
         rerenderGallery();
+        backToCollection();
       });
     });
     // Ordenación
@@ -378,6 +427,7 @@ export function createMemes(ctx) {
         state.galeriaSort = state.galeriaSort === 'recientes' ? 'antiguas' : 'recientes';
         container.querySelector('#gallerySortLabel').textContent = state.galeriaSort === 'antiguas' ? 'Más antiguas' : 'Más recientes';
         rerenderGallery();
+        backToCollection();
       });
     }
     // Teclado: Escape cierra menús de galería (sin acumular listeners)

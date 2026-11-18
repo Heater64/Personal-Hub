@@ -1226,6 +1226,7 @@
   max-height: 480px;
   isolation: isolate;
   cursor: pointer;
+  touch-action: pan-y;
   background: var(--theme-surface-elevated);
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.16);
 }
@@ -1338,6 +1339,11 @@
 }
 .gallery-hero-meta span {
   display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-full);
+  background: rgba(10, 10, 14, 0.34);
+  backdrop-filter: blur(6px);
 }
 .gallery-hero-meta svg { width: 14px; height: 14px; }
 
@@ -1404,13 +1410,21 @@
 }
 
 .gallery-hero-dot {
-  width: 7px; height: 7px;
+  position: relative;
+  width: 8px; height: 8px;
   border-radius: 50%;
   border: none;
   padding: 0;
   background: rgba(255,255,255,0.45);
   cursor: pointer;
   transition: background var(--dur-fast), transform var(--dur-fast);
+}
+
+/* Zona de toque generosa sin agrandar el punto a la vista. */
+.gallery-hero-dot::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
 }
 .gallery-hero-dot.is-active {
   background: var(--theme-accent);
@@ -1431,7 +1445,19 @@
 .section-title:has(.gallery-toolbar-actions) { flex-wrap: wrap; row-gap: var(--sp-8); }
 .section-title:has(.gallery-toolbar-actions) .gallery-toolbar-actions { margin-left: auto; }
 
-.gallery-filters { margin-bottom: var(--sp-4); }
+/* Los filtros se quedan pegados arriba al bajar por las fotos: se cambia de
+   álbum sin volver a subir. */
+.gallery-filters {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin: 0 calc(-1 * var(--sp-16)) var(--sp-4);
+  padding: var(--sp-8) var(--sp-16);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-divider-strong) 60%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
 .gallery-filter { flex: 0 0 auto; }
 
 /* ----- Masonry con proporciones reales ----- */
@@ -1444,7 +1470,8 @@
   position: relative;
   break-inside: avoid;
   margin-bottom: var(--sp-12);
-  border-radius: 16px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--theme-divider-strong) 55%, transparent);
   overflow: hidden;
   cursor: pointer;
   background: var(--theme-surface-elevated);
@@ -1452,9 +1479,14 @@
   transform: translateY(10px);
   transition: opacity 0.5s ease, transform 0.5s ease, box-shadow var(--dur-fast);
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .gallery-photo.visible { opacity: 1; transform: translateY(0); }
-.gallery-photo.visible:hover { transform: translateY(-3px); }
+.gallery-photo.visible:active { transform: scale(0.985); }
+
+@media (hover: hover) {
+  .gallery-photo.visible:hover { transform: translateY(-3px); }
+}
 
 .gallery-photo-loader {
   position: absolute;
@@ -1506,31 +1538,34 @@
 
 /* Vídeos en la galería — poster + badge de play */
 .gallery-photo.is-video { cursor: pointer; }
+/* Insignia pequeña en la esquina, como en la galería del móvil: la foto no
+   se oscurece entera solo porque sea un vídeo. */
 .gallery-photo-play {
   position: absolute;
-  inset: 0;
+  right: var(--sp-10);
+  bottom: var(--sp-10);
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 10, 12, 0.18);
+  border-radius: 50%;
+  background: rgba(10, 10, 12, 0.55);
   color: #fff;
   pointer-events: none;
   z-index: 1;
-  transition: background var(--dur-fast);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform var(--dur-fast), background var(--dur-fast);
 }
-.gallery-photo:hover .gallery-photo-play { background: rgba(10, 10, 12, 0.28); }
 .gallery-photo-play svg {
-  width: 34px;
-  height: 34px;
-  padding: 10px;
-  border-radius: 50%;
-  background: rgba(10, 10, 12, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-sizing: content-box;
-  transition: transform var(--dur-fast);
+  width: 13px;
+  height: 13px;
+  margin-left: 2px;
+  background: none;
+  padding: 0;
 }
-.gallery-photo:hover .gallery-photo-play svg { transform: scale(1.12); }
+.gallery-photo:hover .gallery-photo-play { transform: scale(1.08); }
 .gallery-photo.is-no-poster {
   display: flex;
   align-items: center;
@@ -1541,6 +1576,9 @@
 .gallery-photo.is-no-poster .gallery-photo-play {
   background: transparent;
   position: static;
+  width: auto;
+  height: auto;
+  backdrop-filter: none;
 }
 .gallery-photo.is-no-poster .gallery-photo-play svg {
   width: 30px;

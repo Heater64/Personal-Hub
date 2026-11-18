@@ -5,7 +5,7 @@
    reexportan aqui) para no duplicar codigo.
    ========================================== */
 
-import { getVideoPoster, isVideo, cloudinaryThumb } from '../../services/rincon-data.js';
+import { getVideoPoster, isVideo, cloudinaryThumb, mediaThumb, mediaSrcset } from '../../services/rincon-data.js';
 import { loadGiftsCatalog, getGiftsCatalog, unlockedCalendarVideos } from '../../services/gifts.service.js';
 import { db } from '../../services/db.service.js';
 import { showToast } from '../../components/Toast.js';
@@ -133,10 +133,13 @@ export function createGaleria(ctx) {
     const fotoCount = photos.length - vidCount;
     // El hero solo recibe recursos que realmente tienen una miniatura. Así un
     // vídeo sin póster no provoca una petición accidental a la página actual.
-    // Portada primero y sin repetir: las miniaturas se piden a 1600px, no el original
-    const heroPhotos = [...new Set([cover, ...photos.slice(0, 8)].map(galleryThumb).filter(Boolean))]
-      .slice(0, 5)
-      .map(s => cloudinaryThumb(s, 1600));
+    // Portada primero y sin repetir. Solo la primera diapositiva se descarga
+    // al abrir; las demás esperan a que se pase a ellas (data-src).
+    const heroSources = [...new Set([cover, ...photos.slice(0, 8)].map(galleryThumb).filter(Boolean))]
+      .slice(0, 5);
+    const heroSrc = (src) => mediaThumb(src, 1600);
+    const heroSet = (src) => mediaSrcset(src, [800, 1200, 1600]);
+    const HERO_SIZES = '(max-width: 599px) 100vw, (max-width: 899px) 92vw, 900px';
   
     return `<div class="gallery-app">
       <!-- Añadir fotos (acción primaria, solo ADMIN) -->
@@ -150,13 +153,13 @@ export function createGaleria(ctx) {
   
       <!-- Hero del álbum -->
       <div class="gallery-hero" id="galleryHero">
-        ${heroPhotos.length ? `
+        ${heroSources.length ? `
           <div class="gallery-hero-slide is-active">
             <span class="gallery-hero-loader" aria-hidden="true"></span>
-            <img src="${escapeHtml(heroPhotos[0])}" alt="${escapeHtml(album.title)}" class="gallery-hero-bg" loading="eager" fetchpriority="high" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()">
+            <img src="${escapeHtml(heroSrc(heroSources[0]))}"${heroSet(heroSources[0]) ? ` srcset="${escapeHtml(heroSet(heroSources[0]))}" sizes="${HERO_SIZES}"` : ''} alt="${escapeHtml(album.title)}" class="gallery-hero-bg" loading="eager" fetchpriority="high" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()">
             <span class="gallery-hero-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>
           </div>
-          ${heroPhotos.slice(1).map((src, i) => `<div class="gallery-hero-slide" data-slide="${i + 1}"><span class="gallery-hero-loader" aria-hidden="true"></span><img src="${escapeHtml(src)}" alt="" class="gallery-hero-bg" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-hero-fallback" aria-hidden="true">${ICON_SVGS['image']}</span></div>`).join('')}
+          ${heroSources.slice(1).map((src, i) => `<div class="gallery-hero-slide" data-slide="${i + 1}"><span class="gallery-hero-loader" aria-hidden="true"></span><img data-src="${escapeHtml(heroSrc(src))}"${heroSet(src) ? ` data-srcset="${escapeHtml(heroSet(src))}" data-sizes="${HERO_SIZES}"` : ''} alt="" class="gallery-hero-bg" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-hero-fallback" aria-hidden="true">${ICON_SVGS['image']}</span></div>`).join('')}
         ` : ''}
         <div class="gallery-hero-shade"></div>
         ${isAdmin ? `
@@ -182,9 +185,9 @@ export function createGaleria(ctx) {
             </button>
           </div>
         </div>
-        ${heroPhotos.length > 1 ? `
+        ${heroSources.length > 1 ? `
           <div class="gallery-hero-dots">
-            ${heroPhotos.map((_, i) => `<button class="gallery-hero-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Foto ${i + 1}"></button>`).join('')}
+            ${heroSources.map((_, i) => `<button class="gallery-hero-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Foto ${i + 1}"></button>`).join('')}
           </div>
         ` : ''}
       </div>
