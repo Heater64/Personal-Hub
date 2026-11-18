@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Días juntos: dos caras, número grande y «juntos», sobre degradado oscuro. -->
+<!-- Días juntos · 4×3
+
+     Composición vertical: las caras arriba (la parte emotiva), el número en el
+     centro y, debajo, el desglose. La línea de «datos antiguos» solo aparece
+     cuando el paquete guardado tiene más de un día; si no, queda oculta y el
+     contenido se centra solo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_days_root"
     android:layout_width="match_parent"
@@ -18,27 +23,40 @@
 
         <ImageView
             android:id="@+id/widget_days_me"
-            android:layout_width="54dp"
-            android:layout_height="54dp"
-            android:background="@drawable/widget_face_ring"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/widget_days_face_ring"
             android:contentDescription="@string/widget_days_me"
             android:scaleType="centerInside" />
 
         <ImageView
             android:id="@+id/widget_days_partner"
-            android:layout_width="54dp"
-            android:layout_height="54dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:layout_marginStart="-12dp"
-            android:background="@drawable/widget_face_ring"
+            android:background="@drawable/widget_days_face_ring"
             android:contentDescription="@string/widget_days_partner"
             android:scaleType="centerInside" />
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/widget_days_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:includeFontPadding="false"
+        android:letterSpacing="0.14"
+        android:maxLines="1"
+        android:text="@string/widget_days_label_short"
+        android:textColor="#CCF3C5D0"
+        android:textSize="8sp"
+        android:textStyle="bold" />
+
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:gravity="center_vertical|center_horizontal"
+        android:layout_marginTop="1dp"
+        android:gravity="bottom"
         android:orientation="horizontal">
 
         <TextView
@@ -46,6 +64,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:includeFontPadding="false"
+            android:maxLines="1"
             android:text="0"
             android:textColor="#FFFFFF"
             android:textSize="44sp"
@@ -55,20 +74,36 @@
             android:id="@+id/widget_days_unit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginBottom="6dp"
             android:includeFontPadding="false"
-            android:text="@string/widget_days_unit"
-            android:textColor="#F0E2F2"
-            android:textSize="17sp" />
+            android:maxLines="1"
+            android:text="@string/widget_days_unit_short"
+            android:textColor="@color/widget_rose"
+            android:textSize="14sp" />
     </LinearLayout>
 
     <TextView
-        android:id="@+id/widget_days_caption"
+        android:id="@+id/widget_days_breakdown"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="@string/widget_days_caption2"
-        android:textColor="#D3C2D8"
-        android:textSize="15sp" />
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="@string/widget_days_empty"
+        android:textColor="@color/widget_text_muted"
+        android:textSize="9sp" />
+
+    <TextView
+        android:id="@+id/widget_days_fresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:textColor="@color/widget_coral_soft"
+        android:textSize="8sp"
+        android:visibility="gone" />
 
 </LinearLayout>

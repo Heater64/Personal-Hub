@@ -5,7 +5,7 @@
 
 import { escapeHtml } from '../../utils/escape.js';
 import { icon } from '../../components/ui.js';
-import { badge, fmtDay, fmtLong, logChips, chipsHTML } from './shared.js';
+import { badge, fmtDay, fmtLong, logChips, chipsHTML, sectionTitle } from './shared.js';
 import { renderLogForm, wireLogForm } from './sheets.js';
 
 export function renderLog(ctx) {
@@ -36,7 +36,7 @@ export function renderLog(ctx) {
 
     <section class="cy-section">
       <div class="cy-section-head">
-        <h2 class="section-title">Últimos registros</h2>
+        ${sectionTitle('📝', 'Últimos registros')}
         ${recent.length ? `<span class="cy-log-count">${recent.length}</span>` : ''}
       </div>
       ${

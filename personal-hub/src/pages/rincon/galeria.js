@@ -28,8 +28,9 @@ export function createGaleria(ctx) {
     page, router, isAdmin, render,
     // bindGaleriaEvents vive en memes.js (comparte la zona de bindings);
     // se inyecta despues, cuando memes ya esta montado.
-    getBindGaleriaEvents = () => () => {}
+    getBindGaleriaEvents: bindGaleriaEventsInjectado
   } = ctx;
+  const getBindGaleriaEvents = bindGaleriaEventsInjectado || (() => () => {});
 
   function syncCalendarGallery() {
     loadGiftsCatalog().then(() => {

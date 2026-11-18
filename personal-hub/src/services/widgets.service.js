@@ -12,9 +12,19 @@
 
 import { isNative } from './native.service.js';
 import { formatDistance } from './location.service.js';
+import { auth } from './auth.service.js';
+import { db } from './db.service.js';
+import { moodStore } from '../stores/mood.store.js';
+import { resolveMood } from '../data/moods.data.js';
+import { todayISO } from '../utils/format.js';
 
 const KEY_DAYS = 'widget_days';
 const KEY_DISTANCE = 'widget_distance';
+const KEY_COUNTDOWN = 'widget_countdown';
+const KEY_MOOD = 'widget_mood';
+const KEY_CYCLE = 'widget_cycle';
+const KEY_WATCHING = 'widget_watching';
+const KEY_GIFTS = 'widget_gifts';
 
 let prefsModule = null;
 
@@ -59,9 +69,26 @@ export async function pinWidget(widget, size = 'wide') {
  * Guarda los datos de «días juntos»: lo que el widget oscuro enseña.
  * `stats` viene de utils/specialDates (años, meses, semanas, días).
  */
-export async function saveDaysWidget({ days, years, months, weeks, me, partner, breakdown }) {
+export async function saveDaysWidget({ days, years, months, weeks, me, partner, breakdown, since }) {
   const Preferences = await prefs();
   if (!Preferences) return;
+
+  // Al arrancar Inicio se guardan los días sin caras (la ubicación aún no ha
+  // llegado). Ese guardado no debe borrar las fotos que ya estaban.
+  let previous = null;
+  if (!me || !partner) {
+    try {
+      const stored = await Preferences.get({ key: KEY_DAYS });
+      previous = stored?.value ? JSON.parse(stored.value) : null;
+    } catch {
+      previous = null;
+    }
+  }
+  const person = (who, fallback) => ({
+    name: who?.name || fallback?.name || '',
+    avatar: who?.avatar || fallback?.avatar || '',
+  });
+
   await Preferences.set({
     key: KEY_DAYS,
     value: JSON.stringify({
@@ -74,8 +101,11 @@ export async function saveDaysWidget({ days, years, months, weeks, me, partner, 
       y: Number(breakdown?.years) || 0,
       m: Number(breakdown?.months) || 0,
       d: Number(breakdown?.days) || 0,
-      me: { name: me?.name || '', avatar: me?.avatar || '' },
-      partner: { name: partner?.name || '', avatar: partner?.avatar || '' },
+      // Fecha del aniversario (yyyy-mm-dd): el widget suma los días por su
+      // cuenta, así el número no se queda clavado si la app no se abre.
+      since: since || '',
+      me: person(me, previous?.me),
+      partner: person(partner, previous?.partner),
       at: new Date().toISOString(),
     }),
   });
@@ -110,10 +140,17 @@ export function togetherBreakdown(totalDays) {
   return { years: Math.max(0, years), months: Math.max(0, months), days: Math.max(0, days) };
 }
 
-/** Guarda los datos de la distancia (el widget claro). */
-export async function saveDistanceWidget({ km, me, partner }) {
+/**
+ * Guarda los datos de la distancia (el widget claro).
+ *
+ * `device` es el estado del móvil de ella tal como llega con su posición
+ * (batería, cargando y red): el widget no puede consultarlo, solo leer lo
+ * último que se supo. Sin dato se guarda vacío para no enseñar el de ayer.
+ */
+export async function saveDistanceWidget({ km, me, partner, device }) {
   const Preferences = await prefs();
   if (!Preferences) return;
+  const battery = Number(device?.battery);
   await Preferences.set({
     key: KEY_DISTANCE,
     value: JSON.stringify({
@@ -121,10 +158,207 @@ export async function saveDistanceWidget({ km, me, partner }) {
       text: formatDistance(km),
       me: { name: me?.name || '', avatar: me?.avatar || '' },
       partner: { name: partner?.name || '', avatar: partner?.avatar || '' },
+      device: Number.isFinite(battery)
+        ? {
+            battery: Math.max(0, Math.min(100, Math.round(battery))),
+            charging: device?.charging === true,
+            net: device?.net || '',
+          }
+        : null,
       at: new Date().toISOString(),
     }),
   });
   refreshWidgets();
 }
 
-export const WIDGET_KEYS = { days: KEY_DAYS, distance: KEY_DISTANCE };
+/**
+ * Guarda las próximas fechas para la cuenta atrás.
+ *
+ * `events` es la lista completa (key/title/date, de la más cercana a la más
+ * lejana): el widget deja elegir por instancia cuáles enseñar y lo guarda en su
+ * propio lado, así que aquí viajan todas. `title`/`date` siguen siendo la más
+ * próxima, que es lo que usan los tamaños pequeño y apaisado y lo que leen los
+ * paquetes ya guardados por versiones anteriores.
+ *
+ * El widget suma los días por su cuenta (la fecha va cruda) para que la cuenta
+ * atrás siga bajando aunque la app no se abra.
+ */
+export async function saveCountdownWidget({ title, date, events }) {
+  const Preferences = await prefs();
+  if (!Preferences) return;
+
+  const list = (Array.isArray(events) ? events : [])
+    .filter(event => event && event.date)
+    .slice(0, 8)
+    .map(event => ({
+      key: event.key || '',
+      title: event.title || '',
+      date: event.date || '',
+    }));
+
+  await Preferences.set({
+    key: KEY_COUNTDOWN,
+    value: JSON.stringify({
+      title: title || list[0]?.title || '',
+      date: date || list[0]?.date || '',
+      events: list,
+      at: new Date().toISOString(),
+    }),
+  });
+  refreshWidgets();
+}
+
+/**
+ * Guarda el ánimo de hoy. Sin ánimo se guarda vacío a propósito: el widget
+ * enseña su estado «sin registrar» en vez de la emoción de ayer.
+ */
+export async function saveMoodWidget({ emoji, label, date }) {
+  const Preferences = await prefs();
+  if (!Preferences) return;
+  await Preferences.set({
+    key: KEY_MOOD,
+    value: JSON.stringify({
+      emoji: emoji || '',
+      label: label || '',
+      date: date || '',
+      at: new Date().toISOString(),
+    }),
+  });
+  refreshWidgets();
+}
+
+/**
+ * El widget de ánimo es el de ELLA y solo el de ella.
+ *
+ * En su móvil la sesión iniciada es la suya: el ánimo de hoy del store ya es
+ * el suyo y se guarda al instante (también sin red). Si la sesión es la del
+ * administrador —por ejemplo, al revisar la app desde el otro móvil— no se
+ * escribe el ánimo de quien mira: se lee el de ella de la base. Si no se puede
+ * saber, no se toca lo guardado, que es lo único que evita enseñar el de él.
+ */
+export async function saveHerMoodWidget() {
+  if (!(await prefs())) return;
+
+  const payload = await herMoodToday();
+  if (!payload) return;
+  await saveMoodWidget(payload);
+}
+
+/** Primer emoji y «+N», igual que lo enseña Inicio. */
+function moodText(mood) {
+  if (!mood) return { emoji: '', label: '' };
+  const first = mood.items?.[0];
+  const extra = (mood.count || mood.items?.length || 1) - 1;
+  return {
+    emoji: first?.emoji || mood.emoji || '',
+    label: extra > 0 ? `${first.label} +${extra}` : mood.label || 'Registrado',
+  };
+}
+
+/** El ánimo de ella de hoy, o null si no hay forma fiable de saberlo. */
+async function herMoodToday() {
+  await auth.refreshAccount();
+
+  if (!auth.isAdmin()) {
+    const mood = moodStore.getTodayMood();
+    const text = moodText(mood);
+    return { ...text, date: mood ? todayISO() : '' };
+  }
+
+  // Sesión de administrador: su ánimo no pinta nada en el widget de ella.
+  try {
+    const users = await db.listUsers();
+    const her = (users || []).find(user => user && user.role === 'user' && user.enabled !== false);
+    if (!her) return null;
+
+    const rows = await db.getUserMoods(her.id);
+    const row = (rows || []).find(item => String(item?.date || '').slice(0, 10) === todayISO());
+    const text = moodText(resolveMood(row));
+    return { ...text, date: row ? todayISO() : '' };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ciclo: fase, día y próxima regla.
+ *
+ * Es el único widget con datos de salud y sin espejo local (el servicio de
+ * ciclo solo lee de Supabase), así que lo escribe la pantalla de ciclo cuando
+ * ya tiene el paquete completo. Sin `date` no hay nada que enseñar y el widget
+ * se queda en su estado «sin datos» en vez de inventar una fase.
+ */
+export async function saveCycleWidget({ phase, day, next, days, length }) {
+  const Preferences = await prefs();
+  if (!Preferences) return;
+
+  // La pantalla de ciclo recalcula al abrir cada vista: no se repinta el
+  // widget si el paquete no cambió.
+  try {
+    const stored = await Preferences.get({ key: KEY_CYCLE });
+    const prev = stored?.value ? JSON.parse(stored.value) : null;
+    if (prev
+      && prev.phase === (phase || '')
+      && prev.day === (Number(day) || 0)
+      && prev.next === (next || '')
+      && prev.days === (Number.isFinite(days) ? Number(days) : null)
+      && prev.length === (Number(length) || 0)) return;
+  } catch { /* paquete roto: se reescribe */ }
+
+  await Preferences.set({
+    key: KEY_CYCLE,
+    value: JSON.stringify({
+      phase: phase || '',
+      day: Number(day) || 0,
+      next: next || '',
+      days: Number.isFinite(days) ? Number(days) : null,
+      length: Number(length) || 0,
+      at: new Date().toISOString(),
+    }),
+  });
+  refreshWidgets();
+}
+
+/** La serie que se está viendo: título, póster y episodio. */
+export async function saveWatchingWidget({ title, poster, watched, total, percent }) {
+  const Preferences = await prefs();
+  if (!Preferences) return;
+  const has = Boolean(title) && Number(total) > 0 && Number(watched) > 0;
+  await Preferences.set({
+    key: KEY_WATCHING,
+    value: JSON.stringify({
+      title: has ? title : '',
+      poster: has ? poster || '' : '',
+      watched: has ? Number(watched) : 0,
+      total: has ? Number(total) : 0,
+      percent: has ? Math.round(Number(percent) || 0) : 0,
+      at: new Date().toISOString(),
+    }),
+  });
+  refreshWidgets();
+}
+
+/** Sorpresas del calendario: cuántas hay hoy y cuántas quedan por abrir. */
+export async function saveGiftsWidget({ total, pending }) {
+  const Preferences = await prefs();
+  if (!Preferences) return;
+  await Preferences.set({
+    key: KEY_GIFTS,
+    value: JSON.stringify({
+      total: Math.max(0, Number(total) || 0),
+      pending: Math.max(0, Number(pending) || 0),
+      at: new Date().toISOString(),
+    }),
+  });
+  refreshWidgets();
+}
+
+export const WIDGET_KEYS = {
+  days: KEY_DAYS,
+  distance: KEY_DISTANCE,
+  countdown: KEY_COUNTDOWN,
+  mood: KEY_MOOD,
+  cycle: KEY_CYCLE,
+  watching: KEY_WATCHING,
+  gifts: KEY_GIFTS,
+};

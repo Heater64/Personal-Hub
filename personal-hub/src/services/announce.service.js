@@ -18,13 +18,19 @@ const KINDS = ['openwhen', 'calendar', 'reason', 'content'];
  * Pide al servidor que anuncie contenido recién publicado.
  *
  * @param {'openwhen'|'calendar'|'reason'|'content'} kind
- * @param {{count?: number, section?: string, url?: string}} meta
- *   count   cuántos elementos se han añadido (para el singular/plural)
- *   section nombre de la sección, solo para `content`
- *   url     destino interno, solo para `content`
+ * @param {{count?: number, section?: string, url?: string, newCategory?: boolean,
+ *          category?: string, updated?: boolean}} meta
+ *   count       cuántos elementos se han añadido (para el singular/plural)
+ *   section     nombre de la sección, solo para `content`
+ *   url         destino interno, solo para `content`
+ *   newCategory true si el aviso de Open When es de una categoría nueva
+ *   category    título de esa categoría nueva (el servidor lo recorta)
+ *   updated     true si Open When solo tiene cartas editadas (no nuevas)
  * @returns {Promise<boolean>} true si el servidor aceptó el envío
  */
-export async function announcePublished(kind, { count = 1, section = '', url = '' } = {}) {
+export async function announcePublished(kind, {
+  count = 1, section = '', url = '', newCategory = false, category = '', updated = false
+} = {}) {
   if (!KINDS.includes(kind)) return false;
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -36,7 +42,11 @@ export async function announcePublished(kind, { count = 1, section = '', url = '
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`
       },
-      body: JSON.stringify({ kind, count, section, url })
+      // `updated` solo tiene sentido en Open When; fuera de ahí no se envía.
+      body: JSON.stringify({
+        kind, count, section, url, newCategory, category,
+        updated: kind === 'openwhen' && updated
+      })
     });
 
     if (!res.ok) {

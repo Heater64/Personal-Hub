@@ -56,12 +56,21 @@
   text-align: center;
 }
 
-/* El mapa ocupa todo el alto que sobre. */
+/* El mapa ocupa todo el alto que sobre; las fichas, justo debajo. */
 .mapa-page .distmap {
   flex: 1;
+  gap: 12px;
+}
+.mapa-page .distmap__frame {
+  display: flex;
+  flex: 1;
+  min-height: 300px;
 }
 .mapa-page .distmap__canvas {
   flex: 1;
   height: auto;
-  min-height: 320px;
+  min-height: 300px;
+}
+.mapa-page .distmap__devices {
+  padding-bottom: 4px;
 }

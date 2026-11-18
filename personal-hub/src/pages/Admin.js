@@ -3102,6 +3102,7 @@ export function AdminPage(router) {
         <div style="flex:1;min-width:0;">
           <div class="item-title">${esc(l.title || 'Sin título')}
             ${isCustom ? '<span class="admin-badge-tag accent">Personalizada</span>' : '<span class="admin-badge-tag">App</span>'}
+            ${l.status === 'pronto' ? '<span class="admin-badge-tag">Pronto</span>' : ''}
           </div>
           <div class="item-sub">${cat ? `${cat.emoji} ${esc(cat.title)}` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div>
         </div>
@@ -3141,6 +3142,13 @@ export function AdminPage(router) {
           <select id="owAdminType">${types.map(([v, lbl]) => `<option value="${v}" ${letter?.type === v ? 'selected' : ''}>${lbl}</option>`).join('')}</select>
         </div>
       </div>
+      <div class="admin-field"><label>Estado</label>
+        <select id="owAdminStatus">
+          <option value="">Lista para ella</option>
+          <option value="pronto" ${letter?.status === 'pronto' ? 'selected' : ''}>Pronto · todavía sin escribir</option>
+        </select>
+        <small class="admin-field-hint">«Pronto» solo lo ves tú: la carta queda en borrador y ella no la ve.</small>
+      </div>
       <div class="admin-field"><label>Mensaje *</label><textarea id="owAdminMsg" rows="6" placeholder="El contenido de la carta…">${esc(letter?.message || '')}</textarea></div>
       <div class="admin-field">
         <label>Multimedia (opcional)</label>
@@ -3159,8 +3167,9 @@ export function AdminPage(router) {
       async () => {
         const title = page.querySelector('#owAdminTitle')?.value?.trim();
         const message = page.querySelector('#owAdminMsg')?.value?.trim();
+        const status = page.querySelector('#owAdminStatus')?.value === 'pronto' ? 'pronto' : '';
         if (!title) throw new Error('El título es obligatorio');
-        if (!message) throw new Error('El mensaje es obligatorio');
+        if (!message && !status) throw new Error('El mensaje es obligatorio (o marca la carta como Pronto)');
         const mediaKind = page.querySelector('#owAdminMediaKind')?.value || '';
         let media = null;
         if (mediaKind === 'audio' || mediaKind === 'video') {
@@ -3184,6 +3193,9 @@ export function AdminPage(router) {
           title,
           note: page.querySelector('#owAdminNote')?.value?.trim() || '',
           message,
+          // Versión de la carta: es lo que dispara el «Actualizada» de ella.
+          updatedAt: new Date().toISOString(),
+          ...(status ? { status } : {}),
           ...(media ? { media } : {})
         };
         const custom = [...(data.items || [])];

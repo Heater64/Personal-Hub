@@ -213,7 +213,11 @@ test('la limpieza de caducados no da de baja a quien está en silencio', async (
 
   // saveSubscriptions borra lo que no esté en la lista: si se le pasara solo
   // la lista de destinatarios de hoy, cada mañana daría de baja a los demás.
-  assert.match(send, /await saveSubscriptions\(allSubscriptions\.filter\(sub => !expiredEndpoints\.includes\(sub\.endpoint\)\)\)/);
+  assert.match(
+    send,
+    /await saveSubscriptions\(\s*allSubscriptions\.filter\(sub => !expiredEndpoints\.includes\(sub\.endpoint\)\)\s*\)/,
+    'la limpieza parte de TODAS las suscripciones y quita solo las caducadas'
+  );
   assert.doesNotMatch(send, /saveSubscriptions\(validSubscriptions\)/);
   assert.match(send, /const filtered = off\.length \+ \(isAdmin \? 0 : quiet\.length\);/);
 });

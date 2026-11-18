@@ -42,19 +42,51 @@ export function isFresh(at) {
  * solo: el plugin nativo sí, y además devuelve el error tipado que el panel
  * necesita para distinguir «denegado» de «sin cobertura».
  */
-async function currentPosition() {
+function deniedError(needsPrompt) {
+  const err = new Error('permiso de ubicación no concedido');
+  err.code = 1;
+  err.needsPrompt = !!needsPrompt;
+  return err;
+}
+
+/**
+ * Estado del permiso sin abrir ningún diálogo.
+ * Devuelve 'granted' | 'prompt' | 'denied' | 'unknown'.
+ *
+ * En el APK manda el plugin nativo (el WebView no conoce los permisos de
+ * Android); en la web se pregunta al navegador, que sí sabe si el sitio ya
+ * está autorizado o si todavía toca preguntar.
+ */
+export async function locationPermissionState() {
+  if (isNative()) {
+    const mod = await import('@capacitor/geolocation').catch(() => null);
+    try {
+      const perm = await mod?.Geolocation?.checkPermissions();
+      if (perm?.location === 'granted' || perm?.location === 'denied') return perm.location;
+      return 'prompt';
+    } catch {
+      return 'unknown';
+    }
+  }
+  try {
+    const res = await navigator.permissions?.query({ name: 'geolocation' });
+    return res?.state || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function currentPosition({ prompt = false } = {}) {
   if (isNative()) {
     const mod = await import('@capacitor/geolocation').catch(() => null);
     if (mod) {
       const { Geolocation } = mod;
       try {
         let perm = await Geolocation.checkPermissions();
-        if (perm.location !== 'granted') perm = await Geolocation.requestPermissions();
-        if (perm.location !== 'granted') {
-          const denied = new Error('permiso denegado');
-          denied.code = 1;
-          throw denied;
-        }
+        // El diálogo del sistema solo sale si la persona lo pidió (su botón).
+        // Abrir la portada no debe abrir permisos por su cuenta.
+        if (perm.location !== 'granted' && prompt) perm = await Geolocation.requestPermissions();
+        if (perm.location !== 'granted') throw deniedError(perm.location !== 'denied');
         return await Geolocation.getCurrentPosition({
           enableHighAccuracy: false,
           timeout: 12000,
@@ -65,6 +97,16 @@ async function currentPosition() {
         // Cualquier otro fallo cae al navegador antes de rendirse.
       }
     }
+  }
+
+  // En la web, `getCurrentPosition` abre el diálogo del sitio si aún no hay
+  // respuesta. Se consulta antes para no dispararlo solo por cargar la página.
+  try {
+    const res = await navigator.permissions?.query({ name: 'geolocation' });
+    if (res?.state === 'denied') throw deniedError(false);
+    if (res?.state === 'prompt' && !prompt) throw deniedError(true);
+  } catch (err) {
+    if (err?.code === 1) throw err;
   }
 
   return new Promise((resolve, reject) => {
@@ -165,8 +207,9 @@ async function push({ userId, isAdmin }, setStatus) {
     myLocation = data;
     setStatus?.('ok');
   } catch (err) {
-    // 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
-    setStatus?.(err?.code === 1 ? 'denied' : 'error');
+    // 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT.
+    // «prompt» es distinto de «denied»: todavía se puede pedir, con un botón.
+    setStatus?.(err?.code === 1 ? (err?.needsPrompt ? 'prompt' : 'denied') : 'error');
   }
 }
 
@@ -233,11 +276,12 @@ export async function requestLocationPermission(onStatus) {
   }
 
   try {
-    await currentPosition();
+    // Con gesto de por medio sí se puede abrir el diálogo del navegador.
+    await currentPosition({ prompt: true });
     await push(self, onStatus);
     return true;
   } catch (err) {
-    onStatus?.(err?.code === 1 ? 'denied' : 'error');
+    onStatus?.(err?.code === 1 ? (err?.needsPrompt ? 'prompt' : 'denied') : 'error');
     return false;
   }
 }
@@ -413,6 +457,35 @@ export function formatDistance(km) {
  * Una vez al empezar, cada `intervalMs` y al volver a la pestaña. Devuelve la
  * función para dejar de vigilar (page.cleanup).
  */
+/* ==========================================
+   «JUNTOS» — el mismo sitio, con el margen del GPS
+   ==========================================
+   El umbral es 10 m, pero un móvil nunca sabe su sitio con más precisión que
+   la que declara: se suma la mitad de la peor precisión de los dos y se limita
+   a 15 m, así que nunca se dice «juntos» más allá de 25 m. */
+export const TOGETHER_M = 10;
+
+/** Distancia en metros entre dos posiciones (Haversine). */
+export function metersBetween(a, b) {
+  if (!Number.isFinite(a?.lat) || !Number.isFinite(b?.lat)) return null;
+  if (!Number.isFinite(a?.lng) || !Number.isFinite(b?.lng)) return null;
+  const rad = v => (v * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** ¿Están en el mismo sitio? Devuelve metros, margen y la respuesta. */
+export function togetherInfo(me, partner) {
+  const meters = metersBetween(me, partner);
+  if (meters == null) return null;
+  const worst = Math.max(Number(me.accuracy) || 0, Number(partner.accuracy) || 0);
+  const margin = Math.min(15, Math.round(worst / 2));
+  return { meters, margin, together: meters <= TOGETHER_M + margin };
+}
+
 export function watchDistance(handler, { intervalMs = 60000 } = {}) {
   let alive = true;
 

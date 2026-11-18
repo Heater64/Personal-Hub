@@ -7,7 +7,7 @@ import { icon } from '../../components/ui.js';
 import { escapeHtml } from '../../utils/escape.js';
 import { daysBetween } from '../../utils/cycleMath.js';
 import { flowLabel } from '../../data/cycle.data.js';
-import { badge, emptyHtml, fmtDay } from './shared.js';
+import { badge, emptyHtml, fmtDay, sectionTitle } from './shared.js';
 
 function dominantFlow(logs, period) {
   const counts = new Map();
@@ -51,7 +51,7 @@ export function renderHistory(ctx) {
   return `
     <section class="cy-section">
       <div class="cy-section-head">
-        <h2 class="section-title">Todos tus ciclos</h2>
+        ${sectionTitle('🩸', 'Todos tus ciclos')}
         <button type="button" class="btn btn--ghost" data-add-period>${icon('plus', 16)} Añadir</button>
       </div>
 
@@ -71,7 +71,8 @@ export function renderHistory(ctx) {
 
             return `
             <li>
-              <button type="button" class="cy-history-item" data-edit-period="${escapeHtml(period.id || '')}">
+              <button type="button" class="cy-history-item${ongoing ? ' is-current' : ''}" data-edit-period="${escapeHtml(period.id || '')}">
+                <span class="cy-history-ic" aria-hidden="true">${ongoing ? '🩸' : '🌸'}</span>
                 <span class="cy-history-date">
                   <b>${escapeHtml(fmtDay(period.start_date))}</b>
                   <small>${escapeHtml(period.start_date.slice(0, 4))}</small>
@@ -86,7 +87,7 @@ export function renderHistory(ctx) {
                     ${cycleLength ? `Ciclo de ${cycleLength} días` : 'Sin siguiente inicio registrado'}
                     ${flow ? ` · Flujo ${flow.toLowerCase()}` : ''}
                   </span>
-                  ${period.notes ? `<span class="cy-history-notes">${escapeHtml(period.notes)}</span>` : ''}
+                  ${period.notes ? `<span class="cy-history-notes">📝 ${escapeHtml(period.notes)}</span>` : ''}
                 </span>
                 <span class="cy-history-chev" aria-hidden="true">${icon('chevron-right', 16)}</span>
               </button>

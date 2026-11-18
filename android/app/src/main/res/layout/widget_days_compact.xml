@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Días juntos, tamaño pequeño: sin fotos, solo el número. -->
+<!-- Días juntos · 2×2
+
+     Composición propia para el cuadrado: una sola idea, el número. Sin fotos
+     (a este tamaño solo taparían el dato) y con la etiqueta encima, tan corta
+     que se lee de un vistazo. Cuando no hay datos, el número pasa a «—» y
+     aparece una salida: «abre la app». -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_days_root"
     android:layout_width="match_parent"
@@ -10,29 +15,39 @@
     android:padding="10dp">
 
     <TextView
-        android:id="@+id/widget_days_count"
+        android:id="@+id/widget_days_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:includeFontPadding="false"
-        android:text="0"
-        android:textColor="#FFFFFF"
-        android:textSize="34sp"
+        android:letterSpacing="0.14"
+        android:maxLines="1"
+        android:text="@string/widget_days_label_short"
+        android:textColor="#CCF3C5D0"
+        android:textSize="8sp"
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/widget_days_unit"
+        android:id="@+id/widget_days_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/widget_days_unit"
-        android:textColor="#F0E2F2"
-        android:textSize="13sp" />
+        android:layout_marginTop="3dp"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="0"
+        android:textColor="#FFFFFF"
+        android:textSize="36sp"
+        android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/widget_days_caption"
+        android:id="@+id/widget_days_hint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/widget_days_caption2"
-        android:textColor="#D3C2D8"
-        android:textSize="12sp" />
+        android:layout_marginTop="2dp"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="@string/widget_days_empty"
+        android:textColor="@color/widget_text_muted"
+        android:textSize="9sp"
+        android:visibility="gone" />
 
 </LinearLayout>

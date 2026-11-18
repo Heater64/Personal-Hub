@@ -639,6 +639,17 @@ export function CancionesPage(router) {
           </div>
         </section>
 
+        <!-- Those Eyes — experiencia aparte, solo desde Canciones -->
+        <button class="music-special" id="thoseEyesBanner" type="button" aria-label="Abrir Those Eyes">
+          <span class="music-special-glow" aria-hidden="true"></span>
+          <span class="music-special-body">
+            <span class="music-special-eyebrow">👀 Para ti · una canción aparte</span>
+            <span class="music-special-title">Those Eyes</span>
+            <span class="music-special-sub">New West · 2023 — la letra, las estrellas y nada más.</span>
+          </span>
+          <span class="music-special-cta">Entrar ${MUSIC_ICONS.play(12)}</span>
+        </button>
+
         <!-- Escuchado recientemente -->
         <section class="music-section" id="musicRecent">
           <div class="music-section-head">
@@ -1467,6 +1478,12 @@ export function CancionesPage(router) {
   // ==========================================
   function bindEvents() {
     if (!audioEl) return;
+
+    // Banner de Those Eyes: la experiencia vive en su propia ruta, pero el
+    // acceso está aquí, junto a la música.
+    page.querySelector('#thoseEyesBanner')?.addEventListener('click', () => {
+      router?.navigate('/thoseeyes');
+    });
 
     // Hero — Reproducir mix: suena SOLO la playlist activa (la pestaña actual)
     page.querySelector('#heroMix')?.addEventListener('click', () => {

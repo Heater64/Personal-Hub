@@ -17,6 +17,8 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 import org.json.JSONObject;
 
@@ -28,7 +30,14 @@ import org.json.JSONObject;
  * servicio está activo y el último estado enviado. Sin este puente la web no
  * tendría forma de saber si el seguimiento sigue vivo.
  */
-@CapacitorPlugin(name = "DeviceStatus")
+// `permissions` declara el alias que usa `requestNotifications`: Capacitor
+// necesita saber qué permisos pide cada alias para poder lanzar el diálogo
+// del sistema desde el hilo de la actividad.
+@CapacitorPlugin(
+        name = "DeviceStatus",
+        permissions = {
+                @Permission(alias = "notifications", strings = { Manifest.permission.POST_NOTIFICATIONS })
+        })
 public class DeviceStatusPlugin extends Plugin {
 
     @PluginMethod
@@ -105,6 +114,30 @@ public class DeviceStatusPlugin extends Plugin {
             out.put("data", new JSONObject());
         }
 
+        call.resolve(out);
+    }
+
+    /**
+     * Pide el permiso de avisos (Android 13+). Sin él, el aviso fijo del
+     * seguimiento no se ve: el servicio sigue, pero nadie sabría que está ahí.
+     */
+    @PluginMethod
+    public void requestNotifications(PluginCall call) {
+        if ("granted".equals(notificationPermissionState(getContext()))) {
+            resolveNotifications(call);
+            return;
+        }
+        requestPermissionForAlias("notifications", call, "notificationsCallback");
+    }
+
+    @PermissionCallback
+    private void notificationsCallback(PluginCall call) {
+        resolveNotifications(call);
+    }
+
+    private void resolveNotifications(PluginCall call) {
+        JSObject out = new JSObject();
+        out.put("granted", "granted".equals(notificationPermissionState(getContext())));
         call.resolve(out);
     }
 

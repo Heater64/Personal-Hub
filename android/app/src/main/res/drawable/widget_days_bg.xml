@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tarjeta oscura con degradado, como el diseño de referencia. -->
+<!-- Fondo de «Días juntos»: morado que se apaga hacia el negro de la marca.
+     El borde rosa al 18 % separa el widget de cualquier fondo del launcher sin
+     dibujar una tarjeta dentro de otra tarjeta. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <corners android:radius="26dp" />
     <gradient
-        android:angle="270"
-        android:endColor="#1B1220"
-        android:startColor="#3B2040" />
+        android:angle="315"
+        android:endColor="@color/widget_ink"
+        android:startColor="@color/widget_plum_light" />
+    <stroke
+        android:width="1dp"
+        android:color="#2EF3C5D0" />
 </shape>

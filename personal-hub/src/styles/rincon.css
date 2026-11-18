@@ -3394,6 +3394,20 @@
   .audios-month-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
+.audios-month--skeleton {
+  min-height: 112px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--theme-divider);
+  background: linear-gradient(100deg, var(--theme-surface) 30%, var(--theme-surface-elevated) 50%, var(--theme-surface) 70%);
+  background-size: 220% 100%;
+  animation: audios-skeleton 1.15s ease-in-out infinite;
+}
+
+@keyframes audios-skeleton {
+  from { background-position: 120% 0; }
+  to { background-position: -20% 0; }
+}
+
 .audios-month {
   position: relative;
   display: flex; flex-direction: column;
@@ -3548,6 +3562,83 @@
 }
 
 .audios-player-creator svg { width: 12px; height: 12px; }
+
+/* ==========================================
+   MINI REPRODUCTOR — vive en <body>, sobre la barra inferior
+   Sigue sonando al cambiar de pestaña dentro de Galería.
+   ========================================== */
+.audio-mini {
+  position: fixed;
+  left: var(--sp-12);
+  right: var(--sp-12);
+  bottom: calc(var(--bottom-nav-height) + 10px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: 9px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--theme-border-accent);
+  background: color-mix(in srgb, var(--theme-surface-elevated) 92%, transparent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  animation: audio-mini-in 0.24s ease both;
+}
+.audio-mini[hidden] { display: none; }
+
+@keyframes audio-mini-in {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+.audio-mini-btn {
+  width: 38px; height: 38px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: var(--r-full); cursor: pointer;
+  background: var(--theme-accent); color: var(--theme-text-inverse);
+  transition: transform var(--dur-fast);
+}
+.audio-mini-btn:active { transform: scale(0.94); }
+
+.audio-mini-body { flex: 1; min-width: 0; cursor: pointer; }
+
+.audio-mini-title {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--theme-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.audio-mini-bar {
+  margin-top: 6px;
+  height: 3px;
+  border-radius: var(--r-full);
+  background: var(--theme-surface-pressed);
+  overflow: hidden;
+}
+.audio-mini-bar > span {
+  display: block; height: 100%; width: 0;
+  background: var(--theme-accent);
+}
+
+.audio-mini-close {
+  width: 30px; height: 30px; flex-shrink: 0;
+  border: none; border-radius: var(--r-full);
+  background: transparent; color: var(--theme-text-tertiary);
+  cursor: pointer;
+}
+
+/* Si la barra de música global está sonando, el mini reproductor se apila
+   encima en vez de taparla. */
+body:has(.now-playing-bar.is-visible) .audio-mini {
+  bottom: calc(var(--bottom-nav-height) + 74px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 900px) {
+  .audio-mini { left: auto; right: 24px; bottom: 24px; width: 330px; }
+  body:has(.now-playing-bar.is-visible) .audio-mini { bottom: 88px; }
+}
 
 .audios-player-card audio { display: none; }
 

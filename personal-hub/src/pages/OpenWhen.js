@@ -12,6 +12,7 @@ import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { OPENWHEN_READ_PREFIX } from '../utils/stats-metrics.js';
 import { db } from '../services/db.service.js';
+import { seenCategories, markCategorySeen, readSeenUpdates, markUpdateSeen } from '../utils/openwhen-categories.js';
 
 import { CATEGORIES, TYPE_META, LETTERS, loadAllOpenWhenLetters } from '../data/openwhen.data.js';
 
@@ -199,6 +200,7 @@ function loadSeen() {
   }
 }
 
+
 export function OpenWhenPage(router) {
   const page = document.createElement('div');
   page.className = 'openwhen-page';
@@ -209,22 +211,50 @@ export function OpenWhenPage(router) {
   let pageActive = true;
   let view = 'landing'; // 'landing' | category id
   let seen = loadSeen();
+  let seenUpdates = readSeenUpdates();
   let letters = LETTERS; // se reemplaza con la lista fusionada tras cargar el Admin
+
+  // `status: 'pronto'` marca un borrador: todavía sin escribir o pendiente de
+  // cambios. Es información solo del admin; para ella la carta no existe aún.
+  function isDraft(letter) {
+    return letter?.status === 'pronto';
+  }
+
+  function visibleLetters() {
+    return userStore.isAdmin ? letters : letters.filter(l => !isDraft(l));
+  }
+
+  function catIdsWithLetters() {
+    return CATEGORIES.filter(c => totalOf(c.id) > 0).map(c => c.id);
+  }
+
+  // Categorías que ella ya conoce. Las que lleguen después se marcan como
+  // nuevas; abrir la categoría la da por vista.
+  let seenCats = seenCategories(catIdsWithLetters());
+
+  function isNewCategory(catId) {
+    return !userStore.isAdmin && totalOf(catId) > 0 && !seenCats.includes(catId);
+  }
 
   function persist() {
     setUserPref(SEEN_KEY, JSON.stringify(seen));
   }
 
   function letterById(id) {
-    return letters.find(l => l.id === id);
+    return visibleLetters().find(l => l.id === id);
   }
 
   function lettersOf(catId) {
-    return letters.filter(l => l.category === catId);
+    return visibleLetters().filter(l => l.category === catId);
   }
 
   function isNew(letter) {
     return !seen.includes(letter.id);
+  }
+
+  /** Carta editada desde la última vez que la abrió. */
+  function isUpdated(letter) {
+    return Boolean(letter?.updatedAt) && seenUpdates[letter.id] !== letter.updatedAt;
   }
 
   function newOf(catId) {
@@ -236,7 +266,7 @@ export function OpenWhenPage(router) {
   }
 
   function newTotal() {
-    return letters.filter(isNew).length;
+    return visibleLetters().filter(isNew).length;
   }
 
   /* ---------- helpers de texto ---------- */
@@ -300,6 +330,8 @@ export function OpenWhenPage(router) {
   function letterCard(letter) {
     const meta = TYPE_META[letter.type] || TYPE_META.carta;
     const fresh = isNew(letter);
+    const draft = isDraft(letter);
+    const updated = !draft && !fresh && isUpdated(letter);
     const album = letter.media?.kind === 'album' ? letter.media.urls : null;
 
     const media = album
@@ -329,13 +361,19 @@ export function OpenWhenPage(router) {
       : '';
 
     return `
-      <div class="ow-card${fresh ? ' is-new' : ''}" role="button" tabindex="0" data-open="${letter.id}">
+      <div class="ow-card${fresh ? ' is-new' : ''}${draft ? ' is-draft' : ''}" role="button" tabindex="0" data-open="${letter.id}">
         ${adminActions}
         <span class="ow-card__ic">${meta.emoji}</span>
         <span class="ow-card__body">
           <span class="ow-card__top">
             <b>${escapeHtml(letter.title)}</b>
-            ${fresh ? '<span class="ow-card__badge">Nueva</span>' : `<span class="ow-card__seen" aria-label="Vista">${icon('check', 13)}</span>`}
+            ${draft
+              ? '<span class="ow-card__draft">Pronto</span>'
+              : fresh
+                ? '<span class="ow-card__badge">Nueva</span>'
+                : updated
+                  ? '<span class="ow-card__updated">Actualizada</span>'
+                  : `<span class="ow-card__seen" aria-label="Vista">${icon('check', 13)}</span>`}
           </span>
           <span class="ow-card__note">${escapeHtml(letter.note)}</span>
         </span>
@@ -346,12 +384,16 @@ export function OpenWhenPage(router) {
 
   function catCard(cat) {
     const n = newOf(cat.id).length;
+    const freshCat = isNewCategory(cat.id);
+    const updatedCat = !freshCat && !userStore.isAdmin && lettersOf(cat.id).some(isUpdated);
     return `
-      <button class="ow-cat" data-cat="${cat.id}">
+      <button class="ow-cat${freshCat ? ' is-new' : ''}" data-cat="${cat.id}">
         <span class="ow-cat__ic">${cat.emoji}</span>
         <span class="ow-cat__body">
           <b>${escapeHtml(cat.title)}</b>
           <span class="ow-cat__count" data-cat-count="${cat.id}">${countText(cat.id)}</span>
+          ${freshCat ? '<span class="ow-cat__new">Nueva categoría</span>' : ''}
+          ${updatedCat ? '<span class="ow-cat__updated">Actualizada</span>' : ''}
         </span>
         ${n > 0 ? `<span class="ow-cat__dot" aria-label="${plural(n, 'cosa nueva', 'cosas nuevas')}"></span>` : ''}
         <span class="ow-cat__go" aria-hidden="true">${icon('chev', 15)}</span>
@@ -360,11 +402,14 @@ export function OpenWhenPage(router) {
 
   /* ---------- vistas ---------- */
   function landingHTML() {
+    const list = visibleLetters();
     const cats = CATEGORIES.filter(c => totalOf(c.id) > 0);
-    const n = letters.filter(isNew).length;
-    const sub = n > 0
-      ? `${letters.length} cartas · ${n} ${n === 1 ? 'sin ver' : 'sin ver'}`
-      : `${letters.length} ${letters.length === 1 ? 'carta' : 'cartas'} · todo visto`;
+    const n = list.filter(isNew).length;
+    const drafts = userStore.isAdmin ? letters.filter(isDraft) : [];
+    const base = n > 0
+      ? `${list.length} cartas · ${n} sin ver`
+      : `${list.length} ${list.length === 1 ? 'carta' : 'cartas'} · todo visto`;
+    const sub = drafts.length ? `${base} · ${drafts.length} por escribir` : base;
 
     const adminBtn = userStore.isAdmin
       ? `<div class="ow-head-actions">
@@ -382,6 +427,13 @@ export function OpenWhenPage(router) {
         </div>
         ${adminBtn}
       </header>
+
+      ${drafts.length ? `
+        <section class="ow-section">
+          <p class="section-title">Por escribir <span class="section-title__aside">${drafts.length}</span></p>
+          <p class="ow-drafts-hint">Solo lo ves tú: estas cartas no aparecen para ella.</p>
+          <div class="ow-grid">${drafts.map(letterCard).join('')}</div>
+        </section>` : ''}
 
       <section class="ow-section">
         <p class="section-title">¿Qué necesitas?</p>
@@ -506,18 +558,23 @@ export function OpenWhenPage(router) {
   function openLetter(id) {
     const letter = letterById(id);
     if (!letter) return;
+    if (isDraft(letter) && !userStore.isAdmin) return;
+    // Abrir una carta cuenta como conocer su categoría (p. ej. desde el aviso).
+    seenCats = markCategorySeen(letter.category);
 
     const wasNew = !seen.includes(id);
+    const wasUpdated = isUpdated(letter);
+    if (letter.updatedAt) seenUpdates = markUpdateSeen(id, letter.updatedAt);
     if (wasNew) {
       seen.push(id);
       persist();
       // Rastro para el panel: `analytics_visits` solo lo puede leer el admin,
       // así que abrir una carta se registra como visita a una ruta reservada.
       db.trackVisit(`${OPENWHEN_READ_PREFIX}${id}`).catch(() => {});
-      // Repinta antes de abrir el sheet: así la carta pasa sola a "Vistas"
-      // y los contadores de las categorías quedan al día.
-      render();
     }
+    // Repinta antes de abrir el sheet: así la carta pasa sola a "Vistas" (o
+    // pierde el aviso de «Actualizada») y los contadores quedan al día.
+    if (wasNew || wasUpdated) render();
 
     const meta = TYPE_META[letter.type] || TYPE_META.carta;
     openSheet(letter.title, () => {
@@ -526,7 +583,9 @@ export function OpenWhenPage(router) {
 
       const msg = document.createElement('p');
       msg.className = 'ow-sheet__msg';
-      msg.innerHTML = escapeHtml(letter.message).replace(/\n/g, '<br>');
+      msg.innerHTML = letter.message
+        ? escapeHtml(letter.message).replace(/\n/g, '<br>')
+        : '<em class="ow-sheet__empty">Todavía sin escribir.</em>';
       body.appendChild(msg);
 
       if (letter.media) body.insertAdjacentHTML('beforeend', mediaWidget(letter));
@@ -565,6 +624,7 @@ export function OpenWhenPage(router) {
 
   function goToCategory(catId) {
     if (!CATEGORIES.find(c => c.id === catId)) return;
+    seenCats = markCategorySeen(catId);
     view = catId;
     render();
     page.scrollTop = 0;
@@ -581,6 +641,7 @@ export function OpenWhenPage(router) {
     const initialCat = letterToEdit?.category || defaultCat || CATEGORIES[0].id;
     const initialType = letterToEdit?.type || 'carta';
     const initialMediaKind = letterToEdit?.media?.kind || '';
+    const initialStatus = letterToEdit?.status === 'pronto' ? 'pronto' : '';
 
     openSheet(isNew ? 'Escribir nueva carta' : 'Editar carta', () => {
       const container = document.createElement('div');
@@ -612,6 +673,13 @@ export function OpenWhenPage(router) {
               <option value="sorpresa" ${initialType === 'sorpresa' ? 'selected' : ''}>🎁 Sorpresa</option>
             </select>
           </div>
+        </div>
+        <div class="ow-form-field">
+          <label>Estado</label>
+          <select id="owStatus">
+            <option value="" ${!initialStatus ? 'selected' : ''}>Lista para ella</option>
+            <option value="pronto" ${initialStatus ? 'selected' : ''}>Pronto · todavía sin escribir</option>
+          </select>
         </div>
         <div class="ow-form-field">
           <label>Contenido del mensaje</label>
@@ -686,8 +754,9 @@ export function OpenWhenPage(router) {
         const type = container.querySelector('#owType').value;
         const mediaKind = kindSelect.value;
 
+        const status = container.querySelector('#owStatus')?.value === 'pronto' ? 'pronto' : '';
         if (!title) { toast('Por favor introduce un título'); return; }
-        if (!message) { toast('Por favor escribe el mensaje de la carta'); return; }
+        if (!message && !status) { toast('Escribe el mensaje o marca la carta como «Pronto»'); return; }
 
         let media = null;
         if (mediaKind === 'audio' || mediaKind === 'video') {
@@ -713,6 +782,9 @@ export function OpenWhenPage(router) {
           title,
           note,
           message,
+          // Versión de la carta: es lo que dispara el «Actualizada» de ella.
+          updatedAt: new Date().toISOString(),
+          ...(status ? { status } : {}),
           ...(media ? { media } : {})
         };
 

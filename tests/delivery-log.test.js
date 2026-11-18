@@ -217,7 +217,7 @@ test('el token viaja en el payload y es distinto por dispositivo', async () => {
   // Un token por endpoint, generado ANTES de enviar: si se generara después,
   // el payload ya habría salido sin él y el acuse no tendría a qué referirse.
   assert.match(reminder, /for \(const sub of subscriptions\) deliveries\.set\(sub\.endpoint, randomUUID\(\)\);/);
-  assert.match(reminder, /\(sub\) => reminderPayload\(reminder, deliveries\.get\(sub\.endpoint\)\)/);
+  assert.match(reminder, /sub => reminderPayload\(reminder, deliveries\.get\(sub\.endpoint\)\)/);
   assert.match(reminder, /delivery_id: deliveries\.get\(sub\.endpoint\)/);
   // El envío acepta un payload por destinatario, sin romper el caso de cadena.
   assert.match(pushApi, /const payloadFor = typeof payload === 'function' \? payload : \(\) => payload;/);

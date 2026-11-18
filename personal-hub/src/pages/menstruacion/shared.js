@@ -6,7 +6,36 @@
 
 import { escapeHtml } from '../../utils/escape.js';
 import { addDaysISO, daysBetween } from '../../utils/cycleMath.js';
-import { flowLabel, symptomLabel } from '../../data/cycle.data.js';
+import { flowLabel, symptomById } from '../../data/cycle.data.js';
+
+/* Mismos emojis en las dos caras del módulo: lo que ve ella y lo que ve él. */
+export const PHASE_EMOJI = {
+  menstrual: '🩸',
+  follicular: '🌱',
+  fertile: '🌼',
+  ovulation: '✨',
+  luteal: '🌙',
+  none: '🌿',
+};
+
+export const FLOW_EMOJI = { light: '💧', medium: '🩸', heavy: '🩸' };
+
+export function phaseEmoji(id) {
+  return PHASE_EMOJI[id] || PHASE_EMOJI.none;
+}
+
+/** Emoji + texto de un síntoma (los personalizados no están en el catálogo). */
+export function symptomChip(id) {
+  const key = String(id || '');
+  if (key.startsWith('custom:')) return { emoji: '✳️', label: key.slice(7) };
+  const item = symptomById(key);
+  return { emoji: item.emoji || '✳️', label: item.label };
+}
+
+/** Título de sección con su emoji, igual en todas las vistas del módulo. */
+export function sectionTitle(emoji, text) {
+  return `<h2 class="section-title cy-section-title"><span aria-hidden="true">${emoji}</span> ${escapeHtml(text)}</h2>`;
+}
 
 export const MONTHS = [
   'Enero',
@@ -76,14 +105,15 @@ export function leadingBlanks(year, monthIndex) {
  */
 export function logChips(log) {
   const chips = [];
-  if (log.flow) chips.push({ tone: 'flow', text: flowLabel(log.flow) });
-  if (log.spotting) chips.push({ tone: 'flow', text: 'Manchado' });
+  if (log.flow) chips.push({ tone: 'flow', text: flowLabel(log.flow), emoji: FLOW_EMOJI[log.flow] || '🩸' });
+  if (log.spotting) chips.push({ tone: 'flow', text: 'Manchado', emoji: '🩹' });
   const symptoms = log.symptoms || [];
   for (const id of symptoms.slice(0, 3)) {
-    chips.push({ tone: 'symptom', text: symptomLabel(id) });
+    const symptom = symptomChip(id);
+    chips.push({ tone: 'symptom', text: symptom.label, emoji: symptom.emoji });
   }
   if (symptoms.length > 3) chips.push({ tone: 'more', text: `+${symptoms.length - 3}` });
-  if (log.notes) chips.push({ tone: 'note', text: 'Nota' });
+  if (log.notes) chips.push({ tone: 'note', text: 'Nota', emoji: '📝' });
   return chips;
 }
 
@@ -91,7 +121,10 @@ export function logChips(log) {
 export function chipsHTML(chips) {
   if (!chips.length) return '<span class="cy-chip cy-chip--empty">Sin datos</span>';
   return chips
-    .map(chip => `<span class="cy-chip cy-chip--${chip.tone}">${escapeHtml(chip.text)}</span>`)
+    .map(
+      chip =>
+        `<span class="cy-chip cy-chip--${chip.tone}">${chip.emoji ? `<span class="cy-chip__emoji" aria-hidden="true">${chip.emoji}</span>` : ''}${escapeHtml(chip.text)}</span>`
+    )
     .join('');
 }
 

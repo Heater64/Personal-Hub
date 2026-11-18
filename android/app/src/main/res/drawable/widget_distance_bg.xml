@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo de «Distancia»: mismo negro/morado de la marca, con borde coral para
+     distinguirlo de «Días juntos» de un vistazo sin salirse de la paleta. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="26dp" />
+    <gradient
+        android:angle="315"
+        android:endColor="@color/widget_ink"
+        android:startColor="#2A1A22" />
+    <stroke
+        android:width="1dp"
+        android:color="#38C65A3A" />
+</shape>

@@ -908,16 +908,44 @@ function cleanSection(value) {
  * `count` es cuántos elementos se han añadido (1 por defecto): el texto cambia
  * entre singular y plural para que el aviso diga algo cierto. En `content` el
  * destino lo elige el panel, así que pasa por la lista blanca de rutas.
+ * En Open When, `newCategory` distingue «Open When nueva» (una categoría que
+ * antes no existía, con `category` como nombre) de «Open When actualizada»
+ * (cartas nuevas en las de siempre); `updated` es el aviso de una carta que ya
+ * existía y ha cambiado.
  */
-export function announcePayload(kind, { count = 1, section = '', url = '' } = {}) {
+export function announcePayload(kind, {
+  count = 1, section = '', url = '', newCategory = false, category = '', updated = false
+} = {}) {
   const n = Number.isFinite(Number(count)) && Number(count) > 0 ? Math.floor(Number(count)) : 1;
   if (kind === 'openwhen') {
+    if (updated === true) {
+      return {
+        title: 'Carta actualizada en Open When ✏️',
+        body:
+          n === 1
+            ? 'Una carta que ya conoces tiene cambios. Mírala cuando quieras.'
+            : `${n} cartas que ya conocías tienen cambios.`,
+        url: '/openwhen',
+        tag: 'openwhen-updated',
+      };
+    }
+    if (newCategory === true) {
+      const name = cleanSection(category);
+      return {
+        title: 'Open When nueva 🗂️',
+        body: `${name ? `«${name}»` : 'Una categoría'} es nueva. Tienes ${
+          n === 1 ? 'una carta' : `${n} cartas`
+        } esperándote.`,
+        url: '/openwhen',
+        tag: 'openwhen-new',
+      };
+    }
     return {
-      title: n === 1 ? 'Nueva carta en Open When 💌' : `${n} cartas nuevas en Open When 💌`,
+      title: 'Open When actualizada 💌',
       body:
         n === 1
-          ? 'Tienes una carta sin abrir esperándote.'
-          : 'Tienes cartas sin abrir esperándote.',
+          ? 'Tienes una carta nueva sin abrir.'
+          : `Tienes ${n} cartas nuevas sin abrir.`,
       url: '/openwhen',
       tag: 'openwhen-new',
     };
@@ -1444,6 +1472,9 @@ async function handleAnnounce(req, res) {
     count: req.body?.count,
     section: req.body?.section,
     url: req.body?.url,
+    newCategory: req.body?.newCategory === true,
+    category: req.body?.category,
+    updated: req.body?.updated === true,
   });
 
   const supabase = getSupabase();

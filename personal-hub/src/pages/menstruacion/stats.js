@@ -9,7 +9,7 @@ import { escapeHtml } from '../../utils/escape.js';
 import { addDaysISO, computeStats, filterSince } from '../../utils/cycleMath.js';
 import { flowLabel, symptomLabel } from '../../data/cycle.data.js';
 import { lineChart, barRows } from './charts.js';
-import { emptyHtml } from './shared.js';
+import { emptyHtml, sectionTitle } from './shared.js';
 
 const WINDOWS = [
   { id: 3, label: '3 meses' },
@@ -18,9 +18,10 @@ const WINDOWS = [
   { id: 0, label: 'Todo' },
 ];
 
-function kpi(label, value, hint = '') {
+function kpi(emoji, label, value, hint = '') {
   return `
     <article class="cy-kpi">
+      <span class="cy-kpi__emoji" aria-hidden="true">${emoji}</span>
       <span class="cy-kpi-label">${escapeHtml(label)}</span>
       <span class="cy-kpi-value">${escapeHtml(String(value))}</span>
       ${hint ? `<span class="cy-kpi-hint">${escapeHtml(hint)}</span>` : ''}
@@ -56,42 +57,56 @@ export function renderStats(ctx) {
           })
         : `
       <section class="cy-section">
-        <h2 class="section-title">Ciclos</h2>
+        ${sectionTitle('📊', 'Ciclos')}
         <div class="cy-kpis">
-          ${kpi('Ciclos completos', stats.cycles.count, 'entre dos inicios')}
-          ${kpi('Media', stats.cycles.avg != null ? `${stats.cycles.avg} d` : '—', 'ponderada a lo reciente')}
-          ${kpi('Mediana', stats.cycles.median != null ? `${stats.cycles.median} d` : '—')}
-          ${kpi('Más corto', stats.cycles.min != null ? `${stats.cycles.min} d` : '—')}
-          ${kpi('Más largo', stats.cycles.max != null ? `${stats.cycles.max} d` : '—')}
-          ${kpi('Variación', stats.cycles.spread ? `${stats.cycles.spread} d` : '—', 'entre el más corto y el más largo')}
+          ${kpi('🔄', 'Ciclos completos', stats.cycles.count, 'entre dos inicios')}
+          ${kpi('📊', 'Media', stats.cycles.avg != null ? `${stats.cycles.avg} d` : '—', 'ponderada a lo reciente')}
+          ${kpi('📏', 'Mediana', stats.cycles.median != null ? `${stats.cycles.median} d` : '—')}
+          ${kpi('⏱️', 'Más corto', stats.cycles.min != null ? `${stats.cycles.min} d` : '—')}
+          ${kpi('📈', 'Más largo', stats.cycles.max != null ? `${stats.cycles.max} d` : '—')}
+          ${kpi('🎢', 'Variación', stats.cycles.spread ? `${stats.cycles.spread} d` : '—', 'entre el más corto y el más largo')}
         </div>
         <div class="card cy-chart-card">
-          ${lineChart(stats.cycles.values, { label: 'Duración de cada ciclo', unit: 'días' })}
+          ${lineChart(stats.cycles.values, {
+            label: 'Duración de cada ciclo',
+            unit: 'días',
+            yLabel: 'Días',
+            xLabel: 'Nº Menstruación',
+            labels: stats.cycles.values.map((_, index) => String(index + 1)),
+            note: `Cada punto es un ciclo completo, del más antiguo (1) al más reciente (${stats.cycles.values.length}).`,
+          })}
         </div>
       </section>
 
       <section class="cy-section">
-        <h2 class="section-title">Menstruación</h2>
+        ${sectionTitle('🩸', 'Menstruación')}
         <div class="cy-kpis">
-          ${kpi('Periodos', stats.periods.count, 'con duración medida')}
-          ${kpi('Duración media', stats.periods.avg != null ? `${stats.periods.avg} d` : '—')}
-          ${kpi('Más habitual', stats.flow[0] ? flowLabel(stats.flow[0].id) : '—', 'flujo registrado')}
+          ${kpi('🩸', 'Periodos', stats.periods.count, 'con duración medida')}
+          ${kpi('📏', 'Duración media', stats.periods.avg != null ? `${stats.periods.avg} d` : '—')}
+          ${kpi('💧', 'Más habitual', stats.flow[0] ? flowLabel(stats.flow[0].id) : '—', 'flujo registrado')}
         </div>
         <div class="card cy-chart-card">
           <h3 class="cy-chart-label">Duración de cada periodo</h3>
-          ${barRows(stats.periods.values.map((value, index) => ({ label: `Periodo ${index + 1}`, value })))}
+          ${barRows(
+            stats.periods.values.map((value, index) => ({ label: `Periodo ${index + 1}`, value })),
+            {
+              unit: ' d',
+              note: `Cada barra es un periodo cerrado, en orden; el número son los días que duró (media ${stats.periods.avg} d).`,
+            }
+          )}
         </div>
       </section>
 
       <section class="cy-section">
-        <h2 class="section-title">Síntomas</h2>
+        ${sectionTitle('🩺', 'Síntomas')}
         <div class="card cy-chart-card">
           ${barRows(
             stats.symptoms.map(item => ({
               label: symptomLabel(item.id),
               value: item.count,
               hint: item.avgCycleDay ? `de media, día ${item.avgCycleDay}` : '',
-            }))
+            })),
+            { note: 'Cada barra cuenta los días en que registraste ese síntoma.' }
           )}
         </div>
         <p class="cy-hint">Aparecen ordenados por frecuencia. La relación con una fase concreta es orientativa: no demuestra causa.</p>

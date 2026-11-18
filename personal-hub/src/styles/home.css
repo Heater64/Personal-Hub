@@ -1218,6 +1218,7 @@
   padding: 22px clamp(18px, 6vw, 34px);
 }
 .home-map__avatar {
+  position: relative;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
@@ -1233,7 +1234,11 @@
   font-weight: 600;
   font-family: var(--font-serif, inherit);
 }
+/* La foto va absoluta: con `width: 100%` sobre una rejilla la imagen se
+   quedaba a su tamaño natural y solo se veía el centro recortado. */
 .home-map__avatar img {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -1291,123 +1296,509 @@ button.home-map:focus-visible {
 
 /* ==========================================
    HOJA DEL MAPA REAL
-   ========================================== */
+   ==========================================
+   Tres capas: la distancia (arriba, en pastilla), el mapa con las dos fotos
+   y las fichas de los móviles (abajo). Cada dato lleva su icono y su palabra:
+   «Batería 82 %», «Conexión Wi-Fi · 42 Mbps», no una fila de símbolos. */
 .distmap {
+  --dm-you: #b0616f;
+  --dm-her: #c65a3a;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-12);
+  gap: 10px;
+}
+
+/* --- Cabecera: distancia y quién es cada color --- */
+.distmap__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 .distmap__km {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  text-align: center;
+  padding: 7px 13px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  box-shadow: 0 2px 10px -8px rgba(0, 0, 0, 0.6);
 }
-.distmap__canvas {
-  height: min(46vh, 320px);
+.distmap__km .ic {
+  align-self: center;
+  color: var(--dm-her);
+}
+.distmap__km small {
+  color: var(--text-tertiary);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* «Estáis juntos»: misma pastilla, con el corazón y el aire de la paleta. */
+.distmap__km--together {
+  border-color: rgba(243, 197, 208, 0.55);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--dm-her) 16%, var(--surface)), var(--surface));
+}
+.distmap__km--together .ic {
+  color: var(--dm-her);
+}
+.distmap__persons {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.distmap__swatch {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+.distmap__swatch--me {
+  color: var(--dm-you);
+}
+.distmap__swatch--them {
+  margin-left: 6px;
+  color: var(--dm-her);
+}
+
+/* --- Mapa --- */
+.distmap__frame {
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--border-soft);
-  border-radius: var(--r-l);
-  background: #eef1ea;
+  border-radius: 20px;
+  background: #e9eee6;
+  box-shadow: 0 18px 40px -30px rgba(0, 0, 0, 0.55);
+  isolation: isolate;
+}
+/* Sombra interior abajo: asienta el mapa y separa las fichas del borde. */
+.distmap__frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 -44px 40px -36px rgba(0, 0, 0, 0.45);
+}
+.distmap__canvas {
+  height: min(44vh, 300px);
   /* Leaflet trae sus propios z-index; el sheet es otra capa. */
   z-index: 0;
 }
 .distmap__canvas.is-empty {
   display: grid;
-  place-items: center;
-  padding: 18px;
-  color: #5d5d55;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 26px;
+  background: linear-gradient(160deg, #f2f5ee, #e3e9dc);
+  color: #5d6659;
   font-size: var(--fs-sm);
   text-align: center;
 }
-.distmap__pin-ring {
+.distmap__canvas.is-empty .ic {
+  color: #8b9683;
+}
+
+/* Chinchetas: foto con anillo del color de cada uno y el nombre debajo. */
+.distmap__pin {
+  background: none;
+  border: 0;
+}
+.distmap__pin--me {
+  --pin: var(--dm-you);
+}
+.distmap__pin--them {
+  --pin: var(--dm-her);
+}
+.distmap__pin-wrap {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
+}
+.distmap__pin-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
   overflow: hidden;
-  border: 3px solid #ff9db3;
+  border: 3px solid #fff;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
-  color: #b0616f;
-  font-size: 18px;
+  background: linear-gradient(150deg, var(--dm-you), #5f3039);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.28),
+    0 0 0 3px var(--pin, var(--dm-her));
+}
+.distmap__pin--them .distmap__pin-ring {
+  background: linear-gradient(150deg, var(--dm-her), #7a2f1c);
 }
 .distmap__pin-ring img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.distmap__cards {
+/* Las dos caras cuando comparten sitio: una sola chincheta con las dos. */
+.distmap__pair {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.distmap__pair-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(150deg, var(--dm-you), #5f3039);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.28),
+    0 0 0 2px var(--pin, var(--dm-her));
+}
+.distmap__pair-face--me {
+  --pin: var(--dm-you);
+  z-index: 1;
+}
+/* Una al lado de la otra, sin montarse: las dos caras se ven enteras. */
+.distmap__pair-face--them {
+  --pin: var(--dm-her);
+  margin-left: 4px;
+  background: linear-gradient(150deg, var(--dm-her), #7a2f1c);
+}
+.distmap__pair-face img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.distmap__pair .distmap__pin-tag {
+  top: 44px;
+}
+.distmap__pin-tag {
+  position: absolute;
+  top: 53px;
+  left: 50%;
+  max-width: 96px;
+  padding: 2px 8px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(15, 15, 16, 0.82);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* --- Aviso de permiso --- */
+.distmap__perm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px dashed color-mix(in srgb, var(--dm-her) 45%, var(--border-soft));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dm-her) 7%, var(--surface));
+}
+.distmap__perm-ico {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--dm-her) 16%, transparent);
+  color: var(--dm-her);
+}
+.distmap__perm-txt {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.distmap__perm-txt b {
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+.distmap__perm-txt p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.distmap__perm-btn {
+  flex: none;
+  padding: 7px 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--dm-her);
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.distmap__perm-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- Fichas de los móviles --- */
+.distmap__devices {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-8);
+  gap: 8px;
+}
+.distmap__devices-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 2px 0;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .distmap__card {
   display: flex;
-  align-items: center;
-  gap: var(--sp-10);
-  padding: 10px 12px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid var(--border-soft);
-  border-radius: var(--r-m);
-  background: var(--surface);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 90%, #000));
+  box-shadow: 0 10px 26px -24px rgba(0, 0, 0, 0.7);
+}
+.distmap__card.is-stale {
+  border-style: dashed;
+}
+.distmap__card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .distmap__ava {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
+  flex: none;
   overflow: hidden;
-  flex: 0 0 auto;
   border-radius: 50%;
-  background: var(--surface-2, rgba(255, 255, 255, 0.06));
-  color: #ff9db3;
+  background: linear-gradient(150deg, var(--dm-her), #7a2f1c);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dm-her) 30%, transparent);
 }
 .distmap__ava img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.distmap__body {
+.distmap__who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.distmap__who strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.distmap__stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.distmap__stamp .ic {
+  opacity: 0.75;
+}
+.distmap__live {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #4ea87a 15%, transparent);
+  color: #3f8a63;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.distmap__live i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.distmap__live.is-stale {
+  background: color-mix(in srgb, #e0a13a 18%, transparent);
+  color: #a8791f;
+}
+.distmap__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.distmap__stat {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+.distmap__stat > .ic {
+  flex: none;
+  margin-top: 1px;
+  color: var(--dm-her);
+  opacity: 0.9;
+}
+.distmap__stat-txt {
   display: flex;
   flex-direction: column;
   gap: 1px;
   min-width: 0;
 }
-.distmap__body strong {
+.distmap__stat-label {
+  color: var(--text-tertiary);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.distmap__stat-value {
   color: var(--text-primary);
-  font-size: var(--fs-sm);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.distmap__body span {
+.distmap__stat-hint {
   color: var(--text-secondary);
-  font-size: var(--fs-xs, 12px);
+  font-size: 10px;
 }
-.distmap__stamp {
+.distmap__stat--battery {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 5px;
+  grid-column: 1 / -1;
+}
+.distmap__stat-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.distmap__stat-top > .ic {
+  color: var(--dm-her);
+}
+.distmap__stat-top .distmap__stat-value {
+  margin-left: auto;
+  font-size: 14px;
+}
+.distmap__meter {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  color: #4ea87a;
+}
+.distmap__meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  transition: width 0.4s ease;
+}
+.distmap__meter--mid {
+  color: #e0a13a;
+}
+.distmap__meter--low {
+  color: #d2564a;
+}
+.distmap__empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.distmap__foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 2px 2px 0;
   color: var(--text-tertiary);
   font-size: 10px;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
 }
-.distmap__stamp.is-stale {
-  color: var(--warm-amber, #ffb347);
-}
-.distmap__card.is-stale {
-  border-style: dashed;
+.distmap__foot .ic {
+  flex: none;
+  margin-top: 1px;
+  opacity: 0.8;
 }
 
-/* Seguimiento en segundo plano: estado real y un solo interruptor. */
+/* --- Seguimiento en segundo plano --- */
 .distmap__track {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-8);
+  gap: 8px;
   padding: 12px 14px;
   border: 1px solid var(--border-soft);
-  border-radius: var(--r-m);
-  background: var(--surface-2, var(--surface));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--text-primary) 4%, var(--surface));
 }
 .distmap__track-head {
   display: flex;
   align-items: center;
-  gap: var(--sp-8);
+  gap: 8px;
   color: var(--text-primary);
   font-size: var(--fs-sm);
 }
@@ -1419,8 +1810,8 @@ button.home-map:focus-visible {
   background: var(--text-tertiary);
 }
 .distmap__dot.is-on {
-  background: var(--green, #4ade80);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green, #4ade80) 22%, transparent);
+  background: #4ea87a;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #4ea87a 22%, transparent);
 }
 .distmap__track-state {
   margin-left: auto;
@@ -1443,23 +1834,30 @@ button.home-map:focus-visible {
   list-style: none;
 }
 .distmap__track-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 3px 9px;
   border: 1px solid var(--border-soft);
-  border-radius: var(--r-full);
-  background: var(--surface-3, var(--surface));
+  border-radius: 999px;
+  background: var(--surface);
   color: var(--text-secondary);
   font-size: 10px;
+}
+.distmap__track-chips li .ic {
+  color: var(--dm-her);
+  opacity: 0.85;
 }
 .distmap__track-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-8);
+  gap: 8px;
 }
 .distmap__track-btn {
   padding: 7px 14px;
   border: 1px solid transparent;
-  border-radius: var(--r-full);
+  border-radius: 999px;
   background: var(--primary);
   color: var(--on-accent, #fff);
   font: inherit;
@@ -1474,7 +1872,7 @@ button.home-map:focus-visible {
 .distmap__track-link {
   padding: 7px 10px;
   border: 1px solid var(--border-soft);
-  border-radius: var(--r-full);
+  border-radius: 999px;
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
@@ -1485,15 +1883,35 @@ button.home-map:focus-visible {
   display: none;
 }
 .distmap__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   margin: 0;
   color: var(--text-tertiary);
-  font-size: 11px;
-  text-align: center;
+  font-size: 10.5px;
+  line-height: 1.45;
+  text-align: left;
+}
+.distmap__note .ic {
+  flex: none;
+  margin-top: 1px;
 }
 
-/* Botón de permiso dentro del aviso del mapa. */
+/* --- Aviso dentro del panel de la portada --- */
+.home-map__hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #b7bab1;
+}
+.home-map__hint .ic {
+  color: #d99a8b;
+}
 .home-map__allow {
-  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
   padding: 3px 10px;
   border: 1px solid var(--primary);
   border-radius: 999px;
@@ -1511,62 +1929,58 @@ button.home-map:focus-visible {
 }
 
 /* ==========================================
-   WIDGETS — la pestaña de Inicio
+   WIDGETS — una sola tarjeta en Inicio
    ========================================== */
 .home-widgets {
   margin-top: var(--sp-18);
 }
-.home-widgets__previews {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sp-10);
-}
-.home-widgets__preview {
+.home-widgets__card {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
   border: 1px solid var(--border-soft);
   border-radius: var(--r-l);
   background: var(--surface);
   color: inherit;
   font: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.home-widgets__preview:active {
-  transform: scale(0.985);
+.home-widgets__card:active {
+  transform: scale(0.99);
 }
-.wp-mini {
+.home-widgets__ico {
   display: grid;
   place-items: center;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  border-radius: 16px;
-  font-size: 16px;
-  font-weight: 700;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 12px;
+  background: color-mix(in srgb, #c65a3a 14%, transparent);
+  color: #9c462b;
 }
-.wp-mini--days {
-  background: linear-gradient(160deg, #3b2040, #1b1220);
-  color: #fff;
+.home-widgets__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
-.wp-mini--days b {
-  font-size: 26px;
-  margin-right: 2px;
+.home-widgets__text b {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
 }
-.wp-mini--distance {
-  background: linear-gradient(160deg, #fff0e9, #f9c9d2);
-  color: #7a3a44;
-}
-.home-widgets__name {
+.home-widgets__text span {
   color: var(--text-secondary);
   font-size: var(--fs-xs, 12px);
+  line-height: 1.3;
 }
-.home-widgets__note {
-  margin: 8px 0 0;
+.home-widgets__card > .ic {
+  flex: none;
   color: var(--text-tertiary);
-  font-size: 11px;
-  text-align: center;
 }
 
 /* ==========================================
@@ -1884,6 +2298,409 @@ button.home-map:focus-visible {
   color: #7a3a44;
 }
 
+/* ==========================================
+   WIDGET «DÍAS JUNTOS»: miniatura fiel
+   ==========================================
+   Cada tamaño tiene su propia composición, igual que el layout nativo. Las
+   medidas van en px = dp del widget, así la miniatura ocupa lo mismo que
+   ocupará en el escritorio. */
+.wsheet .wprev.wprev--days {
+  justify-content: center;
+  gap: 0;
+  padding: 14px;
+  border: 1px solid rgba(243, 197, 208, 0.17);
+  border-radius: 24px;
+  background: linear-gradient(150deg, #2e1b35, #0f0f10);
+  color: #fff;
+}
+.wsheet .wprev.wprev--days.wprev--compact {
+  flex: none;
+  gap: 3px;
+  width: 110px;
+  height: 110px;
+  max-width: none;
+  padding: 10px;
+  border-radius: 20px;
+}
+.wsheet .wprev.wprev--days.wprev--rect {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 250px;
+  height: 110px;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: 14px;
+}
+.wsheet .wprev.wprev--days.wprev--large {
+  flex: none;
+  flex-direction: column;
+  gap: 0;
+  width: 250px;
+  height: 180px;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: 14px;
+}
+.wsheet .wprev--days .wprev__kicker {
+  margin: 0;
+  color: #f3c5d0;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+.wsheet .wprev--days .wprev__count {
+  margin: 0;
+  color: #fff;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.wsheet .wprev--days.wprev--compact .wprev__count {
+  margin-top: 3px;
+}
+.wsheet .wprev--days.wprev--large .wprev__count {
+  font-size: 44px;
+}
+.wsheet .wprev--days .wprev__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin: 1px 0 0;
+}
+.wsheet .wprev--days .wprev__unit {
+  margin-bottom: 4px;
+  color: #f3c5d0;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.wsheet .wprev--days.wprev--large .wprev__unit {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.wsheet .wprev--days .wprev__meta {
+  max-width: 100%;
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: #c9bbd1;
+  font-size: 9px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wsheet .wprev--days .wprev__hint {
+  margin: 2px 0 0;
+  color: #c9bbd1;
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.wsheet :is(.wprev--days, .wprev--countdown) .wprev__accent {
+  flex: 0 0 3px;
+  width: 3px;
+  height: 44px;
+  border-radius: 2px;
+  background: #c65a3a;
+}
+.wsheet .wprev--days .wprev__col {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.wsheet .wprev__faces--rect {
+  flex: 0 0 auto;
+}
+.wsheet .wprev__faces--large {
+  margin-bottom: 8px;
+}
+.wsheet .wprev__face--rect {
+  width: 46px;
+  height: 46px;
+  border-color: rgba(243, 197, 208, 0.8);
+}
+.wsheet .wprev__face--large {
+  width: 44px;
+  height: 44px;
+  border-color: rgba(243, 197, 208, 0.8);
+}
+.wsheet .wprev__faces--rect .wprev__face + .wprev__face,
+.wsheet .wprev__faces--large .wprev__face + .wprev__face {
+  margin-left: -12px;
+}
+
+/* ==========================================
+   WIDGET «DISTANCIA»: misma estructura que
+   «días juntos», con el coral como acento
+   ========================================== */
+.wsheet .wprev.wprev--distance {
+  justify-content: center;
+  gap: 0;
+  padding: 14px;
+  border: 1px solid rgba(198, 90, 58, 0.38);
+  border-radius: 24px;
+  background: linear-gradient(150deg, #2a1a22, #0f0f10);
+  color: #fff;
+}
+.wsheet .wprev.wprev--distance.wprev--compact {
+  flex: none;
+  gap: 3px;
+  width: 110px;
+  height: 110px;
+  max-width: none;
+  padding: 10px;
+  border-radius: 20px;
+}
+.wsheet .wprev.wprev--distance.wprev--rect {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 250px;
+  height: 110px;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: 14px;
+}
+.wsheet .wprev.wprev--distance.wprev--large {
+  flex: none;
+  flex-direction: column;
+  gap: 0;
+  width: 250px;
+  height: 180px;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: 14px;
+}
+.wsheet .wprev--distance .wprev__kicker {
+  margin: 0;
+  color: #e59277;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.wsheet .wprev--distance .wprev__count {
+  margin: 0;
+  color: #fff;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.wsheet .wprev--distance.wprev--compact .wprev__count {
+  margin-top: 3px;
+}
+.wsheet .wprev--distance.wprev--rect .wprev__count {
+  margin-top: 1px;
+  font-size: 34px;
+}
+.wsheet .wprev--distance.wprev--large .wprev__count {
+  margin-top: 1px;
+  font-size: 40px;
+}
+.wsheet .wprev--distance .wprev__row {
+  display: flex;
+  align-items: flex-end;
+  margin: 0;
+}
+.wsheet .wprev--distance .wprev__caption,
+.wsheet .wprev--distance .wprev__meta,
+.wsheet .wprev--distance .wprev__hint {
+  max-width: 100%;
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: #c9bbd1;
+  font-size: 9px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wsheet__hint {
+  margin: 2px 0 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+/* ==========================================
+   WIDGETS «CUENTA ATRÁS» Y «ESTADO DE ÁNIMO»
+   Misma geometría que los anteriores; cambia el acento y el contenido.
+   ========================================== */
+.wsheet .wprev:is(.wprev--countdown, .wprev--mood) {
+  justify-content: center;
+  gap: 0;
+  padding: 14px;
+  border-radius: 24px;
+  color: #fff;
+}
+.wsheet .wprev:is(.wprev--countdown, .wprev--mood).wprev--compact {
+  flex: none;
+  gap: 3px;
+  width: 110px;
+  height: 110px;
+  max-width: none;
+  padding: 10px;
+  border-radius: 20px;
+}
+.wsheet .wprev:is(.wprev--countdown, .wprev--mood).wprev--rect {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  width: 250px;
+  height: 110px;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: 14px;
+}
+.wsheet .wprev:is(.wprev--countdown, .wprev--mood).wprev--large {
+  flex: none;
+  flex-direction: column;
+  gap: 0;
+  width: 250px;
+  height: 180px;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: 14px;
+}
+.wsheet .wprev--countdown {
+  border: 1px solid rgba(198, 90, 58, 0.32);
+  background: linear-gradient(150deg, #2c1b22, #0f0f10);
+}
+.wsheet .wprev--mood {
+  border: 1px solid rgba(243, 197, 208, 0.28);
+  background: linear-gradient(150deg, #2a1b30, #0f0f10);
+}
+.wsheet :is(.wprev--countdown, .wprev--mood) .wprev__kicker {
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wsheet .wprev--countdown .wprev__kicker {
+  color: #e59277;
+}
+.wsheet .wprev--mood .wprev__kicker {
+  color: #f3c5d0;
+}
+.wsheet :is(.wprev--countdown, .wprev--mood) .wprev__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  margin: 3px 0 0;
+}
+.wsheet :is(.wprev--countdown, .wprev--mood) .wprev__count {
+  margin: 0;
+  color: #fff;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.wsheet .wprev--countdown.wprev--rect .wprev__count {
+  font-size: 36px;
+}
+.wsheet .wprev--countdown.wprev--large .wprev__count {
+  font-size: 48px;
+}
+.wsheet :is(.wprev--countdown, .wprev--mood) .wprev__unit {
+  margin-bottom: 3px;
+  color: #f3c5d0;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.wsheet .wprev--countdown.wprev--rect .wprev__unit {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+.wsheet .wprev--countdown.wprev--large .wprev__unit {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.wsheet .wprev--countdown .wprev__title {
+  max-width: 100%;
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wsheet .wprev--mood .wprev__emoji {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1;
+}
+.wsheet .wprev--mood.wprev--rect .wprev__emoji {
+  flex: 0 0 auto;
+  font-size: 36px;
+}
+.wsheet .wprev--mood.wprev--large .wprev__emoji {
+  margin-top: 4px;
+  font-size: 56px;
+}
+.wsheet .wprev--mood .wprev__mood-label {
+  max-width: 100%;
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: normal;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+.wsheet .wprev--mood.wprev--rect .wprev__mood-label {
+  margin: 1px 0 0;
+  font-size: 16px;
+}
+.wsheet .wprev--mood.wprev--large .wprev__mood-label {
+  margin-top: 2px;
+  font-size: 20px;
+}
+.wsheet :is(.wprev--countdown, .wprev--mood) .wprev__meta {
+  max-width: 100%;
+  margin: 1px 0 0;
+  overflow: hidden;
+  color: #c9bbd1;
+  font-size: 9px;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wsheet .wprev--countdown.wprev--rect .wprev__meta,
+.wsheet .wprev--mood.wprev--rect .wprev__meta {
+  text-align: left;
+}
+
 /* Atajo de Menstruación: ocupa la fila entera, como un banner. */
 .home-shortcut--wide {
   grid-column: 1 / -1;
@@ -1892,4 +2709,137 @@ button.home-map:focus-visible {
 }
 .home-shortcut--wide .home-shortcut__ic {
   color: var(--accent, #ff6fa5);
+}
+
+/* ==========================================
+   WIDGETS: tokens compartidos y widgets nuevos
+   El bloque widget-tokens es la fuente de la paleta para la web; el script
+   `node tools/sync-widget-tokens.mjs` lo copia a widget_colors.xml para que
+   Android y la hoja no tengan dos copias que se separen.
+   ========================================== */
+/* widget-tokens:start */
+:root {
+  --widget-ink: #0F0F10;
+  --widget-plum: #25172A;
+  --widget-plum-light: #2E1B35;
+  --widget-coral: #C65A3A;
+  --widget-coral-soft: #E59277;
+  --widget-rose: #F3C5D0;
+  --widget-text-muted: #B3C9BBD1;
+}
+/* widget-tokens:end */
+
+/* Letra del sistema en la hoja: el zoom mantiene la relación texto/hueco del
+   widget real, que es lo que se quiere revisar. */
+.wsheet__fonts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs, 12px);
+}
+.wsheet__fonts button {
+  padding: 4px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-pill, 999px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.wsheet__fonts button.is-on {
+  border-color: var(--widget-coral);
+  color: var(--widget-coral-soft);
+}
+.wsheet[data-font='1.3'] .wsheet__preview {
+  flex-basis: 154px;
+}
+.wsheet[data-font='1.3'] .wprev {
+  zoom: 1.3;
+}
+.wsheet[data-font='1.5'] .wsheet__preview {
+  flex-basis: 178px;
+}
+.wsheet[data-font='1.5'] .wprev {
+  zoom: 1.5;
+}
+
+/* Widgets nuevos: mismos materiales que la familia. */
+.wsheet .wprev--cycle,
+.wsheet .wprev--watching,
+.wsheet .wprev--gifts {
+  gap: 2px;
+  border: 1px solid rgba(243, 197, 208, 0.22);
+  border-radius: 20px;
+  background: linear-gradient(150deg, #241a2c, var(--widget-ink));
+  color: #fff;
+}
+.wsheet .wprev--gifts {
+  border-color: rgba(198, 90, 58, 0.34);
+  background: linear-gradient(150deg, #2c1b22, var(--widget-ink));
+}
+.wsheet .wprev--cycle.wprev--compact,
+.wsheet .wprev--watching.wprev--compact,
+.wsheet .wprev--gifts.wprev--compact {
+  width: 110px;
+  height: 110px;
+  padding: 10px;
+}
+.wsheet .wprev--cycle.wprev--rect,
+.wsheet .wprev--watching.wprev--rect,
+.wsheet .wprev--gifts.wprev--rect {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 250px;
+  height: 110px;
+  padding: 14px;
+}
+.wsheet .wprev--cycle.wprev--large,
+.wsheet .wprev--watching.wprev--large,
+.wsheet .wprev--gifts.wprev--large {
+  width: 250px;
+  height: 180px;
+  padding: 14px;
+}
+.wprev__title--lg {
+  font-size: 18px;
+}
+.wprev__meta--rose {
+  color: var(--widget-rose);
+}
+.wprev__count--sm {
+  font-size: 24px;
+}
+.wprev__emoji--sm {
+  font-size: 24px;
+}
+.wprev__poster {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 52px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid rgba(243, 197, 208, 0.22);
+  border-radius: 10px;
+  background: #3a2a42;
+}
+.wprev__poster img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wsheet .wprev--watching.wprev--compact .wprev__poster {
+  width: 44px;
+  height: 60px;
+}
+.wsheet .wprev--watching.wprev--large .wprev__poster {
+  width: 72px;
+  height: 96px;
 }

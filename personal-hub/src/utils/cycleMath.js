@@ -172,37 +172,37 @@ export function confidenceFor(lengths = [], spread = 0) {
       label: 'Sin datos suficientes',
       cycles: 0,
       spread: 0,
-      explanation: 'Aún no hay ningún ciclo completo. Registra el inicio de tu menstruación y la siguiente para empezar a calcular.'
+      explanation: 'Todavía no hay un ciclo cerrado. Apunta el inicio de tu regla y el del siguiente y empiezo a calcular.'
     };
   }
   if (cycles < 3 || spread > 9) {
     return {
       level: 'low',
-      label: 'Estimación orientativa',
+      label: 'Orientativa',
       cycles,
       spread,
       explanation: cycles < 2
-        ? 'Con un solo ciclo no se puede medir la variación. La estimación usa tu duración habitual configurada.'
+        ? 'Con un solo ciclo no puedo ver cuánto te varía. De momento uso tu duración habitual.'
         : cycles < 3
-          ? `Solo hay ${cycles} ciclos completos: todavía no se puede medir bien la variación.`
-          : `Tus ciclos varían ${spread} días entre sí, así que la fecha puede moverse bastante.`
+          ? `Tengo ${cycles} ciclos apuntados: aún es pronto para ver cuánto te varían.`
+          : `Tus ciclos varían ${spread} días entre sí, así que la fecha puede moverse. Iré afinándola con cada uno.`
     };
   }
   if (cycles < 6 || spread > 5) {
     return {
       level: 'medium',
-      label: 'Estimación moderada',
+      label: 'Bastante ajustada',
       cycles,
       spread,
-      explanation: `Calculada con ${cycles} ciclos completos (variación de ${spread} días). Cuantos más registres, más se ajusta.`
+      explanation: `Tengo ${cycles} ciclos apuntados y entre uno y otro varían ${spread} días. Con cada ciclo nuevo la fecha se ajusta un poco más.`
     };
   }
   return {
     level: 'high',
-    label: 'Estimación ajustada',
-    cycles,
-    spread,
-    explanation: `Calculada con ${cycles} ciclos completos y una variación de solo ${spread} días. Aun así es una estimación, no una certeza.`
+          label: 'Muy ajustada',
+      cycles,
+      spread,
+      explanation: `Con ${cycles} ciclos y solo ${spread} días de diferencia entre ellos, la fecha está bien ajustada. Aun así es una estimación, no una promesa.`
   };
 }
 

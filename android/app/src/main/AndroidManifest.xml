@@ -57,6 +57,33 @@
                 android:resource="@xml/widget_distance_info" />
         </receiver>
 
+        <!-- Distancia, versión rectangular (4×2). -->
+        <receiver
+            android:name=".DistanceRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_distance_description_rect">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_distance_rect_info" />
+        </receiver>
+
+        <!-- Días juntos, versión rectangular (4×2): mismo dato, otra
+             composición. -->
+        <receiver
+            android:name=".DaysRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_days_description_rect">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_days_rect_info" />
+        </receiver>
+
         <!-- Versiones pequeñas: mismo diseño, otra talla mínima. -->
         <receiver
             android:name=".DaysCompactWidgetProvider"
@@ -82,12 +109,219 @@
                 android:resource="@xml/widget_distance_compact_info" />
         </receiver>
 
+        <!-- Cuenta atrás para la próxima fecha del panel. -->
+        <receiver
+            android:name=".CountdownWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_countdown_description_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_countdown_info" />
+        </receiver>
+
+        <receiver
+            android:name=".CountdownRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_countdown_description_rect">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_countdown_rect_info" />
+        </receiver>
+
+        <receiver
+            android:name=".CountdownCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_countdown_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_countdown_compact_info" />
+        </receiver>
+
+        <!-- Estado de ánimo de hoy. -->
+        <receiver
+            android:name=".MoodWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_mood_description_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_mood_info" />
+        </receiver>
+
+        <receiver
+            android:name=".MoodRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_mood_description_rect">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_mood_rect_info" />
+        </receiver>
+
+        <receiver
+            android:name=".MoodCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_mood_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_mood_compact_info" />
+        </receiver>
+
         <!-- Estado del móvil en segundo plano. El tipo «location» es el que
              permite leer ubicaciones fuera de la app. -->
         <service
             android:name=".DeviceStatusService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Elegir qué fechas enseña la cuenta atrás. Android la abre al
+             colocar el widget (android:configure en su ficha) con el id de
+             la instancia; sin exportar, el launcher no puede abrirla. -->
+        <activity
+            android:name=".CountdownWidgetConfigActivity"
+            android:exported="true"
+            android:label="@string/widget_countdown_config_title"
+            android:theme="@style/WidgetConfigTheme">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <!-- Ciclo -->
+        <receiver
+            android:name=".CycleWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_cycle_description_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_cycle_info" />
+        </receiver>
+        <receiver
+            android:name=".CycleRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_cycle_description_rect">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_cycle_rect_info" />
+        </receiver>
+        <receiver
+            android:name=".CycleCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_cycle_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_cycle_compact_info" />
+        </receiver>
+
+        <!-- Seguir viendo -->
+        <receiver
+            android:name=".WatchingWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_watching_description_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_watching_info" />
+        </receiver>
+        <receiver
+            android:name=".WatchingRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_watching_description_rect">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_watching_rect_info" />
+        </receiver>
+        <receiver
+            android:name=".WatchingCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_watching_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_watching_compact_info" />
+        </receiver>
+
+        <!-- Sorpresas -->
+        <receiver
+            android:name=".GiftsWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_gifts_description_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_gifts_info" />
+        </receiver>
+        <receiver
+            android:name=".GiftsRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_gifts_description_rect">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_gifts_rect_info" />
+        </receiver>
+        <receiver
+            android:name=".GiftsCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_gifts_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_gifts_compact_info" />
+        </receiver>
+
+        <!-- Cambio de día/hora/huso/idioma: los widgets recalculan «hoy»,
+             «ayer» y los días que faltan sin esperar a que se abra la app.
+             exported=false: solo el sistema puede enviar estos avisos. -->
+        <receiver
+            android:name=".WidgetDayChangeReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Al reiniciar el móvil se retoma el seguimiento si estaba activo. -->
         <receiver

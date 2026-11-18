@@ -21,6 +21,16 @@
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
+    <!-- Pantalla de configuración del widget de cuenta atrás: misma paleta que
+         el propio widget, sin barra de acción. -->
+    <style name="WidgetConfigTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/widget_ink</item>
+        <item name="android:statusBarColor">@color/widget_ink</item>
+        <item name="android:navigationBarColor">@color/widget_ink</item>
+        <item name="android:colorAccent">@color/widget_coral</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
     <!-- Pantalla de arranque.
          Android 12+ ignora `android:background` y pinta su propia splash del
          sistema: ahí mandan windowSplashScreenBackground / AnimatedIcon. En

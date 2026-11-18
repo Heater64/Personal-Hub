@@ -23,8 +23,9 @@ import {
   worldItems, addItems, updateItem, removeItem,
   worldStats, worldCover, formatDate, hydrateMinecraft
 } from '../services/minecraftData.js';
-import { getVideoPoster } from '../services/rincon-data.js';
+import { getVideoPoster, mediaThumb, mediaSrcset } from '../services/rincon-data.js';
 import { onContentChange } from '../services/realtime.service.js';
+import { saveTabScroll, restoreTabScroll } from '../utils/scrollMemory.js';
 
 const UI = {
   back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
@@ -65,11 +66,12 @@ function subnavHTML() {
   `;
 }
 
-/** Miniatura de un item (vídeo → póster Cloudinary) */
-function thumbOf(item) {
-  if (item.type === 'video') return getVideoPoster(item.src) || '';
-  return item.src;
+/** Miniatura de un item (vídeo → póster Cloudinary, al ancho real de la celda) */
+function thumbOf(item, width = 640) {
+  if (item.type === 'video') return getVideoPoster(item.src, width) || '';
+  return mediaThumb(item.src, width);
 }
+
 
 // ==========================================
 // RENDER — Lista de mundos
@@ -105,13 +107,14 @@ function renderWorldsList() {
             const items = worldItems(w.id);
             const stats = worldStats(w.id);
             const cover = worldCover(w, items);
-            const thumb = cover ? (getVideoPoster(cover) || cover) : '';
+            const thumb = cover ? (getVideoPoster(cover, 960) || mediaThumb(cover, 960)) : '';
+            const coverSet = cover ? mediaSrcset(cover, [480, 960]) : '';
             return `
             <div class="mc-world-card card animate-in" data-mc-world="${escapeHtml(w.id)}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir mundo ${escapeHtml(w.name)}">
               ${isAdmin ? `<button class="mc-world-menu" data-menu-world="${escapeHtml(w.id)}" aria-label="Opciones de ${escapeHtml(w.name)}" title="Opciones del mundo">⋮</button>` : ''}
               <div class="mc-world-media${thumb ? '' : ' is-empty'}">
                 ${thumb
-                  ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="mc-world-fallback" aria-hidden="true">⛏️</span>`
+                  ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}"${coverSet ? ` srcset="${escapeHtml(coverSet)}" sizes="(max-width: 599px) 100vw, (max-width: 899px) 48vw, 33vw"` : ''} alt="" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="mc-world-fallback" aria-hidden="true">⛏️</span>`
                   : `<span class="mc-world-emoji">⛏️</span><span class="mc-world-open-hint">Abrir mundo</span>`}
               </div>
               <div class="mc-world-info">
@@ -152,7 +155,7 @@ function renderWorldDetail() {
   const items = worldItems(world.id);
   const stats = worldStats(world.id);
   const cover = worldCover(world, items);
-  const thumb = cover ? (getVideoPoster(cover) || cover) : '';
+  const thumb = cover ? (getVideoPoster(cover, 1600) || mediaThumb(cover, 1600)) : '';
 
   return `
     <div class="mc-page">
@@ -201,12 +204,13 @@ function renderWorldDetail() {
         <div class="mc-items-grid">
           ${items.map((it, i) => {
             const t = thumbOf(it);
+            const tSet = it.type === 'video' ? '' : mediaSrcset(it.src, [320, 640, 960]);
             const isVid = it.type === 'video';
             return `
             <div class="mc-item" data-mc-item="${escapeHtml(it.id)}" data-index="${i}">
               <div class="mc-item-media ${isVid ? 'is-video' : ''}${t ? '' : 'is-no-thumb'}" role="button" tabindex="0" aria-label="${isVid ? 'Ver vídeo' : 'Ver foto'} ${escapeHtml(world.name)} ${i + 1}">
                 ${t
-                  ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(t)}" alt="${escapeHtml(it.caption || '')}" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="mc-world-fallback" aria-hidden="true">${isVid ? UI.play : '🖼️'}</span>`
+                  ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(t)}"${tSet ? ` srcset="${escapeHtml(tSet)}" sizes="(max-width: 599px) 46vw, (max-width: 899px) 31vw, 24vw"` : ''} alt="${escapeHtml(it.caption || '')}" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded');var m=this.closest('.mc-item-media');if(m&&this.naturalWidth){m.style.aspectRatio=this.naturalWidth+' / '+this.naturalHeight}" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="mc-world-fallback" aria-hidden="true">${isVid ? UI.play : '🖼️'}</span>`
                   : `<span class="mc-item-no-thumb">${isVid ? UI.play : '🖼️'}</span>`}
                 ${isVid ? `<span class="mc-item-play" aria-hidden="true">${UI.play}</span>` : ''}
               </div>
@@ -463,9 +467,11 @@ function openLinkModal() {
 function bind() {
   // Animación de entrada escalonada: .animate-in empieza en opacity 0
   // y necesita la clase .visible (mismo patrón que Rincon/Calendario/Juegos).
-  requestAnimationFrame(() => {
+  // setTimeout y no rAF: con la pestaña en segundo plano rAF se congela y las
+  // tarjetas se quedaban invisibles.
+  setTimeout(() => {
     page.querySelectorAll('.mc-world-card.animate-in, .mc-item.animate-in').forEach(el => el.classList.add('visible'));
-  });
+  }, 30);
 
   // Barra superior de secciones: Galería | Memes | Audios | Minecraft
   page.querySelectorAll('[data-subnav]').forEach(btn => {
@@ -584,6 +590,7 @@ export function MinecraftPage(router) {
 
   render();
   bind();
+  restoreTabScroll('/minecraft');
 
   // Sincronización cross-device: al montar la página se hace pull/push con
   // Supabase, y los cambios que haga el admin desde otro dispositivo llegan
@@ -603,6 +610,8 @@ export function MinecraftPage(router) {
 
   const origCleanup = page.cleanup;
   page.cleanup = () => {
+    const scroller = page.closest('main.main') || document.querySelector('main.main');
+    saveTabScroll('/minecraft', scroller ? scroller.scrollTop : 0);
     if (origCleanup) origCleanup();
     offContent();
   };

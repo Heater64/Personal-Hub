@@ -14,6 +14,201 @@ import { ICON_SVGS } from './icons.js';
 import { state } from './state.js';
 import { MONTHS as AUDIO_MONTHS } from './curiosities.data.js';
 
+/* ==========================================
+   Reproductor compartido
+   Un único <audio> para toda la sección: sigue sonando al cambiar de pestaña
+   o al repintar la lista, y no descarga metadatos de archivos que nadie va a
+   escuchar. La barra flotante (mini reproductor) usa este mismo elemento.
+   ========================================== */
+const shared = { el: null, id: null, title: '', durations: new Map(), mini: null };
+// Fuera de la sección el mini reproductor no debe verse aunque el audio siga
+// cargado (y pausado). Se vuelve a mostrar en cuanto el usuario reproduce.
+let miniSuppressed = false;
+
+function fmtTime(seconds) {
+  if (!isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  return `${m}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
+function sharedAudio() {
+  if (shared.el) return shared.el;
+  const el = new Audio();
+  el.preload = 'metadata';
+  shared.el = el;
+  el.addEventListener('play', () => syncAudioUI());
+  el.addEventListener('pause', () => syncAudioUI());
+  el.addEventListener('ended', () => { el.currentTime = 0; syncAudioUI(); });
+  el.addEventListener('timeupdate', () => syncAudioUI());
+  el.addEventListener('loadedmetadata', () => {
+    if (shared.id && isFinite(el.duration)) {
+      shared.durations.set(shared.id, el.duration);
+      document.querySelectorAll('.audios-time-dur').forEach(node => {
+        if (node.dataset.durFor === shared.id) node.textContent = fmtTime(el.duration);
+      });
+    }
+    syncAudioUI();
+  });
+  el.addEventListener('error', () => {
+    document.querySelectorAll('.audios-player-card.is-playing').forEach(card => {
+      if (!card.querySelector('.audios-player-error')) showAudioError(card);
+    });
+    syncAudioUI();
+  });
+  return el;
+}
+
+/** Refleja el estado del reproductor compartido en las tarjetas visibles. */
+function syncAudioUI() {
+  const el = shared.el;
+  const playing = !!el && !el.paused && !!shared.id;
+  document.querySelectorAll('.audios-player-card').forEach(card => {
+    const on = card.dataset.audioId === shared.id;
+    const isPlaying = on && playing;
+    card.classList.toggle('is-playing', isPlaying);
+    const btn = card.querySelector('.audios-play-btn');
+    if (btn) {
+      btn.innerHTML = isPlaying ? ICON_SVGS['pause'] : ICON_SVGS['play'];
+      btn.classList.toggle('is-playing', isPlaying);
+      btn.setAttribute('aria-label', isPlaying ? 'Pausar audio' : 'Reproducir audio');
+    }
+    const bar = card.querySelector('.audios-progress-bar');
+    const cur = card.querySelector('.audios-time-cur');
+    if (!on) {
+      if (bar) bar.value = 0;
+      if (cur) cur.textContent = '0:00';
+      return;
+    }
+    const duration = el && isFinite(el.duration) ? el.duration : (shared.durations.get(shared.id) || 0);
+    if (el) {
+      if (cur) cur.textContent = fmtTime(el.currentTime);
+      if (bar && duration > 0) bar.value = (el.currentTime / duration) * 100;
+    }
+    const durEl = card.querySelector('.audios-time-dur');
+    if (durEl && duration > 0) durEl.textContent = fmtTime(duration);
+  });
+  syncMiniPlayer();
+}
+
+function ensureMiniPlayer() {
+  if (shared.mini) return shared.mini;
+  const mini = document.createElement('div');
+  mini.className = 'audio-mini';
+  mini.id = 'audioMini';
+  mini.hidden = true;
+  mini.innerHTML = `
+    <button class="audio-mini-btn" type="button" aria-label="Reproducir / Pausar">${ICON_SVGS['play']}</button>
+    <div class="audio-mini-body">
+      <span class="audio-mini-title"></span>
+      <div class="audio-mini-bar"><span></span></div>
+    </div>
+    <button class="audio-mini-close" type="button" aria-label="Cerrar reproductor">✕</button>`;
+  document.body.appendChild(mini);
+  mini.querySelector('.audio-mini-btn').addEventListener('click', () => {
+    miniSuppressed = false;
+    const el = sharedAudio();
+    if (el.paused) el.play().catch(() => {});
+    else el.pause();
+  });
+  mini.querySelector('.audio-mini-close').addEventListener('click', stopSharedAudio);
+  mini.querySelector('.audio-mini-body').addEventListener('click', () => {
+    if (!location.hash.includes('/audios')) location.hash = '#/audios';
+  });
+  shared.mini = mini;
+  return mini;
+}
+
+function syncMiniPlayer() {
+  if (miniSuppressed) {
+    if (shared.mini) shared.mini.hidden = true;
+    return;
+  }
+  if (!shared.id) {
+    if (shared.mini) shared.mini.hidden = true;
+    return;
+  }
+  const mini = ensureMiniPlayer();
+  const el = shared.el;
+  const playing = !!el && !el.paused;
+  mini.hidden = false;
+  mini.classList.toggle('is-playing', playing);
+  mini.querySelector('.audio-mini-title').textContent = shared.title || 'Audio';
+  mini.querySelector('.audio-mini-btn').innerHTML = playing ? ICON_SVGS['pause'] : ICON_SVGS['play'];
+  const duration = el && isFinite(el.duration) ? el.duration : (shared.durations.get(shared.id) || 0);
+  const pct = el && duration > 0 ? (el.currentTime / duration) * 100 : 0;
+  mini.querySelector('.audio-mini-bar > span').style.width = `${pct}%`;
+}
+
+/** Corta y desmonta el reproductor (cierre manual o salida de la sección). */
+export function stopSharedAudio() {
+  miniSuppressed = false;
+  if (shared.el) {
+    try { shared.el.pause(); shared.el.removeAttribute('src'); shared.el.load(); } catch { /* no-op */ }
+  }
+  shared.id = null;
+  shared.title = '';
+  if (shared.mini) shared.mini.hidden = true;
+  syncAudioUI();
+}
+
+/** Pausa sin destruir: al salir de Galería el audio no debe seguir sonando. */
+export function pauseSharedAudio() {
+  miniSuppressed = true;
+  if (shared.el && !shared.el.paused) shared.el.pause();
+  // El audio queda pausado y el mini reproductor se esconde: fuera de Galería
+  // no debe tapar otras secciones. Al volver, la tarjeta conserva su minuto.
+  if (shared.mini) shared.mini.hidden = true;
+}
+
+/** Metadatos solo para las tarjetas que el usuario tiene delante. */
+function loadAudioDuration(card) {
+  const id = card.dataset.audioId;
+  const url = card.dataset.audioUrl;
+  if (!id || !url) return;
+  const cached = shared.durations.get(id);
+  if (cached) {
+    const durEl = card.querySelector('.audios-time-dur');
+    if (durEl) durEl.textContent = fmtTime(cached);
+    return;
+  }
+  const probe = new Audio();
+  probe.preload = 'metadata';
+  probe.src = url;
+  probe.addEventListener('loadedmetadata', () => {
+    if (isFinite(probe.duration) && probe.duration > 0) {
+      shared.durations.set(id, probe.duration);
+      document.querySelectorAll('.audios-time-dur').forEach(node => {
+        if (node.dataset.durFor === id) node.textContent = fmtTime(probe.duration);
+      });
+    }
+    probe.removeAttribute('src');
+    try { probe.load(); } catch { /* no-op */ }
+  }, { once: true });
+  probe.addEventListener('error', () => {
+    probe.removeAttribute('src');
+    try { probe.load(); } catch { /* no-op */ }
+  }, { once: true });
+  probe.load();
+}
+
+function showAudioError(card) {
+  const controls = card.querySelector('.audios-player-controls');
+  if (!controls || card.querySelector('.audios-player-error')) return;
+  const div = document.createElement('div');
+  div.className = 'audios-player-error';
+  div.innerHTML = '<p>Este audio no está disponible ahora mismo.</p>';
+  const retry = document.createElement('button');
+  retry.className = 'audios-retry-btn';
+  retry.textContent = 'Reintentar';
+  retry.addEventListener('click', () => {
+    div.remove();
+    const el = sharedAudio();
+    if (shared.id) el.play().catch(() => {});
+  });
+  div.appendChild(retry);
+  card.appendChild(div);
+}
+
 export async function loadAudios(force = false) {
   if (state.audiosLoaded && !force) return state.audios;
   state.audiosLoaded = true;
@@ -107,6 +302,17 @@ export function createAudiosView(ctx) {
       return renderAudioDetailContent(state.audiosMonth.year, state.audiosMonth.month);
     }
   
+    // Primera visita: esqueleto en vez de un vacío que parece roto.
+    if (!state.audiosLoaded) {
+      return `
+        <div class="audios-page">
+          <h2 class="section-title">Nuestra cápsula</h2>
+          <div class="audios-month-grid">
+            ${Array.from({ length: 6 }, () => '<div class="audios-month audios-month--skeleton" aria-hidden="true"></div>').join('')}
+          </div>
+        </div>`;
+    }
+
     const { years, yearMonths, curYear, curMonth } = audioMonthRange();
     const map = audiosByMonth();
     const total = state.audios.length;
@@ -228,12 +434,11 @@ export function createAudiosView(ctx) {
             </div>
             ${editBtn}
           </div>
-          <audio preload="metadata" src="${escapeHtml(a.url || '')}"></audio>
           <div class="audios-player-controls">
-            <button class="audios-play-btn" aria-label="Reproducir ${escapeHtml(title)}">${ICON_SVGS['play']}</button>
+            <button class="audios-play-btn" aria-label="Reproducir ${escapeHtml(title)}" data-play="${escapeHtml(a.id)}">${ICON_SVGS['play']}</button>
             <div class="audios-progress">
-              <input type="range" class="audios-progress-bar" min="0" max="100" value="0" step="0.1" aria-label="Progreso">
-              <div class="audios-time"><span class="audios-time-cur">0:00</span><span class="audios-time-dur">0:00</span></div>
+              <input type="range" class="audios-progress-bar" min="0" max="100" value="0" step="0.1" aria-label="Progreso" data-progress="${escapeHtml(a.id)}">
+              <div class="audios-time"><span class="audios-time-cur">0:00</span><span class="audios-time-dur" data-dur-for="${escapeHtml(a.id)}">—:—</span></div>
             </div>
           </div>
         </article>
@@ -414,111 +619,58 @@ export function createAudiosView(ctx) {
     return `${parts[2]} de ${(AUDIO_MONTHS[parts[1] - 1] || '').toLowerCase()} de ${parts[0]}`;
   }
   
-  /** Conecta play/pause, progreso, duración y errores de cada tarjeta de audio. */
+  /** Conecta cada tarjeta con el reproductor compartido: un solo audio sonando. */
   function bindAudioPlayers(container) {
-    const cards = (container || page).querySelectorAll('.audios-player-card');
+    const cards = [...(container || page).querySelectorAll('.audios-player-card')];
     cards.forEach(card => {
-      const audio = card.querySelector('audio');
+      const id = card.dataset.audioId;
+      const url = card.dataset.audioUrl;
       const playBtn = card.querySelector('.audios-play-btn');
       const bar = card.querySelector('.audios-progress-bar');
-      const curEl = card.querySelector('.audios-time-cur');
-      const durEl = card.querySelector('.audios-time-dur');
-      if (!audio) return;
-  
-      const fmt = (s) => {
-        if (!isFinite(s) || s < 0) return '0:00';
-        const m = Math.floor(s / 60);
-        const sec = Math.floor(s % 60);
-        return `${m}:${String(sec).padStart(2, '0')}`;
-      };
-  
-      // Solo un audio sonando a la vez
-      const pauseOthers = (except) => {
-        (container || page).querySelectorAll('.audios-player-card audio').forEach(a => {
-          if (a !== except) a.pause();
-        });
-        (container || page).querySelectorAll('.audios-play-btn').forEach(b => {
-          if (b !== playBtn) {
-            b.innerHTML = ICON_SVGS['play'];
-            b.classList.remove('is-playing');
-          }
-        });
-      };
-  
-      const setPlayingUI = (playing) => {
-        playBtn.innerHTML = playing ? ICON_SVGS['pause'] : ICON_SVGS['play'];
-        playBtn.classList.toggle('is-playing', playing);
-        card.classList.toggle('is-playing', playing);
-      };
-  
-      const onError = () => {
-        // El audio falló: muestra el estado de error en la tarjeta
-        const err = card.querySelector('.audios-player-error');
-        const controls = card.querySelector('.audios-player-controls');
-        if (err) return;
-        setPlayingUI(false);
-        if (controls) {
-          const div = document.createElement('div');
-          div.className = 'audios-player-error';
-          div.innerHTML = '<p>Este audio no está disponible ahora mismo.</p>';
-          const retry = document.createElement('button');
-          retry.className = 'audios-retry-btn';
-          retry.textContent = 'Reintentar';
-          retry.addEventListener('click', () => {
-            div.remove();
-            audio.load();
-            audio.play().catch(() => {});
-          });
-          div.appendChild(retry);
-          card.appendChild(div);
-        }
-      };
-  
+      if (!playBtn || !url) return;
+
       playBtn.addEventListener('click', () => {
-        if (audio.paused) {
-          pauseOthers(audio);
-          audio.play().then(() => setPlayingUI(true)).catch(onError);
-        } else {
-          audio.pause();
-          setPlayingUI(false);
+        miniSuppressed = false;
+        const el = sharedAudio();
+        if (shared.id === id) {
+          if (el.paused) el.play().catch(() => showAudioError(card));
+          else el.pause();
+          return;
         }
+        // Cambiar de audio sin dejar dos sonando a la vez
+        shared.id = id;
+        shared.title = card.dataset.audioTitle || 'Audio';
+        el.src = url;
+        el.play().catch(() => showAudioError(card));
+        syncAudioUI();
       });
-  
-      audio.addEventListener('play', () => { setPlayingUI(true); });
-      audio.addEventListener('pause', () => { setPlayingUI(false); });
-      audio.addEventListener('ended', () => {
-        setPlayingUI(false);
-        audio.currentTime = 0;
-        bar.value = 0;
-        curEl.textContent = '0:00';
+
+      bar?.addEventListener('input', () => {
+        if (shared.id !== id) return;
+        const el = sharedAudio();
+        const duration = isFinite(el.duration) && el.duration > 0 ? el.duration : (shared.durations.get(id) || 0);
+        if (duration > 0) el.currentTime = (parseFloat(bar.value) / 100) * duration;
       });
-      audio.addEventListener('error', onError);
-  
-      if (audio.readyState >= 1) {
-        durEl.textContent = fmt(audio.duration);
-      } else {
-        audio.addEventListener('loadedmetadata', () => {
-          durEl.textContent = fmt(audio.duration);
-          audio.dataset.duration = String(audio.duration);
-        });
-      }
-  
-      audio.addEventListener('timeupdate', () => {
-        const d = audio.duration;
-        curEl.textContent = fmt(audio.currentTime);
-        if (isFinite(d) && d > 0) bar.value = (audio.currentTime / d) * 100;
-      });
-  
-      bar.addEventListener('input', () => {
-        const d = audio.duration;
-        if (isFinite(d) && d > 0) {
-          audio.currentTime = (parseFloat(bar.value) / 100) * d;
-        }
-      });
-  
-      // Inicia la carga de metadatos desde ya para conocer la duración
-      audio.load();
     });
+
+    // Duración: solo se piden metadatos de las tarjetas que el usuario ve.
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          io.unobserve(entry.target);
+          loadAudioDuration(entry.target);
+        });
+      }, { rootMargin: '320px 0px' });
+      cards.forEach(c => io.observe(c));
+      container?._audioIO?.disconnect();
+      if (container) container._audioIO = io;
+    } else {
+      cards.forEach(loadAudioDuration);
+    }
+
+    // La tarjeta que ya estaba sonando al repintar recupera su estado.
+    syncAudioUI();
   }
 
   return {

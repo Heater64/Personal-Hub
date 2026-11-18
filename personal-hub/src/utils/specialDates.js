@@ -353,11 +353,15 @@ function todayMidnight() {
 }
 
 /**
- * Próxima fecha especial (las 4 fijas + los eventos del Admin).
- * Las recurrentes se proyectan al año en curso o al siguiente si ya pasaron.
- * Devuelve { title, date, days } o null si no hay ninguna configurada.
+ * Las próximas fechas especiales, de la más cercana a la más lejana (las 4
+ * fijas + los eventos del Admin). Las recurrentes se proyectan al año en curso
+ * o al siguiente si ya pasaron; las de fecha única se descartan si pasaron.
+ *
+ * `key` es la identidad estable de la fecha: es lo que guarda el widget de
+ * cuenta atrás para recordar qué fechas eligió cada instancia (`anniversary`,
+ * `event:<id>`...). Sin clave estable, renombrar un evento borraría la elección.
  */
-export function nextSpecialDate() {
+export function upcomingSpecialDates(limit = 6) {
   const cfg = specialDates();
   const titles = cfg.titles || {};
   const recurring = cfg.recurring || {};
@@ -367,13 +371,21 @@ export function nextSpecialDate() {
   for (const key of ['anniversary', 'hubStart', 'birthday', 'userBirthday']) {
     const value = cfg[key];
     if (!value) continue;
-    candidates.push({ title: titles[key] || key, value, repeats: recurring[key] !== false });
+    candidates.push({ key, title: titles[key] || key, value, repeats: recurring[key] !== false });
   }
   for (const event of cfg.events || []) {
-    if (event?.date) candidates.push({ title: event.title || 'Fecha especial', value: event.date, repeats: !!event.recurring });
+    if (!event?.date) continue;
+    // Misma identidad que usa la hoja del día (`freeEvent`).
+    const id = event.id || String(event.title || 'evento').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    candidates.push({
+      key: `event:${id}`,
+      title: event.title || 'Fecha especial',
+      value: event.date,
+      repeats: !!event.recurring,
+    });
   }
 
-  let best = null;
+  const list = [];
   for (const candidate of candidates) {
     const [year, month, day] = String(candidate.value).split('-').map(Number);
     if (!year || !month || !day) continue;
@@ -385,12 +397,24 @@ export function nextSpecialDate() {
     }
     const days = Math.round((date - today) / MS_DAY);
     if (days < 0) continue;
-    if (!best || days < best.days) {
-      best = { title: candidate.title, date: toISO(date), days };
-    }
+    list.push({ key: candidate.key, title: candidate.title, date: toISO(date), days });
   }
 
-  return best;
+  list.sort((a, b) => a.days - b.days);
+
+  // Dos fechas pueden caer el mismo día (aniversario y cumpleaños): se quedan
+  // las dos, pero nunca la misma clave repetida.
+  const seen = new Set();
+  return list.filter(item => (seen.has(item.key) ? false : (seen.add(item.key), true)))
+    .slice(0, Math.max(1, limit));
+}
+
+/**
+ * Próxima fecha especial. Devuelve { key, title, date, days } o null si no hay
+ * ninguna configurada.
+ */
+export function nextSpecialDate() {
+  return upcomingSpecialDates(1)[0] || null;
 }
 
 /**

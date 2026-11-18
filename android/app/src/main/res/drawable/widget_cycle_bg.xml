@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo de «Ciclo»: morado de marca con borde rosa, hermano del ánimo. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="26dp" />
+    <gradient
+        android:angle="315"
+        android:endColor="@color/widget_ink"
+        android:startColor="#2A1B30" />
+    <stroke
+        android:width="1dp"
+        android:color="#30F3C5D0" />
+</shape>

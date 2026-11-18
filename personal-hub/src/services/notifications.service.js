@@ -11,8 +11,9 @@ import { getUserPref, setUserPref, getUserId } from '../utils/userStorage.js';
 import { todayISO, hourInSpain } from '../utils/format.js';
 import { supabase } from './supabase.js';
 import { getTodayNovelties, getNoveltyNotificationRoute } from './novelties.service.js';
-import { loadAllOpenWhenLetters } from '../data/openwhen.data.js';
+import { CATEGORIES, loadAllOpenWhenLetters } from '../data/openwhen.data.js';
 import { normalizeNotificationRoute } from '../utils/notification-route.js';
+import { readSeenCategories, readSeenUpdates } from '../utils/openwhen-categories.js';
 import { urlBase64ToUint8Array, subscriptionKeyChanged } from '../utils/push-key.js';
 
 // VAPID public key — debe coincidir con VAPID_PUBLIC_KEY en el servidor
@@ -21,8 +22,10 @@ const VAPID_PUBLIC_KEY = 'BALzk9q-6CaVPmvMC0h4JIMQ582uOKAhX7AwwqefqLQzAeFxbLMhIa
 const SYNC_TAG = 'daily-welcome';
 const NOVELTIES_TAG = 'daily-novelties';
 const OPENWHEN_TAG = 'openwhen-new';
+const OPENWHEN_UPDATED_TAG = 'openwhen-updated';
 const MOOD_TAG = 'mood';
 const OPENWHEN_ANNOUNCED_KEY = 'openwhen.announced';
+const OPENWHEN_UPDATES_KEY = 'openwhen.announced-updates';
 const DB_NAME = 'ph-notifications';
 const DB_STORE = 'state';
 
@@ -590,26 +593,72 @@ export async function notifyNewOpenWhenLetters() {
     if (Array.isArray(arr)) announced = arr;
   } catch { /* noop */ }
 
-  // Incluye también las cartas personalizadas creadas desde el Admin
+  // Cartas editadas de las que ya avisamos, por versión.
+  let announcedUpdates = {};
+  try {
+    const obj = JSON.parse(getUserPref(OPENWHEN_UPDATES_KEY, '{}'));
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) announcedUpdates = obj;
+  } catch { /* noop */ }
+
+  // Incluye también las cartas personalizadas creadas desde el Admin.
+  // Los borradores «pronto» no se anuncian: todavía no tienen texto.
   const all = await loadAllOpenWhenLetters();
-  const fresh = all.filter(l => !seen.includes(l.id) && !announced.includes(l.id));
-  if (!fresh.length) return;
+  const ready = all.filter(l => l.status !== 'pronto');
+  const fresh = ready.filter(l => !seen.includes(l.id) && !announced.includes(l.id));
 
-  const title = fresh.length === 1
-    ? 'Nueva carta en Open When 💌'
-    : `${fresh.length} cartas nuevas en Open When 💌`;
-  const body = fresh.length === 1
-    ? `«${fresh[0].title}» te está esperando.`
-    : 'Te están esperando. ¿Qué necesitas ahora? 🤍';
+  // Editadas que aún no ha abierto y cuya versión no se ha avisado todavía.
+  const seenUpdates = readSeenUpdates();
+  const edited = ready.filter(l =>
+    l.updatedAt && seenUpdates[l.id] !== l.updatedAt && announcedUpdates[l.id] !== l.updatedAt
+  );
 
-  const route = fresh.length === 1
-    ? `/openwhen?letter=${encodeURIComponent(fresh[0].id)}`
-    : '/openwhen';
-  const shown = await showDailyNotification(title, body, route, { tag: OPENWHEN_TAG });
+  if (!fresh.length && !edited.length) return;
 
-  // Solo marca como anunciadas si la notificación pudo mostrarse
-  if (shown) {
+  let title, body, route, tag;
+
+  if (fresh.length) {
+    // Si alguna carta nueva viene de una categoría que no había visto nunca,
+    // el aviso habla de categoría («Open When nueva») y dice cuál.
+    const seenCats = readSeenCategories();
+    const freshCatId = seenCats
+      ? fresh.find(l => l.category && !seenCats.includes(l.category))?.category
+      : null;
+    const freshCat = freshCatId ? CATEGORIES.find(c => c.id === freshCatId)?.title : '';
+    const cuantas = fresh.length === 1 ? 'una carta' : `${fresh.length} cartas`;
+
+    title = freshCatId ? 'Open When nueva 🗂️' : 'Open When actualizada 💌';
+    body = freshCatId
+      ? `${freshCat ? `«${freshCat}»` : 'Una categoría'} es nueva. Tienes ${cuantas} esperándote.`
+      : fresh.length === 1
+        ? `«${fresh[0].title}» te está esperando.`
+        : 'Tienes cartas nuevas esperándote. ¿Qué necesitas ahora? 🤍';
+    route = fresh.length === 1
+      ? `/openwhen?letter=${encodeURIComponent(fresh[0].id)}`
+      : '/openwhen';
+    tag = OPENWHEN_TAG;
+  } else {
+    title = 'Carta actualizada en Open When ✏️';
+    body = edited.length === 1
+      ? `«${edited[0].title}» ha cambiado. Mírala cuando quieras.`
+      : `${edited.length} cartas han cambiado. Míralas cuando quieras.`;
+    route = edited.length === 1
+      ? `/openwhen?letter=${encodeURIComponent(edited[0].id)}`
+      : '/openwhen';
+    tag = OPENWHEN_UPDATED_TAG;
+  }
+
+  const shown = await showDailyNotification(title, body, route, { tag });
+  if (!shown) return;
+
+  // Solo se apunta lo que de verdad se avisó: una edición no se pierde porque
+  // coincida con un aviso de cartas nuevas.
+  if (fresh.length) {
     setUserPref(OPENWHEN_ANNOUNCED_KEY, JSON.stringify([...new Set([...announced, ...fresh.map(l => l.id)])]));
+  } else {
+    setUserPref(OPENWHEN_UPDATES_KEY, JSON.stringify({
+      ...announcedUpdates,
+      ...Object.fromEntries(edited.map(l => [l.id, l.updatedAt]))
+    }));
   }
 }
 

@@ -280,6 +280,14 @@ export async function enableBackgroundTracking() {
     }
   }
 
+  // Android 13+ exige permiso para enseñar el aviso del servicio: se pide
+  // aquí, con el gesto de activar, no al abrir la app.
+  try {
+    await api.requestNotifications?.();
+  } catch {
+    /* sin avisos el seguimiento sigue funcionando */
+  }
+
   const config = await nativeConfig();
   if (!config) return { ok: false, reason: 'session' };
 

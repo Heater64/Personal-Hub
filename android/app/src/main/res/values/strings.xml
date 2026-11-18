@@ -19,15 +19,106 @@
 
     <!-- Textos del rediseño -->
     <string name="widget_days_unit">días</string>
+    <string name="widget_days_unit_short">días</string>
+    <string name="widget_days_label_short">DÍAS JUNTOS</string>
+    <string name="widget_days_empty">abre la app</string>
     <string name="widget_days_caption2">juntos</string>
     <string name="widget_days_me">Tu foto</string>
     <string name="widget_days_partner">Su foto</string>
     <string name="widget_distance_label2">estáis a</string>
+    <string name="widget_distance_kicker">ESTÁIS A</string>
+
+    <!-- Cuenta atrás -->
+    <string name="widget_countdown_label">🤍 cuenta atrás</string>
+    <string name="widget_countdown_kicker">FALTAN</string>
+    <string name="widget_countdown_unit">días</string>
+    <string name="widget_countdown_empty">sin fechas próximas</string>
+    <string name="widget_countdown_past">ya pasó</string>
+    <string name="widget_countdown_description">Cuenta atrás para la próxima fecha</string>
+    <string name="widget_countdown_description_compact">Cuenta atrás (pequeño)</string>
+    <string name="widget_countdown_description_rect">Cuenta atrás (rectangular)</string>
+    <string name="widget_countdown_description_wide">Cuenta atrás (grande)</string>
+    <string name="widget_countdown_unit_short">d</string>
+
+    <!-- Configuración: qué fechas enseña cada widget -->
+    <string name="widget_countdown_config_title">Cuenta atrás</string>
+    <string name="widget_countdown_config_subtitle">Elige qué fechas mostrar. Puedes marcar hasta tres.</string>
+    <string name="widget_countdown_config_hint_empty">Abre PersonalHub una vez para cargar tus fechas.</string>
+    <string name="widget_countdown_config_hint_max">Tres fechas como máximo: quita alguna para guardar.</string>
+    <string name="widget_countdown_config_today">hoy</string>
+    <string name="widget_countdown_config_save">Guardar</string>
+    <string name="widget_countdown_config_cancel">Cancelar</string>
+    <plurals name="widget_countdown_config_days">
+        <item quantity="one">%1$d día</item>
+        <item quantity="other">%1$d días</item>
+    </plurals>
+
+    <!-- Estado de ánimo -->
+    <string name="widget_mood_label">🙂 estado de ánimo</string>
+    <string name="widget_mood_kicker">HOY</string>
+    <string name="widget_mood_kicker_large">ESTADO DE ÁNIMO</string>
+    <string name="widget_mood_empty">sin registrar</string>
+    <string name="widget_mood_hint">toca para registrar</string>
+    <string name="widget_mood_today">hoy</string>
+    <string name="widget_mood_description">El ánimo de ella, hoy</string>
+    <string name="widget_mood_description_compact">El ánimo de ella (pequeño)</string>
+    <string name="widget_mood_description_rect">El ánimo de ella (rectangular)</string>
+    <string name="widget_mood_description_wide">El ánimo de ella (grande)</string>
+
+    <!-- Distancia: el móvil de ella (batería y red) -->
+    <string name="widget_distance_device">su móvil · %1$d %%</string>
+    <string name="widget_distance_charging">cargando</string>
+
+    <!-- Ciclo -->
+    <string name="widget_cycle_label">🌙 ciclo</string>
+    <string name="widget_cycle_kicker">CICLO</string>
+    <string name="widget_cycle_empty">sin registros</string>
+    <string name="widget_cycle_day">día %1$d</string>
+    <string name="widget_cycle_day_of">día %1$d de ~%2$d</string>
+    <string name="widget_cycle_today">próxima regla hoy</string>
+    <string name="widget_cycle_tomorrow">próxima regla mañana</string>
+    <string name="widget_cycle_next">próxima regla en %1$d d</string>
+    <string name="widget_cycle_description">El ciclo de ella, de un vistazo</string>
+    <string name="widget_cycle_description_compact">Ciclo (pequeño)</string>
+    <string name="widget_cycle_description_rect">Ciclo (rectangular)</string>
+    <string name="widget_cycle_description_wide">Ciclo (grande)</string>
+
+    <!-- Seguir viendo -->
+    <string name="widget_watching_label">▶ seguir viendo</string>
+    <string name="widget_watching_kicker">SEGUIR VIENDO</string>
+    <string name="widget_watching_empty">nada en marcha</string>
+    <string name="widget_watching_poster">Portada de la serie</string>
+    <string name="widget_watching_episode">Ep. %1$d de %2$d</string>
+    <string name="widget_watching_percent">%1$d %% visto</string>
+    <string name="widget_watching_description">La serie que estáis viendo</string>
+    <string name="widget_watching_description_compact">Seguir viendo (pequeño)</string>
+    <string name="widget_watching_description_rect">Seguir viendo (rectangular)</string>
+    <string name="widget_watching_description_wide">Seguir viendo (grande)</string>
+
+    <!-- Sorpresas del calendario -->
+    <string name="widget_gifts_label">🎁 sorpresas</string>
+    <string name="widget_gifts_kicker">HOY</string>
+    <string name="widget_gifts_emoji">🎁</string>
+    <string name="widget_gifts_empty">sin sorpresas hoy</string>
+    <string name="widget_gifts_unit">sorpresas</string>
+    <string name="widget_gifts_opened">ya las abriste</string>
+    <string name="widget_gifts_hint">en el calendario</string>
+    <string name="widget_gifts_tomorrow">vuelve mañana</string>
+    <string name="widget_gifts_description">Las sorpresas de hoy en el calendario</string>
+    <string name="widget_gifts_description_compact">Sorpresas (pequeño)</string>
+    <string name="widget_gifts_description_rect">Sorpresas (rectangular)</string>
+    <string name="widget_gifts_description_wide">Sorpresas (grande)</string>
+    <plurals name="widget_gifts_pending">
+        <item quantity="one">sorpresa</item>
+        <item quantity="other">sorpresas</item>
+    </plurals>
 
     <!-- Variantes de tamaño -->
     <string name="widget_days_description_compact">Días juntos (pequeño)</string>
+    <string name="widget_days_description_rect">Días juntos (rectangular)</string>
     <string name="widget_days_description_wide">Días juntos (grande)</string>
     <string name="widget_distance_description_compact">Distancia (pequeño)</string>
+    <string name="widget_distance_description_rect">Distancia (rectangular)</string>
     <string name="widget_distance_description_wide">Distancia (grande)</string>
 
 </resources>

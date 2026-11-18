@@ -34,15 +34,49 @@ const readDb = () => readFile(hub('src', 'services', 'db.service.js'), 'utf8');
 // 1 · EL TEXTO DEL AVISO
 // ==========================================
 
-test('una carta nueva se anuncia en singular y varias en plural', () => {
+test('una carta nueva se anuncia como «Open When actualizada»', () => {
   const una = announcePayload('openwhen', { count: 1 });
-  assert.equal(una.title, 'Nueva carta en Open When 💌');
+  assert.equal(una.title, 'Open When actualizada 💌');
   assert.equal(una.url, '/openwhen');
-  assert.match(una.body, /una carta/);
+  assert.match(una.body, /una carta nueva/);
 
   const tres = announcePayload('openwhen', { count: 3 });
-  assert.equal(tres.title, '3 cartas nuevas en Open When 💌');
-  assert.match(tres.body, /cartas/);
+  assert.equal(tres.title, 'Open When actualizada 💌');
+  assert.match(tres.body, /3 cartas nuevas/);
+});
+
+test('una categoría nueva se anuncia como «Open When nueva» y dice cuál es', () => {
+  const alerta = announcePayload('openwhen', { count: 2, newCategory: true, category: 'Silencio y pocas ganas' });
+  assert.equal(alerta.title, 'Open When nueva 🗂️');
+  assert.equal(alerta.url, '/openwhen');
+  assert.equal(alerta.tag, 'openwhen-new');
+  assert.match(alerta.body, /«Silencio y pocas ganas» es nueva/);
+  assert.match(alerta.body, /2 cartas/);
+
+  // Sin nombre (o con basura) el aviso sigue siendo cierto y legible.
+  const sinNombre = announcePayload('openwhen', { newCategory: true });
+  assert.match(sinNombre.body, /^Una categoría es nueva\./);
+  assert.doesNotMatch(announcePayload('openwhen', { newCategory: true, category: 'x\u0000\n' }).body, /\u0000|\n/);
+});
+
+test('una carta editada se anuncia como «Carta actualizada»', () => {
+  const una = announcePayload('openwhen', { updated: true });
+  assert.equal(una.title, 'Carta actualizada en Open When ✏️');
+  assert.equal(una.url, '/openwhen');
+  assert.equal(una.tag, 'openwhen-updated');
+  assert.match(una.body, /Una carta que ya conoces/);
+  assert.match(announcePayload('openwhen', { updated: true, count: 2 }).body, /2 cartas/);
+});
+
+test('el panel avisa también cuando edita una carta', async () => {
+  const db = await readDb();
+  const client = await readClient();
+  // Se comparan las versiones (updatedAt) de las cartas guardadas.
+  assert.match(db, /function updatedLettersIn\(prev, next\)/);
+  assert.match(db, /else if \(edited\.length\) \{/);
+  assert.match(db, /updated: true/);
+  // El tipo de aviso `updated` solo viaja para Open When.
+  assert.match(client, /updated: kind === 'openwhen' && updated/);
 });
 
 test('una sorpresa del calendario enlaza al calendario', () => {
@@ -107,6 +141,8 @@ test('la API expone announce y exige admin', async () => {
   // El tipo viene de una lista cerrada; el texto, del servidor.
   assert.match(handler, /ANNOUNCE_KINDS\.includes\(req\.body\?\.kind\)/);
   assert.match(handler, /announcePayload\(kind, \{/);
+  // El «es categoría nueva» solo cuenta si llega como booleano verdadero.
+  assert.match(handler, /newCategory: req\.body\?\.newCategory === true/);
   assert.doesNotMatch(handler, /req\.body\?\.title|req\.body\?\.body/);
 });
 
@@ -166,6 +202,11 @@ test('guardar contenido avisa solo si el recuento sube', async () => {
   assert.match(db, /prev !== null/);
   // Fire-and-forget: el guardado ya está hecho.
   assert.match(db, /announcePublished\(announce\.kind, \{[\s\S]*?\}\)\.catch\(\(\) => \{\}\);/);
+  // Open When distingue categoría nueva de actualización comparando categorías,
+  // y manda su nombre al servidor.
+  assert.match(db, /function newCategoriesIn\(prev, next\)/);
+  assert.match(db, /const newCatId = id === 'openwhen_letters' \? newCategoriesIn\(prev, data\)\[0\] : null;/);
+  assert.match(db, /category: newCatId \? \(CATEGORIES\.find/);
 });
 
 test('cada sección del panel tiene su tipo de aviso y su destino', async () => {
@@ -199,7 +240,11 @@ test('el saludo matinal obedece al interruptor «Recordatorio diario»', async (
   const sw = await readFile(hub('public', 'sw.js'), 'utf8');
 
   // App abierta: el aviso local se salta si el tipo está apagado.
-  assert.match(app, /if \(getNotifSettings\(\)\.daily\) \{[\s\S]{0,400}?showDailyNotification\(greeting/);
+  assert.match(
+    app,
+    /if \(getNotifSettings\(\)\.daily\) \{[\s\S]{0,500}?showDailyNotification\(\s*greeting/,
+    'el aviso local del saludo va dentro del interruptor diario'
+  );
   // App cerrada (periodicsync): el SW recibe el interruptor y lo comprueba.
   assert.match(sw, /if \(state\.daily === false\) return;/);
   const service = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');

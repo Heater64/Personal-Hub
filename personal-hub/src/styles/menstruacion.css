@@ -197,33 +197,6 @@
   line-height: 1.4;
 }
 
-.menstruacion-page .cy-confidence {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: var(--r-md, 16px);
-  background: var(--surface-1, #111114);
-  border: 1px solid var(--cy-line);
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-  color: var(--cy-muted);
-}
-.menstruacion-page .cy-confidence b {
-  color: var(--text, #e8e6e3);
-}
-.menstruacion-page .cy-confidence--warn {
-  border-color: color-mix(in srgb, var(--cy-estimated-ink) 45%, transparent);
-}
-.menstruacion-page .cy-confidence--ok {
-  border-color: color-mix(in srgb, var(--cy-fertile) 45%, transparent);
-}
-.menstruacion-page .cy-confidence .ic {
-  flex: none;
-  margin-top: 2px;
-}
-
 /* ===== SECCIONES ===== */
 .menstruacion-page .cy-section {
   display: flex;
@@ -805,13 +778,45 @@
 .menstruacion-page .cy-chart {
   margin: 0;
 }
+/* Título a la izquierda, con la unidad justo al lado. */
+.menstruacion-page .cy-chart-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 10px;
+}
 .menstruacion-page .cy-chart-label {
   margin: 0 0 10px;
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--cy-muted);
+  font-size: var(--fs-sm);
   font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text, #e8e6e3);
+}
+.menstruacion-page .cy-chart-head .cy-chart-label {
+  margin: 0;
+}
+.menstruacion-page .cy-chart-unit {
+  font-size: var(--fs-caption, 0.6875rem);
+  color: var(--cy-muted);
+}
+.menstruacion-page .cy-chart-axis {
+  stroke: var(--cy-line);
+  stroke-width: 1;
+}
+/* Los nombres de los ejes: «Días» arriba a la izquierda y «Nº Menstruación» abajo. */
+.menstruacion-page .cy-chart-axis--y,
+.menstruacion-page .cy-chart-axis--x {
+  stroke: none;
+  font-size: var(--fs-caption, 0.6875rem);
+  color: var(--cy-muted);
+  letter-spacing: 0.02em;
+}
+.menstruacion-page .cy-chart-axis--y {
+  margin: -4px 0 6px;
+}
+.menstruacion-page .cy-chart-axis--x {
+  margin: 4px 0 0;
 }
 .menstruacion-page .cy-chart svg {
   width: 100%;
@@ -835,7 +840,20 @@
 .menstruacion-page .cy-chart-tick,
 .menstruacion-page .cy-chart-min {
   fill: var(--cy-muted);
-  font-size: 8px;
+  font-size: 9px;
+}
+/* El dato de cada punto, encima de la línea. */
+.menstruacion-page .cy-chart-value {
+  fill: var(--text, #e8e6e3);
+  font-size: 9px;
+  font-weight: 600;
+}
+/* Debajo del gráfico: qué se está contando. */
+.menstruacion-page .cy-chart-note {
+  margin: 12px 0 0;
+  font-size: var(--fs-caption, 0.6875rem);
+  line-height: 1.45;
+  color: var(--cy-muted);
 }
 
 .menstruacion-page .cy-bars {
@@ -884,6 +902,11 @@
   min-width: 24px;
   text-align: right;
 }
+.menstruacion-page .cy-bar-value small {
+  margin-left: 2px;
+  font-size: var(--fs-caption, 0.6875rem);
+  font-weight: 500;
+}
 
 /* ===== VISTA DE PAREJA ===== */
 .menstruacion-page .cy-support {
@@ -904,26 +927,65 @@
   font-size: var(--fs-lg, 1.25rem);
   line-height: 1.4;
 }
-.menstruacion-page .cy-partner-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.menstruacion-page .cy-partner-list li {
+/* Resumen: de un vistazo, la fase con su emoji y los dos datos clave. */
+.menstruacion-page .cy-partner-hero {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 11px 14px;
-  border-radius: var(--r-sm, 12px);
-  background: var(--surface-1, #111114);
-  border: 1px solid var(--cy-line);
-  font-size: var(--fs-sm);
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--r-lg, 20px);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cy-coral) 16%, var(--surface-1, #111114)),
+    var(--surface-1, #111114)
+  );
+  border: 1px solid color-mix(in srgb, var(--cy-coral) 30%, transparent);
 }
-.menstruacion-page .cy-partner-days {
+.menstruacion-page .cy-partner-hero__emoji {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  line-height: 1;
+  border-radius: var(--r-md, 16px);
+  background: color-mix(in srgb, var(--cy-coral) 20%, transparent);
+}
+.menstruacion-page .cy-partner-hero__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.menstruacion-page .cy-partner-hero__body b {
+  font-size: var(--fs-lg, 1.25rem);
+  font-weight: 650;
+  line-height: 1.25;
+}
+.menstruacion-page .cy-partner-hero__meta {
+  font-size: var(--fs-sm);
+  color: var(--cy-muted);
+}
+
+.menstruacion-page .cy-partner-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.menstruacion-page .cy-kpi--partner {
+  gap: 6px;
+}
+.menstruacion-page .cy-kpi__emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+.menstruacion-page .cy-kpis--three {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+/* Menstruaciones: cada una su tarjeta, con duración y estado. */
+.menstruacion-page .cy-periods {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -931,35 +993,107 @@
   flex-direction: column;
   gap: 8px;
 }
-.menstruacion-page .cy-partner-days li {
+.menstruacion-page .cy-period {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 12px 14px;
   border-radius: var(--r-md, 16px);
   background: var(--surface-1, #111114);
   border: 1px solid var(--cy-line);
 }
-.menstruacion-page .cy-partner-day {
-  display: block;
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  margin-bottom: 4px;
+.menstruacion-page .cy-period.is-current {
+  background: color-mix(in srgb, var(--cy-coral) 9%, var(--surface-1, #111114));
+  border-color: color-mix(in srgb, var(--cy-coral) 45%, transparent);
 }
-.menstruacion-page .cy-partner-tags {
+.menstruacion-page .cy-period__ic {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  border-radius: var(--r-sm, 12px);
+  background: var(--surface-2, #19191d);
+}
+.menstruacion-page .cy-period__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.menstruacion-page .cy-period__body b {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.menstruacion-page .cy-period__body small {
+  font-size: var(--fs-caption, 0.6875rem);
+  color: var(--cy-muted);
+}
+
+/* Últimos días: fecha arriba, etiquetas con emoji debajo. */
+.menstruacion-page .cy-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.menstruacion-page .cy-day-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--r-md, 16px);
+  background: var(--surface-1, #111114);
+  border: 1px solid var(--cy-line);
+}
+.menstruacion-page .cy-day-card__date {
+  font-size: var(--fs-caption, 0.6875rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cy-muted);
+}
+.menstruacion-page .cy-day-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
 }
-.menstruacion-page .cy-partner-tags span {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--surface-2, #19191d);
-  color: var(--cy-muted);
-  font-size: var(--fs-caption, 0.6875rem);
-}
-.menstruacion-page .cy-partner-note {
-  flex-basis: 100%;
-  background: none;
-  padding: 0;
+.menstruacion-page .cy-day-card__note {
+  margin: 0;
+  font-size: var(--fs-sm);
   font-style: italic;
+  color: var(--cy-muted);
+}
+.menstruacion-page .cy-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: var(--fs-caption, 0.6875rem);
+  background: var(--surface-2, #19191d);
+  color: var(--text, #e8e6e3);
+  border: 1px solid transparent;
+}
+.menstruacion-page .cy-tag--flow {
+  background: color-mix(in srgb, var(--cy-coral) 18%, transparent);
+}
+.menstruacion-page .cy-tag--spot {
+  background: transparent;
+  border-color: var(--cy-line);
+  color: var(--cy-estimated-ink);
+}
+.menstruacion-page .cy-tag--symptom {
+  color: var(--cy-muted);
+}
+.menstruacion-page .cy-tag--empty {
+  background: transparent;
+  border-color: var(--cy-line);
+  color: var(--cy-muted);
 }
 
 /* ===== AJUSTES ===== */
@@ -1389,6 +1523,45 @@
   font-size: var(--fs-caption, 0.6875rem);
 }
 
+/* Barra de «Más información»: las medias empiezan plegadas. */
+.menstruacion-page .cy-facts-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--r-md, 16px);
+  background: var(--surface-1, #111114);
+  border: 1px solid var(--cy-line);
+  color: var(--text, #e8e6e3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color var(--dur-fast, 0.15s) ease,
+    background var(--dur-fast, 0.15s) ease;
+}
+.menstruacion-page .cy-facts-toggle[hidden] {
+  display: none;
+}
+.menstruacion-page .cy-facts-toggle:hover,
+.menstruacion-page .cy-facts-toggle:focus-visible {
+  border-color: color-mix(in srgb, var(--cy-coral) 45%, transparent);
+  background: var(--surface-2, #19191d);
+}
+.menstruacion-page .cy-facts-toggle-chev {
+  display: inline-flex;
+  color: var(--cy-muted);
+  transition: transform var(--dur-fast, 0.15s) ease;
+}
+.menstruacion-page .cy-facts-toggle.is-open .cy-facts-toggle-chev {
+  transform: rotate(180deg);
+}
+
 /* 2. Datos del ciclo: fila pequeña, sin competir con lo de arriba. */
 .menstruacion-page .cy-facts {
   display: grid;
@@ -1430,27 +1603,7 @@
 }
 
 /* La nota de confianza deja de ser una tarjeta: es un aviso al margen. */
-.menstruacion-page .cy-confidence {
-  padding: 0 0 0 12px;
-  border: 0;
-  border-left: 2px solid color-mix(in srgb, var(--cy-coral) 40%, transparent);
-  border-radius: 0;
-  background: none;
-  font-size: var(--fs-xs);
-}
-.menstruacion-page .cy-confidence b {
-  color: var(--text, #e8e6e3);
-  font-weight: 600;
-}
-
-/* 3. Bloque de apoyo: título pequeño y cifras contenidas. */
-.menstruacion-page .cy-section--quiet .section-title {
-  font-size: var(--fs-caption, 0.6875rem);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cy-muted);
-}
+/* 3. Bloque de apoyo: cifras contenidas, sin título minúsculo. */
 .menstruacion-page .cy-month-summary--quiet {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1576,61 +1729,17 @@
 }
 
 /* ==========================================
-   «Cómo se calcula la estimación» plegado
+   Cómo se calcula la fecha
    ==========================================
-   Un botón redondo con la «i» y nada más; el texto aparece al tocarlo. */
-.menstruacion-page .cy-confidence {
-  display: block;
-  padding: 0;
-  border: 0;
-  background: none;
-}
-.menstruacion-page .cy-confidence__tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--cy-line);
-  border-radius: 50%;
-  color: var(--text, #e8e6e3);
-  background: var(--surface-2, #19191d);
-  opacity: 0.8;
-  cursor: pointer;
-  list-style: none;
-  transition:
-    opacity var(--dur-fast, 0.15s) ease,
-    color var(--dur-fast, 0.15s) ease,
-    border-color var(--dur-fast, 0.15s) ease;
-}
-.menstruacion-page .cy-confidence__tab::-webkit-details-marker {
-  display: none;
-}
-.menstruacion-page .cy-confidence__tab .ic,
-.menstruacion-page .cy-confidence__tab svg {
-  display: inline-flex;
-  width: 20px;
-  height: 20px;
-  stroke-width: 2.2;
-}
-.menstruacion-page .cy-confidence__tab:hover {
-  opacity: 1;
-}
-.menstruacion-page .cy-confidence[open] .cy-confidence__tab {
-  color: var(--cy-coral);
-  opacity: 1;
-  border-color: color-mix(in srgb, var(--cy-coral) 45%, transparent);
-}
-.menstruacion-page .cy-confidence__text {
-  margin: 8px 0 0;
-  padding-left: 12px;
-  border-left: 2px solid color-mix(in srgb, var(--cy-coral) 40%, transparent);
+   Una nota pequeña bajo la barra de «Más información», sin competir con el dato. */
+.menstruacion-page .cy-confidence-note {
+  margin: 6px 2px 0;
+  font-size: var(--fs-caption, 0.6875rem);
+  line-height: 1.45;
   color: var(--cy-muted);
-  font-size: var(--fs-xs);
-  line-height: 1.5;
   max-width: 52ch;
 }
-.menstruacion-page .cy-confidence__text b {
+.menstruacion-page .cy-confidence-note b {
   color: var(--text, #e8e6e3);
   font-weight: 600;
 }
@@ -1697,4 +1806,51 @@
 }
 .menstruacion-page .cy-custom__add:hover {
   background: color-mix(in srgb, var(--cy-coral) 22%, transparent);
+}
+
+/* ==========================================
+   COHERENCIA ENTRE VISTAS
+   Los mismos emojis y piezas en lo que ve ella y en la vista de pareja.
+   ========================================== */
+/* Subtítulos del módulo: a la izquierda, juntos y con más peso que una
+   etiqueta en mayúsculas. */
+.menstruacion-page .cy-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: var(--fs-md, 1.0625rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text, #e8e6e3);
+}
+.menstruacion-page .cy-hero-emoji {
+  margin-right: 2px;
+}
+.menstruacion-page .cy-fact__emoji {
+  margin-right: 5px;
+}
+.menstruacion-page .cy-chip__emoji {
+  display: inline-block;
+  margin-right: 4px;
+}
+.menstruacion-page .cy-history-ic {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: var(--r-sm, 12px);
+  background: var(--surface-2, #19191d);
+}
+/* Sin esto, el display de la rejilla se comería el [hidden]. */
+.menstruacion-page .cy-facts[hidden] {
+  display: none;
+}
+.menstruacion-page .cy-history-item.is-current {
+  background: color-mix(in srgb, var(--cy-coral) 9%, var(--surface-1, #111114));
+  border-color: color-mix(in srgb, var(--cy-coral) 45%, transparent);
 }

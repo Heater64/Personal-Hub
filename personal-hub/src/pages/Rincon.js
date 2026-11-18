@@ -18,6 +18,7 @@ import { onContentChange } from '../services/realtime.service.js';
 import { player } from '../services/player.service.js';
 import { GAMES } from '../data/games.catalog.js';
 
+import { saveTabScroll, restoreTabScroll } from '../utils/scrollMemory.js';
 import { state } from './rincon/state.js';
 import { ICON_SVGS } from './rincon/icons.js';
 import { gradientPoster, MASONRY_RATIOS } from './rincon/media.data.js';
@@ -30,7 +31,11 @@ import { warmSongCovers, getSongCovers } from './rincon/songCovers.js';
 import { createGaleria } from './rincon/galeria.js';
 import { createMemes } from './rincon/memes.js';
 import { createCuriosities } from './rincon/curiosities.js';
-import { createAudiosView, loadAudios } from './rincon/audios.js';
+import { createAudiosView, loadAudios, pauseSharedAudio } from './rincon/audios.js';
+
+// Las cuatro vistas de Galería comparten cabecera y pestañas: al movernos entre
+// ellas el reproductor de Audios sigue vivo, pero al salir de la familia se para.
+const GALLERY_FAMILY = new Set(['/galeria', '/memes', '/audios', '/minecraft']);
 
 // ==========================================
 // MAIN PAGE
@@ -48,16 +53,18 @@ export function RinconPage(router) {
   state.curioFavs = loadCurioFavs();
   const isAdmin = userStore.isAdmin;
 
-  // Calienta portadas de Canciones en paralelo (import diferido). Si llegan
-  // después del primer paint de la landing, re-render una sola vez.
+  // La landing calienta portadas; las pestañas de Galería no las necesitan y
+  // cargarlas solo retrasaba el cambio de pestaña.
   let songCoversPainted = false;
-  warmSongCovers().then((covers) => {
-    if (!covers.length || songCoversPainted || !page.isConnected) return;
-    if (state.view === 'landing') {
-      songCoversPainted = true;
-      render();
-    }
-  });
+  if (state.view === 'landing') {
+    warmSongCovers().then((covers) => {
+      if (!covers.length || songCoversPainted || !page.isConnected) return;
+      if (state.view === 'landing') {
+        songCoversPainted = true;
+        render();
+      }
+    });
+  }
 
   // Rotación de portadas de las tarjetas (Series, Canciones, Juegos, Curiosidades).
   // Se detiene al re-render o al salir de la página.
@@ -81,7 +88,15 @@ export function RinconPage(router) {
   const _rinconBase = (router.getCurrentPath() || '').split('?')[0];
   if (_rinconBase === '/galeria') { state.view = 'galeria-memes'; }
   else if (_rinconBase === '/memes') { state.view = 'memes'; }
-  else if (_rinconBase === '/audios') { state.view = 'audios'; state.audiosView = 'months'; state.audiosMonth = null; }
+  else if (_rinconBase === '/audios') {
+    state.view = 'audios';
+    // Volver a Audios devuelve al mes que tenías abierto; una entrada nueva
+    // (o una recarga) empieza en la lista de meses.
+    if (state.audiosView !== 'detail' || !state.audiosMonth) {
+      state.audiosView = 'months';
+      state.audiosMonth = null;
+    }
+  }
   else if (_rinconBase === '/curiosidades') { state.view = 'curiosidades'; state.curiosidadTab = 'landing'; }
 
   // Colecciones de curiosidades desde la sidebar: /curiosidades?cat=spb|sp|gatos
@@ -172,10 +187,14 @@ export function RinconPage(router) {
     page.querySelectorAll('[data-sub]').forEach(btn => {
       btn.addEventListener('click', () => {
         const sub = btn.dataset.sub;
-        if (sub === 'memes') router.navigate('/memes');
-        else if (sub === 'audios') router.navigate('/audios');
-        else if (sub === 'minecraft') router.navigate('/minecraft');
-        else router.navigate('/galeria');
+        const target = sub === 'memes' ? '/memes'
+          : sub === 'audios' ? '/audios'
+          : sub === 'minecraft' ? '/minecraft'
+          : '/galeria';
+        if (target === currentBase) { router.scrollToTop(); return; }
+        // Cada pestaña guarda su altura al salir (cleanup) y la recupera al
+        // volver; aquí solo se navega.
+        router.navigate(target);
       });
     });
     if (activeTab === 'memes') memes.bindMemesEvents(page.querySelector('#galeriaMemesContent'));
@@ -190,14 +209,23 @@ export function RinconPage(router) {
   // ==========================================
   render();
 
-  // Carga las portadas personalizadas de las tarjetas (async, se sincronizan)
-  db.getRinconCovers().then(c => {
-    state.covers = c || {};
-    if (state.view === 'landing') render();
-  }).catch(() => {});
+  // Cada pestaña carga solo lo suyo: portadas para la landing y audios para la
+  // cápsula. Antes se pedían ambas en cualquier vista y el cambio de pestaña se
+  // notaba lento.
+  if (state.view === 'landing') {
+    db.getRinconCovers().then(c => {
+      state.covers = c || {};
+      if (state.view === 'landing') render();
+    }).catch(() => {});
+  }
+  if (state.view === 'audios') {
+    loadAudios()
+      .then(() => { if (state.view === 'audios' && page.isConnected) render(); })
+      .catch(() => {});
+  }
 
-  // Carga los audios del día 3 (una sola vez, se cachean en state)
-  loadAudios().catch(() => {});
+  // Restaura la altura de la pestaña de Galería desde la que se viene.
+  restoreTabScroll(_rinconBase);
 
   // ==========================================
   // RECARGAS EN CALIENTE
@@ -238,6 +266,9 @@ export function RinconPage(router) {
 
   // Cleanup al salir de la página: rotaciones, slideshow y teclado
   page.cleanup = () => {
+    // Posición de esta pestaña, para recuperarla al volver a ella.
+    const scrollerEl = page.closest('main.main') || document.querySelector('main.main');
+    saveTabScroll(_rinconBase, scrollerEl ? scrollerEl.scrollTop : 0);
     stopAllRotations();
     offPlayerCard();
     offContent();
@@ -248,6 +279,10 @@ export function RinconPage(router) {
     page.querySelectorAll('audio, video').forEach(media => {
       try { media.pause(); media.currentTime = 0; } catch { /* ignorar */ }
     });
+    // El reproductor de Audios vive fuera de la página para sobrevivir a los
+    // cambios de pestaña; solo se calla al abandonar la sección Galería.
+    const nextPath = (window.location.hash || '').replace(/^#/, '').split('?')[0];
+    if (!GALLERY_FAMILY.has(nextPath)) pauseSharedAudio();
     pauseSlideshow();
     document.removeEventListener('keydown', memeKeyHandler);
     if (ctx.datoViewerKeyHandler) {

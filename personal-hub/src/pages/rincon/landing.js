@@ -79,7 +79,6 @@ export function createLanding(ctx) {
       const externals = [
         { id: 'juegos', title: 'Juegos', desc: 'Snake, Buscaminas, Ahorcado… ¿cuál probarás hoy?', emoji: '🎮', route: '/juegos' },
         { id: 'canciones', title: 'Canciones', desc: 'La banda sonora de momentos inolvidables.', emoji: '🎵', route: '/canciones' },
-        { id: 'thoseeyes', title: 'Those Eyes', desc: 'Una experiencia inmersiva con nuestra canción.', emoji: '👀', route: '/thoseeyes' },
         { id: 'series', title: 'Series', desc: 'Tu tracker personal de series y películas.', emoji: '🎬', route: '/series' }
       ];
       options.push(...externals.map(e => ({ ...e, type: 'external', action: 'Entrar', internal: false })));

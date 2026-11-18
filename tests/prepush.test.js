@@ -567,13 +567,17 @@ test('el catálogo de Open When vive en un módulo sin dependencias de UI', asyn
   assert.doesNotMatch(data, /from '\.\.\/components\//);
   assert.doesNotMatch(data, /from '\.\.\/pages\//);
   assert.ok(data.includes('export const LETTERS = ['));
-  assert.ok(data.includes('export const CATEGORIES = ['));
+  // Las categorías viven aparte (datos puros) para que el aviso del panel
+  // pueda nombrar la categoría nueva sin arrastrar la base de datos.
+  assert.ok(data.includes('export { CATEGORIES };'));
+  const cats = await readFile(hub('src', 'data', 'openwhen-categories.data.js'), 'utf8');
+  assert.ok(cats.includes('export const CATEGORIES = ['));
   assert.ok(data.includes('export const TYPE_META = {'));
   assert.ok(data.includes('export async function loadAllOpenWhenLetters()'));
 
   // Cartas de fábrica, con id único.
   const ids = [...data.slice(data.indexOf('export const LETTERS = [')).matchAll(/^\s{4}id: '([^']+)'/gm)].map(m => m[1]);
-  assert.equal(ids.length, 41);
+  assert.equal(ids.length, 48);
   assert.equal(new Set(ids).size, ids.length, 'las cartas de fábrica necesitan id único');
 
   // La página reexporta para no romper a quien importaba desde ahí.
@@ -588,6 +592,106 @@ test('el catálogo de Open When vive en un módulo sin dependencias de UI', asyn
   const notif = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
   assert.ok(notif.includes("from '../data/openwhen.data.js'"));
   assert.doesNotMatch(notif, /from '\.\.\/pages\//, 'un servicio no debe importar páginas');
+});
+
+test('las medias del ciclo están plegadas hasta que se piden', async () => {
+  const home = await readFile(hub('src', 'pages', 'menstruacion', 'home.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'menstruacion.css'), 'utf8');
+
+  // La barra es la única puerta a las medias, y empieza plegada.
+  assert.match(home, /class="cy-facts-toggle"[^>]*aria-expanded="false"[^>]*aria-controls="cyFacts"/);
+  assert.match(home, /id="cyFacts"[^>]*hidden/);
+  assert.match(home, /Más información/);
+  assert.match(home, /Ocultar información/);
+  // El display de la rejilla no puede comerse el [hidden].
+  assert.match(css, /\.cy-facts\[hidden\] \{\s*display: none;/);
+});
+
+test('Open When: las cartas «pronto» son borradores que solo ve el admin', async () => {
+  const data = await readFile(hub('src', 'data', 'openwhen.data.js'), 'utf8');
+  const cats = await readFile(hub('src', 'data', 'openwhen-categories.data.js'), 'utf8');
+  const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const notif = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+
+  // Los borradores nuevos viven en sus categorías, con el título puesto y el
+  // texto sin escribir a propósito.
+  for (const cat of ['vacio', 'silencio']) assert.ok(cats.includes(`id: '${cat}'`));
+  for (const title of [
+    'Cuando estés contenta',
+    'Cuando hayas ganado una competición o un entrenamiento (Esgrima)',
+    'Cuando necesites descansar pero no puedes porque tienes que hacer cosas',
+    'Cuando no sientas nada',
+    'Cuando no sabes qué te pasa',
+    'Cuando no tengas ganas de hablar',
+    'Cuando no contesto'
+  ]) assert.ok(data.includes(title), `falta la carta «${title}»`);
+
+  // El estado se guarda desde los dos editores y se pinta en la tarjeta.
+  assert.ok(data.includes("status: 'pronto'"));
+  assert.ok(page.includes("querySelector('#owStatus')"));
+  assert.ok(admin.includes('owAdminStatus'));
+  assert.ok(page.includes('ow-card__draft'));
+
+  // Para ella los borradores no existen; para el admin sí.
+  assert.match(page, /function isDraft\(letter\)/);
+  assert.match(page, /userStore\.isAdmin \? letters : letters\.filter\(l => !isDraft\(l\)\)/);
+
+  // Ni se anuncian como cartas nuevas ni salen en el saludo de Inicio.
+  assert.match(notif, /const ready = all\.filter\(l => l\.status !== 'pronto'\);/);
+  assert.match(notif, /const fresh = ready\.filter/);
+  assert.match(home, /filter\(l => l\.status !== 'pronto'\)/);
+});
+
+test('una categoría nueva de Open When lleva su propio aviso', async () => {
+  const utils = await readFile(hub('src', 'utils', 'openwhen-categories.js'), 'utf8');
+  const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
+  const notif = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
+
+  // La memoria de categorías se siembra la primera vez: lo que ya existe no
+  // aparece como nuevo, solo lo que llegue después.
+  assert.ok(utils.includes('openwhen.categories.seen'));
+  assert.match(utils, /export function seenCategories/);
+  assert.match(utils, /export function markCategorySeen/);
+
+  // La tarjeta de la categoría avisa y, al abrirla, queda vista.
+  assert.ok(page.includes('ow-cat__new'));
+  assert.match(page, /Nueva categoría/);
+  assert.match(page, /seenCats = markCategorySeen\(catId\)/);
+
+  // Y el aviso distingue «Open When nueva» de «Open When actualizada».
+  assert.match(notif, /'Open When nueva/);
+  assert.match(notif, /'Open When actualizada/);
+});
+
+test('una carta editada se marca «Actualizada» en la carta y en su categoría', async () => {
+  const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
+  const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'openwhen.css'), 'utf8');
+
+  // Al guardar, la carta lleva su versión (los dos editores).
+  assert.match(page, /updatedAt: new Date\(\)\.toISOString\(\)/);
+  assert.match(admin, /updatedAt: new Date\(\)\.toISOString\(\)/);
+
+  // La página compara con la última versión leída y avisa en los dos sitios.
+  const utils = await readFile(hub('src', 'utils', 'openwhen-categories.js'), 'utf8');
+  assert.ok(utils.includes("'openwhen.seen-updates'"));
+  assert.match(utils, /export function readSeenUpdates/);
+  assert.match(page, /function isUpdated\(letter\)/);
+  assert.ok(page.includes('ow-card__updated'));
+  assert.ok(page.includes('ow-cat__updated'));
+  assert.ok(css.includes('.ow-card__updated'));
+  assert.ok(css.includes('.ow-cat__updated'));
+
+  // Abrir la carta apaga el aviso (y repinta si no era nueva).
+  assert.match(page, /if \(wasNew \|\| wasUpdated\) render\(\);/);
+
+  // Y se avisa por notificación, una vez por versión.
+  const notif = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
+  assert.ok(notif.includes('Carta actualizada en Open When'));
+  assert.ok(notif.includes("'openwhen.announced-updates'"));
+  assert.match(notif, /const edited = ready\.filter/);
 });
 
 test('las cartas de Open When pueden llevar audio, fotos y vídeo dentro', async () => {
@@ -1170,8 +1274,11 @@ test('el sistema de respuestas es alcanzable y el día avisa de lo que falta', a
   assert.match(cal, /function loadMyResponses\(\) \{\s*return db\.getMyGiftResponses\(\)/,
     'devuelve la promesa y no repinta por su cuenta');
   assert.doesNotMatch(cal.slice(cal.indexOf('function loadMyResponses()'), cal.indexOf('HELPERS DE FECHA')), /paintAll/, 'no puede llamar a paintAll desde el modulo');
-  assert.match(cal, /loadMyResponses\(\)\.then\(\(\) => \{ if \(pageActive\) paintAll\(\); \}\);/,
-    'quien la llama se encarga de repintar solo si la página sigue montada');
+  assert.match(
+    cal,
+    /loadMyResponses\(\)\s*\.then\(loadReceivedResponses\)\s*\.then\(\(\) => \{ if \(pageActive\) paintAll\(\); \}\);/,
+    'quien la llama se encarga de repintar solo si la página sigue montada'
+  );
 
   // Y guardar una respuesta tiene que actualizar la cache: si solo se guarda
   // en Supabase, el sobre y el contador seguirian diciendo que falta.
@@ -1480,7 +1587,11 @@ test('los eventos especiales abren una bienvenida temática única por usuario',
   assert.match(dates, /for \(const event of cfg\.events \|\| \[\]\)/);
   assert.match(dates, /key: `event:\$\{identity\}:\$\{suffix\}`/);
   // La hoja vive en su propio componente: Inicio solo la dispara.
-  assert.match(home, /import \{ maybeShowSpecialEvent, previewSpecialEventSheet, replaySpecialEventSheet \} from '\.\.\/components\/SpecialEventSheet\.js'/);
+  assert.match(
+    home,
+    /import \{\s*maybeShowSpecialEvent,\s*previewSpecialEventSheet,\s*replaySpecialEventSheet,?\s*\} from '\.\.\/components\/SpecialEventSheet\.js'/,
+    'Inicio solo dispara la hoja; el componente vive aparte'
+  );
   assert.match(home, /maybeShowSpecialEvent\(page, router\)/);
   assert.match(sheet, /specialEventsToAnnounce\(\)\.filter\(item => !seen\[item\.key\]\)/);
   assert.match(sheet, /getUserPref\('specialEventsSeen', '\{\}'\)/);
@@ -1729,6 +1840,7 @@ test('guardar sanea los eventos: nada de campos raros ni filas a medias', async 
     .replace("import { escapeHtml } from '../utils/escape.js';", 'const escapeHtml = s => s;')
     .replace("import { userPrefKey } from '../utils/userStorage.js';", 'const userPrefKey = k => k;')
     .replace("import { announcePublished } from './announce.service.js';", 'const announcePublished = async () => true;')
+    .replace("import { CATEGORIES } from '../data/openwhen-categories.data.js';", 'const CATEGORIES = [];')
     .replace("import { normalizeDecor, normalizeVideoMode, mediaList, MAX_EMOJIS } from '../utils/celebration.js';",
       await celebrationSource())
     .replace("import { cleanEventActions } from '../utils/event-actions.js';",
@@ -1897,7 +2009,7 @@ test('el saludo de inicio y los días juntos usan el mismo cuerpo grande', async
   assert.equal(size(saludo), '2xl', 'un cuerpo grande pero no excesivo');
   // El número y su etiqueta ("455 DÍAS JUNTOS") también comparten cuerpo.
   assert.equal((contador.match(/font-size: var\(--fs-([\w-]+)\)/g) || []).length, 2);
-  assert.match(css, /\.home-hero__greet \{ font-size: clamp\(/, 'el saludo también se ajusta a pantallas estrechas');
+  assert.match(css, /\.home-hero__greet \{\s*font-size: clamp\(/, 'el saludo también se ajusta a pantallas estrechas');
 });
 
 test('el resumen enseña primero lo de hoy y deja los accesos al final', async () => {
@@ -2088,8 +2200,8 @@ test('el saludo de Inicio baja el apodo a su propia línea solo en móvil', asyn
   assert.doesNotMatch(base, /display:\s*block/, 'fuera de móvil el apodo no baja de línea');
 
   // El corte solo existe dentro de la media query de móvil.
-  const corte = '.home-hero__greet-name { display: block; }';
-  const enMovil = css.indexOf(corte);
+  const corte = /\.home-hero__greet-name \{\s*display:\s*block;\s*\}/;
+  const enMovil = css.search(corte);
   assert.ok(enMovil > baseIni, 'en móvil el apodo baja a su línea');
   assert.ok(css.lastIndexOf('@media (max-width: 767px)', enMovil) !== -1,
     'ese corte vive dentro de la media query de móvil');

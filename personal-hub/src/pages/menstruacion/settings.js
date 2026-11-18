@@ -10,7 +10,7 @@ import { todayISO } from '../../utils/format.js';
 import { SHARE_FIELDS } from '../../data/cycle.data.js';
 import * as cycleService from '../../services/cycle.service.js';
 import { confirmSheet, setConfirmReload } from './sheets.js';
-import { fmtDay } from './shared.js';
+import { fmtDay, sectionTitle } from './shared.js';
 
 function toggleRow(name, label, checked, hint = '') {
   return `
@@ -32,7 +32,7 @@ export function renderSettings(ctx) {
 
   return `
     <section class="card cy-settings">
-      <h2 class="section-title">Tu ciclo</h2>
+      ${sectionTitle('🔄', 'Tu ciclo')}
       <p class="cy-muted">Estos valores solo se usan mientras no haya suficientes ciclos registrados.</p>
       <form data-form="cycle" class="cy-form">
         <div class="cy-form-grid">
@@ -56,7 +56,7 @@ export function renderSettings(ctx) {
     </section>
 
     <section class="card cy-settings">
-      <h2 class="section-title">Datos anteriores</h2>
+      ${sectionTitle('🗓️', 'Datos anteriores')}
       <p class="cy-muted">Si llevas meses con el ciclo, añade aquí el inicio de tu última menstruación para que las predicciones empiecen a funcionar sin esperar.</p>
       <form data-form="last-period" class="cy-form">
         <label class="cy-field">
@@ -71,7 +71,7 @@ export function renderSettings(ctx) {
     </section>
 
     <section class="card cy-settings">
-      <h2 class="section-title">Notificaciones</h2>
+      ${sectionTitle('🔔', 'Notificaciones')}
       <form data-form="notifs" class="cy-form">
         ${toggleRow('daily', 'Recordatorio diario', notifications.daily === true, 'Solo un aviso genérico: nunca el detalle del ciclo.')}
         <label class="cy-field cy-field--inline">
@@ -87,7 +87,7 @@ export function renderSettings(ctx) {
     </section>
 
     <section class="card cy-settings">
-      <h2 class="section-title">Compartir con tu pareja</h2>
+      ${sectionTitle('💞', 'Compartir con tu pareja')}
       <p class="cy-muted">Nada se comparte por defecto. Puedes marcar solo lo que quieras enseñar y quitarlo cuando quieras.</p>
       <form data-form="sharing" class="cy-form">
         ${toggleRow('enabled', 'Permitir que vea lo marcado', sharing?.sharing_enabled === true)}
@@ -121,7 +121,7 @@ export function renderSettings(ctx) {
     </section>
 
     <section class="card cy-settings">
-      <h2 class="section-title">Calendario</h2>
+      ${sectionTitle('📅', 'Calendario')}
       <form data-form="prefs" class="cy-form">
         ${toggleRow('showFertile', 'Mostrar ventana fértil estimada', preferences.showFertile !== false)}
         ${toggleRow('showOvulation', 'Marcar ovulación estimada', preferences.showOvulation !== false)}
@@ -132,7 +132,7 @@ export function renderSettings(ctx) {
     </section>
 
     <section class="card cy-settings">
-      <h2 class="section-title">Tus datos</h2>
+      ${sectionTitle('💾', 'Tus datos')}
       <div class="cy-actions cy-actions--wrap">
         <button type="button" class="btn btn--ghost" data-export="csv">${icon('cloud', 16)} Exportar CSV</button>
         <button type="button" class="btn btn--ghost" data-export="json">${icon('cloud', 16)} Exportar JSON</button>
@@ -142,7 +142,7 @@ export function renderSettings(ctx) {
     </section>
 
     <section class="card cy-settings cy-settings--privacy">
-      <h2 class="section-title">Privacidad</h2>
+      ${sectionTitle('🔒', 'Privacidad')}
       <p class="cy-muted">Tus registros viven en tu cuenta y solo los lees tú. La vista de pareja se genera en el servidor y únicamente con los campos que autorizas; nunca se guardan copias en este dispositivo.</p>
       <p class="cy-hint">Última revisión: ${escapeHtml(fmtDay(ctx.today))}.</p>
     </section>

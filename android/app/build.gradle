@@ -24,6 +24,15 @@ android {
     }
 }
 
+// El APK sale con nombre propio («PersonalHub1.0.apk»), no «app-debug.apk».
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("PersonalHub${android.defaultConfig.versionName}.apk")
+        }
+    }
+}
+
 repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'

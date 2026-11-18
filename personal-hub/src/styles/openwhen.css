@@ -89,6 +89,23 @@
 
 .ow-cat__count { font-size: var(--fs-xs); color: var(--text-3); }
 
+/* Categoría que ella todavía no había visto */
+.ow-cat.is-new { border-color: color-mix(in srgb, var(--primary) 35%, var(--border-soft)); }
+
+.ow-cat__new,
+.ow-cat__updated {
+  align-self: flex-start;
+  margin-top: 1px;
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+}
+
+.ow-cat__updated { background: var(--blue-dim); color: var(--blue); }
+
 .ow-cat__dot {
   width: 8px;
   height: 8px;
@@ -176,6 +193,39 @@
   display: flex;
   color: var(--ok);
 }
+
+/* Estado «Pronto»: borrador que solo ve el admin */
+.ow-card.is-draft { border-style: dashed; }
+
+.ow-card__draft {
+  flex: none;
+  margin-top: 1px;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: var(--warn);
+}
+
+.ow-card__updated {
+  flex: none;
+  margin-top: 1px;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  background: var(--blue-dim);
+  color: var(--blue);
+}
+
+.ow-drafts-hint {
+  margin: -8px 0 var(--sp-10);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.ow-sheet__empty { color: var(--text-3); }
 
 .ow-card__note {
   font-size: var(--fs-xs);

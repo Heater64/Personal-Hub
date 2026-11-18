@@ -43,22 +43,6 @@ export const SECTIONS = [
     }
   },
   {
-    id: 'audios',
-    icon: 'mic',
-    emoji: '🎙️',
-    title: 'Audios',
-    desc: 'Nuestra cápsula del día 3: un audio guardado cada mes.',
-    href: '/audios'
-  },
-  {
-    id: 'minecraft',
-    icon: 'pickaxe',
-    emoji: '⛏️',
-    title: 'Minecraft',
-    desc: 'Los mundos que construimos, foto a foto.',
-    href: '/minecraft'
-  },
-  {
     id: 'juegos',
     icon: 'gamepad-2',
     emoji: '🎮',
@@ -110,14 +94,6 @@ export const SECTIONS = [
         stats: now ? '♪ Sonando ahora' : ''
       };
     }
-  },
-  {
-    id: 'thoseeyes',
-    icon: 'music-2',
-    emoji: '👀',
-    title: 'Those Eyes',
-    desc: 'Esa canción que es simplemente especial.',
-    href: '/thoseeyes'
   },
   {
     id: 'series',

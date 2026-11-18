@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo de «Cuenta atrás»: morado cálido hacia el negro, con borde coral para
+     hermanarlo con la distancia sin repetir su composición. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="26dp" />
+    <gradient
+        android:angle="315"
+        android:endColor="@color/widget_ink"
+        android:startColor="#2C1B22" />
+    <stroke
+        android:width="1dp"
+        android:color="#30C65A3A" />
+</shape>

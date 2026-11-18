@@ -10,6 +10,7 @@ import { normalizeDecor, normalizeVideoMode, mediaList, MAX_EMOJIS } from '../ut
 import { cleanEventActions } from '../utils/event-actions.js';
 import { userPrefKey } from '../utils/userStorage.js';
 import { announcePublished } from './announce.service.js';
+import { CATEGORIES } from '../data/openwhen-categories.data.js';
 
 // Storage keys for localStorage fallback
 const KEYS = {
@@ -157,6 +158,26 @@ const CONTENT_ANNOUNCE = {
   hub_dates:        { kind: 'content',  section: 'Fechas especiales', url: '/' }
 };
 
+/** Categorías de cartas que aparecen por primera vez. */
+function newCategoriesIn(prev, next) {
+  const catsOf = value => new Set(
+    (Array.isArray(value?.letters) ? value.letters : [])
+      .map(letter => letter?.category)
+      .filter(Boolean)
+  );
+  const before = catsOf(prev);
+  return [...catsOf(next)].filter(cat => !before.has(cat));
+}
+
+/** Cartas cuya versión (updatedAt) cambió respecto a lo guardado. */
+function updatedLettersIn(prev, next) {
+  const before = new Map(
+    (Array.isArray(prev?.letters) ? prev.letters : []).map(letter => [letter?.id, letter?.updatedAt])
+  );
+  return (Array.isArray(next?.letters) ? next.letters : [])
+    .filter(letter => letter?.id && letter?.updatedAt && before.get(letter.id) !== letter.updatedAt);
+}
+
 async function saveContent(id, data) {
   await requireAdmin(); // contenido global: solo ADMIN
 
@@ -201,11 +222,24 @@ async function saveContent(id, data) {
     const announce = CONTENT_ANNOUNCE[id];
     if (announce && countOf && prev !== null) {
       const added = countOf(data) - countOf(prev);
+      // Open When: cartas que se han editado desde la última versión guardada.
+      const edited = id === 'openwhen_letters' ? updatedLettersIn(prev, data) : [];
       if (added > 0) {
+        // Si además estrena categoría, el aviso dice cuál es.
+        const newCatId = id === 'openwhen_letters' ? newCategoriesIn(prev, data)[0] : null;
         announcePublished(announce.kind, {
           count: added,
           section: announce.section,
-          url: announce.url
+          url: announce.url,
+          newCategory: Boolean(newCatId),
+          category: newCatId ? (CATEGORIES.find(c => c.id === newCatId)?.title || '') : ''
+        }).catch(() => {});
+      } else if (edited.length) {
+        announcePublished(announce.kind, {
+          count: edited.length,
+          section: announce.section,
+          url: announce.url,
+          updated: true
         }).catch(() => {});
       }
     }

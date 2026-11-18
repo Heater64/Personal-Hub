@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Días juntos · 4×2
+
+     Composición horizontal, no el grande con menos cosas: acento coral,
+     número grande a la izquierda y las dos caras a la derecha. Debajo del
+     número, el desglose («1 año y 4 meses») aporta algo que el total no dice. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_days_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_days_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="14dp">
+
+    <View
+        android:layout_width="3dp"
+        android:layout_height="44dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/widget_days_accent" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_days_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.14"
+            android:maxLines="1"
+            android:text="@string/widget_days_label_short"
+            android:textColor="#CCF3C5D0"
+            android:textSize="8sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:gravity="bottom"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_days_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="0"
+                android:textColor="#FFFFFF"
+                android:textSize="36sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_days_unit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginBottom="4dp"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="@string/widget_days_unit_short"
+                android:textColor="@color/widget_rose"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_days_breakdown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="@string/widget_days_empty"
+            android:textColor="@color/widget_text_muted"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_days_faces"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/widget_days_me"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="@drawable/widget_days_face_ring"
+            android:contentDescription="@string/widget_days_me"
+            android:scaleType="centerInside" />
+
+        <ImageView
+            android:id="@+id/widget_days_partner"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="-12dp"
+            android:background="@drawable/widget_days_face_ring"
+            android:contentDescription="@string/widget_days_partner"
+            android:scaleType="centerInside" />
+    </LinearLayout>
+
+</LinearLayout>

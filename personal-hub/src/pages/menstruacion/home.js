@@ -7,22 +7,13 @@ import { icon } from '../../components/ui.js';
 import { escapeHtml } from '../../utils/escape.js';
 import { EDUCATION, symptomLabel } from '../../data/cycle.data.js';
 import { daysBetween } from '../../utils/cycleMath.js';
-import { badge, fmtDay, fmtLong, logChips, chipsHTML } from './shared.js';
+import { badge, fmtDay, fmtLong, logChips, chipsHTML, phaseEmoji, sectionTitle } from './shared.js';
 
+// Una nota al pie de las medias: se lee sin robar protagonismo a la fecha.
 function confidenceNote(cycle) {
-  const tone =
-    cycle.confidence.level === 'high' ? 'ok' : cycle.confidence.level === 'medium' ? 'warn' : '';
-  // Plegada: en el resumen solo un icono de información; el detalle, al tocarlo.
-  return `
-    <details class="cy-confidence${tone ? ` cy-confidence--${tone}` : ''}">
-      <summary class="cy-confidence__tab" aria-label="Cómo se calcula la estimación">
-        ${icon('info', 16)}
-      </summary>
-      <p class="cy-confidence__text">
-        <b>${escapeHtml(cycle.confidence.label)}.</b> ${escapeHtml(cycle.confidence.explanation)}
-      </p>
-    </details>
-  `;
+  return `<p class="cy-confidence-note">
+    <b>${escapeHtml(cycle.confidence.label)}.</b> ${escapeHtml(cycle.confidence.explanation)}
+  </p>`;
 }
 
 function renderEducation() {
@@ -108,7 +99,7 @@ export function renderHome(ctx) {
 
       <div class="cy-hero-body">
         <div class="cy-hero-text">
-          <h2 class="cy-hero-title">${escapeHtml(cycle.phase.label)}</h2>
+          <h2 class="cy-hero-title"><span class="cy-hero-emoji" aria-hidden="true">${phaseEmoji(cycle.phase.id)}</span> ${escapeHtml(cycle.phase.label)}</h2>
           <p class="cy-hero-sub">${escapeHtml(cycle.phase.hint)}</p>
         </div>
         <p class="cy-hero-day" aria-label="Día ${cycle.cycleDay} de un ciclo estimado de ${cycle.avgCycle} días">
@@ -147,37 +138,42 @@ export function renderHome(ctx) {
       </span>
     </section>
 
-    <section class="cy-facts" aria-label="Datos de tu ciclo">
+    <button type="button" class="cy-facts-toggle" id="cyFactsToggle" aria-expanded="false" aria-controls="cyFacts">
+      <span class="cy-facts-toggle-text">Más información</span>
+      <span class="cy-facts-toggle-chev" aria-hidden="true">${icon('chev', 16)}</span>
+    </button>
+
+    ${confidenceNote(cycle)}
+
+    <section class="cy-facts" id="cyFacts" aria-label="Datos de tu ciclo" hidden>
       <div class="cy-fact">
-        <span class="cy-fact__label">Ciclo medio</span>
+        <span class="cy-fact__label"><span class="cy-fact__emoji" aria-hidden="true">🔄</span> Ciclo medio</span>
         <b class="cy-fact__value">${cycle.avgCycle} <small>días</small></b>
         <span class="cy-fact__hint">${cycle.cycle.count ? `${cycle.cycle.count} ciclo${cycle.cycle.count === 1 ? '' : 's'} registrado${cycle.cycle.count === 1 ? '' : 's'}` : 'duración configurada'}</span>
       </div>
       <div class="cy-fact">
-        <span class="cy-fact__label">Regla media</span>
+        <span class="cy-fact__label"><span class="cy-fact__emoji" aria-hidden="true">🩸</span> Regla media</span>
         <b class="cy-fact__value">${cycle.avgPeriod} <small>días</small></b>
         <span class="cy-fact__hint">${cycle.period.count ? `${cycle.period.count} periodo${cycle.period.count === 1 ? '' : 's'}` : 'orientativo'}</span>
       </div>
       <div class="cy-fact">
-        <span class="cy-fact__label">Último inicio</span>
+        <span class="cy-fact__label"><span class="cy-fact__emoji" aria-hidden="true">📅</span> Último inicio</span>
         <b class="cy-fact__value">${cycle.lastStart ? escapeHtml(fmtDay(cycle.lastStart)) : '—'}</b>
         <span class="cy-fact__hint">${cycle.lastEnd ? `terminó el ${escapeHtml(fmtDay(cycle.lastEnd))}` : 'sin fecha de fin'}</span>
       </div>
     </section>
 
-    ${confidenceNote(cycle)}
-
     <section class="cy-section cy-section--quiet">
-      <h2 class="section-title">Este mes</h2>
+      ${sectionTitle('📅', 'Este mes')}
       <div class="cy-month-summary cy-month-summary--quiet">
-        <div><b>${monthLogs.length}</b><small>día${monthLogs.length === 1 ? '' : 's'} con registro</small></div>
-        <div><b>${monthPeriodDays}</b><small>día${monthPeriodDays === 1 ? '' : 's'} de sangrado</small></div>
-        <div><b>${escapeHtml(monthSymptoms)}</b><small>síntoma más repetido</small></div>
+        <div><b>${monthLogs.length}</b><small>📝 día${monthLogs.length === 1 ? '' : 's'} con registro</small></div>
+        <div><b>${monthPeriodDays}</b><small>🩸 día${monthPeriodDays === 1 ? '' : 's'} de sangrado</small></div>
+        <div><b>${escapeHtml(monthSymptoms)}</b><small>🌡️ síntoma más repetido</small></div>
       </div>
     </section>
 
     <section class="cy-section">
-      <h2 class="section-title">Últimos registros</h2>
+      ${sectionTitle('📝', 'Últimos registros')}
       ${
         recent.length
           ? `<ul class="cy-recent">${recent
@@ -202,6 +198,20 @@ export function renderHome(ctx) {
 }
 
 export function bindHome(root, ctx) {
+  // Las medias empiezan plegadas: la barra es la única puerta a ellas.
+  const factsToggle = root.querySelector('#cyFactsToggle');
+  const facts = root.querySelector('#cyFacts');
+  if (factsToggle && facts) {
+    factsToggle.addEventListener('click', () => {
+      const open = facts.hidden;
+      facts.hidden = !open;
+      factsToggle.classList.toggle('is-open', open);
+      factsToggle.setAttribute('aria-expanded', String(open));
+      const text = factsToggle.querySelector('.cy-facts-toggle-text');
+      if (text) text.textContent = open ? 'Ocultar información' : 'Más información';
+    });
+  }
+
   root.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.dataset.action === 'new-period') ctx.openPeriod();

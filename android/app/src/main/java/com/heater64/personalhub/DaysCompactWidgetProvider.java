@@ -3,11 +3,18 @@ package com.heater64.personalhub;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
+import android.os.Bundle;
 
-/** Widget de días juntos, tamaño pequeño. */
+/** Widget de días juntos, tamaño pequeño (2×2). */
 public class DaysCompactWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
-        WidgetRenderer.renderDays(context, manager, ids, true);
+        WidgetRenderer.renderDays(context, manager, ids, WidgetRenderer.Size.COMPACT);
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(
+            Context context, AppWidgetManager manager, int id, Bundle newOptions) {
+        WidgetRenderer.renderDays(context, manager, new int[] { id }, WidgetRenderer.Size.COMPACT);
     }
 }

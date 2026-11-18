@@ -1,31 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Distancia, tamaño pequeño: solo el número. -->
+<!-- Distancia · 2×2
+
+     Solo la cifra, que es lo único que cabe con dignidad en un cuadrado. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_distance_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg_distance"
+    android:background="@drawable/widget_distance_bg"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="10dp">
 
     <TextView
-        android:id="@+id/widget_distance_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:includeFontPadding="false"
-        android:text="—"
-        android:textColor="#7A3A44"
-        android:textSize="28sp"
-        android:textStyle="bold" />
-
-    <TextView
         android:id="@+id/widget_distance_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/widget_distance_label2"
-        android:textColor="#8A615A"
-        android:textSize="10sp"
+        android:includeFontPadding="false"
+        android:letterSpacing="0.14"
+        android:maxLines="1"
+        android:text="@string/widget_distance_kicker"
+        android:textColor="@color/widget_coral_soft"
+        android:textSize="8sp"
         android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_distance_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="—"
+        android:textColor="#FFFFFF"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_distance_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="@string/widget_distance_empty"
+        android:textColor="@color/widget_text_muted"
+        android:textSize="9sp"
+        android:visibility="gone" />
 
 </LinearLayout>

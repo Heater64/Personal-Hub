@@ -6,16 +6,9 @@
    ========================================== */
 
 import { db } from '../services/db.service.js';
+import { CATEGORIES } from './openwhen-categories.data.js';
 
-export const CATEGORIES = [
-  { id: 'amor', emoji: '❤️', title: 'Amor y conexión', tagline: 'Para momentos en los que quieras sentirte cerca de mí.' },
-  { id: 'tristeza', emoji: '😔', title: 'Tristeza y bajón', tagline: 'Para cuando no estés pasando por un buen momento.' },
-  { id: 'enfado', emoji: '😡', title: 'Enfado y celos', tagline: 'Para las emociones intensas.' },
-  { id: 'alegria', emoji: '🥰', title: 'Alegría', tagline: 'Para compartir y potenciar los buenos momentos.' },
-  { id: 'aburrimiento', emoji: '🥱', title: 'Aburrimiento y entretenimiento', tagline: 'Para cuando simplemente no sepas qué hacer.' },
-  { id: 'cuidarte', emoji: '🤒', title: 'Cuidarte', tagline: 'Para momentos físicos o de descanso.' },
-  { id: 'noche', emoji: '🌙', title: 'Noche', tagline: 'Para cerrar el día con cariño.' }
-];
+export { CATEGORIES };
 
 export const TYPE_META = {
   carta: { emoji: '💌', label: 'Carta' },
@@ -395,6 +388,78 @@ export const LETTERS = [
     title: 'Ábrela cuando quieras una canción de cuna',
     note: 'Estrellita, ¿dónde estás?',
     message: 'Esta es nuestra canción de las estrellas. Cierra los ojos, escucha y déjate llevar. Duerme tranquila, mi princesa. Buenas noches 🤍'
+  },
+
+  // ─── 🤐 Silencio y pocas ganas ───
+  // Borradores: el título queda puesto y el texto lo escribe él.
+  {
+    id: 'sin-ganas-de-hablar',
+    category: 'silencio',
+    type: 'carta',
+    title: 'Cuando no tengas ganas de hablar',
+    note: '',
+    message: '',
+    status: 'pronto'
+  },
+  {
+    id: 'no-contesto',
+    category: 'silencio',
+    type: 'carta',
+    title: 'Cuando no contesto',
+    note: '',
+    message: '',
+    status: 'pronto'
+  },
+
+  // ─── 🫥 No sé qué me pasa ───
+  {
+    id: 'no-sientas-nada',
+    category: 'vacio',
+    type: 'carta',
+    title: 'Cuando no sientas nada',
+    note: '',
+    message: '',
+    status: 'pronto'
+  },
+  {
+    id: 'no-sepas-que-te-pasa',
+    category: 'vacio',
+    type: 'carta',
+    title: 'Cuando no sabes qué te pasa',
+    note: '',
+    message: '',
+    status: 'pronto'
+  },
+
+  // ─── 🥰 Alegría ───
+  {
+    id: 'estes-contenta',
+    category: 'alegria',
+    type: 'carta',
+    title: 'Cuando estés contenta',
+    note: '',
+    message: '',
+    status: 'pronto'
+  },
+  {
+    id: 'ganado-competicion',
+    category: 'alegria',
+    type: 'carta',
+    title: 'Cuando hayas ganado una competición o un entrenamiento (Esgrima)',
+    note: '',
+    message: '',
+    status: 'pronto'
+  },
+
+  // ─── 🤒 Cuidarte ───
+  {
+    id: 'descansar-sin-poder',
+    category: 'cuidarte',
+    type: 'carta',
+    title: 'Cuando necesites descansar pero no puedes porque tienes que hacer cosas',
+    note: '',
+    message: '',
+    status: 'pronto'
   }
 ];
 

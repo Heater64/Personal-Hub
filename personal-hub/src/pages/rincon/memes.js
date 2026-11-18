@@ -132,16 +132,15 @@ export function createMemes(ctx) {
       if (!batch.length) { finishLoad(); return; }
       offset += batch.length;
       const calCovers = calendarVideoCovers();
+      // Título una sola vez por lote: galleryAlbum() lee la meta de localStorage
+      // y se llamaba una vez por tarjeta.
+      const albumTitle = galleryAlbum().title;
+      let batchHtml = '';
       batch.forEach((src, i) => {
         const idx = (offset - batch.length) + i;
         const ratio = knownRatio(src);
         const isVid = isVideo(src);
         const poster = isVid ? (calCovers.get(src) || getVideoPoster(src)) : '';
-        const card = document.createElement('article');
-        card.className = 'gallery-photo animate-in' + (isVid ? ' is-video' : '') + (isVid && !poster ? ' is-no-poster' : '');
-        card.style.aspectRatio = ratio;
-        card.style.setProperty('--enter-delay', `${(idx % BATCH) * 25}ms`);
-        card.dataset.index = idx;
         const isFav = favs.has(src);
         const date = photoDate(src);
         // La celda mide ~170 px en el móvil: se piden 640 px como mucho y el
@@ -149,19 +148,28 @@ export function createMemes(ctx) {
         const mediaSrc = poster || src;
         const thumb = mediaThumb(mediaSrc, 640);
         const srcset = mediaSrcset(mediaSrc, [320, 640, 960]);
-        card.innerHTML = `
+        batchHtml += `<article class="gallery-photo animate-in${isVid ? ' is-video' : ''}${isVid && !poster ? ' is-no-poster' : ''}" style="aspect-ratio:${ratio};--enter-delay:${(idx % BATCH) * 25}ms" data-index="${idx}">
           ${isVid && !poster
             ? `<span class="gallery-photo-placeholder" aria-hidden="true">${ICON_SVGS['play']}</span>`
-            : `<span class="gallery-photo-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}"${srcset ? ` srcset="${escapeHtml(srcset)}" sizes="(max-width: 599px) 46vw, (max-width: 899px) 31vw, 24vw"` : ''} data-key="${escapeHtml(src)}" alt="${escapeHtml(galleryAlbum().title)} ${idx + 1}" loading="${idx < 2 ? 'eager' : 'lazy'}"${idx < 2 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded');window.__galleryRemember && window.__galleryRemember(this)" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-photo-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`}
+            : `<span class="gallery-photo-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}"${srcset ? ` srcset="${escapeHtml(srcset)}" sizes="(max-width: 599px) 46vw, (max-width: 899px) 31vw, 24vw"` : ''} data-key="${escapeHtml(src)}" alt="${escapeHtml(albumTitle)} ${idx + 1}" loading="${idx < 2 ? 'eager' : 'lazy'}"${idx < 2 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded');window.__galleryRemember && window.__galleryRemember(this)" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-photo-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`}
           ${isVid ? `<span class="gallery-photo-play" aria-hidden="true">${ICON_SVGS['play']}</span>` : ''}
           <div class="gallery-photo-shade"></div>
           ${date ? `<span class="gallery-photo-date">${escapeHtml(date)}</span>` : ''}
           <button class="gallery-photo-fav ${isFav ? 'is-on' : ''}" data-url="${escapeHtml(src)}" aria-label="${isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}">${isFav ? '♥' : '♡'}</button>
           <button class="gallery-photo-menu" data-url="${escapeHtml(src)}" aria-label="Opciones de la foto" title="Opciones">⋮</button>
-        `;
-        grid.appendChild(card);
+        </article>`;
       });
-      requestAnimationFrame(() => { grid.querySelectorAll('.gallery-photo.animate-in').forEach(el => el.classList.add('visible')); });
+      // Un único parse y una única inserción por lote (antes eran 18 innerHTML
+      // y 18 inserciones, cada una recalculando el masonry de columnas).
+      const holder = document.createElement('div');
+      holder.innerHTML = batchHtml;
+      const frag = document.createDocumentFragment();
+      while (holder.firstElementChild) frag.appendChild(holder.firstElementChild);
+      grid.appendChild(frag);
+      // setTimeout en vez de requestAnimationFrame: con la pestaña en segundo
+      // plano (o el móvil bajo de batería) rAF se congela y la galería se
+      // quedaba en blanco hasta volver a la app.
+      setTimeout(() => { grid.querySelectorAll('.gallery-photo.animate-in:not(.visible)').forEach(el => el.classList.add('visible')); }, 30);
       // Sigue observando mientras queden fotos; finishLoad() desconecta al final
       if (offset >= photos.length) {
         finishLoad();

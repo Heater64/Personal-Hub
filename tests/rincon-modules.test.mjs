@@ -158,9 +158,13 @@ check('SECTIONS: cada tarjeta tiene sus datos y vista previa', () => {
   const src = readFileSync(ROOT + '/' + R + 'sections.data.js', 'utf8');
   const cuerpo = src.slice(src.indexOf('export const SECTIONS'), src.indexOf('export const', src.indexOf('export const SECTIONS') + 10) > 0 ? src.indexOf('export const', src.indexOf('export const SECTIONS') + 10) : undefined);
   const ids = [...cuerpo.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
-  for (const id of ['galeria-memes', 'memes-placeholder', 'audios', 'minecraft', 'juegos', 'curiosidades', 'canciones', 'thoseeyes', 'series']) {
-    if (id === 'memes-placeholder') continue;
+  // Audios y Minecraft viven dentro de Galería y Memes; Those Eyes, dentro de
+  // Canciones. El Rincón solo enseña las tarjetas que no están en otro sitio.
+  for (const id of ['galeria-memes', 'juegos', 'curiosidades', 'canciones', 'series', 'ositos']) {
     if (!ids.includes(id)) throw new Error(`falta la tarjeta ${id}`);
+  }
+  for (const id of ['audios', 'minecraft', 'thoseeyes']) {
+    if (ids.includes(id)) throw new Error(`${id} no debería repetirse en el Rincón`);
   }
   const previews = (cuerpo.match(/getPreview\(\) \{/g) || []).length;
   if (previews < 5) throw new Error(`solo ${previews} tarjetas con preview`);
@@ -173,12 +177,12 @@ check('SECTIONS: cada tarjeta tiene sus datos y vista previa', () => {
   return `${ids.length} tarjetas, ${previews} con preview`;
 });
 
-check('las secciones siguen siendo las del Rincón', () => {
+check('las secciones del Rincón son las que no viven en otra sección', () => {
   const src = readFileSync(ROOT + '/' + R + 'sections.data.js', 'utf8');
-  for (const id of ['galeria-memes', 'audios', 'minecraft', 'juegos', 'curiosidades', 'canciones', 'thoseeyes', 'series']) {
+  for (const id of ['galeria-memes', 'juegos', 'curiosidades', 'canciones', 'series', 'ositos']) {
     if (!src.includes(`id: '${id}'`)) throw new Error(`falta la seccion ${id}`);
   }
-  return 'las 8 de siempre';
+  return 'las 6 del Rincón';
 });
 
 const { ICON_SVGS } = await import(pathToFileURL(ROOT + '/' + R + 'icons.js'));

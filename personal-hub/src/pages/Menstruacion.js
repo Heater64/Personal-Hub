@@ -14,6 +14,8 @@ import { todayISO } from '../utils/format.js';
 import { computeCycle, estimatedPeriods } from '../utils/cycleMath.js';
 import * as cycleService from '../services/cycle.service.js';
 import { userStore } from '../stores/user.store.js';
+import { isNative } from '../services/native.service.js';
+import { saveCycleWidget } from '../services/widgets.service.js';
 
 import { renderHome, bindHome } from './menstruacion/home.js';
 import { renderCalendar, bindCalendar } from './menstruacion/calendar.js';
@@ -119,6 +121,19 @@ export function MenstruacionPage(router) {
     const settings = ctx.data?.settings || fallbackSettings();
     ctx.cycle = computeCycle({ periods, settings, today: ctx.today });
     ctx.ranges = estimatedPeriods({ periods, settings, today: ctx.today, count: 8 });
+
+    // El widget del ciclo se escribe desde aquí, que es donde el paquete está
+    // completo (el Inicio no carga datos de ciclo). Solo con datos, solo en el
+    // APK y solo en la cuenta de ella: el resumen de pareja no se guarda.
+    if (isNative() && !partnerOnly && ctx.cycle?.hasData) {
+      saveCycleWidget({
+        phase: ctx.cycle.phase?.label || '',
+        day: ctx.cycle.cycleDay,
+        next: ctx.cycle.nextStart,
+        days: ctx.cycle.daysUntilNext,
+        length: ctx.cycle.avgCycle,
+      });
+    }
   }
 
   function subtitle() {

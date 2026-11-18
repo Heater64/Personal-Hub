@@ -8,6 +8,7 @@ import { initTelemetry } from './services/telemetry.js';
 import { Router } from './router.js';
 import { AppShell } from './components/App.js';
 import { initMotion, refreshMotion } from './utils/motion.js';
+import { watchDateFields } from './utils/datefield.js';
 import { ROUTES } from './routes.js';
 import { LoginPage } from './pages/Login.js';
 import { HomePage } from './pages/Home.js';
@@ -98,6 +99,10 @@ function init() {
   // que se observa. Si aún no hubiera contenido, el vigilante de
   // mutaciones lo recogería igualmente.
   initMotion();
+
+  // Las fechas se leen día/mes/año en toda la web, pinte lo que pinte cada
+  // pantalla (también las hojas y los diálogos que aparecen después).
+  watchDateFields();
 }
 
 // Wait for DOM

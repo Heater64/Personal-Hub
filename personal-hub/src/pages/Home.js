@@ -24,8 +24,10 @@ import {
   daysSinceAnniversary,
   loadSpecialDates,
   nextSpecialDate,
+  upcomingSpecialDates,
   specialEventsToday,
   eventTemplateFor,
+  specialDates,
   SPECIAL_EVENT_TONES,
 } from '../utils/specialDates.js';
 import {
@@ -45,13 +47,19 @@ import {
   fetchMyLocation,
   requestLocationPermission,
   formatDistance,
+  togetherInfo,
 } from '../services/location.service.js';
 import { fetchPartnerProfile } from '../services/presence.service.js';
 import { openDistanceMap } from '../components/DistanceMapSheet.js';
+import { openDeviceSettings } from '../services/device.service.js';
 import { openWidgetsSheet } from '../components/WidgetsSheet.js';
 import {
   saveDaysWidget,
   saveDistanceWidget,
+  saveCountdownWidget,
+  saveHerMoodWidget,
+  saveWatchingWidget,
+  saveGiftsWidget,
   togetherBreakdown,
 } from '../services/widgets.service.js';
 import { isNative } from '../services/native.service.js';
@@ -296,7 +304,9 @@ function getSong(rng) {
 }
 
 function getMessage(rng) {
-  return LETTERS?.length ? pickSeeded(LETTERS, rng) : null;
+  // Los borradores «pronto» no tienen texto: nunca salen en el saludo.
+  const ready = (LETTERS || []).filter(l => l.status !== 'pronto');
+  return ready.length ? pickSeeded(ready, rng) : null;
 }
 
 /** Ánimo registrado hoy (local; la app lo sincroniza al arrancar). */
@@ -556,7 +566,7 @@ function distancePanelHTML() {
         ${avatarCircle('me', { name: me.name, avatar: me.avatar })}
         <div class="home-map__dist">
           <strong id="homeDistanceValue">—</strong>
-          <span>Distancia</span>
+          <span id="homeDistanceLabel">Distancia</span>
         </div>
         ${avatarCircle('them')}
       </div>
@@ -571,6 +581,7 @@ function distancePanelHTML() {
  */
 function initDistancePanel(page, onChange) {
   const valueEl = page.querySelector('#homeDistanceValue');
+  const labelEl = page.querySelector('#homeDistanceLabel');
   const meEl = page.querySelector('.home-map__avatar--me');
   const themEl = page.querySelector('.home-map__avatar--them');
   const hintEl = page.querySelector('#homeMapHint');
@@ -578,25 +589,37 @@ function initDistancePanel(page, onChange) {
 
   let stopped = false;
 
-  // El aviso de permiso no es un texto pasivo: lleva su botón, que es lo que
-  // dispara el diálogo del sistema (o del navegador) cuando toca.
-  const setHint = (text, withAction) => {
+  // El aviso no es un texto pasivo: lleva su icono y el botón que dispara el
+  // diálogo del sistema (o del navegador) solo cuando la persona lo toca.
+  const setHint = (text, action) => {
     if (!hintEl) return;
     hintEl.hidden = !text;
     hintEl.innerHTML = '';
     if (!text) return;
-    hintEl.append(document.createTextNode(text));
-    if (!withAction) return;
+    hintEl.insertAdjacentHTML('beforeend', icon('map', 14));
+    const label = document.createElement('span');
+    label.textContent = text;
+    hintEl.append(label);
+    if (!action) return;
 
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'home-map__allow';
+
+    // Ya denegado: el diálogo no vuelve a salir; el botón lleva a ajustes.
+    if (action === 'settings') {
+      btn.textContent = 'Ajustes';
+      btn.addEventListener('click', () => void openDeviceSettings());
+      hintEl.append(btn);
+      return;
+    }
+
     btn.textContent = 'Permitir';
     btn.addEventListener('click', async () => {
       btn.disabled = true;
       btn.textContent = 'Pidiendo…';
       const granted = await requestLocationPermission(handleStatus);
-      if (!granted) {
+      if (!granted && hintEl.isConnected) {
         btn.disabled = false;
         btn.textContent = 'Reintentar';
       }
@@ -611,11 +634,15 @@ function initDistancePanel(page, onChange) {
       return;
     }
     if (status === 'denied') {
-      // Ya denegado: el diálogo no vuelve a salir, hay que ir a ajustes.
-      setHint('Ubicación bloqueada. Actívala en los ajustes del móvil o del navegador.', false);
+      setHint('Ubicación bloqueada en los ajustes', 'settings');
       return;
     }
-    setHint('Comparte tu ubicación para ver la distancia', true);
+    if (status === 'error') {
+      setHint('No se pudo leer tu ubicación', 'allow');
+      return;
+    }
+    // 'prompt': todavía no se ha preguntado, así que se ofrece el botón.
+    setHint('Comparte tu ubicación para ver la distancia', 'allow');
   };
 
   // Una cara: foto si la hay; si no, la inicial (o el corazón). `blockedAvatar`
@@ -673,7 +700,12 @@ function initDistancePanel(page, onChange) {
 
   const stopWatch = watchDistance(({ km, partner }) => {
     if (stopped) return;
-    if (valueEl) valueEl.textContent = formatDistance(km);
+    // A menos de 10 m (más el margen del GPS) el panel dice «Juntos» en vez
+    // de una cifra que ya no distingue nada.
+    const mine = fetchMyLocation();
+    const near = mine && partner ? togetherInfo(mine, partner) : null;
+    if (valueEl) valueEl.textContent = near?.together ? 'Juntos' : formatDistance(km);
+    if (labelEl) labelEl.textContent = near?.together ? 'en el mismo sitio' : 'Distancia';
     state.km = km;
     if (partner) {
       state.partner = {
@@ -719,37 +751,43 @@ function initDistancePanel(page, onChange) {
 // Android no deja añadir un widget desde código: lo que sí puede hacer la app
 // es abrir el diálogo de confirmación del sistema (requestPinAppWidget). Solo
 // tiene sentido dentro del APK, así que en el navegador no se pinta nada.
+// Una sola tarjeta: las miniaturas ocupaban media pantalla y no aportaban
+// nada que no esté ya dentro de la hoja.
 function widgetsSectionHTML() {
-  if (!isNative()) return '';
   return `
     <section class="home-widgets" aria-label="Widgets">
-      <h2 class="section-title">Widgets
-        <button class="link" type="button" id="homeWidgetsOpen">Ver todos</button>
-      </h2>
-      <div class="home-widgets__previews">
-        <button type="button" class="home-widgets__preview" id="homeWidgetsOpen2">
-          <span class="wp-mini wp-mini--days"><b>501</b> días</span>
-          <span class="home-widgets__name">Días juntos</span>
-        </button>
-        <button type="button" class="home-widgets__preview" id="homeWidgetsOpen3">
-          <span class="wp-mini wp-mini--distance">301 km</span>
-          <span class="home-widgets__name">Distancia</span>
-        </button>
-      </div>
-      <p class="home-widgets__note">Elige tamaño y colócalos en tu pantalla de inicio.</p>
+      <button class="home-widgets__card" type="button" id="homeWidgetsOpen">
+        <span class="home-widgets__ico">${icon('phone', 19)}</span>
+        <span class="home-widgets__text">
+          <b>Widgets</b>
+          <span>Elige cuáles quieres en tu pantalla de inicio</span>
+        </span>
+        ${icon('chev', 18)}
+      </button>
     </section>
   `;
 }
 
-function initWidgetsSection(page, getAvatars) {
-  const openers = ['#homeWidgetsOpen', '#homeWidgetsOpen2', '#homeWidgetsOpen3']
-    .map(sel => page.querySelector(sel))
-    .filter(Boolean);
+function initWidgetsSection(page, getAvatars, getLive) {
+  const btn = page.querySelector('#homeWidgetsOpen');
+  if (!btn) return;
 
-  openers.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const { me, partner, stats } = getAvatars?.() || {};
-      openWidgetsSheet({ me, partner, stats });
+  btn.addEventListener('click', () => {
+    const { me, partner, stats, days, km, kmAt } = getAvatars?.() || {};
+    const live = getLive?.() || {};
+    openWidgetsSheet({
+      me,
+      partner,
+      days,
+      breakdown: stats,
+      km,
+      kmAt,
+      next: nextSpecialDate(),
+      mood: readMood(),
+      // El ciclo solo lo conoce la pantalla de ciclo; en el Inicio va vacío.
+      cycle: null,
+      watch: getContinueWatching()[0],
+      gifts: live.gifts || null,
     });
   });
 }
@@ -831,47 +869,134 @@ export function HomePage(router) {
   // Datos de los widgets: se guardan cada vez que cambian las caras o la
   // distancia, porque el widget no puede calcularlos por su cuenta.
   const widgetStats = togetherBreakdown(daysSince);
+  // Sorpresas de hoy para la hoja de widgets (llegan después del primer
+  // pintado; el Inicio las carga en diferido).
+  let widgetGifts = null;
+
   let widgetAvatars = {
     me: null,
     partner: null,
     stats: widgetStats,
     days: daysSince,
     km: null,
+    kmAt: null,
   };
 
+  // Los días se guardan nada más entrar, sin esperar a la ubicación: si el
+  // permiso está denegado o no hay GPS, el contador debe verse igual (las
+  // caras no se pierden: las conserva saveDaysWidget). Se vuelve a guardar
+  // cuando llegan las fechas reales de Supabase: el widget calcula los días
+  // desde `since`, así que un aniversario cambiado en otro móvil debe llegar
+  // aquí también.
+  const persistDays = (total = daysSince) => {
+    if (!isNative()) return;
+    const stats = togetherBreakdown(total);
+    saveDaysWidget({
+      days: total,
+      years: stats.years,
+      months: stats.months,
+      weeks: Math.floor(total / 7),
+      breakdown: stats,
+      since: specialDates().anniversary,
+    });
+  };
+
+  persistDays();
+
+  // La cuenta atrás se guarda con la próxima fecha ya calculada por su dueño
+  // (specialDates), no se recalcula en el widget: aquí solo viaja el dato.
+  // Se guarda la lista entera, no solo la próxima: el widget deja elegir por
+  // instancia qué fechas enseñar. Los tamaños pequeño y apaisado usan la
+  // primera (la más cercana).
+  const persistCountdown = () => {
+    if (!isNative()) return;
+    const next = nextSpecialDate();
+    saveCountdownWidget({
+      title: next?.title || '',
+      date: next?.date || '',
+      events: upcomingSpecialDates(6),
+    });
+  };
+
+  // El widget de ánimo es SUYO: guarda el de ella aunque la sesión con la que
+  // se mire sea la del administrador (widgets.service lo resuelve).
+  const persistMood = () => {
+    if (!isNative()) return;
+    saveHerMoodWidget();
+  };
+
+  // «Seguir viendo»: lo mismo que enseña la tarjeta del Inicio. Se guarda al
+  // entrar y cuando llega el progreso de otro dispositivo.
+  const persistWatching = () => {
+    if (!isNative()) return;
+    const first = getContinueWatching()[0];
+    saveWatchingWidget({
+      title: first?.item?.titulo || '',
+      poster: first?.item?.portada || '',
+      watched: first?.watched || 0,
+      total: first?.total || 0,
+      percent: first?.percent || 0,
+    });
+  };
+
+  persistCountdown();
+  persistMood();
+  persistWatching();
+
   const handleDistanceChange = state => {
+    // El aniversario puede haber cambiado desde que se abrió la pantalla: se
+    // recalcula con la fecha vigente en vez de reutilizar la de arranque (si
+    // no, cada aviso de distancia devolvía la hoja y el widget a los valores
+    // de antes de sincronizar).
+    const total = daysSinceAnniversary();
+    const stats = togetherBreakdown(total);
+
     widgetAvatars = {
       me: state.me,
       partner: state.partner,
-      stats: widgetStats,
-      days: daysSince,
+      stats,
+      days: total,
       km: Number.isFinite(state.km) ? formatDistance(state.km) : null,
+      kmAt: Number.isFinite(state.km) ? Date.now() : null,
     };
     if (!isNative()) return;
     saveDaysWidget({
-      days: daysSince,
-      months: widgetStats.months,
-      weeks: Math.floor(daysSince / 7),
-      years: widgetStats.years,
-      breakdown: widgetStats,
+      days: total,
+      months: stats.months,
+      weeks: Math.floor(total / 7),
+      years: stats.years,
+      breakdown: stats,
+      since: specialDates().anniversary,
       me: state.me,
       partner: state.partner,
     });
-    saveDistanceWidget({ km: state.km, me: state.me, partner: state.partner });
+    // El estado del móvil de ella viaja con su posición; el widget solo lo
+    // lee (no puede preguntarlo).
+    saveDistanceWidget({
+      km: state.km,
+      me: state.me,
+      partner: state.partner,
+      device: state.partner,
+    });
   };
 
   // Distancia: se pide la posición al entrar y se para al salir de la página
   const stopDistance = initDistancePanel(page, handleDistanceChange);
 
   // Pestaña de widgets (solo existe dentro del APK)
-  initWidgetsSection(page, () => widgetAvatars);
+  initWidgetsSection(page, () => widgetAvatars, () => ({ gifts: widgetGifts }));
 
   // Contador — arranca ya y se corrige cuando llegan las fechas reales
   animateNumber(page.querySelector('#homeCounter'), daysSince);
   loadSpecialDates()
     .then(() => {
+      const total = daysSinceAnniversary();
       const el = page.querySelector('#homeCounter');
-      if (el) animateNumber(el, daysSinceAnniversary());
+      if (el) animateNumber(el, total);
+      // El widget y la hoja pasan a los datos sincronizados.
+      widgetAvatars = { ...widgetAvatars, days: total, stats: togetherBreakdown(total) };
+      persistDays(total);
+      persistCountdown();
       const stats = page.querySelector('.home-stats');
       if (stats) stats.innerHTML = todayCards();
       const eventSlot = page.querySelector('#homeSpecialEventSlot');
@@ -921,10 +1046,11 @@ export function HomePage(router) {
 
   // Progreso de la cuenta: lo visto en otro dispositivo llega después del
   // primer pintado, así que las tarjetas se repintan cuando termina.
-  hydrateProgress()
+      hydrateProgress()
     .then(() => {
       if (watchSlot) watchSlot.innerHTML = watchSectionHTML();
       refreshContinueTile();
+      persistWatching();
     })
     .catch(() => {
       /* sin red: se queda lo local */
@@ -955,6 +1081,7 @@ export function HomePage(router) {
   const unsubscribeMood = moodStore.subscribe(() => {
     const stats = page.querySelector('.home-stats');
     if (stats) stats.innerHTML = todayCards();
+    persistMood();
   });
 
   // Sorpresas de hoy — carga diferida: no pesa en el arranque. El reparto del
@@ -967,6 +1094,8 @@ export function HomePage(router) {
       return todayCalendarGifts();
     })
     .then(count => {
+      widgetGifts = { total: count.total, pending: count.pending };
+      if (isNative()) saveGiftsWidget({ total: count.total, pending: count.pending });
       if (cancelled || !count.total) return;
       const banner = document.createElement('button');
       banner.type = 'button';

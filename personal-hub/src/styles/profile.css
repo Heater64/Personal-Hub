@@ -1021,7 +1021,8 @@
   font-weight: 600;
   color: var(--theme-text-secondary);
 }
-.prof-days-field input[type="date"] {
+.prof-days-field input[type="date"],
+.prof-days-field .datefield-input {
   padding: 9px 11px;
   border-radius: 10px;
   border: 1px solid var(--theme-divider-strong);
@@ -1030,7 +1031,8 @@
   font: inherit;
   color-scheme: dark;
 }
-.prof-days-field input[type="date"]:focus-visible {
+.prof-days-field input[type="date"]:focus-visible,
+.prof-days-field .datefield-input:focus-visible {
   outline: 2px solid var(--theme-accent);
   outline-offset: 1px;
 }
@@ -1047,7 +1049,8 @@
   color: var(--theme-text-primary);
   font: inherit;
 }
-.prof-days-event-row input[type="date"] {
+.prof-days-event-row input[type="date"],
+.prof-days-event-row .datefield-input {
   width: 150px;
   padding: 9px 11px;
   border-radius: 10px;
