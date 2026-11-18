@@ -96,7 +96,14 @@ export function Sidebar(router) {
     `;
 
     aside.querySelectorAll('.nav-item').forEach(btn => {
-      btn.addEventListener('click', () => router.navigate(btn.dataset.href));
+      btn.addEventListener('click', () => {
+        // Volver a pulsar la sección en la que ya estás sube al principio.
+        if (router.getCurrentPath() === btn.dataset.href) {
+          router.scrollToTop();
+          return;
+        }
+        router.navigate(btn.dataset.href);
+      });
     });
 
     const logoutBtn = aside.querySelector('#sidebarLogout');

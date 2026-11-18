@@ -54,7 +54,13 @@ export function BottomNav(router) {
       btn.addEventListener('click', () => {
         // En el APK cada pestaña responde con el toque del sistema; en la web no hace nada.
         hapticTap('light');
-        router.navigate(item?.href || '/');
+        const href = item?.href || '/';
+        // Tocar la pestaña en la que ya estás sube arriba, como en una app.
+        if (router.getCurrentPath() === href) {
+          router.scrollToTop();
+          return;
+        }
+        router.navigate(href);
       });
     });
   }

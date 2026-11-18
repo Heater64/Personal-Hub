@@ -122,7 +122,7 @@
 /* position: relative para que los hijos con position:absolute (regiones .sr-only,
    menúsEmergent) tengan aquí su bloque contenedor y queden recortados por este
    scroller, en vez de escapar y alargar el documento. */
-.main { position: relative; flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; }
+.main { position: relative; flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-behavior: auto; }
 
 .content {
   max-width: var(--content-max);

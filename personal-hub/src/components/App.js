@@ -52,7 +52,12 @@ import {
 import { player } from '../services/player.service.js';
 import { showToast } from './Toast.js';
 import { initRealtime, stopRealtime } from '../services/realtime.service.js';
-import { startPresence, stopPresence } from '../services/presence.service.js';
+import {
+  startPresence,
+  stopPresence,
+  updatePresenceIdentity,
+} from '../services/presence.service.js';
+import { updateSharedIdentity } from '../services/location.service.js';
 import {
   startDeviceMonitor,
   syncBackgroundTracking,
@@ -517,6 +522,31 @@ export function AppShell(router) {
     });
   }
 
+  // ── Nombre y foto compartidos ──
+  // Los latidos de posición y presencia llevan una copia del nombre y de la
+  // foto: son la única vía por la que la otra cuenta puede verlos, porque la
+  // RLS de `profiles` no le deja leer la fila del otro. Esa copia se tomaba al
+  // iniciar sesión y no se refrescaba nunca, así que un avatar nuevo no
+  // llegaba al otro dispositivo hasta recargar. Aquí se actualiza y se escribe.
+  let sharedIdentity = null;
+  function syncSharedIdentity(user) {
+    if (!user) {
+      sharedIdentity = null;
+      return;
+    }
+    const next = { name: user.name || '', avatar: user.avatar || '' };
+    if (
+      sharedIdentity &&
+      sharedIdentity.name === next.name &&
+      sharedIdentity.avatar === next.avatar
+    ) {
+      return;
+    }
+    sharedIdentity = next;
+    updateSharedIdentity(next);
+    updatePresenceIdentity(next);
+  }
+
   // Re-evaluate schedule whenever the user state changes
   let legacyKeysCleaned = false;
   let schedulePending = false;
@@ -543,10 +573,16 @@ export function AppShell(router) {
       // (Realtime + polling). Se inicia al loguearse y se detiene al salir.
       initRealtime();
       // Presencia real (quién está conectado): la usa el chat de Mal Día.
+      const profileUser = userStore.getUser();
       startPresence({
-        userId: userStore.getUser().id,
+        userId: profileUser.id,
         isAdmin: userStore.isAdmin,
+        name: profileUser.name || '',
+        avatar: profileUser.avatar || '',
       });
+      // Si acaba de cambiar su foto en Perfil, las copias que lee la otra
+      // cuenta se refrescan aquí (y se escriben en el acto).
+      syncSharedIdentity(profileUser);
       // Seguimiento del móvil: si ya estaba activo, se refrescan las
       // credenciales para que el servicio nativo pueda seguir enviando.
       void syncBackgroundTracking();
@@ -569,6 +605,7 @@ export function AppShell(router) {
       notifyNewOpenWhenLetters();
     } else {
       moodSyncPromise = null;
+      syncSharedIdentity(null);
       // Logout: desactiva todo (incluida la sincronización en tiempo real)
       stopRealtime();
       stopPresence();

@@ -46,6 +46,7 @@ import {
   requestLocationPermission,
   formatDistance,
 } from '../services/location.service.js';
+import { fetchPartnerProfile } from '../services/presence.service.js';
 import { openDistanceMap } from '../components/DistanceMapSheet.js';
 import { openWidgetsSheet } from '../components/WidgetsSheet.js';
 import {
@@ -617,10 +618,12 @@ function initDistancePanel(page, onChange) {
     setHint('Comparte tu ubicación para ver la distancia', true);
   };
 
-  // Una cara: foto si la hay; si no, la inicial (o el corazón).
-  const fill = (el, profile, fallbackAvatar) => {
+  // Una cara: foto si la hay; si no, la inicial (o el corazón). `blockedAvatar`
+  // evita pintar en la pareja una foto que en realidad es la mía.
+  const fill = (el, profile, fallbackAvatar, blockedAvatar = '') => {
     if (!el) return;
-    const avatar = profile?.avatar || fallbackAvatar || '';
+    const candidate = profile?.avatar || fallbackAvatar || '';
+    const avatar = candidate && candidate !== blockedAvatar ? candidate : '';
     const initial = (profile?.name || '').trim().charAt(0).toUpperCase();
     el.innerHTML = avatar
       ? `<img src="${escapeHtml(avatar)}" alt="">`
@@ -650,12 +653,14 @@ function initDistancePanel(page, onChange) {
     state.me = { name: mine?.name || me?.name || 'Tú', avatar: mine?.avatar || me?.avatar || '' };
     onChange?.(state);
     if (!partnerId) return;
-    const partner = await fetchProfile(partnerId);
+    // Su perfil si la RLS lo deja; si no, nombre y foto del latido (el admin
+    // no puede leerse desde la cuenta de ella).
+    const partner = (await fetchProfile(partnerId)) || await fetchPartnerProfile(partnerId);
     if (stopped) return;
     // Si la RLS no deja leer su perfil, el nombre y la foto llegan igual con
     // la posición (los escribe su propio móvil).
     const known = state.partner?.name || state.partner?.avatar ? state.partner : null;
-    fill(themEl, partner || known, '');
+    fill(themEl, partner || known, '', state.me?.avatar);
     if (partner?.name || partner?.avatar || known) {
       state.partner = {
         ...(state.partner || {}),
@@ -678,8 +683,12 @@ function initDistancePanel(page, onChange) {
         name: partner.name || state.partner?.name || '',
         avatar: partner.avatar || state.partner?.avatar || '',
       };
-      if (!themEl?.querySelector('img') && (partner.avatar || partner.name)) {
-        fill(themEl, { name: partner.name, avatar: partner.avatar }, '');
+      // Se repinta también cuando la foto CAMBIA: antes solo se pintaba si
+      // todavía no había imagen, así que un avatar nuevo no se veía nunca.
+      const want = `${state.partner?.avatar || ''}|${state.partner?.name || ''}`;
+      if (themEl && want !== '|' && themEl.dataset.identity !== want) {
+        fill(themEl, { name: state.partner.name, avatar: state.partner.avatar }, '', state.me?.avatar);
+        themEl.dataset.identity = want;
       }
       onChange?.(state);
     }

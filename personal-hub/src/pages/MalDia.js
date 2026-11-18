@@ -10,6 +10,7 @@ import { onContentChange } from '../services/realtime.service.js';
 import { watchPartnerPresence, setTyping, fetchPartnerProfile } from '../services/presence.service.js';
 import { userStore } from '../stores/user.store.js';
 import { notifyAdminOfNote } from '../services/notifications.service.js';
+import { hapticTap } from '../services/native.service.js';
 
 // Ciclo de respiración: 4 fases con duración (ms) y escala del círculo
 const BREATH_PHASES = [
@@ -25,73 +26,236 @@ const EMOJIS = ['🤍', '❤️', '🥺', '😘', '🌷', '✨', '🧸', '🫂',
 // Dos mensajes seguidos del mismo autor se leen como un grupo si no pasa esto.
 const GROUP_MS = 5 * 60 * 1000;
 
+// Preferencia de la canción fijada: el banner se ve por defecto.
+const SONG_PIN_KEY = 'ph.maldia.cancionFijada';
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// "Algo bonito": confeti y emojis de la web saliendo del mensaje.
-const LOVE_EMOJIS = ['🤍', '❤️', '✨', '🌸', '⭐', '🧸', '💫'];
-const LOVE_COLORS = ['#ff6b8b', '#ffb03a', '#ffe66d', '#7bd88f', '#6fb7ff', '#c58fff'];
-// Un solo reloj para el mensaje y las partículas: aparecen y se van juntos.
-const LOVE_MS = 3200;
-const LOVE_FADE = 420;
+// "Algo bonito": fuegos artificiales dibujados en canvas + el mensaje.
+const LOVE_MS = 3800;
+const LOVE_FADE = 500;
+const FW_COLORS = ['#ff7a9c', '#ffb3c7', '#ffd166', '#c9a7ff', '#8fd3ff', '#ffffff'];
 let loveTimer = null;
 let loveFadeTimer = null;
+let loveFx = null; // animación en curso, para poder cortarla si se repite
 
-/** Lanza una explosión de confeti + emojis desde el centro del mensaje. */
-function loveBurst(card) {
-  const layer = document.getElementById('mdLoveLayer');
-  if (!layer || !card) return;
-  const rect = card.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  const bits = 36;
-  for (let i = 0; i < bits; i++) {
-    const isEmoji = i % 3 === 0;
-    const bit = document.createElement('span');
-    bit.className = isEmoji ? 'md-love-bit md-love-bit--emoji' : 'md-love-bit';
-    if (isEmoji) bit.textContent = LOVE_EMOJIS[i % LOVE_EMOJIS.length];
-    else bit.style.background = LOVE_COLORS[i % LOVE_COLORS.length];
-    const angle = (Math.PI * 2 * i) / bits + Math.random() * 0.35;
-    const dist = 100 + Math.random() * 170;
-    bit.style.left = `${cx}px`;
-    bit.style.top = `${cy}px`;
-    bit.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
-    bit.style.setProperty('--dy', `${Math.sin(angle) * dist - 60}px`);
-    bit.style.setProperty('--rot', `${(Math.random() - 0.5) * 620}deg`);
-    bit.style.setProperty('--delay', `${Math.random() * 120}ms`);
-    layer.appendChild(bit);
-  }
-
-  // Y emojis repartidos por TODA la pantalla, no solo alrededor del mensaje.
-  const screenEmojis = window.innerWidth < 520 ? 12 : 20;
-  for (let i = 0; i < screenEmojis; i++) {
-    const star = document.createElement('span');
-    star.className = 'md-love-bit md-love-bit--emoji md-love-bit--scatter';
-    star.textContent = LOVE_EMOJIS[i % LOVE_EMOJIS.length];
-    star.style.left = `${4 + Math.random() * 92}vw`;
-    star.style.top = `${6 + Math.random() * 84}vh`;
-    star.style.fontSize = `${18 + Math.random() * 12}px`;
-    star.style.setProperty('--delay', `${Math.random() * 420}ms`);
-    layer.appendChild(star);
-  }
+/** Vibración corta del móvil (web y APK, sin fallar si no hay motor). */
+function loveVibrate(pattern) {
+  try { navigator.vibrate?.(pattern); } catch { /* sin motor háptico */ }
+  hapticTap('light');
 }
 
-/** Muestra el mensaje y hace saltar el confeti desde él. */
+/**
+ * Fuegos artificiales: tres cohetes que suben y estallan en chispas con
+ * estela, sobre un canvas a pantalla completa. Se apagan solos.
+ */
+function startFireworks(canvas, { reduced = false } = {}) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return { stop() {} };
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = `${W}px`;
+  canvas.style.height = `${H}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const rand = (min, max) => min + Math.random() * (max - min);
+  const pick = () => FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)];
+  const rockets = [];
+  const sparks = [];
+  const flashes = [];
+  const timers = [];
+  let raf = 0;
+  let last = performance.now();
+  let alive = true;
+
+  /** Explosión: un anillo de chispas, otro dorado más lento y un destello. */
+  function burst(x, y) {
+    const color = pick();
+    const count = reduced ? 30 : (W < 520 ? 52 : 72);
+    flashes.push({ x, y, life: 1, color });
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + rand(-0.06, 0.06);
+      const speed = rand(2.4, 6.6);
+      sparks.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: rand(0.008, 0.014),
+        size: rand(1.4, 2.6),
+        color: Math.random() < 0.16 ? '#ffffff' : color
+      });
+    }
+    const inner = Math.round(count / 3);
+    for (let i = 0; i < inner; i++) {
+      const angle = (Math.PI * 2 * i) / inner;
+      sparks.push({
+        x, y,
+        vx: Math.cos(angle) * rand(0.7, 1.6),
+        vy: Math.sin(angle) * rand(0.7, 1.6),
+        life: 1,
+        decay: rand(0.005, 0.008),
+        size: rand(1.6, 2.4),
+        color: '#ffd166'
+      });
+    }
+  }
+
+  // Gravedad del cohete: la velocidad inicial se calcula para que llegue
+  // justo a su altura y estalle en el cielo, nunca antes ni fuera de pantalla.
+  const ROCKET_G = 0.14;
+
+  function launch(delay) {
+    timers.push(setTimeout(() => {
+      if (!alive) return;
+      const targetY = rand(H * 0.14, H * 0.34);
+      rockets.push({
+        x: rand(W * 0.2, W * 0.8),
+        y: H + 10,
+        vx: rand(-0.4, 0.4),
+        vy: -Math.sqrt(2 * ROCKET_G * (H + 10 - targetY)),
+        targetY,
+        color: pick()
+      });
+    }, delay));
+  }
+
+  if (reduced) {
+    // Sin cohetes: tres estallidos ya colocados, más suaves pero visibles.
+    burst(W * 0.3, H * 0.28);
+    burst(W * 0.72, H * 0.2);
+    burst(W * 0.5, H * 0.38);
+  } else {
+    launch(20);
+    launch(300);
+    launch(620);
+    launch(980);
+  }
+
+  function frame(now) {
+    if (!alive) return;
+    const dt = Math.min(now - last, 48) / 16.667;
+    last = now;
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      r.x += r.vx * dt;
+      r.y += r.vy * dt;
+      r.vy += ROCKET_G * dt;
+
+      // Estela vertical y cabeza brillante del cohete.
+      ctx.globalAlpha = 0.75;
+      ctx.strokeStyle = r.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(r.x, r.y + 12);
+      ctx.lineTo(r.x, r.y);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, 1.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (r.y <= r.targetY || r.vy >= -1.2) {
+        burst(r.x, r.y);
+        rockets.splice(i, 1);
+      }
+    }
+
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.vx *= 0.986 ** dt;
+      s.vy = s.vy * 0.986 ** dt + 0.045 * dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.life -= s.decay * dt;
+      if (s.life <= 0) { sparks.splice(i, 1); continue; }
+
+      const alpha = Math.min(1, Math.max(0, s.life));
+
+      // Estela: la chispa arrastra su color y se va apagando.
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.size * 1.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(s.x - s.vx * 2.4, s.y - s.vy * 2.4);
+      ctx.lineTo(s.x, s.y);
+      ctx.stroke();
+
+      // Cabeza de color y punto casi blanco: así se lee el brillo.
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Destello del estallido: un aro que se abre y se apaga en medio segundo.
+    for (let i = flashes.length - 1; i >= 0; i--) {
+      const f = flashes[i];
+      f.life -= 0.035 * dt;
+      if (f.life <= 0) { flashes.splice(i, 1); continue; }
+      ctx.globalAlpha = f.life * 0.5;
+      ctx.strokeStyle = f.color;
+      ctx.lineWidth = 2.5 * f.life;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 8 + (1 - f.life) * 64, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+    raf = requestAnimationFrame(frame);
+  }
+  raf = requestAnimationFrame(frame);
+
+  return {
+    stop() {
+      alive = false;
+      cancelAnimationFrame(raf);
+      timers.forEach(clearTimeout);
+      ctx.clearRect(0, 0, W, H);
+    }
+  };
+}
+
+/** Muestra el mensaje con los fuegos artificiales y la vibración del móvil. */
 function showLove() {
   const card = document.getElementById('mdLove');
   const layer = document.getElementById('mdLoveLayer');
+  const canvas = document.getElementById('mdLoveCanvas');
   if (!card || !layer) return;
   clearTimeout(loveTimer);
   clearTimeout(loveFadeTimer);
+  loveFx?.stop();
+  loveFx = null;
   layer.classList.remove('is-fading');
-  layer.innerHTML = '';
   card.hidden = false;
   card.classList.remove('is-out');
-  loveBurst(card);
-  // El mensaje y las partículas se desvanecen a la vez y desaparecen a la vez.
+
+  const reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (canvas) loveFx = startFireworks(canvas, { reduced: reduce });
+  loveVibrate([18, 60, 26]);
+
+  // El mensaje y los fuegos se desvanecen a la vez y desaparecen a la vez.
   loveFadeTimer = setTimeout(() => {
     card.classList.add('is-out');
     layer.classList.add('is-fading');
@@ -99,7 +263,8 @@ function showLove() {
   loveTimer = setTimeout(() => {
     card.hidden = true;
     layer.classList.remove('is-fading');
-    layer.innerHTML = '';
+    loveFx?.stop();
+    loveFx = null;
   }, LOVE_MS);
 }
 
@@ -128,6 +293,25 @@ export function MalDiaPage(router) {
   let lastCount = 0;
   let partnerPhotoTries = 0;   // no insistir con el perfil en cada latido
   let partnerPhotoTriedAt = 0;
+  let keepTypingFocus = false; // refoco programático: no cerrar el menú de adjuntos
+
+  // El vídeo del gatito se crea al entrar en Mal Día y se descarga en segundo
+  // plano: al abrir «Me siento mejor» ya está listo y no hay espera en negro.
+  const BETTER_VIDEO_SRC = 'https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/gatito_isgr4b.mp4';
+  let betterVideoEl = null;
+  function ensureBetterVideo() {
+    if (betterVideoEl) return betterVideoEl;
+    betterVideoEl = h('video', {
+      class: 'md-better__video',
+      src: BETTER_VIDEO_SRC,
+      preload: 'auto',
+      loop: true,
+      muted: true,
+      playsinline: true
+    });
+    betterVideoEl.load();
+    return betterVideoEl;
+  }
 
   // Las respuestas del admin viven en `content`, así que Realtime ya las
   // empuja a los dos: la conversación se repinta sin pulsar «Actualizar».
@@ -139,6 +323,7 @@ export function MalDiaPage(router) {
     if (onKeyDown) document.removeEventListener('keydown', onKeyDown);
     if (breathingInterval) { clearInterval(breathingInterval); breathingInterval = null; }
     if (audioPlayer) { audioPlayer.pause(); audioPlayer = null; }
+    if (betterVideoEl) betterVideoEl.pause();
     if (notesOff) { notesOff(); notesOff = null; }
     if (swipeCleanup) { swipeCleanup(); swipeCleanup = null; }
     closeSheets();
@@ -325,15 +510,25 @@ export function MalDiaPage(router) {
    */
   async function paintPartnerPhoto(userId = null) {
     const avatar = page.querySelector('#mdChatAvatar');
-    if (!avatar || avatar.classList.contains('has-photo')) return;
-    if (partnerPhotoTries >= 3) return;
+    if (!avatar) return;
+    const painted = avatar.classList.contains('has-photo');
+    // Con foto ya puesta también se vuelve a pedir el perfil (la persona puede
+    // cambiarla sin que recarguemos), pero como mucho cada 30 s. Sin foto se
+    // mantiene el límite de 3 intentos por visita: no hay nada que enseñar.
     if (Date.now() - partnerPhotoTriedAt < 30000) return;
+    if (!painted && partnerPhotoTries >= 3) return;
     partnerPhotoTriedAt = Date.now();
-    partnerPhotoTries += 1;
+    if (!painted) partnerPhotoTries += 1;
 
     const profile = await fetchPartnerProfile(userId);
     if (!page.contains(avatar) || !profile?.avatar) return;
-    if (avatar.classList.contains('has-photo')) return;
+
+    // Si ya hay foto, se sustituye solo cuando de verdad cambió.
+    const existing = avatar.querySelector('.md-chat__avatar-img');
+    if (existing) {
+      if (existing.getAttribute('src') !== profile.avatar) existing.src = profile.avatar;
+      return;
+    }
 
     const img = document.createElement('img');
     img.className = 'md-chat__avatar-img';
@@ -426,7 +621,7 @@ export function MalDiaPage(router) {
         </header>
 
         <!-- Canción fijada, como el mensaje fijado de un chat -->
-        <div class="md-pin" aria-label="Nuestra canción">
+        <div class="md-pin" id="mdSongPin" aria-label="Nuestra canción">
           <span class="md-pin__icon" aria-hidden="true">${icon('music', 15)}</span>
           <div class="md-pin__meta">
             <b id="musicLabel">Nuestra canción</b>
@@ -490,7 +685,7 @@ export function MalDiaPage(router) {
           </button>
           <button type="button" class="md-attach__item" id="attachMusicBtn" data-attach-close>
             <span class="md-attach__icon md-attach__icon--violet" aria-hidden="true">${icon('music', 20)}</span>
-            <span class="md-attach__text"><b>Nuestra canción</b><small>Poner o quitar la música</small></span>
+            <span class="md-attach__text"><b>Nuestra canción</b><small>Mostrar u ocultar el banner</small></span>
           </button>
         </div>
       </div>
@@ -544,16 +739,57 @@ export function MalDiaPage(router) {
         </div>
       </div>
 
-      <!-- "Algo bonito": el mensaje, con confeti y emojis saliendo de él -->
-      <div class="md-love-layer" id="mdLoveLayer" aria-hidden="true"></div>
+      <!-- "Algo bonito": fuegos artificiales y el mensaje -->
+      <div class="md-love-layer" id="mdLoveLayer" aria-hidden="true">
+        <canvas class="md-love__canvas" id="mdLoveCanvas"></canvas>
+      </div>
       <div class="md-love" id="mdLove" role="status" aria-live="polite" hidden>
-        <span class="md-love__emoji" aria-hidden="true">🤍</span>
+        <span class="md-love__mark" aria-hidden="true">${icon('heart', 15)}</span>
         <p class="md-love__text">Te quiero mucho mi princesa</p>
       </div>
     `;
   }
 
+  /** ¿Está puesto el banner de la canción? (por defecto sí) */
+  function songPinVisible() {
+    try { return localStorage.getItem(SONG_PIN_KEY) !== '0'; } catch { return true; }
+  }
+
+  /** Pinta el banner según la preferencia guardada. */
+  function applySongPin() {
+    const pin = document.getElementById('mdSongPin');
+    if (pin) pin.hidden = !songPinVisible();
+  }
+
+  let pinTimer = null;
+
+  /** Guarda la preferencia: el banner aparece o se oculta para siempre. */
+  function setSongPin(visible) {
+    const pin = document.getElementById('mdSongPin');
+    if (pin) {
+      clearTimeout(pinTimer);
+      pin.classList.remove('is-hiding');
+      if (visible) {
+        pin.hidden = false;
+        // Reinicia la animación por si se ocultó hace un instante.
+        pin.classList.remove('is-entering');
+        void pin.offsetWidth;
+        pin.classList.add('is-entering');
+        pinTimer = setTimeout(() => pin.classList.remove('is-entering'), 280);
+      } else {
+        pin.classList.add('is-hiding');
+        pinTimer = setTimeout(() => {
+          pin.hidden = true;
+          pin.classList.remove('is-hiding');
+        }, 200);
+      }
+    }
+    try { localStorage.setItem(SONG_PIN_KEY, visible ? '1' : '0'); } catch { /* sin almacenamiento */ }
+  }
+
   render();
+  applySongPin();
+  ensureBetterVideo();
 
   // "Algo bonito" por delegación: sobrevive a los repintados internos de la
   // página y no depende de que el botón exista al enlazar.
@@ -662,9 +898,10 @@ export function MalDiaPage(router) {
     };
 
     // Con la conversación en la mano: si estabas abajo, la píldora sobra.
+    // La barra de emojis ya no se cierra al deslizar la conversación: solo
+    // se va cuando se abre otro panel o se envía el mensaje.
     streamEl?.addEventListener('scroll', () => {
       if (isNearBottom(streamEl, 80)) hideNewPill();
-      hideEmoji();
     }, { passive: true });
     document.getElementById('mdNewPill')?.addEventListener('click', () => {
       hideNewPill();
@@ -763,10 +1000,27 @@ export function MalDiaPage(router) {
     // ==========================================
     // ESCRIBIR — campo que crece, emojis y adjuntos
     // ==========================================
+    let emojiTimer = null;
+
     function hideEmoji() {
-      if (!emojiBar || emojiBar.hidden) return;
-      emojiBar.hidden = true;
+      if (!emojiBar || emojiBar.hidden || emojiBar.classList.contains('is-hiding')) return;
+      clearTimeout(emojiTimer);
+      emojiBar.classList.add('is-hiding');
       document.getElementById('mdEmojiBtn')?.setAttribute('aria-expanded', 'false');
+      // Se oculta al terminar el desvanecido, no de golpe.
+      emojiTimer = setTimeout(() => {
+        emojiBar.hidden = true;
+        emojiBar.classList.remove('is-hiding');
+      }, 180);
+    }
+
+    function showEmoji() {
+      if (!emojiBar) return;
+      clearTimeout(emojiTimer);
+      emojiBar.classList.remove('is-hiding');
+      emojiBar.hidden = false;
+      document.getElementById('mdEmojiBtn')?.setAttribute('aria-expanded', 'true');
+      hideAttach();
     }
 
     function hideAttach() {
@@ -798,13 +1052,12 @@ export function MalDiaPage(router) {
         sendMsg();
       }
     });
-    threadInput?.addEventListener('focus', () => { hideAttach(); });
+    threadInput?.addEventListener('focus', () => { if (!keepTypingFocus) hideAttach(); });
 
     document.getElementById('mdEmojiBtn')?.addEventListener('click', () => {
       if (!emojiBar) return;
-      hideAttach();
-      emojiBar.hidden = !emojiBar.hidden;
-      document.getElementById('mdEmojiBtn')?.setAttribute('aria-expanded', String(!emojiBar.hidden));
+      if (emojiBar.hidden) showEmoji();
+      else hideEmoji();
     });
     emojiBar?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-emoji]');
@@ -828,9 +1081,47 @@ export function MalDiaPage(router) {
     attachSheet?.addEventListener('click', (e) => {
       if (e.target === attachSheet || e.target.closest('[data-attach-close]')) hideAttach();
     });
+    // «Nuestra canción» ya no reproduce ni pausa: pone o quita el banner
+    // fijado, y recuerda la elección para la próxima vez.
     document.getElementById('attachMusicBtn')?.addEventListener('click', () => {
-      document.getElementById('musicPlayBtn')?.click();
+      const visible = !songPinVisible();
+      setSongPin(visible);
+      toast(visible ? 'Nuestra canción vuelve arriba' : 'Banner de la canción oculto');
     });
+
+    // ==========================================
+    // EL TECLADO NO SE CIERRA AL TOCAR ABAJO
+    // Tocar «+», los emojis o enviar no debe sacarte del campo: si estabas
+    // escribiendo, el foco vuelve al textarea con el cursor donde estaba.
+    // ==========================================
+    const KEEP_TYPING = '.md-chat__compose button, .md-emoji__item, .md-attach__item, .md-chat__reply-cancel';
+    let typingCaret = null;
+
+    page.addEventListener('pointerdown', (e) => {
+      if (!e.target.closest(KEEP_TYPING)) return;
+      typingCaret = document.activeElement === threadInput
+        ? { start: threadInput.selectionStart, end: threadInput.selectionEnd }
+        : null;
+      // El botón no roba el foco, así que el teclado sigue abierto.
+      if (typingCaret) e.preventDefault();
+    }, true);
+
+    page.addEventListener('click', (e) => {
+      if (!e.target.closest(KEEP_TYPING) || !typingCaret) return;
+      const caret = typingCaret;
+      typingCaret = null;
+      if (!threadInput) return;
+      // Después de la acción del botón (abrir el menú, borrar el mensaje…),
+      // el cursor vuelve al campo sin mover la vista.
+      requestAnimationFrame(() => {
+        keepTypingFocus = true;
+        threadInput.focus({ preventScroll: true });
+        keepTypingFocus = false;
+        if (caret.start != null) {
+          threadInput.setSelectionRange(caret.start, caret.end ?? caret.start);
+        }
+      });
+    }, true);
 
     // Enviar a la conversación. Mismo campo para los dos: ella deja una nota
     // (user_progress) y él responde (content), y ambos leen la mezcla.
@@ -944,15 +1235,17 @@ export function MalDiaPage(router) {
 
     // Me siento mejor (gatito) — el vídeo vive en el sheet del sistema
     document.getElementById('betterBtn')?.addEventListener('click', () => {
-      openSheet('Te quiero', () => {
+      const overlay = openSheet('Te quiero', () => {
         const body = h('div', { class: 'md-better' });
-        const video = h('video', {
-          src: 'https://res.cloudinary.com/dcsent4fs/video/upload/v1777134957/gatito_isgr4b.mp4',
-          autoplay: true, loop: true, muted: true, playsinline: true
-        });
-        body.append(video, h('p', { class: 'md-better__msg' }, 'Siempre estaré aquí para ti mi reina.'));
+        body.append(
+          ensureBetterVideo(),
+          h('p', { class: 'md-better__msg' }, 'Siempre estaré aquí para ti mi reina.')
+        );
         return body;
-      });
+      }, () => { betterVideoEl?.pause(); });
+      // En móvil sube desde abajo con una curva suave (ver maldia.css).
+      overlay.querySelector('.sheet')?.classList.add('md-better-sheet');
+      betterVideoEl?.play().catch(() => { /* si el sistema lo bloquea, se queda el póster */ });
     });
 
     // ==========================================

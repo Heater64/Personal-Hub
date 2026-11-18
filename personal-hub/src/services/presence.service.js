@@ -16,6 +16,10 @@
    SÍ puede leer:
      · admin    → `content` id `presence_admin` (lectura abierta a todos)
      · usuaria  → `user_progress` type `presence` (el admin la lee por RLS)
+
+   El latido lleva también nombre y foto. La RLS de `profiles` solo deja
+   leer la fila propia (o al admin), así que sin esto la usuaria no podría
+   pintar la foto del admin en Mal Día.
    ========================================== */
 
 import { supabase } from './supabase.js';
@@ -38,7 +42,8 @@ const isDbReady = () => !!supabase;
 async function writePresence() {
   if (!self?.userId || !isDbReady()) return;
   const at = new Date().toISOString();
-  const data = { at };
+  // Nombre y foto viajan con el latido: el otro lado no puede leer `profiles`.
+  const data = { at, name: self.name || '', avatar: self.avatar || '' };
   if (typingAt) data.typing_at = typingAt;
   try {
     if (self.isAdmin) {
@@ -58,16 +63,30 @@ async function writePresence() {
 function beat() { writePresence(); }
 
 /** Empieza a latir (idempotente). Se llama al iniciar sesión. */
-export function startPresence({ userId, isAdmin } = {}) {
+export function startPresence({ userId, isAdmin, name = '', avatar = '' } = {}) {
   if (!userId || !isDbReady()) return;
   stopPresence();
-  self = { userId: String(userId), isAdmin: !!isAdmin };
+  self = { userId: String(userId), isAdmin: !!isAdmin, name, avatar };
   typingAt = null;
   lastTypingWrite = 0;
   beat();
   beatTimer = setInterval(beat, BEAT_MS);
   onVisible = () => { if (document.visibilityState === 'visible') beat(); };
   document.addEventListener('visibilitychange', onVisible);
+}
+
+/**
+ * Refresca el nombre y la foto del latido, y lo escribe en el acto.
+ *
+ * El latido es la única vía por la que la otra cuenta ve la foto de quien no
+ * puede leer en `profiles`: si la copia no se refresca, la foto anterior se
+ * queda pegada hasta reiniciar sesión.
+ */
+export function updatePresenceIdentity({ name, avatar } = {}) {
+  if (!self) return;
+  if (typeof name === 'string' && name) self.name = name;
+  if (typeof avatar === 'string') self.avatar = avatar;
+  writePresence();
 }
 
 /** Deja de latir (logout o cambio de cuenta). */
@@ -116,7 +135,13 @@ export async function fetchPartnerPresence() {
       if (error) throw error;
       const row = data?.[0];
       return row
-        ? { at: row.data?.at || row.updated_at, typingAt: row.data?.typing_at || null, userId: row.user_id }
+        ? {
+          at: row.data?.at || row.updated_at,
+          typingAt: row.data?.typing_at || null,
+          userId: row.user_id,
+          name: row.data?.name || '',
+          avatar: row.data?.avatar || '',
+        }
         : null;
     }
     // La otra persona es el admin: su latido vive en content.
@@ -127,7 +152,13 @@ export async function fetchPartnerPresence() {
       .maybeSingle();
     if (error) throw error;
     return data
-      ? { at: data.data?.at || data.updated_at, typingAt: data.data?.typing_at || null, userId: data.data?.user_id || null }
+      ? {
+        at: data.data?.at || data.updated_at,
+        typingAt: data.data?.typing_at || null,
+        userId: data.data?.user_id || null,
+        name: data.data?.name || '',
+        avatar: data.data?.avatar || '',
+      }
       : null;
   } catch {
     return null;
@@ -160,6 +191,27 @@ export async function fetchPartnerProfile(userId = null) {
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;
+    if (data?.avatar_url) return { name: data.name || '', avatar: data.avatar_url || '' };
+
+    // La RLS de `profiles` deja a cada cuenta leer solo su fila (o al admin):
+    // ella no puede leer la del admin. Nombre y foto viajan en el latido.
+    const beat = await fetchPartnerPresence();
+    if (beat && (!beat.userId || beat.userId === id) && (beat.avatar || beat.name)) {
+      return { name: beat.name || data?.name || '', avatar: beat.avatar || '' };
+    }
+
+    // Y también con la última ubicación compartida (fila que los dos leen).
+    if (!self?.isAdmin) {
+      const { data: row } = await supabase
+        .from('content')
+        .select('data')
+        .eq('id', 'location_admin')
+        .maybeSingle();
+      const loc = row?.data;
+      if (loc && (!loc.user_id || loc.user_id === id) && (loc.avatar || loc.name)) {
+        return { name: loc.name || data?.name || '', avatar: loc.avatar || '' };
+      }
+    }
     return data ? { name: data.name || '', avatar: data.avatar_url || '' } : null;
   } catch {
     return null;

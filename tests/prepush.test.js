@@ -631,6 +631,39 @@ test('el retroceso cierra las capas sin salir de la página', async () => {
   assert.ok(page.includes('__owView'));
 });
 
+test('Atrás devuelve a la posición donde estabas', async () => {
+  const router = await readFile(hub('src', 'router.js'), 'utf8');
+  const memory = await readFile(hub('src', 'utils', 'scrollMemory.js'), 'utf8');
+  const nav = await readFile(hub('src', 'components', 'BottomNav.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'main.css'), 'utf8');
+
+  // El documento no se desplaza (lo bloquea reset.css), así que la restauración
+  // nativa del navegador no puede funcionar: la hacemos nosotros.
+  assert.ok(router.includes("history.scrollRestoration = 'manual'"));
+  assert.ok(memory.includes('export function restoreScroll'));
+  assert.ok(memory.includes('export function savedY'));
+  assert.ok(memory.includes('__phScrollKey'), 'la posición va por entrada de historial');
+
+  // La posición se aplica DESPUÉS de montar la página: antes no hay altura.
+  const montaje = router.indexOf('this._container.replaceChildren(component)');
+  const posicion = router.indexOf('this._applyScroll()');
+  assert.ok(montaje !== -1 && posicion > montaje, 'primero se monta, después se coloca el scroll');
+
+  // Volver atrás apunta a la posición guardada de la entrada destino.
+  assert.ok(router.includes('this._pendingScroll = { key, y: savedY(key) }'));
+
+  // Se cancela si el usuario toca: nunca hay que pelear con el dedo.
+  for (const evento of ['wheel', 'touchstart', 'keydown']) {
+    assert.ok(memory.includes(`'${evento}'`), `la restauración debe rendirse ante ${evento}`);
+  }
+
+  // Sin suavizado: una vuelta atrás tiene que ser instantánea.
+  assert.match(css, /\.main \{[^}]*scroll-behavior: auto;/);
+
+  // Tocar la pestaña en la que ya estás sube arriba, como en una app nativa.
+  assert.ok(nav.includes('router.scrollToTop()'));
+});
+
 test('la telemetría es opt-in y sanea antes de enviar', async () => {
   const telemetry = await readFile(hub('src', 'services', 'telemetry.js'), 'utf8');
 
@@ -905,12 +938,61 @@ test('las tarjetas de Explorar en Sentimientos van de una en una', async () => {
   assert.match(card, /flex-direction:\s*row/);
   const cover = css.slice(css.indexOf('.sent-card-cover {'), css.indexOf('.sent-card:hover'));
   assert.match(cover, /width:\s*84px/);
-  assert.match(cover, /height:\s*84px/);
+  // El alto NO es fijo: la portada se estira con la tarjeta. Con un height
+  // fijo, en móvil (título o descripción a dos líneas) la tarjeta crecía y el
+  // cuadro se quedaba corto, con el separador vertical a medias.
+  assert.match(cover, /min-height:\s*84px/, 'el alto mínimo mantiene la portada grande');
+  assert.match(cover, /align-self:\s*stretch/, 'la portada tiene que cubrir todo el alto de la tarjeta');
+  assert.doesNotMatch(cover, /[^-]height:\s*84px/, 'nada de alto fijo: descuadra en móvil');
   assert.match(cover, /border-right:/, 'la separación va ahora en vertical');
 
   // Ni el icono se queda pequeño en una portada más grande.
   const sent = await readFile(hub('src', 'pages', 'Sentimientos.js'), 'utf8');
   assert.match(sent, /sent-card-cover">\$\{icon\(card\.icon, 30\)\}/);
+});
+
+test('cambiar de foto llega a la otra cuenta sin recargar', async () => {
+  const app = await readFile(hub('src', 'components', 'App.js'), 'utf8');
+  const loc = await readFile(hub('src', 'services', 'location.service.js'), 'utf8');
+  const pres = await readFile(hub('src', 'services', 'presence.service.js'), 'utf8');
+  const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
+  const chat = await readFile(hub('src', 'pages', 'MalDia.js'), 'utf8');
+
+  // La foto viaja dentro de la posición y del latido: es la única vía por la
+  // que la otra cuenta puede verla (la RLS de `profiles` no le deja leerla).
+  assert.ok(loc.includes('export function updateSharedIdentity'), 'falta refrescar la copia de la posición');
+  assert.ok(pres.includes('export function updatePresenceIdentity'), 'falta refrescar la copia del latido');
+
+  // Y se refresca al cambiar el perfil, no solo al iniciar sesión.
+  assert.ok(app.includes('syncSharedIdentity(profileUser)'), 'el cambio de foto no se propaga');
+  assert.ok(app.includes('updateSharedIdentity(next)'));
+  assert.ok(app.includes('updatePresenceIdentity(next)'));
+
+  // Las vistas dejan de quedarse con la primera foto que pintaron.
+  assert.ok(home.includes('themEl.dataset.identity'), 'el mapa no repinta una foto nueva');
+  assert.ok(
+    chat.includes("existing.getAttribute('src') !== profile.avatar"),
+    'el chat no sustituye la foto vieja'
+  );
+});
+
+test('las cifras de Sentimientos están plegadas hasta que se piden', async () => {
+  const sent = await readFile(hub('src', 'pages', 'Sentimientos.js'), 'utf8');
+  const css = await readFile(hub('src', 'styles', 'sentimientos.css'), 'utf8');
+
+  // La barra de «Más información» es la única puerta a las cifras, y empieza
+  // cerrada: la tarjeta y el ánimo de hoy no compiten con cuatro números.
+  assert.ok(sent.includes('id="sentStatsToggle"'), 'falta la barra de más información');
+  assert.match(sent, /id="sentStatsToggle"[^>]*aria-expanded="false"/, 'la barra arranca plegada');
+  assert.match(sent, /<div class="sent-stats" id="sentStats" hidden><\/div>/, 'las cifras arrancan ocultas');
+  assert.ok(sent.includes('let statsOpen = false;'), 'el estado por defecto es cerrado');
+
+  // Al repintar por un cambio de ánimo se respeta lo que eligió el usuario.
+  assert.ok(sent.includes('box.hidden = !statsOpen;'), 'el repintado no reabre las cifras');
+  assert.ok(sent.includes("textContent = statsOpen ? 'Ocultar información' : 'Más información'"));
+
+  // display:flex gana a [hidden]: si no se declara, el ocultado no oculta.
+  assert.match(css, /\.sent-stats-toggle\[hidden\]\s*\{\s*display:\s*none;/);
 });
 
 test('el historial de sentimientos escapa lo que viene de la base de datos', async () => {

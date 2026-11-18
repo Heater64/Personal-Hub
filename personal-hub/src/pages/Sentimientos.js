@@ -240,6 +240,10 @@ export function SentimientosPage(router) {
       </p>
     </section>
 
+    <button type="button" class="sent-stats-toggle" id="sentStatsToggle" aria-expanded="false" aria-controls="sentStats">
+      <span class="sent-stats-toggle-text">Más información</span>
+      <span class="sent-stats-toggle-chev" aria-hidden="true">${icon('chev', 16)}</span>
+    </button>
     <div class="sent-stats" id="sentStats" hidden></div>
 
     <!-- ===== TU MES DE ÁNIMOS ===== -->
@@ -285,6 +289,10 @@ export function SentimientosPage(router) {
   const extraPanel = page.querySelector('#moodExtra');
   const customInput = page.querySelector('#moodCustomInput');
   const customForm = page.querySelector('#moodCustomForm');
+  const statsToggle = page.querySelector('#sentStatsToggle');
+  // Las cifras arrancan plegadas: lo importante de esta pantalla es el ánimo
+  // de hoy, no una fila de números. Se abren solo si el usuario las pide.
+  let statsOpen = false;
 
   // ==========================================
   // SELECCIÓN — atajos y desplegable comparten estado
@@ -422,11 +430,31 @@ export function SentimientosPage(router) {
   // ==========================================
   // CIFRAS
   // ==========================================
+  // La barra es la única puerta a las cifras: anuncia si están abiertas y, si
+  // todavía no hay ningún día registrado, no se enseña (no habría nada dentro).
+  function paintStatsToggle(hasStats) {
+    if (!statsToggle) return;
+    statsToggle.hidden = !hasStats;
+    statsToggle.setAttribute('aria-expanded', String(hasStats && statsOpen));
+    statsToggle.classList.toggle('is-open', hasStats && statsOpen);
+    const text = statsToggle.querySelector('.sent-stats-toggle-text');
+    if (text) text.textContent = statsOpen ? 'Ocultar información' : 'Más información';
+  }
+
+  if (statsToggle) {
+    statsToggle.addEventListener('click', () => {
+      statsOpen = !statsOpen;
+      renderStats();
+    });
+  }
+
   function renderStats() {
     const box = page.querySelector('#sentStats');
     if (!box) return;
     const stats = computeStats();
-    if (!stats.totalDays) {
+    const hasStats = stats.totalDays > 0;
+    paintStatsToggle(hasStats);
+    if (!hasStats) {
       box.hidden = true;
       box.innerHTML = '';
       return;
@@ -454,7 +482,9 @@ export function SentimientosPage(router) {
     `
       )
       .join('');
-    box.hidden = false;
+    // Se repinta en cada cambio de ánimo: el plegado lo decide el usuario, no
+    // el repintado.
+    box.hidden = !statsOpen;
   }
 
   function renderHistory() {

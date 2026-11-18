@@ -177,6 +177,9 @@ async function push({ userId, isAdmin }, setStatus) {
 export function startLocationSharing({ userId, isAdmin, name, avatar } = {}, onStatus) {
   stopLocationSharing();
   if (!userId || !supabase) return;
+  // La otra persona puede cambiar de sesión en este móvil: el id cacheado
+  // dejaría de ser suyo y acabaría pintando mi foto en los dos círculos.
+  cachedPartnerId = null;
   self = { userId: String(userId), isAdmin: !!isAdmin, name: name || '', avatar: avatar || '' };
 
   push(self, onStatus);
@@ -185,6 +188,22 @@ export function startLocationSharing({ userId, isAdmin, name, avatar } = {}, onS
     if (document.visibilityState === 'visible') push(self, onStatus);
   };
   document.addEventListener('visibilitychange', onVisible);
+}
+
+/**
+ * Refresca el nombre y la foto que viajan dentro de la posición.
+ *
+ * La otra cuenta no puede leer `profiles` (la RLS solo deja ver la fila
+ * propia, o al admin), así que la cara que pinta en el mapa sale de esta fila.
+ * Esa copia se tomaba una sola vez al empezar a compartir: cambiar la foto no
+ * llegaba nunca al otro dispositivo hasta que esta pantalla se volvía a montar.
+ */
+export function updateSharedIdentity({ name, avatar } = {}) {
+  if (!self) return;
+  if (typeof name === 'string' && name) self.name = name;
+  if (typeof avatar === 'string') self.avatar = avatar;
+  // Se escribe ya: la otra persona lo lee de aquí en su siguiente consulta.
+  push(self);
 }
 
 /**
@@ -259,7 +278,11 @@ export async function fetchPartnerLocation() {
       .eq('id', ADMIN_ROW_ID)
       .maybeSingle();
     if (error) throw error;
-    return data?.data ? toLocation(data.data, data.data.user_id) : null;
+    const loc = data?.data ? toLocation(data.data, data.data.user_id) : null;
+    // Si la fila dice ser de esta misma cuenta, se escribió por error desde
+    // este móvil: no es la otra persona y no debe pintarse como pareja.
+    if (loc && loc.userId && loc.userId === self.userId) return null;
+    return loc;
   } catch {
     return null;
   }
@@ -357,7 +380,8 @@ export async function fetchPartnerIdentity() {
     /* RLS sin acceso: el círculo se queda con el corazón */
   }
 
-  return cachedPartnerId;
+  // Nunca devolver mi propio id: acabaría pintando mi foto como la pareja.
+  return cachedPartnerId && cachedPartnerId !== self.userId ? cachedPartnerId : null;
 }
 
 /** Distancia en km entre dos coordenadas (haversine). */

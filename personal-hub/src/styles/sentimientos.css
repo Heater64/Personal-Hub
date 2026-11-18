@@ -301,11 +301,51 @@
 /* ==========================================
    2 · CIFRAS
    ========================================== */
+/* La barra es la puerta: sin ella no se ven las cifras, y empieza plegada. */
+.sent-stats-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  width: 100%;
+  margin-top: var(--sp-12);
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--sh-s);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* display:flex gana a [hidden]: hay que devolverle el ocultado. */
+.sent-stats-toggle[hidden] { display: none; }
+
+.sent-stats-toggle:hover,
+.sent-stats-toggle:focus-visible {
+  border-color: var(--primary-softer);
+  background: var(--surface-2);
+}
+
+.sent-stats-toggle-chev {
+  display: inline-flex;
+  color: var(--text-3);
+  transition: transform var(--dur-fast);
+}
+
+.sent-stats-toggle.is-open .sent-stats-toggle-chev { transform: rotate(180deg); }
+
 .sent-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sp-8);
-  margin-top: var(--sp-12);
+  margin-top: var(--sp-8);
 }
 
 .sent-stats[hidden] { display: none; }
@@ -499,8 +539,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Sin alto fijo: la portada se estira con la tarjeta. Con 84px fijos, en
+     móvil (donde el título o la descripción ocupan dos líneas) la tarjeta
+     crecía y el cuadro se quedaba corto: el separador vertical empezaba y
+     acababa antes que el borde, y se veía descuadrado. El mínimo mantiene el
+     cuadro grande cuando el texto es corto. */
   width: 84px;
-  height: 84px;
+  min-height: 84px;
   flex: none;
   align-self: stretch;
   color: var(--card-color);
@@ -557,9 +602,10 @@
   .sent-hist-cell { min-height: 40px; }
   .sent-hist-emoji { font-size: 15px; }
   .sent-history { padding: var(--sp-14); }
-  /* Sigue siendo una tarjeta por fila, solo con la portada más pequeña. */
+  /* Sigue siendo una tarjeta por fila, solo con la portada más estrecha.
+     El alto lo sigue poniendo la tarjeta: aquí no se fija. */
   .sent-card { gap: var(--sp-10); }
-  .sent-card-cover { width: 62px; height: 62px; }
+  .sent-card-cover { width: 62px; min-height: 62px; }
   .sent-card-body { padding-right: var(--sp-12); }
 }
 
