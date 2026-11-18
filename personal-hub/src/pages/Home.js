@@ -64,6 +64,11 @@ import {
 } from '../services/widgets.service.js';
 import { isNative } from '../services/native.service.js';
 
+/** Guarda un widget en segundo plano: si falla, queda el aviso y el Inicio sigue. */
+function trackWidgetSave(promise) {
+  promise.catch(error => console.warn('[widgets] no se pudo guardar', error));
+}
+
 // ==========================================
 // SEED — contenido que cambia cada día
 // ==========================================
@@ -891,14 +896,14 @@ export function HomePage(router) {
   const persistDays = (total = daysSince) => {
     if (!isNative()) return;
     const stats = togetherBreakdown(total);
-    saveDaysWidget({
+    trackWidgetSave(saveDaysWidget({
       days: total,
       years: stats.years,
       months: stats.months,
       weeks: Math.floor(total / 7),
       breakdown: stats,
       since: specialDates().anniversary,
-    });
+    }));
   };
 
   persistDays();
@@ -911,18 +916,18 @@ export function HomePage(router) {
   const persistCountdown = () => {
     if (!isNative()) return;
     const next = nextSpecialDate();
-    saveCountdownWidget({
+    trackWidgetSave(saveCountdownWidget({
       title: next?.title || '',
       date: next?.date || '',
       events: upcomingSpecialDates(6),
-    });
+    }));
   };
 
   // El widget de ánimo es SUYO: guarda el de ella aunque la sesión con la que
   // se mire sea la del administrador (widgets.service lo resuelve).
   const persistMood = () => {
     if (!isNative()) return;
-    saveHerMoodWidget();
+    trackWidgetSave(saveHerMoodWidget());
   };
 
   // «Seguir viendo»: lo mismo que enseña la tarjeta del Inicio. Se guarda al
@@ -930,13 +935,13 @@ export function HomePage(router) {
   const persistWatching = () => {
     if (!isNative()) return;
     const first = getContinueWatching()[0];
-    saveWatchingWidget({
+    trackWidgetSave(saveWatchingWidget({
       title: first?.item?.titulo || '',
       poster: first?.item?.portada || '',
       watched: first?.watched || 0,
       total: first?.total || 0,
       percent: first?.percent || 0,
-    });
+    }));
   };
 
   persistCountdown();
@@ -960,7 +965,7 @@ export function HomePage(router) {
       kmAt: Number.isFinite(state.km) ? Date.now() : null,
     };
     if (!isNative()) return;
-    saveDaysWidget({
+    trackWidgetSave(saveDaysWidget({
       days: total,
       months: stats.months,
       weeks: Math.floor(total / 7),
@@ -969,15 +974,15 @@ export function HomePage(router) {
       since: specialDates().anniversary,
       me: state.me,
       partner: state.partner,
-    });
+    }));
     // El estado del móvil de ella viaja con su posición; el widget solo lo
     // lee (no puede preguntarlo).
-    saveDistanceWidget({
+    trackWidgetSave(saveDistanceWidget({
       km: state.km,
       me: state.me,
       partner: state.partner,
       device: state.partner,
-    });
+    }));
   };
 
   // Distancia: se pide la posición al entrar y se para al salir de la página
@@ -1095,7 +1100,9 @@ export function HomePage(router) {
     })
     .then(count => {
       widgetGifts = { total: count.total, pending: count.pending };
-      if (isNative()) saveGiftsWidget({ total: count.total, pending: count.pending });
+      if (isNative()) {
+        trackWidgetSave(saveGiftsWidget({ total: count.total, pending: count.pending }));
+      }
       if (cancelled || !count.total) return;
       const banner = document.createElement('button');
       banner.type = 'button';

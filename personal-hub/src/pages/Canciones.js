@@ -283,14 +283,24 @@ function buildPlaylists(favorites) {
 // COVER FALLBACK — Gradient with initials
 // ==========================================
 function coverFallback(title) {
+  // Un título ausente no debe romper la lista: la portada se pinta sin iniciales.
+  const text = String(title || '').trim();
   const colors = [
     ['#667eea', '#764ba2'], ['#f093fb', '#f5576c'], ['#4facfe', '#00f2fe'],
     ['#43e97b', '#38f9d7'], ['#fa709a', '#fee140'], ['#a18cd1', '#fbc2eb'],
     ['#fccb90', '#d57eeb'], ['#e0c3fc', '#8ec5fc'], ['#f5576c', '#ff6b35']
   ];
-  const hash = title.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const hash = text.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const [c1, c2] = colors[hash % colors.length];
-  const initials = title.replace(/[^a-zA-Z0-9 áéíóúñü]/g, '').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+  // Solo quedan letras, números y espacios: las iniciales no necesitan escape.
+  const initials = text
+    .replace(/[^a-zA-Z0-9 áéíóúñü]/g, '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(word => word[0])
+    .join('')
+    .toUpperCase();
   return `<span class="music-cover-fb" style="background:linear-gradient(135deg,${c1},${c2})">${initials}</span>`;
 }
 

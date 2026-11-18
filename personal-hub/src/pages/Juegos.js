@@ -9,6 +9,7 @@ import { gameCover } from '../utils/gameCovers.js';
 import { loadGiftsCatalog, getGiftsCatalog, getGiftTodayStr } from '../services/gifts.service.js';
 import { MULTIPLAYER_GAMES, ONLINE_GAMES_ENABLED } from '../services/games.service.js';
 import { isCalendarAllOpen, isCalendarAllLocked } from '../utils/calendarOverrides.js';
+import { escapeHtml } from '../utils/escape.js';
 
 import { GAMES } from '../data/games.catalog.js';
 export { GAMES };
@@ -133,12 +134,12 @@ export async function JuegosPage(router) {
       </div>
       ${lastGame ? `
       <div class="juegos-stat">
-        <span class="juegos-stat-num juegos-stat-num--sm">${ICONS['gamepad']} ${lastGame.title}</span>
+        <span class="juegos-stat-num juegos-stat-num--sm">${ICONS['gamepad']} ${escapeHtml(lastGame.title)}</span>
         <span class="juegos-stat-label">último jugado</span>
       </div>` : ''}
       ${favGame ? `
       <div class="juegos-stat">
-        <span class="juegos-stat-num juegos-stat-num--sm">${ICONS['heart']} ${favGame.title}</span>
+        <span class="juegos-stat-num juegos-stat-num--sm">${ICONS['heart']} ${escapeHtml(favGame.title)}</span>
         <span class="juegos-stat-label">favorito</span>
       </div>` : ''}
     </div>
@@ -154,16 +155,17 @@ export async function JuegosPage(router) {
     <div class="juegos-grid">
       ${visibleGames.map((game, i) => {
         const isFav = favGameId() === game.id;
+        const title = escapeHtml(game.title);
         return `
         <div class="juego-card glass-card card" role="link" tabindex="0" data-href="${gameHref(game)}" data-id="${game.id}" style="--game-color:${game.color};--game-accent:${game.accent};--enter-delay:${i * 50}ms">
           ${isFav ? `<span class="juego-card-fav-badge" title="Tu favorito">${ICONS['heart']}</span>` : ''}
           <div class="juego-card-glow"></div>
           <div class="juego-card-cover" style="--game-color:${game.color};--game-accent:${game.accent}">
-            <img src="${gameCover(game.id, game.color, game.accent)}" alt="Portada de ${game.title}" loading="lazy">
+            <img src="${gameCover(game.id, game.color, game.accent)}" alt="Portada de ${title}" loading="lazy">
             <span class="juego-card-shade"></span>
-            <h3 class="juego-card-title">${game.title}</h3>
+            <h3 class="juego-card-title">${title}</h3>
           </div>
-          ${ONLINE_GAMES_ENABLED && MULTIPLAYER_GAMES[game.id] ? `<a class="juego-card-online" href="#/juegos/online/${game.id}" aria-label="Invitar a jugar ${game.title}"><span class="juego-card-online__icon">${ICONS['gamepad']}</span><span>Jugar online</span></a>` : ''}
+          ${ONLINE_GAMES_ENABLED && MULTIPLAYER_GAMES[game.id] ? `<a class="juego-card-online" href="#/juegos/online/${game.id}" aria-label="Invitar a jugar ${title}"><span class="juego-card-online__icon">${ICONS['gamepad']}</span><span>Jugar online</span></a>` : ''}
         </div>
       `}).join('')}
     </div>
@@ -214,7 +216,7 @@ export async function JuegosPage(router) {
           if (g) {
             const favDiv = document.createElement('div');
             favDiv.className = 'juegos-stat';
-            favDiv.innerHTML = `<span class="juegos-stat-num juegos-stat-num--sm">${ICONS['heart']} ${g.title}</span><span class="juegos-stat-label">favorito</span>`;
+            favDiv.innerHTML = `<span class="juegos-stat-num juegos-stat-num--sm">${ICONS['heart']} ${escapeHtml(g.title)}</span><span class="juegos-stat-label">favorito</span>`;
             statsEl.appendChild(favDiv);
           }
         } else if (currentFav !== id && statsFav && favGameId() === '') {
