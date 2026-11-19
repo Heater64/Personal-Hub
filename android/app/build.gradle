@@ -7,8 +7,8 @@ android {
         applicationId "com.heater64.personalhub"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.1"
+        versionCode 3
+        versionName "1.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -31,7 +31,7 @@ android {
     }
 }
 
-// El APK sale con nombre propio («PersonalHub1.1.apk»), no «app-debug.apk».
+// El APK sale con nombre propio («PersonalHub1.2.apk»), no «app-debug.apk».
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.outputs.forEach { output ->
