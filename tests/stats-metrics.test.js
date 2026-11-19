@@ -9,6 +9,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createClient } from '@supabase/supabase-js';
+import { readAdminHistory } from '../personal-hub/src/services/admin-analytics-read.js';
 import {
   SESSION_GAP_MS,
   TAIL_MIN_MS,
@@ -22,6 +24,8 @@ import {
   sessionSummary,
   hourlyHeatmap,
   dayParts,
+  statsDay,
+  shiftStatsDay,
   uniqueDays,
   streaks,
   OPENWHEN_READ_PREFIX,
@@ -164,9 +168,9 @@ test('sessionSummary calcula la duración media sin dividir por cero', () => {
 test('el mapa de calor coloca cada visita en su día (lunes = 0) y su hora', () => {
   // 2026-05-04 es lunes.
   const heat = hourlyHeatmap([
-    visit('2026-05-04T08:15:00'),
-    visit('2026-05-04T08:45:00'),
-    visit('2026-05-10T23:30:00') // domingo
+    visit('2026-05-04T06:15:00Z'),
+    visit('2026-05-04T06:45:00Z'),
+    visit('2026-05-10T21:30:00Z') // domingo a las 23 en Madrid
   ]);
   assert.equal(heat.total, 3);
   assert.equal(heat.matrix[0][8], 2, 'lunes a las 8');
@@ -181,11 +185,11 @@ test('el mapa de calor coloca cada visita en su día (lunes = 0) y su hora', () 
 
 test('dayParts reparte las 24 horas en cuatro franjas', () => {
   const heat = hourlyHeatmap([
-    visit('2026-05-04T03:00:00'),
-    visit('2026-05-04T09:00:00'),
-    visit('2026-05-04T16:00:00'),
-    visit('2026-05-04T22:00:00'),
-    visit('2026-05-04T23:00:00')
+    visit('2026-05-04T01:00:00Z'),
+    visit('2026-05-04T07:00:00Z'),
+    visit('2026-05-04T14:00:00Z'),
+    visit('2026-05-04T20:00:00Z'),
+    visit('2026-05-04T21:00:00Z')
   ]);
   const parts = dayParts(heat);
   assert.deepEqual(parts.map(p => p.count), [1, 1, 1, 2]);
@@ -204,6 +208,28 @@ test('uniqueDays normaliza ISO y fechas sueltas, y descarta basura', () => {
   assert.ok(days.includes('2026-05-02'));
   assert.equal(new Set(days).size, days.length);
   assert.ok(days.every(d => /^\d{4}-\d{2}-\d{2}$/.test(d)));
+});
+
+test('los días de las gráficas comparten el cambio de fecha de Madrid', () => {
+  assert.equal(statsDay('2026-03-28T22:59:59Z'), '2026-03-28');
+  assert.equal(statsDay('2026-03-28T23:00:00Z'), '2026-03-29');
+  assert.equal(statsDay('2026-03-29T22:00:00Z'), '2026-03-30');
+  assert.equal(statsDay('2026-03-29'), '2026-03-29');
+  assert.equal(statsDay('2026-02-29'), '');
+  assert.equal(shiftStatsDay('2026-03-29', 1), '2026-03-30');
+  assert.equal(shiftStatsDay('2026-01-01', -1), '2025-12-31');
+
+  const heat = hourlyHeatmap([
+    visit('2026-03-29T00:59:59Z'),
+    visit('2026-03-29T01:00:00Z'),
+    visit('2026-03-29T22:00:00Z'),
+    visit(null),
+  ]);
+  assert.equal(heat.matrix[6][1], 1);
+  assert.equal(heat.matrix[6][2], 0); // en Madrid salta de las 01:59 a las 03:00
+  assert.equal(heat.matrix[6][3], 1);
+  assert.equal(heat.matrix[0][0], 1);
+  assert.equal(heat.total, 3);
 });
 
 test('rachas: vacío, un solo día y días sueltos', () => {
@@ -240,6 +266,14 @@ test('rachas: el cambio de mes y de año no rompe la cuenta', () => {
   assert.equal(streaks(finDeAnio, '2026-01-01').current, 3);
 });
 
+test('rachas: los registros futuros e inválidos no alteran los días actuales', () => {
+  assert.deepEqual(streaks(['2026-09-01', '2026-09-02', '2026-09-03', 'hoy'], '2026-09-02'), {
+    current: 2,
+    longest: 2,
+    last: '2026-09-02'
+  });
+});
+
 test('las lecturas de Open When se cuentan aparte de las visitas de navegación', () => {
   const visits = [
     visit('2026-05-01T10:00:00Z', '/'),
@@ -269,4 +303,73 @@ test('las lecturas de Open When se cuentan aparte de las visitas de navegación'
 test('la constante de corte de sesión sigue siendo media hora', () => {
   assert.equal(SESSION_GAP_MS, 30 * 60 * 1000);
   assert.ok(TAIL_MIN_MS < TAIL_MAX_MS);
+});
+
+function analyticsClient(fetch) {
+  return createClient('https://analytics.example.test', 'synthetic-only', {
+    global: { fetch },
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
+
+test('el historial pagina por fecha e id aunque entren visitas y PostgREST recorte la respuesta', async () => {
+  const timestamp = '2026-11-19T12:00:00+00:00';
+  const idFor = number => `00000000-0000-4000-a000-${String(number).padStart(12, '0')}`;
+  const rows = Array.from({ length: 1100 }, (_, i) => ({
+    id: idFor(1100 - i), user_id: 'test-account', page: '/', timestamp
+  }));
+  const requested = [];
+  const client = analyticsClient(async input => {
+    const { pathname, searchParams } = new URL(input);
+    assert.equal(pathname, '/rest/v1/analytics_visits');
+    assert.equal(searchParams.get('order'), 'timestamp.desc.nullslast,id.desc');
+    assert.equal(searchParams.get('user_id'), 'eq.test-account');
+    const cursor = searchParams.get('or');
+    requested.push(cursor);
+    const valid = cursor ? rows.filter(row => row.id < cursor.match(/id\.lt\.([\da-f-]+)/)[1]) : rows;
+    const result = valid.slice(0, Math.min(Number(searchParams.get('limit')), 500));
+    if (!cursor) rows.unshift({ ...rows[0], id: idFor(1101) });
+    return Response.json(result);
+  });
+  const result = await readAdminHistory(client, 'visits', { limit: 1000, userId: 'test-account' });
+  assert.equal(result.rows.length, 1000);
+  assert.equal(result.rows[0].id, idFor(1100));
+  assert.equal(result.rows.at(-1).id, idFor(101));
+  assert.equal(result.truncated, true);
+  assert.equal(new Set(result.rows.map(row => row.id)).size, 1000);
+  assert.deepEqual(requested, [
+    null,
+    `(timestamp.lt.${timestamp},and(timestamp.eq.${timestamp},id.lt.${idFor(601)}))`,
+    `(timestamp.lt.${timestamp},and(timestamp.eq.${timestamp},id.lt.${idFor(101)}))`
+  ]);
+});
+
+test('los filtros remotos usan medianoche en Madrid y distinguen ausencia, error y modo local', async () => {
+  const from = '2026-03-29';
+  const through = from;
+  const params = [];
+  const empty = analyticsClient(async input => {
+    params.push(new URL(input).searchParams);
+    return Response.json([]);
+  });
+  assert.deepEqual(await readAdminHistory(empty, 'visits', { from, through }), {
+    rows: [], source: 'supabase', truncated: false
+  });
+  await readAdminHistory(empty, 'moods', { from, through });
+  assert.equal(params[0].getAll('timestamp').join(','), 'not.is.null,gte.2026-03-28T23:00:00.000Z,lt.2026-03-29T22:00:00.000Z');
+  assert.deepEqual(params[1].getAll('date'), ['gte.2026-03-29', 'lt.2026-03-30']);
+
+  const forbidden = analyticsClient(async () =>
+    Response.json({ message: 'Error remoto sintético', code: '42501' }, { status: 403 }));
+  await assert.rejects(readAdminHistory(forbidden, 'visits'), { message: 'Error remoto sintético' });
+  await assert.rejects(readAdminHistory(empty, 'visits', { from: '2026-02-30' }), RangeError);
+
+  const localRows = [
+    visit('2026-03-28T23:00:00Z', '/'),
+    visit('2026-03-29T22:00:00Z', '/'), // al día siguiente en Madrid
+    visit('2026-03-29T12:00:00Z', '/', 'another-user'),
+    visit('2026-03-29T21:59:59Z', '/galeria')
+  ];
+  const local = await readAdminHistory(null, 'visits', { from, through, localRows, userId: 'u1', limit: 1 });
+  assert.deepEqual(local, { rows: [localRows[3]], source: 'local', truncated: true });
 });

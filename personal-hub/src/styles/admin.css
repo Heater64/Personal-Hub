@@ -559,6 +559,28 @@
   transform: scale(1.1) rotate(90deg);
 }
 .admin-modal-body { padding: 20px 28px; }
+.admin-modal-error {
+  margin: 0 28px var(--sp-16);
+  padding: var(--sp-12);
+  border-radius: var(--r-sm);
+  background: var(--red-dim);
+  color: var(--theme-text-primary);
+}
+
+.admin-data-note {
+  margin: var(--sp-8) 0 var(--sp-12);
+  color: var(--theme-text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.dash-axis-value { fill: var(--theme-text-secondary); font-size: 12px; }
+.dash-chart-data { margin-top: var(--sp-12); color: var(--theme-text-secondary); }
+.dash-chart-data summary { width: fit-content; cursor: pointer; color: var(--theme-text-primary); }
+.dash-chart-data table { width: 100%; margin-top: var(--sp-8); border-collapse: collapse; }
+.dash-chart-data :is(th, td) { padding: var(--sp-8); border-bottom: 1px solid var(--theme-divider); text-align: start; }
+.dash-chart-data :is(th, td):last-child { text-align: end; font-variant-numeric: tabular-nums; }
+.admin-panel .dash-chart-toggle-group { flex-wrap: wrap; }
 .admin-modal-footer {
   display: flex; justify-content: flex-end; gap: 10px;
   padding: 0 28px 24px;

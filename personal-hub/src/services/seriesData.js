@@ -64,7 +64,7 @@ export async function loadCatalog() {
   // 1. Supabase (compartido entre usuarios)
   try {
     const remote = await db.getSeries();
-    if (Array.isArray(remote?.series) && remote.series.length) {
+    if (Array.isArray(remote?.series)) {
       remote.series = fillMissingCovers(remote.series);
       // Mantener el espejo local al día (ph.config.series): las tarjetas de
       // Inicio/Rincón leen de él de forma síncrona (getCatalogSync).
@@ -74,7 +74,7 @@ export async function loadCatalog() {
   } catch { /* sin red o Supabase caído: seguir con el espejo local */ }
   // 2. Espejo local compartido (offline / arranque rápido)
   const mirror = readMirror();
-  if (Array.isArray(mirror) && mirror.length) return mirror;
+  if (Array.isArray(mirror)) return mirror;
   // 3. Semilla inicial
   return defaultCatalog();
 }
@@ -331,8 +331,11 @@ export function createId() {
 export async function deleteCatalogItem(itemId) {
   if (!itemId) return;
 
-  const catalog = await loadCatalog();
-  await saveCatalog(catalog.filter(i => i.id !== itemId));
+  await removeCatalogItem(itemId, await loadCatalog(), saveCatalog);
+}
+
+export async function removeCatalogItem(itemId, catalog, save) {
+  await save(catalog.filter(item => item.id !== itemId));
 
   const favs = loadFavorites();
   if (favs.delete(itemId)) saveFavorites(favs);

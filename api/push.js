@@ -2239,16 +2239,25 @@ async function handleSend(req, res) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
+  const manual = isAdmin && req.method === 'POST' && (req.body?.title != null || req.body?.body != null);
+  const customTitle = manual && typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+  const customBody = manual && typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+  if (manual && (!customTitle || !customBody || customTitle.length > 100 || customBody.length > 500)) {
+    return res.status(400).json({ error: 'Escribe un título de hasta 100 caracteres y un mensaje de hasta 500.' });
+  }
+
   // Recordatorios vencidos (022) ANTES de la ventana horaria: su hora la elige
   // el admin, no el reloj, así que no se descartan por caer fuera de las
   // 07:00–08:00. Así el cron diario de Vercel los vacía aunque Supabase
   // pg_cron no esté configurado. Un fallo aquí no puede impedir el saludo.
   let reminders = null;
-  try {
-    reminders = await runDueReminders();
-    await notifyAdminsOfHealth(reminders);
-  } catch (err) {
-    console.warn('[api/push/send] recordatorios no procesados:', err.message);
+  if (!manual) {
+    try {
+      reminders = await runDueReminders();
+      await notifyAdminsOfHealth(reminders);
+    } catch (err) {
+      console.warn('[api/push/send] recordatorios no procesados:', err.message);
+    }
   }
 
   // Vercel Hobby solo permite un cron diario. La ejecución está fijada a
@@ -2260,17 +2269,29 @@ async function handleSend(req, res) {
       .json({ success: true, skipped: true, reason: 'Outside delivery window', reminders });
   }
 
-  if (requireVapid(res)) return;
+  if (!manual && requireVapid(res)) return;
 
   const allSubscriptions = await getSubscriptions();
-
-  if (allSubscriptions.length === 0) {
-    return res.status(200).json({ success: true, sent: 0, message: 'No subscriptions', reminders });
+  const webConfigured = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && !vapidConfigError);
+  const androidConfigured = fcmConfigured();
+  let nativeCandidates = [];
+  let availableSubscriptions = allSubscriptions;
+  if (manual) {
+    const supabase = getSupabase();
+    const { data: profiles, error } = await supabase.from('profiles').select('id').eq('enabled', true);
+    if (error) throw error;
+    const enabled = new Set((profiles || []).map(row => row.id));
+    availableSubscriptions = allSubscriptions.filter(subscription => enabled.has(subscription.userId));
+    if (androidConfigured) {
+      const { data, error: tokensError } = await supabase.from('push_tokens').select('user_id').eq('enabled', true);
+      if (tokensError && !['42P01', 'PGRST205'].includes(tokensError.code)) throw tokensError;
+      nativeCandidates = [...new Set((data || []).map(row => row.user_id))].filter(id => enabled.has(id));
+    }
   }
 
-  // Mensaje personalizado del Admin (POST /api/push?action=send con body)
-  const customTitle = req.body?.title?.trim();
-  const customBody = req.body?.body?.trim();
+  if (!manual && allSubscriptions.length === 0) {
+    return res.status(200).json({ success: true, sent: 0, message: 'No subscriptions', reminders });
+  }
 
   // A quién le toca (023). Este aviso es el «Recordatorio diario» del perfil,
   // así que quien lo tenga apagado no lo recibe: era el caso raro de un ajuste
@@ -2280,13 +2301,14 @@ async function handleSend(req, res) {
   // admin es una decisión expresa de mandarlo AHORA y no debe desaparecer sin
   // explicación: si él lo manda a las 23:30, se manda.
   const prefsById = await loadPrefsByIds([
-    ...new Set(allSubscriptions.map(sub => String(sub.userId))),
+    ...new Set([...availableSubscriptions.map(sub => String(sub.userId)), ...nativeCandidates]),
   ]);
-  const { allowed, quiet, off } = splitRecipients(allSubscriptions, prefsById, new Date(), 'daily');
+  const { allowed, quiet, off } = splitRecipients(availableSubscriptions, prefsById, new Date(), 'daily');
   const recipients = isAdmin ? [...allowed, ...quiet] : allowed;
-  const filtered = off.length + (isAdmin ? 0 : quiet.length);
+  const native = splitRecipients(nativeCandidates.map(userId => ({ userId })), prefsById, new Date(), 'daily');
+  const filtered = off.length + (isAdmin ? 0 : quiet.length) + native.off.length;
 
-  if (recipients.length === 0) {
+  if (!manual && recipients.length === 0) {
     return res.status(200).json({
       success: true,
       sent: 0,
@@ -2304,8 +2326,8 @@ async function handleSend(req, res) {
     ...(calendarPush || {
       title: customTitle || '¡Buenos días! ☀️',
       body: customBody || 'Es hora de tu check-in diario de estado de ánimo.',
-      url: req.body?.url || '/',
-      tag: 'daily-welcome',
+      url: manual && isAllowedNotificationPath(req.body?.url) ? req.body.url : '/',
+      tag: manual ? 'admin-broadcast' : 'daily-welcome',
     }),
     timestamp: Date.now(),
   });
@@ -2314,7 +2336,7 @@ async function handleSend(req, res) {
   const expiredEndpoints = [];
   const staleEndpoints = [];
 
-  for (const sub of recipients) {
+  for (const sub of webConfigured ? recipients : []) {
     try {
       await webpush.sendNotification(
         {
@@ -2341,10 +2363,14 @@ async function handleSend(req, res) {
   }
 
   // El saludo diario también suena en la app Android (FCM).
-  const fcmRecipients = [...new Set(recipients.map(sub => sub.userId).filter(Boolean))];
+  const fcmRecipients = manual
+    ? [...native.allowed, ...native.quiet].map(row => row.userId)
+    : [...new Set(recipients.map(sub => sub.userId).filter(Boolean))];
+  let android = { sent: 0, failed: 0, removed: 0, configured: androidConfigured };
   if (fcmRecipients.length > 0) {
     try {
-      await sendTokensToUsers(fcmRecipients, JSON.parse(payload));
+      const sent = await sendTokensToUsers(fcmRecipients, JSON.parse(payload));
+      if (sent) android = { ...android, ...sent, removed: sent.removed.length };
     } catch {
       /* FCM es un extra: nunca tumba el envío web */
     }
@@ -2364,11 +2390,11 @@ async function handleSend(req, res) {
   if (expiredEndpoints.length > 0) {
     await saveSubscriptions(
       allSubscriptions.filter(sub => !expiredEndpoints.includes(sub.endpoint))
-    );
+    ).catch(err => console.warn('[api/push/send] no se pudieron retirar suscripciones:', err.message));
   }
 
   // Los fallos del propio saludo diario también son un aviso técnico.
-  await notifyAdminsOfHealth({ failed: results.failed, removed: results.removed });
+  if (!manual) await notifyAdminsOfHealth({ failed: results.failed, removed: results.removed });
 
   return res.status(200).json({
     success: true,
@@ -2378,6 +2404,8 @@ async function handleSend(req, res) {
     stale: staleEndpoints.length,
     filtered,
     total: allSubscriptions.length,
+    webConfigured,
+    android,
     reminders,
   });
 }

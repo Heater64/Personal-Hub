@@ -7,8 +7,8 @@
 import '../styles/admin.css';
 import { db, UPLOAD_LIMITS } from '../services/db.service.js';
 import {
-  loadCatalog, saveCatalog, loadFavorites,
-  createId, getSeasons, getTotal, deleteCatalogItem
+  loadCatalog, loadFavorites,
+  createId, getSeasons, getTotal, removeCatalogItem
 } from '../services/seriesData.js';
 import { seasonEditorHTML, collectSeasons, emptySeasonHTML, bindSeasonEditorEvents } from '../services/seriesEditor.js';
 import { defaultCatalog } from '../data/series-seed.js';
@@ -22,9 +22,10 @@ import { labelForPath } from '../routes.js';
 import { isValidUrlField, todayISO, hourInSpain, timeInSpain } from '../utils/format.js';
 import {
   buildSessions, sectionUsage, userUsage, sessionSummary,
-  hourlyHeatmap, dayParts, streaks, uniqueDays,
+  hourlyHeatmap, dayParts, streaks, uniqueDays, shiftStatsDay, statsDay,
   openWhenReadIds, isOpenWhenReadVisit
 } from '../utils/stats-metrics.js';
+import { dailyCounts, dashboardDates, latestDailyMoods, publishedLetterIds } from '../utils/dashboard-metrics.js';
 import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, daysUntilDate, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS, eventTemplateFor, EVENT_TEMPLATES } from '../utils/specialDates.js';
 import { cleanEventActions, MAX_EVENT_ACTIONS } from '../utils/event-actions.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
@@ -32,7 +33,6 @@ import {
   listReminders, createReminder, updateReminder, toggleReminder, deleteReminder,
   runReminder, localInputToIso, isoToLocalInput, formatReminderDate
 } from '../services/reminders.service.js';
-import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { expandCalendarCatalog } from '../data/calendar-expansion.js';
 import { theme } from '../services/theme.service.js';
 import { CATEGORIES, TYPE_META, LETTERS } from '../data/openwhen.data.js';
@@ -137,46 +137,36 @@ const moodRowItems = (row) => moodStore.resolveMood({
   score: row?.score
 })?.items || [];
 
-// Usuario cuyas estadísticas se ven: dada por defecto, «Todos» o cualquiera
-// del selector del panel. La elección se recuerda entre visitas, así que ya no
-// hay que tocar código para mirar las de otra persona.
+// El resumen y el historial de ánimo comparten el filtro de cuenta.
 const STATS_ALL = 'all';
 const STATS_USER_PREF = 'ph.admin.statsUser';
-const DEFAULT_STATS_USER_ID = '6fadf968-f3e8-465c-816d-f41978e00704';
 let statsUserId = (() => {
-  try { return localStorage.getItem(STATS_USER_PREF) || DEFAULT_STATS_USER_ID; }
-  catch { return DEFAULT_STATS_USER_ID; }
+  try { return localStorage.getItem(STATS_USER_PREF) || ''; }
+  catch { return ''; }
 })();
-const isStatsUser = (id) => statsUserId === STATS_ALL || (id || '') === statsUserId;
-
 function setStatsUser(id) {
-  statsUserId = id || DEFAULT_STATS_USER_ID;
+  statsUserId = id || STATS_ALL;
   try { localStorage.setItem(STATS_USER_PREF, statsUserId); } catch { /* sin almacenamiento */ }
 }
 
-/** Opciones del selector: la principal, «Todos» y cada cuenta real. */
 function statsUserOptions(users = []) {
-  const principal = (users || []).find(u => u.id === DEFAULT_STATS_USER_ID);
-  const principalName = principal?.name || principal?.email?.split('@')[0] || 'dada';
-  const opts = [
-    { id: DEFAULT_STATS_USER_ID, label: principalName },
-    { id: STATS_ALL, label: 'Todos los usuarios' }
-  ];
-  (users || []).forEach(u => {
-    if (!u?.id || u.id === DEFAULT_STATS_USER_ID || u.id.startsWith('local_') || u.id.length <= 10) return;
-    // Cuentas de prueba del reproductor (`listen-test-…`): no son personas y
-    // ensuciaban el selector de estadísticas.
-    const name = u.name || (u.email ? u.email.split('@')[0] : '');
-    if (/^listen-test/i.test(name) || /^listen-test/i.test(u.email || '')) return;
-    opts.push({ id: u.id, label: name || u.id.slice(0, 8) });
-  });
-  return opts;
+  return arr(users)
+    .filter(user => user?.id && !user.id.startsWith('local_') && !/^listen-test/i.test(user.email || user.name || ''))
+    .map(user => ({
+      id: user.id,
+      label: user.name || user.email?.split('@')[0] || 'Cuenta sin nombre',
+      principal: user.role !== 'admin' && user.enabled !== false,
+    }));
 }
 
-function statsUserSelectHTML(users = [], id = 'statsUserSelect') {
-  const opts = statsUserOptions(users);
-  // Si el usuario guardado ya no existe, se vuelve a la cuenta principal.
-  if (!opts.some(o => o.id === statsUserId)) statsUserId = DEFAULT_STATS_USER_ID;
+function statsUserSelectHTML(users, id = 'statsUserSelect') {
+  const options = statsUserOptions(users);
+  const opts = [{ id: STATS_ALL, label: 'Todos los usuarios' }, ...options];
+  if (users == null && statsUserId && statsUserId !== STATS_ALL) {
+    opts.push({ id: statsUserId, label: 'Cuenta seleccionada' });
+  } else if (!opts.some(option => option.id === statsUserId)) {
+    statsUserId = options.find(option => option.principal)?.id || STATS_ALL;
+  }
   return `<select class="dash-range-select" id="${id}" aria-label="Usuario de las estadísticas">
     ${opts.map(o => `<option value="${escapeHtml(o.id)}"${o.id === statsUserId ? ' selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
   </select>`;
@@ -385,12 +375,13 @@ export function AdminPage(router) {
       </main>
     </div>
     <div class="admin-modal-overlay" id="adminModal" style="display:none">
-      <div class="admin-modal">
+      <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle" tabindex="-1">
         <div class="admin-modal-header">
           <h3 id="adminModalTitle"></h3>
           <button type="button" class="admin-modal-close" id="adminModalClose" aria-label="Cerrar">${UI.close}</button>
         </div>
         <div class="admin-modal-body" id="adminModalBody"></div>
+        <p class="admin-modal-error" id="adminModalError" role="alert" hidden></p>
         <div class="admin-modal-footer">
           <button type="button" class="admin-btn admin-btn-secondary" id="adminModalCancel">Cancelar</button>
           <button type="button" class="admin-btn admin-btn-primary" id="adminModalSave">${UI.check} Guardar</button>
@@ -400,12 +391,16 @@ export function AdminPage(router) {
   `;
 
   // ===== STATE =====
-  // El admin no entra por la pantalla diaria: el panel abre directamente la
-  // gestión de fechas y eventos (Configuración → Eventos), que es su casa. El
-  // resumen de estadísticas sigue a un clic, en el menú.
-  // Abre en el resumen (lo útil de hoy) en vez de en Ánimo: desde ahí se salta
-  // a cualquier sección y es la primera pantalla que tiene sentido al entrar.
-  const S = { section: 'dashboard', moodDate: new Date(), moodMonthData: null, contentSub: 'razones', calMonth: null, calDay: null, configTab: 'eventos' };
+  const [initialYear, initialMonth] = todayISO().split('-').map(Number);
+  const S = {
+    section: 'dashboard',
+    moodDate: new Date(initialYear, initialMonth - 1, 1),
+    moodMonthData: null,
+    contentSub: 'razones',
+    calMonth: null,
+    calDay: null,
+    configTab: 'eventos',
+  };
 
   const content = page.querySelector('#adminContent');
 
@@ -413,8 +408,13 @@ export function AdminPage(router) {
   // cruzar las 12:00 o las 19:00, "buenas noches" se quedaba obsoleto.
   const timeText = page.querySelector('#adminTimeText');
   const greetingEl = page.querySelector('#adminGreeting');
+  const dateText = page.querySelector('#adminDateText');
+  const dateFormat = new Intl.DateTimeFormat('es', {
+    timeZone: 'Europe/Madrid', day: 'numeric', month: 'long', year: 'numeric',
+  });
   const updateClock = () => {
     if (timeText) timeText.textContent = timeInSpain();
+    if (dateText) dateText.textContent = dateFormat.format();
     if (greetingEl) {
       const g = greetingFor(hourInSpain());
       greetingEl.textContent = `${g.text}, ${userName} ${g.emoji}`;
@@ -422,12 +422,6 @@ export function AdminPage(router) {
   };
   updateClock();
   const clockInterval = setInterval(updateClock, 30000);
-
-  // Fecha actual en el header
-  const dateText = page.querySelector('#adminDateText');
-  if (dateText) {
-    dateText.textContent = new Date().toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
-  }
 
   // ===== NAV =====
   // Menú lateral en escritorio, cajón en móvil. Un solo sitio decide qué está
@@ -479,15 +473,20 @@ export function AdminPage(router) {
   function activateNav(section) {
     const known = !!page.querySelector(`.admin-sidebar-item[data-section="${section}"]`);
     const id = known ? section : 'dashboard';
-    page.querySelectorAll('.admin-sidebar-item').forEach(t => t.classList.remove('active'));
-    page.querySelector(`.admin-sidebar-item[data-section="${id}"]`)?.classList.add('active');
+    page.querySelectorAll('.admin-sidebar-item').forEach(button => {
+      const active = button.dataset.section === id;
+      button.classList.toggle('active', active);
+      if (active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
     if (topTitle) topTitle.innerHTML = `${sectionInfo(id).icon}<span>${sectionInfo(id).label}</span>`;
     if (welcomeBox) welcomeBox.classList.toggle('is-hidden', id !== 'dashboard');
     setNavOpen(false);
   }
 
   function setActiveSection(btn, section) {
-    S.section = section;
+    if (modal.busy) return;
+    modal.close();
     loadSection(section);
     // Al cambiar de sección, deja el botón activo a la vista en el menú.
     btn?.scrollIntoView({ block: 'nearest' });
@@ -500,47 +499,73 @@ export function AdminPage(router) {
   // ===== MODAL =====
   const modal = {
     el: page.querySelector('#adminModal'),
+    dialog: page.querySelector('#adminModal .admin-modal'),
     title: page.querySelector('#adminModalTitle'),
     body: page.querySelector('#adminModalBody'),
+    error: page.querySelector('#adminModalError'),
     saveBtn: page.querySelector('#adminModalSave'),
     cancelBtn: page.querySelector('#adminModalCancel'),
     closeBtn: page.querySelector('#adminModalClose'),
     _currentOnSave: null,
+    busy: false,
+    returnFocus: null,
+
+    get visible() { return this.el.style.display === 'flex'; },
 
     open(title, bodyHtml, onSave, saveLabel) {
+      if (this.busy || disposed) return;
+      if (!this.visible) this.returnFocus = document.activeElement;
       this.title.textContent = title;
       this.body.innerHTML = bodyHtml;
       this.el.style.display = 'flex';
       this._currentOnSave = onSave || null;
+      this.error.hidden = true;
+      this.error.textContent = '';
       this.saveBtn.closest('.admin-modal-footer').style.display = onSave ? 'flex' : 'none';
       this.saveBtn.disabled = false;
       const isDanger = saveLabel === 'Eliminar';
       this.saveBtn.classList.toggle('admin-btn-danger', isDanger);
       this.saveBtn.innerHTML = `${UI.check} ${saveLabel || 'Guardar'}`;
+      this.dialog.focus({ preventScroll: true });
     },
 
     close() {
+      if (this.busy || !this.visible) return;
       this.el.style.display = 'none';
       this._currentOnSave = null;
       this.saveBtn.classList.remove('admin-btn-danger');
+      if (this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
+      this.returnFocus = null;
     },
 
     async save() {
-      if (!this._currentOnSave) return;
-      this.saveBtn.disabled = true;
+      if (this.busy || !this._currentOnSave) return;
+      const token = sectionToken;
+      const originalButton = this.saveBtn.innerHTML;
+      this.busy = true;
+      this.error.hidden = true;
+      for (const button of [this.saveBtn, this.cancelBtn, this.closeBtn]) button.disabled = true;
+      this.dialog.setAttribute('aria-busy', 'true');
       this.saveBtn.textContent = 'Guardando...';
+      let result = false;
       try {
-        await this._currentOnSave();
-        this.close();
-        loadSection(S.section);
-        showToast('Guardado', 'success');
+        result = await this._currentOnSave();
       } catch (err) {
-        showToast(err?.message || 'Error al guardar', 'error');
+        if (isCurrentSection(token)) {
+          this.error.textContent = err?.message || 'No se pudo guardar. Inténtalo de nuevo.';
+          this.error.hidden = false;
+        }
       } finally {
-        this.saveBtn.disabled = false;
-        this.saveBtn.classList.remove('admin-btn-danger');
-        this.saveBtn.innerHTML = `${UI.check} Guardar`;
+        this.busy = false;
+        this.dialog.removeAttribute('aria-busy');
+        for (const button of [this.saveBtn, this.cancelBtn, this.closeBtn]) button.disabled = false;
+        this.saveBtn.innerHTML = originalButton;
       }
+      if (result === false || disposed) return;
+      this.close();
+      if (result === true || !isCurrentSection(token)) return;
+      loadSection(S.section);
+      showToast('Guardado', 'success');
     }
   };
 
@@ -551,20 +576,35 @@ export function AdminPage(router) {
 
   // Escape key closes modal
   const escapeHandler = (e) => {
-    if (e.key === 'Escape' && modal.el.style.display === 'flex') {
+    if (!modal.visible) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
       modal.close();
+    } else if (e.key === 'Tab') {
+      const controls = Array.from(modal.dialog.querySelectorAll(
+        'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+      )).filter(control => control.getClientRects().length);
+      const first = controls[0];
+      const last = controls.at(-1);
+      const focused = document.activeElement;
+      if (!first || !controls.includes(focused) || (e.shiftKey ? focused === first : focused === last)) {
+        e.preventDefault();
+        (e.shiftKey ? last || modal.dialog : first || modal.dialog).focus();
+      }
     }
   };
   document.addEventListener('keydown', escapeHandler);
 
   // Escape cierra también el cajón del menú (solo en móvil, donde se superpone).
   const navEscapeHandler = (e) => {
-    if (e.key === 'Escape' && page.classList.contains('nav-open')) setNavOpen(false);
+    if (e.key === 'Escape' && !e.defaultPrevented && page.classList.contains('nav-open')) setNavOpen(false);
   };
   document.addEventListener('keydown', navEscapeHandler);
 
   // Cleanup on navigation
   page.cleanup = () => {
+    disposed = true;
+    sectionToken++;
     appShell?.classList.remove('has-admin');
     document.removeEventListener('keydown', escapeHandler);
     document.removeEventListener('keydown', navEscapeHandler);
@@ -573,8 +613,11 @@ export function AdminPage(router) {
     // El bloqueo de scroll es global: si se navega con el cajón abierto, se
     // queda puesto y la web entera deja de hacer scroll al volver.
     document.documentElement.classList.remove('admin-nav-locked');
-    // Desuscribe del aviso de ánimos en vivo (se reinstala en loadMoods)
-    if (moodRealTimeOff) { moodRealTimeOff(); moodRealTimeOff = null; }
+    clearInterval(readRefreshTimer);
+    clearTimeout(moodRefreshTimer);
+    stopMoodRefresh();
+    document.removeEventListener('visibilitychange', refreshVisibleSection);
+    window.removeEventListener('online', refreshVisibleSection);
   };
 
   // ===== SECTION LOADER =====
@@ -582,13 +625,51 @@ export function AdminPage(router) {
   // carga async está en curso, la escritura del DOM obsoleto se aborta.
   // Evita el crash "Cannot set properties of null (setting 'innerHTML')".
   let sectionToken = 0;
+  let disposed = false;
   // Token por render de Ánimos: dos clics rápidos en ‹ › lanzan renders
   // solapados; el último clic debe ganar aunque resuelva antes el anterior.
   let moodRenderToken = 0;
-  // Unsubscribe del aviso de ánimos en vivo (se reinstala en loadMoods)
-  let moodRealTimeOff = null;
+  let moodWeekRenderToken = 0;
+  let moodNavigationToken = 0;
+  let activeRefresh = null;
+  let refreshRequest = null;
+  let moodRefreshTimer;
+  const READ_REFRESH_MS = 120000;
+  const isCurrentSection = token => !disposed && token === sectionToken;
+
+  function refreshVisibleSection() {
+    if (disposed || document.visibilityState !== 'visible') return;
+    updateClock();
+    void renderDbStatus().catch(() => {});
+    if (modal.visible || (refreshRequest?.token === sectionToken)) return;
+    const run = S.section === 'dashboard'
+      ? () => loadDashboard({ background: true })
+      : activeRefresh;
+    if (!run) return;
+    const token = sectionToken;
+    const pending = { token };
+    refreshRequest = pending;
+    void Promise.resolve().then(() => {
+      if (isCurrentSection(token)) return run();
+    }).catch(err => console.warn('[admin] Actualización fallida:', err?.message)).finally(() => {
+      if (refreshRequest === pending) refreshRequest = null;
+    });
+  }
+
+  const readRefreshTimer = setInterval(refreshVisibleSection, READ_REFRESH_MS);
+  document.addEventListener('visibilitychange', refreshVisibleSection);
+  window.addEventListener('online', refreshVisibleSection);
+  const stopMoodRefresh = onMoodChange(() => {
+    if (S.section !== 'dashboard' && S.section !== 'moods') return;
+    clearTimeout(moodRefreshTimer);
+    moodRefreshTimer = setTimeout(refreshVisibleSection, 350);
+  });
+
   function loadSection(section) {
-    sectionToken++;
+    if (disposed) return;
+    const token = ++sectionToken;
+    activeRefresh = null;
+    S.section = section;
     // Toda entrada a una sección pasa por aquí, así que el menú y la
     // cabecera se orientan solos venga de donde venga (menú, accesos,
     // atajos o el guardado de un modal, que recarga la sección actual).
@@ -602,7 +683,17 @@ export function AdminPage(router) {
       actividad: loadActividad,
       config: loadConfiguracion
     };
-    if (loaders[section]) loaders[section]();
+    void Promise.resolve().then(() => {
+      if (isCurrentSection(token)) return loaders[section]?.();
+    }).catch(error => {
+      if (!isCurrentSection(token)) return;
+      content.innerHTML = `<section class="admin-section active">
+        <div class="admin-section-header"><h2>${sectionInfo(section).icon} ${sectionInfo(section).label}</h2></div>
+        <div class="admin-empty" role="alert">${esc(error?.message || 'No se pudo cargar esta sección.')}</div>
+        <button type="button" class="admin-btn admin-btn-secondary" data-admin-retry>Reintentar</button>
+      </section>`;
+      content.querySelector('[data-admin-retry]')?.addEventListener('click', () => loadSection(section));
+    });
   }
 
   // ==========================================
@@ -621,8 +712,15 @@ export function AdminPage(router) {
           </div>`;
   }
 
-  async function loadDashboard() {
-    // Skeleton
+  let dashboardRender = 0;
+  let dashboardPeriod = 30;
+  let dashboardMetric = 'visits';
+
+  async function loadDashboard({ background = false } = {}) {
+    const token = sectionToken;
+    const render = ++dashboardRender;
+    const current = () => isCurrentSection(token) && render === dashboardRender;
+    if (!background || !content.querySelector('.dash-now')) {
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header"><h2>${UI.dash} Resumen general</h2></div>
@@ -642,33 +740,32 @@ export function AdminPage(router) {
         </section>
     `;
 
-    const token = sectionToken;
+    }
     const today = todayISO();
-    const todayDate = new Date();
+    const period = dashboardPeriod;
+    const from = shiftStatsDay(today, 1 - period);
+    const usersResult = await safe(db.readAdminUsers(), null);
+    if (!current()) return;
+    const users = usersResult?.rows || [];
+    const accountSelect = statsUserSelectHTML(usersResult?.rows ?? null);
+    const userId = statsUserId === STATS_ALL ? null : statsUserId;
 
     const [
-      reasons, songs, giftsData, users, audios, news,
-      maldiaFrases, maldiaMensajes, owLetters, activity, allMoods, seriesCatalog, visits, maldiaNotes,
-      giftResponses
+      reasons, songs, giftsData, audios, news,
+      maldiaFrases, maldiaMensajes, owLetters, activityResult, moodsResult, seriesCatalog, visitsResult, maldiaNotes,
+      giftResponses, hubDates
     ] = await Promise.all([
-      safe(db.getReasons(), []), safe(db.getSongs(), []), safe(db.getGifts(), { gifts: [] }),
-      safe(db.listUsers(), []), safe(db.getAudios(), []), safe(db.getNews(), []),
-      safe(db.getMaldiaFrases(), []), safe(db.getMaldiaMensajes(), []), safe(db.getOpenWhenLetters(), []),
-      safe(db.getActivity(200), []), safe(db.getAllMoods('2024-01-01', today), []), safe(loadCatalog(), null),
-      // 2000 visitas se quedaban cortas para rangos largos y recortaban el pasado.
-      safe(db.getPageVisits(5000), []), safe(db.getAllMaldiaNotes(), []),
-      safe(db.getAllGiftResponses(), {})
+      safe(db.getReasons(), null), safe(db.getSongs(), null), safe(db.getGifts(), null),
+      safe(db.getAudios(), null), safe(db.getNews(), null),
+      safe(db.getMaldiaFrases(), null), safe(db.getMaldiaMensajes(), null), safe(db.getOpenWhenLetters(), null),
+      safe(db.readAdminActivity({ limit: 5 }), null), safe(db.readAdminMoods({ from, through: today, userId }), null),
+      safe(loadCatalog(), null), safe(db.readAdminVisits({ from, through: today, userId }), null),
+      safe(db.getAllMaldiaNotes(), null), safe(db.getAllGiftResponses(), null), safe(db.getHubDates(), null)
     ]);
-
-    // Fechas especiales configurables (aniversario, inicio del Hub, cumpleaños)
-    const hubDates = await db.getHubDates();
-    const annivISO = hubDates.anniversary || '2025-07-03';
-    const hubStartISO = hubDates.hubStart || '2024-05-10';
-    const birthdayISO = hubDates.birthday || '2012-09-03';
-    const userBirthdayISO = hubDates.userBirthday || '2009-08-03';
-
-    // Estadísticas SOLO de dada: se descartan ánimos y visitas del resto.
-    const moods = arr(allMoods).filter(m => isStatsUser(m.user_id));
+    if (!current()) return;
+    const focused = content.contains(document.activeElement) ? document.activeElement : null;
+    const chartDetailsOpen = content.querySelector('.dash-chart-data')?.open;
+    const moods = moodsResult?.rows || [];
     const reasonsList = arr(reasons);
     const songsList = arr(songs);
     const newsList = arr(news);
@@ -676,19 +773,20 @@ export function AdminPage(router) {
     const maldiaMensajesList = arr(maldiaMensajes);
     const maldiaNotesList = arr(maldiaNotes);
     const owLettersList = arr(owLetters);
-    const visitsList = arr(visits).filter(v => isStatsUser(v.user_id));
+    const visitsList = visitsResult?.rows || [];
     // Las marcas de carta Open When abierta no son navegación: se apartan para
     // que no sumen secciones, tiempos ni horas punta.
     const letterReads = openWhenReadIds(visitsList);
     const navVisits = visitsList.filter(v => !isOpenWhenReadVisit(v));
     const giftResponsesMap = (giftResponses && typeof giftResponses === 'object') ? giftResponses : {};
     const audiosList = arr(audios);
-    const activityList = arr(activity);
+    const activityList = activityResult?.rows || [];
     const giftsCount = (giftsData?.gifts || []).length;
     const seriesCount = Array.isArray(seriesCatalog) ? seriesCatalog.length : 0;
-    const realUsers = users.filter(u => !u.id.startsWith('local_') && u.id.length > 10);
-
-    if (token !== sectionToken) return; // la sección cambió mientras cargaba
+    const realUsers = users;
+    const partial = [visitsResult, moodsResult, usersResult].some(result => result?.truncated || result?.source === 'local');
+    const unavailable = '<p class="admin-data-note" role="status">No se pudo consultar esta fuente. Pulsa Actualizar para reintentar.</p>';
+    const sessions = buildSessions(navVisits);
 
     // ---- Métricas ----
     // Fotos de la galería
@@ -707,24 +805,10 @@ export function AdminPage(router) {
     // siguen vivios en la dona de contenido y en los propios atajos.
 
     // ---- Serie de los últimos N días (actividad o ánimos, área) ----
-    let chartMetric = 'activity'; // 'activity' | 'mood'
-    const seriesDays = (n, metric) => {
-      const days = [];
-      for (let i = n - 1; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const ds = todayISO(d);
-        days.push({ ds, count: 0, label: d.toLocaleDateString('es', { day: 'numeric', month: 'short' }) });
-      }
-      const byDay = new Map(days.map(x => [x.ds, x]));
-      const source = metric === 'mood' ? moods : metric === 'visits' ? navVisits : activityList;
-      source.forEach(e => {
-        const ts = metric === 'mood' ? (e.date || '') : e.timestamp;
-        if (!ts) return;
-        const day = byDay.get(todayISO(new Date(ts)));
-        if (day) day.count++;
-      });
-      return days;
+    const seriesDays = metric => {
+      if (metric === 'mood') return moodsResult ? dailyCounts(today, period, moods, 'date') : null;
+      if (!visitsResult) return null;
+      return metric === 'sessions' ? dailyCounts(today, period, sessions, 'start') : dailyCounts(today, period, navVisits, 'timestamp');
     };
 
     // ---- Gráfico de área ----
@@ -733,7 +817,7 @@ export function AdminPage(router) {
     // <circle> se deformaban en elipses por el preserveAspectRatio="none".
     // Ahora: escala de paso redondo, curva suave y sin puntos deformados
     // (la lectura fina se hace con la guía + tooltip al pasar el ratón).
-    const CHART_METRICS = { activity: 'Actividad', mood: 'Ánimos', visits: 'Visitas' };
+    const CHART_METRICS = { visits: 'Visitas', sessions: 'Sesiones estimadas', mood: 'Registros de ánimo' };
 
     /** Redondea el paso del eje a 1/2/5 x 10^n para que los ticks sean legibles. */
     const niceStep = (raw) => {
@@ -763,19 +847,20 @@ export function AdminPage(router) {
       return d;
     };
 
-    const areaChart = (days, metric = chartMetric) => {
-      const nombre = CHART_METRICS[metric] || 'Actividad';
-      const W = 540, H = 150, PAD = 10;
+    const areaChart = (days, metric = dashboardMetric) => {
+      if (!days) return unavailable;
+      const nombre = CHART_METRICS[metric];
+      const W = 540, H = 150, PAD = 12, AXIS = 33;
       const counts = days.map(d => d.count);
       const total = counts.reduce((a, b) => a + b, 0);
       const rawMax = Math.max(...counts, 1);
-      const step = niceStep(rawMax / 4);
+      const step = Math.max(1, niceStep(rawMax / 4));
       const max = step * 4;
-      const stepX = (W - PAD * 2) / (days.length - 1 || 1);
+      const stepX = (W - AXIS - PAD) / (days.length - 1 || 1);
       const y = (c) => H - PAD - (c / max) * (H - PAD * 2);
-      const pts = days.map((d, i) => [PAD + i * stepX, y(d.count)]);
+      const pts = days.map((d, i) => [AXIS + i * stepX, y(d.count)]);
       const line = smoothPath(pts);
-      const area = `${line} L${(W - PAD).toFixed(1)},${(H - PAD).toFixed(1)} L${PAD},${(H - PAD).toFixed(1)} Z`;
+      const area = `${line} L${W - PAD},${H - PAD} L${AXIS},${H - PAD} Z`;
       const grid = [max, max * 0.75, max * 0.5, max * 0.25, 0];
       const labelsEvery = Math.max(1, Math.ceil(days.length / 6));
       // Marcas de fecha: se descarta la que quede demasiado cerca de la
@@ -793,7 +878,6 @@ export function AdminPage(router) {
           <div class="dash-area-empty">
             <span aria-hidden="true">📉</span>
             <strong>Sin ${esc(nombre.toLowerCase())} en ${days.length} días</strong>
-            <span>No hay nada que dibujar todavía</span>
           </div>`;
       }
 
@@ -803,16 +887,16 @@ export function AdminPage(router) {
                aria-label="${esc(nombre)} de los últimos ${days.length} días. Máximo ${rawMax}, total ${total}">
             <defs>
               <linearGradient id="dashAreaFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#ff6b4a" stop-opacity="0.32"/>
-                <stop offset="100%" stop-color="#ff6b4a" stop-opacity="0.02"/>
+                <stop offset="0%" stop-color="var(--theme-accent)" stop-opacity="0.32"/>
+                <stop offset="100%" stop-color="var(--theme-accent)" stop-opacity="0.02"/>
               </linearGradient>
             </defs>
-            ${grid.map(g => `<line x1="${PAD}" y1="${y(g).toFixed(1)}" x2="${W - PAD}" y2="${y(g).toFixed(1)}" class="dash-area-grid"/>`).join('')}
+            ${grid.map(g => `<text x="${AXIS - 4}" y="${y(g) + 4}" class="dash-axis-value" text-anchor="end">${g}</text><line x1="${AXIS}" y1="${y(g)}" x2="${W - PAD}" y2="${y(g)}" class="dash-area-grid"/>`).join('')}
             <path d="${area}" fill="url(#dashAreaFill)"/>
             <path d="${line}" fill="none" class="dash-area-line"/>
             <line class="dash-area-guide" x1="0" y1="${PAD}" x2="0" y2="${H - PAD}"/>
             ${days.map((d, i) => {
-              const cx = PAD + (i + 0.5) * stepX;
+              const cx = pts[i][0];
               return `<rect class="dash-area-hit" x="${(cx - stepX / 2).toFixed(1)}" y="0"
                             width="${stepX.toFixed(1)}" height="${H}"
                             data-i="${i}" data-x="${cx.toFixed(1)}"/>`;
@@ -822,20 +906,23 @@ export function AdminPage(router) {
         </div>
         <div class="dash-area-foot">
           <span class="dash-area-summary">
-            <strong>${total}</strong> en ${days.length} días · máx. <strong>${rawMax}</strong>
+            <strong>${total}</strong> ${esc(nombre.toLowerCase())} · máximo diario <strong>${rawMax}</strong>
           </span>
-          <span class="dash-area-peak" title="Techo del eje">eje hasta ${max}</span>
         </div>
         <div class="dash-area-labels">
           ${days.map((d, i) => {
             if (!marked.includes(i)) return '';
-            const pct = (i / (days.length - 1)) * 100;
+            const pct = pts[i][0] / W * 100;
             // El primero y el último se alinean a los bordes para que no
             // se salgan de la caja al traducirlos la mitad.
             const edge = i === 0 ? ' is-first' : i === days.length - 1 ? ' is-last' : '';
             return `<span class="dash-label${edge}" style="left:${pct.toFixed(2)}%">${d.label}</span>`;
           }).join('')}
-        </div>`;
+        </div>
+        <details class="dash-chart-data"><summary>Ver valores diarios</summary>
+          <table><thead><tr><th scope="col">Fecha</th><th scope="col">${esc(nombre)}</th></tr></thead>
+          <tbody>${days.map(day => `<tr><td>${esc(day.label)}</td><td>${day.count}</td></tr>`).join('')}</tbody></table>
+        </details>`;
     };
 
     /** Guía vertical + tooltip con el dato exacto de cada día. */
@@ -848,8 +935,8 @@ export function AdminPage(router) {
         hit.addEventListener('pointerenter', () => {
           const d = days[Number(hit.dataset.i)];
           if (!d) return;
-          tip.textContent = `${d.label} · ${d.count ? `${d.count} ${d.count === 1 ? 'evento' : 'eventos'}` : 'sin registros'}`;
-          tip.style.left = `${((Number(hit.dataset.i) + 0.5) / days.length) * 100}%`;
+          tip.textContent = `${d.label} · ${d.count}`;
+          tip.style.left = `${Math.min(88, Math.max(12, Number(hit.dataset.x) / 540 * 100))}%`;
           tip.hidden = false;
           const x = hit.dataset.x;
           guide.setAttribute('x1', x);
@@ -865,13 +952,15 @@ export function AdminPage(router) {
       { label: 'Series', count: seriesCount, color: '#ff6b4a' },
       { label: 'Fotos', count: galleryPhotos, color: '#ff9e7a' },
       { label: 'Frases', count: mensajes, color: '#f5b942' },
-      { label: 'Música', count: songsList.length + audiosList.length, color: '#4ec9b0' },
-      { label: 'Otros', count: giftsCount + newsList.length + owLettersList.length, color: '#9b8cff' }
+      { label: 'Música y audios', count: songsList.length + audiosList.length, color: '#4ec9b0' },
+      { label: 'Regalos, noticias y cartas editadas', count: giftsCount + newsList.length + owLettersList.length, color: '#9b8cff' }
     ];
-    const distTotal = dist.reduce((s, d) => s + d.count, 0) || 1;
+    const contentIncomplete = [reasons, songs, giftsData, news, audios, maldiaFrases, maldiaMensajes, owLetters, seriesCatalog]
+      .some(entry => entry == null);
+    const distTotal = dist.reduce((s, d) => s + d.count, 0);
     let acc = 0;
     const distSegs = dist.map(d => {
-      const frac = d.count / distTotal;
+      const frac = distTotal ? d.count / distTotal : 0;
       const seg = { ...d, frac, start: acc };
       acc += frac;
       return seg;
@@ -879,8 +968,8 @@ export function AdminPage(router) {
     const R = 42, CIRC = 2 * Math.PI * R;
     // Cada segmento lleva su <title>: al pasar el ratón se ve la cifra
     // exacta y, sin JavaScript, sigue siendo legible para el lector.
-    const donutHtml = distSegs.map(d => {
-      const len = Math.max(d.frac * CIRC - 2, 0.5);
+    const donutHtml = distSegs.filter(d => d.count > 0).map(d => {
+      const len = d.frac * CIRC;
       return `<circle r="${R}" cx="60" cy="60" fill="none" stroke="${d.color}" stroke-width="14"
         stroke-dasharray="${len.toFixed(1)} ${(CIRC - len).toFixed(1)}" stroke-dashoffset="${(-d.start * CIRC).toFixed(1)}" stroke-linecap="butt">
         <title>${esc(d.label)}: ${d.count} (${Math.round(d.frac * 100)}%)</title>
@@ -897,40 +986,31 @@ export function AdminPage(router) {
     const moodCounts = {};
     moods.forEach(m => {
       const items = moodRowItems(m);
-      if (!items.length) {
-        const k = m.mood || m.status || 'good';
-        moodCounts[k] = (moodCounts[k] || 0) + 1;
-        return;
-      }
       items.forEach(item => {
         const key = moodAggKey(item);
         moodCounts[key] = (moodCounts[key] || 0) + 1;
       });
     });
-    const dominant = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
-    const domKey = dominant ? dominant[0] : 'good';
-    // Etiqueta y emoji del catalogs real: con el mapa local anterior, un
-    // ánimo vigente ("cariño") caía en el respaldo y se pintaba "Feliz".
-    const domInfo = moodInfo(domKey);
-    const avgScore = moods.length
-      ? moods.reduce((s, m) => s + (moodInfo(m.mood || m.status).score ?? 2), 0) / moods.length
-      : 2;
-    const WEEK_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const emotionTotal = Object.values(moodCounts).reduce((sum, count) => sum + count, 0);
+    const mostMarked = Math.max(0, ...Object.values(moodCounts));
+    const leading = Object.keys(moodCounts).filter(key => moodCounts[key] === mostMarked);
+    const dominantText = leading.length === 1 ? moodInfo(leading[0]).label : `${leading.length} emociones empatadas`;
+    const WEEK_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
     const weekCounts = [0, 0, 0, 0, 0, 0, 0];
     moods.forEach(m => {
       if (!m.date) return;
-      weekCounts[new Date(m.date + 'T12:00:00').getDay()]++;
+      weekCounts[(new Date(m.date + 'T12:00:00Z').getUTCDay() + 6) % 7]++;
     });
     const weekMax = Math.max(...weekCounts, 1);
     const weekTop = weekCounts.indexOf(weekMax);
     const weekTops = weekCounts.map((n, i) => (n && n === weekMax ? i : -1)).filter(i => i >= 0);
     const weekBars = WEEK_LABELS.map((l, i) => {
       const n = weekCounts[i];
-      const h = n ? Math.max(Math.round((n / weekMax) * 100), 12) : 4;
+      const h = Math.round(n / weekMax * 100);
       // La cifra se pinta encima de la barra: antes solo se veía al pasar el
       // ratón, y el gráfico no dizia cuántas barras había ni cuál era la mayor.
       return `<div class="dash-week-col${n === weekMax && n ? ' top' : ''}" title="${l}: ${n} registro${n === 1 ? '' : 's'}">
-        <div class="dash-week-count">${n || ''}</div>
+        <div class="dash-week-count">${n}</div>
         <div class="dash-week-wrap"><div class="dash-week-bar${n ? ' has' : ''}" style="height:${h}%"></div></div>
         <span class="dash-week-label">${l}</span>
       </div>`;
@@ -945,13 +1025,12 @@ export function AdminPage(router) {
     const moodDist = Object.keys(moodCounts)
       .sort((a, b) => moodRank(a) - moodRank(b) || moodInfo(a).label.localeCompare(moodInfo(b).label, 'es'))
       .map(k => ({ k, n: moodCounts[k], info: moodInfo(k) }));
-    const moodDistMax = Math.max(...moodDist.map(d => d.n), 1);
     const moodDistHtml = moodDist.length ? moodDist.map(d => `
-        <div class="dash-mooddist-row${d.k === domKey ? ' is-current' : ''}">
+        <div class="dash-mooddist-row${leading.includes(d.k) ? ' is-current' : ''}">
           <span class="dash-mooddist-face" aria-hidden="true">${esc(d.info.emoji)}</span>
-          <span class="dash-mooddist-label">${esc(d.info.label)}${d.k === domKey ? ' <span class="dash-mooddist-tag"> predominante</span>' : ''}</span>
-          <span class="dash-mooddist-track"><span class="dash-mooddist-fill" style="width:${Math.max(Math.round(d.n / moodDistMax * 100), 3)}%"></span></span>
-          <span class="dash-mooddist-count">${d.n}</span>
+          <span class="dash-mooddist-label">${esc(d.info.label)}</span>
+          <span class="dash-mooddist-track"><span class="dash-mooddist-fill" style="width:${Math.round(d.n / emotionTotal * 100)}%"></span></span>
+          <span class="dash-mooddist-count">${d.n} · ${Math.round(d.n / emotionTotal * 100)}%</span>
         </div>`).join('') : '<p class="dash-week-caption">Sin registros de ánimo todavía</p>';
 
     const weekCaption = weekCounts.some(Boolean)
@@ -961,75 +1040,29 @@ export function AdminPage(router) {
         : `<p class="dash-week-caption">Día con más registros: <strong>${WEEK_LABELS[weekTop]}</strong> (${weekMax})</p>`)
       : '<p class="dash-week-caption">Sin registros de ánimo todavía</p>';
 
-    // ---- Fechas importantes ----
-    // Formato corto ("3 jul 2027"): el largo ("3 de julio de 2027") no cabía
-    // junto a la cuenta atrás y se partía en dos renglones. Además coincide con
-    // la fecha que ya usan las tarjetas de métricas ("3 jul 2025").
-    const fmtDate = (d) => d.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
-    const todayStart = new Date(today + 'T00:00:00');
-    const daysUntil = (target) => Math.round((target - todayStart) / 864e5);
-    const startAnniv = new Date(annivISO + 'T00:00:00');
-    let anniv = new Date(todayDate.getFullYear(), startAnniv.getMonth(), startAnniv.getDate());
-    if (anniv < todayStart) anniv = new Date(todayDate.getFullYear() + 1, startAnniv.getMonth(), startAnniv.getDate());
-    const annivDays = daysUntil(anniv);
-    const annivYears = anniv.getFullYear() - startAnniv.getFullYear();
-    const bd = new Date(birthdayISO + 'T00:00:00');
-    let birthday = new Date(todayDate.getFullYear(), bd.getMonth(), bd.getDate());
-    if (birthday < todayStart) birthday = new Date(todayDate.getFullYear() + 1, bd.getMonth(), bd.getDate());
-    const birthdayDays = daysUntil(birthday);
-    const ubd = new Date(userBirthdayISO + 'T00:00:00');
-    let userBd = new Date(todayDate.getFullYear(), ubd.getMonth(), ubd.getDate());
-    if (userBd < todayStart) userBd = new Date(todayDate.getFullYear() + 1, ubd.getMonth(), ubd.getDate());
-    const userBdDays = daysUntil(userBd);
-    const hubTitles = hubDates.titles || {};
-    const hubRecurring = hubDates.recurring || {};
-    // Antes cada ficha repetia la fecha original ("3 de septiembre de 2012")
-    // junto a una cuenta atrás que apuntaba a 2027: dos fechas distintas en la
-    // misma línea. Ahora se muestra la PRÓXIMA ocurrencia y el año original
-    // pasa a la nota ("desde 2012"), que es lo que sí es informativo.
-    const nextOccurrence = (iso) => {
-      const start = new Date(iso + 'T00:00:00');
-      let d = new Date(todayDate.getFullYear(), start.getMonth(), start.getDate());
-      if (d < todayStart) d = new Date(todayDate.getFullYear() + 1, start.getMonth(), start.getDate());
-      return d;
-    };
-    const sinceNote = (iso, everyYear) => {
-      const y = new Date(iso + 'T00:00:00').getFullYear();
-      const parts = [];
-      if (everyYear) parts.push('cada año');
-      if (y < todayDate.getFullYear()) parts.push(`desde ${y}`);
-      // Espacio duro tras el punto: si la línea se parte, el separador va con
-      // la palabra que sigue y no queda colgando al final ("cada año ·").
-      // Carácter, no entidad: la nota pasa por esc() y &nbsp; se imprimiría
-      // literal.
-      return parts.join(' ·\u00A0');
-    };
-    const fechas = [
-      { icon: '🤍', title: hubTitles.anniversary || `${annivYears} año${annivYears === 1 ? '' : 's'} juntos`, date: fmtDate(anniv),
-        note: sinceNote(annivISO, hubRecurring.anniversary !== false),
-        badge: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`, hot: annivDays <= 30 },
-      { icon: '🎁', title: hubTitles.birthday || 'Cumpleaños de dada', date: fmtDate(birthday),
-        note: sinceNote(birthdayISO, hubRecurring.birthday !== false),
-        badge: birthdayDays === 0 ? '¡Hoy! 🎂' : `En ${birthdayDays} día${birthdayDays === 1 ? '' : 's'}`, hot: birthdayDays <= 30 },
-      { icon: '🎂', title: hubTitles.userBirthday || 'Tu cumpleaños', date: fmtDate(userBd),
-        note: sinceNote(userBirthdayISO, hubRecurring.userBirthday !== false),
-        badge: userBdDays === 0 ? '¡Hoy! 🎂' : `En ${userBdDays} día${userBdDays === 1 ? '' : 's'}`, hot: userBdDays <= 30 },
-      { icon: '📅', title: hubTitles.hubStart || 'Primer mensaje', date: fmtDate(new Date(hubStartISO + 'T00:00:00')),
-        note: sinceNote(hubStartISO, false),
-        badge: 'Ya pasó', muted: true }
-    ];
+    const fmtDate = date => new Date(`${date}T12:00:00Z`).toLocaleDateString('es', {
+      timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric',
+    });
+    const countdown = days => days === 0 ? 'Hoy' : days < 0 ? 'Ya pasó' : `En ${days} día${days === 1 ? '' : 's'}`;
+    const dates = hubDates ? dashboardDates(hubDates, today, FIXED_EVENT_FIELDS) : [];
+    const anniv = dates.find(date => date.id === 'anniversary');
+    const fechas = dates.sort((a, b) => Number(a.days < 0) - Number(b.days < 0) || a.days - b.days)
+      .slice(0, 8).map(event => ({
+        icon: event.icon, title: event.title, date: fmtDate(event.date),
+        note: event.recurring ? 'Anual' : '',
+        badge: countdown(event.days), hot: event.days >= 0 && event.days <= 30, muted: event.days < 0,
+      }));
 
     // ---- Actividad reciente ----
     const ACT_ICONS = { reason: '💌', song: '🎵', gift: '🎁', news: '📰', series: '📺', maldia: '💬', audio: '🎙️', letter: '📮', user: '👤', login: '🔑', logout: '🚪' };
     const actIcon = (action = '') => ACT_ICONS[String(action).split('_')[0]] || '✨';
-    const relTime = (ts) => {
-      if (!ts) return '';
-      const d = new Date(ts);
-      const hm = d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-      if (d.toDateString() === todayDate.toDateString()) return `Hoy, ${hm}`;
-      const yest = new Date(todayDate); yest.setDate(todayDate.getDate() - 1);
-      if (d.toDateString() === yest.toDateString()) return `Ayer, ${hm}`;
-      return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    const relTime = ts => {
+      const day = statsDay(ts);
+      if (!day) return '';
+      const time = new Date(ts).toLocaleTimeString('es', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' });
+      if (day === today) return `Hoy, ${time}`;
+      if (day === shiftStatsDay(today, -1)) return `Ayer, ${time}`;
+      return fmtDate(day);
     };
 
     // ---- Ir a: secciones y atajos ----
@@ -1059,11 +1092,10 @@ export function AdminPage(router) {
     // persona. La última página de cada sesión recibe una estimación (mediana
     // de sus huecos, entre 45 s y 2 min) en vez de quedarse en 0 ms porque no
     // llegaba ninguna visita después.
-    const sessions = buildSessions(navVisits);
     const perSection = sectionUsage(sessions);
     const perUser = userUsage(sessions);
     const sessionStats = sessionSummary(sessions);
-    const sortedVisits = navVisits.toSorted((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const sortedVisits = [...navVisits].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
     const topSections = Object.entries(perSection)
       .filter(([, s]) => s.count > 0)
       .sort((a, b) => b[1].ms - a[1].ms || b[1].count - a[1].count)
@@ -1084,7 +1116,7 @@ export function AdminPage(router) {
         const topSec = Object.entries(u.msBySection).sort((a, b) => b[1] - a[1])[0];
         return {
           uid,
-          name: user?.name || (user?.email ? user.email.split('@')[0] : 'Invitado'),
+          name: user?.name || user?.email?.split('@')[0] || 'Cuenta del historial',
           isAdmin: user?.role === 'admin',
           count: u.count,
           lastTs: u.lastTs,
@@ -1118,7 +1150,7 @@ export function AdminPage(router) {
     const peakText = heat.peakHour === null
       ? 'Sin visitas todavía'
       : `${String(heat.peakHour).padStart(2, '0')}:00–${String((heat.peakHour + 1) % 24).padStart(2, '0')}:00`;
-    const heatTotal = heatParts.reduce((sum, p) => sum + p.count, 0) || 1;
+    const heatTotal = Math.max(1, heat.total);
     const partsHtml = heatParts.map(p => `<span class="dash-part-chip"><strong>${p.label}</strong> ${p.count} · ${Math.round(p.count / heatTotal * 100)}%</span>`).join('');
 
     // ---- Rachas y constancia ----
@@ -1126,8 +1158,7 @@ export function AdminPage(router) {
     const visitStreak = streaks(visitDays, today);
     const moodStreak = streaks(uniqueDays(moods.map(m => m.date)), today);
     const streakDays = Math.max(visitStreak.current, moodStreak.current);
-    const activeThisMonth = visitDays.filter(d => d.slice(0, 7) === today.slice(0, 7)).length;
-    const streakBadge = streakDays > 0
+    const streakBadge = userId && streakDays > 0
       ? `<span class="dash-streak" title="Visitas: ${visitStreak.current} día(s) seguidos · Ánimos: ${moodStreak.current} día(s) seguidos">🔥 Racha activa: ${streakDays} día${streakDays === 1 ? '' : 's'}</span>`
       : '';
 
@@ -1136,36 +1167,37 @@ export function AdminPage(router) {
     const answeredGifts = askedGifts.filter(g => (giftResponsesMap[g.id] || []).length > 0);
     // Total real de cartas: las del catálogo fijo más las que se añadan desde
     // el panel (un id repetido cuenta una sola vez).
-    const owTotal = new Set([...LETTERS.map(l => l.id), ...owLettersList.map(l => l.id)]).size;
+    const publishedLetters = publishedLetterIds(LETTERS, owLettersList);
+    const openedLetters = [...letterReads].filter(id => publishedLetters.has(id)).length;
     const engagementHtml = `<div class="dash-eng-grid">
-      <div class="dash-eng"><span class="dash-eng-num">${visitStreak.current} <span class="dash-eng-sub">/ ${visitStreak.longest}</span></span><span class="dash-eng-label">racha de visitas (actual / mejor)</span></div>
-      <div class="dash-eng"><span class="dash-eng-num">${moodStreak.current} <span class="dash-eng-sub">/ ${moodStreak.longest}</span></span><span class="dash-eng-label">racha de ánimos (actual / mejor)</span></div>
-      <div class="dash-eng"><span class="dash-eng-num">${activeThisMonth}</span><span class="dash-eng-label">días activos este mes</span></div>
-      <div class="dash-eng"><span class="dash-eng-num">${sessionStats.sessions ? fmtDuration(sessionStats.avgMs) : '—'}</span><span class="dash-eng-label">media por sesión · ${sessionStats.sessions} sesión${sessionStats.sessions === 1 ? '' : 'es'}</span></div>
-      <div class="dash-eng"><span class="dash-eng-num">${maldiaNotesList.length}</span><span class="dash-eng-label">notas de Mal Día</span></div>
-      <div class="dash-eng"><span class="dash-eng-num">${answeredGifts.length} <span class="dash-eng-sub">/ ${askedGifts.length}</span></span><span class="dash-eng-label">preguntas de regalos contestadas</span></div>
-      <div class="dash-eng"><span class="dash-eng-num">${letterReads.size} <span class="dash-eng-sub">/ ${owTotal}</span></span><span class="dash-eng-label">cartas Open When abiertas</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${visitsResult ? visitStreak.current + ' / ' + visitStreak.longest : '—'}</span><span class="dash-eng-label">racha de visitas · actual / mejor del período</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${moodsResult ? moodStreak.current + ' / ' + moodStreak.longest : '—'}</span><span class="dash-eng-label">racha de ánimo · actual / mejor del período</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${visitsResult ? visitDays.length : '—'}</span><span class="dash-eng-label">días con al menos una visita</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${sessionStats.sessions ? fmtDuration(sessionStats.avgMs) : '—'}</span><span class="dash-eng-label">duración media estimada por sesión</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${visitsResult && owLetters != null ? openedLetters + ' / ' + publishedLetters.size : '—'}</span><span class="dash-eng-label">cartas distintas leídas / catálogo publicado</span></div>
+      <div class="dash-eng"><span class="dash-eng-num">${giftResponses == null || giftsData == null ? '—' : answeredGifts.length + ' / ' + askedGifts.length}</span><span class="dash-eng-label">regalos con respuesta · todas las cuentas y fechas</span></div>
     </div>`;
 
     // ---- Hoy: lo que se mira al entrar, antes de cualquier gráfico ----
-    const lastVisit = sortedVisits[sortedVisits.length - 1];
-    const visitsToday = navVisits.filter(v => todayISO(new Date(v.timestamp)) === today).length;
-    const todayMood = moods.find(m => (m.date || '').slice(0, 10) === today);
-    const todayMoodInfo = todayMood ? moodInfo(todayMood.mood || todayMood.status) : null;
+    const lastVisit = sortedVisits.at(-1);
+    const visitsToday = navVisits.filter(v => statsDay(v.timestamp) === today).length;
+    const todayMoods = latestDailyMoods(moods, today);
+    const todayMood = todayMoods.length === 1 ? moodRowItems(todayMoods[0]) : [];
     const lastNote = maldiaNotesList[0];
     const nowCards = [
-      { label: 'Última conexión',
-        value: lastVisit ? relTimeShort(new Date(lastVisit.timestamp).getTime()) : '—',
-        sub: `${visitsToday} visita${visitsToday === 1 ? '' : 's'} hoy` },
-      { label: 'Su ánimo hoy',
-        value: todayMoodInfo ? `${todayMoodInfo.emoji} ${todayMoodInfo.label}` : 'Sin registrar',
-        sub: todayMood ? 'registrado hoy' : 'todavía no ha entrado a ánimo' },
+      { label: 'Última visita',
+        value: !visitsResult ? 'No disponible' : lastVisit ? relTimeShort(Date.parse(lastVisit.timestamp)) : 'Sin visitas',
+        sub: visitsResult ? `${visitsToday} visita${visitsToday === 1 ? '' : 's'} hoy` : '' },
+      { label: userId ? 'Su ánimo hoy' : 'Ánimo de hoy',
+        value: !moodsResult ? 'No disponible' : todayMood.length
+          ? todayMood.map(item => `${item.emoji} ${item.label}`).join(' · ')
+          : todayMoods.length ? `${todayMoods.length} cuentas registraron su ánimo` : 'Sin registrar',
+        sub: todayMood.length > 1 ? 'Emociones de su último registro' : '' },
       { label: 'Notas de Mal Día',
-        value: `${maldiaNotesList.length}`,
-        sub: lastNote?.createdAt ? `última ${relTimeShort(new Date(lastNote.createdAt).getTime())}` : 'ninguna todavía' },
-      { label: hubTitles.anniversary || 'Aniversario',
-        value: annivDays === 0 ? '¡Hoy! 💫' : `En ${annivDays} día${annivDays === 1 ? '' : 's'}`,
-        sub: fmtDate(anniv) }
+        value: maldiaNotes == null ? 'No disponibles' : String(maldiaNotesList.length),
+        sub: lastNote?.createdAt ? `Última nota ${relTimeShort(Date.parse(lastNote.createdAt))} · todas las cuentas` : 'Todas las cuentas' },
+      { label: anniv?.title || 'Aniversario',
+        value: anniv ? countdown(anniv.days) : 'No disponible', sub: anniv ? fmtDate(anniv.date) : '' }
     ];
 
     content.innerHTML = `
@@ -1174,12 +1206,16 @@ export function AdminPage(router) {
           <h2>${UI.dash} Resumen general</h2>
           <div class="dash-header-tools">
             ${streakBadge}
-            ${statsUserSelectHTML(realUsers)}
-            <span class="dash-conn-pill" id="dashConnPill">Comprobando…</span>
-            <button class="admin-btn-ghost" id="refreshDashboard" title="Actualizar">${UI.refresh}</button>
+            ${accountSelect}
+            <select class="dash-range-select" id="dashActivityRange" aria-label="Período de las estadísticas">
+              ${[7, 14, 30, 90].map(days => `<option value="${days}"${days === period ? ' selected' : ''}>${days} días</option>`).join('')}
+            </select>
+            <button type="button" class="admin-btn-ghost" id="refreshDashboard" aria-label="Actualizar resumen" title="Actualizar">${UI.refresh}</button>
           </div>
         </div>
-        <p class="admin-section-hint">${SECTION_HINTS.dashboard}</p>
+        <p class="admin-section-hint">Del ${fmtDate(from)} al ${fmtDate(today)} · hora de España peninsular</p>
+        ${partial ? '<p class="admin-data-note" role="status">Alguna fuente solo dispone de datos locales o parciales. Los totales pueden estar incompletos.</p>' : ''}
+        ${!usersResult ? '<p class="admin-data-note" role="status">No se pudo consultar la lista de cuentas.</p>' : ''}
 
         <!-- Lo primero que se mira al entrar: cómo está hoy. Los gráficos y
              los accesos van después. -->
@@ -1195,26 +1231,21 @@ export function AdminPage(router) {
         <div class="admin-dash-grid">
           <div class="admin-panel">
             <div class="admin-panel-head">
-              <div class="dash-chart-toggle-group" role="group" aria-label="Métrica del gráfico">
-                <button type="button" class="dash-chart-toggle active" data-metric="activity">Actividad</button>
-                <button type="button" class="dash-chart-toggle" data-metric="mood">Ánimos</button>
-                <button type="button" class="dash-chart-toggle" data-metric="visits">Visitas</button>
-              </div>
-              <select class="dash-range-select" id="dashActivityRange" aria-label="Rango de días">
-                <option value="7">7 días</option>
-                <option value="14" selected>14 días</option>
-                <option value="30">30 días</option>
-                <option value="90">90 días</option>
-              </select>
+              <h4>Evolución diaria</h4>
             </div>
+            <div class="dash-chart-toggle-group" role="group" aria-label="Métrica del gráfico">
+              ${Object.entries(CHART_METRICS).map(([key, name]) => `<button type="button" class="dash-chart-toggle${key === dashboardMetric ? ' active' : ''}" data-metric="${key}" aria-pressed="${key === dashboardMetric}">${name}</button>`).join('')}
+            </div>
+            <p class="dash-week-caption" id="dashMetricHelp"></p>
             <div id="dashActivityChart"></div>
           </div>
           <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Distribución de contenido</h4></div>
+            <div class="admin-panel-head"><h4>Distribución de contenido</h4><span class="admin-panel-badge">Catálogo global</span></div>
+            ${contentIncomplete ? '<p class="admin-data-note">Recuento parcial. Alguna colección no está disponible.</p>' : ''}
             <div class="dash-donut">
               <div class="dash-donut-wrap">
                 <svg viewBox="0 0 120 120" class="dash-donut-svg">${donutHtml}</svg>
-                <div class="dash-donut-center"><strong>${distTotal}</strong><span>Total</span></div>
+                <div class="dash-donut-center"><strong>${distTotal || (contentIncomplete ? '—' : 0)}</strong><span>${contentIncomplete ? 'Disponible' : 'Total'}</span></div>
               </div>
               <div class="dash-donut-legend">${donutLegend}</div>
             </div>
@@ -1224,62 +1255,63 @@ export function AdminPage(router) {
         <div class="admin-dash-grid">
           <div class="admin-panel">
             <div class="admin-panel-head">
-              <h4>Tendencia de ánimo</h4>
+              <h4>Emociones y registros</h4>
               <div class="dash-panel-actions">
                 <button class="dash-link" data-goto="moods">Historial →</button>
-                <span class="admin-panel-badge">${moods.length} registros</span>
+                <span class="admin-panel-badge">${moodsResult ? moods.length + ' registros' : 'Sin conexión'}</span>
               </div>
             </div>
-            <div class="dash-mood-head">
+            ${!moodsResult ? unavailable : emotionTotal ? `<div class="dash-mood-head">
               <div class="dash-mood-text">
-                <div class="dash-mood-main">${esc(domInfo.label)} ${esc(domInfo.emoji)}</div>
-                <div class="dash-mood-sub">${avgScore >= 2.5 ? 'Predomina el buen ánimo. ¡Sigue así!' : 'Un poquito de cariño no viene mal hoy.'}</div>
+                <div class="dash-mood-main">${esc(dominantText)}</div>
+                <div class="dash-mood-sub">${emotionTotal} emociones marcadas · ${mostMarked} por emoción más frecuente</div>
               </div>
-              <div class="dash-mood-face">${esc(domInfo.emoji)}</div>
             </div>
+            <p class="dash-week-caption">Registros acumulados por día de la semana</p>
             <div class="dash-week-chart">${weekBars}</div>
             ${weekCaption}
-            <div class="dash-mooddist">${moodDistHtml}</div>
+            <div class="dash-mooddist">${moodDistHtml}</div>` : '<div class="admin-empty">Sin emociones registradas en este período.</div>'}
           </div>
           <div class="admin-panel">
             <div class="admin-panel-head"><h4>Fechas importantes</h4></div>
             <div class="dash-fechas">
-              ${fechas.map(f => `
+              ${!hubDates ? unavailable : fechas.length ? fechas.map(f => `
                 <div class="dash-fecha">
                   <div class="dash-fecha-icon">${f.icon}</div>
                   <div class="dash-fecha-body">
-                    <div class="dash-fecha-title">${f.title}</div>
+                    <div class="dash-fecha-title">${esc(f.title)}</div>
                     <div class="dash-fecha-date">${f.date}</div>
                     ${f.note ? `<div class="dash-fecha-note">${esc(f.note)}</div>` : ''}
                   </div>
                   <span class="dash-fecha-badge${f.hot ? ' hot' : ''}${f.muted ? ' muted' : ''}">${f.badge}</span>
-                </div>`).join('')}
+                </div>`).join('') : '<div class="admin-empty">No hay fechas configuradas.</div>'}
             </div>
           </div>
         </div>
 
         <div class="admin-dash-grid">
           <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Dónde pasa más tiempo</h4><span class="admin-panel-badge">${sortedVisits.length} visitas</span></div>
-            <div class="dash-use">${useHtml}</div>
+            <div class="admin-panel-head"><h4>Tiempo estimado por sección</h4><span class="admin-panel-badge">${visitsResult ? sortedVisits.length + ' visitas' : 'No disponible'}</span></div>
+            <p class="dash-week-caption">Estimación según el tiempo entre visitas. Las sesiones se separan tras 30 minutos sin navegar.</p>
+            <div class="dash-use">${visitsResult ? useHtml : unavailable}</div>
           </div>
           <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Últimas conexiones</h4></div>
-            <div class="dash-conn">${connHtml}</div>
+            <div class="admin-panel-head"><h4>Últimas visitas por cuenta</h4></div>
+            <div class="dash-conn">${visitsResult ? connHtml : unavailable}</div>
           </div>
         </div>
 
         <div class="admin-dash-grid">
           <div class="admin-panel">
             <div class="admin-panel-head">
-              <h4>Horas punta</h4>
+              <h4>Visitas por día y hora</h4>
               <span class="admin-panel-badge">Hora más activa: ${peakText}</span>
             </div>
-            <div class="dash-heat">${hourAxis}${heatRows}</div>
-            <div class="dash-parts">${partsHtml}</div>
+            ${!visitsResult ? unavailable : heat.total ? `<div class="dash-heat">${hourAxis}${heatRows}</div>
+              <div class="dash-parts">${partsHtml}</div>` : '<div class="admin-empty">Sin visitas en este período.</div>'}
           </div>
           <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Constancia y engagement</h4></div>
+            <div class="admin-panel-head"><h4>Constancia y participación</h4></div>
             ${engagementHtml}
           </div>
         </div>
@@ -1290,19 +1322,19 @@ export function AdminPage(router) {
               <h4>Notas de Mal Día</h4>
               <div class="dash-panel-actions">
                 <button class="dash-link" id="dashMaldiaNotesAll">Ver todas →</button>
-                <span class="admin-panel-badge">${maldiaNotesList.length} ${maldiaNotesList.length === 1 ? 'nota' : 'notas'}</span>
+                <span class="admin-panel-badge">Todas las cuentas</span>
               </div>
             </div>
             <div class="gift-responses-list dash-notes-list">
-              ${maldiaNotesList.length
+              ${maldiaNotes == null ? unavailable : maldiaNotesList.length
                 ? maldiaNotesList.slice(0, 3).map(maldiaNoteCardHtml).join('')
                 : '<p class="muted-text" style="margin:0">Todavía no hay notas. Cuando ella escriba una desde la sección Mal Día, aparecerán aquí.</p>'}
             </div>
           </div>
           <div class="admin-panel">
-            <div class="admin-panel-head"><h4>Actividad reciente</h4></div>
+            <div class="admin-panel-head"><h4>Últimas acciones de gestión</h4><span class="admin-panel-badge">Registro global</span></div>
             <div class="admin-activity-list">
-              ${activity.slice(0, 5).map(e => `
+              ${!activityResult ? unavailable : activityList.length ? activityList.map(e => `
                 <div class="admin-activity-item">
                   <div class="admin-activity-emoji">${actIcon(e.action)}</div>
                   <div class="admin-activity-body">
@@ -1310,7 +1342,7 @@ export function AdminPage(router) {
                     <div class="admin-activity-details">${esc(e.details || '')}</div>
                   </div>
                   <div class="admin-activity-time">${relTime(e.timestamp)}</div>
-                </div>`).join('')}
+                </div>`).join('') : '<div class="admin-empty">Sin acciones de gestión registradas.</div>'}
             </div>
             <button class="dash-more-btn" data-goto="actividad">Ver toda la actividad →</button>
           </div>
@@ -1347,38 +1379,34 @@ export function AdminPage(router) {
       </section>
     `;
 
-    page.querySelector('#refreshDashboard')?.addEventListener('click', loadDashboard);
+    const refreshDashboard = () => loadDashboard({ background: true });
+    page.querySelector('#refreshDashboard')?.addEventListener('click', refreshDashboard);
 
     // Selector de usuario de las estadísticas (se aplica sin recargar).
     page.querySelector('#statsUserSelect')?.addEventListener('change', (e) => {
       setStatsUser(e.target.value);
-      loadDashboard();
+      void refreshDashboard();
     });
-
-    // Estado de la conexión (chip del dashboard)
-    db.checkConnection().then(status => {
-      const pill = page.querySelector('#dashConnPill');
-      if (pill && page.querySelector('#adminContent')?.contains(pill)) {
-        pill.textContent = status.ok ? '● Supabase conectado' : '● Modo local';
-        pill.classList.toggle('ok', !!status.ok);
-      }
-    }).catch(() => {});
 
     // Gráfico: una sola vía de render para métrica y rango, que además
     // vuelve a enganchar la guía/tooltip sobre el HTML recién inyectado.
     const renderChart = () => {
       const el = page.querySelector('#dashActivityChart');
-      const range = page.querySelector('#dashActivityRange');
       if (!el) return;
-      const days = seriesDays(Number(range?.value || 14), chartMetric);
+      const days = seriesDays(dashboardMetric);
+      page.querySelector('#dashMetricHelp').textContent = {
+        visits: 'Cada visita registrada al abrir una sección. Las lecturas de cartas se cuentan aparte.',
+        sessions: 'Sesiones iniciadas cada día, separadas por 30 minutos sin visitas.',
+        mood: 'Cada envío de ánimo cuenta como un registro, aunque incluya varias emociones.',
+      }[dashboardMetric];
       el.innerHTML = areaChart(days);
-      bindAreaTip(el, days);
+      if (days) bindAreaTip(el, days);
     };
 
     // Métrica del gráfico: Actividad | Ánimos | Visitas
     page.querySelectorAll('.dash-chart-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
-        chartMetric = btn.dataset.metric;
+        dashboardMetric = btn.dataset.metric;
         page.querySelectorAll('.dash-chart-toggle').forEach(b => {
           const on = b === btn;
           b.classList.toggle('active', on);
@@ -1389,9 +1417,17 @@ export function AdminPage(router) {
     });
 
     // Rango del gráfico
-    page.querySelector('#dashActivityRange')?.addEventListener('change', renderChart);
+    page.querySelector('#dashActivityRange')?.addEventListener('change', e => {
+      dashboardPeriod = Number(e.target.value);
+      void refreshDashboard();
+    });
 
     renderChart();
+    if (chartDetailsOpen) page.querySelector('.dash-chart-data')?.setAttribute('open', '');
+    if (focused?.id) page.querySelector(`#${CSS.escape(focused.id)}`)?.focus({ preventScroll: true });
+    else if (focused?.dataset.metric) {
+      page.querySelector(`[data-metric="${CSS.escape(focused.dataset.metric)}"]`)?.focus({ preventScroll: true });
+    }
 
     // Accesos rápidos → cambian de sección
     page.querySelectorAll('[data-goto]').forEach(btn => {
@@ -1432,12 +1468,14 @@ export function AdminPage(router) {
    * cerrar el modal no quede un mes que no es el que estabas mirando).
    */
   async function goToMoodDay(dateStr) {
+    const token = sectionToken;
+    const navigation = ++moodNavigationToken;
     const loadedMonth = `${S.moodDate.getFullYear()}-${String(S.moodDate.getMonth() + 1).padStart(2, '0')}`;
     if (!S.moodMonthData || dateStr.slice(0, 7) !== loadedMonth) {
       S.moodDate = new Date(Number(dateStr.slice(0, 4)), Number(dateStr.slice(5, 7)) - 1, 1);
-      await renderMoodMonth(S.moodDate);
+      if (!await renderMoodMonth(S.moodDate)) return;
     }
-    openMoodDayDetail(dateStr);
+    if (isCurrentSection(token) && navigation === moodNavigationToken && modal.visible) openMoodDayDetail(dateStr);
   }
 
   /**
@@ -1446,6 +1484,8 @@ export function AdminPage(router) {
    * hay conexión, busca en el mes que ya está cargado.
    */
   async function goToNearestMoodDay(anchorStr, delta) {
+    const token = sectionToken;
+    const navigation = ++moodNavigationToken;
     const date = new Date(`${anchorStr}T12:00:00`);
     const from = isoDayOf(new Date(date.getFullYear(), date.getMonth(), date.getDate() + delta));
 
@@ -1455,15 +1495,12 @@ export function AdminPage(router) {
     }
 
     const userId = statsUserId === STATS_ALL ? null : statsUserId;
-    let target = await safe(db.getNearestMoodDate({
-      from,
-      direction: delta < 0 ? 'prev' : 'next',
-      userId
-    }), null);
-
-    // Sin red queda el mes que ya está en pantalla: sus días se conocen sin
-    // volver a consultar nada.
-    if (!target) {
+    let target;
+    let failed = false;
+    try {
+      target = await db.getNearestMoodDate({ from, direction: delta < 0 ? 'prev' : 'next', userId, strict: true });
+    } catch {
+      failed = true;
       const days = Object.keys(S.moodMonthData || {})
         .filter(ds => (S.moodMonthData[ds] || []).some(row => moodRowItems(row).length))
         .sort();
@@ -1471,11 +1508,14 @@ export function AdminPage(router) {
         ? days.findLast(ds => ds <= from) || null
         : days.find(ds => ds >= from) || null;
     }
+    if (!isCurrentSection(token) || navigation !== moodNavigationToken || !modal.visible) return;
 
     // Nunca hacia el futuro: allí no puede haber nada registrado.
     const usable = target && (delta < 0 || target <= todayISO()) ? target : null;
     if (!usable) {
-      showToast(delta < 0 ? 'No hay días anteriores con registro' : 'No hay días posteriores con registro', 'info');
+      const message = failed ? 'No se pudo buscar otro día. Inténtalo de nuevo.'
+        : delta < 0 ? 'No hay días anteriores con registro' : 'No hay días posteriores con registro';
+      showToast(message, failed ? 'error' : 'info');
       return;
     }
     await goToMoodDay(usable);
@@ -1563,25 +1603,28 @@ export function AdminPage(router) {
 
   async function loadMoods() {
     const token = sectionToken;
-    const moodUsers = await safe(db.listUsers(), []);
-    if (token !== sectionToken) return;
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header">
           <h2>${UI.heart} Estado de Ánimo</h2>
-          <div class="dash-header-tools">${statsUserSelectHTML(moodUsers, 'statsMoodUserSelect')}</div>
+          <div class="dash-header-tools">
+            <div id="moodAccountControl"></div>
+            <button type="button" class="admin-btn-ghost" id="refreshMoods" aria-label="Actualizar ánimos" title="Actualizar">${UI.refresh}</button>
+          </div>
         </div>
         <p class="admin-section-hint">${SECTION_HINTS.moods}</p>
+        <p class="admin-data-note" id="moodAccountStatus" role="status" hidden></p>
         <div class="moods-chart-section">
           <div class="moods-chart-header">
             <h3>Calendario mensual</h3>
             <div class="moods-nav">
-              <button class="moods-nav-btn" id="moodPrev">‹</button>
+              <button type="button" class="moods-nav-btn" id="moodPrev" aria-label="Mes anterior">‹</button>
               <span id="moodMonthLabel">Cargando...</span>
-              <button class="moods-nav-btn" id="moodNext">›</button>
+              <button type="button" class="moods-nav-btn" id="moodNext" aria-label="Mes siguiente">›</button>
             </div>
           </div>
           <div class="moods-calendar" id="moodCalendar">${skeletonCard('280px')}</div>
+          <p class="admin-data-note" id="moodMonthStatus" role="status" hidden></p>
           <div class="moods-stats" id="moodStats"></div>
           <div class="moods-breakdown" id="moodBreakdown"></div>
         </div>
@@ -1591,19 +1634,7 @@ export function AdminPage(router) {
     `;
 
     const render = () => renderMoodMonth(S.moodDate);
-    render();
-    renderMoodWeek();
-    // Refresca el calendario en vivo cuando la usuaria registra/quita un ánimo
-    // en el mes que se muestra (evento realtime o polling de seguridad).
-    if (moodRealTimeOff) moodRealTimeOff();
-    moodRealTimeOff = onMoodChange((mood) => {
-      const ds = mood?.date;
-      // El resumen semanal cambia con cualquier día de la última semana.
-      renderMoodWeek();
-      if (!ds) { render(); return; }
-      const displayed = `${S.moodDate.getFullYear()}-${String(S.moodDate.getMonth() + 1).padStart(2, '0')}`;
-      if (ds.slice(0, 7) === displayed) render();
-    });
+    const renderMoods = () => Promise.all([render(), renderMoodWeek()]);
     // Un día se abre para ver el detalle completo de sus emociones.
     const calendarEl = page.querySelector('#moodCalendar');
     calendarEl?.addEventListener('click', (event) => {
@@ -1618,12 +1649,43 @@ export function AdminPage(router) {
       openMoodDayDetail(cell.dataset.moodDay);
     });
 
-    page.querySelector('#moodPrev').onclick = () => { S.moodDate.setMonth(S.moodDate.getMonth() - 1); render(); };
-    page.querySelector('#moodNext').onclick = () => { S.moodDate.setMonth(S.moodDate.getMonth() + 1); render(); };
-    page.querySelector('#statsMoodUserSelect')?.addEventListener('change', (e) => {
+    const moveMonth = offset => {
+      S.moodDate = new Date(S.moodDate.getFullYear(), S.moodDate.getMonth() + offset, 1);
+      void render();
+    };
+    page.querySelector('#moodPrev').onclick = () => moveMonth(-1);
+    page.querySelector('#moodNext').onclick = () => moveMonth(1);
+    const accountControl = page.querySelector('#moodAccountControl');
+    const accountStatus = page.querySelector('#moodAccountStatus');
+    let accountMarkup;
+    activeRefresh = async () => {
+      let moodUsers = null;
+      let accountWarning = '';
+      try {
+        const result = await db.readAdminUsers();
+        moodUsers = result.rows;
+        if (result.source === 'local' || result.truncated) accountWarning = 'La lista muestra las cuentas disponibles.';
+      } catch {
+        accountWarning = 'No se pudo actualizar la lista de cuentas.';
+      }
+      if (!isCurrentSection(token)) return;
+      accountStatus.textContent = accountWarning;
+      accountStatus.hidden = !accountWarning;
+      if (moodUsers || !accountMarkup) {
+        const html = statsUserSelectHTML(moodUsers, 'statsMoodUserSelect');
+        if (html !== accountMarkup) {
+          accountMarkup = html;
+          accountControl.innerHTML = html;
+        }
+      }
+      await renderMoods();
+    };
+    accountControl.addEventListener('change', e => {
       setStatsUser(e.target.value);
-      loadMoods();
+      void renderMoods();
     });
+    page.querySelector('#refreshMoods').addEventListener('click', () => refreshVisibleSection());
+    await activeRefresh();
   }
 
   /**
@@ -1635,19 +1697,43 @@ export function AdminPage(router) {
     const box = page.querySelector('#moodWeek');
     if (!box) return;
     const token = sectionToken;
+    const renderToken = ++moodWeekRenderToken;
     const today = todayISO();
     const start = new Date(`${today}T12:00:00`);
     start.setDate(start.getDate() - 6); // siete días contando hoy
     const startISO = isoDayOf(start);
 
-    const rows = await safe(db.getAllMoods(startISO, today), []);
-    if (token !== sectionToken || !box.isConnected) return;
+    const userId = statsUserId === STATS_ALL ? null : statsUserId;
+    const loadKey = `${userId || ''}:${today}`;
+    const rangeLabel = `${start.toLocaleDateString('es', { day: 'numeric', month: 'short' })} – ${new Date(`${today}T12:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'short' })}`;
+    const header = `
+      <div class="moods-chart-header">
+        <h3>Últimos 7 días</h3>
+        <span class="moods-week-range">${esc(rangeLabel)}</span>
+      </div>`;
+    if (box.dataset.scope !== loadKey) {
+      delete box.dataset.scope;
+      box.innerHTML = header + skeletonCard('110px');
+    }
+    let result;
+    try {
+      result = await db.readAdminMoods({ from: startISO, through: today, userId });
+    } catch {
+      if (!isCurrentSection(token) || renderToken !== moodWeekRenderToken) return;
+      const message = '<p class="admin-data-note" role="status">No se pudo actualizar el resumen semanal.</p>';
+      if (box.dataset.scope === loadKey) {
+        box.querySelector('.admin-data-note')?.remove();
+        box.insertAdjacentHTML('beforeend', message);
+      } else box.innerHTML = header + message;
+      return;
+    }
+    if (!isCurrentSection(token) || renderToken !== moodWeekRenderToken) return;
+    box.dataset.scope = loadKey;
 
     const counts = new Map();
     const days = new Set();
     let total = 0;
-    for (const row of rows || []) {
-      if (!isStatsUser(row.user_id)) continue;
+    for (const row of result.rows) {
       const items = moodRowItems(row);
       if (!items.length) continue;
       days.add(row.date);
@@ -1658,15 +1744,11 @@ export function AdminPage(router) {
       }
     }
 
-    const rangeLabel = `${start.toLocaleDateString('es', { day: 'numeric', month: 'short' })} – ${new Date(`${today}T12:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'short' })}`;
-    const header = `
-      <div class="moods-chart-header">
-        <h3>Últimos 7 días</h3>
-        <span class="moods-week-range">${esc(rangeLabel)}</span>
-      </div>`;
+    const sourceNote = result.source === 'local' || result.truncated
+      ? '<p class="admin-data-note">El resumen se basa en los registros disponibles.</p>' : '';
 
     if (!total) {
-      box.innerHTML = `${header}<div class="admin-empty">Todavía no hay emociones en los últimos siete días</div>`;
+      box.innerHTML = `${header}<div class="admin-empty">Todavía no hay emociones en los últimos siete días</div>${sourceNote}`;
       return;
     }
 
@@ -1704,7 +1786,7 @@ export function AdminPage(router) {
             <span class="moods-bar-pct">${n} · ${pct}%</span>
           </div>`;
         }).join('')}
-      </div>`;
+      </div>${sourceNote}`;
   }
 
   async function renderMoodMonth(date) {
@@ -1716,25 +1798,47 @@ export function AdminPage(router) {
     const calendar = page.querySelector('#moodCalendar');
     const stats = page.querySelector('#moodStats');
     const breakdown = page.querySelector('#moodBreakdown');
+    const status = page.querySelector('#moodMonthStatus');
     if (!calendar) return;
 
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+    const todayStr = todayISO();
+    const userId = statsUserId === STATS_ALL ? null : statsUserId;
+    const scope = `${userId || ''}:${monthKey}`;
+    const retain = calendar.dataset.scope === scope;
     monthLabel.textContent = `${MONTHS[date.getMonth()]} ${year}`;
-    const monthMoods = await db.getMoodMonth(year, month);
-    // Solo estadísticas de dada: descarta los ánimos del resto de usuarios.
-    Object.keys(monthMoods).forEach(ds => {
-      monthMoods[ds] = monthMoods[ds].filter(m => isStatsUser(m.user_id));
-    });
-    if (token !== sectionToken || renderToken !== moodRenderToken) return; // sección o render obsoletos
+    page.querySelector('#moodNext').disabled = monthKey >= todayStr.slice(0, 7);
+    status.hidden = true;
+    if (!retain) {
+      delete calendar.dataset.scope;
+      S.moodMonthData = null;
+      stats.replaceChildren();
+      breakdown.replaceChildren();
+      calendar.innerHTML = skeletonCard('240px');
+    }
+    let monthMoods;
+    try {
+      monthMoods = await db.getMoodMonth(year, month, { strict: true, userId });
+    } catch {
+      if (!isCurrentSection(token) || renderToken !== moodRenderToken) return false;
+      if (!retain) calendar.replaceChildren();
+      status.textContent = retain
+        ? 'No se pudo actualizar el calendario. Se conservan los últimos datos.'
+        : 'No se pudo cargar el calendario. Vuelve a intentarlo.';
+      status.hidden = false;
+      return false;
+    }
+    if (!isCurrentSection(token) || renderToken !== moodRenderToken) return false;
     // Lo que se acaba de pintar es lo que abre el detalle del día: así el
     // modal enseña exactamente el mismo ánimo (y el mismo usuario) que la
     // rejilla, sin volver a consultar ni mezclar cuentas.
     S.moodMonthData = monthMoods;
+    calendar.dataset.scope = scope;
     const daysInMonth = new Date(year, month, 0).getDate();
-    const firstDay = new Date(year, month - 1, 1).getDay();
-    const todayStr = todayISO();
+    const firstDay = (new Date(year, month - 1, 1).getDay() + 6) % 7;
 
     let html = '<div class="moods-cal-grid">';
-    ['D','L','M','X','J','V','S'].forEach(d => { html += `<div class="moods-cal-hd">${d}</div>`; });
+    ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].forEach(d => { html += `<div class="moods-cal-hd">${d}</div>`; });
     for (let i = 0; i < firstDay; i++) html += '<div class="moods-cal-cell empty"></div>';
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -1773,11 +1877,12 @@ export function AdminPage(router) {
     if (entries.length === 0) {
       stats.innerHTML = '<div class="admin-empty">No hay datos de ánimo para este mes</div>';
       breakdown.replaceChildren();
-      return;
+      return true;
     }
 
     const counts = {};
     let totalScore = 0;
+    let scoredEntries = 0;
     let totalEmotions = 0;
     entries.forEach((m) => {
       const resolved = moodStore.resolveMood({ mood: m.mood, label: m.label, emoji: m.emoji, score: m.score });
@@ -1788,11 +1893,14 @@ export function AdminPage(router) {
         counts[key] = (counts[key] || 0) + 1;
         totalEmotions++;
       });
-      totalScore += typeof resolved.score === 'number' ? resolved.score : 2;
+      if (Number.isFinite(resolved.score)) {
+        totalScore += resolved.score;
+        scoredEntries++;
+      }
     });
-    const avg = totalScore / entries.length;
-    const avgEmoji = avg >= 3.5 ? '🤍🤍🤍' : avg >= 2.5 ? '😊' : avg >= 1.5 ? '😕' : avg >= 0.5 ? '😔' : '❤️';
-    const avgText = avg.toLocaleString('es', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const avgText = scoredEntries
+      ? (totalScore / scoredEntries).toLocaleString('es', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+      : '—';
 
     // "más frecuente" con empate: antes se quedaba con el primero que
     // encontraba y ponía un único emoji, así que en un mes con 1+1
@@ -1810,7 +1918,7 @@ export function AdminPage(router) {
     stats.innerHTML = `<div class="moods-stats-row">
       <div class="moods-stat"><span class="moods-stat-num">${entries.length}</span><span class="moods-stat-label">registros totales</span></div>
       <div class="moods-stat" title="${esc(topLabel)}"><span class="moods-stat-num">${esc(topFaces)}</span><span class="moods-stat-label">más frecuente${maxCount > 0 ? ` · ${maxCount}${topMoods.length > 1 ? ' cada uno' : ''}` : ''}</span></div>
-      <div class="moods-stat" title="Media de la escala de 0 a 4"><span class="moods-stat-num">${esc(avgEmoji)} <span class="moods-stat-avg">${avgText}</span></span><span class="moods-stat-label">media del mes (0-4)</span></div>
+      <div class="moods-stat" title="Cada registro tiene el mismo peso, aunque incluya varias emociones."><span class="moods-stat-num">${avgText}<span class="moods-stat-avg">/4</span></span><span class="moods-stat-label">puntuación media por registro</span></div>
       <div class="moods-stat"><span class="moods-stat-num">${daysWithMood}<span class="moods-stat-avg">/${daysInMonth}</span></span><span class="moods-stat-label">días con registro</span></div>
     </div>`;
 
@@ -1829,7 +1937,7 @@ export function AdminPage(router) {
     const allLegacy = rows.length > 0 && rows.every(k => moodInfo(k).legacy);
     const anyCurrent = rows.some(k => !moodInfo(k).legacy);
     breakdown.innerHTML = rows.length
-      ? `<h4>Desglose${allLegacy ? ' <span class="moods-breakdown-note">estados antiguos</span>' : ''}</h4>` + rows.map(k => {
+      ? `<h4>Emociones marcadas <span class="moods-breakdown-note">sobre ${emotionBase} marcas${allLegacy ? ' · estados antiguos' : ''}</span></h4>` + rows.map(k => {
         const count = counts[k];
         const pct = Math.round(count / emotionBase * 100);
         const info = moodInfo(k);
@@ -1841,129 +1949,158 @@ export function AdminPage(router) {
         </div>`;
       }).join('')
       : '';
+    return true;
   }
 
   // ==========================================
   // 3. USUARIOS
   // ==========================================
+  let userSearchQuery = '';
+  let userDetailRequest = 0;
+
   async function loadUsuarios() {
+    const token = sectionToken;
     content.innerHTML = `
       <section class="admin-section active">
         <div class="admin-section-header">
-          <h2>${UI.users} Usuarios</h2>
+          <h2>${UI.users} Usuarios <span class="admin-count-badge" id="adminUserCount"></span></h2>
+          <button type="button" class="admin-btn-ghost" id="refreshUsers" title="Actualizar" aria-label="Actualizar usuarios">${UI.refresh}</button>
         </div>
-        <p class="admin-section-hint">${SECTION_HINTS.usuarios}</p>
-        <div class="admin-search"><input type="text" id="userSearch" class="admin-search-input" placeholder="Buscar usuarios..."></div>
-        <div class="admin-list" id="userList">${skeletonCard('56px')}${skeletonCard('56px')}${skeletonCard('56px')}</div>
+        <p class="admin-section-hint">Estado de las cuentas y actividad registrada de los últimos 30 días.</p>
+        <div class="admin-search"><input type="search" id="userSearch" class="admin-search-input" placeholder="Buscar usuarios…" aria-label="Buscar usuarios"></div>
+        <p class="admin-data-note" id="adminUserStatus" role="status" hidden></p>
+        <div class="admin-list" id="userList">${skeletonCard('56px')}${skeletonCard('56px')}</div>
       </section>
     `;
 
-    const token = sectionToken;
-    const [users, allMoods, visits] = await Promise.all([
-      safe(db.listUsers(), []),
-      safe(db.getAllMoods('2024-01-01', todayISO()), []),
-      safe(db.getPageVisits(3000), [])
-    ]);
+    const search = page.querySelector('#userSearch');
+    const list = page.querySelector('#userList');
+    const status = page.querySelector('#adminUserStatus');
+    const counter = page.querySelector('#adminUserCount');
+    const refresh = page.querySelector('#refreshUsers');
+    let users = null;
+    let moodStats = null;
+    let visitStats = null;
+    let loadRequest = 0;
+    const changes = new Set();
+    search.value = userSearchQuery;
 
-    // Actividad de uso por usuario: mismas sesiones que el dashboard, para que
-    // el detalle no diga otra cosa que el resumen.
-    const visitStats = userUsage(buildSessions(visits.filter(v => !isOpenWhenReadVisit(v))));
-
-    const userMoodStats = {};
-    allMoods.forEach(m => {
-      const uid = m.user_id || 'local';
-      if (!userMoodStats[uid]) {
-        userMoodStats[uid] = { total: 0, emotions: 0, moods: {}, lastDate: '' };
+    function paint() {
+      if (!users) return;
+      const query = search.value.trim();
+      const filtered = users.filter(user => [user.email, user.name, user.role]
+        .some(value => String(value || '').toLocaleLowerCase('es').includes(query.toLocaleLowerCase('es'))));
+      list.innerHTML = renderUsers(filtered, moodStats, visitStats, query);
+      counter.textContent = String(filtered.length);
+      for (const button of list.querySelectorAll('[data-action][data-user-id]')) {
+        if (changes.has(button.dataset.userId)) button.disabled = true;
       }
-      const stat = userMoodStats[uid];
-      stat.total++;
-      // Cada emoción de la fila cuenta por separado (multi-selección).
-      const items = moodRowItems(m);
-      // La clave de una emoción escrita es su texto (ver moodAggKey).
-      const ids = items.length ? items.map(moodAggKey) : [m.mood || 'unknown'];
-      ids.forEach(moodId => {
-        stat.moods[moodId] = (stat.moods[moodId] || 0) + 1;
-        stat.emotions++;
-      });
-      if (m.date > stat.lastDate) stat.lastDate = m.date;
-    });
-
-    // La sección pudo cambiar mientras cargaban los datos — abortar la escritura
-    if (token !== sectionToken) return;
-
-    // Re-render header with count
-    page.querySelector('.admin-section-header h2').innerHTML = `${UI.users} Usuarios <span class="admin-count-badge">${users.length}</span>`;
-
-    function renderUserList(list, query = '') {
-      const listEl = page.querySelector('#userList');
-      if (listEl) listEl.innerHTML = renderUsers(list, userMoodStats, visitStats, query);
-      // Contador del encabezado: al buscar pasa a decir cuántas coinciden.
-      const badge = page.querySelector('.admin-count-badge');
-      if (badge) badge.textContent = String(list.length);
     }
 
-    renderUserList(users);
+    async function fetchUsers() {
+      const request = ++loadRequest;
+      const today = todayISO();
+      const from = shiftStatsDay(today, -29);
+      refresh.disabled = true;
+      const [accounts, moods, visits] = await Promise.allSettled([
+        db.readAdminUsers(), db.readAdminMoods({ from, through: today }), db.readAdminVisits({ from, through: today }),
+      ]);
+      if (!isCurrentSection(token) || request !== loadRequest) return;
+      refresh.disabled = false;
+      const notices = [];
+      if (accounts.status === 'fulfilled') {
+        users = accounts.value.rows;
+        if (accounts.value.truncated || accounts.value.source === 'local') notices.push('Lista parcial de cuentas.');
+      } else {
+        notices.push('No se pudo actualizar la lista de cuentas.');
+        if (!users) list.replaceChildren();
+      }
+      if (visits.status === 'fulfilled') {
+        visitStats = userUsage(buildSessions(visits.value.rows.filter(v => !isOpenWhenReadVisit(v))));
+        if (visits.value.truncated || visits.value.source === 'local') notices.push('El recuento de visitas es parcial.');
+      } else {
+        visitStats = null;
+        notices.push('Visitas no disponibles.');
+      }
+      if (moods.status === 'fulfilled') {
+        moodStats = Object.create(null);
+        for (const row of moods.value.rows) {
+          const items = moodRowItems(row);
+          if (!items.length) continue;
+          const stat = moodStats[row.user_id] ??= { total: 0, emotions: 0, moods: {}, lastDate: '' };
+          stat.total++;
+          for (const item of items) {
+            const key = moodAggKey(item);
+            stat.moods[key] = (stat.moods[key] || 0) + 1;
+            stat.emotions++;
+          }
+          if (row.date > stat.lastDate) stat.lastDate = row.date;
+        }
+        if (moods.value.truncated || moods.value.source === 'local') notices.push('El recuento de ánimos es parcial.');
+      } else {
+        moodStats = null;
+        notices.push('Registros de ánimo no disponibles.');
+      }
+      status.textContent = notices.join(' ');
+      status.hidden = !notices.length;
+      paint();
+    }
 
-    page.querySelector('#userSearch').addEventListener('input', function() {
-      const raw = this.value.trim();
-      const q = raw.toLowerCase();
-      const f = users.filter(u =>
-        (u.email||'').toLowerCase().includes(q) ||
-        (u.name||'').toLowerCase().includes(q) ||
-        (u.role||'').toLowerCase().includes(q)
-      );
-      renderUserList(f, raw);
+    activeRefresh = fetchUsers;
+    refresh.addEventListener('click', () => void fetchUsers());
+    search.addEventListener('input', () => {
+      userSearchQuery = search.value;
+      paint();
     });
-
-    // Click on user actions (toggle / delete) or detail
-    page.querySelector('#userList').addEventListener('click', async function(e) {
-      const toggleBtn = e.target.closest('[data-action="toggle"]');
-      const delBtn = e.target.closest('[data-action="delete-user"]');
-
-      if (toggleBtn) {
-        e.stopPropagation();
-        const target = users.find(u => u.id === toggleBtn.dataset.userId);
-        if (!target) return;
-        const nextEnabled = target.enabled !== false ? false : true;
-        await db.saveUser(target.id, { enabled: nextEnabled });
-        db.logActivity('user_updated', `${nextEnabled ? 'Habilitado' : 'Deshabilitado'}: ${target.name || target.email || target.id}`);
-        await loadUsuarios();
-        showToast(nextEnabled ? 'Usuario habilitado' : 'Usuario deshabilitado', 'success');
+    list.addEventListener('click', async event => {
+      const button = event.target.closest('[data-action]');
+      const row = event.target.closest('[data-user-id]');
+      const target = users?.find(account => account.id === row?.dataset.userId);
+      if (!target) return;
+      const action = button?.dataset.action;
+      if (!action || action === 'detail') {
+        await showUserDetail(target, moodStats?.[target.id], visitStats, moodStats !== null);
         return;
       }
-
-      if (delBtn) {
-        e.stopPropagation();
-        const uid = delBtn.dataset.userId;
-        if (uid === user?.id) { showToast('No puedes eliminar tu propia cuenta', 'error'); return; }
-        const target = users.find(u => u.id === uid);
-        const name = target?.name || target?.email || 'este usuario';
+      if (target.id === user?.id || changes.has(target.id)) return;
+      if (action === 'delete-user') {
         modal.open(
-          `${UI.trash} Eliminar usuario`,
-          `<p style="margin:0;">¿Seguro que quieres eliminar a <strong>${esc(name)}</strong>? Esta acción no se puede deshacer.</p>`,
+          'Eliminar usuario',
+          `<p>¿Seguro que quieres eliminar a <strong>${esc(target.name || target.email || 'este usuario')}</strong>? Esta acción no se puede deshacer.</p>`,
           async () => {
-            try {
-              await db.deleteUser(uid);
-              showToast('Usuario eliminado', 'success');
-              // Recarga la lista para que desaparezca al momento
-              await loadUsuarios();
-            } catch (err) {
-              console.error('[admin] No se pudo eliminar el usuario:', err);
-              showToast(err?.message || 'No se pudo eliminar el usuario', 'error');
+            const result = await db.deleteUser(target.id);
+            if (isCurrentSection(token)) {
+              users = users.filter(account => account.id !== target.id);
+              paint();
+              showToast(result.warning || 'Usuario eliminado', result.warning ? 'info' : 'success');
+              void fetchUsers();
             }
+            return true;
           },
-          'Eliminar'
+          'Eliminar',
         );
         return;
       }
-
-      if (e.target.closest('button')) return;
-      const item = e.target.closest('.admin-list-item');
-      if (!item) return;
-      const userId = item.dataset.userId;
-      const detailUser = users.find(u => u.id === userId);
-      if (detailUser) await showUserDetail(detailUser, userMoodStats[userId], visitStats);
+      if (action !== 'toggle') return;
+      changes.add(target.id);
+      button.disabled = true;
+      const enabled = target.enabled === false;
+      try {
+        const result = await db.saveUser(target.id, { enabled });
+        void db.logActivity('user_updated', `${enabled ? 'Habilitado' : 'Deshabilitado'}: ${target.name || target.email || target.id}`);
+        if (!isCurrentSection(token)) return;
+        users = users.map(account => account.id === target.id ? { ...account, enabled } : account);
+        showToast(result.warning || (enabled ? 'Usuario habilitado' : 'Usuario deshabilitado'), result.warning ? 'info' : 'success');
+        void fetchUsers();
+      } catch (error) {
+        if (isCurrentSection(token)) showToast(error?.message || 'No se pudo cambiar el estado de la cuenta.', 'error');
+      } finally {
+        changes.delete(target.id);
+        if (isCurrentSection(token)) paint();
+      }
     });
+
+    await fetchUsers();
   }
 
   function renderUsers(users, moodStats, visitStats, query = '') {
@@ -1977,13 +2114,12 @@ export function AdminPage(router) {
     return users.map((u) => {
       const initial = esc((u.name||u.email||'?').charAt(0).toUpperCase());
       const enabled = u.enabled !== false;
-      const vs = visitStats[u.id];
-      const online = vs?.lastTs && (Date.now() - vs.lastTs < 5 * 60e3);
-      const lastLogin = vs?.lastTs ? relTimeShort(vs.lastTs) : (u.last_login ? new Date(u.last_login).toLocaleDateString('es') : '—');
-      const stats = moodStats[u.id];
+      const vs = visitStats?.[u.id];
+      const lastVisit = !visitStats ? 'No disponible' : vs?.lastTs ? relTimeShort(vs.lastTs) : 'Sin visitas en 30 días';
+      const stats = moodStats?.[u.id];
       const moodBadge = stats && stats.total > 0
         ? getMoodSummaryBadge(stats)
-        : '<span class="user-mood-none">Sin ánimos</span>';
+        : `<span class="user-mood-none">${moodStats ? 'Sin registros de ánimo en 30 días' : 'Registros de ánimo no disponibles'}</span>`;
       // La fecha del último ánimo va en la línea de estado, no como tercera
       // etiqueta: con las tres en la misma fila la tarjeta se partía en tres
       // renglones y quedaba desproporcionada.
@@ -2012,18 +2148,17 @@ export function AdminPage(router) {
             </span>
           </div>
           <div class="user-status-line">
-            ${online
-              ? '<strong class="user-online">En línea ahora</strong>'
-              : `Última conexión: ${lastLogin}`}
+            Última visita: ${lastVisit}
             ${moodLast}
           </div>
           <div class="user-mood-row">${moodBadge}</div>
         </div>
         <div class="item-actions">
-          <button class="item-action-btn" data-action="toggle" data-user-id="${esc(u.id)}" title="${enabled ? 'Deshabilitar' : 'Habilitar'} usuario" aria-label="${enabled ? 'Deshabilitar' : 'Habilitar'} a ${esc(u.name || u.email || 'este usuario')}">
+          <button type="button" class="item-action-btn" data-action="detail" data-user-id="${esc(u.id)}" title="Ver detalle" aria-label="Ver detalle de ${esc(u.name || u.email || 'este usuario')}">${UI.users}</button>
+          ${u.id === user?.id ? '' : `<button type="button" class="item-action-btn" data-action="toggle" data-user-id="${esc(u.id)}" title="${enabled ? 'Deshabilitar' : 'Habilitar'} usuario" aria-label="${enabled ? 'Deshabilitar' : 'Habilitar'} a ${esc(u.name || u.email || 'este usuario')}">
             ${enabled ? UI.toggleOn : UI.toggleOff}
           </button>
-          <button class="item-action-btn delete" data-action="delete-user" data-user-id="${esc(u.id)}" title="Eliminar usuario" aria-label="Eliminar a ${esc(u.name || u.email || 'este usuario')}">${UI.trash}</button>
+          <button type="button" class="item-action-btn delete" data-action="delete-user" data-user-id="${esc(u.id)}" title="Eliminar usuario" aria-label="Eliminar a ${esc(u.name || u.email || 'este usuario')}">${UI.trash}</button>`}
         </div>
       </div>`;
     }).join('');
@@ -2053,14 +2188,16 @@ export function AdminPage(router) {
     </span>`;
   }
 
-  async function showUserDetail(user, stats, visitStats) {
+  async function showUserDetail(user, stats, visitStats, moodAvailable) {
+    const token = sectionToken;
+    const request = ++userDetailRequest;
     const initial = esc((user.name||user.email||'?').charAt(0).toUpperCase());
     const created = user.created_at ? new Date(user.created_at).toLocaleDateString('es') : '—';
     const vs = visitStats?.[user.id];
-    const lastLogin = vs?.lastTs ? new Date(vs.lastTs).toLocaleString('es', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : (user.last_login ? new Date(user.last_login).toLocaleDateString('es') : '—');
+    const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString('es', { timeZone: 'Europe/Madrid' }) : '—';
 
     // Actividad de uso: dónde pasa más tiempo y última conexión.
-    let useHtml = '<p class="muted-text" style="font-size:0.82rem">Sin actividad registrada todavía. Se recoge automáticamente al usar la app.</p>';
+    let useHtml = `<p class="muted-text">${visitStats ? 'Sin visitas en los últimos 30 días.' : 'No se pudo consultar la actividad de uso.'}</p>`;
     if (vs && vs.count > 0) {
       const top = Object.entries(vs.msBySection).sort((a, b) => b[1] - a[1]).slice(0, 5);
       const maxMs = Math.max(...top.map(t => t[1]), 1);
@@ -2076,13 +2213,13 @@ export function AdminPage(router) {
       useHtml = `
         <div class="user-mood-summary-card" style="margin-bottom:12px">
           <div><strong>${vs.count}</strong><div class="muted-text">Visitas</div></div>
-          <div><strong>${fmtDuration(totalMs)}</strong><div class="muted-text">Tiempo activo</div></div>
-          <div><strong>${new Date(vs.lastTs).toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong><div class="muted-text">Última conexión</div></div>
+          <div><strong>${fmtDuration(totalMs)}</strong><div class="muted-text">Tiempo estimado</div></div>
+          <div><strong>${new Date(vs.lastTs).toLocaleDateString('es', { timeZone: 'Europe/Madrid', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong><div class="muted-text">Última visita</div></div>
         </div>
         ${rows}`;
     }
 
-    let moodHtml = '<p style="color:var(--theme-text-secondary);font-size:0.82rem;margin-bottom:12px;">Sin registros de ánimo</p>';
+    let moodHtml = `<p class="muted-text">${moodAvailable ? 'Sin registros de ánimo en los últimos 30 días.' : 'No se pudieron consultar los registros de ánimo.'}</p>`;
     if (stats && stats.total > 0) {
       const order = Object.keys(stats.moods).sort((a, b) => moodRank(a) - moodRank(b));
       const detailBase = stats.emotions || stats.total;
@@ -2099,7 +2236,7 @@ export function AdminPage(router) {
       }).filter(Boolean).join('');
 
       const avgScore = order.reduce((sum, k) => sum + (moodInfo(k).score || 0) * (stats.moods[k] || 0), 0) / detailBase;
-      const avgEmoji = avgScore >= 3.5 ? '🤍🤍🤍' : avgScore >= 2.5 ? '😊' : avgScore >= 1.5 ? '😕' : '😔';
+      const displayScore = avgScore.toLocaleString('es', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 
       moodHtml = `
         <div class="user-mood-summary">
@@ -2109,8 +2246,8 @@ export function AdminPage(router) {
               <div class="muted-text">Total registros</div>
             </div>
             <div>
-              <strong>${avgEmoji}</strong>
-              <div class="muted-text">Media ánimo</div>
+              <strong>${displayScore}/4</strong>
+              <div class="muted-text">Puntuación media por emoción</div>
             </div>
             <div>
               <strong>${stats.lastDate ? new Date(stats.lastDate+'T12:00:00').toLocaleDateString('es') : '—'}</strong>
@@ -2123,26 +2260,28 @@ export function AdminPage(router) {
       `;
     }
 
-    const history = await db.getUserMoods(user.id);
+    const result = await safe(db.readAdminMoods({ userId: user.id, limit: 120 }), null);
+    if (!isCurrentSection(token) || request !== userDetailRequest || modal.visible) return;
+    const history = result?.rows || [];
     let historyHtml;
-    if (history.length === 0) {
+    if (!result) {
+      historyHtml = '<p class="admin-data-note" role="status">No se pudo consultar el historial de ánimo.</p>';
+    } else if (history.length === 0) {
       historyHtml = '<p style="color:var(--theme-text-secondary);font-size:0.82rem;margin-bottom:12px;">Sin historial de ánimo</p>';
     } else {
       const rows = history.map(m => {
         const dateStr = new Date(m.date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
-        const info = moodInfo(m.mood);
-        const emoji = esc(m.emoji || info.emoji);
-        const label = esc(m.label || info.label);
+        const labels = moodRowItems(m).map(item => `${item.emoji} ${item.label}`).join(' · ');
         return `<div class="moods-bar-row" style="margin-bottom:6px;">
           <span class="moods-bar-label" style="min-width:120px">${dateStr}</span>
-          <span style="margin-right:8px;">${emoji}</span>
-          <span style="font-size:0.82rem;color:var(--theme-text-secondary);">${label}</span>
+          <span style="font-size:0.82rem;color:var(--theme-text-secondary);">${esc(labels || 'Registro sin detalle')}</span>
         </div>`;
       }).join('');
-      historyHtml = `<div style="max-height:240px;overflow-y:auto;margin-top:12px;">${rows}</div>`;
+      historyHtml = `<div style="max-height:240px;overflow-y:auto;margin-top:12px;">${rows}</div>
+        ${result.truncated ? '<p class="admin-data-note">Se muestran los 120 registros más recientes.</p>' : ''}`;
     }
 
-    modal.open(`👤 ${esc(user.name||user.email||'Usuario')}`, `
+    modal.open(user.name || user.email || 'Usuario', `
       <div class="user-detail-grid">
         <div class="admin-field" style="display:flex;align-items:center;gap:16px;">
           <div class="user-avatar-sm" style="width:48px;height:48px;">
@@ -2153,26 +2292,26 @@ export function AdminPage(router) {
           </div>
           <div>
             <strong style="font-size:1rem;">${esc(user.name||'Sin nombre')}</strong><br>
-            <span style="font-size:0.82rem;color:var(--theme-text-secondary);">${esc(user.email) || 'ID: ' + user.id}</span>
+            <span style="font-size:0.82rem;color:var(--theme-text-secondary);">${esc(user.email || 'ID: ' + user.id)}</span>
           </div>
-          <span style="margin-left:auto;font-size:0.72rem;padding:3px 12px;border-radius:30px;background:${user.role === 'admin' ? 'var(--accent-dim)' : 'var(--theme-surface)'};color:${user.role === 'admin' ? 'var(--theme-accent)' : 'var(--theme-text-secondary)'};">${user.role === 'admin' ? 'Peluche' : user.role || 'user'}</span>
+          <span style="margin-left:auto;font-size:0.72rem;padding:3px 12px;border-radius:30px;background:${user.role === 'admin' ? 'var(--accent-dim)' : 'var(--theme-surface)'};color:${user.role === 'admin' ? 'var(--theme-accent)' : 'var(--theme-text-secondary)'};">${user.role === 'admin' ? 'Administrador' : 'Usuario'}</span>
         </div>
 
         <div class="admin-field">
-          <p><strong>ID:</strong> ${user.id}</p>
+          <p><strong>ID:</strong> ${esc(user.id)}</p>
           <p><strong>Creado:</strong> ${created}</p>
-          <p><strong>Última conexión:</strong> ${lastLogin}</p>
+          <p><strong>Último inicio de sesión:</strong> ${lastLogin}</p>
           <p><strong>Estado:</strong> ${user.enabled !== false ? '🟢 Activo' : '🔴 Inactivo'}</p>
         </div>
 
         <hr style="opacity:0.2;margin:12px 0;">
-        <h3 style="font-size:1rem;margin:0 0 12px;">${UI.activity} Actividad de uso</h3>
+        <h3 style="font-size:1rem;margin:0 0 12px;">${UI.activity} Actividad de uso · 30 días</h3>
         ${useHtml}
 
         <hr style="opacity:0.2;margin:12px 0;">
-        <h3 style="font-size:1rem;margin:0 0 12px;">${UI.heart} Resumen de Ánimo</h3>
+        <h3 style="font-size:1rem;margin:0 0 12px;">${UI.heart} Resumen de ánimo · 30 días</h3>
         ${moodHtml}
-        <h3 style="font-size:1rem;margin:24px 0 12px;">${UI.heart} Historial Completo</h3>
+        <h3 style="font-size:1rem;margin:24px 0 12px;">${UI.heart} Historial de ánimo</h3>
         ${historyHtml}
       </div>
     `);
@@ -2184,10 +2323,13 @@ export function AdminPage(router) {
   async function loadContenido() {
     content.innerHTML = `
       <section class="admin-section active">
-        <div class="admin-section-header"><h2>${UI.content} Gestión de Contenido</h2></div>
+        <div class="admin-section-header">
+          <h2>${UI.content} Gestión de Contenido</h2>
+          <button type="button" class="admin-btn-ghost" id="refreshContent" aria-label="Actualizar contenido">${UI.refresh}</button>
+        </div>
         <p class="admin-section-hint">${SECTION_HINTS.contenido}</p>
-        <div class="admin-tabs" id="contentSubTabs" style="margin-bottom:16px">
-          ${CONTENT_SUBS.map(t => `<button class="admin-tab${t.id === (S.contentSub || 'razones') ? ' active' : ''}" data-content="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
+        <div class="admin-tabs" id="contentSubTabs" role="group" aria-label="Categoría de contenido" style="margin-bottom:16px">
+          ${CONTENT_SUBS.map(t => `<button type="button" class="admin-tab${t.id === (S.contentSub || 'razones') ? ' active' : ''}" aria-pressed="${t.id === (S.contentSub || 'razones')}" data-content="${t.id}">${t.icon}<span>${t.label}</span></button>`).join('')}
         </div>
         <div id="contentSubContent">${skeletonCard('200px')}</div>
       </section>
@@ -2195,8 +2337,12 @@ export function AdminPage(router) {
 
     page.querySelectorAll('#contentSubTabs .admin-tab').forEach(btn => {
       btn.addEventListener('click', () => {
-        page.querySelectorAll('#contentSubTabs .admin-tab').forEach(t => t.classList.remove('active'));
+        page.querySelectorAll('#contentSubTabs .admin-tab').forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-pressed', 'false');
+        });
         btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
         S.contentSub = btn.dataset.content;
         loadContentSub(S.contentSub);
       });
@@ -2211,89 +2357,98 @@ export function AdminPage(router) {
       if (defaultBtn) defaultBtn.classList.add('active');
       S.contentSub = 'razones';
     }
-    loadContentSub(S.contentSub);
+    page.querySelector('#refreshContent')?.addEventListener('click', () => loadContentSub(S.contentSub));
+    return loadContentSub(S.contentSub);
+  }
+
+  async function editableList(id, key, fallback = []) {
+    const snapshot = await db.getAdminContentSnapshot(id);
+    const value = snapshot.data?.[key];
+    if (value != null && !Array.isArray(value)) throw new Error('La lista guardada tiene un formato desconocido.');
+    return {
+      items: value ?? fallback,
+      save: next => db.saveAdminContent(snapshot, { ...snapshot.data, [key]: next })
+    };
+  }
+
+  async function readCalendarSeed() {
+    const res = await fetch('/data/gifts.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('No se pudo leer el calendario base.');
+    return expandCalendarCatalog(await res.json());
   }
 
   const CONTENT_LOADERS = {
-    razones:   async () => ({ title: 'Razones', items: await safe(db.getReasons(), []), save: db.saveReasons }),
-    canciones: async () => ({ title: 'Canciones', items: await safe(db.getSongs(), []), save: db.saveSongs }),
-    noticias:  async () => ({ title: 'Noticias', items: await safe(db.getNews(), []), save: db.saveNews }),
-    series:    async () => ({ title: 'Series', items: await safe(loadCatalog(), []), save: saveCatalog }),
+    razones:   async () => ({ title: 'Razones', ...await editableList('razones', 'reasons') }),
+    canciones: async () => ({ title: 'Canciones', ...await editableList('canciones', 'songs') }),
+    noticias:  async () => ({ title: 'Noticias', ...await editableList('noticias', 'news') }),
+    series:    async () => ({ title: 'Series', ...await editableList('series', 'series', defaultCatalog()) }),
     regalos:   async () => {
-      // Fuente unificada: lo guardado en Supabase, o gifts.json como semilla.
-      // Si la carga falla, NO se devuelve un catálogo vacío: se propaga el
-      // error para que el panel muestre el fallo en vez de dejar una copia
-      // vacía lista para pisar el catálogo bueno al guardar.
-      const cat = await loadGiftsCatalog();
-      if (!cat || !Array.isArray(cat.gifts) || !cat.gifts.length) {
-        throw new Error('No se pudo cargar el catálogo de regalos. No se guardará nada para no perder el contenido existente.');
+      const snapshot = await db.getAdminContentSnapshot('gifts');
+      const saved = snapshot.data;
+      const initialRow = Array.isArray(saved?.gifts) && !saved.gifts.length
+        && saved.months && !Object.keys(saved.months).length && !saved.version;
+      const catalog = !snapshot.exists || initialRow ? await readCalendarSeed() : structuredClone(saved);
+      if (!Array.isArray(catalog?.gifts) || !catalog.months || typeof catalog.months !== 'object') {
+        throw new Error('El catálogo de regalos guardado tiene un formato desconocido.');
       }
-      return {
-        title: 'Regalos',
-        catalog: cat,
-        items: cat?.gifts || [],
-        // Guarda el catálogo completo (version + months + gifts) y refresca
-        // la caché compartida con el Calendario y la Galería.
-        // Guarda de seguridad: si el catálogo que llega está claramente
-        // incompleto respecto a lo que había, se aborta en vez de sobrescribir.
-        save: async (next) => {
-          const incoming = Array.isArray(next?.gifts) ? next.gifts.length : 0;
-          const current = Array.isArray(cat?.gifts) ? cat.gifts.length : 0;
-          if (current > 0 && incoming === 0) {
-            throw new Error('Guardado cancelado: el catálogo ha llegado vacío y habría borrado todo el calendario.');
-          }
-          await db.saveGifts(next);
-          // Tras guardar, esta copia deja de ser la referencia: se sincroniza
-          // con lo guardado para que el siguiente guardado compare bien.
-          cat.gifts = next.gifts;
-          cat.months = next.months;
-          invalidateGiftsCache();
-        }
-      };
+      if (catalog.gifts.length && Number(catalog.version) < 5) expandCalendarCatalog(catalog);
+      return { catalog, save: next => db.saveAdminContent(snapshot, next) };
     },
-    maldia:    async () => ({
-      title: 'Mal Día',
-      frases: await safe(db.getMaldiaFrases(), []),
-      mensajes: await safe(db.getMaldiaMensajes(), []),
-      // Notas que ella deja desde la sección Mal Día (recibidas por el Admin)
-      notes: await safe(db.getAllMaldiaNotes(), []),
-      saveFrases: db.saveMaldiaFrases,
-      saveMensajes: db.saveMaldiaMensajes
-    }),
+    maldia:    async () => {
+      const [frases, mensajes, notes] = await Promise.all([
+        editableList('maldia_frases', 'phrases'),
+        editableList('maldia_mensajes', 'messages'),
+        db.getAllMaldiaNotes()
+      ]);
+      return { frases: frases.items, mensajes: mensajes.items, notes, saveFrases: frases.save, saveMensajes: mensajes.save };
+    },
     audios:    async () => ({
       title: 'Audios',
-      items: await safe(db.getAudios(), []),
-      save: (audios) => db.saveAudios(audios)
+      ...await editableList('audios', 'audios')
     }),
     openwhen:  async () => ({
       title: 'Open When',
-      items: await safe(db.getOpenWhenLetters(), []),
-      staticLetters: LETTERS,
-      save: (letters) => db.saveOpenWhenLetters(letters)
+      ...await editableList('openwhen_letters', 'letters'),
+      staticLetters: LETTERS
     })
   };
 
+  let contentLoadId = 0;
+  const contentSearchByTab = new Map();
   async function loadContentSub(id) {
     const token = sectionToken;
+    const loadId = ++contentLoadId;
     const sub = page.querySelector('#contentSubContent');
-    if (!sub) return;
-    sub.innerHTML = skeletonCard('120px');
-
     const loader = CONTENT_LOADERS[id];
-    if (!loader) return;
-    const data = await loader();
-
-    if (token !== sectionToken || !page.querySelector('#contentSubContent')) return;
+    if (!sub || !loader) return;
+    const isCurrent = () => token === sectionToken && loadId === contentLoadId
+      && page.querySelector('#contentSubContent') === sub;
+    sub.setAttribute('aria-busy', 'true');
+    sub.innerHTML = skeletonCard('120px');
+    let data;
+    try {
+      data = await loader();
+    } catch (err) {
+      if (!isCurrent()) return;
+      sub.innerHTML = `<div class="admin-empty" role="alert">
+        <p>No se pudo cargar el contenido. ${esc(err?.message || '')}</p>
+        <button type="button" class="admin-btn admin-btn-sm" id="retryContent">Reintentar</button>
+      </div>`;
+      sub.querySelector('#retryContent').addEventListener('click', () => loadContentSub(id));
+      return;
+    } finally {
+      if (isCurrent()) sub.setAttribute('aria-busy', 'false');
+    }
+    if (!isCurrent()) return;
 
     if (id === 'maldia') {
       const notes = Array.isArray(data.notes) ? data.notes : [];
-      const openNotes = async () => {
-        const all = notes.length ? notes : await db.getAllMaldiaNotes();
-        if (!all.length) {
+      const openNotes = () => {
+        if (!notes.length) {
           modal.open('💌 Notas de Mal Día', '<p style="margin:0;color:var(--theme-text-secondary);">Todavía no hay notas. Cuando ella escriba una desde la sección Mal Día, aparecerá aquí.</p>');
           return;
         }
-        modal.open('💌 Notas de Mal Día', `<div class="gift-responses-list">${all.map(maldiaNoteCardHtml).join('')}</div>`);
+        modal.open('💌 Notas de Mal Día', `<div class="gift-responses-list">${notes.map(maldiaNoteCardHtml).join('')}</div>`);
       };
 
       sub.innerHTML = `
@@ -2361,8 +2516,9 @@ export function AdminPage(router) {
       const searchInput = page.querySelector('#contentSearch');
       const listEl = page.querySelector('#contentItemsList');
       const countEl = page.querySelector('#contentItemCount');
-      searchInput?.addEventListener('input', () => {
+      const applySearch = () => {
         const raw = searchInput.value.trim();
+        contentSearchByTab.set(id, searchInput.value);
         const q = raw.toLowerCase();
         const indexed = items.map((item, i) => ({ item, i }));
         // Antes comparaba contra JSON.stringify(item) entero: buscar "id" o
@@ -2383,7 +2539,12 @@ export function AdminPage(router) {
         countEl.textContent = q
           ? `${filtered.length} de ${items.length} elemento${items.length === 1 ? '' : 's'}`
           : `${items.length} elemento${items.length === 1 ? '' : 's'}`;
-      });
+      };
+      if (searchInput) {
+        searchInput.value = contentSearchByTab.get(id) || '';
+        searchInput.addEventListener('input', applySearch);
+        applySearch();
+      }
     }
   }
 
@@ -2837,12 +2998,7 @@ export function AdminPage(router) {
         '♻️ Regenerar calendario',
         '<p style="margin:0;">Se reconstruirá el calendario desde el esqueleto base:<br>· Agosto empieza el <strong>15</strong><br>· Los <strong>juegos</strong> (solo los que no se desbloquearon en julio) van en días consecutivos (15 ago → 23 ago), <strong>solo el juego</strong> esos días<br>· Cuando se acaban los juegos, sigue el resto de contenidos<br><br>Se conserva <strong>julio</strong> tal cual. Los contenidos personalizados de agosto en adelante se eliminarán. ¿Continuar?</p>',
         async () => {
-          const res = await fetch('/data/gifts.json', { cache: 'no-cache' });
-          if (!res.ok) throw new Error('No se pudo leer el esqueleto base');
-          const next = expandCalendarCatalog(await res.json());
-          await data.save(next);
-          renderCalendarAdmin(page.querySelector('#contentSubContent'), { catalog: next, save: data.save });
-          showToast('Calendario regenerado ✓', 'success');
+          await data.save(await readCalendarSeed());
         },
         'Regenerar'
       );
@@ -2863,7 +3019,7 @@ export function AdminPage(router) {
         const g = giftsById[selIds[Number(delBtn.dataset.calDelete)]];
         if (!g) return;
         modal.open(
-          `${UI.trash} Eliminar contenido`,
+          'Eliminar contenido',
           `<p style="margin:0;">¿Seguro que quieres eliminar <strong>${esc(g.title || 'este contenido')}</strong> del día ${esc(selDateStr)}? Esta acción no se puede deshacer.</p>`,
           async () => {
             const nextIds = selIds.filter(id => id !== g.id);
@@ -2876,8 +3032,6 @@ export function AdminPage(router) {
             const nextGifts = (catalog.gifts || []).filter(x => x.id !== g.id);
             const next = { version: catalog.version, months: nextMonths, gifts: nextGifts };
             await data.save(next);
-            renderCalendarAdmin(page.querySelector('#contentSubContent'), { catalog: next, save: data.save });
-            showToast('Contenido eliminado ✓', 'success');
           },
           'Eliminar'
         );
@@ -2925,7 +3079,7 @@ export function AdminPage(router) {
     const fields = fieldByType(gift?.type || 'letter');
 
     modal.open(
-      `${isNew ? 'Nuevo contenido' : 'Editar contenido'} · ${esc(dateStr)}`,
+      `${isNew ? 'Nuevo contenido' : 'Editar contenido'} · ${dateStr}`,
       `
       <input type="hidden" id="calEditType">
       <div class="admin-form-grid">
@@ -2996,8 +3150,6 @@ export function AdminPage(router) {
         }
 
         await saveFn(next);
-        renderCalendarAdmin(page.querySelector('#contentSubContent'), { catalog: next, save: saveFn });
-        showToast(isNew ? 'Contenido añadido ✓' : 'Contenido actualizado ✓', 'success');
       }
     );
 
@@ -3059,10 +3211,15 @@ export function AdminPage(router) {
     };
 
     page.querySelector('#addOpenWhenLetter')?.addEventListener('click', () => openOpenWhenEditor(null, data));
-    page.querySelector('#owSearch')?.addEventListener('input', (e) => {
-      const q = (e.target.value || '').trim().toLowerCase();
-      renderList(q ? merged.filter(l => JSON.stringify(l).toLowerCase().includes(q)) : merged);
-    });
+    const search = sub.querySelector('#owSearch');
+    const applyFilter = () => {
+      contentSearchByTab.set('openwhen', search.value);
+      const q = search.value.trim().toLowerCase();
+      renderList(q ? merged.filter(l => [l.title, l.note].some(value => String(value || '').toLowerCase().includes(q))) : merged);
+    };
+    search.value = contentSearchByTab.get('openwhen') || '';
+    search.addEventListener('input', applyFilter);
+    if (search.value) applyFilter();
     page.querySelector('#openWhenAdminList')?.addEventListener('click', (e) => {
       const editBtn = e.target.closest('[data-ow-edit]');
       const delBtn = e.target.closest('[data-ow-delete]');
@@ -3084,8 +3241,6 @@ export function AdminPage(router) {
             const next = custom.filter(l => l.id !== id);
             await data.save(next);
             logContentAction('openwhen', 'deleted', `Eliminada: ${letter.title}`);
-            loadContentSub('openwhen');
-            showToast('Carta eliminada ✓', 'success');
           },
           'Eliminar'
         );
@@ -3204,8 +3359,6 @@ export function AdminPage(router) {
         else custom.push(payload);
         await data.save(custom);
         logContentAction('openwhen', isNew ? 'created' : 'updated', `${isNew ? 'Añadida' : 'Actualizada'}: ${title}`);
-        loadContentSub('openwhen');
-        showToast(isNew ? 'Carta añadida ✓' : 'Carta actualizada ✓', 'success');
       }
     );
 
@@ -3321,7 +3474,7 @@ export function AdminPage(router) {
           return `
           <div class="admin-list-item" data-index="${i}">
             <div class="series-admin-cover">
-              ${cover ? `<img src="${esc(cover)}" alt="" onerror="this.style.display='none';this.parentElement.textContent='${esc((item.titulo||item.title||'?')[0])}'">` : `<span>${esc((item.titulo||item.title||'?')[0])}</span>`}
+              ${cover ? `<img src="${esc(cover)}" alt="">` : ''}<span${cover ? ' hidden' : ''}>${esc((item.titulo || item.title || '?')[0])}</span>
             </div>
             <div style="flex:1;min-width:0;">
               <div class="item-title">${esc(item.titulo || item.title || 'Sin título')}
@@ -3343,8 +3496,28 @@ export function AdminPage(router) {
       </div>
     `;
 
-    page.querySelector('#fixPortadas')?.addEventListener('click', () => repairPortadas(items, saveFn, reloadFn));
-    page.querySelector('#addSeriesItem')?.addEventListener('click', () => openSeriesEditor(null, items, saveFn, reloadFn));
+    sub.querySelectorAll('.series-admin-cover img').forEach(img => {
+      const fallback = () => {
+        img.hidden = true;
+        img.nextElementSibling.hidden = false;
+      };
+      img.addEventListener('error', fallback);
+      if (img.complete && !img.naturalWidth) fallback();
+    });
+    page.querySelector('#fixPortadas')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      const token = sectionToken;
+      const loadId = contentLoadId;
+      button.disabled = true;
+      try {
+        await repairPortadas(items, saveFn, () => {
+          if (token === sectionToken && loadId === contentLoadId) return reloadFn('series');
+        });
+      } finally {
+        button.disabled = false;
+      }
+    });
+    page.querySelector('#addSeriesItem')?.addEventListener('click', () => openSeriesEditor(null, items, saveFn));
     page.querySelector('#seriesAdminList')?.addEventListener('click', (e) => {
       const editBtn = e.target.closest('[data-action="edit"]');
       const delBtn = e.target.closest('[data-action="delete"]');
@@ -3352,18 +3525,14 @@ export function AdminPage(router) {
       if (idxRaw === undefined) return;
       const idx = parseInt(idxRaw, 10);
       e.stopPropagation();
-      if (editBtn) openSeriesEditor(items[idx], items, saveFn, reloadFn);
+      if (editBtn) openSeriesEditor(items[idx], items, saveFn);
       else {
         const item = items[idx];
         modal.open(
-          `${UI.trash} Eliminar contenido`,
+          'Eliminar contenido',
           `<p style="margin:0;">¿Seguro que quieres eliminar <strong>${esc(item.titulo || item.title || 'este título')}</strong>? También se quitará de favoritos y Top 5.</p>`,
           async () => {
-            // Fuente única: seriesData.deleteCatalogItem limpia
-            // catálogo + favoritos + podio (renumerando) + progreso
-            await deleteCatalogItem(item.id);
-            reloadFn('series');
-            showToast('Eliminado ✓', 'success');
+            await removeCatalogItem(item.id, items, saveFn);
           },
           'Eliminar'
         );
@@ -3406,13 +3575,13 @@ export function AdminPage(router) {
     try {
       await saveFn(next);
       showToast(`✅ ${completados.size} portada${completados.size === 1 ? '' : 's'} completada${completados.size === 1 ? '' : 's'}`, 'success');
-      reloadFn('series');
+      await reloadFn();
     } catch (err) {
       showToast(err?.message || 'No se pudo guardar el catálogo', 'error');
     }
   }
 
-  function openSeriesEditor(item, items, saveFn, reloadFn) {
+  function openSeriesEditor(item, items, saveFn) {
     const isNew = !item;
     const tipo = item?.tipo || 'serie';
     const seasons = item ? getSeasons(item) : [{ titulo: 'Temporada 1', episodios: [{ num: 1, titulo: 'Episodio 1' }] }];
@@ -3476,8 +3645,6 @@ export function AdminPage(router) {
         else cloned[items.indexOf(item)] = { ...items[items.indexOf(item)], ...payload };
         await saveFn(cloned);
         logContentAction('series', isNew ? 'created' : 'updated', `${isNew ? 'Añadida' : 'Actualizada'}: ${payload.title || 'serie'}`);
-        reloadFn('series');
-        showToast(isNew ? 'Añadido ✓' : 'Actualizado ✓', 'success');
       }
     );
 
@@ -3563,11 +3730,11 @@ export function AdminPage(router) {
     db.logActivity(`${prefix}_${verb}`, label);
   }
 
-  function bindContentCRUD(type, items, saveFn, reloadFn) {
+  function bindContentCRUD(type, items, saveFn) {
     const btn = page.querySelector('#addContentItem');
     if (btn) {
       btn.addEventListener('click', () => {
-        openContentEditor(type, null, -1, items, saveFn, reloadFn);
+        openContentEditor(type, null, -1, items, saveFn);
       });
     }
 
@@ -3581,20 +3748,18 @@ export function AdminPage(router) {
       if (editBtn) {
         e.stopPropagation();
         const idx = parseInt(editBtn.dataset.index);
-        openContentEditor(type, items[idx], idx, items, saveFn, reloadFn);
+        openContentEditor(type, items[idx], idx, items, saveFn);
       } else if (delBtn) {
         e.stopPropagation();
         const idx = parseInt(delBtn.dataset.index);
         modal.open(
-          `${UI.trash} Eliminar elemento`,
+          'Eliminar elemento',
           `<p style="margin:0;">¿Seguro que quieres eliminar este elemento? Esta acción no se puede deshacer.</p>`,
           async () => {
             const newItems = items.filter((_, i) => i !== idx);
             const label = items[idx] ? (items[idx].title || items[idx].text || items[idx].name || 'elemento') : 'elemento';
             await saveFn(newItems);
             logContentAction(type, 'deleted', `Eliminado: ${label}`);
-            await reloadFn(type);
-            showToast('Eliminado', 'success');
           },
           'Eliminar'
         );
@@ -3658,7 +3823,7 @@ export function AdminPage(router) {
       .toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
-  function bindSimpleCRUD(key, items, saveFn, reloadFn) {
+  function bindSimpleCRUD(key, items, saveFn) {
     const btn = page.querySelector(`#add${key.replace(/_./g, m => m[1].toUpperCase()).replace(/^./g, m => m.toUpperCase())}`);
     // Simpler approach: just use the prefix
     const prefix = key.startsWith('maldia_frase') ? 'MaldiaFrase' : 'MaldiaMensaje';
@@ -3666,7 +3831,7 @@ export function AdminPage(router) {
 
     if (addBtn) {
       addBtn.addEventListener('click', () => {
-        openTextEditor(prefix, null, -1, items, saveFn, reloadFn);
+        openTextEditor(null, -1, items, saveFn);
       });
     }
 
@@ -3678,7 +3843,7 @@ export function AdminPage(router) {
       b.addEventListener('click', (e) => {
         e.stopPropagation();
         const idx = parseInt(b.dataset.index);
-        openTextEditor(prefix, items[idx], idx, items, saveFn, reloadFn);
+        openTextEditor(items[idx], idx, items, saveFn);
       });
     });
 
@@ -3686,16 +3851,15 @@ export function AdminPage(router) {
       b.addEventListener('click', (e) => {
         e.stopPropagation();
         const idx = parseInt(b.dataset.index);
-        const newItems = items.filter((_, i) => i !== idx);
-        saveFn(newItems).then(() => {
-          logContentAction(prefix.startsWith('MaldiaFrase') ? 'maldia_frases' : 'maldia_mensajes', 'deleted', 'Eliminado texto');
-          reloadFn(prefix.startsWith('MaldiaFrase') ? 'maldia' : 'maldia').then(() => showToast('Eliminado', 'success'));
-        }).catch(err => showToast(err?.message || 'Error', 'error'));
+        modal.open('Eliminar texto', '<p>¿Quieres eliminar este texto de Mal Día?</p>', async () => {
+          await saveFn(items.filter((_, i) => i !== idx));
+          logContentAction(key === 'maldia_frase' ? 'maldia_frases' : 'maldia_mensajes', 'deleted', 'Eliminado texto');
+        }, 'Eliminar');
       });
     });
   }
 
-  function openContentEditor(type, item, index, items, saveFn, reloadFn) {
+  function openContentEditor(type, item, index, items, saveFn) {
     const isNew = index === -1;
     const labelMap = {
       razones: 'Razón (texto)', canciones: 'Canción', noticias: 'Noticia',
@@ -3821,7 +3985,7 @@ export function AdminPage(router) {
     }
 
     modal.open(
-      `${UI.edit} ${isNew ? 'Añadir' : 'Editar'} ${labelMap[type] || 'elemento'}`,
+      `${isNew ? 'Añadir' : 'Editar'} ${labelMap[type] || 'elemento'}`,
       formHtml,
       async () => {
         const newItem = {};
@@ -3937,12 +4101,12 @@ export function AdminPage(router) {
     );
   }
 
-  function openTextEditor(prefix, text, index, items, saveFn, reloadFn) {
+  function openTextEditor(text, index, items, saveFn) {
     const isNew = index === -1;
     const val = text ? (typeof text === 'string' ? text : (text.text || '')) : '';
 
     modal.open(
-      `${UI.edit} ${isNew ? 'Añadir' : 'Editar'} texto`,
+      `${isNew ? 'Añadir' : 'Editar'} texto`,
       `<div class="admin-field">
         <label>Texto</label>
         <textarea id="editFieldText" rows="3">${esc(val)}</textarea>
@@ -3961,7 +4125,10 @@ export function AdminPage(router) {
   // ==========================================
   // 5. NOTIFICACIONES
   // ==========================================
+  const broadcastDraft = { title: 'Personal Hub 💌', body: '' };
+
   async function loadNotificaciones() {
+    const token = sectionToken;
     const supported = isPushSupported();
     const enabled = isEnabled();
     // Tres estados distintos que antes iban todos bajo el mismo "No activadas":
@@ -4028,7 +4195,7 @@ export function AdminPage(router) {
           <div class="admin-panel-head"><h4>${UI.send} Notificación de prueba</h4></div>
           <p class="muted-text">Verifica que el service worker y el canal de notificaciones de <strong>este dispositivo</strong> funcionan.</p>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <button class="admin-btn admin-btn-primary" id="testPushBtn"${supported && perm.ok && swReady ? '' : ' disabled title="El canal de este dispositivo no puede mostrar notificaciones todavía"'}>${UI.send} Enviar ahora</button>
+            <button class="admin-btn admin-btn-primary" id="testPushBtn"${supported && enabled && perm.ok && swReady ? '' : ' disabled title="El canal de este dispositivo no puede mostrar notificaciones todavía"'}>${UI.send} Enviar ahora</button>
             <span class="admin-btn-note" id="testPushState"></span>
           </div>
           <div class="notif-result" id="notifResult"></div>
@@ -4036,20 +4203,20 @@ export function AdminPage(router) {
 
         <div class="admin-panel">
           <div class="admin-panel-head"><h4>${UI.send} Enviar a todos los usuarios</h4></div>
-          <p class="muted-text">Envía un push a todos los dispositivos suscritos (solo llega a quien haya activado notificaciones en su perfil).</p>
+          <p class="muted-text">Envía un aviso a los dispositivos registrados de las cuentas habilitadas que tengan activado el recordatorio diario.</p>
           <div class="admin-field">
-            <label>Título</label>
-            <input type="text" id="sendAllTitle" value="Personal Hub 💌" placeholder="Título de la notificación">
+            <label for="sendAllTitle">Título</label>
+            <input type="text" id="sendAllTitle" maxlength="100" value="${esc(broadcastDraft.title)}" placeholder="Título de la notificación">
           </div>
           <div class="admin-field">
-            <label>Mensaje</label>
-            <textarea id="sendAllBody" rows="2" placeholder="Escribe el mensaje…"></textarea>
+            <label for="sendAllBody">Mensaje</label>
+            <textarea id="sendAllBody" maxlength="500" rows="2" placeholder="Escribe el mensaje…">${esc(broadcastDraft.body)}</textarea>
           </div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <button class="admin-btn admin-btn-primary" id="sendAllBtn">${UI.send} Enviar a todos</button>
-            <span class="admin-btn-note">Requiere VAPID configurado en el servidor</span>
+            <span class="admin-btn-note">Se muestra el resultado de cada canal.</span>
           </div>
-          <div class="notif-result" id="sendAllResult"></div>
+          <div class="notif-result" id="sendAllResult" role="status"></div>
         </div>
       </section>
     `;
@@ -4062,6 +4229,9 @@ export function AdminPage(router) {
     if (!('serviceWorker' in navigator)) reasons.push('sin service worker');
     else if (!swReady) reasons.push('service worker sin activar');
     if (stateEl) stateEl.textContent = reasons.length ? `Estado: ${reasons.join(' · ')}` : 'Estado: canal listo';
+    for (const [key, id] of [['title', 'sendAllTitle'], ['body', 'sendAllBody']]) {
+      page.querySelector(`#${id}`).addEventListener('input', e => { broadcastDraft[key] = e.target.value; });
+    }
 
     // El panel decía "No activadas" y no offercía ninguna acción, aunque el
     // servicio de la app ya sabe activarlas.
@@ -4077,7 +4247,7 @@ export function AdminPage(router) {
           const ok = await requestEnable();
           showToast(ok ? 'Notificaciones activadas' : 'El navegador no concedió el permiso', ok ? 'success' : 'error');
         }
-        await loadNotificaciones();
+        if (isCurrentSection(token)) await loadNotificaciones();
       } catch (err) {
         showToast(err?.message || 'No se pudo cambiar el estado', 'error');
         btn.disabled = false;
@@ -4119,9 +4289,19 @@ export function AdminPage(router) {
           body: JSON.stringify({ title, body })
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-        const n = data?.sent || 0;
-        result.innerHTML = `<div class="notif-ok">✓ Enviado a ${n} dispositivo${n === 1 ? '' : 's'}${data?.removed ? ` (${data.removed} expirados eliminados)` : ''}.</div>`;
+        if (!res.ok || data.success !== true) throw new Error(data?.error || 'El servidor no confirmó el resultado.');
+        const web = Number(data.sent) || 0;
+        const android = Number(data.android?.sent) || 0;
+        const failed = (Number(data.failed) || 0) + (Number(data.android?.failed) || 0);
+        const expired = (Number(data.removed) || 0) + (Number(data.android?.removed) || 0);
+        const message = web + android
+          ? `Aceptados por el servicio de envío: ${web} web y ${android} Android. La entrega al dispositivo queda pendiente de confirmación.`
+          : 'Ningún envío fue aceptado.';
+        const details = [failed ? `${failed} fallidos` : '', expired ? `${expired} caducados` : '',
+          data.webConfigured === false ? 'Web Push sin configurar' : '',
+          data.android?.configured === false ? 'Firebase sin configurar' : '',
+          Number(data.filtered) ? `${data.filtered} excluidos por preferencias` : ''].filter(Boolean).join(' · ');
+        result.innerHTML = `<div class="${web + android ? 'notif-ok' : 'notif-err'}">${esc(message)}${details ? `<br>${esc(details)}` : ''}</div>`;
       } catch (err) {
         result.innerHTML = `<div class="notif-err">✗ ${esc(err?.message || 'Error al enviar')}. En desarrollo (/api/push) no está disponible: solo funciona en Vercel.</div>`;
       } finally {
@@ -4288,11 +4468,17 @@ export function AdminPage(router) {
       }).join('');
     }
 
+    let requestId = 0;
+    const pending = new Set();
     async function refresh() {
+      const request = ++requestId;
       const { reminders, logs } = await listReminders();
       // Otra sección se abrió mientras cargaba: no se pisa su contenido.
-      if (token !== sectionToken) return;
+      if (!isCurrentSection(token) || request !== requestId) return;
       paint(reminders, logs);
+      for (const button of list.querySelectorAll('[data-rem]')) {
+        button.disabled = pending.has(button.closest('.rem-item').dataset.id);
+      }
       return reminders;
     }
 
@@ -4308,16 +4494,25 @@ export function AdminPage(router) {
       }
       const html = reminderFormHTML({ next_run_at: proposed });
       modal.open(
-        `${UI.calendar} Nuevo recordatorio`,
+        'Nuevo recordatorio',
         html,
         async () => {
-          await createReminder(reminderFieldsFrom(page.querySelector('#adminModalBody')));
+          await createReminder(reminderFieldsFrom(modal.body));
+          if (isCurrentSection(token)) {
+            showToast('Recordatorio creado', 'success');
+            void refresh().catch(error => showToast(error.message, 'error'));
+          }
+          return true;
         }
       );
     });
 
-    page.querySelector('#refreshReminders')?.addEventListener('click', () => {
-      loadRecordatorios();
+    page.querySelector('#refreshReminders')?.addEventListener('click', async e => {
+      const button = e.currentTarget;
+      button.disabled = true;
+      try { await refresh(); } catch (error) {
+        if (isCurrentSection(token)) showToast(error.message || 'No se pudo actualizar la lista.', 'error');
+      } finally { button.disabled = false; }
     });
 
     // Delegación: la lista se repinta entera en cada refresco, así que los
@@ -4328,17 +4523,24 @@ export function AdminPage(router) {
       if (!btn || !item) return;
       const id = item.dataset.id;
       const action = btn.dataset.rem;
+      if (pending.has(id) || modal.visible) return;
 
       if (action === 'edit') {
         try {
           const { reminders } = await listReminders();
           const current = reminders.find(r => String(r.id) === String(id));
+          if (!isCurrentSection(token) || modal.visible) return;
           if (!current) throw new Error('Ese recordatorio ya no existe');
           modal.open(
-            `${UI.calendar} Editar recordatorio`,
+            'Editar recordatorio',
             reminderFormHTML(current),
             async () => {
-              await updateReminder(current.id, reminderFieldsFrom(page.querySelector('#adminModalBody')));
+              await updateReminder(current.id, reminderFieldsFrom(modal.body));
+              if (isCurrentSection(token)) {
+                showToast('Recordatorio actualizado', 'success');
+                void refresh().catch(error => showToast(error.message, 'error'));
+              }
+              return true;
             }
           );
         } catch (err) {
@@ -4347,7 +4549,20 @@ export function AdminPage(router) {
         return;
       }
 
-      btn.disabled = true;
+      if (action === 'delete') {
+        modal.open('Eliminar recordatorio', '<p>¿Quieres eliminar este recordatorio programado?</p>', async () => {
+          await deleteReminder(id);
+          if (isCurrentSection(token)) {
+            item.remove();
+            showToast('Recordatorio eliminado', 'success');
+            void refresh().catch(error => showToast(error.message, 'error'));
+          }
+          return true;
+        }, 'Eliminar');
+        return;
+      }
+      pending.add(id);
+      item.querySelectorAll('[data-rem]').forEach(button => { button.disabled = true; });
       try {
         if (action === 'run') {
           const data = await runReminder(id);
@@ -4355,21 +4570,20 @@ export function AdminPage(router) {
           if (result) {
             result.innerHTML = n
               ? `<div class="notif-ok">✓ Enviado a ${n} dispositivo${n === 1 ? '' : 's'}${data?.removed ? ` (${data.removed} expirados eliminados)` : ''}.</div>`
-              : `<div class="notif-err">✗ No hay ningún dispositivo suscrito al que enviarlo.</div>`;
+              : `<div class="notif-err">Ningún envío fue aceptado. Consulta el resultado en el historial.</div>`;
           }
         } else if (action === 'toggle') {
           const isOn = item.querySelector('.rem-badge')?.classList.contains('is-on');
           await toggleReminder(id, !isOn);
           showToast(isOn ? 'Recordatorio pausado' : 'Recordatorio activado', 'success');
-        } else if (action === 'delete') {
-          await deleteReminder(id);
-          showToast('Recordatorio eliminado', 'success');
         }
-        await refresh();
+        if (isCurrentSection(token)) await refresh();
       } catch (err) {
         showToast(err?.message || 'No se pudo completar la acción', 'error');
       } finally {
-        btn.disabled = false;
+        pending.delete(id);
+        const row = [...list.querySelectorAll('.rem-item')].find(entry => entry.dataset.id === id);
+        row?.querySelectorAll('[data-rem]').forEach(button => { button.disabled = false; });
       }
     });
 
@@ -4410,21 +4624,21 @@ export function AdminPage(router) {
       </section>
     `;
 
-    let allEntries = [];
-    let truncated = false;
+    let allEntries = null;
+    let result = null;
 
     function renderActivity() {
       const filter = page.querySelector('#activityFilter')?.value || 'all';
+      if (!allEntries) return;
       const filtered = filter === 'all' ? allEntries : allEntries.filter(e => e.action === filter);
       const list = page.querySelector('#activityList');
       const count = page.querySelector('#activityCount');
       if (count) count.textContent = `${filtered.length} de ${allEntries.length}`;
       const note = page.querySelector('#activityLimitNote');
       if (note) {
-        note.hidden = !truncated;
-        if (truncated) {
-          note.textContent = `Mostrando los ${allEntries.length} registros más recientes. Los anteriores no se cargan para no bloquear el navegador.`;
-        }
+        note.textContent = result.truncated ? `Mostrando los ${allEntries.length} registros más recientes.`
+          : result.source === 'local' ? 'Solo se muestran las acciones guardadas en este navegador.' : '';
+        note.hidden = !note.textContent;
       }
       if (!list) return;
       if (!filtered.length) {
@@ -4458,20 +4672,8 @@ export function AdminPage(router) {
     function fmtActivityStamp(ts) {
       const d = new Date(ts);
       if (Number.isNaN(d.getTime())) return '';
-      return d.toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleString('es', { timeZone: 'Europe/Madrid', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
-
-    const load = async () => {
-      try {
-        const entries = await db.getActivity(ACTIVITY_LIMIT);
-        truncated = entries.length >= ACTIVITY_LIMIT;
-        allEntries = entries;
-        return true;
-      } catch (err) {
-        showToast(err?.message || 'No se pudo cargar la actividad', 'error');
-        return false;
-      }
-    };
 
     const fillFilter = () => {
       const types = [...new Set(allEntries.map(e => e.action))];
@@ -4485,24 +4687,34 @@ export function AdminPage(router) {
       filterEl.value = types.includes(prev) ? prev : 'all';
     };
 
-    if (!await load()) return;
-    if (token !== sectionToken) return; // se cambió de sección mientras cargaba
-
-    fillFilter();
-    page.querySelector('#activityFilter')?.addEventListener('change', renderActivity);
-
-    page.querySelector('#refreshActivity')?.addEventListener('click', async (e) => {
-      const btn = e.currentTarget;
-      btn.disabled = true;
-      if (await load()) {
-        fillFilter(); // el filtro se reconstruye: pueden entrar acciones nuevas
+    const refresh = page.querySelector('#refreshActivity');
+    const note = page.querySelector('#activityLimitNote');
+    note.setAttribute('role', 'status');
+    async function load() {
+      if (refresh.disabled) return;
+      refresh.disabled = true;
+      try {
+        const updated = await db.readAdminActivity({ limit: ACTIVITY_LIMIT });
+        if (!isCurrentSection(token)) return;
+        result = updated;
+        allEntries = updated.rows;
+        fillFilter();
         renderActivity();
-        showToast('Actividad actualizada', 'success');
+      } catch {
+        if (!isCurrentSection(token)) return;
+        if (!allEntries) page.querySelector('#activityList').replaceChildren();
+        note.textContent = allEntries
+          ? 'No se pudo actualizar. Se conservan las últimas acciones consultadas.'
+          : 'No se pudo cargar la actividad. Pulsa Actualizar para reintentar.';
+        note.hidden = false;
+      } finally {
+        refresh.disabled = false;
       }
-      btn.disabled = false;
-    });
-
-    renderActivity();
+    }
+    activeRefresh = load;
+    page.querySelector('#activityFilter')?.addEventListener('change', renderActivity);
+    refresh.addEventListener('click', () => void load());
+    await load();
   }
 
   // ==========================================
@@ -4515,10 +4727,11 @@ export function AdminPage(router) {
     const notifEnabled = isEnabled();
     const pushOk = isPushSupported();
     const account = userStore.getUser();
-    const hubDates = await db.getHubDates();
+    const { dates: hubDates, snapshot: datesSnapshot } = await db.getAdminHubDates();
     // La caché global la leen el botón «ver la bienvenida de hoy» y la hoja
     // temática; sin esto seguirían con los valores de fábrica.
     await loadSpecialDates().catch(() => {});
+    if (!isCurrentSection(token)) return;
 
     // Cada bloque es una tarjeta con su icono y su rótulo de grupo: antes todo
     // era una lista plana de paneles y no se sabía qué tocaba cada cosa. Las
@@ -4537,7 +4750,7 @@ export function AdminPage(router) {
         <div class="admin-panel config-card config-dates">
           <div class="admin-panel-head">
             <h4>${UI.copy} Fechas especiales</h4>
-            <span class="admin-panel-badge">Alimentan las métricas del resumen</span>
+            <span class="admin-panel-badge">Calendario y bienvenida</span>
           </div>
           <p class="config-card-hint">«Años juntos», «En el Hub», el cumpleaños y el primer mensaje. Los eventos y los días temáticos salen además en la bienvenida del Inicio.</p>
 
@@ -5545,7 +5758,9 @@ export function AdminPage(router) {
       renderSeasonal();
     });
 
-    page.querySelector('#saveDatesBtn')?.addEventListener('click', async () => {
+    page.querySelector('#saveDatesBtn')?.addEventListener('click', async e => {
+      const button = e.currentTarget;
+      if (button.disabled) return;
       // Fechas a medias: se señala la fila culpable en vez de un aviso suelto,
       // que es lo que hacía que el botón pareciera no funcionar.
       const sinFecha = [...page.querySelectorAll('#datesEventsList .dates-event-row')]
@@ -5566,16 +5781,21 @@ export function AdminPage(router) {
         showToast('Rellena las cuatro fechas', 'error');
         return;
       }
+      const submitted = { anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring };
+      button.disabled = true;
       try {
-        const saved = await db.saveHubDates({ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring });
+        const saved = await db.saveHubDates(submitted, datesSnapshot);
         // Refresca la caché de fechas: el inicio, la bienvenida y el Perfil
         // reflejan el cambio al instante.
         refreshSpecialDates().catch(() => {});
-        markSaved();
+        if (!isCurrentSection(token)) return;
+        if (JSON.stringify(collectDates()) === JSON.stringify(submitted)) markSaved();
+        else markDirty();
         showToast('Fechas especiales guardadas', 'success');
         const hint = page.querySelector('#datesSavedHint');
         if (hint) hint.textContent = `Aniversario ${saved.anniversary} · Hub ${saved.hubStart} · Cumple ${saved.birthday} · Tú ${saved.userBirthday}${saved.events?.length ? ` · ${saved.events.length} próximas` : ''}`;
       } catch (err) {
+        if (!isCurrentSection(token)) return;
         console.error('[admin] No se pudieron guardar las fechas:', err);
         // Lo escrito sigue en el borrador local: avisar claro es la diferencia
         // entre «no guardó» y «no guardó, pero no has perdido nada».
@@ -5590,7 +5810,7 @@ export function AdminPage(router) {
         showToast(caducada
           ? 'Tu sesión ha caducado: vuelve a iniciar sesión y pulsa Guardar fechas. Lo que has escrito está guardado en este navegador.'
           : `${err?.message || 'No se pudieron guardar las fechas'}. Lo tienes a salvo en este navegador: no cierres esta pestaña.`, 'error', 9000);
-      }
+      } finally { button.disabled = false; }
     });
 
     // ---- Base de datos ----
@@ -5617,14 +5837,14 @@ export function AdminPage(router) {
     const banner = page.querySelector('#adminDbStatus');
     if (!banner) return;
     const status = await db.checkConnection();
+    if (disposed) return;
     if (status.ok) {
       banner.style.display = 'none';
     } else {
       banner.style.display = 'block';
       banner.innerHTML = status.mode === 'supabase'
-        ? `<strong>⚠️ Base de datos no disponible</strong> — ${status.message}<br>
-           <small>Los cambios se guardarán solo en este navegador hasta que se arregle el permiso en Supabase.</small>`
-        : `<strong>️ Modo local</strong> — ${status.message}`;
+        ? '<strong>Base de datos no disponible</strong><br><small>Los cambios necesitan conexión a Supabase. Los borradores de fechas se conservan en este navegador.</small>'
+        : '<strong>Modo local</strong><br><small>Algunas lecturas solo muestran los datos de este navegador.</small>';
     }
   }
 

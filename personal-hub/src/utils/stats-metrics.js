@@ -13,6 +13,46 @@
    ========================================== */
 
 export const SESSION_GAP_MS = 30 * 60 * 1000;
+const MADRID_CLOCK = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Madrid',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  hourCycle: 'h23'
+});
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+function dayMillis(key) {
+  if (typeof key !== 'string' || !ISO_DAY.test(key)) return NaN;
+  const time = Date.parse(`${key}T00:00:00Z`);
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === key ? time : NaN;
+}
+
+function madridParts(value) {
+  if (value == null || value === '') return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  const { year, month, day, hour } = Object.fromEntries(
+    MADRID_CLOCK.formatToParts(date).map(part => [part.type, part.value])
+  );
+  return { day: `${year}-${month}-${day}`, hour: Number(hour) };
+}
+
+/** Conserva el día de un ánimo. Convierte una marca de tiempo a la fecha de Madrid. */
+export function statsDay(value) {
+  if (typeof value === 'string' && ISO_DAY.test(value)) {
+    return Number.isFinite(dayMillis(value)) ? value : '';
+  }
+  return madridParts(value)?.day || '';
+}
+
+/** Desplaza un día de calendario sin depender de la hora local ni del horario de verano. */
+export function shiftStatsDay(day, delta) {
+  const start = dayMillis(day);
+  const next = new Date(start + delta * 86400000);
+  return Number.isFinite(next.getTime()) ? next.toISOString().slice(0, 10) : '';
+}
 
 /**
  * Ruta reservada con la que Open When deja constancia de una carta abierta:
@@ -168,11 +208,11 @@ export function hourlyHeatmap(visits) {
   let total = 0;
 
   (visits || []).forEach((visit) => {
-    const date = new Date(visit?.timestamp);
-    if (Number.isNaN(date.getTime())) return;
-    const weekday = (date.getDay() + 6) % 7; // lunes = 0
-    matrix[weekday][date.getHours()]++;
-    hours[date.getHours()]++;
+    const time = madridParts(visit?.timestamp);
+    if (!time) return;
+    const weekday = (new Date(dayMillis(time.day)).getUTCDay() + 6) % 7;
+    matrix[weekday][time.hour]++;
+    hours[time.hour]++;
     total++;
   });
 
@@ -201,24 +241,7 @@ export function dayParts(heat) {
 
 /** Días únicos en formato YYYY-MM-DD a partir de fechas ISO o 'YYYY-MM-DD'. */
 export function uniqueDays(values) {
-  const days = new Set();
-  (values || []).forEach((value) => {
-    const raw = String(value || '');
-    if (!raw) return;
-    const date = raw.length === 10 ? new Date(`${raw}T12:00:00`) : new Date(raw);
-    if (Number.isNaN(date.getTime())) return;
-    days.add(
-      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-    );
-  });
-  return [...days].sort();
-}
-
-function shiftDay(key, delta) {
-  const [year, month, day] = key.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  date.setDate(date.getDate() + delta);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return [...new Set((values || []).map(statsDay).filter(Boolean))].sort();
 }
 
 /**
@@ -227,27 +250,19 @@ function shiftDay(key, delta) {
  * es la mejor racha del histórico. `today` en formato YYYY-MM-DD.
  */
 export function streaks(days, today) {
-  const sorted = [...new Set(days || [])].sort();
+  const sorted = uniqueDays(days).filter(day => !today || day <= today);
   if (!sorted.length) return { current: 0, longest: 0, last: null };
 
   let longest = 0;
   let run = 0;
   let previous = null;
   for (const day of sorted) {
-    run = previous && shiftDay(previous, 1) === day ? run + 1 : 1;
+    run = previous && shiftStatsDay(previous, 1) === day ? run + 1 : 1;
     if (run > longest) longest = run;
     previous = day;
   }
 
   const last = sorted[sorted.length - 1];
-  const alive = last === today || last === shiftDay(today, -1);
-  let current = 0;
-  if (alive) {
-    let cursor = last;
-    while (sorted.includes(cursor)) {
-      current++;
-      cursor = shiftDay(cursor, -1);
-    }
-  }
-  return { current, longest, last };
+  const alive = last === today || last === shiftStatsDay(today, -1);
+  return { current: alive ? run : 0, longest, last };
 }

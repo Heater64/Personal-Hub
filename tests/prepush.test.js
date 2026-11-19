@@ -1030,12 +1030,12 @@ test('el panel de ánimo resume los últimos siete días', async () => {
 
   assert.match(admin, /async function renderMoodWeek\(\)/);
   assert.match(admin, /start\.setDate\(start\.getDate\(\) - 6\)/, 'siete días contando hoy');
-  assert.match(admin, /db\.getAllMoods\(startISO, today\)/);
+  assert.match(admin, /db\.readAdminMoods\(\{ from: startISO, through: today, userId \}\)/);
   assert.ok(admin.includes('counts.set(key, (counts.get(key) || 0) + 1)'),
     'cuenta cada emoción marcada, no cada fila');
-  assert.ok(admin.includes('if (!isStatsUser(row.user_id)) continue;'),
+  assert.ok(admin.includes('const userId = statsUserId === STATS_ALL ? null : statsUserId;'),
     'respeta el selector de usuario del panel');
-  assert.ok(admin.includes('renderMoodWeek();'), 'se pinta al abrir la sección y se refresca en vivo');
+  assert.ok(admin.includes('Promise.all([render(), renderMoodWeek()])'), 'se pinta al abrir la sección y se refresca en vivo');
 });
 
 test('una serie completada sale de Inicio y las películas se marcan como vistas', async () => {
@@ -1886,7 +1886,7 @@ test('guardar sanea los eventos: nada de campos raros ni filas a medias', async 
       await celebrationSource())
     .replace("import { cleanEventActions } from '../utils/event-actions.js';",
       await eventActionsSource())
-    .replace('await saveContent(\'hub_dates\', clean);', 'globalThis.__SAVED__ = clean;');
+    .replace("await saveContent('hub_dates', clean, snapshot);", 'globalThis.__SAVED__ = clean;');
   const mod = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
   globalThis.__SAVED__ = null;
 
@@ -1963,7 +1963,7 @@ test('el Admin puede editar el aspecto, añadir y quitar días temáticos', asyn
   // El mes-día se valida en vez de descartarse en silencio.
   assert.ok(admin.includes("blockSave('Falta el mes y el día, tipo 10-31', badSeasonal);"), 'un día temático necesita mes-día');
   // Se guarda todo junto.
-  assert.match(admin, /db\.saveHubDates\(\{ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring \}\)/);
+  assert.match(admin, /db\.saveHubDates\(submitted, datesSnapshot\)/);
   // El guardado sanea lo que llega.
   assert.match(dbSvc, /function cleanEvent\(event\)/);
   assert.match(dbSvc, /function cleanSeasonal\(event\)/);
@@ -2061,14 +2061,14 @@ test('el resumen enseña primero lo de hoy y deja los accesos al final', async (
 
   // Arriba del resumen va lo que se mira al entrar: la tira de «hoy».
   assert.ok(dash.includes('dash-now-card'), 'la tira de hoy está en el resumen');
-  assert.ok(dash.includes('Última conexión') && dash.includes('Su ánimo hoy'), 'la tira dice lo importante del día');
+  assert.ok(dash.includes('Última visita') && dash.includes('Su ánimo hoy'), 'la tira dice lo importante del día');
   assert.match(css, /\.dash-now\b/, 'la tira de hoy tiene su CSS');
   assert.ok(dash.includes('Atajos de gestión'), 'el bloque de atajos sigue en el resumen');
   assert.equal((dash.match(/data-shortcut=/g) || []).length, 1, 'el panel de atajos no debe estar dos veces');
   // El orden es: hoy → gráficos → accesos. Se comparan los puntos donde se
   // pintan, no los comentarios que los nombran.
   const iHoy = dash.indexOf('class="dash-now"');
-  const iGrafico = dash.indexOf('dashActivityChart');
+  const iGrafico = dash.indexOf('id="dashActivityChart"');
   const iAccesos = dash.indexOf('quickActions.map');
   const iAtajos = dash.indexOf('shortcuts.map');
   assert.ok(iHoy !== -1 && iHoy < iGrafico, 'lo de hoy va antes que el gráfico');
@@ -2488,7 +2488,8 @@ test('si falta un dato, se señala la fila y se explica cuál', async () => {
   // El botón y el borrador comparten una única lectura del panel, para que lo
   // que se recupera sea justo lo que se iba a subir.
   assert.match(admin, /function collectDates\(\) \{[\s\S]*?return \{[\s\S]*?events,[\s\S]*?seasonal,[\s\S]*?looks,/);
-  assert.match(admin, /db\.saveHubDates\(\{ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring \}\)/);
+  assert.match(admin, /const submitted = \{ anniversary, hubStart, birthday, userBirthday, events, seasonal, looks, titles, recurring \};/);
+  assert.match(admin, /db\.saveHubDates\(submitted, datesSnapshot\)/);
 });
 test('el visor y los filtros de Galería detienen medios al cerrar o repintar', async () => {
   const lightbox = await readFile(hub('src', 'components', 'MediaLightbox.js'), 'utf8');

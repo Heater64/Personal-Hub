@@ -189,7 +189,7 @@ test('el servidor filtra por preferencias y aplaza sin gastar la ocurrencia', as
 
   // El recordatorio y el saludo diario miran su tipo correspondiente.
   assert.match(pushApi, /splitRecipients\(subscriptions, prefsById, now, 'reminders'\)/);
-  assert.match(pushApi, /splitRecipients\(allSubscriptions, prefsById, new Date\(\), 'daily'\)/);
+  assert.match(pushApi, /splitRecipients\(availableSubscriptions, prefsById, new Date\(\), 'daily'\)/);
 
   // El aplazamiento va ANTES de reprogramar: si se gastara el turno, un
   // recordatorio de una sola vez que caiga de noche no llegaría nunca.
@@ -219,7 +219,7 @@ test('la limpieza de caducados no da de baja a quien está en silencio', async (
     'la limpieza parte de TODAS las suscripciones y quita solo las caducadas'
   );
   assert.doesNotMatch(send, /saveSubscriptions\(validSubscriptions\)/);
-  assert.match(send, /const filtered = off\.length \+ \(isAdmin \? 0 : quiet\.length\);/);
+  assert.match(send, /const filtered = off\.length \+ \(isAdmin \? 0 : quiet\.length\) \+ native\.off\.length;/);
 });
 
 test('el cliente sube sus ajustes y los une por marca de tiempo', async () => {

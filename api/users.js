@@ -5,7 +5,10 @@
 
 import { requireAdminCaller } from './_admin.js';
 
+const USER_ID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
   // Only allow GET, POST (update/delete de usuarios)
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
@@ -19,24 +22,18 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     const action = req.body?.action || '';
-    // authCtx ya verificó al llamador arriba (requireAdminCaller);
-    // no hace falta volver a comprobar el JWT en cada acción.
-    const admin = authCtx;
-
     if (action === 'update') {
       const { id, enabled } = req.body || {};
-      if (!id) return res.status(400).json({ error: 'Missing user id' });
+      if (typeof id !== 'string' || !USER_ID.test(id) || typeof enabled !== 'boolean') {
+        return res.status(400).json({ error: 'El estado o el identificador de la cuenta no es válido.' });
+      }
 
       try {
-        if (typeof enabled !== 'boolean') {
-          return res.status(200).json({ success: true });
-        }
-
         // Un admin no puede deshabilitarse a sí mismo: perdería is_admin()
         // y ya no podría volver a habilitarse (mismo motivo por el que el
         // trigger prevent_role_escalation lo bloquea en la DB, aquí se
         // avisa antes de llegar).
-        if (enabled === false && id === authCtx.user.id) {
+        if (enabled === false && id.toLowerCase() === authCtx.user.id) {
           return res.status(400).json({ error: 'No puedes deshabilitar tu propia cuenta: te quedarías fuera sin poder volver a entrar.' });
         }
 
@@ -47,11 +44,14 @@ export default async function handler(req, res) {
         // era lo que leía el login: eso permitía auto-habilitarse. La DB
         // (017) bloquea ya ese intento con un trigger, y la app ya no lee
         // metadata para decidir. Aquí se deja de duplicar el valor.
-        const { error: profileError } = await admin.supabaseAdmin
+        const { data: profile, error: profileError } = await supabaseAdmin
           .from('profiles')
           .update({ enabled, updated_at: new Date().toISOString() })
-          .eq('id', id);
+          .eq('id', id)
+          .select('id')
+          .maybeSingle();
         if (profileError) throw profileError;
+        if (!profile) return res.status(404).json({ error: 'No se encontró el perfil de la cuenta.' });
 
         // Corte real de acceso en Supabase Auth. Un ban bloquea el inicio
         // de sesión en el servidor (no es un flag que el cliente pueda
@@ -60,13 +60,15 @@ export default async function handler(req, res) {
         // (RLS con is_enabled, guard de rutas, esta API) también miran
         // profiles.enabled.
         // ban_duration: 'none' es el valor oficial para levantar el ban.
-        const { error: authError } = await admin.supabaseAdmin.auth.admin.updateUserById(id, {
+        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, {
           ban_duration: enabled ? 'none' : '876000h', // ~100 años: hasta que el admin lo levante
         });
         if (authError) {
-          // El ban es una capa extra: si falla, profiles.enabled + RLS
-          // siguen siendo la fuente de verdad. Se avisa pero no se falla.
           console.warn('[api/users] ban no aplicado:', authError.message);
+          const warning = enabled
+            ? 'El perfil se habilitó, pero falta levantar el bloqueo de inicio de sesión.'
+            : 'El perfil se deshabilitó. Supabase Auth no confirmó el bloqueo adicional.';
+          return res.status(200).json({ success: true, warning });
         }
 
         return res.status(200).json({ success: true });
@@ -78,24 +80,32 @@ export default async function handler(req, res) {
 
     if (action === 'delete') {
       const { id } = req.body || {};
-      if (!id) return res.status(400).json({ error: 'Missing user id' });
+      if (typeof id !== 'string' || !USER_ID.test(id)) {
+        return res.status(400).json({ error: 'El identificador de la cuenta no es válido.' });
+      }
+      if (id.toLowerCase() === authCtx.user.id) {
+        return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta.' });
+      }
       try {
-        // Limpia los datos asociados ANTES de borrar el usuario de Auth.
-        // profiles se elimina sola (ON DELETE CASCADE desde auth.users),
-        // pero moods y analytics_visits no tienen FK: sin este paso el
-        // usuario reaparecía en el panel porque listUsers los reconstruye.
-        // push_subscriptions tiene ON DELETE CASCADE desde 018, pero se
-        // incluye aquí para que el borrado sea limpio también en bases
-        // donde la tabla existe sin la FK. El error se ignora: si la tabla
-        // no existe (017/018 sin aplicar) no debe impedir el borrado.
-        const tables = ['moods', 'analytics_visits', 'push_subscriptions'];
-        for (const table of tables) {
-          const { error } = await admin.supabaseAdmin.from(table).delete().eq('user_id', id);
-          if (error) console.warn(`[api/users] No se pudieron borrar ${table}:`, error.message);
-        }
-        const { error } = await admin.supabaseAdmin.auth.admin.deleteUser(id);
+        // Primero Auth. Si rechaza la eliminación, conservamos los registros.
+        const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
         if (error) throw error;
-        return res.status(200).json({ success: true });
+
+        const tables = ['moods', 'analytics_visits', 'push_subscriptions'];
+        let cleanupIncomplete = false;
+        for (const table of tables) {
+          try {
+            const { error: cleanupError } = await supabaseAdmin.from(table).delete().eq('user_id', id);
+            if (cleanupError && !['42P01', 'PGRST205'].includes(cleanupError.code)) throw cleanupError;
+          } catch (cleanupError) {
+            cleanupIncomplete = true;
+            console.warn(`[api/users] No se pudieron borrar ${table}:`, cleanupError.message);
+          }
+        }
+        return res.status(200).json({
+          success: true,
+          ...(cleanupIncomplete ? { warning: 'La cuenta se eliminó. Algunos registros asociados necesitan revisión.' } : {}),
+        });
       } catch (err) {
         console.error('[api/users] delete error:', err.message);
         return res.status(500).json({ error: err.message || 'Delete failed' });
@@ -123,25 +133,25 @@ export default async function handler(req, res) {
       const pageUsers = data.users || [];
       allUsers.push(...pageUsers);
 
-      if (pageUsers.length < perPage) {
-        hasMore = false;
-      } else {
-        page++;
-      }
+      hasMore = !!data.nextPage || pageUsers.length === perPage && (!data.lastPage || page < data.lastPage);
+      page++;
     }
 
     // Roles y estado desde profiles (fuente de verdad); nunca desde
     // user_metadata, que el usuario puede editar por su cuenta.
-    let profilesById = {};
-    try {
-      const { data: profiles } = await supabaseAdmin
+    const profilesById = new Map();
+    for (let start = 0; start < allUsers.length; start += perPage) {
+      const ids = allUsers.slice(start, start + perPage).map(user => user.id);
+      const { data: profiles, error } = await supabaseAdmin
         .from('profiles')
-        .select('id, role, enabled, name, avatar_url');
-      (profiles || []).forEach(p => { profilesById[p.id] = p; });
-    } catch { /* profiles puede no existir: los usuarios salen como 'user' */ }
+        .select('id, role, enabled, name, avatar_url')
+        .in('id', ids);
+      if (error) throw error;
+      (profiles || []).forEach(profile => profilesById.set(profile.id, profile));
+    }
 
     const users = allUsers.map(u => {
-      const profile = profilesById[u.id];
+      const profile = profilesById.get(u.id);
       return {
         id: u.id,
         email: u.email,
@@ -162,6 +172,7 @@ export default async function handler(req, res) {
       };
     });
 
+    res.setHeader('X-Users-Truncated', String(hasMore));
     return res.status(200).json(users);
   } catch (err) {
     console.error('[api/users] unexpected error:', err.message);
