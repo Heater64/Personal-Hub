@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cuenta atrás · 4×2
+<!-- Cuenta atrás · 3×1
 
      Horizontal: acento coral y, a la izquierda, título, número y fecha. Sin
      caras: aquí el dato es el día, no quién. -->
@@ -11,13 +11,16 @@
     android:background="@drawable/widget_countdown_bg"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="14dp">
+    android:padding="10dp">
 
-    <View
-        android:layout_width="3dp"
-        android:layout_height="44dp"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/widget_days_accent" />
+    <!-- RemoteViews no permite View genérico; ImageView es una vista remota
+         permitida y conserva la barra coral puramente decorativa. -->
+    <ImageView
+        android:layout_width="2dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/widget_days_accent"
+        android:contentDescription="@null" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -38,7 +41,7 @@
             android:textColor="@color/widget_coral_soft"
             android:textSize="8sp"
             android:textStyle="bold"
-        tools:text="Nuestro aniversario"/>
+            tools:text="Nuestro aniversario" />
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -55,22 +58,22 @@
                 android:maxLines="1"
                 android:text="—"
                 android:textColor="#FFFFFF"
-                android:textSize="36sp"
+                android:textSize="30sp"
                 android:textStyle="bold"
-        tools:text="23"/>
+                tools:text="23" />
 
             <TextView
                 android:id="@+id/widget_countdown_unit"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_marginBottom="4dp"
+                android:layout_marginStart="3dp"
+                android:layout_marginBottom="3dp"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="@string/widget_countdown_unit"
+                android:text="@string/widget_countdown_unit_short"
                 android:textColor="@color/widget_rose"
-                android:textSize="12sp"
-        tools:text="días"/>
+                android:textSize="10sp"
+                tools:text="días" />
         </LinearLayout>
 
         <TextView
@@ -81,8 +84,8 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp"
-        tools:text="3 jul 2026"/>
+            android:textSize="8sp"
+            tools:text="3 jul 2026" />
     </LinearLayout>
 
 </LinearLayout>

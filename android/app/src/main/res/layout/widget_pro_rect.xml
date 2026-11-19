@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widgets Pro · 3×1
+
+     Una sola composición de texto para razón del día, Open When pendiente y
+     racha: el renderer cambia kicker, valor y etiqueta; los ids son los
+     mismos para que no haya que adivinar qué vistas existen. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widget_pro_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_pro_bg"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/widget_pro_kicker"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:includeFontPadding="false"
+        android:letterSpacing="0.12"
+        android:maxLines="1"
+        android:textColor="@color/widget_lavender"
+        android:textSize="8sp"
+        android:textStyle="bold"
+        tools:text="RAZÓN DEL DÍA" />
+
+    <TextView
+        android:id="@+id/widget_pro_value"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="2"
+        android:textColor="#FFFFFF"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        tools:text="Eres mi sitio favorito" />
+
+    <TextView
+        android:id="@+id/widget_pro_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:textColor="@color/widget_rose"
+        android:textSize="8sp"
+        tools:text="3 días seguidos" />
+
+</LinearLayout>

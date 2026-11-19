@@ -12,11 +12,20 @@
 }
 
 .sentimientos-page > * { animation: sent-enter var(--dur-normal) both; }
-.sentimientos-page > *:nth-child(2) { animation-delay: 0.04s; }
-.sentimientos-page > *:nth-child(3) { animation-delay: 0.08s; }
-.sentimientos-page > *:nth-child(4) { animation-delay: 0.12s; }
-.sentimientos-page > *:nth-child(5) { animation-delay: 0.16s; }
-.sentimientos-page > *:nth-child(6) { animation-delay: 0.2s; }
+/* Escalonado por posición (40 ms por bloque, tope 200 ms). */
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .sentimientos-page > * {
+    animation-delay: min(calc((sibling-index() - 1) * 0.04s), 0.2s);
+  }
+}
+
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .sentimientos-page > *:nth-child(2) { animation-delay: 0.04s; }
+  .sentimientos-page > *:nth-child(3) { animation-delay: 0.08s; }
+  .sentimientos-page > *:nth-child(4) { animation-delay: 0.12s; }
+  .sentimientos-page > *:nth-child(5) { animation-delay: 0.16s; }
+  .sentimientos-page > *:nth-child(6) { animation-delay: 0.2s; }
+}
 
 @keyframes sent-enter {
   from { opacity: 0; transform: translateY(8px); }
@@ -349,6 +358,12 @@
 }
 
 .sent-stats[hidden] { display: none; }
+
+/* La tira de 14 días ocupa la fila entera bajo los contadores. */
+.sent-stats > .pro-strip {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
 
 .sent-stat {
   display: flex;

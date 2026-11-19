@@ -8,13 +8,12 @@ import { initTelemetry } from './services/telemetry.js';
 import { Router } from './router.js';
 import { AppShell } from './components/App.js';
 import { initMotion, refreshMotion } from './utils/motion.js';
+import { installMediaFallback } from './services/media.service.js';
 import { watchDateFields } from './utils/datefield.js';
 import { ROUTES } from './routes.js';
+// Login sigue estático: es la primera pantalla con la sesión cerrada y no
+// debe esperar un chunk. Todo lo demás entra por `lazy()`.
 import { LoginPage } from './pages/Login.js';
-import { HomePage } from './pages/Home.js';
-import { ProfilePage } from './pages/Profile.js';
-import { RazonesPage } from './pages/Razones.js';
-import { MalDiaPage } from './pages/MalDia.js';
 
 // Lazy loader para páginas pesadas → code-splitting
 // Uso: lazy(() => import('./pages/X.js').then(m => m.XPage))
@@ -28,10 +27,10 @@ const lazy = (loader) => async (router) => (await loader())(router);
 // engordar el arranque.
 const PAGES = {
   '/login': router => LoginPage(router),
-  '/': router => HomePage(router),
-  '/perfil': router => ProfilePage(router),
-  '/razones': router => RazonesPage(router),
-  '/maldia': router => MalDiaPage(router),
+  '/': lazy(() => import('./pages/Home.js').then(m => m.HomePage)),
+  '/perfil': lazy(() => import('./pages/Profile.js').then(m => m.ProfilePage)),
+  '/razones': lazy(() => import('./pages/Razones.js').then(m => m.RazonesPage)),
+  '/maldia': lazy(() => import('./pages/MalDia.js').then(m => m.MalDiaPage)),
   '/menstruacion': lazy(() => import('./pages/Menstruacion.js').then(m => m.MenstruacionPage)),
   '/admin': lazy(() => import('./pages/Admin.js').then(m => m.AdminPage)),
   '/rincon': lazy(() => import('./pages/Rincon.js').then(m => m.RinconPage)),
@@ -59,6 +58,11 @@ const PAGES = {
 function init() {
   // Lo primero: capturar fallos de arranque, antes de montar nada.
   initTelemetry();
+
+  // Red de seguridad del multimedia: si una imagen/vídeo/audio no carga (URL
+  // firmada caducada, objeto movido), se reintenta una vez con la firma nueva.
+  // Con los buckets públicos no hace nada visible. Un solo listener global.
+  installMediaFallback();
 
   // Create router
   const router = new Router({

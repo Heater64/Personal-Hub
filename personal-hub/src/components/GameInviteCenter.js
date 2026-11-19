@@ -71,7 +71,7 @@ export function GameInviteCenter(router) {
 
   function render() {
     clearTimeout(expiryTimer);
-    root.innerHTML = '';
+    root.replaceChildren();
     // Modo online oculto: solo se atiende "escuchar juntos" (música),
     // nunca las invitaciones de juego ni las revanchas.
     if (!ONLINE_GAMES_ENABLED) {

@@ -12,6 +12,24 @@ import { userPrefKey } from '../utils/userStorage.js';
 import { announcePublished } from './announce.service.js';
 import { CATEGORIES } from '../data/openwhen-categories.data.js';
 
+/**
+ * Firma best-effort de las URLs recién subidas, para que la vista las pinte
+ * bien a la primera cuando el bucket es privado. El import es diferido por la
+ * misma razón que el de regalos: este archivo también se carga en pruebas con
+ * Supabase simulado, donde la capa de firmas no existe. Si no está, no pasa
+ * nada: con el bucket público la URL original sirve igual.
+ */
+async function warmMedia(urls) {
+  const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+  if (!list.length) return;
+  try {
+    const { prepareMedia } = await import('./media.service.js');
+    await prepareMedia(list);
+  } catch {
+    /* sin capa de firmas: la URL pública sigue sirviendo */
+  }
+}
+
 // Storage keys for localStorage fallback
 const KEYS = {
   reasons: 'ph.data.reasons',
@@ -921,6 +939,10 @@ async function uploadAvatar(file) {
     .from('avatars')
     .getPublicUrl(filePath);
 
+  // El avatar recién subido se firma ya: con el bucket privado la URL
+  // pública no serviría hasta el siguiente repintado.
+  await warmMedia([publicUrl]);
+
   // 3. Update auth metadata
   const { error: updateError } = await supabase.auth.updateUser({
     data: { avatar_url: publicUrl }
@@ -992,6 +1014,9 @@ async function uploadGalleryPhotos(files) {
     }
   }
 
+  // Firmas listas antes de devolver: la galería pinta al instante y con el
+  // bucket privado no hay primer intento fallido.
+  await warmMedia(urls);
   return urls;
 }
 
@@ -1037,6 +1062,7 @@ async function uploadMemes(files) {
     }
   }
 
+  await warmMedia(urls);
   return urls;
 }
 
@@ -1082,6 +1108,7 @@ async function uploadAudios(files) {
     }
   }
 
+  await warmMedia(urls);
   return urls;
 }
 
@@ -1673,12 +1700,12 @@ async function getMyMaldiaNotes() {
   const userId = await getCurrentUserId();
   const local = lsGet(maldiaNotesLocalKey(userId), []);
   const remote = await readMaldiaNotesRow(userId);
-  if (remote === null) return [...(Array.isArray(local) ? local : [])].reverse();
+  if (remote === null) return (Array.isArray(local) ? local : []).toReversed();
   // Unión en ambos sentidos: lo local que aún no subió no se pierde, y lo
   // del servidor escrito desde otro dispositivo baja a este navegador.
   const merged = mergeMaldiaNotes(remote, local);
   lsSet(maldiaNotesLocalKey(userId), merged);
-  return [...merged].reverse();
+  return merged.toReversed();
 }
 
 /**

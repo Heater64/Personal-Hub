@@ -65,7 +65,7 @@ export function average(values = []) {
 }
 
 export function median(values = []) {
-  const list = values.filter((v) => Number.isFinite(v)).slice().sort((a, b) => a - b);
+  const list = values.filter((v) => Number.isFinite(v)).toSorted((a, b) => a - b);
   if (!list.length) return null;
   const mid = Math.floor(list.length / 2);
   return list.length % 2 ? list[mid] : (list[mid - 1] + list[mid]) / 2;

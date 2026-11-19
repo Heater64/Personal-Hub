@@ -1,88 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cuenta atrás · 4×3
+<!-- Cuenta atrás · 4×2
 
-     Apilada: «FALTAN», número grande con «días», el título de la fecha y el día
-     concreto. Una sola lectura: cuánto queda y para qué. -->
+     El destacado ya no ocupa 4×3: la misma composición horizontal que el
+     rectangular, con el número grande, para que el launcher no reserve tres
+     filas. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_countdown_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_countdown_bg"
-    android:gravity="center"
-    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:padding="14dp">
 
-    <TextView
-        android:id="@+id/widget_countdown_kicker"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:includeFontPadding="false"
-        android:letterSpacing="0.14"
-        android:maxLines="1"
-        android:text="@string/widget_countdown_kicker"
-        android:textColor="@color/widget_coral_soft"
-        android:textSize="8sp"
-        android:textStyle="bold"
-        tools:text="FALTAN"/>
+    <!-- RemoteViews no permite View genérico; ImageView es una vista remota
+         permitida y conserva la barra coral puramente decorativa. -->
+    <ImageView
+        android:layout_width="3dp"
+        android:layout_height="54dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/widget_days_accent"
+        android:contentDescription="@null" />
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:gravity="bottom"
-        android:orientation="horizontal">
+        android:layout_weight="1"
+        android:orientation="vertical">
 
         <TextView
-            android:id="@+id/widget_countdown_count"
-            android:layout_width="wrap_content"
+            android:id="@+id/widget_countdown_title"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:ellipsize="end"
             android:includeFontPadding="false"
+            android:letterSpacing="0.14"
             android:maxLines="1"
-            android:text="—"
-            android:textColor="#FFFFFF"
-            android:textSize="48sp"
+            android:text="@string/widget_countdown_empty"
+            android:textColor="@color/widget_coral_soft"
+            android:textSize="9sp"
             android:textStyle="bold"
-        tools:text="23"/>
+            tools:text="Nuestro aniversario" />
 
-        <TextView
-            android:id="@+id/widget_countdown_unit"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="5dp"
-            android:layout_marginBottom="6dp"
+            android:layout_marginTop="1dp"
+            android:gravity="bottom"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_countdown_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="—"
+                android:textColor="#FFFFFF"
+                android:textSize="42sp"
+                android:textStyle="bold"
+                tools:text="23" />
+
+            <TextView
+                android:id="@+id/widget_countdown_unit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginBottom="5dp"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="@string/widget_countdown_unit"
+                android:textColor="@color/widget_rose"
+                android:textSize="12sp"
+                tools:text="días" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_countdown_date"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
             android:includeFontPadding="false"
             android:maxLines="1"
-            android:text="@string/widget_countdown_unit"
-            android:textColor="@color/widget_rose"
-            android:textSize="14sp"
-        tools:text="días"/>
+            android:textColor="@color/widget_text_muted"
+            android:textSize="9sp"
+            tools:text="3 jul 2026" />
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/widget_countdown_title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:text="@string/widget_countdown_empty"
-        android:textColor="#FFFFFF"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        tools:text="Nuestro aniversario"/>
-
-    <TextView
-        android:id="@+id/widget_countdown_date"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="@color/widget_text_muted"
-        android:textSize="9sp"
-        tools:text="3 jul 2026"/>
 
 </LinearLayout>

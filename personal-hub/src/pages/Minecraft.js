@@ -561,7 +561,11 @@ function bind() {
     };
     input.addEventListener('change', save);
     input.addEventListener('blur', save);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
+    input.addEventListener('keydown', (e) => {
+      // Enter de un IME en composición no debe cerrar el campo.
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    });
   });
 
   // Items: eliminar (admin)

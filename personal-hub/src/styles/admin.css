@@ -297,11 +297,20 @@
 }[data-theme="light"] .admin-list-item {
   border: 1px solid rgba(100, 60, 70, 0.06);
 }
-.admin-list-item:nth-child(1) { animation-delay: 0.02s; }
-.admin-list-item:nth-child(2) { animation-delay: 0.04s; }
-.admin-list-item:nth-child(3) { animation-delay: 0.06s; }
-.admin-list-item:nth-child(4) { animation-delay: 0.08s; }
-.admin-list-item:nth-child(n+5) { animation-delay: 0.1s; }
+/* Escalonado por posición (20 ms por fila, tope 100 ms). */
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .admin-list-item {
+    animation-delay: min(calc((sibling-index() - 1) * 0.02s), 0.1s);
+  }
+}
+
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .admin-list-item:nth-child(1) { animation-delay: 0.02s; }
+  .admin-list-item:nth-child(2) { animation-delay: 0.04s; }
+  .admin-list-item:nth-child(3) { animation-delay: 0.06s; }
+  .admin-list-item:nth-child(4) { animation-delay: 0.08s; }
+  .admin-list-item:nth-child(n+5) { animation-delay: 0.1s; }
+}
 .admin-list-item:hover {
   background: var(--theme-surface-elevated);
   border-color: var(--border-accent);
@@ -1011,11 +1020,19 @@
   margin-bottom: 8px;
   animation: slide-up 0.3s ease backwards;
 }
-.moods-bar-row:nth-child(1) { animation-delay: 0.02s; }
-.moods-bar-row:nth-child(2) { animation-delay: 0.04s; }
-.moods-bar-row:nth-child(3) { animation-delay: 0.06s; }
-.moods-bar-row:nth-child(4) { animation-delay: 0.08s; }
-.moods-bar-row:nth-child(5) { animation-delay: 0.1s; }
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .moods-bar-row {
+    animation-delay: min(calc((sibling-index() - 1) * 0.02s), 0.1s);
+  }
+}
+
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .moods-bar-row:nth-child(1) { animation-delay: 0.02s; }
+  .moods-bar-row:nth-child(2) { animation-delay: 0.04s; }
+  .moods-bar-row:nth-child(3) { animation-delay: 0.06s; }
+  .moods-bar-row:nth-child(4) { animation-delay: 0.08s; }
+  .moods-bar-row:nth-child(5) { animation-delay: 0.1s; }
+}
 .moods-bar-label {
   font-size: var(--fs-xs); color: var(--theme-text-secondary);
   min-width: 120px; flex-shrink: 0; text-align: right;

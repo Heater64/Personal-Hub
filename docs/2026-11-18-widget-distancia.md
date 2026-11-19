@@ -17,17 +17,18 @@
 - **Radio:** 26 dp. **Sombras:** ninguna (RemoteViews no las pinta de forma fiable).
 - **Iconografía:** las dos fotos circulares con aro claro.
 
-### Versión pequeña (2×2)
+### Versión pequeña (1×1)
 
-- Vertical centrada: «ESTÁIS A» + cifra 30 sp. «abre la app» solo si no hay dato.
+- Vertical centrada: «ESTÁIS A» + cifra 24 sp. «abre la app» solo si no hay dato.
 
-### Versión rectangular (4×2)
+### Versión rectangular (3×1)
 
-- Horizontal: barra coral, cifra 34 sp con el tiempo debajo y las dos caras de 46 dp a la derecha.
+- Horizontal: barra coral, cifra 30 sp con el tiempo debajo y las dos caras de 36 dp a la derecha.
 
-### Versión grande (4×3)
+### Versión grande (4×2)
 
-- Vertical: caras de 44 dp, «ESTÁIS A», cifra 40 sp y el tiempo de actualización.
+- La misma composición horizontal con más aire: cifra 42 sp, caras de 50 dp y,
+  debajo del tiempo, el móvil de ella. Ya no reserva 4×3.
 
 ## 3. Información y funcionamiento
 
@@ -60,4 +61,4 @@
 
 - **Diseño aprobado:** pendiente de revisión del usuario.
 - **Implementación terminada:** distancia en tres tamaños y composición adaptativa.
-- **Observaciones:** la versión pequeña deja fuera las caras a propósito: a 2×2 competirían con la cifra. La cifra clave conserva su tamaño físico con la letra del sistema grande y, si el texto es muy largo («1234 km»), baja de cuerpo antes que recortarse.
+- **Observaciones:** la versión pequeña deja fuera las caras a propósito: en una celda competirían con la cifra. La cifra clave conserva su tamaño físico con la letra del sistema grande y, si el texto es muy largo («1234 km»), baja de cuerpo antes que recortarse.

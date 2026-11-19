@@ -106,6 +106,15 @@ final class WidgetRenderer {
                 case "gifts":
                     renderGifts(context, null, new int[] { -1 }, size);
                     break;
+                case "reason":
+                    renderProText(context, null, new int[] { -1 }, size, "widget_reason");
+                    break;
+                case "openwhen":
+                    renderProText(context, null, new int[] { -1 }, size, "widget_openwhen");
+                    break;
+                case "streak":
+                    renderProText(context, null, new int[] { -1 }, size, "widget_streak");
+                    break;
                 default:
                     return null;
             }
@@ -144,6 +153,12 @@ final class WidgetRenderer {
             GiftsWidgetProvider.class,
             GiftsRectWidgetProvider.class,
             GiftsCompactWidgetProvider.class,
+            ReasonRectWidgetProvider.class,
+            ReasonCompactWidgetProvider.class,
+            OpenWhenRectWidgetProvider.class,
+            OpenWhenCompactWidgetProvider.class,
+            StreakRectWidgetProvider.class,
+            StreakCompactWidgetProvider.class,
     };
 
     /** Repinta todos los widgets colocados (los que no están, se saltan). */
@@ -196,6 +211,18 @@ final class WidgetRenderer {
             renderGifts(context, manager, ids, Size.RECT);
         } else if (provider == GiftsWidgetProvider.class) {
             renderGifts(context, manager, ids, Size.LARGE);
+        } else if (provider == ReasonRectWidgetProvider.class) {
+            renderProText(context, manager, ids, Size.RECT, "widget_reason");
+        } else if (provider == ReasonCompactWidgetProvider.class) {
+            renderProText(context, manager, ids, Size.COMPACT, "widget_reason");
+        } else if (provider == OpenWhenRectWidgetProvider.class) {
+            renderProText(context, manager, ids, Size.RECT, "widget_openwhen");
+        } else if (provider == OpenWhenCompactWidgetProvider.class) {
+            renderProText(context, manager, ids, Size.COMPACT, "widget_openwhen");
+        } else if (provider == StreakRectWidgetProvider.class) {
+            renderProText(context, manager, ids, Size.RECT, "widget_streak");
+        } else if (provider == StreakCompactWidgetProvider.class) {
+            renderProText(context, manager, ids, Size.COMPACT, "widget_streak");
         } else {
             renderDistance(context, manager, ids, Size.LARGE);
         }
@@ -287,10 +314,14 @@ final class WidgetRenderer {
             return R.layout.widget_days_compact;
         }
 
+        // El tamaño «grande» ya no ocupa 4×3: su composición horizontal está
+        // pensada específicamente para 4×2 y no debe degradarse a la de 3×1.
+        if (defaultSize == Size.LARGE) {
+            return R.layout.widget_days;
+        }
+
         if (box[0] <= 0 && box[1] <= 0) {
-            return defaultSize == Size.LARGE
-                    ? R.layout.widget_days
-                    : R.layout.widget_days_rect;
+            return R.layout.widget_days_rect;
         }
 
         if (isShort(box[1])) {
@@ -376,10 +407,18 @@ final class WidgetRenderer {
      * días: sin tamaño conocido, la baja.
      */
     private static int distanceLayout(int[] box, Size defaultSize) {
+        if (defaultSize == Size.COMPACT) {
+            return R.layout.widget_distance_compact;
+        }
+
+        // El destacado ya ocupa 4×2: su composición horizontal no debe
+        // degradarse a la baja cuando el launcher aún no dice el hueco.
+        if (defaultSize == Size.LARGE) {
+            return R.layout.widget_distance;
+        }
+
         if (box[0] <= 0 && box[1] <= 0) {
-            return defaultSize == Size.COMPACT
-                    ? R.layout.widget_distance_compact
-                    : R.layout.widget_distance_rect;
+            return R.layout.widget_distance_rect;
         }
 
         if (isShort(box[1])) {
@@ -471,10 +510,16 @@ final class WidgetRenderer {
     }
 
     private static int countdownLayout(int[] box, Size defaultSize) {
+        if (defaultSize == Size.COMPACT) {
+            return R.layout.widget_countdown_compact;
+        }
+
+        if (defaultSize == Size.LARGE) {
+            return R.layout.widget_countdown;
+        }
+
         if (box[0] <= 0 && box[1] <= 0) {
-            return defaultSize == Size.COMPACT
-                    ? R.layout.widget_countdown_compact
-                    : R.layout.widget_countdown_rect;
+            return R.layout.widget_countdown_rect;
         }
         if (isShort(box[1])) {
             return isNarrow(box[0])
@@ -486,9 +531,9 @@ final class WidgetRenderer {
     }
 
     private static int baseCountdownSp(int layout) {
-        if (layout == R.layout.widget_countdown_compact) return 34;
-        if (layout == R.layout.widget_countdown_rect) return 36;
-        return 48;
+        if (layout == R.layout.widget_countdown_compact) return 24;
+        if (layout == R.layout.widget_countdown_rect) return 30;
+        return 42;
     }
 
     /**
@@ -531,7 +576,6 @@ final class WidgetRenderer {
         String empty = context.getString(R.string.widget_countdown_empty);
         RemoteViews views = new RemoteViews(
                 context.getPackageName(), R.layout.widget_countdown_multi);
-
         for (int i = 0; i < rows.length; i++) {
             if (i >= events.size()) {
                 views.setViewVisibility(rows[i], View.GONE);
@@ -561,7 +605,7 @@ final class WidgetRenderer {
         }
 
         WidgetSupport.openApp(context, views, R.id.widget_countdown_root, "calendario");
-        manager.updateAppWidget(id, views);
+        push(manager, id, views);
     }
 
     /** Repinta solo las cuentas atrás (acaba de cambiar su configuración). */
@@ -622,7 +666,21 @@ final class WidgetRenderer {
                     TypedValue.COMPLEX_UNIT_SP,
                     pinnedSp(emojiBase, scale));
             views.setTextViewText(R.id.widget_mood_label, shownLabel);
+            views.setTextViewTextSize(
+                    R.id.widget_mood_label,
+                    TypedValue.COMPLEX_UNIT_SP,
+                    moodLabelSp(context, shownLabel, layout, box, scale));
             views.setTextViewText(R.id.widget_mood_meta, meta);
+
+            // En el apaisado el rótulo dice «HOY»: con el último ánimo de ayer
+            // mentiría, así que pasa a «ÚLTIMO» y la fecha la da la línea de abajo.
+            if (layout == R.layout.widget_mood_rect) {
+                views.setTextViewText(
+                        R.id.widget_mood_kicker,
+                        context.getString(known && !isToday
+                                ? R.string.widget_mood_kicker_last
+                                : R.string.widget_mood_kicker));
+            }
 
             // En el grande, el «hoy» es lo primero que sobra al 170 %.
             if (layout == R.layout.widget_mood && extreme) {
@@ -635,10 +693,16 @@ final class WidgetRenderer {
     }
 
     private static int moodLayout(int[] box, Size defaultSize) {
+        if (defaultSize == Size.COMPACT) {
+            return R.layout.widget_mood_compact;
+        }
+
+        if (defaultSize == Size.LARGE) {
+            return R.layout.widget_mood;
+        }
+
         if (box[0] <= 0 && box[1] <= 0) {
-            return defaultSize == Size.COMPACT
-                    ? R.layout.widget_mood_compact
-                    : R.layout.widget_mood_rect;
+            return R.layout.widget_mood_rect;
         }
         if (isShort(box[1])) {
             return isNarrow(box[0])
@@ -650,9 +714,29 @@ final class WidgetRenderer {
     }
 
     private static int baseMoodEmojiSp(int layout) {
-        if (layout == R.layout.widget_mood_compact) return 40;
-        if (layout == R.layout.widget_mood_rect) return 36;
-        return 56;
+        if (layout == R.layout.widget_mood_compact) return 26;
+        if (layout == R.layout.widget_mood_rect) return 34;
+        return 44;
+    }
+
+    /** Cuerpo de partida de la etiqueta del ánimo, según la composición. */
+    private static int baseMoodLabelSp(int layout) {
+        if (layout == R.layout.widget_mood_compact) return 9;
+        if (layout == R.layout.widget_mood_rect) return 14;
+        return 20;
+    }
+
+    /**
+     * Hace caber la etiqueta entera. Con dos emociones («Triste · Cansada») el
+     * texto es más largo que el de una sola: se mide contra el hueco real y se
+     * encoge lo justo para que no acabe en «Triste · Can…». Nunca crece por
+     * encima del cuerpo que fijó el diseño.
+     */
+    private static int moodLabelSp(
+            Context context, String text, int layout, int[] box, float scale) {
+        int base = baseMoodLabelSp(layout);
+        int room = Math.max(24, (int) (availableWidthDp(box, layout) / Math.max(1f, scale)));
+        return Math.min(base, Math.max(9, fitSp(context, text, base, room)));
     }
 
     // ==========================================
@@ -686,6 +770,8 @@ final class WidgetRenderer {
             if (days > 1 && !next.isEmpty()) nextLabel += " · " + formatShortDate(next);
         }
 
+        float scale = fontScale(context);
+
         for (int id : ids) {
             int[] box = box(context, manager, id);
             int layout = cycleLayout(box, defaultSize);
@@ -694,6 +780,13 @@ final class WidgetRenderer {
             RemoteViews views = new RemoteViews(context.getPackageName(), layout);
             views.setTextViewText(R.id.widget_cycle_phase, shownPhase);
             views.setTextViewText(R.id.widget_cycle_day, compact ? bigDay : dayLabel);
+            if (compact) {
+                // El día es el protagonista del cuadrado: se mide contra el
+                // hueco y se ancla, como el número del resto de widgets.
+                views.setTextViewTextSize(R.id.widget_cycle_day, TypedValue.COMPLEX_UNIT_SP,
+                        pinnedSp(fitSp(context, bigDay, baseCycleDaySp(),
+                                availableWidthDp(box, layout)), scale));
+            }
 
             if (!compact) {
                 if (nextLabel.isEmpty()) {
@@ -711,10 +804,16 @@ final class WidgetRenderer {
     }
 
     private static int cycleLayout(int[] box, Size defaultSize) {
+        if (defaultSize == Size.COMPACT) {
+            return R.layout.widget_cycle_compact;
+        }
+
+        if (defaultSize == Size.LARGE) {
+            return R.layout.widget_cycle;
+        }
+
         if (box[0] <= 0 && box[1] <= 0) {
-            return defaultSize == Size.COMPACT
-                    ? R.layout.widget_cycle_compact
-                    : R.layout.widget_cycle_rect;
+            return R.layout.widget_cycle_rect;
         }
         if (isShort(box[1])) {
             return isNarrow(box[0])
@@ -791,10 +890,10 @@ final class WidgetRenderer {
 
     /** Tamaño del póster en píxeles, el mismo que declara cada layout. */
     private static int[] posterSizePx(Context context, int layout) {
-        int wDp = layout == R.layout.widget_watching ? 72
-                : layout == R.layout.widget_watching_rect ? 52 : 44;
-        int hDp = layout == R.layout.widget_watching ? 96
-                : layout == R.layout.widget_watching_rect ? 72 : 60;
+        int wDp = layout == R.layout.widget_watching ? 52
+                : layout == R.layout.widget_watching_rect ? 44 : 30;
+        int hDp = layout == R.layout.widget_watching ? 72
+                : layout == R.layout.widget_watching_rect ? 60 : 40;
         return new int[] { WidgetSupport.dp(context, wDp), WidgetSupport.dp(context, hDp) };
     }
 
@@ -811,10 +910,16 @@ final class WidgetRenderer {
     }
 
     private static int watchingLayout(int[] box, Size defaultSize) {
+        if (defaultSize == Size.COMPACT) {
+            return R.layout.widget_watching_compact;
+        }
+
+        if (defaultSize == Size.LARGE) {
+            return R.layout.widget_watching;
+        }
+
         if (box[0] <= 0 && box[1] <= 0) {
-            return defaultSize == Size.COMPACT
-                    ? R.layout.widget_watching_compact
-                    : R.layout.widget_watching_rect;
+            return R.layout.widget_watching_rect;
         }
         if (isShort(box[1])) {
             return isNarrow(box[0])
@@ -859,19 +964,38 @@ final class WidgetRenderer {
                 : pending > 0 ? context.getString(R.string.widget_gifts_hint)
                 : context.getString(R.string.widget_gifts_tomorrow);
 
+        float scale = fontScale(context);
+        boolean extreme = scale > EXTREME_FONT_SCALE;
+
         for (int id : ids) {
             int[] box = box(context, manager, id);
             int layout = giftsLayout(box, defaultSize);
             boolean compact = layout == R.layout.widget_gifts_compact;
 
+            // La cifra comparte fila con «sorpresas»: se descuenta su hueco.
+            int countSp = pinnedSp(fitSp(context, count, baseGiftsSp(layout),
+                    availableWidthDp(box, layout) - (compact ? 0 : 34)), scale);
+
+            // En las composiciones anchas la unidad ya dice «sorpresas»: la
+            // etiqueta solo añade algo cuando no queda ninguna por abrir.
+            String labelText = !compact && known && pending > 0 ? "" : label;
+
             RemoteViews views = new RemoteViews(context.getPackageName(), layout);
             views.setTextViewText(R.id.widget_gifts_count, count);
-            views.setTextViewText(R.id.widget_gifts_label, label);
-            if (layout == R.layout.widget_gifts_rect) {
+            views.setTextViewTextSize(
+                    R.id.widget_gifts_count, TypedValue.COMPLEX_UNIT_SP, countSp);
+            setIfText(views, R.id.widget_gifts_label, labelText);
+            if (!compact) {
+                // «sorpresas» solo acompaña a una cifra que signifique algo.
                 views.setViewVisibility(
-                        R.id.widget_gifts_unit, pending > 0 ? View.VISIBLE : View.GONE);
+                        R.id.widget_gifts_unit,
+                        known && pending > 0 ? View.VISIBLE : View.GONE);
             }
-            if (!compact) setIfText(views, R.id.widget_gifts_hint, hint);
+            // Solo el destacado tiene la línea extra; con letra muy grande se
+            // calla antes que empujar la cifra fuera.
+            if (layout == R.layout.widget_gifts) {
+                setIfText(views, R.id.widget_gifts_hint, extreme ? "" : hint);
+            }
 
             WidgetSupport.openApp(context, views, R.id.widget_gifts_root, "calendario");
             push(manager, id, views);
@@ -879,10 +1003,16 @@ final class WidgetRenderer {
     }
 
     private static int giftsLayout(int[] box, Size defaultSize) {
+        if (defaultSize == Size.COMPACT) {
+            return R.layout.widget_gifts_compact;
+        }
+
+        if (defaultSize == Size.LARGE) {
+            return R.layout.widget_gifts;
+        }
+
         if (box[0] <= 0 && box[1] <= 0) {
-            return defaultSize == Size.COMPACT
-                    ? R.layout.widget_gifts_compact
-                    : R.layout.widget_gifts_rect;
+            return R.layout.widget_gifts_rect;
         }
         if (isShort(box[1])) {
             return isNarrow(box[0])
@@ -948,30 +1078,67 @@ final class WidgetRenderer {
 
     /** Cuerpo de partida del número de días, según la composición. */
     private static int baseCountSp(int layout) {
-        return layout == R.layout.widget_days ? 44 : 36;
+        return layout == R.layout.widget_days_compact ? 26
+                : layout == R.layout.widget_days ? 42 : 30;
     }
 
     /** Cuerpo de partida de la cifra de distancia, según la composición. */
     private static int baseDistanceSp(int layout) {
-        if (layout == R.layout.widget_distance_compact) return 30;
-        if (layout == R.layout.widget_distance_rect) return 34;
-        return 40;
+        if (layout == R.layout.widget_distance_compact) return 24;
+        if (layout == R.layout.widget_distance_rect) return 30;
+        return 42;
+    }
+
+    /** Cuerpo de partida de la cifra de sorpresas, según la composición. */
+    private static int baseGiftsSp(int layout) {
+        if (layout == R.layout.widget_gifts_compact) return 22;
+        if (layout == R.layout.widget_gifts_rect) return 30;
+        return 42;
+    }
+
+    /** Cuerpo de partida del día del ciclo: solo el cuadrado lo pinta grande. */
+    private static int baseCycleDaySp() {
+        return 24;
     }
 
     /**
-     * Ancho útil del dato, en dp, descontando padding y, en la composición
-     * baja, la barra de acento y las dos caras.
+     * Ancho útil del dato, en dp: el hueco real menos lo que no es cifra
+     * (padding, barra de acento y el bloque de la derecha: caras, póster o
+     * emoji). Así la cifra se mide contra lo que de verdad le queda.
      */
     private static int availableWidthDp(int[] box, int layout) {
-        int width = box[0] > 0 ? box[0] : (layout == R.layout.widget_days_compact
-                || layout == R.layout.widget_distance_compact ? 110 : 250);
+        int width = box[0] > 0 ? box[0] : defaultWidthDp(layout);
+        return Math.max(48, width - reservedWidthDp(layout));
+    }
 
-        if (layout == R.layout.widget_days_rect || layout == R.layout.widget_distance_rect) {
-            // 14 + 14 de padding, 3 de barra, 12 de margen, 80 de caras y 10
-            // de separación.
-            return Math.max(60, width - 133);
+    /** Ancho con el que se mide cuando el launcher todavía no sabe el hueco. */
+    private static int defaultWidthDp(int layout) {
+        if (layout == R.layout.widget_days_compact
+                || layout == R.layout.widget_distance_compact
+                || layout == R.layout.widget_countdown_compact
+                || layout == R.layout.widget_mood_compact
+                || layout == R.layout.widget_cycle_compact
+                || layout == R.layout.widget_watching_compact
+                || layout == R.layout.widget_gifts_compact) {
+            return 56;
         }
-        return Math.max(50, width - 20);
+        return 220;
+    }
+
+    private static int reservedWidthDp(int layout) {
+        if (layout == R.layout.widget_watching_compact) return 43;  // 4+30+5
+        if (layout == R.layout.widget_watching_rect) return 74;     // 10+44+10
+        if (layout == R.layout.widget_watching) return 92;          // 14+52+12
+        if (layout == R.layout.widget_mood_rect) return 66;         // 10+34+12
+        if (layout == R.layout.widget_mood) return 82;              // 14+44+10
+        if (layout == R.layout.widget_gifts) return 97;             // 14+3+12+44+10
+        if (layout == R.layout.widget_gifts_rect) return 30;        // 10+2+8
+        if (layout == R.layout.widget_cycle) return 75;             // 14+3+12+40+10
+        if (layout == R.layout.widget_days
+                || layout == R.layout.widget_distance) return 89;   // 14+3+12+36+10
+        if (layout == R.layout.widget_days_rect
+                || layout == R.layout.widget_distance_rect) return 64; // 10+2+8+26+6
+        return 8;                                                   // cuadrado
     }
 
     /**
@@ -1122,6 +1289,78 @@ final class WidgetRenderer {
             }
         }
         return 0L;
+    }
+
+    // ==========================================
+    // PRO (razón del día · Open When · racha)
+    //   apaisado: kicker + valor + etiqueta
+    //   cuadrado: los tres, centrados y más pequeños
+    //   Una sola composición para los tres: solo cambia el significado.
+    // ==========================================
+    static void renderProText(
+            Context context, AppWidgetManager manager, int[] ids, Size defaultSize, String key) {
+        JSONObject data = WidgetSupport.read(context, key);
+        String kicker;
+        String value;
+        String label;
+        String route;
+
+        if ("widget_reason".equals(key)) {
+            String text = data == null ? "" : data.optString("text", "").trim();
+            kicker = context.getString(R.string.widget_reason_kicker);
+            value = text.isEmpty() ? "\u2014" : text;
+            label = text.isEmpty()
+                    ? context.getString(R.string.widget_reason_empty)
+                    : context.getString(R.string.widget_reason_label);
+            route = "razones";
+        } else if ("widget_openwhen".equals(key)) {
+            int pending = data == null ? 0 : data.optInt("pending", 0);
+            kicker = context.getString(R.string.widget_openwhen_kicker);
+            value = data == null ? "\u2014" : String.valueOf(pending);
+            label = data == null
+                    ? context.getString(R.string.widget_openwhen_empty)
+                    : pending > 0
+                    ? context.getResources().getQuantityString(
+                            R.plurals.widget_openwhen_pending, pending, pending)
+                    : context.getString(R.string.widget_openwhen_done);
+            route = "openwhen";
+        } else {
+            int days = data == null ? 0 : data.optInt("days", 0);
+            int best = data == null ? 0 : data.optInt("best", 0);
+            kicker = context.getString(R.string.widget_streak_kicker);
+            value = data == null ? "\u2014" : String.valueOf(days);
+            if (data == null) {
+                label = context.getString(R.string.widget_streak_empty);
+            } else if (days > 0) {
+                label = context.getResources().getQuantityString(
+                        R.plurals.widget_streak_days, days, days);
+            } else {
+                label = context.getString(R.string.widget_streak_none);
+            }
+            if (best > days) {
+                label = label + " \u00b7 " + context.getString(R.string.widget_streak_best, best);
+            }
+            route = "sentimientos";
+        }
+
+        for (int id : ids) {
+            int[] box = box(context, manager, id);
+            int layout = proLayout(box, defaultSize);
+            RemoteViews views = new RemoteViews(context.getPackageName(), layout);
+            views.setTextViewText(R.id.widget_pro_kicker, kicker);
+            views.setTextViewText(R.id.widget_pro_value, value);
+            setIfText(views, R.id.widget_pro_label, label);
+            WidgetSupport.openApp(context, views, R.id.widget_pro_root, route);
+            push(manager, id, views);
+        }
+    }
+
+    private static int proLayout(int[] box, Size defaultSize) {
+        if (defaultSize == Size.COMPACT) return R.layout.widget_pro_compact;
+        if (box[0] <= 0 && box[1] <= 0) return R.layout.widget_pro_rect;
+        if (isShort(box[1]) && isNarrow(box[0])) return R.layout.widget_pro_compact;
+        if (isNarrow(box[0])) return R.layout.widget_pro_compact;
+        return R.layout.widget_pro_rect;
     }
 
     /** Descarga las caras que falten y repinta todos los widgets al terminar. */

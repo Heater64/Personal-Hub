@@ -9,6 +9,7 @@
    ubicación a mano: sin eso no habría posición propia.
    ========================================== */
 
+import '../styles/mapa.css';
 import { icon } from '../components/ui.js';
 import { distanceMapBody } from '../components/DistanceMapSheet.js';
 import { userStore } from '../stores/user.store.js';
@@ -48,7 +49,7 @@ export function MapaPage(router) {
 
   const pintar = ({ me, partner, km }) => {
     limpiarMapa();
-    body.innerHTML = '';
+    body.replaceChildren();
     body.append(distanceMapBody({ me, partner, km, meName: user.name }));
   };
 

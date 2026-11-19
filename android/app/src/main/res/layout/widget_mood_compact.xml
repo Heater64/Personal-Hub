@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Estado de ánimo · 2×2
+<!-- Estado de ánimo · 1×1
 
      El emoji es el dato: grande y centrado, con la etiqueta debajo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -10,7 +10,7 @@
     android:background="@drawable/widget_mood_bg"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="4dp">
 
     <TextView
         android:id="@+id/widget_mood_emoji"
@@ -19,22 +19,21 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="—"
-        android:textSize="40sp"
-        tools:text="🥰"/>
+        android:textSize="26sp"
+        tools:text="🥰" />
 
     <TextView
         android:id="@+id/widget_mood_label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
         android:ellipsize="end"
         android:gravity="center"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="@string/widget_mood_empty"
         android:textColor="#FFFFFF"
-        android:textSize="10sp"
-        tools:text="Muy feliz"/>
+        android:textSize="9sp"
+        tools:text="Muy feliz" />
 
     <TextView
         android:id="@+id/widget_mood_meta"
@@ -46,7 +45,7 @@
         android:maxLines="1"
         android:text="@string/widget_mood_hint"
         android:textColor="@color/widget_text_muted"
-        android:textSize="8sp"
-        tools:text="hoy"/>
+        android:textSize="7sp"
+        tools:text="hoy" />
 
 </LinearLayout>

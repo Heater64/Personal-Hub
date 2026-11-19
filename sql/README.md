@@ -45,6 +45,7 @@ Los archivos **dependen entre sí** — ejecútalos en orden numérico.
 | **026** | `026_rls_hardening.sql` | **Cierra la escalada por INSERT en `profiles`, el listado anónimo de Storage y los privilegios sobrantes** | 🔴 seguridad |
 | **027** | `027_ciclo_menstrual.sql` | **Seguimiento menstrual: `cycle_settings`, `cycle_periods`, `cycle_daily_logs`, `cycle_sharing` + vista de pareja filtrada por campo** | 🔴 seguridad / tablas nuevas |
 | 028 | `028_avisos_ciclo.sql` | Interruptor `admin_cycle`: avisos del ciclo hacia el admin (menstruación, día con síntomas, permiso de compartir) | añade columna |
+| 031 | `031_pareja_portada.sql` | Fotos compartidas de «días juntos»: columna `data` en `couples` y permiso de actualización para la pareja | añade columna + policy |
 
 ---
 

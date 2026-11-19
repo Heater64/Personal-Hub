@@ -22,6 +22,67 @@ tests/                 Tests de contrato (node --test), sin dependencias
 vercel.json            Cabeceras de seguridad + cron diario de push
 ```
 
+### Navegación y mundos
+
+Las cuatro pestañas siguen siendo **Inicio · Rincón · Sentimientos · Perfil**, igual para las dos
+cuentas. Los módulos no se duplican en pestañas nuevas: dentro de Rincón y de Sentimientos las
+tarjetas se agrupan por **mundos** (Recuerdos, Sentimientos, Planes, Entretenimiento, Bienestar, Vida
+cotidiana y Creatividad) con la etiqueta compartida `.mundo` de `src/styles/ui.css`.
+
+El mapa módulo → mundo vive en `src/data/mundos.data.js` y es lo único que hay que tocar para mover
+una tarjeta de sitio. Un mundo sin tarjetas no se pinta, y un módulo sin mundo asignado cae en «Más»
+en vez de desaparecer. `tests/mundos.test.js` fija las tres cosas (y que no se cree ninguna ruta
+`/mundos`).
+
+**Piezas compartidas de pantalla** (Fase 3):
+
+- **Cabecera**: `renderPageHeader({ title, subtitle, actions, back, className })` en
+  `src/components/PageHeader.js` es el único patrón (título, subtítulo opcional, acciones y volver
+  cuando toca). La usan Calendario, OpenWhen, OsitosWorld, Razones, la subcabecera de Rincón y
+  Curiosidades; no queda marcado copiado a mano.
+- **Estados**: `src/components/states.js` exporta `emptyStateHTML()` (mensaje claro + acción cuando
+  tiene sentido) y `skeletonHTML()` / `skeletonCardsHTML()` (carga con filas o tarjetas). Se usan en
+  el calendario mientras llega el catálogo, en el historial de Sentimientos y en la búsqueda de
+  Curiosidades sin resultados. El brillo del skeleton se apaga con `prefers-reduced-motion`.
+- **Transiciones**: el router añade `.route-enter` al montar la página (solo entrada, sin retrasar la
+  navegación) y no la añade si el sistema pide movimiento reducido; el CSS además anula la animación
+  en ese caso.
+- **Búsqueda global**: `src/components/GlobalSearch.js` sobre la hoja compartida, con índice en
+  `src/data/search.data.js` (las 11 tarjetas de los hubs + rutas reales, filtradas por rol). Se abre
+  con **Ctrl/⌘ + K**, con el botón flotante en móvil y con la entrada del menú lateral: no hay pestaña
+  ni ruta `/buscar`. Teclado completo (↑/↓, Enter, Escape), estado inicial con sugerencias y «sin
+  resultados» explícito. `tests/fase3.test.js` fija que solo encuentre módulos reales.
+
+**Datos de la fase Pro (Fase 5)**, todo sobre lo que ya existía y **sin migraciones**:
+
+- `src/utils/pro-insights.js` reúne los cálculos puros que comparten varias pantallas: récords de los
+  minijuegos (leídos de su `localStorage`), mejor racha y tira de 14 días de ánimo, razón del día
+  (elegida por fecha, igual para las dos cuentas) y «un año hoy» a partir de la fecha que ya lleva la
+  URL de cada foto.
+- `src/services/pro.service.js` guarda la **watchlist compartida** en la fila `series_watchlist` de
+  la tabla `content` que ya existe (el mismo patrón que la presencia y los catálogos). No hay tabla ni
+  política nueva: las dos cuentas leen y escriben la misma lista y cada entrada recuerda quién la
+  añadió.
+- Los **widgets nuevos** (razón del día, Open When pendiente y racha) siguen el patrón de siempre:
+  `widgets.service.js` escribe el paquete en Preferences y pide el repintado; en nativo,
+  `ProWidgetProvider` delega en `WidgetRenderer.renderProText()` y comparten dos layouts
+  (`widget_pro_rect`, `widget_pro_compact`). La hoja de widgets usa el paquete guardado y, si todavía
+  no existe (siempre en el navegador), un ejemplo neutro (`PREVIEW_SAMPLES`), para que ninguna
+  miniatura quede en blanco.
+- `tests/fase5.test.js` fija los cálculos y los contratos de pantalla y de los seis receptores
+  nativos. La suite queda en **363 tests**.
+
+### Arranque y rendimiento
+
+El bundle inicial lleva solo lo que se ve al entrar: tokens, base, componentes compartidos,
+navegación, reproductor y visor. Cada pantalla importa su propia hoja de estilos y se monta con
+`lazy()` (Login es la excepción: es la primera pantalla con la sesión cerrada). KaTeX tampoco viaja
+en `index.html`: lo pide el calendario la primera vez que se abre (`loadKatex()` en
+`src/utils/renderMath.js`). Medido al cerrar la fase 4: **253,72 kB de JS (gzip 79,81)** y **91,36 kB
+de CSS (gzip 17,44)**, frente a 427,32 / 223,83 antes. Al cerrar la fase 5, con las tarjetas nuevas
+en `ui.css`: **253,48 kB de JS (gzip 79,77)** y **94,58 kB de CSS (gzip 17,97)**.
+`tests/fase4.test.js` impide que una hoja o una pantalla vuelvan al arranque sin querer.
+
 ## 2. Puesta en marcha
 
 ```bash
@@ -215,6 +276,8 @@ y la salida `personal-hub/dist`.
 | `push_reminders` | Solo el admin lee; escribir exige su sesión en `/api/push?action=reminders` |
 | `notification_prefs` | RLS de dueño (`user_id = auth.uid()`): nadie puede apagarle los avisos a otro. Incluye los del admin (024) |
 | `public/sw.js` | No cachea `/api/*` ni peticiones con `Authorization` |
+| `Content-Security-Policy` | Cierra orígenes de script, conexiones (solo el propio y Supabase), plugins y enmarcado. `tests/security-headers.test.js` la vigila |
+| `Permissions-Policy` | Cámara y micro cerrados; **geolocalización permitida al propio origen** (`geolocation=(self)`), sin la cual la distancia y el mapa no funcionan en producción |
 
 Detalles y consultas de comprobación: [`sql/README.md`](sql/README.md) y
 [`SUPABASE-SETUP.md`](SUPABASE-SETUP.md).
@@ -253,6 +316,42 @@ sustituyen a las pruebas manuales de §9.
 - [ ] Probar PWA en un Android y un iOS reales: instalación, safe areas, push, actualización del SW.
 - [ ] Backup cifrado + restauración probada en staging. RPO/RTO definidos.
 - [ ] SPF, DKIM y DMARC del proveedor de correo.
-- [ ] Confirmar si los buckets `galeria`, `memes` y `audios` deben ser públicos.
+- [ ] **Multimedia privado (fase 2 de [`docs/2026-11-19-plan-umbra.md`](docs/2026-11-19-plan-umbra.md)).**
+  Estado: **código hecho y verificado en local; `sql/030_media_privado.sql` escrito pero NO aplicado.**
+  Los buckets `galeria`, `memes`, `audios` y `avatars` siguen **públicos** en el proyecto real, así que
+  hoy la app se comporta igual que antes.
+
+  Lo que ya está:
+  - `personal-hub/src/services/media.service.js`: URL pública → ruta, firma por lote, caché con
+    caducidad, renovación antes de expirar, deduplicación (una firma por objeto, no por render) y paso
+    directo para Cloudinary.
+  - Galería, memes, audios, avatares, lightbox, fondos de Juntos y portada de Inicio piden su URL con
+    `mediaUrl()`; la galería firma antes de pintar.
+  - Degradación: si firmar falla o el objeto ya no existe, se usa la URL original y la vista no se
+    rompe; `installMediaFallback()` reintenta una vez los `img/video/audio` rotos.
+  - Las subidas firman lo recién subido antes de devolverlo, y la migración recrea la política de
+    escritura tal como estaba (admin en galería/memes/audios, dueño o admin en avatares), sin
+    escritura anónima. Ese camino con el bucket ya privatizado todavía no se ha probado.
+  - `tests/media-private.test.js` (26 tests): firma, renovación, fallo, objeto inexistente, respaldo y
+    forma del SQL.
+  - Verificado en local: `npm test` **309/309 en verde** (26 de ellos nuevos de esta fase; la misma
+    suite sigue verde hoy con 310/310 por pruebas que se siguen añadiendo en local), `npm run build`
+    correcto, `eslint` sin errores en lo tocado y comprobación en navegador contra los buckets tal como
+    están hoy (una sola firma por foto, degradación correcta y **cero violaciones de CSP**, solo el 401
+    esperado sin sesión).
+
+  Orden obligatorio (aún pendiente):
+  1. Desplegar este código con los buckets **todavía públicos**: no cambia nada visible.
+  2. Aplicar [`sql/030_media_privado.sql`](sql/030_media_privado.sql) — **este y ningún otro** — en el
+     SQL Editor de Supabase. Es idempotente y no borra, mueve ni reescribe objetos: solo pone los
+     cuatro buckets en privado y deja la lectura a sesiones `authenticated`.
+     Ojo: en `sql/` ya existe `030_inicializar_pareja_actual.sql` (trabajo local del usuario). Comparten
+     prefijo, pero el de esta fase es exactamente `030_media_privado.sql`.
+  3. Verificar con las dos cuentas: una URL pública sin sesión debe dar 400/403; galería, memes, audios
+     y avatares deben seguir viéndose (con favoritos y lightbox); y subir una foto y un avatar debe
+     seguir funcionando. Si algo va mal, el bloque de rollback comentado al final de `030` devuelve los
+     buckets a públicos sin tocar datos.
+  **Nada de ese paso 3 está comprobado por mí**: no hay sesión iniciada ni buckets privatizados en esta
+  verificación, así que el resultado en el proyecto real (y en producción) sigue sin confirmar.
 
 El detalle vive en [`docs/audit-readiness.md`](docs/audit-readiness.md).

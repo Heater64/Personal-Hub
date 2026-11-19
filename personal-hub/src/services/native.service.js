@@ -161,6 +161,9 @@ export async function initNativeApp() {
     // Vercel ya trae el último HTML/JS en la siguiente recarga.
     App.addListener('appStateChange', async ({ isActive }) => {
       if (!isActive) return;
+      // Los widgets viven fuera del WebView: al volver, fuerza un solo
+      // repintado de su caché nativa sin depender de que Inicio esté abierto.
+      window.dispatchEvent(new Event('personalhub:widgets-refresh'));
       try {
         const reg = await navigator.serviceWorker?.getRegistration?.('/');
         await reg?.update?.();

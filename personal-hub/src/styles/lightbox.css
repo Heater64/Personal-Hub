@@ -27,9 +27,26 @@ body.lightbox-open { overflow: hidden; }
 .ml-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(4, 4, 6, 0.94);
+  overflow: hidden;
+  background: rgba(20, 16, 26, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  opacity: var(--ml-drag-opacity, 1);
+}
+
+/* La propia foto, muy desenfocada: el visor hereda el color del recuerdo en
+   lugar de un negro plano. */
+.ml-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  background-image: var(--ml-photo, none);
+  background-position: center;
+  background-size: cover;
+  filter: blur(52px) saturate(115%);
+  opacity: 0.34;
+  transform: scale(1.06);
+  pointer-events: none;
 }
 
 .ml-shell {
@@ -65,6 +82,23 @@ body.lightbox-open { overflow: hidden; }
   font-weight: 500; font-variant-numeric: tabular-nums;
   padding: 0 var(--sp-12);
 }
+
+.ml-topbar-date {
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--theme-text-tertiary);
+  white-space: nowrap;
+}
+
+/* La barra se esconde al no usarla; cualquier gesto la devuelve. */
+.ml-topbar, .ml-bottombar, .ml-nav { transition: opacity 220ms ease; }
+.media-lightbox.chrome-hidden .ml-topbar,
+.media-lightbox.chrome-hidden .ml-bottombar,
+.media-lightbox.chrome-hidden .ml-nav {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ml-topbar-btn.is-done { color: var(--theme-accent); }
 
 .ml-topbar-right { display: flex; align-items: center; gap: var(--sp-4); }
 
@@ -263,9 +297,25 @@ body.lightbox-open { overflow: hidden; }
   max-width: 100%; padding: var(--sp-4) var(--sp-8); scroll-behavior: smooth;
 }
 
-.ml-thumbs-scroll::-webkit-scrollbar { height: 3px; }
-.ml-thumbs-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12); border-radius: 3px;
+/* Barra fina con las propiedades estándar (Firefox, Chrome 121+, Safari 18.2+). */
+.ml-thumbs-scroll {
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+/* Respaldo solo para quien aún no entiende scrollbar-color: ahí sí se usan
+   las pseudo-piezas de WebKit (y se devuelve el grosor a auto, porque
+   scrollbar-width: thin las desactiva). */
+@supports not (scrollbar-color: auto) {
+  .ml-thumbs-scroll {
+    scrollbar-width: auto;
+  }
+
+  .ml-thumbs-scroll::-webkit-scrollbar { height: 3px; }
+  .ml-thumbs-scroll::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb); border-radius: 3px;
+  }
 }
 
 .ml-thumb {

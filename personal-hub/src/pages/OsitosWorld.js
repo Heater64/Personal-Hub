@@ -10,6 +10,7 @@
 import '../styles/ositos.css';
 import { h, icon, openSheet, closeSheets, toast, emptyState } from '../components/ui.js';
 import { buildVideoPlayer } from '../components/MediaLightbox.js';
+import { renderPageHeader } from '../components/PageHeader.js';
 import { escapeHtml } from '../utils/escape.js';
 import { CHARACTERS, LORE, WORLD_PLACES, SAGAS } from '../data/ositos-data.js';
 import { userPrefKey } from '../utils/userStorage.js';
@@ -370,16 +371,14 @@ export function OsitosWorldPage(router) {
   function renderHead() {
     const n = favorites.size;
     return `
-      <header class="scr-head">
-        <div>
-          <h1 class="scr-title">OsitosWorld</h1>
-          <p class="sub">${CHARACTERS.length} personajes · ${n} ${n === 1 ? 'favorito' : 'favoritos'}</p>
-        </div>
-        <div class="head-actions">
+      ${renderPageHeader({
+        title: 'OsitosWorld',
+        subtitle: `${CHARACTERS.length} personajes · ${n} ${n === 1 ? 'favorito' : 'favoritos'}`,
+        actions: `
           <button type="button" class="icon-btn" id="osSearchBtn" aria-label="Buscar" title="Buscar">${icon('search', 19)}</button>
           <button type="button" class="icon-btn" id="osIntroBtn" aria-label="Ver vídeo de introducción" title="Vídeo de introducción">${icon('video', 19)}</button>
-        </div>
-      </header>
+        `,
+      })}
 
       <div class="chips os-chips" role="tablist" aria-label="Secciones de OsitosWorld">
         ${SECTIONS.filter(s => s.id !== 'favoritos' || favorites.size > 0).map(s => `

@@ -13,6 +13,7 @@ import { player } from '../../services/player.service.js';
 import { renderPageHeader } from '../../components/PageHeader.js';
 import { ICON_SVGS } from './icons.js';
 import { SECTIONS } from './sections.data.js';
+import { agruparPorMundo } from '../../data/mundos.data.js';
 import { state } from './state.js';
 import { getSongCovers } from './songCovers.js';
 
@@ -135,13 +136,29 @@ export function createLanding(ctx) {
         </div>
       </section>
   
-      <!-- ===== TARJETAS DE SECCIÓN ===== -->
+      <!-- ===== TARJETAS DE SECCIÓN, AGRUPADAS POR MUNDO ===== -->
       <h2 class="section-title">Explora el Rincón
         ${isAdmin ? `<button type="button" class="link rincon-edit-toggle${state.editMode ? ' is-active' : ''}" id="rinconEditToggle" aria-pressed="${state.editMode}">${state.editMode ? '✓ Listo' : 'Editar portadas'}</button>` : ''}
       </h2>
-      <section class="rincon-cards-grid">
-        ${SECTIONS.map((s, i) => renderSectionCard(s, i, sectionPreviews[i])).join('')}
-      </section>
+      ${agruparPorMundo(SECTIONS)
+        .map(grupo => `
+        <section class="mundo" aria-labelledby="mundo-${grupo.id}">
+          <h3 class="mundo-title" id="mundo-${grupo.id}">
+            <span>${escapeHtml(grupo.label)}</span>
+            ${grupo.hint ? `<span class="mundo-hint">${escapeHtml(grupo.hint)}</span>` : ''}
+          </h3>
+          <div class="rincon-cards-grid">
+            ${grupo.items
+              .map(section => {
+                // El índice global mantiene el escalonado de entrada igual
+                // que con la rejilla plana.
+                const index = SECTIONS.indexOf(section);
+                return renderSectionCard(section, index, sectionPreviews[index]);
+              })
+              .join('')}
+          </div>
+        </section>`)
+        .join('')}
     `;
   
     // Animate section cards (staggered entrance)
@@ -316,7 +333,7 @@ export function createLanding(ctx) {
       } else if (e.info === null) {
         // Canción cerrada: vuelve a rotar portadas al azar
         const covers = getSongCovers();
-        const shuffled = [...covers].sort(() => Math.random() - 0.5);
+        const shuffled = covers.toSorted(() => Math.random() - 0.5);
         if (shuffled.length > 1) {
           img.style.transition = 'none';
           img.src = shuffled[0]; // muestra una portada al azar de inmediato

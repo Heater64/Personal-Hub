@@ -721,6 +721,10 @@
 .md-chat__input {
   flex: 1;
   min-width: 0;
+  /* El alto sigue al texto sin medir scrollHeight en cada tecla; el tope de
+     crecimiento sigue siendo max-height. */
+  field-sizing: content;
+  height: auto;
   min-height: 30px;
   max-height: 120px;
   padding: 6px 0;

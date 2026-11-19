@@ -195,6 +195,8 @@ export function wireLogForm(form, ctx, { onSaved } = {}) {
   customInput?.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
       event.preventDefault();
+      // Enter mientras un IME compone confirma el candidato, no añade nada.
+      if (event.isComposing || event.keyCode === 229) return;
       addCustomSymptom();
     }
   });

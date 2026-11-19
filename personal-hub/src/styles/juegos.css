@@ -38,15 +38,19 @@
   position: absolute;
   opacity: 0.06;
   animation: juegos-drift 7s ease-in-out infinite;
-  animation-delay: calc(var(--i, 0) * 1.2s);
+  /* Cada partícula arranca 1,2 s después que la anterior, sin variables
+     inyectadas ni una regla por posición. */
+  animation-delay: calc((sibling-index() - 1) * 1.2s);
   color: var(--theme-accent);
 }
 
-.juegos-header-particle:nth-child(1) { --i: 0; }
-.juegos-header-particle:nth-child(2) { --i: 1; }
-.juegos-header-particle:nth-child(3) { --i: 2; }
-.juegos-header-particle:nth-child(4) { --i: 3; }
-.juegos-header-particle:nth-child(5) { --i: 4; }
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .juegos-header-particle:nth-child(1) { animation-delay: 0s; }
+  .juegos-header-particle:nth-child(2) { animation-delay: 1.2s; }
+  .juegos-header-particle:nth-child(3) { animation-delay: 2.4s; }
+  .juegos-header-particle:nth-child(4) { animation-delay: 3.6s; }
+  .juegos-header-particle:nth-child(5) { animation-delay: 4.8s; }
+}
 
 .juegos-header-particle svg {
   width: 32px;

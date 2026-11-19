@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Seguir viendo · 2×2
+<!-- Seguir viendo · 1×1
 
      Póster a la izquierda y, a la derecha, el título y el episodio. Sin barra
      de progreso: RemoteViews no deja cambiar el ancho de una vista, así que el
@@ -12,21 +12,21 @@
     android:background="@drawable/widget_watching_bg"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="10dp">
+    android:padding="4dp">
 
     <ImageView
         android:id="@+id/widget_watching_poster"
-        android:layout_width="44dp"
-        android:layout_height="60dp"
+        android:layout_width="30dp"
+        android:layout_height="40dp"
         android:contentDescription="@string/widget_watching_poster"
         android:scaleType="centerCrop"
         android:src="@drawable/widget_poster_empty"
-        tools:src="@drawable/widget_poster_empty"/>
+        tools:src="@drawable/widget_poster_empty" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="5dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -39,21 +39,21 @@
             android:maxLines="2"
             android:text="@string/widget_watching_empty"
             android:textColor="#FFFFFF"
-            android:textSize="10sp"
+            android:textSize="8sp"
             android:textStyle="bold"
-        tools:text="Severance"/>
+            tools:text="Severance" />
 
         <TextView
             android:id="@+id/widget_watching_episode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="1dp"
             android:ellipsize="end"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="8sp"
-        tools:text="Ep. 4 de 10"/>
+            android:textSize="6sp"
+            tools:text="Ep. 4 de 10" />
 
     </LinearLayout>
 

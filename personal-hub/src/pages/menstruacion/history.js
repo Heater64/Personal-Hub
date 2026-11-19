@@ -22,7 +22,7 @@ function dominantFlow(logs, period) {
 }
 
 export function renderHistory(ctx) {
-  const periods = [...(ctx.data?.periods || [])].sort((a, b) =>
+  const periods = (ctx.data?.periods || []).toSorted((a, b) =>
     a.start_date.localeCompare(b.start_date)
   );
 
@@ -46,7 +46,7 @@ export function renderHistory(ctx) {
   });
 
   const logs = ctx.data.logs || [];
-  const rows = [...periods].reverse();
+  const rows = periods.toReversed();
 
   return `
     <section class="cy-section">

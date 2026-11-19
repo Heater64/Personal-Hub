@@ -59,7 +59,7 @@ function emptyGrid(size = BOARD_SIZE) {
 }
 
 function clone(value) {
-  return JSON.parse(JSON.stringify(value));
+  return structuredClone(value);
 }
 
 function escapeHtml(value) {

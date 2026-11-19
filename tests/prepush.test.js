@@ -352,22 +352,42 @@ test('inicio arranca por la tarjeta de días, sin cabecera ni frases viejas', as
   assert.ok(home.includes('todayISO()'));
 });
 
-test('el saludo de inicio va en la tarjeta de días, con apodo y sin duplicarse', async () => {
+test('el acceso permite recuperar y renovar la contraseña sin registro público', async () => {
+  const login = await readFile(hub('src', 'pages', 'Login.js'), 'utf8');
+  const authService = await readFile(hub('src', 'services', 'auth.service.js'), 'utf8');
+  const loginCss = await readFile(hub('src', 'styles', 'login.css'), 'utf8');
+
+  assert.match(login, /id="loginForgot"/, 'el acceso ofrece recuperación de contraseña');
+  assert.match(login, /id="loginRecoveryForm"/, 'el enlace de recuperación abre una vista propia');
+  assert.match(login, /id="loginNewPassword"/, 'la vista permite elegir una contraseña nueva');
+  assert.doesNotMatch(login, /signUp\(/, 'el acceso no abre registros públicos');
+  assert.match(authService, /resetPasswordForEmail\(/, 'la solicitud se envía a Supabase Auth');
+  assert.match(authService, /updateUser\(\{ password \}\)/, 'la nueva contraseña se guarda en Supabase Auth');
+  assert.match(authService, /redirectTo/, 'el correo vuelve a la app tras abrir el enlace');
+  assert.match(authService, /\?recovery=1#\/login/, 'el código PKCE queda fuera del hash del router');
+  assert.match(loginCss, /\.login-form\[hidden\]\s*\{\s*display:\s*none/, 'solo se muestra un formulario a la vez');
+});
+
+test('Inicio presenta una cabecera de pareja y una portada de días sin duplicar el saludo', async () => {
   const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
 
   // Apodo según el rol de la sesión: admin vs. la otra cuenta.
   assert.ok(
-    home.includes("userStore.isAdmin ? 'admin' : 'mi princesa'"),
+    home.includes("userStore.isAdmin ? 'Peluche' : 'mi princesa'"),
     'el apodo debe salir de userStore.isAdmin'
   );
   assert.ok(home.includes("from '../stores/user.store.js'"), 'Home debe importar el userStore');
 
-  // El saludo se pinta dentro de la tarjeta de días.
-  const tarjeta = home.slice(home.indexOf('<section class="home-hero"'));
-  const posSaludo = tarjeta.indexOf('home-hero__greet');
-  const posContador = tarjeta.indexOf('home-hero__main');
-  assert.notEqual(posSaludo, -1, 'debe existir home-hero__greet');
-  assert.ok(posSaludo < posContador, 'el saludo va ANTES del contador de días');
+  // El saludo es una cabecera independiente y la portada queda reservada al
+  // contador: dos jerarquías claras en vez de amontonar todo en una tarjeta.
+  const posSaludo = home.indexOf('class="home-topbar__greet"');
+  const posPortada = home.indexOf('<section class="home-hero"');
+  const posContador = home.indexOf('home-hero__main');
+  assert.notEqual(posSaludo, -1, 'debe existir la cabecera del saludo');
+  assert.ok(
+    posSaludo < posPortada && posPortada < posContador,
+    'cabecera, portada y contador mantienen su jerarquía'
+  );
 
   // Y el título de la pantalla ya no repite el saludo: la tarjeta es lo primero.
   assert.ok(!home.includes('renderPageHeader'), 'no debe quedar cabecera con otro saludo');
@@ -381,10 +401,10 @@ test('el saludo de inicio va en la tarjeta de días, con apodo y sin duplicarse'
 
   // Y está estilizado con tokens, no con colores sueltos.
   const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
-  assert.ok(css.includes('.home-hero__greet'), 'home.css debe estilizar .home-hero__greet');
-  const regla = css.slice(css.indexOf('.home-hero__greet {'), css.indexOf('.home-hero__greet-name'));
+  assert.ok(css.includes('.home-topbar__greet'), 'home.css debe estilizar .home-topbar__greet');
+  const regla = css.slice(css.indexOf('.home-topbar__greet {'), css.indexOf('.home-topbar__name'));
   assert.match(regla, /var\(--/);
-  assert.ok(css.includes('.home-hero__greet-name'));
+  assert.ok(css.includes('.home-topbar__name'));
 });
 
 test('rincon con cabecera y carrusel manual accesible', async () => {
@@ -441,7 +461,13 @@ test('las páginas de carga diferida se enrutan con el helper lazy', async () =>
   // El registro declara qué pantallas pesan y main.js las monta con el helper,
   // cada una en su chunk: si una se importara de forma estática, volvería al
   // bundle de arranque y este contrato se rompería.
-  for (const ruta of ['/openwhen', '/admin', '/rincon', '/canciones', '/juegos', '/calendario', '/series']) {
+  for (const ruta of [
+    '/openwhen', '/admin', '/rincon', '/canciones', '/juegos', '/calendario', '/series',
+    // Fase 4: Inicio, Perfil, Razones y Mal Día también viajan en su chunk.
+    // Son las pantallas que más CSS y JS arrastraban al arranque (home.css
+    // son 66 kB) y ninguna se necesita antes de navegar a ella.
+    '/', '/perfil', '/razones', '/maldia',
+  ]) {
     const entrada = ROUTES.find(r => r.path === ruta);
     assert.ok(entrada, `falta la ruta ${ruta} en el registro`);
     assert.equal(entrada.lazy, true, `${ruta} debería declararse diferida`);
@@ -450,9 +476,14 @@ test('las páginas de carga diferida se enrutan con el helper lazy', async () =>
     const linea = main.slice(idx, main.indexOf('\n', idx));
     assert.ok(linea.includes('lazy('), `${ruta} debería cargarse con lazy()`);
   }
-  // Y las ligeras se pueden seguir importando de forma estática.
-  for (const page of ['Login', 'Home', 'Profile', 'Razones', 'MalDia']) {
-    assert.ok(main.includes(`from './pages/${page}.js'`), `${page} debería seguir siendo estático`);
+  // Login se queda estático: es la primera pantalla con la sesión cerrada.
+  assert.ok(main.includes("from './pages/Login.js'"), 'Login debería seguir siendo estático');
+  for (const page of ['Home', 'Profile', 'Razones', 'MalDia']) {
+    assert.doesNotMatch(
+      main,
+      new RegExp(`from '\\./pages/${page}\\.js'`),
+      `${page} no debe volver al bundle de arranque`
+    );
   }
 
   // Ni una ruta sin página ni una página sin ruta: el registro y el mapa de
@@ -474,7 +505,11 @@ test('cada página diferida importa su propio CSS y main.css solo trae lo compar
     'Calendario.js': 'calendario.css', 'OpenWhen.js': 'openwhen.css',
     'Series.js': 'series.css', 'ThoseEyes.js': 'thoseeyes.css',
     'JustTheWayYouAre.js': 'justthewayyouare.css', 'OsitosWorld.js': 'ositos.css',
-    'Menstruacion.js': 'menstruacion.css'
+    'Menstruacion.js': 'menstruacion.css',
+    // Fase 4: también las que antes colgaban de main.css.
+    'Home.js': 'home.css', 'Profile.js': 'profile.css', 'Razones.js': 'razones.css',
+    'MalDia.js': 'maldia.css', 'Juntos.js': 'juntos.css', 'Mapa.js': 'mapa.css',
+    'Login.js': 'login.css'
   };
 
   for (const [page, css] of Object.entries(diferidas)) {
@@ -1113,7 +1148,7 @@ test('el historial de sentimientos escapa lo que viene de la base de datos', asy
 
 test('el apodo del saludo va en letra elegante, no en la de la interfaz', async () => {
   const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
-  const nombre = css.slice(css.indexOf('.home-hero__greet-name {'));
+  const nombre = css.slice(css.indexOf('.home-topbar__name {'));
 
   // Playfair Display es la serif que el proyecto ya carga: sin descargas nuevas.
   assert.match(nombre, /font-family:\s*var\(--font-display/, 'el apodo usa la fuente display');
@@ -1121,7 +1156,7 @@ test('el apodo del saludo va en letra elegante, no en la de la interfaz', async 
   assert.ok(!nombre.slice(0, nombre.indexOf('}')).includes('--font-ui'), 'no debe caer en la fuente de la interfaz');
 
   // La fuente elegante solo para el apodo: el resto del saludo sigue siendo Inter.
-  const saludo = css.slice(css.indexOf('.home-hero__greet {'), css.indexOf('.home-hero__greet-name {'));
+  const saludo = css.slice(css.indexOf('.home-topbar__greet {'), css.indexOf('.home-topbar__name {'));
   assert.match(saludo, /font-family:\s*var\(--font-ui\)/, 'el saludo conserva la tipografía de la interfaz');
 });
 
@@ -1388,7 +1423,13 @@ test('el calendario conserva su cabecera y el regalo destacado sobre la cuadríc
 
   assert.match(cal, /\$\{renderHead\(\)\}\s*<div id="calSpot"><\/div>\s*<div id="calMonth"><\/div>/,
     'la cabecera y el regalo destacado van antes del calendario');
-  assert.match(cal, /<h1 class="scr-title">Calendario<\/h1>/);
+  // Fase 3: la cabecera sale del componente compartido, no de marcado a mano.
+  assert.match(
+    cal,
+    /renderPageHeader\(\{\s*title: 'Calendario',\s*subtitle: 'Un regalo cada día, pensado para ti',/,
+    'la cabecera del calendario usa renderPageHeader'
+  );
+  assert.doesNotMatch(cal, /<h1 class="scr-title">Calendario<\/h1>/, 'sin copia manual del título');
   assert.match(cal, /Un regalo cada día, pensado para ti/);
   assert.equal((cal.match(/id="calSearchBtn"/g) || []).length, 1, 'la lupa solo aparece en la cabecera principal');
   assert.equal((cal.match(/id="calAnswersBtn"/g) || []).length, 1, 'el correo solo aparece en la cabecera principal');
@@ -1996,20 +2037,21 @@ test('la pantalla diaria lee cada dato de su dueño, sin re-derivarlo', async ()
   assert.ok(idxMood < idxNext, 'el estado de ánimo del día va primero');
 });
 
-test('el saludo de inicio y los días juntos usan el mismo cuerpo grande', async () => {
+test('la cabecera y los días juntos mantienen una jerarquía legible', async () => {
   const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
-  const saludo = css.slice(css.indexOf('.home-hero__greet {'), css.indexOf('.home-hero__greet-name {'));
-  const contador = css.slice(css.indexOf('.home-hero__num {'), css.indexOf('.home-hero__quote {'));
-  const size = (bloque) => (bloque.match(/font-size: var\(--fs-([\w-]+)\)/) || [])[1];
+  const saludo = css.slice(
+    css.indexOf('.home-topbar__greet {'),
+    css.indexOf('.home-topbar__name {')
+  );
+  const contador = css.slice(
+    css.indexOf('.home-hero__num {'),
+    css.indexOf('.home-hero__label {')
+  );
 
-  // Lo que importa es que el saludo y el contador midan lo mismo (el bloque
-  // de días se lee junto al saludo), no un tamaño concreto: si mañana se
-  // agranda o se baja, el test sigue diciendo la verdad.
-  assert.equal(size(saludo), size(contador), 'saludo y contador deben usar el mismo cuerpo');
-  assert.equal(size(saludo), '2xl', 'un cuerpo grande pero no excesivo');
-  // El número y su etiqueta ("455 DÍAS JUNTOS") también comparten cuerpo.
-  assert.equal((contador.match(/font-size: var\(--fs-([\w-]+)\)/g) || []).length, 2);
-  assert.match(css, /\.home-hero__greet \{\s*font-size: clamp\(/, 'el saludo también se ajusta a pantallas estrechas');
+  // El saludo es contextual y el contador el protagonista de la portada.
+  assert.match(saludo, /font-size:\s*clamp\(/, 'el saludo se adapta a pantallas estrechas');
+  assert.match(contador, /font-size:\s*clamp\(/, 'el contador se adapta a pantallas estrechas');
+  assert.match(contador, /font-variant-numeric:\s*tabular-nums/, 'el contador evita saltos visuales al animarse');
 });
 
 test('el resumen enseña primero lo de hoy y deja los accesos al final', async () => {
@@ -2184,27 +2226,20 @@ test('los cuatro días son tarjetas con interruptor y el pie avisa de cambios si
   assert.ok(css.includes('.config-save.is-dirty'), 'y el aviso se ve');
 });
 
-test('el saludo de Inicio baja el apodo a su propia línea solo en móvil', async () => {
+test('la cabecera de Inicio conserva saludo y apodo en una línea truncable', async () => {
   const css = await readFile(hub('src', 'styles', 'home.css'), 'utf8');
   const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
 
-  // Saludo y apodo son dos trozos de la misma frase: el span es lo que se parte.
-  assert.match(home, /class="home-hero__greet"/);
-  assert.match(home, /class="home-hero__greet-name"/);
-  assert.ok(home.includes('mi princesa'), 'el apodo se sigue mostrando');
+  assert.match(home, /class="home-topbar__greet"/);
+  assert.match(home, /class="home-topbar__name"/);
+  assert.ok(home.includes("'Peluche'"), 'el apodo se sigue mostrando');
 
-  // La regla base del apodo no corta la línea: en escritorio va todo en una.
-  const baseIni = css.indexOf('.home-hero__greet-name {');
+  // El apodo se trunca antes de competir con avatares y ajustes en móvil.
+  const baseIni = css.indexOf('.home-topbar__name {');
   assert.notEqual(baseIni, -1, 'el apodo tiene su propia regla');
   const base = css.slice(baseIni, css.indexOf('}', baseIni));
-  assert.doesNotMatch(base, /display:\s*block/, 'fuera de móvil el apodo no baja de línea');
-
-  // El corte solo existe dentro de la media query de móvil.
-  const corte = /\.home-hero__greet-name \{\s*display:\s*block;\s*\}/;
-  const enMovil = css.search(corte);
-  assert.ok(enMovil > baseIni, 'en móvil el apodo baja a su línea');
-  assert.ok(css.lastIndexOf('@media (max-width: 767px)', enMovil) !== -1,
-    'ese corte vive dentro de la media query de móvil');
+  assert.match(base, /text-overflow:\s*ellipsis/, 'el apodo largo no desborda');
+  assert.match(base, /overflow:\s*hidden/, 'el recorte está contenido');
 });
 
 test('desde el Admin se ve la bienvenida sin esperar al día', async () => {
@@ -2466,8 +2501,8 @@ test('el visor y los filtros de Galería detienen medios al cerrar o repintar', 
     'destroy detiene y descarga el vídeo activo');
   assert.match(memes, /function rerenderGallery\(\) \{[\s\S]*?closeLightbox\(\);[\s\S]*?pauseSlideshow\(\);[\s\S]*?querySelectorAll\('audio, video'\)/,
     'el re-render limpia el visor, la presentación y medios montados');
-  assert.match(memes, /stopGalleryPlayback\(\);[\s\S]*?state\.galeriaFilter = btn\.dataset\.filter/,
-    'cambiar el filtro para la reproducción antes de desmontar');
+  assert.match(memes, /stopGalleryPlayback\(\);[\s\S]*?state\.galeriaFilter = card\.dataset\.album/,
+    'abrir un álbum para la reproducción antes de desmontar');
   assert.match(rincon, /page\.querySelectorAll\('audio, video'\)\.forEach\(media => \{[\s\S]*?media\.pause\(\); media\.currentTime = 0/,
     'al salir de la sección se paran audio y vídeo');
 });

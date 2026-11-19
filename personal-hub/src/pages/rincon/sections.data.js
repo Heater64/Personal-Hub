@@ -54,7 +54,7 @@ export const SECTIONS = [
       const posters = GAMES.map(g => gameCover(g.id, g.color, g.accent));
       return {
         cover: posters[Math.floor(Math.random() * posters.length)] || '',
-        posters: [...posters].sort(() => Math.random() - 0.5)
+        posters: posters.toSorted(() => Math.random() - 0.5)
       };
     }
   },
@@ -72,7 +72,7 @@ export const SECTIONS = [
       const posters = [...photos, ...SPB_IMG, ...GATO_IMG];
       return {
         cover: posters[Math.floor(Math.random() * posters.length)] || '',
-        posters: [...posters].sort(() => Math.random() - 0.5)
+        posters: posters.toSorted(() => Math.random() - 0.5)
       };
     }
   },
@@ -89,7 +89,7 @@ export const SECTIONS = [
       const now = player.info?.cover || null;
       return {
         cover: now || covers[Math.floor(Math.random() * covers.length)] || '',
-        posters: now ? [now] : [...covers].sort(() => Math.random() - 0.5),
+        posters: now ? [now] : covers.toSorted(() => Math.random() - 0.5),
         locked: now ? player.info : null,
         stats: now ? '♪ Sonando ahora' : ''
       };
@@ -108,7 +108,7 @@ export const SECTIONS = [
       const cont = getContinueWatching();
       const pool = cont.length
         ? cont.slice(0, 4)
-        : [...getCatalogSync()].sort(() => Math.random() - 0.5).map(item => ({ item })).slice(0, 4);
+        : getCatalogSync().toSorted(() => Math.random() - 0.5).map(item => ({ item })).slice(0, 4);
       const posters = pool.map(c => c.item.portada).filter(Boolean);
       return {
         cover: posters[0] || '',

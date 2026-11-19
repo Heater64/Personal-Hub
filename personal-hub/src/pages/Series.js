@@ -10,6 +10,11 @@ import '../styles/series.css';
 import { showToast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/escape.js';
 import { userStore } from '../stores/user.store.js';
+import {
+  loadSharedWatchlist,
+  saveSharedWatchlist,
+  toggleInWatchlist,
+} from '../services/pro.service.js';
 import { onContentChange } from '../services/realtime.service.js';
 import {
   loadCatalog, saveCatalog, loadPodio, savePodio,
@@ -666,6 +671,7 @@ function renderDetail(item) {
               ${seenMovie ? '<span class="sr-hero-badge">✓ Vista</span>' : ''}
             </div>
             <h1 class="sr-detail-title">${escapeHtml(item.titulo || 'Sin título')}</h1>
+            <button class="btn sr-watch-btn" type="button" id="srWatchlistBtn">${sharedWatchlist.some(entry => entry.id === item.id) ? 'En la watchlist ✓' : '+ Watchlist compartida'}</button>
             ${item.descripcion ? `<p class="sr-detail-desc">${escapeHtml(item.descripcion)}</p>` : ''}
             ${isSeries && total > 0 ? `
               <div class="sr-detail-progress">
@@ -729,6 +735,29 @@ function renderDetail(item) {
   }
 
   page.querySelector('#srBackBtn')?.addEventListener('click', () => { currentDetailId = null; collapsedDetailSeasons.clear(); render(); renderAll(); });
+
+  // Añadir o quitar el título abierto de la watchlist compartida.
+  page.querySelector('#srWatchlistBtn')?.addEventListener('click', async () => {
+    const item = catalog.find(entry => entry.id === currentDetailId);
+    if (!item) return;
+    const prev = sharedWatchlist;
+    sharedWatchlist = toggleInWatchlist(prev, {
+      id: item.id,
+      title: item.titulo || '',
+      poster: item.portada || '',
+    }, userStore.getUser()?.name || '');
+    const ok = await saveSharedWatchlist(sharedWatchlist);
+    sharedWatchlistLoaded = true;
+    if (!ok) {
+      sharedWatchlist = prev;
+      showToast('No se pudo guardar la watchlist');
+      return;
+    }
+    showToast('Watchlist actualizada');
+    render();
+    renderAll();
+    void pintarWatchlistCompartida();
+  });
   page.querySelector('#srDetailFav')?.addEventListener('click', () => toggleFavorite(item.id));
   // Películas: marcar como vista o desmarcarla (no tienen episodios).
   page.querySelector('#srDetailSeen')?.addEventListener('click', () => {
@@ -1063,6 +1092,9 @@ function render() {
         <button class="sr-view-tab ${currentView === 'top5' ? 'active' : ''}" data-view="top5" role="tab" id="srTabTop5" aria-controls="srViewTop5" aria-selected="${currentView === 'top5'}" tabindex="${currentView === 'top5' ? 0 : -1}">Mi Top 5</button>
       </div>
 
+      <!-- Fase Pro: la lista que los dos veis y editáis (fila de content). -->
+      <section class="pro-card" id="srSharedWatchlist" aria-label="Watchlist compartida" hidden></section>
+
       <div id="srViewHome" class="sr-view ${currentView === 'home' ? 'is-active' : ''}" role="tabpanel" aria-labelledby="srTabHome"></div>
 
       <div id="srViewCatalog" class="sr-view ${currentView === 'catalog' ? 'is-active' : ''}" role="tabpanel" aria-labelledby="srTabCatalog">
@@ -1149,6 +1181,10 @@ function render() {
     </div>
 
   `;
+
+  // La watchlist se pinta después del HTML: llega de Supabase (fila `content`)
+  // y la primera vez puede tardar; la sección se queda oculta hasta tener algo.
+  void pintarWatchlistCompartida();
 
   // Nav views (tabs accesibles: aria-selected + flechas ← →)
   const viewTabs = [...page.querySelectorAll('[data-view]')];
@@ -1346,6 +1382,99 @@ const UI = {
 // ==========================================
 // ENTRY
 // ==========================================
+/* ---------- Watchlist compartida (fase Pro) ---------- */
+
+// Se carga una vez y se mantiene sincronizada con lo que se guarda aquí.
+let sharedWatchlist = [];
+// Solo se pide al servidor la primera vez: después manda lo que se acaba de
+// guardar, sin una consulta por cada repintado.
+let sharedWatchlistLoaded = false;
+
+/** Pinta la lista compartida en la portada de Series (si tiene algo). */
+async function pintarWatchlistCompartida() {
+  const host = page.querySelector('#srSharedWatchlist');
+  if (!host) return;
+  if (!sharedWatchlistLoaded) {
+    sharedWatchlist = await loadSharedWatchlist();
+    sharedWatchlistLoaded = true;
+  }
+  if (!page.contains(host)) return;
+
+  if (!sharedWatchlist.length) {
+    host.hidden = true;
+    host.innerHTML = '';
+    return;
+  }
+
+  const pendientes = sharedWatchlist.filter(item => !item.done).length;
+  host.hidden = false;
+  host.innerHTML = `
+    <header class="pro-card__head">
+      <span class="pro-card__kicker">Watchlist compartida</span>
+      <span class="pro-item__meta">${pendientes} ${pendientes === 1 ? 'pendiente' : 'pendientes'}</span>
+    </header>
+    <div class="pro-list">
+      ${sharedWatchlist
+        .map(
+          item => `<div class="pro-item">
+            ${
+              item.poster
+                ? `<img class="pro-item__poster" src="${escapeHtml(item.poster)}" alt="" loading="lazy" decoding="async">`
+                : '<span class="pro-item__poster" aria-hidden="true"></span>'
+            }
+            <div class="pro-item__body">
+              <div class="pro-item__title">${escapeHtml(item.title || 'Sin título')}</div>
+              <div class="pro-item__meta">${item.done ? 'vista' : 'pendiente'}${
+                item.addedBy ? ` · la añadió ${escapeHtml(item.addedBy)}` : ''
+              }</div>
+            </div>
+            <button type="button" class="sr-chip" data-watch-done="${escapeHtml(item.id)}" aria-pressed="${item.done}">${item.done ? '✓ vista' : 'marcar vista'}</button>
+            <button type="button" class="sr-chip" data-watch-del="${escapeHtml(item.id)}" aria-label="Quitar de la watchlist">✕</button>
+          </div>`
+        )
+        .join('')}
+    </div>`;
+
+  // El detalle abierto también cambia de etiqueta sin repintar la página.
+  const detailBtn = page.querySelector('#srWatchlistBtn');
+  if (detailBtn && currentDetailId) {
+    detailBtn.textContent = sharedWatchlist.some(entry => entry.id === currentDetailId)
+      ? 'En la watchlist ✓'
+      : '+ Watchlist compartida';
+  }
+
+  host.querySelectorAll('[data-watch-done]').forEach(btn => {
+    btn.addEventListener('click', () => void marcarWatchlist(btn.dataset.watchDone));
+  });
+  host.querySelectorAll('[data-watch-del]').forEach(btn => {
+    btn.addEventListener('click', () => void quitarWatchlist(btn.dataset.watchDel));
+  });
+}
+
+/** Cambia el estado «vista» de una entrada y guarda la lista compartida. */
+async function marcarWatchlist(id) {
+  const prev = sharedWatchlist;
+  sharedWatchlist = sharedWatchlist.map(item =>
+    item.id === id ? { ...item, done: !item.done } : item
+  );
+  if (!(await saveSharedWatchlist(sharedWatchlist))) {
+    sharedWatchlist = prev;
+    showToast('No se pudo guardar la watchlist');
+  }
+  void pintarWatchlistCompartida();
+}
+
+/** Quita una entrada de la watchlist compartida. */
+async function quitarWatchlist(id) {
+  const prev = sharedWatchlist;
+  sharedWatchlist = sharedWatchlist.filter(item => item.id !== id);
+  if (!(await saveSharedWatchlist(sharedWatchlist))) {
+    sharedWatchlist = prev;
+    showToast('No se pudo guardar la watchlist');
+  }
+  void pintarWatchlistCompartida();
+}
+
 export function SeriesPage(router) {
   page = document.createElement('div');
   page.className = 'series-page';
@@ -1393,5 +1522,7 @@ export function SeriesPage(router) {
       if (item) openDetail(item.id);
     }
   });
+  void pintarWatchlistCompartida();
+
   return page;
 }

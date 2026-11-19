@@ -64,17 +64,21 @@ export function Sidebar(router) {
     aside.innerHTML = `
       <div>
         <div class="brand">
-          <div class="brand-mark">H</div>
+          <img class="brand-mark" src="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png" alt="Personal Hub">
           <div>
             <h1>Personal Hub</h1>
             <p>Todo lo bonito, en un sitio</p>
           </div>
         </div>
 
+        <button type="button" class="side-search" data-global-search aria-label="Buscar en la app">
+          ${icon('search', 18)}<span>Buscar</span><kbd>Ctrl K</kbd>
+        </button>
+
         <div class="side-nav">
           ${sidebarItems(roleFor(isAdmin)).map(item => navButton(item, item.id === currentId)).join('')}
           ${contextual}
-          ${isAdmin && adminEntry ? `<p class="side-label">Admin</p>${navButton(adminEntry, sectionFor(base) === 'admin')}` : ''}
+          ${isAdmin && adminEntry ? `<p class="side-label">Peluche</p>${navButton(adminEntry, sectionFor(base) === 'admin')}` : ''}
         </div>
       </div>
 
@@ -84,7 +88,7 @@ export function Sidebar(router) {
             <span class="avatar" style="width:36px;height:36px;font-size:15px">${avatar}</span>
             <span style="min-width:0">
               <b>${escapeHtml(user.name || '')}</b>
-              <span>${isAdmin ? 'Admin' : 'Tu perfil'}</span>
+              <span>Tu perfil</span>
             </span>
           </button>
         ` : ''}

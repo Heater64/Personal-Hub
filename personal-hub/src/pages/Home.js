@@ -7,10 +7,13 @@
    de fechas y del calendario); la pantalla no los re-deriva.
    ========================================== */
 
+import '../styles/home.css';
 import { MEME_FOLDERS, getVideoPoster } from '../services/rincon-data.js';
+import { visiblePhotos, photoDate } from '../services/galleryData.js';
+import { sameDayInPast } from '../utils/pro-insights.js';
 import { LETTERS } from '../data/openwhen.data.js';
 import { escapeHtml } from '../utils/escape.js';
-import { userPrefKey, migrateUserPref, getUserPref, setUserPref } from '../utils/userStorage.js';
+import { userPrefKey, migrateUserPref } from '../utils/userStorage.js';
 import { hourInSpain, todayISO } from '../utils/format.js';
 import {
   getContinueWatching,
@@ -53,6 +56,7 @@ import { fetchPartnerProfile } from '../services/presence.service.js';
 import { openDistanceMap } from '../components/DistanceMapSheet.js';
 import { openDeviceSettings } from '../services/device.service.js';
 import { openWidgetsSheet } from '../components/WidgetsSheet.js';
+import { initHomePortada } from '../components/HomePortada.js';
 import {
   saveDaysWidget,
   saveDistanceWidget,
@@ -63,6 +67,7 @@ import {
   togetherBreakdown,
 } from '../services/widgets.service.js';
 import { isNative } from '../services/native.service.js';
+import { mediaUrl } from '../services/media.service.js';
 
 /** Guarda un widget en segundo plano: si falla, queda el aviso y el Inicio sigue. */
 function trackWidgetSave(promise) {
@@ -465,33 +470,21 @@ function tileSong(song) {
   `;
 }
 
-/** Atajos directos a las dos pantallas de consuelo. */
+/** Los tres atajos van en una sola fila: icono arriba y su nombre debajo. */
 function shortcutsHTML() {
   return `
     <div class="home-shortcuts">
-      <button class="home-shortcut" type="button" data-route="/maldia">
-        <span class="home-shortcut__ic">${icon('heart-handshake', 18)}</span>
-        <span class="home-shortcut__body">
-          <b>Mal día</b>
-          <small>Un abrazo cuando lo necesites</small>
-        </span>
-        <span class="home-shortcut__chev">${icon('chev', 18)}</span>
+      <button class="home-shortcut" type="button" data-route="/maldia" aria-label="Mal día: un abrazo cuando lo necesites">
+        <span class="home-shortcut__ic">${icon('heart-handshake', 19)}</span>
+        <span class="home-shortcut__body"><b>Mal día</b></span>
       </button>
-      <button class="home-shortcut" type="button" data-route="/openwhen">
-        <span class="home-shortcut__ic">${icon('mail', 18)}</span>
-        <span class="home-shortcut__body">
-          <b>Open When</b>
-          <small>Cartas para cuando toque</small>
-        </span>
-        <span class="home-shortcut__chev">${icon('chev', 18)}</span>
+      <button class="home-shortcut" type="button" data-route="/openwhen" aria-label="Open When: cartas para cuando toque">
+        <span class="home-shortcut__ic">${icon('mail', 19)}</span>
+        <span class="home-shortcut__body"><b>Open When</b></span>
       </button>
-      <button class="home-shortcut home-shortcut--wide" type="button" data-route="/menstruacion">
-        <span class="home-shortcut__ic">${icon('droplet', 18)}</span>
-        <span class="home-shortcut__body">
-          <b>Menstruación</b>
-          <small>Tu ciclo, día a día</small>
-        </span>
-        <span class="home-shortcut__chev">${icon('chev', 18)}</span>
+      <button class="home-shortcut" type="button" data-route="/menstruacion" aria-label="Menstruación: tu ciclo, día a día">
+        <span class="home-shortcut__ic">${icon('droplet', 19)}</span>
+        <span class="home-shortcut__body"><b>Menstruación</b></span>
       </button>
     </div>
   `;
@@ -523,6 +516,45 @@ function watchCardHTML(c) {
   `;
 }
 
+/**
+ * «Un año hoy»: fotos del mismo día y mes de años anteriores.
+ *
+ * Se calcula con la fecha que ya trae cada foto (`galleryData.photoDate`) y
+ * no se pinta si no hay ninguna: mejor ausente que una tarjeta vacía.
+ */
+function yearAgoHTML() {
+  let photos = [];
+  try {
+    photos = visiblePhotos('todas')
+      .slice(0, 400)
+      .map(url => ({ url, dateText: photoDate(url) }))
+      .filter(photo => photo.dateText);
+  } catch {
+    return '';
+  }
+  const matches = sameDayInPast(photos).slice(0, 6);
+  if (!matches.length) return '';
+
+  return `
+    <section class="pro-card home-year" aria-label="Tal día como hoy">
+      <header class="pro-card__head">
+        <span class="pro-card__kicker">Tal día como hoy</span>
+        <button class="link" type="button" data-route="/galeria">Ver galería</button>
+      </header>
+      <div class="pro-year">
+        ${matches
+          .map(
+            photo => `<figure class="pro-year__item">
+              <img src="${escapeHtml(photo.url)}" alt="" loading="lazy" decoding="async">
+              <figcaption class="pro-year__badge">hace ${photo.yearsAgo} ${photo.yearsAgo === 1 ? 'año' : 'años'}</figcaption>
+            </figure>`
+          )
+          .join('')}
+      </div>
+    </section>
+  `;
+}
+
 /** Sección "Estás viendo": solo aparece si hay alguna serie empezada. */
 function watchSectionHTML() {
   const list = getStartedSeries();
@@ -547,9 +579,53 @@ function avatarCircle(who, { name = '', avatar = '' } = {}) {
   const initial = (name || '').trim().charAt(0).toUpperCase();
   const label = who === 'me' ? 'Tú' : 'Tu pareja';
   const inner = avatar
-    ? `<img src="${escapeHtml(avatar)}" alt="">`
+    ? `<img src="${escapeHtml(mediaUrl(avatar))}" alt="">`
     : `<span aria-hidden="true">${escapeHtml(initial || '♥')}</span>`;
   return `<span class="home-map__avatar home-map__avatar--${who}" aria-label="${escapeHtml(label)}">${inner}</span>`;
+}
+
+// ==========================================
+// CABECERA — las dos caras y los ajustes
+// ==========================================
+/** Una cara: la foto si la hay y, si no, la inicial (o el corazón). */
+function paintFace(el, profile, fallbackAvatar = '', blockedAvatar = '') {
+  if (!el) return;
+  const candidate = profile?.avatar || fallbackAvatar || '';
+  const avatar = candidate && candidate !== blockedAvatar ? candidate : '';
+  const initial = (profile?.name || '').trim().charAt(0).toUpperCase();
+  el.innerHTML = avatar
+    ? `<img src="${escapeHtml(mediaUrl(avatar))}" alt="">`
+    : `<span aria-hidden="true">${escapeHtml(initial || '♥')}</span>`;
+}
+
+/**
+ * Rellena las caras de la barra superior. La mía sale del store al instante;
+ * la suya llega después, igual que en el mapa (perfil o latido de presencia).
+ */
+function initHeaderFaces(page) {
+  const meEl = page.querySelector('#homeTopMe');
+  const themEl = page.querySelector('#homeTopThem');
+  if (!meEl || !themEl) return () => {};
+  const me = userStore.getUser();
+  let stopped = false;
+
+  (async () => {
+    const [mine, partnerId] = await Promise.all([fetchProfile(me?.id), fetchPartnerIdentity()]);
+    if (stopped) return;
+    paintFace(meEl, mine, me?.avatar);
+    // Sin id (recién instalado, sin latido ni ubicación) se busca por descarte.
+    const partner = partnerId
+      ? (await fetchProfile(partnerId)) || (await fetchPartnerProfile(partnerId))
+      : await fetchPartnerProfile();
+    if (stopped) return;
+    paintFace(themEl, partner, '', mine?.avatar || me?.avatar || '');
+  })().catch(() => {
+    /* sin red: se quedan las iniciales */
+  });
+
+  return () => {
+    stopped = true;
+  };
 }
 
 function distancePanelHTML() {
@@ -599,7 +675,7 @@ function initDistancePanel(page, onChange) {
   const setHint = (text, action) => {
     if (!hintEl) return;
     hintEl.hidden = !text;
-    hintEl.innerHTML = '';
+    hintEl.replaceChildren();
     if (!text) return;
     hintEl.insertAdjacentHTML('beforeend', icon('map', 14));
     const label = document.createElement('span');
@@ -687,7 +763,7 @@ function initDistancePanel(page, onChange) {
     if (!partnerId) return;
     // Su perfil si la RLS lo deja; si no, nombre y foto del latido (el admin
     // no puede leerse desde la cuenta de ella).
-    const partner = (await fetchProfile(partnerId)) || await fetchPartnerProfile(partnerId);
+    const partner = (await fetchProfile(partnerId)) || (await fetchPartnerProfile(partnerId));
     if (stopped) return;
     // Si la RLS no deja leer su perfil, el nombre y la foto llegan igual con
     // la posición (los escribe su propio móvil).
@@ -724,7 +800,12 @@ function initDistancePanel(page, onChange) {
       // todavía no había imagen, así que un avatar nuevo no se veía nunca.
       const want = `${state.partner?.avatar || ''}|${state.partner?.name || ''}`;
       if (themEl && want !== '|' && themEl.dataset.identity !== want) {
-        fill(themEl, { name: state.partner.name, avatar: state.partner.avatar }, '', state.me?.avatar);
+        fill(
+          themEl,
+          { name: state.partner.name, avatar: state.partner.avatar },
+          '',
+          state.me?.avatar
+        );
         themEl.dataset.identity = want;
       }
       onChange?.(state);
@@ -815,7 +896,7 @@ export function HomePage(router) {
   // con el apodo de quien esté mirando, para que no salga dos veces en pantalla.
   const frase = greeting.split('<br>')[1] || '';
   // El apodo sale del rol guardado en profiles (DB), no de metadata del cliente.
-  const apodo = userStore.isAdmin ? 'admin' : 'mi princesa';
+  const apodo = userStore.isAdmin ? 'Peluche' : 'mi princesa';
   const saludo = TIME_GREETING[timeKey];
 
   // Datos (síncronos)
@@ -833,20 +914,43 @@ export function HomePage(router) {
   const posters = posterPool.map(c => c.item.portada).filter(Boolean);
   const continueFirst = continueList[0];
 
+  // Caras de la barra superior: la mía, ya en el store, se pinta de entrada.
+  const me = userStore.getUser() || {};
+  const meInitial = (me.name || '').trim().charAt(0).toUpperCase();
+  const meFace = me.avatar
+    ? `<img src="${escapeHtml(me.avatar)}" alt="">`
+    : `<span aria-hidden="true">${escapeHtml(meInitial || '♥')}</span>`;
+  // El engranaje lleva a los ajustes de cada rol: el perfil de ella, el panel del admin.
+  const gearRoute = userStore.isAdmin ? '/admin' : '/perfil';
+
   page.innerHTML = `
     <h1 class="sr-only">Inicio</h1>
 
-    <section class="home-hero" aria-label="Tiempo juntos">
-      <p class="home-hero__greet">${escapeHtml(saludo)}, <span class="home-hero__greet-name">${escapeHtml(apodo)}</span></p>
-      <div class="home-hero__main">
-        <span class="home-hero__badge" aria-hidden="true">🤍</span>
-        <div>
-          <span class="home-hero__num" id="homeCounter">0</span>
-          <span class="home-hero__label">días juntos</span>
-        </div>
+    <header class="home-topbar">
+      <p class="home-topbar__greet">
+        <span class="home-topbar__hi">${escapeHtml(saludo)},</span>
+        <span class="home-topbar__name">${escapeHtml(apodo)}</span>
+      </p>
+      <div class="home-topbar__actions">
+        <button class="home-topbar__faces" type="button" data-route="/perfil" aria-label="Ver los perfiles">
+          <span class="home-topbar__face home-topbar__face--me" id="homeTopMe">${meFace}</span>
+          <span class="home-topbar__face home-topbar__face--them" id="homeTopThem"><span aria-hidden="true">♥</span></span>
+        </button>
+        <button class="home-topbar__gear" type="button" data-route="${gearRoute}" aria-label="Ajustes">${icon('gear', 19)}</button>
       </div>
-      ${frase ? `<p class="home-hero__quote">${escapeHtml(frase)}</p>` : ''}
+    </header>
+
+    <section class="home-hero" aria-label="Tiempo juntos">
+      <button class="home-hero__heart" type="button" data-route="/juntos" aria-label="Abrir la pantalla de los días juntos">${icon('eye', 18)}</button>
+      <button class="home-hero__edit" type="button" id="homeHeroEdit" aria-label="Cambiar la imagen de la portada">${icon('camera', 16)}</button>
+      <p class="home-hero__eyebrow">Llevamos juntos…</p>
+      <p class="home-hero__main">
+        <span class="home-hero__num" id="homeCounter">0</span>
+        <span class="home-hero__label">días juntos</span>
+      </p>
     </section>
+
+    ${frase ? `<p class="home-quote">«${escapeHtml(frase)}»</p>` : ''}
 
     <div class="home-stats">${todayCards()}</div>
     <div id="homeSpecialEventSlot">${todayEventBanner()}</div>
@@ -856,6 +960,8 @@ export function HomePage(router) {
     ${distancePanelHTML()}
 
     <div id="homeWatchSlot">${watchSectionHTML()}</div>
+
+    ${yearAgoHTML()}
 
     <h2 class="section-title">Destacados de hoy
       <button class="link" type="button" data-route="/rincon">Ver el Rincón</button>
@@ -896,14 +1002,16 @@ export function HomePage(router) {
   const persistDays = (total = daysSince) => {
     if (!isNative()) return;
     const stats = togetherBreakdown(total);
-    trackWidgetSave(saveDaysWidget({
-      days: total,
-      years: stats.years,
-      months: stats.months,
-      weeks: Math.floor(total / 7),
-      breakdown: stats,
-      since: specialDates().anniversary,
-    }));
+    trackWidgetSave(
+      saveDaysWidget({
+        days: total,
+        years: stats.years,
+        months: stats.months,
+        weeks: Math.floor(total / 7),
+        breakdown: stats,
+        since: specialDates().anniversary,
+      })
+    );
   };
 
   persistDays();
@@ -916,11 +1024,13 @@ export function HomePage(router) {
   const persistCountdown = () => {
     if (!isNative()) return;
     const next = nextSpecialDate();
-    trackWidgetSave(saveCountdownWidget({
-      title: next?.title || '',
-      date: next?.date || '',
-      events: upcomingSpecialDates(6),
-    }));
+    trackWidgetSave(
+      saveCountdownWidget({
+        title: next?.title || '',
+        date: next?.date || '',
+        events: upcomingSpecialDates(6),
+      })
+    );
   };
 
   // El widget de ánimo es SUYO: guarda el de ella aunque la sesión con la que
@@ -935,13 +1045,15 @@ export function HomePage(router) {
   const persistWatching = () => {
     if (!isNative()) return;
     const first = getContinueWatching()[0];
-    trackWidgetSave(saveWatchingWidget({
-      title: first?.item?.titulo || '',
-      poster: first?.item?.portada || '',
-      watched: first?.watched || 0,
-      total: first?.total || 0,
-      percent: first?.percent || 0,
-    }));
+    trackWidgetSave(
+      saveWatchingWidget({
+        title: first?.item?.titulo || '',
+        poster: first?.item?.portada || '',
+        watched: first?.watched || 0,
+        total: first?.total || 0,
+        percent: first?.percent || 0,
+      })
+    );
   };
 
   persistCountdown();
@@ -949,6 +1061,12 @@ export function HomePage(router) {
   persistWatching();
 
   const handleDistanceChange = state => {
+    // La cara de la barra superior se pinta en cuanto se sabe quién es: así no
+    // depende de que la primera consulta llegue antes que el latido.
+    if (state.partner?.avatar || state.partner?.name) {
+      paintFace(page.querySelector('#homeTopThem'), state.partner, '', state.me?.avatar || '');
+    }
+
     // El aniversario puede haber cambiado desde que se abrió la pantalla: se
     // recalcula con la fecha vigente en vez de reutilizar la de arranque (si
     // no, cada aviso de distancia devolvía la hoja y el widget a los valores
@@ -965,31 +1083,47 @@ export function HomePage(router) {
       kmAt: Number.isFinite(state.km) ? Date.now() : null,
     };
     if (!isNative()) return;
-    trackWidgetSave(saveDaysWidget({
-      days: total,
-      months: stats.months,
-      weeks: Math.floor(total / 7),
-      years: stats.years,
-      breakdown: stats,
-      since: specialDates().anniversary,
-      me: state.me,
-      partner: state.partner,
-    }));
+    trackWidgetSave(
+      saveDaysWidget({
+        days: total,
+        months: stats.months,
+        weeks: Math.floor(total / 7),
+        years: stats.years,
+        breakdown: stats,
+        since: specialDates().anniversary,
+        me: state.me,
+        partner: state.partner,
+      })
+    );
     // El estado del móvil de ella viaja con su posición; el widget solo lo
     // lee (no puede preguntarlo).
-    trackWidgetSave(saveDistanceWidget({
-      km: state.km,
-      me: state.me,
-      partner: state.partner,
-      device: state.partner,
-    }));
+    trackWidgetSave(
+      saveDistanceWidget({
+        km: state.km,
+        me: state.me,
+        partner: state.partner,
+        device: state.partner,
+      })
+    );
   };
 
-  // Distancia: se pide la posición al entrar y se para al salir de la página
+  // Distancia primero: es quien guarda la identidad de la sesión y de la otra
+  // persona; las caras de la cabecera la aprovechan justo después.
   const stopDistance = initDistancePanel(page, handleDistanceChange);
+  const stopHeaderFaces = initHeaderFaces(page);
 
   // Pestaña de widgets (solo existe dentro del APK)
-  initWidgetsSection(page, () => widgetAvatars, () => ({ gifts: widgetGifts }));
+  initWidgetsSection(
+    page,
+    () => widgetAvatars,
+    () => ({ gifts: widgetGifts })
+  );
+
+  // ===== Portada: las fotos de «días juntos» =====
+  // La lista es de la pareja (sql/031), así que lo que se añade o se quita en
+  // un móvil aparece en el otro. El componente lleva la rotación (5 s) y la
+  // hoja para añadir y quitar; aquí solo se monta y se recoge al salir.
+  const stopPortada = initHomePortada(page.querySelector('.home-hero'));
 
   // Contador — arranca ya y se corrige cuando llegan las fechas reales
   animateNumber(page.querySelector('#homeCounter'), daysSince);
@@ -1051,7 +1185,7 @@ export function HomePage(router) {
 
   // Progreso de la cuenta: lo visto en otro dispositivo llega después del
   // primer pintado, así que las tarjetas se repintan cuando termina.
-      hydrateProgress()
+  hydrateProgress()
     .then(() => {
       if (watchSlot) watchSlot.innerHTML = watchSectionHTML();
       refreshContinueTile();
@@ -1126,6 +1260,8 @@ export function HomePage(router) {
     cancelled = true;
     unsubscribeMood();
     stopRotation();
+    stopPortada();
+    stopHeaderFaces();
     stopDistance();
   };
 

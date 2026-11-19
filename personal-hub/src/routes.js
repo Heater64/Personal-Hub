@@ -53,6 +53,7 @@ export const ROUTES = [
     mobileRoot: true,
     bottomNav: true,
     sidebar: true,
+    lazy: true,
   },
   {
     path: '/login',
@@ -74,12 +75,13 @@ export const ROUTES = [
     section: 'perfil',
     mobileRoot: true,
     bottomNav: true,
+    lazy: true,
   },
   {
     path: '/admin',
-    label: 'Admin',
+    label: 'Peluche',
     icon: 'gear',
-    title: 'Admin · Personal Hub',
+    title: 'Peluche · Personal Hub',
     adminOnly: true,
     skipMood: true,
     lazy: true,
@@ -171,6 +173,7 @@ export const ROUTES = [
     section: 'sentimientos',
     parent: '/sentimientos',
     sidebarGroup: 'sentimientos',
+    lazy: true,
   },
   {
     path: '/sentimientos',
@@ -246,6 +249,7 @@ export const ROUTES = [
     section: 'sentimientos',
     parent: '/sentimientos',
     sidebarGroup: 'sentimientos',
+    lazy: true,
     chrome: false,
   },
   {

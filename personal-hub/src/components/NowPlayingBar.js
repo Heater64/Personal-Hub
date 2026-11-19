@@ -91,7 +91,7 @@ export function NowPlayingBar(router) {
 
     if (!visible) {
       bar.classList.remove('is-visible');
-      bar.innerHTML = '';
+      bar.replaceChildren();
       setExpanded(false);
       return;
     }

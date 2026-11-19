@@ -281,7 +281,13 @@ final class WidgetSupport {
         }
 
         Bitmap raw = BitmapFactory.decodeFile(file.getAbsolutePath());
-        if (raw == null) return null;
+        // Una descarga interrumpida dejaba un fichero parcial para siempre:
+        // exists() era true pero decodeFile devolvía null y no se reintentaba.
+        if (raw == null) {
+            file.delete();
+            download(url, file, onReady);
+            return null;
+        }
         Bitmap round = circle(raw, sizePx);
         remember(key, round);
         return round;
@@ -305,7 +311,11 @@ final class WidgetSupport {
         }
 
         Bitmap raw = BitmapFactory.decodeFile(file.getAbsolutePath());
-        if (raw == null) return null;
+        if (raw == null) {
+            file.delete();
+            download(url, file, onReady);
+            return null;
+        }
         Bitmap rounded = rounded(raw, widthPx, heightPx, dp(context, 10));
         remember(key, rounded);
         return rounded;
@@ -347,20 +357,28 @@ final class WidgetSupport {
 
     private static void download(String url, File target, Runnable onReady) {
         new Thread(() -> {
+            File partial = new File(target.getParentFile(), target.getName() + ".part");
             try {
                 HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
                 connection.setConnectTimeout(8000);
                 connection.setReadTimeout(8000);
                 connection.connect();
+                if (connection.getResponseCode() < 200 || connection.getResponseCode() >= 300) {
+                    return;
+                }
                 try (InputStream in = connection.getInputStream();
-                     FileOutputStream out = new FileOutputStream(target)) {
+                     FileOutputStream out = new FileOutputStream(partial)) {
                     byte[] buffer = new byte[8192];
                     int read;
                     while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
                 }
+                if (target.exists()) target.delete();
+                if (!partial.renameTo(target)) return;
                 if (onReady != null) new Handler(Looper.getMainLooper()).post(onReady);
             } catch (Exception ignored) {
                 // sin red: el widget sigue sin foto, sin romperse
+            } finally {
+                if (partial.exists()) partial.delete();
             }
         }).start();
     }

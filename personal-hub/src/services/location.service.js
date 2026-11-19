@@ -172,7 +172,7 @@ async function deviceFacts(pos) {
 }
 
 /** Escribe tu posición donde la otra persona puede leerla. */
-async function push({ userId, isAdmin }, setStatus) {
+async function push({ userId, isAdmin, coupleId }, setStatus) {
   if (!userId || !supabase) return;
   try {
     const pos = await currentPosition();
@@ -190,7 +190,20 @@ async function push({ userId, isAdmin }, setStatus) {
       ...(await deviceFacts(pos)),
     };
 
-    if (isAdmin) {
+    if (coupleId) {
+      const { error } = await supabase.from('couple_locations').upsert(
+        {
+          couple_id: coupleId,
+          user_id: userId,
+          data,
+          location_at: data.at,
+          sent_at: at,
+          updated_at: at,
+        },
+        { onConflict: 'couple_id,user_id' }
+      );
+      if (error) throw error;
+    } else if (isAdmin) {
       await supabase
         .from('content')
         .upsert({ id: ADMIN_ROW_ID, data, updated_at: at }, { onConflict: 'id' });
@@ -223,7 +236,21 @@ export function startLocationSharing({ userId, isAdmin, name, avatar } = {}, onS
   // La otra persona puede cambiar de sesión en este móvil: el id cacheado
   // dejaría de ser suyo y acabaría pintando mi foto en los dos círculos.
   cachedPartnerId = null;
-  self = { userId: String(userId), isAdmin: !!isAdmin, name: name || '', avatar: avatar || '' };
+  self = { userId: String(userId), isAdmin: !!isAdmin, coupleId: null, name: name || '', avatar: avatar || '' };
+
+  // La pareja es el contrato definitivo. Se conserva la ruta heredada solo
+  // mientras una instalación antigua aún no haya aplicado 029/030.
+  void supabase
+    .from('couple_members')
+    .select('couple_id')
+    .eq('user_id', self.userId)
+    .maybeSingle()
+    .then(({ data }) => {
+      if (!self || data?.couple_id == null) return;
+      self.coupleId = data.couple_id;
+      void push(self, onStatus);
+    })
+    .catch(() => {});
 
   push(self, onStatus);
   shareTimer = setInterval(() => push(self, onStatus), SHARE_MS);
@@ -302,6 +329,19 @@ export function stopLocationSharing() {
 export async function fetchPartnerLocation() {
   if (!self?.userId || !supabase) return null;
   try {
+    if (self.coupleId) {
+      const { data, error } = await supabase
+        .from('couple_locations')
+        .select('user_id, data, location_at, sent_at')
+        .eq('couple_id', self.coupleId)
+        .neq('user_id', self.userId)
+        .order('sent_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const row = data?.[0];
+      if (!row?.data) return null;
+      return toLocation({ ...row.data, location_at: row.location_at || row.data.location_at }, row.user_id);
+    }
     if (self.isAdmin) {
       const { data, error } = await supabase
         .from('user_progress')
@@ -339,7 +379,12 @@ function toLocation(data, userId) {
   return {
     lat,
     lng,
-    at: data?.at || null,
+    // `at` es el momento de envío de la batería/red. Si existe, el mapa usa
+    // la hora real de GPS: una última ubicación no puede aparentar actualidad
+    // solo porque el servicio siguió enviando el porcentaje de batería.
+    at: data?.location_at || data?.at || null,
+    sentAt: data?.at || null,
+    locationAgeMs: Number.isFinite(Number(data?.location_age_ms)) ? Number(data.location_age_ms) : null,
     userId: data?.user_id || userId || null,
     name: data?.name || '',
     avatar: data?.avatar || '',
@@ -392,6 +437,18 @@ export async function fetchPartnerIdentity() {
   }
 
   try {
+    if (self.coupleId) {
+      const { data } = await supabase
+        .from('couple_members')
+        .select('user_id')
+        .eq('couple_id', self.coupleId)
+        .neq('user_id', self.userId)
+        .limit(1);
+      if (data?.[0]?.user_id) {
+        cachedPartnerId = data[0].user_id;
+        return cachedPartnerId;
+      }
+    }
     if (self.isAdmin) {
       const { data } = await supabase
         .from('user_progress')

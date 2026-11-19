@@ -11,6 +11,7 @@ import { showToast } from '../../components/Toast.js';
 import { escapeHtml, safeUrl } from '../../utils/escape.js';
 import { openLightbox } from '../../components/MediaLightbox.js';
 import { renderPageHeader } from '../../components/PageHeader.js';
+import { emptyStateHTML } from '../../components/states.js';
 import { todayISO } from '../../utils/format.js';
 import { userPrefKey } from '../../utils/userStorage.js';
 import { ICON_SVGS } from './icons.js';
@@ -157,10 +158,12 @@ export function createCuriosities(ctx) {
     });
   
     page.innerHTML = `<div class="rincon-subpage">
-      <div class="curio-topbar">
-        <button class="icon-btn" type="button" data-back="landing" aria-label="Volver al Rincón">${ICON_SVGS['chevron-left']}</button>
-        <h1 class="scr-title">Curiosidades</h1>
-      </div>
+      ${renderPageHeader({
+        title: 'Curiosidades',
+        back: true,
+        backLabel: 'Volver al Rincón',
+        className: 'curio-topbar',
+      })}
   
       <header class="curio-hero">
         <div class="curio-hero-copy">
@@ -247,7 +250,7 @@ export function createCuriosities(ctx) {
       </section>
     </div>`;
   
-    page.querySelector('[data-back="landing"]').addEventListener('click', () => router.navigate('/rincon'));
+    page.querySelector('.curio-topbar [data-back]')?.addEventListener('click', () => router.navigate('/rincon'));
   
     // Animate cards
     requestAnimationFrame(() => {
@@ -411,7 +414,11 @@ export function createCuriosities(ctx) {
   // Cuadrícula "Añadido recientemente" — portadas que abren su pestaña de detalle
   function renderRecentGrid(grid, items) {
     if (!items.length) {
-      grid.innerHTML = '<div class="empty-state">🔍 No se encontraron resultados. Prueba con otras palabras.</div>';
+      grid.innerHTML = emptyStateHTML({
+        icon: 'search',
+        title: 'No se encontraron resultados',
+        text: 'Prueba con otras palabras o cambia de categoría.',
+      });
       return;
     }
     grid.innerHTML = items.map((item, i) => recentCardHTML(item, i)).join('');

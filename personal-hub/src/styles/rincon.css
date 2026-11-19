@@ -1432,39 +1432,7 @@
 }
 .gallery-hero-dot:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
-/* ----- Filtros (chips del sistema) + ordenación ----- */
-.gallery-toolbar-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-12);
-  text-transform: none;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-.gallery-toolbar-actions .gallery-sort-btn { flex-shrink: 0; }
-.section-title:has(.gallery-toolbar-actions) { flex-wrap: wrap; row-gap: var(--sp-8); }
-.section-title:has(.gallery-toolbar-actions) .gallery-toolbar-actions { margin-left: auto; }
 
-/* Los filtros se quedan pegados arriba al bajar por las fotos: se cambia de
-   álbum sin volver a subir. */
-.gallery-filters {
-  position: sticky;
-  top: 0;
-  z-index: 6;
-  margin: 0 calc(-1 * var(--sp-16)) var(--sp-4);
-  padding: var(--sp-8) var(--sp-16);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--theme-divider-strong) 60%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-}
-.gallery-filter { flex: 0 0 auto; }
-
-/* ----- Masonry con proporciones reales ----- */
-.gallery-masonry {
-  columns: 2;
-  column-gap: var(--sp-12);
-}
 
 .gallery-photo {
   position: relative;
@@ -1497,6 +1465,8 @@
   animation: gallery-shimmer 1.4s linear infinite;
   transition: opacity var(--dur-normal);
 }
+
+
 
 @keyframes gallery-shimmer {
   to { background-position: -120% 0; }
@@ -1608,20 +1578,6 @@
 }
 .gallery-photo:hover .gallery-photo-shade { opacity: 1; }
 
-.gallery-photo-date {
-  position: absolute;
-  left: var(--sp-10); bottom: var(--sp-10);
-  font-size: var(--fs-caption);
-  font-weight: 500;
-  color: #fff;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.5);
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity var(--dur-fast), transform var(--dur-fast);
-  pointer-events: none;
-}
-.gallery-photo:hover .gallery-photo-date { opacity: 1; transform: translateY(0); }
-
 .gallery-photo-fav,
 .gallery-photo-menu {
   position: absolute;
@@ -1661,6 +1617,26 @@
 }
 .gallery-photo-fav.is-on:hover { background: var(--theme-accent-pressed); }
 
+/* Subida en curso: tarjetas fantasma indeterminadas, una por foto */
+.gallery-uploading {
+  grid-column: 1 / -1;
+  margin-bottom: var(--sp-16);
+}
+.gallery-uploading-label {
+  margin: 0 0 var(--sp-8);
+  font-size: var(--fs-xs);
+  color: var(--theme-text-secondary);
+}
+.gallery-uploading-track { display: flex; gap: var(--sp-8); }
+.gallery-uploading-tile {
+  flex: 0 0 84px;
+  height: 84px;
+  border-radius: var(--r-md);
+  background: linear-gradient(110deg, var(--theme-surface-elevated) 8%, var(--theme-surface-pressed) 18%, var(--theme-surface-elevated) 33%);
+  background-size: 220% 100%;
+  animation: gallery-shimmer 1.4s linear infinite;
+}
+
 /* Scroll infinito — sentinel que dispara el siguiente lote */
 .gallery-sentinel {
   display: flex;
@@ -1681,6 +1657,7 @@
 @media (prefers-reduced-motion: reduce) {
   .gallery-hero-loader,
   .gallery-photo-loader,
+  .gallery-uploading-tile,
   .gallery-sentinel-spin {
     animation: none;
   }
@@ -1931,11 +1908,9 @@
 
 /* ----- Responsive galería ----- */
 @media (min-width: 600px) {
-  .gallery-masonry { columns: 3; column-gap: var(--sp-16); }
   .gallery-photo { margin-bottom: var(--sp-16); }
 }
 @media (min-width: 900px) {
-  .gallery-masonry { columns: 4; column-gap: var(--sp-20); }
   .gallery-hero { aspect-ratio: 21 / 9; max-height: 520px; }
   .gallery-hero-title { font-size: var(--fs-3xl); }
   .gallery-add-label { display: inline; }
@@ -2629,6 +2604,7 @@
 }
 
 .meme-item-fav,
+.meme-item-menu,
 .meme-item-del {
   width: 32px;
   height: 32px;
@@ -4249,6 +4225,9 @@ body:has(.now-playing-bar.is-visible) .audio-mini {
   grid-template-columns: repeat(2, 1fr);
   gap: var(--sp-12);
 }
+
+/* El estado vacío compartido ocupa la rejilla entera, no una celda. */
+.curio-recent-grid > .empty { grid-column: 1 / -1; }
 @media (min-width: 640px) {
   .curio-recent-grid { grid-template-columns: repeat(4, 1fr); }
 }

@@ -130,31 +130,23 @@
   <meta name="apple-mobile-web-app-title" content="Hub">
   <title>Personal Hub</title>
   <meta name="description" content="Tu rincón personal">
-  <!-- DNS prefetch & preconnect for critical origins -->
+  <!-- Solo los orígenes que se tocan al arrancar: fuentes, imágenes y el
+       backend. Los de carátulas (Spotify, Genius, YouTube, Deezer, SoundCloud,
+       Amazon, Akamai) solo aparecen en pantallas diferidas: precalentarlos en
+       cada visita no ahorraba nada y gastaba conexiones móviles. -->
   <link rel="dns-prefetch" href="https://fonts.googleapis.com">
   <link rel="dns-prefetch" href="https://fonts.gstatic.com">
   <link rel="dns-prefetch" href="https://res.cloudinary.com">
-  <link rel="dns-prefetch" href="https://dragonballlatino.net">
-  <link rel="dns-prefetch" href="https://i.scdn.co">
-  <link rel="dns-prefetch" href="https://images.genius.com">
-  <link rel="dns-prefetch" href="https://i.ytimg.com">
-  <link rel="dns-prefetch" href="https://cdn-images.dzcdn.net">
-  <link rel="dns-prefetch" href="https://i1.sndcdn.com">
-  <link rel="dns-prefetch" href="https://m.media-amazon.com">
-  <link rel="dns-prefetch" href="https://akamai.sscdn.co">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
-  <link rel="preconnect" href="https://dragonballlatino.net" crossorigin>
-  <link rel="preconnect" href="https://josxcvncescqqlajahkh.supabase.co" crossorigin>
+  <!-- Debe coincidir con VITE_SUPABASE_URL. -->
+  <link rel="preconnect" href="https://ydkyvfifiadtwgmwgrslo.supabase.co" crossorigin>
   <!-- Critical font loading with display=swap for instant text rendering -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap"></noscript>
-  <!-- KaTeX — renderizado de fórmulas matemáticas LaTeX -->
-  <!-- KaTeX — renderizado de fórmulas (sin integrity: los hashes publicados
-       no coinciden con el bundle actual y el navegador bloqueaba el recurso,
-       dejando las fórmulas del calendario sin renderizar). -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+  <!-- KaTeX no va aquí: solo lo usa el calendario y se carga bajo demanda
+       desde src/utils/renderMath.js (`loadKatex()`). -->
   <!-- Critical CSS -->
   <link rel="stylesheet" href="/src/styles/main.css">
   <link rel="manifest" href="/manifest.json">
@@ -171,8 +163,6 @@
   </div>
   <div id="app"></div>
   <div id="toast-container"></div>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

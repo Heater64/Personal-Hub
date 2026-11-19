@@ -228,12 +228,12 @@ export async function saveLog(log = {}) {
     .maybeSingle();
   if (error) throw translate(error, 'No se pudo guardar el registro.');
 
-  const symptoms = [...payload.symptoms].sort().join(',');
+  const symptoms = payload.symptoms.toSorted().join(',');
   const changed =
     !before ||
     before.flow !== payload.flow ||
     before.spotting !== payload.spotting ||
-    [...(before.symptoms || [])].sort().join(',') !== symptoms ||
+    (before.symptoms || []).toSorted().join(',') !== symptoms ||
     (before.notes || '') !== payload.notes;
   if (changed) notifyAdminOfCycle('cycle_log');
 
@@ -314,7 +314,7 @@ export async function saveSharing({ enabled = false, fields = [], supportMessage
 
   const wasEnabled = before?.sharing_enabled === true;
   const sameFields =
-    [...(before?.shared_fields || [])].sort().join(',') === [...payload.shared_fields].sort().join(',');
+    (before?.shared_fields || []).toSorted().join(',') === payload.shared_fields.toSorted().join(',');
   if (payload.sharing_enabled && (!wasEnabled || !sameFields)) {
     notifyAdminOfCycle('cycle_share');
   }

@@ -9,6 +9,7 @@
 
 import { escapeHtml } from '../utils/escape.js';
 import { pushOverlayHistory, finalizeOverlayClose } from '../utils/overlayHistory.js';
+import { mediaUrl } from '../services/media.service.js';
 
 /* ==========================================
    ICONOS — un solo set (stroke 1.8, 24×24)
@@ -17,6 +18,7 @@ export const ICONS = {
   home: '<path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-6h6v6"/>',
   heart: '<path d="M20.8 8.8c0 5.5-8.8 10.2-8.8 10.2S3.2 14.3 3.2 8.8A4.8 4.8 0 0 1 12 6a4.8 4.8 0 0 1 8.8 2.8z"/>',
   'heart-handshake': '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 12.4 5.8a.6.6 0 0 1-.8 0A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l5.5 5.4a2 2 0 0 0 2.9.05 2.1 2.1 0 0 0 0-3 2.1 2.1 0 1 0 3-3 2.1 2.1 0 0 0 3 0 2 2 0 0 0 0-2.8"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
   star: '<path d="m12 3 2.7 5.7 6.3.8-4.6 4.3 1.2 6.2-5.6-3.1-5.6 3.1 1.2-6.2L3 9.5l6.3-.8z"/>',
   spark: '<path d="M12 3.5 13.8 8.7 19 10.5l-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8z"/><path d="m18.5 16.5.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
@@ -246,7 +248,7 @@ export function closeSheets() {
   // bloquea el cierre de las demás.
   const closers = sheetClosers.splice(0);
   closers.forEach(fn => { try { fn(); } catch { /* ignorar */ } });
-  overlayRoot().innerHTML = '';
+  overlayRoot().replaceChildren();
   if (sheetEsc) { document.removeEventListener('keydown', sheetEsc); sheetEsc = null; }
   if (lastFocused && typeof lastFocused.focus === 'function') {
     try { lastFocused.focus({ preventScroll: true }); } catch { /* ignorar */ }
@@ -264,7 +266,7 @@ export function toast(message, action) {
     document.body.appendChild(el);
     return el;
   })();
-  holder.innerHTML = '';
+  holder.replaceChildren();
   const el = h('div', { class: 'toast', role: 'status' },
     h('span', null, message),
     action ? h('button', { type: 'button', onclick: () => { el.remove(); action.fn(); } }, action.label || 'Deshacer') : null
@@ -283,7 +285,9 @@ export function avatarEl(name, photo, size = 40, className = '') {
     class: `avatar ${className}`,
     style: `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px`
   });
-  if (photo) box.append(h('img', { src: photo, alt: '', loading: 'lazy' }));
+  // El avatar vive en el bucket `avatars`: si es privado, `mediaUrl` devuelve
+  // la URL firmada en caché y deja igual cualquier enlace externo.
+  if (photo) box.append(h('img', { src: mediaUrl(photo), alt: '', loading: 'lazy' }));
   else box.append(escapeHtml((name || '?').trim().charAt(0).toUpperCase()));
   return box;
 }

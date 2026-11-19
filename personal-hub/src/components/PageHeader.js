@@ -18,23 +18,60 @@ const ICONS = {
   calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>'
 };
 
+const BACK_SVG = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
+
 export function renderPageIcon(icon, className = 'ic') {
   const svg = ICONS[icon] || ICONS.home;
   return svg.replace('<svg ', `<svg class="${className}" aria-hidden="true" focusable="false" `);
 }
 
 /**
- * Cabecera de pantalla.
- * @param {{ title: string, subtitle?: string, icon?: string, actions?: string, mobileHidden?: boolean }} options
+ * Cabecera de pantalla — el ÚNICO patrón: título, subtítulo opcional,
+ * botón de volver opcional y acciones a la derecha.
+ *
+ * `back: true` emite `data-back`, que cada pantalla engancha a su
+ * navegación (es el mismo atributo que ya usaban las subpáginas).
+ *
+ * `subtitleId` sirve para los subtítulos que una pantalla rellena después
+ * (Razones pinta ahí su contador): mismo marcado, con `id`.
+ *
+ * @param {{ title: string, subtitle?: string, subtitleId?: string,
+ *           actions?: string, actionsClassName?: string, back?: boolean,
+ *           backLabel?: string, className?: string, mobileHidden?: boolean }} options
  */
-export function renderPageHeader({ title, subtitle, actions, mobileHidden = false } = {}) {
+export function renderPageHeader({
+  title,
+  subtitle,
+  subtitleId = '',
+  actions,
+  actionsClassName = 'head-actions',
+  back = false,
+  backLabel = 'Volver',
+  className = '',
+  mobileHidden = false,
+} = {}) {
+  const clases = ['scr-head', className, mobileHidden ? 'scr-head--mobile-hidden' : '']
+    .filter(Boolean)
+    .join(' ');
+
+  const subtitulo = subtitle || subtitleId
+    ? `<p class="sub"${subtitleId ? ` id="${escapeHtml(subtitleId)}"` : ''}>${escapeHtml(subtitle || '')}</p>`
+    : '';
+  const titulo = `<h1 class="scr-title">${escapeHtml(title || '')}</h1>${subtitulo}`;
+
+  // Sin botón de volver se emite el marcado de siempre (una sola capa de
+  // divs): las pantallas ya existentes no cambian de estructura.
+  const principal = back
+    ? `<div class="scr-head__main">
+        <button type="button" class="icon-btn scr-head__back" data-back aria-label="${escapeHtml(backLabel)}" title="${escapeHtml(backLabel)}">${BACK_SVG}</button>
+        <div class="scr-head__copy">${titulo}</div>
+      </div>`
+    : `<div>${titulo}</div>`;
+
   return `
-    <header class="scr-head${mobileHidden ? ' scr-head--mobile-hidden' : ''}">
-      <div>
-        <h1 class="scr-title">${escapeHtml(title || '')}</h1>
-        ${subtitle ? `<p class="sub">${escapeHtml(subtitle)}</p>` : ''}
-      </div>
-      ${actions ? `<div class="head-actions">${actions}</div>` : ''}
+    <header class="${clases}">
+      ${principal}
+      ${actions ? `<div class="${escapeHtml(actionsClassName)}">${actions}</div>` : ''}
     </header>
   `;
 }

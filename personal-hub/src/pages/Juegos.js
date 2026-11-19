@@ -12,6 +12,7 @@ import { isCalendarAllOpen, isCalendarAllLocked } from '../utils/calendarOverrid
 import { escapeHtml } from '../utils/escape.js';
 
 import { GAMES } from '../data/games.catalog.js';
+import { gameRecords } from '../utils/pro-insights.js';
 export { GAMES };
 
 
@@ -104,6 +105,8 @@ export async function JuegosPage(router) {
   page.className = 'juegos-page';
 
   const totalGames = visibleGames.length;
+  // Los minijuegos ya guardan su mejor marca en localStorage; se leen aquí.
+  const records = gameRecords(typeof localStorage !== 'undefined' ? localStorage : null);
   const lastId = lastPlayedId();
   const lastGame = lastId ? visibleGames.find(g => g.id === lastId) : null;
   const favId = favGameId();
@@ -143,6 +146,23 @@ export async function JuegosPage(router) {
         <span class="juegos-stat-label">favorito</span>
       </div>` : ''}
     </div>
+
+    ${records.length ? `
+    <section class="pro-card" aria-label="Tus récords en los juegos">
+      <header class="pro-card__head">
+        <span class="pro-card__kicker">Récords</span>
+        <span class="pro-item__meta">en este dispositivo</span>
+      </header>
+      <div class="pro-records">
+        ${records
+          .map(
+            r => `<div class="pro-record"><span>${escapeHtml(r.label)}</span><b>${escapeHtml(r.text)}${
+              r.unit === 'segundos' ? '' : ` ${escapeHtml(r.unit)}`
+            }</b></div>`
+          )
+          .join('')}
+      </div>
+    </section>` : ''}
 
     <!-- ===== SECTION HEADER ===== -->
     <div class="juegos-section-header">

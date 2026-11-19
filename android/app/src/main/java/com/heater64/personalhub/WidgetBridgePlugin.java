@@ -140,6 +140,15 @@ public class WidgetBridgePlugin extends Plugin {
             return compact ? GiftsCompactWidgetProvider.class
                     : rect ? GiftsRectWidgetProvider.class : GiftsWidgetProvider.class;
         }
+        if ("reason".equals(widget)) {
+            return compact ? ReasonCompactWidgetProvider.class : ReasonRectWidgetProvider.class;
+        }
+        if ("openwhen".equals(widget)) {
+            return compact ? OpenWhenCompactWidgetProvider.class : OpenWhenRectWidgetProvider.class;
+        }
+        if ("streak".equals(widget)) {
+            return compact ? StreakCompactWidgetProvider.class : StreakRectWidgetProvider.class;
+        }
         return compact ? DistanceCompactWidgetProvider.class
                 : rect ? DistanceRectWidgetProvider.class : DistanceWidgetProvider.class;
     }

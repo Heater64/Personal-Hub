@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Distancia · 2×2
+<!-- Distancia · 1×1
 
-     Solo la cifra, que es lo único que cabe con dignidad en un cuadrado. -->
+     Mismo patrón que «días juntos»: en una celda solo cabe el dato. La cifra
+     con su etiqueta encima y, si no hay distancia, «abre la app». -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_distance_root"
@@ -10,45 +11,43 @@
     android:background="@drawable/widget_distance_bg"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="4dp">
 
     <TextView
         android:id="@+id/widget_distance_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:includeFontPadding="false"
-        android:letterSpacing="0.14"
+        android:letterSpacing="0.08"
         android:maxLines="1"
         android:text="@string/widget_distance_kicker"
         android:textColor="@color/widget_coral_soft"
-        android:textSize="8sp"
+        android:textSize="7sp"
         android:textStyle="bold"
-        tools:text="ESTÁIS A"/>
+        tools:text="ESTÁIS A" />
 
     <TextView
         android:id="@+id/widget_distance_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="—"
         android:textColor="#FFFFFF"
-        android:textSize="30sp"
+        android:textSize="24sp"
         android:textStyle="bold"
-        tools:text="24,8 km"/>
+        tools:text="24,8 km" />
 
     <TextView
         android:id="@+id/widget_distance_hint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="@string/widget_distance_empty"
         android:textColor="@color/widget_text_muted"
-        android:textSize="9sp"
+        android:textSize="7sp"
         android:visibility="gone"
-        tools:text="abre la app"/>
+        tools:text="abre la app" />
 
 </LinearLayout>

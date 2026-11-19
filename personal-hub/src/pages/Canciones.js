@@ -550,10 +550,10 @@ export function CancionesPage(router) {
 
     // Sort
     if (sortBy === 'name') {
-      list = [...list].sort((a, b) => a.title.localeCompare(b.title));
+      list = list.toSorted((a, b) => a.title.localeCompare(b.title));
     } else if (sortBy === 'favorites') {
       const favSet = favorites;
-      list = [...list].sort((a, b) => {
+      list = list.toSorted((a, b) => {
         const aFav = favSet.has(a.title) ? 0 : 1;
         const bFav = favSet.has(b.title) ? 0 : 1;
         return aFav - bFav || a.title.localeCompare(b.title);
@@ -1926,6 +1926,8 @@ export function CancionesPage(router) {
       plNameDraft = e.target.value;
     });
     page.querySelector('#plNameInput')?.addEventListener('keydown', (e) => {
+      // Un Enter que confirma un candidato de IME no es «guardar».
+      if (e.isComposing || e.keyCode === 229) return;
       if (e.key === 'Enter') page.querySelector('#plEditorSave')?.click();
     });
     page.querySelector('#plEditorSave')?.addEventListener('click', async () => {

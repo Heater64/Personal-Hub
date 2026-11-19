@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ciclo · 4×2
+<!-- Ciclo · 3×1
 
-     Barra rosa y, a la izquierda, la fase, el día y cuánto falta. -->
+     Barra coral y, a la izquierda, la fase, el día y cuánto falta. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_cycle_root"
@@ -10,13 +10,16 @@
     android:background="@drawable/widget_cycle_bg"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="14dp">
+    android:padding="10dp">
 
-    <View
-        android:layout_width="3dp"
-        android:layout_height="44dp"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/widget_days_accent" />
+    <!-- RemoteViews no permite View genérico; ImageView es una vista remota
+         permitida y conserva la barra coral puramente decorativa. -->
+    <ImageView
+        android:layout_width="2dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/widget_days_accent"
+        android:contentDescription="@null" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -37,7 +40,7 @@
             android:textColor="@color/widget_coral_soft"
             android:textSize="8sp"
             android:textStyle="bold"
-        tools:text="CICLO"/>
+            tools:text="CICLO" />
 
         <TextView
             android:id="@+id/widget_cycle_phase"
@@ -50,7 +53,7 @@
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
-        tools:text="Fase lútea"/>
+            tools:text="Fase lútea" />
 
         <TextView
             android:id="@+id/widget_cycle_day"
@@ -61,7 +64,7 @@
             android:maxLines="1"
             android:textColor="@color/widget_rose"
             android:textSize="9sp"
-        tools:text="día 21 de 28"/>
+            tools:text="día 21 de ~28" />
 
         <TextView
             android:id="@+id/widget_cycle_next"
@@ -72,7 +75,7 @@
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
             android:textSize="8sp"
-        tools:text="próxima regla en 6 d · 24 nov"/>
+            tools:text="próxima regla en 6 d · 24 nov" />
     </LinearLayout>
 
 </LinearLayout>

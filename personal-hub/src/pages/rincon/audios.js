@@ -13,6 +13,7 @@ import { userStore } from '../../stores/user.store.js';
 import { ICON_SVGS } from './icons.js';
 import { state } from './state.js';
 import { MONTHS as AUDIO_MONTHS } from './curiosities.data.js';
+import { mediaUrl, prepareMedia } from '../../services/media.service.js';
 
 /* ==========================================
    Reproductor compartido
@@ -173,7 +174,7 @@ function loadAudioDuration(card) {
   }
   const probe = new Audio();
   probe.preload = 'metadata';
-  probe.src = url;
+  probe.src = mediaUrl(url);
   probe.addEventListener('loadedmetadata', () => {
     if (isFinite(probe.duration) && probe.duration > 0) {
       shared.durations.set(id, probe.duration);
@@ -215,6 +216,9 @@ export async function loadAudios(force = false) {
   try {
     const list = await db.getAudios();
     state.audios = Array.isArray(list) ? list : [];
+    // Los audios viven en Storage: se firman antes de pintar para que el
+    // reproductor no tenga que reintentar con el bucket privado.
+    await prepareMedia(state.audios.map(audio => audio?.url).filter(Boolean));
   } catch (err) {
     console.warn('[rincon] No se pudieron cargar los audios:', err?.message);
     state.audios = [];
@@ -640,7 +644,7 @@ export function createAudiosView(ctx) {
         // Cambiar de audio sin dejar dos sonando a la vez
         shared.id = id;
         shared.title = card.dataset.audioTitle || 'Audio';
-        el.src = url;
+        el.src = mediaUrl(url);
         el.play().catch(() => showAudioError(card));
         syncAudioUI();
       });

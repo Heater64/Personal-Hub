@@ -1043,6 +1043,409 @@ textarea.form-input {
 }
 
 
+/* ==========================================
+   MUNDOS — agrupación de tarjetas (Rincón y Sentimientos)
+   Un mundo es una etiqueta de sección, no una pantalla: mismo peso visual
+   que un subtítulo y ninguna tarjeta nueva alrededor. Solo tokens.
+   ========================================== */
+.mundo { margin-top: var(--sp-24); }
+.mundo:first-of-type { margin-top: var(--sp-4); }
+.mundo-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4) var(--sp-10);
+  margin: 0 0 var(--sp-10);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.mundo-hint {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-3);
+}
+
+/* ==========================================
+   CABECERA — variante con botón de volver
+   (mismo patrón para todas las pantallas que vuelven a un hub)
+   ========================================== */
+.scr-head__main {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  min-width: 0;
+}
+
+.scr-head__copy { min-width: 0; }
+
+.scr-head__back svg { width: 18px; height: 18px; }
+
+/* ==========================================
+   CARGA — filas y rejillas skeleton
+   El brillo es decorativo: el estado real lo anuncia el role=status.
+   ========================================== */
+.sk-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+
+.sk-row,
+.sk-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+}
+
+.sk-row { height: 64px; }
+
+.sk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-12);
+}
+
+@media (min-width: 720px) {
+  .sk-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+
+.sk-card { height: 148px; }
+
+.sk-row::after,
+.sk-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 7%, transparent), transparent);
+  transform: translateX(-100%);
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes sk-shimmer {
+  to { transform: translateX(100%); }
+}
+
+/* Con movimiento reducido no se mueve nada: el hueco queda quieto. */
+@media (prefers-reduced-motion: reduce) {
+  .sk-row::after,
+  .sk-card::after {
+    animation: none;
+    opacity: 0.35;
+    transform: none;
+  }
+}
+
+/* ==========================================
+   TRANSICIÓN DE RUTA
+   Solo entrada, corta y sin retrasar el montaje: la página anterior ya
+   está fuera cuando esto se aplica. Con movimiento reducido, nada.
+   ========================================== */
+/* El selector con `#app-content >` gana a la animación propia de cada
+   página (`.rincon-page { animation: fade-in }`, etc.): la entrada de ruta es
+   la única que se ve, en vez de dos animaciones peleándose. */
+#app-content > .route-enter { animation: route-enter var(--dur-mid) both; }
+
+@keyframes route-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app-content > .route-enter { animation: none; }
+}
+
+/* ==========================================
+   BÚSQUEDA GLOBAL
+   ========================================== */
+.gs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+
+.gs-field {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-10) var(--sp-14);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  color: var(--text-2);
+}
+
+.gs-field:focus-within { border-color: var(--primary); }
+
+.gs-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  outline: none;
+}
+
+.gs-input::placeholder { color: var(--text-3); }
+
+.gs-hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+}
+
+.gs-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.gs-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-10);
+  padding: var(--sp-12) var(--sp-14);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+}
+
+.gs-item.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.gs-item-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gs-item-world {
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.gs .empty { padding: var(--sp-24) var(--sp-16); }
+
+.side-search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  width: 100%;
+  margin-bottom: var(--sp-14);
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.side-search span { flex: 1; text-align: left; }
+
+.side-search kbd {
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+
+.side-search:hover {
+  color: var(--text);
+  border-color: var(--primary);
+}
+
+/* ==========================================
+   PRO — tarjetas de datos compartidos (fase 5)
+   Un solo componente para racha, récords, cuenta atrás, ciclo, móvil del
+   otro y watchlist: tokens, sin colores a mano.
+   ========================================== */
+.pro-card {
+  margin-bottom: var(--sp-16);
+  padding: var(--sp-16);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+}
+
+.pro-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  margin-bottom: var(--sp-12);
+}
+
+.pro-card__kicker {
+  font-size: var(--fs-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--text-3);
+}
+
+.pro-card__title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pro-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--sp-10);
+}
+
+.pro-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-10);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  min-width: 0;
+}
+
+.pro-fact__value {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.pro-fact__value--sm { font-size: var(--fs-sm); font-weight: 600; }
+
+.pro-fact__label {
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+}
+
+.pro-strip {
+  display: flex;
+  gap: 4px;
+  margin-top: var(--sp-12);
+}
+
+.pro-dot {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.pro-dot.is-on { background: var(--primary); }
+
+.pro-records,
+.pro-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.pro-record {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-10);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.pro-record b { color: var(--text); }
+
+.pro-empty {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.pro-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+}
+
+.pro-item__poster {
+  width: 34px;
+  height: 48px;
+  flex: none;
+  object-fit: cover;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+
+.pro-item__body { flex: 1; min-width: 0; }
+
+.pro-item__title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pro-item__meta {
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+}
+
+.pro-year {
+  display: flex;
+  gap: var(--sp-8);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.pro-year__item {
+  position: relative;
+  flex: none;
+  width: 96px;
+  height: 120px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.pro-year__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pro-year__badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 55%);
+  color: var(--on-accent);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+}
+
 @keyframes ui-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ui-slide-up {
   from { transform: translateY(60px); opacity: 0.4; }
@@ -1055,4 +1458,116 @@ textarea.form-input {
 
 @media (min-width: 768px) {
   .toast { animation: ui-pop 0.18s ease-out; }
+}
+
+/* Hoja de las fotos de «días juntos» (la comparten el Inicio y Juntos):
+   verlas, añadir y quitar. */
+.portada__hint {
+  margin: 0 0 var(--sp-14);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.portada__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-10);
+}
+.portada__foto {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.portada__foto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.portada__quitar {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(12, 8, 10, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  cursor: pointer;
+}
+.portada__quitar:hover {
+  background: rgba(12, 8, 10, 0.84);
+}
+.portada__mas {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  aspect-ratio: 1;
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color var(--dur-fast),
+    border-color var(--dur-fast);
+}
+.portada__mas:hover {
+  color: var(--text);
+  border-color: var(--primary);
+}
+.portada__cuenta {
+  margin: var(--sp-12) 0 0;
+  color: var(--text-3);
+  font-size: var(--fs-caption);
+  text-align: center;
+}
+
+/* En Juntos las fotos van verticales: la hoja las enseña con esa forma para
+   que se vea el recorte real. */
+.portada--altas .portada__foto,
+.portada--altas .portada__mas {
+  aspect-ratio: 3 / 4;
+}
+
+/* Mientras la foto del bucket privado espera su URL firmada, un hueco que
+   late en vez de un <img> roto. */
+.portada__espera {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.04) 20%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 80%
+  );
+  background-size: 220% 100%;
+  animation: portada-espera 1.3s linear infinite;
+}
+@keyframes portada-espera {
+  to {
+    background-position: -220% 0;
+  }
+}
+/* La teja de añadir es un <label>: mismo aspecto que un botón, sin borde ni
+   relleno propios del label. */
+label.portada__mas {
+  margin: 0;
+  border: 1px dashed var(--border-soft);
+  -webkit-tap-highlight-color: transparent;
+}
+label.portada__mas:focus-within {
+  border-color: var(--primary);
 }

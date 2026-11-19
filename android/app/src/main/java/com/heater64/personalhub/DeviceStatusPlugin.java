@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
@@ -53,6 +54,7 @@ public class DeviceStatusPlugin extends Plugin {
                 .putString("refreshToken", call.getString("refreshToken", ""))
                 .putLong("expiresAt", expiresAt == null ? 0L : expiresAt)
                 .putString("user_id", call.getString("userId", ""))
+                .putString("couple_id", call.getString("coupleId", ""))
                 .putBoolean("is_admin", Boolean.TRUE.equals(call.getBoolean("isAdmin", false)))
                 .putString("name", call.getString("name", ""))
                 .putString("avatar", call.getString("avatar", ""))
@@ -78,6 +80,7 @@ public class DeviceStatusPlugin extends Plugin {
                 .remove("refreshToken")
                 .remove("expiresAt")
                 .remove("user_id")
+                .remove("couple_id")
                 .remove("is_admin")
                 .apply();
         DeviceStatusService.stop(context);
@@ -91,8 +94,11 @@ public class DeviceStatusPlugin extends Plugin {
 
         JSObject out = new JSObject();
         out.put("enabled", prefs.getBoolean("enabled", false));
+        out.put("running", prefs.getBoolean("running", false));
+        out.put("lastError", prefs.getString("last_error", ""));
         out.put("location", permissionState(context, Manifest.permission.ACCESS_FINE_LOCATION));
         out.put("background", backgroundPermissionState(context));
+        out.put("locationServices", locationServicesState(context));
         out.put("notifications", notificationPermissionState(context));
         out.put("batteryUnrestricted", batteryUnrestricted(context));
         out.put("lastAt", prefs.getString("last_at", ""));
@@ -176,6 +182,15 @@ public class DeviceStatusPlugin extends Plugin {
     private String notificationPermissionState(Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return "granted";
         return permissionState(context, Manifest.permission.POST_NOTIFICATIONS);
+    }
+
+    private String locationServicesState(Context context) {
+        try {
+            LocationManager manager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+            return manager != null && manager.isLocationEnabled() ? "enabled" : "disabled";
+        } catch (Exception ignored) {
+            return "unknown";
+        }
     }
 
     private boolean batteryUnrestricted(Context context) {

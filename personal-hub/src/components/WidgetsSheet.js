@@ -12,8 +12,9 @@
 
 import { openSheet } from './ui.js';
 import { escapeHtml } from '../utils/escape.js';
-import { pinWidget, widgetPreview } from '../services/widgets.service.js';
+import { pinWidget, readSavedWidget, widgetPreview } from '../services/widgets.service.js';
 import { isNative } from '../services/native.service.js';
+import { todayISO } from '../utils/format.js';
 
 const SIZES = [
   { id: 'compact', label: 'Pequeño' },
@@ -72,7 +73,42 @@ const WIDGETS = [
     sizes: SIZES,
     defaultSize: 'rect',
   },
+  // Fase 5: tres widgets de texto, solo en cuadrado y apaisado.
+  {
+    id: 'reason',
+    title: 'Razón del día',
+    desc: 'La razón que os toca hoy, siempre a mano.',
+    sizes: SIZES.filter(size => size.id !== 'large'),
+    defaultSize: 'rect',
+  },
+  {
+    id: 'openwhen',
+    title: 'Open When',
+    desc: 'Cuántas cartas te quedan por descubrir.',
+    sizes: SIZES.filter(size => size.id !== 'large'),
+    defaultSize: 'rect',
+  },
+  {
+    id: 'streak',
+    title: 'Racha',
+    desc: 'Los días seguidos con ánimo registrado.',
+    sizes: SIZES.filter(size => size.id !== 'large'),
+    defaultSize: 'rect',
+  },
 ];
+
+/**
+ * Ejemplos neutros para las miniaturas de razón, Open When y racha.
+ *
+ * Su paquete lo escribe su propia pantalla, así que al abrir la hoja desde
+ * Inicio todavía no existe (y en el navegador nunca, porque Preferences solo
+ * vive en el APK). Sin este respaldo la miniatura enseñaba un guion.
+ */
+const PREVIEW_SAMPLES = {
+  reason: { text: 'Por cómo me haces reír incluso en los días grises.' },
+  openwhen: { pending: 3 },
+  streak: { days: 7, best: 12 },
+};
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
@@ -85,10 +121,12 @@ function shortDate(iso) {
   return `${day} ${MONTHS[month - 1]} ${year}`;
 }
 
-/** Primera emoción y «+N», como lo enseña Inicio. */
+/** Las dos primeras emociones y «+N»: lo mismo que pinta el widget. */
 function moodLabel(mood) {
   if (!mood) return 'sin registrar';
-  if (mood.count > 1) return `${mood.items[0].label} +${mood.count - 1}`;
+  const labels = (mood.items || []).map(item => item?.label).filter(Boolean);
+  if (labels.length > 2) return `${labels.slice(0, 2).join(' · ')} +${labels.length - 2}`;
+  if (labels.length) return labels.join(' · ');
   return mood.label || 'Registrado';
 }
 
@@ -161,13 +199,23 @@ function preview(id, size, data) {
         </div>`;
     }
 
-    // Grande: caras arriba, número grande y desglose debajo.
+    // Grande: misma fila coral que el rectangular, con sitio para las caras.
+    // El widget de 4×2 es apaisado: no apila el contenido en vertical.
     return `
       <div class="wprev wprev--days wprev--large">
-        <div class="wprev__faces wprev__faces--large">${face(me)}${face(partner)}</div>
-        ${kicker}
-        <p class="wprev__row"><span class="wprev__count">${count}</span><span class="wprev__unit">días</span></p>
-        ${breakdownText ? `<p class="wprev__meta">${escapeHtml(breakdownText)}</p>` : ''}
+        <span class="wprev__accent" aria-hidden="true"></span>
+        <div class="wprev__col">
+          ${kicker}
+          <p class="wprev__row"><span class="wprev__count">${count}</span><span class="wprev__unit">días</span></p>
+          ${
+            breakdownText
+              ? `<p class="wprev__meta">${escapeHtml(breakdownText)}</p>`
+              : count === '—'
+                ? '<p class="wprev__meta">abre la app</p>'
+                : ''
+          }
+        </div>
+        <div class="wprev__faces wprev__faces--rect">${face(me)}${face(partner)}</div>
       </div>`;
   }
 
@@ -199,10 +247,12 @@ function preview(id, size, data) {
 
     return `
       <div class="wprev wprev--countdown wprev--large">
-        <p class="wprev__kicker">FALTAN</p>
-        <p class="wprev__row"><span class="wprev__count">${count}</span>${unit}</p>
-        <p class="wprev__title">${escapeHtml(title)}</p>
-        ${dateText ? `<p class="wprev__meta">${escapeHtml(dateText)}</p>` : ''}
+        <span class="wprev__accent" aria-hidden="true"></span>
+        <div class="wprev__col">
+          <p class="wprev__kicker">FALTAN</p>
+          <p class="wprev__row"><span class="wprev__count">${count}</span>${unit}</p>
+          <p class="wprev__meta">${escapeHtml(dateText ? `${title} · ${dateText}` : title)}</p>
+        </div>
       </div>`;
   }
 
@@ -237,10 +287,13 @@ function preview(id, size, data) {
 
     return `
       <div class="wprev wprev--cycle wprev--large">
-        <p class="wprev__kicker">CICLO</p>
-        <p class="wprev__title wprev__title--lg">${escapeHtml(phase)}</p>
-        ${detail ? `<p class="wprev__meta wprev__meta--rose">${escapeHtml(detail)}</p>` : ''}
-        ${next ? `<p class="wprev__meta">${escapeHtml(next)}</p>` : ''}
+        <span class="wprev__accent" aria-hidden="true"></span>
+        <div class="wprev__col">
+          <p class="wprev__kicker">CICLO</p>
+          <p class="wprev__title">${escapeHtml(phase)}</p>
+          ${detail ? `<p class="wprev__meta wprev__meta--rose">${escapeHtml(detail)}</p>` : ''}
+          ${next ? `<p class="wprev__meta">${escapeHtml(next)}</p>` : ''}
+        </div>
       </div>`;
   }
 
@@ -299,11 +352,14 @@ function preview(id, size, data) {
 
     return `
       <div class="wprev wprev--gifts wprev--large">
-        <p class="wprev__kicker">HOY</p>
+        <span class="wprev__accent" aria-hidden="true"></span>
+        <div class="wprev__col">
+          <p class="wprev__kicker">HOY</p>
+          <p class="wprev__row"><span class="wprev__count wprev__count--sm">${escapeHtml(count)}</span></p>
+          <p class="wprev__meta">${escapeHtml(label)}</p>
+          ${hint ? `<p class="wprev__meta">${escapeHtml(hint)}</p>` : ''}
+        </div>
         <p class="wprev__emoji">🎁</p>
-        <p class="wprev__count">${escapeHtml(count)}</p>
-        <p class="wprev__meta">${escapeHtml(label)}</p>
-        ${hint ? `<p class="wprev__meta">${escapeHtml(hint)}</p>` : ''}
       </div>`;
   }
 
@@ -335,10 +391,12 @@ function preview(id, size, data) {
 
     return `
       <div class="wprev wprev--mood wprev--large">
-        <p class="wprev__kicker">ESTADO DE ÁNIMO</p>
         <p class="wprev__emoji">${escapeHtml(emoji)}</p>
-        <p class="wprev__mood-label">${escapeHtml(label)}</p>
-        <p class="wprev__meta">${escapeHtml(meta)}</p>
+        <div class="wprev__col">
+          <p class="wprev__kicker">HOY</p>
+          <p class="wprev__mood-label">${escapeHtml(label)}</p>
+          <p class="wprev__meta">${escapeHtml(meta)}</p>
+        </div>
       </div>`;
   }
 
@@ -371,14 +429,71 @@ function preview(id, size, data) {
 
     return `
       <div class="wprev wprev--distance wprev--large">
-        <div class="wprev__faces wprev__faces--large">${face(me)}${face(partner)}</div>
-        ${kicker}
-        <p class="wprev__row"><span class="wprev__count wprev__count--distance">${escapeHtml(value)}</span></p>
-        <p class="wprev__caption">${escapeHtml(when)}</p>
+        <span class="wprev__accent" aria-hidden="true"></span>
+        <div class="wprev__col">
+          ${kicker}
+          <p class="wprev__row"><span class="wprev__count wprev__count--distance">${escapeHtml(value)}</span></p>
+          <p class="wprev__meta">${escapeHtml(when)}</p>
+        </div>
+        <div class="wprev__faces wprev__faces--rect">${face(me)}${face(partner)}</div>
       </div>`;
   }
 
+  // ---- Widgets Pro: misma composición, distinto significado ----
+  if (id === 'reason' || id === 'openwhen' || id === 'streak') {
+    return proPreview(id, compact, data);
+  }
+
   return '';
+}
+
+/**
+ * Miniatura de los widgets Pro (razón del día, Open When y racha).
+ *
+ * Los tres comparten composición: rótulo, valor y etiqueta. El cuadrado se
+ * queda con el rótulo corto y el valor (el CSS ya ocultaba la etiqueta a ese
+ * tamaño); el apaisado añade la etiqueta. Si el valor es texto se recorta como
+ * en el widget real; si es una cifra usa el número grande de siempre.
+ */
+function proPreview(id, compact, data) {
+  const numeric = id !== 'reason';
+  let short;
+  let kicker;
+  let value;
+  let caption;
+
+  if (id === 'reason') {
+    short = 'razón';
+    kicker = 'RAZÓN DEL DÍA';
+    value = String(data.reason?.text || '').trim() || '—';
+    caption = 'de vuestra lista';
+  } else if (id === 'openwhen') {
+    const pending = Number(data.openwhen?.pending) || 0;
+    short = 'open when';
+    kicker = 'OPEN WHEN';
+    value = String(pending);
+    caption = pending === 1 ? 'carta por descubrir' : 'cartas por descubrir';
+  } else {
+    const days = Number(data.streak?.days) || 0;
+    const best = Math.max(days, Number(data.streak?.best) || 0);
+    short = 'racha';
+    kicker = 'RACHA';
+    value = String(days);
+    caption = days > 0
+      ? `${days === 1 ? 'día seguido' : 'días seguidos'}${best > days ? ` · mejor: ${best}` : ''}`
+      : 'empieza hoy';
+  }
+
+  const valueHTML = numeric
+    ? `<span class="wprev__count wprev__count--pro">${escapeHtml(value)}</span>`
+    : `<p class="wprev__pro-text${compact ? ' wprev__pro-text--sm' : ''}">${escapeHtml(value)}</p>`;
+
+  return `
+    <div class="wprev wprev--pro${compact ? ' wprev--compact' : ''}">
+      <span class="wprev__kicker">${escapeHtml(compact ? short : kicker)}</span>
+      ${valueHTML}
+      ${compact ? '' : `<span class="wprev__caption">${escapeHtml(caption)}</span>`}
+    </div>`;
 }
 
 /**
@@ -398,8 +513,35 @@ export function openWidgetsSheet({
   cycle,
   watch,
   gifts,
+  reason,
+  openwhen,
+  streak,
 } = {}) {
-  const data = { me, partner, days, breakdown, km, kmAt, next, mood, cycle, watch, gifts };
+  // Lo que Inicio no tiene a mano se toma del último paquete guardado: la
+  // razón del día, las cartas o la racha los escribe su propia pantalla, y sin
+  // este respaldo sus miniaturas salían vacías en la web.
+  const saved = widget => readSavedWidget(widget) || null;
+  // El ánimo del paquete solo vale si es de hoy: la miniatura dice «hoy», y
+  // enseñar el de ayer con esa palabra sería mentir.
+  const savedMood = saved('mood');
+  const moodToday = savedMood && savedMood.date === todayISO() ? savedMood : null;
+
+  const data = {
+    me,
+    partner,
+    days,
+    breakdown,
+    km,
+    kmAt,
+    next,
+    mood: mood || moodToday,
+    cycle: cycle || saved('cycle'),
+    watch,
+    gifts: gifts || saved('gifts'),
+    reason: reason || saved('reason') || PREVIEW_SAMPLES.reason,
+    openwhen: openwhen || saved('openwhen') || PREVIEW_SAMPLES.openwhen,
+    streak: streak || saved('streak') || PREVIEW_SAMPLES.streak,
+  };
   const native = isNative();
 
   openSheet('Widgets', () => {
@@ -450,7 +592,7 @@ export function openWidgetsSheet({
       <p class="wsheet__note">${
         native
           ? 'Si el diálogo no aparece, mantén pulsado un hueco del escritorio → Widgets → Hub🧸. También puedes cambiar el tamaño de un widget ya puesto arrastrando sus esquinas.'
-          : 'Esta hoja enseña el mismo diseño que se coloca en el escritorio. Si cambias el tamaño de un widget en Android, se adapta solo: alto para 4×3 y apaisado para 4×2.'
+          : 'Esta hoja enseña el mismo diseño que se coloca en el escritorio: cuadrado en 1×1 y apaisado en 3×1 y en 4×2, sin apilar el contenido.'
       }</p>
     `;
 

@@ -9,23 +9,32 @@
 .home-page > * {
   animation: home-enter var(--dur-normal) both;
 }
-.home-page > *:nth-child(2) {
-  animation-delay: 0.04s;
+/* Entrada escalonada: 40 ms por bloque según su posición, con tope a 240 ms. */
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .home-page > * {
+    animation-delay: min(calc((sibling-index() - 1) * 0.04s), 0.24s);
+  }
 }
-.home-page > *:nth-child(3) {
-  animation-delay: 0.08s;
-}
-.home-page > *:nth-child(4) {
-  animation-delay: 0.12s;
-}
-.home-page > *:nth-child(5) {
-  animation-delay: 0.16s;
-}
-.home-page > *:nth-child(6) {
-  animation-delay: 0.2s;
-}
-.home-page > *:nth-child(7) {
-  animation-delay: 0.24s;
+
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .home-page > *:nth-child(2) {
+    animation-delay: 0.04s;
+  }
+  .home-page > *:nth-child(3) {
+    animation-delay: 0.08s;
+  }
+  .home-page > *:nth-child(4) {
+    animation-delay: 0.12s;
+  }
+  .home-page > *:nth-child(5) {
+    animation-delay: 0.16s;
+  }
+  .home-page > *:nth-child(6) {
+    animation-delay: 0.2s;
+  }
+  .home-page > *:nth-child(7) {
+    animation-delay: 0.24s;
+  }
 }
 /* La celebración ocupa la pantalla entera, igual que la bienvenida del ánimo:
    no es una hoja que se asoma desde abajo, es la pantalla del día. El titular
@@ -512,111 +521,248 @@
   }
 }
 /* ==========================================
-   1 · CONTADOR — el protagonista, sin relleno
+   0 · BARRA SUPERIOR — saludo, caras y ajustes
    ========================================== */
-.home-hero {
-  position: relative;
-  overflow: hidden;
+.home-topbar {
   display: flex;
-  flex-direction: column;
-  gap: var(--sp-14);
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--r-xl);
-  padding: var(--sp-18);
-  box-shadow: var(--sh-s);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-14);
 }
-/* Luz ambiental muy discreta en la esquina del contador */
-.home-hero::before {
-  content: '';
-  position: absolute;
-  top: -60px;
-  left: -40px;
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, var(--hero-glow-1) 0%, transparent 68%);
-  pointer-events: none;
-}
-.home-hero__main {
-  position: relative;
+/* Saludo en una sola línea: "Buenos días ☀️, admin". */
+.home-topbar__greet {
   display: flex;
-  align-items: center;
-  gap: var(--sp-14);
-}
-.home-hero__badge {
-  width: 50px;
-  height: 50px;
-  flex: none;
-  border-radius: var(--r-md);
-  background: var(--primary-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-}
-.home-hero__num {
-  display: block;
-  font-family: var(--font-ui);
-  font-size: var(--fs-2xl);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: var(--primary);
-  font-variant-numeric: tabular-nums;
-}
-.home-hero__label {
-  display: block;
-  margin-top: 5px;
-  /* Mismo cuerpo que la cifra: el contador se lee como un bloque único
-     ("455 DÍAS JUNTOS") en vez de número gigante + etiqueta diminuta.
-     Solo baja el contraste con --text-2 y un pelín el tracking, que en
-     mayúsculas a este tamaño se dispara. */
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  line-height: 1;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-.home-hero__quote {
-  position: relative;
-  margin: 0;
-  padding-left: var(--sp-12);
-  border-left: 2px solid var(--primary-softer);
-  font-size: var(--fs-sm);
-  line-height: 1.55;
-  color: var(--text-2);
-}
-/* Saludo con apodo: va arriba de todo en la tarjeta de días, antes del
-   contador. El apodo sale del rol de la sesión (admin / mi princesa). */
-.home-hero__greet {
-  position: relative;
+  align-items: baseline;
+  gap: 0.3em;
+  min-width: 0;
   margin: 0;
   font-family: var(--font-ui);
-  font-size: var(--fs-2xl);
+  font-size: clamp(1.35rem, 5.6vw, var(--fs-2xl));
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.035em;
+  white-space: nowrap;
   color: var(--text);
 }
-.home-hero__greet-name {
+.home-topbar__name {
   color: var(--primary);
   font-family: var(--font-display, Georgia, serif);
   font-style: italic;
   font-weight: 500;
   letter-spacing: 0.01em;
-  padding-inline: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-/* En móvil el apodo baja a su propia línea: "Buenas noches 🌙," y debajo
-   "mi princesa". Encima de 768 px hay sitio de sobra y se queda todo en
-   una sola línea. */
-@media (max-width: 767px) {
-  .home-hero__greet-name {
-    display: block;
-  }
-  .home-hero__greet {
-    line-height: 1.2;
-  }
+.home-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  flex: none;
+  padding-top: 4px;
+}
+.home-topbar__faces {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-topbar__face {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 1px var(--border-soft);
+  color: var(--primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+.home-topbar__face + .home-topbar__face {
+  margin-left: -12px;
+}
+.home-topbar__face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.home-topbar__gear {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast),
+    background var(--dur-fast);
+}
+.home-topbar__gear:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+/* ==========================================
+   1 · CONTADOR — imagen ancha con el número encima
+   ========================================== */
+.home-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  min-height: clamp(168px, 46vw, 212px);
+  overflow: hidden;
+  padding: var(--sp-16) var(--sp-18);
+  /* Sin filo de color: el borde teñido de --primary se leía como un marco
+     naranja encima de la foto. La tarjeta ya se separa con el velo y la
+     sombra, y así la imagen llega limpia hasta el radio. */
+  border: 0;
+  border-radius: var(--r-xl);
+  /* Sin foto de serie: si la pareja no ha puesto fotos, la tarjeta es este
+     degradado (los mismos halos que la pantalla Juntos), no una imagen fija. */
+  background:
+    radial-gradient(120% 120% at 16% 0%, rgba(240, 178, 60, 0.24), transparent 62%),
+    radial-gradient(110% 130% at 88% 104%, rgba(123, 75, 179, 0.36), transparent 66%),
+    linear-gradient(160deg, #241621 0%, #170f1c 58%, #221326 100%);
+  box-shadow: var(--sh-m);
+}
+/* Velo: el texto blanco se lee sobre la foto y el borde se funde con ella. */
+.home-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(12, 8, 10, 0.06) 0%,
+      rgba(12, 8, 10, 0.34) 45%,
+      rgba(12, 8, 10, 0.82) 100%
+    ),
+    linear-gradient(90deg, rgba(12, 8, 10, 0.42), transparent 72%);
+}
+.home-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Capas de la foto: la nueva entra encima de la anterior, así el cambio de
+   cada 5 s se funde en vez de dar un salto seco. Van por debajo del velo
+   (::after) y del contenido: de ahí el z-index negativo. */
+.home-hero > .home-hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: center / cover no-repeat;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+.home-hero > .home-hero__bg.is-on {
+  opacity: 1;
+}
+
+.home-hero__heart,
+.home-hero__edit {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 12, 16, 0.34);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast),
+    transform 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-hero__heart {
+  top: 13px;
+  right: 13px;
+}
+.home-hero__edit {
+  bottom: 13px;
+  right: 13px;
+}
+.home-hero__heart:hover,
+.home-hero__edit:hover {
+  background: rgba(20, 12, 16, 0.55);
+}
+.home-hero__heart:active,
+.home-hero__edit:active {
+  transform: scale(0.94);
+}
+.home-hero__heart:focus-visible,
+.home-hero__edit:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.home-hero__eyebrow {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+.home-hero__main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-8);
+  margin: 0;
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+}
+.home-hero__num {
+  font-family: var(--font-ui);
+  font-size: clamp(2.3rem, 9vw, 3.1rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.home-hero__label {
+  font-size: clamp(0.72rem, 2.6vw, 0.86rem);
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.92);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* La frase del día, en su propia barra debajo de la imagen. */
+.home-quote {
+  margin: var(--sp-12) 0 0;
+  padding: 11px var(--sp-16);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  box-shadow: var(--sh-s);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-style: italic;
+  text-align: center;
+  text-wrap: balance;
 }
 /* ==========================================
    2 · DOS DATOS RÁPIDOS
@@ -654,20 +800,20 @@
   line-height: 1.15;
 }
 .home-stat__ic {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--r-sm);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   background: var(--primary-soft);
   color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 15px;
-  margin-bottom: var(--sp-2);
+  margin-bottom: var(--sp-4);
 }
 .home-stat__num {
   font-family: var(--font-ui);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-xl);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -803,20 +949,11 @@
   gap: var(--sp-12);
 }
 @media (max-width: 480px) {
-  .home-hero__greet {
-    font-size: clamp(1.5rem, 6.5vw, var(--fs-2xl));
+  .home-stats {
+    gap: var(--sp-8);
   }
-  .home-hero__main {
-    gap: var(--sp-10);
-  }
-  .home-hero__num,
-  .home-hero__label {
-    font-size: clamp(1.5rem, 6.5vw, var(--fs-2xl));
-  }
-  .home-hero__badge {
-    width: 42px;
-    height: 42px;
-    font-size: 20px;
+  .home-stat {
+    padding: var(--sp-12);
   }
 }
 @media (min-width: 768px) {
@@ -932,31 +1069,34 @@
 }
 
 /* ==========================================
-   ATAJOS RÁPIDOS — Mal día y Open When
+   ATAJOS RÁPIDOS — los tres en una sola fila
    ========================================== */
 .home-shortcuts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-10);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-8);
   margin-top: var(--sp-12);
 }
 
 .home-shortcut {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--sp-10);
+  justify-content: center;
+  gap: var(--sp-8);
   min-width: 0;
-  padding: var(--sp-10) var(--sp-12);
+  padding: var(--sp-12) var(--sp-6);
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--r-lg);
   box-shadow: var(--sh-s);
-  text-align: left;
+  text-align: center;
   font-family: inherit;
   cursor: pointer;
   transition:
     border-color var(--dur-fast),
     transform 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .home-shortcut:hover {
@@ -967,10 +1107,10 @@
 }
 
 .home-shortcut__ic {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   flex: none;
-  border-radius: var(--r-sm);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -979,32 +1119,19 @@
 }
 
 .home-shortcut__body {
-  flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+  width: 100%;
 }
 
 .home-shortcut__body b {
+  display: block;
   font-family: var(--font-ui);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text);
-}
-
-.home-shortcut__body small {
-  font-size: var(--fs-caption);
-  color: var(--text-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.home-shortcut__chev {
-  flex: none;
-  display: flex;
-  color: var(--text-4);
 }
 
 /* ==========================================
@@ -1149,8 +1276,8 @@
 }
 
 @media (max-width: 480px) {
-  .home-shortcuts {
-    grid-template-columns: 1fr;
+  .home-hero {
+    padding: var(--sp-14);
   }
   .home-watch {
     width: 232px;
@@ -1345,7 +1472,11 @@ button.home-map:focus-visible {
 /* «Estáis juntos»: misma pastilla, con el corazón y el aire de la paleta. */
 .distmap__km--together {
   border-color: rgba(243, 197, 208, 0.55);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--dm-her) 16%, var(--surface)), var(--surface));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--dm-her) 16%, var(--surface)),
+    var(--surface)
+  );
 }
 .distmap__km--together .ic {
   color: var(--dm-her);
@@ -1531,6 +1662,12 @@ button.home-map:focus-visible {
   border: 1px dashed color-mix(in srgb, var(--dm-her) 45%, var(--border-soft));
   border-radius: 14px;
   background: color-mix(in srgb, var(--dm-her) 7%, var(--surface));
+}
+/* El aviso se oculta con el atributo `hidden`: el display:flex de arriba le
+   ganaba a la regla del navegador y el mapa pedía el permiso siempre, aunque
+   ya estuviera concedido. */
+.distmap__perm[hidden] {
+  display: none;
 }
 .distmap__perm-ico {
   display: grid;
@@ -2357,12 +2494,15 @@ button.home-map:focus-visible {
   aspect-ratio: auto;
   padding: 14px;
 }
+/* 4×2 = 220×110 dp: apaisado, igual que el layout nativo. */
 .wsheet .wprev.wprev--days.wprev--large {
   flex: none;
-  flex-direction: column;
-  gap: 0;
-  width: 250px;
-  height: 180px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 220px;
+  height: 110px;
   max-width: none;
   aspect-ratio: auto;
   padding: 14px;
@@ -2390,7 +2530,7 @@ button.home-map:focus-visible {
   margin-top: 3px;
 }
 .wsheet .wprev--days.wprev--large .wprev__count {
-  font-size: 44px;
+  font-size: 34px;
 }
 .wsheet .wprev--days .wprev__row {
   display: flex;
@@ -2406,8 +2546,8 @@ button.home-map:focus-visible {
   white-space: nowrap;
 }
 .wsheet .wprev--days.wprev--large .wprev__unit {
-  margin-bottom: 6px;
-  font-size: 14px;
+  margin-bottom: 4px;
+  font-size: 12px;
 }
 .wsheet .wprev--days .wprev__meta {
   max-width: 100%;
@@ -2432,6 +2572,21 @@ button.home-map:focus-visible {
   height: 44px;
   border-radius: 2px;
   background: #c65a3a;
+}
+/* Misma barra de acento en el resto de la familia: el widget nativo la lleva
+   también en 3×1 y en 4×2. */
+.wsheet :is(.wprev--distance, .wprev--cycle, .wprev--gifts) .wprev__accent {
+  flex: 0 0 3px;
+  width: 3px;
+  height: 44px;
+  border-radius: 2px;
+  background: #c65a3a;
+}
+.wsheet .wprev--distance .wprev__accent {
+  background: #e59277;
+}
+.wsheet .wprev--cycle .wprev__accent {
+  background: #f3c5d0;
 }
 .wsheet .wprev--days .wprev__col {
   display: flex;
@@ -2497,10 +2652,12 @@ button.home-map:focus-visible {
 }
 .wsheet .wprev.wprev--distance.wprev--large {
   flex: none;
-  flex-direction: column;
-  gap: 0;
-  width: 250px;
-  height: 180px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 220px;
+  height: 110px;
   max-width: none;
   aspect-ratio: auto;
   padding: 14px;
@@ -2532,7 +2689,7 @@ button.home-map:focus-visible {
 }
 .wsheet .wprev--distance.wprev--large .wprev__count {
   margin-top: 1px;
-  font-size: 40px;
+  font-size: 34px;
 }
 .wsheet .wprev--distance .wprev__row {
   display: flex;
@@ -2591,10 +2748,12 @@ button.home-map:focus-visible {
 }
 .wsheet .wprev:is(.wprev--countdown, .wprev--mood).wprev--large {
   flex: none;
-  flex-direction: column;
-  gap: 0;
-  width: 250px;
-  height: 180px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  width: 220px;
+  height: 110px;
   max-width: none;
   aspect-ratio: auto;
   padding: 14px;
@@ -2644,7 +2803,7 @@ button.home-map:focus-visible {
   font-size: 36px;
 }
 .wsheet .wprev--countdown.wprev--large .wprev__count {
-  font-size: 48px;
+  font-size: 36px;
 }
 .wsheet :is(.wprev--countdown, .wprev--mood) .wprev__unit {
   margin-bottom: 3px;
@@ -2658,8 +2817,8 @@ button.home-map:focus-visible {
   font-size: 12px;
 }
 .wsheet .wprev--countdown.wprev--large .wprev__unit {
-  margin-bottom: 6px;
-  font-size: 14px;
+  margin-bottom: 4px;
+  font-size: 12px;
 }
 .wsheet .wprev--countdown .wprev__title {
   max-width: 100%;
@@ -2683,8 +2842,9 @@ button.home-map:focus-visible {
   font-size: 36px;
 }
 .wsheet .wprev--mood.wprev--large .wprev__emoji {
-  margin-top: 4px;
-  font-size: 56px;
+  flex: 0 0 auto;
+  margin-top: 0;
+  font-size: 44px;
 }
 .wsheet .wprev--mood .wprev__mood-label {
   max-width: 100%;
@@ -2705,8 +2865,14 @@ button.home-map:focus-visible {
   font-size: 16px;
 }
 .wsheet .wprev--mood.wprev--large .wprev__mood-label {
-  margin-top: 2px;
-  font-size: 20px;
+  margin-top: 1px;
+  font-size: 18px;
+  text-align: left;
+}
+/* En 4×2 el contenido va en columna a la izquierda: no se centra como el 4×3. */
+.wsheet .wprev:is(.wprev--mood, .wprev--countdown).wprev--large .wprev__meta,
+.wsheet .wprev:is(.wprev--mood, .wprev--countdown).wprev--large .wprev__title {
+  text-align: left;
 }
 .wsheet :is(.wprev--countdown, .wprev--mood) .wprev__meta {
   max-width: 100%;
@@ -2742,13 +2908,13 @@ button.home-map:focus-visible {
    ========================================== */
 /* widget-tokens:start */
 :root {
-  --widget-ink: #0F0F10;
-  --widget-plum: #25172A;
-  --widget-plum-light: #2E1B35;
-  --widget-coral: #C65A3A;
-  --widget-coral-soft: #E59277;
-  --widget-rose: #F3C5D0;
-  --widget-text-muted: #B3C9BBD1;
+  --widget-ink: #0f0f10;
+  --widget-plum: #25172a;
+  --widget-plum-light: #2e1b35;
+  --widget-coral: #c65a3a;
+  --widget-coral-soft: #e59277;
+  --widget-rose: #f3c5d0;
+  --widget-text-muted: #b3c9bbd1;
 }
 /* widget-tokens:end */
 
@@ -2823,10 +2989,127 @@ button.home-map:focus-visible {
 .wsheet .wprev--cycle.wprev--large,
 .wsheet .wprev--watching.wprev--large,
 .wsheet .wprev--gifts.wprev--large {
-  width: 250px;
-  height: 180px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 220px;
+  height: 110px;
   padding: 14px;
 }
+/* Ciclo, seguir viendo y sorpresas: una escala tipográfica propia.
+   Sin ella heredaban la letra base de la hoja (15 px) y el texto se salía de
+   la tarjeta en cuanto había datos de verdad. Las medidas son las del widget
+   nativo: letra pequeña, tres o cuatro líneas y nada de cortes. */
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts) {
+  text-align: left;
+}
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts) .wprev__col {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0;
+}
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts) .wprev__kicker {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts) .wprev__title {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts) .wprev__count {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts) :is(.wprev__meta, .wprev__caption) {
+  max-width: 100%;
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts) .wprev__emoji {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1;
+}
+.wsheet .wprev--watching .wprev__poster {
+  width: 44px;
+  height: 60px;
+}
+/* En 4×2 (220×110) hay algo más de sitio: la letra sube un punto. */
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts).wprev--large .wprev__title {
+  font-size: 14px;
+}
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts).wprev--large .wprev__count {
+  font-size: 30px;
+}
+.wsheet .wprev:is(.wprev--cycle, .wprev--watching, .wprev--gifts).wprev--large .wprev__emoji {
+  font-size: 30px;
+}
+
+/* Widgets Pro (fase 5): una composición de texto, tres significados. */
+.wsheet .wprev--pro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid rgba(201, 182, 228, 0.26);
+  border-radius: 20px;
+  background: linear-gradient(150deg, #2a2233, var(--widget-ink));
+  color: #fff;
+}
+.wsheet .wprev--pro.wprev--compact {
+  align-items: center;
+  width: 110px;
+  height: 110px;
+  padding: 10px;
+  text-align: center;
+}
+.wsheet .wprev--pro:not(.wprev--compact) {
+  width: 250px;
+  height: 110px;
+  padding: 14px;
+}
+.wsheet .wprev--pro .wprev__kicker {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #c9b6e4;
+}
+.wprev__pro-text {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+/* En el cuadrado la razón se encoge y se recorta como en el widget real: se
+   ven las primeras palabras, no un hueco con un emoji. */
+.wprev__pro-text--sm {
+  font-size: 10px;
+  line-height: 1.15;
+  text-align: center;
+  -webkit-line-clamp: 3;
+}
+.wprev__count--pro {
+  font-size: 26px;
+  font-weight: 800;
+}
+
 .wprev__title--lg {
   font-size: 18px;
 }

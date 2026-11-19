@@ -1,5 +1,6 @@
 import { safeUrl } from '../utils/escape.js';
 import { pushOverlayHistory, finalizeOverlayClose } from '../utils/overlayHistory.js';
+import { mediaUrl } from '../services/media.service.js';
 
 /* ==========================================
    Personal Hub v2 — Media Lightbox Pro
@@ -27,6 +28,23 @@ let slideshowActive = false;
 let slideshowVideo = null;
 let slideshowVideoEnded = null;
 let lastFocusedElement = null;
+let chromeTimer = null;
+
+/**
+ * Oculta la barra al cabo de un rato y la devuelve al primer gesto, como los
+ * visores del sistema. Un solo temporizador para todo el visor.
+ */
+function bumpChrome() {
+  const box = document.getElementById('mediaLightbox');
+  if (!box?.classList.contains('open')) return;
+  box.classList.remove('chrome-hidden');
+  if (chromeTimer) clearTimeout(chromeTimer);
+  chromeTimer = setTimeout(() => {
+    if (document.getElementById('mediaLightbox')?.classList.contains('open')) {
+      document.getElementById('mediaLightbox').classList.add('chrome-hidden');
+    }
+  }, 4000);
+}
 
 function clearSlideshowVideoBinding() {
   if (!slideshowVideo) return;
@@ -140,11 +158,14 @@ function preloadAround(idx) {
 
 // Cloudinary helper: generate optimized URL for lightbox (full quality)
 function lightboxSrc(src) {
-  if (!src) return src;
-  if (src.includes('res.cloudinary.com') && src.includes('/image/upload/')) {
-    return src.replace('/image/upload/', '/image/upload/q_auto:best,f_auto,dpr_auto,c_limit,w_1920/');
+  // Firma primero (Storage privado) y luego aplica la transformación de
+  // Cloudinary, que es un no-op para cualquier otro host.
+  const value = mediaUrl(src);
+  if (!value) return value;
+  if (value.includes('res.cloudinary.com') && value.includes('/image/upload/')) {
+    return value.replace('/image/upload/', '/image/upload/q_auto:best,f_auto,dpr_auto,c_limit,w_1920/');
   }
-  return src;
+  return value;
 }
 
 function detectMime(src) {
@@ -161,15 +182,67 @@ function detectMime(src) {
  * Solo se transforman URLs de Cloudinary; el resto se devuelve tal cual.
  */
 function browserVideoSrc(src) {
-  if (!src) return src;
-  if (!src.includes('res.cloudinary.com') || !src.includes('/video/upload/')) return src;
+  const value = mediaUrl(src);
+  if (!value) return value;
+  if (!value.includes('res.cloudinary.com') || !value.includes('/video/upload/')) return value;
   // Si ya tiene la transformación de codec, no duplicar
-  if (/vc_h264|f_mp4/.test(src)) return src;
+  if (/vc_h264|f_mp4/.test(value)) return value;
   // Insertar f_mp4,vc_h264 justo después de /video/upload/
-  return src.replace('/video/upload/', '/video/upload/f_mp4,vc_h264/');
+  return value.replace('/video/upload/', '/video/upload/f_mp4,vc_h264/');
 }
 
 function getItem() { return state.items[state.currentIndex]; }
+
+/** Nombre de archivo razonable para «Guardar» (el original conserva su nombre). */
+function mediaFileName(src) {
+  try {
+    const name = new URL(src, window.location.href).pathname.split('/').pop() || '';
+    return name || `personalhub-${Date.now()}.jpg`;
+  } catch {
+    return `personalhub-${Date.now()}.jpg`;
+  }
+}
+
+/** Descarga el original: un enlace real, sin fetch (evita CORS y firmas). */
+function saveCurrentMedia() {
+  const item = getItem();
+  if (!item) return;
+  const href = lightboxSrc(item.src);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = mediaFileName(href);
+  a.rel = 'noopener';
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/** Comparte con el sistema; si no hay share, copia el enlace. */
+async function shareCurrentMedia() {
+  const item = getItem();
+  if (!item) return;
+  const url = lightboxSrc(item.src);
+  const title = item.caption || 'Personal Hub';
+  const btn = document.getElementById('mlShareBtn');
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, url });
+      return;
+    } catch (err) {
+      // Cancelar el diálogo no es un error: no se cae al plan B.
+      if (err?.name === 'AbortError') return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    btn?.classList.add('is-done');
+    if (btn) btn.title = 'Enlace copiado';
+    setTimeout(() => { btn?.classList.remove('is-done'); if (btn) btn.title = 'Compartir'; }, 1800);
+  } catch {
+    window.open(url, '_blank', 'noopener');
+  }
+}
 
 // ==========================================
 // VIDEO PLAYER — reutilizable (galería + calendario)
@@ -212,7 +285,7 @@ export function buildVideoPlayer(opts = {}) {
   video.loop = loop;
   video.autoplay = autoplay;
   video.muted = false;
-  if (poster) video.poster = poster;
+  if (poster) video.poster = mediaUrl(poster);
   const source = document.createElement('source');
   source.src = src;
   source.type = detectMime(src);
@@ -324,7 +397,7 @@ function render() {
   if (state.videoEl) { state.videoEl = null; }
   // Cleanup listeners de arrastre/zoom del render anterior (evita fugas acumuladas)
   if (state._imgCleanup) { try { state._imgCleanup(); } catch(e) {} state._imgCleanup = null; }
-  content.innerHTML = '';
+  content.replaceChildren();
   state.zoom = 1;
   state.panX = 0;
   state.panY = 0;
@@ -482,6 +555,15 @@ function render() {
   // Update info
   if (caption) caption.textContent = item.caption || '';
   if (counter) counter.textContent = `${state.currentIndex + 1} / ${state.items.length}`;
+  const dateEl = document.getElementById('mlDate');
+  if (dateEl) {
+    dateEl.textContent = item.date || '';
+    dateEl.style.display = item.date ? '' : 'none';
+  }
+  // Fondo: la propia foto muy desenfocada, no un negro plano.
+  const bgSrc = item.type === 'video' ? (item.poster || '') : lightboxSrc(item.src);
+  if (bgSrc) box.style.setProperty('--ml-photo', `url("${bgSrc}")`);
+  else box.style.removeProperty('--ml-photo');
 
   // Update thumbnail strip
   if (thumbs && state.items.length > 1) {
@@ -717,6 +799,11 @@ export function openLightbox(items, startIndex = 0, options = {}) {
   box.classList.add('open');
   box.setAttribute('aria-hidden', 'false');
   document.body.classList.add('lightbox-open');
+  box.classList.remove('chrome-hidden');
+  const contentEl = document.getElementById('mlContent');
+  if (contentEl) { contentEl.style.transform = ''; contentEl.style.transition = ''; }
+  box.style.removeProperty('--ml-drag-opacity');
+  bumpChrome();
   document.querySelectorAll('#overlays > .overlay').forEach(overlay => {
     overlay.inert = true;
     overlay.setAttribute('aria-hidden', 'true');
@@ -735,6 +822,9 @@ export function closeLightbox() {
   if (state._imgCleanup) { try { state._imgCleanup(); } catch(e) {} state._imgCleanup = null; }
   box.classList.remove('open');
   box.classList.remove('is-video');
+  box.classList.remove('chrome-hidden');
+  box.style.removeProperty('--ml-drag-opacity');
+  if (chromeTimer) { clearTimeout(chromeTimer); chromeTimer = null; }
   box.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('lightbox-open');
   document.querySelectorAll('#overlays > .overlay').forEach(overlay => {
@@ -742,9 +832,9 @@ export function closeLightbox() {
     overlay.removeAttribute('aria-hidden');
   });
   const content = document.getElementById('mlContent');
-  if (content) { while (content.firstChild) content.removeChild(content.firstChild); }
+  if (content) { content.replaceChildren(); }
   const thumbs = document.getElementById('mlThumbs');
-  if (thumbs) thumbs.innerHTML = '';
+  if (thumbs) thumbs.replaceChildren();
   if (lastFocusedElement?.isConnected) lastFocusedElement.focus({ preventScroll: true });
   lastFocusedElement = null;
   state.items = [];
@@ -783,8 +873,15 @@ export function createLightbox() {
       <div class="ml-topbar">
         <div class="ml-topbar-left">
           <span class="ml-topbar-counter" id="mlCounter">1 / 1</span>
+          <span class="ml-topbar-date" id="mlDate"></span>
         </div>
         <div class="ml-topbar-right">
+          <button class="ml-topbar-btn" id="mlSaveBtn" title="Guardar" aria-label="Guardar en el dispositivo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="ml-topbar-btn" id="mlShareBtn" title="Compartir" aria-label="Compartir">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+          </button>
           <button class="ml-topbar-btn ml-topbar-fav" id="mlFavBtn" title="Favorita" aria-label="Marcar como favorita" style="display:none">♡</button>
           <button class="ml-topbar-btn" id="mlFullscreenBtn" title="Pantalla completa" aria-label="Pantalla completa">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
@@ -820,6 +917,8 @@ export function createLightbox() {
   el.querySelector('#mlPrevBtn').onclick = prevMedia;
   el.querySelector('#mlNextBtn').onclick = nextMedia;
   el.querySelector('.ml-backdrop').onclick = closeLightbox;
+  el.querySelector('#mlSaveBtn').onclick = () => { bumpChrome(); saveCurrentMedia(); };
+  el.querySelector('#mlShareBtn').onclick = () => { bumpChrome(); shareCurrentMedia(); };
   el.querySelector('#mlFavBtn').onclick = () => {
     const item = getItem();
     if (item && typeof item.onToggleFav === 'function') {
@@ -864,19 +963,70 @@ export function createLightbox() {
     const rect = stage.getBoundingClientRect();
     if (e.clientX < rect.left + rect.width * 0.2) prevMedia();
     else if (e.clientX > rect.right - rect.width * 0.2) nextMedia();
+    // Tocar el centro muestra u oculta la barra, como en el visor nativo.
+    else el.classList.toggle('chrome-hidden');
   });
 
-  // Touch swipe
+  // Cualquier gesto devuelve la barra (y reinicia su temporizador).
+  el.addEventListener('touchstart', bumpChrome, { passive: true });
+  el.addEventListener('mousemove', bumpChrome, { passive: true });
+  document.addEventListener('keydown', (e) => {
+    if (document.getElementById('mediaLightbox')?.classList.contains('open')) bumpChrome();
+  });
+
+  // Touch swipe: horizontal para navegar, vertical hacia abajo para cerrar.
   let sx = 0, sy = 0;
   let swipeTarget = null;
+  let dragY = 0;
+  let draggingDown = false;
+  const ignore = '.ml-topbar, .ml-bottombar, .ml-nav, .ml-img-controls, .ml-video-controls, video, .ml-video-play-overlay';
+
+  const resetDrag = () => {
+    const content = el.querySelector('.ml-content');
+    if (content) {
+      content.style.transition = 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+      content.style.transform = '';
+    }
+    el.style.removeProperty('--ml-drag-opacity');
+    dragY = 0;
+    draggingDown = false;
+  };
+
   el.addEventListener('touchstart', (e) => {
-    if (e.target.closest('.ml-topbar, .ml-bottombar, .ml-nav, .ml-img-controls, .ml-video-controls, video, .ml-video-play-overlay')) { swipeTarget = null; return; }
+    if (e.target.closest(ignore)) { swipeTarget = null; return; }
     swipeTarget = e.target.closest('.ml-stage');
     if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }
   }, { passive: true });
+
+  el.addEventListener('touchmove', (e) => {
+    if (!swipeTarget || e.touches.length !== 1 || state.zoom > 1) return;
+    const dx = e.touches[0].clientX - sx;
+    const dy = e.touches[0].clientY - sy;
+    if (!draggingDown) {
+      if (dy < 12 || Math.abs(dy) < Math.abs(dx)) return;
+      draggingDown = true;
+    }
+    dragY = Math.max(0, dy);
+    const shift = Math.min(dragY, 220);
+    const content = el.querySelector('.ml-content');
+    if (content) {
+      content.style.transition = 'none';
+      // Resistencia: el contenido acompaña solo una parte del dedo.
+      content.style.transform = `translateY(${shift * 0.55}px) scale(${1 - Math.min(shift, 220) / 1800})`;
+    }
+    el.style.setProperty('--ml-drag-opacity', String(1 - Math.min(shift, 220) / 420));
+  }, { passive: true });
+
   el.addEventListener('touchend', (e) => {
-    if (!e.changedTouches.length || state.items.length <= 1 || !swipeTarget) return;
-    if (e.target.closest('.ml-topbar, .ml-bottombar, .ml-nav, .ml-img-controls, .ml-video-controls, video, .ml-video-play-overlay')) return;
+    if (!e.changedTouches.length || !swipeTarget) { resetDrag(); return; }
+    if (draggingDown) {
+      const dismiss = dragY > 120;
+      resetDrag();
+      if (dismiss) closeLightbox();
+      return;
+    }
+    if (state.items.length <= 1) return;
+    if (e.target.closest(ignore)) return;
     const dx = e.changedTouches[0].clientX - sx;
     const dy = e.changedTouches[0].clientY - sy;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) { dx < 0 ? nextMedia() : prevMedia(); }

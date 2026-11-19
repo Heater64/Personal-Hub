@@ -13,18 +13,18 @@
     android:background="@drawable/widget_days_bg"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="4dp">
 
     <TextView
         android:id="@+id/widget_days_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:includeFontPadding="false"
-        android:letterSpacing="0.14"
+        android:letterSpacing="0.08"
         android:maxLines="1"
         android:text="@string/widget_days_label_short"
         android:textColor="@color/widget_coral"
-        android:textSize="9sp"
+        android:textSize="7sp"
         android:textStyle="bold"
         tools:text="DÍAS JUNTOS"/>
 
@@ -32,12 +32,12 @@
         android:id="@+id/widget_days_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="0dp"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="0"
         android:textColor="#FFFFFF"
-        android:textSize="36sp"
+        android:textSize="26sp"
         android:textStyle="bold"
         tools:text="512"/>
 
@@ -45,12 +45,12 @@
         android:id="@+id/widget_days_hint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="0dp"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="@string/widget_days_empty"
         android:textColor="@color/widget_text_muted"
-        android:textSize="9sp"
+        android:textSize="7sp"
         android:visibility="gone"
         tools:text="abre la app"/>
 

@@ -19,6 +19,8 @@ import { player } from '../services/player.service.js';
 import { GAMES } from '../data/games.catalog.js';
 
 import { saveTabScroll, restoreTabScroll } from '../utils/scrollMemory.js';
+import { prepareMedia, storageUrlsIn } from '../services/media.service.js';
+import { renderPageHeader } from '../components/PageHeader.js';
 import { state } from './rincon/state.js';
 import { ICON_SVGS } from './rincon/icons.js';
 import { gradientPoster, MASONRY_RATIOS } from './rincon/media.data.js';
@@ -142,17 +144,22 @@ export function RinconPage(router) {
   ctx.galeria = galeria;
   ctx.memes = memes;
 
-  function render() {
-    switch (state.view) {
-      case 'galeria-memes':
-      case 'memes':
-      case 'audios': renderGaleriaMemes(); break;
-      case 'curiosidades': curiosidades.renderCuriosidades(); break;
-      default: landing.renderLanding();
+  async function render() {
+    try {
+      switch (state.view) {
+        case 'galeria-memes':
+        case 'memes':
+        case 'audios': await renderGaleriaMemes(); break;
+        case 'curiosidades': curiosidades.renderCuriosidades(); break;
+        default: landing.renderLanding();
+      }
+    } catch (error) {
+      // Un fallo al pintar no puede tumbar la navegación.
+      console.error('[rincon] no se pudo pintar la vista:', error);
     }
   }
 
-  function renderGaleriaMemes() {
+  async function renderGaleriaMemes() {
     // Cabecera única (volver + título) y pestañas compactas: las cuatro
     // secciones (Galería, Memes, Audios, Minecraft) son rutas independientes.
     const currentBase = (router.getCurrentPath() || '').split('?')[0];
@@ -164,26 +171,38 @@ export function RinconPage(router) {
       { id: 'minecraft', label: 'Minecraft', emoji: '⛏️', sub: 'Los mundos que construimos' }
     ];
     const current = TABS.find(t => t.id === activeTab) || TABS[0];
+    const buildContent = () =>
+      activeTab === 'memes' ? galeria.renderMemesContent() :
+      activeTab === 'audios' ? audios.renderAudiosTabContent() : galeria.renderGaleriaContent();
+
+    // Las fotos, memes y audios subidos viven en Supabase Storage. La primera
+    // pasada delata sus URLs: se firman antes de pintar y la segunda ya las
+    // recibe firmadas. Con el bucket público —o si la firma falla— el HTML es
+    // exactamente el de antes, así que no cambia nada para quien no migre.
+    let content = buildContent();
+    const storageUrls = storageUrlsIn(content);
+    if (storageUrls.length) {
+      const { signed } = await prepareMedia(storageUrls);
+      if (signed) content = buildContent();
+    }
+
     page.innerHTML = `
-      <header class="rincon-subhead">
-        <button class="icon-btn" type="button" data-back="rincon" aria-label="Volver al Rincón">${ICON_SVGS['chevron-left']}</button>
-        <div class="rincon-subhead-copy">
-          <h1 class="scr-title">${current.label}</h1>
-          <p class="sub">${current.sub}</p>
-        </div>
-      </header>
+      ${renderPageHeader({
+        title: current.label,
+        subtitle: current.sub,
+        back: true,
+        backLabel: 'Volver al Rincón',
+        className: 'rincon-subhead',
+      })}
       <nav class="chips rincon-tabs" aria-label="Secciones">
         ${TABS.map(t => `<button class="chip${t.id === activeTab ? ' chip--active' : ''}" data-sub="${t.id}"${t.id === activeTab ? ' aria-current="page"' : ''}>
           ${t.emoji ? `<span class="rincon-tab-emoji">${t.emoji}</span>` : `<span class="rincon-tab-ic">${ICON_SVGS[t.icon]}</span>`}${t.label}
         </button>`).join('')}
       </nav>
-      <div id="galeriaMemesContent">${
-        activeTab === 'memes' ? galeria.renderMemesContent() :
-        activeTab === 'audios' ? audios.renderAudiosTabContent() : galeria.renderGaleriaContent()
-      }</div>
+      <div id="galeriaMemesContent">${content}</div>
     `;
 
-    page.querySelector('[data-back="rincon"]').addEventListener('click', () => router.navigate('/rincon'));
+    page.querySelector('.rincon-subhead [data-back]')?.addEventListener('click', () => router.navigate('/rincon'));
     page.querySelectorAll('[data-sub]').forEach(btn => {
       btn.addEventListener('click', () => {
         const sub = btn.dataset.sub;
@@ -213,8 +232,11 @@ export function RinconPage(router) {
   // cápsula. Antes se pedían ambas en cualquier vista y el cambio de pestaña se
   // notaba lento.
   if (state.view === 'landing') {
-    db.getRinconCovers().then(c => {
+    db.getRinconCovers().then(async c => {
       state.covers = c || {};
+      // Las portadas pueden estar en Storage (subidas desde el panel) o ser
+      // enlaces externos: `prepareMedia` firma solo las primeras.
+      await prepareMedia(Object.values(state.covers || {}));
       if (state.view === 'landing') render();
     }).catch(() => {});
   }

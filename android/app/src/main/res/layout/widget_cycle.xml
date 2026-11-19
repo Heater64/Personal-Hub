@@ -1,70 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ciclo · 4×3
+<!-- Ciclo · 4×2
 
-     Fase grande, día del ciclo y próxima regla. Sin gráficos: aquí el dato
-     útil es en qué punto está, no una curva. -->
+     La composición horizontal de 4×2: barra coral, fase y próxima regla a la
+     izquierda y la luna a la derecha, que es lo que distingue el widget de un
+     vistazo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_cycle_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_cycle_bg"
-    android:gravity="center"
-    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:padding="14dp">
 
+    <!-- RemoteViews no permite View genérico; ImageView es una vista remota
+         permitida y conserva la barra coral puramente decorativa. -->
+    <ImageView
+        android:layout_width="3dp"
+        android:layout_height="54dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/widget_days_accent"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_cycle_kicker"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.14"
+            android:maxLines="1"
+            android:text="@string/widget_cycle_kicker"
+            android:textColor="@color/widget_coral_soft"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            tools:text="CICLO" />
+
+        <TextView
+            android:id="@+id/widget_cycle_phase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="@string/widget_cycle_empty"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            tools:text="Fase lútea" />
+
+        <TextView
+            android:id="@+id/widget_cycle_day"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/widget_rose"
+            android:textSize="10sp"
+            tools:text="día 21 de ~28" />
+
+        <TextView
+            android:id="@+id/widget_cycle_next"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/widget_text_muted"
+            android:textSize="8sp"
+            tools:text="próxima regla en 6 d · 24 nov" />
+    </LinearLayout>
+
+    <!-- Decorativo: la luna no dice nada que no diga el texto. -->
     <TextView
-        android:id="@+id/widget_cycle_kicker"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:includeFontPadding="false"
-        android:letterSpacing="0.14"
-        android:maxLines="1"
-        android:text="@string/widget_cycle_kicker"
-        android:textColor="@color/widget_coral_soft"
-        android:textSize="8sp"
-        android:textStyle="bold"
-        tools:text="CICLO"/>
-
-    <TextView
-        android:id="@+id/widget_cycle_phase"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:ellipsize="end"
-        android:gravity="center"
+        android:layout_marginStart="10dp"
         android:includeFontPadding="false"
         android:maxLines="1"
-        android:text="@string/widget_cycle_empty"
-        android:textColor="#FFFFFF"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        tools:text="Fase lútea"/>
-
-    <TextView
-        android:id="@+id/widget_cycle_day"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="@color/widget_rose"
-        android:textSize="12sp"
-        tools:text="día 21 de 28"/>
-
-    <TextView
-        android:id="@+id/widget_cycle_next"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="@color/widget_text_muted"
-        android:textSize="9sp"
-        tools:text="próxima regla en 6 d · 24 nov"/>
+        android:text="🌙"
+        android:textSize="40sp" />
 
 </LinearLayout>

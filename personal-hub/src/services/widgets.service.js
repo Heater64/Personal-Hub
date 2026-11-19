@@ -25,10 +25,30 @@ const KEY_MOOD = 'widget_mood';
 const KEY_CYCLE = 'widget_cycle';
 const KEY_WATCHING = 'widget_watching';
 const KEY_GIFTS = 'widget_gifts';
+// Fase 5: tres widgets nuevos que solo leen datos que ya existen.
+const KEY_REASON = 'widget_reason';
+const KEY_OPENWHEN = 'widget_openwhen';
+const KEY_STREAK = 'widget_streak';
+
+/**
+ * Fuera del APK los paquetes viven en localStorage.
+ *
+ * La hoja de widgets del navegador enseña lo mismo que el widget leería en el
+ * móvil, así que necesita poder leer lo que las pantallas guardan. Sin este
+ * respaldo, en la web todos los paquetes se perdían y media hoja salía vacía.
+ */
+const webKey = key => `widget:${key}`;
 
 async function setStorage(key, value) {
   const plugin = bridge();
-  if (!plugin?.setWidgetData) return;
+  if (!plugin?.setWidgetData) {
+    try {
+      localStorage.setItem(webKey(key), value);
+    } catch {
+      /* sin almacenamiento: el widget se queda como estaba */
+    }
+    return;
+  }
   try {
     await plugin.setWidgetData({ key, value });
   } catch {
@@ -38,10 +58,37 @@ async function setStorage(key, value) {
 
 async function getStorage(key) {
   const plugin = bridge();
-  if (!plugin?.getWidgetData) return null;
+  if (!plugin?.getWidgetData) return readWeb(key);
   try {
     const res = await plugin.getWidgetData({ key });
     return res?.value || null;
+  } catch {
+    return null;
+  }
+}
+
+function readWeb(key) {
+  try {
+    return localStorage.getItem(webKey(key));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Último paquete guardado de un widget, ya parseado, o null.
+ *
+ * La hoja de widgets lo usa como respaldo cuando Inicio no tiene el dato a
+ * mano (razón del día, cartas por descubrir, racha): así esas miniaturas se
+ * dibujan con datos en vez de quedarse en su estado vacío.
+ */
+export function readSavedWidget(widget) {
+  const key = WIDGET_KEYS[widget];
+  if (!key) return null;
+  const raw = readWeb(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
   } catch {
     return null;
   }
@@ -51,16 +98,52 @@ function bridge() {
   return typeof window !== 'undefined' ? window.Capacitor?.Plugins?.WidgetBridge : null;
 }
 
+// Varios cambios del Inicio pueden llegar en la misma vuelta del event loop
+// (identidad, distancia y datos remotos). Android no necesita recibir tres
+// repintados concurrentes: el último ya contiene todo el estado guardado.
+let refreshInFlight = null;
+let refreshAgain = false;
+
 /** Pide al lado nativo que repinte ahora mismo (sin esperar los 30 min). */
 export async function refreshWidgets() {
   const plugin = bridge();
   if (!plugin?.refresh) return false;
-  try {
-    await plugin.refresh();
-    return true;
-  } catch {
-    return false;
+
+  if (refreshInFlight) {
+    refreshAgain = true;
+    return refreshInFlight;
   }
+
+  refreshInFlight = (async () => {
+    try {
+      await plugin.refresh();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    // Si se guardó otro paquete mientras Android pintaba, se hace un único
+    // pase final. Así no se pierde el último cambio al volver de segundo plano.
+    if (refreshAgain) {
+      refreshAgain = false;
+      void refreshWidgets();
+    }
+  }
+}
+
+// El proceso web puede reanudarse con widgets ya colocados. Un repintado
+// inmediato conserva fechas relativas, fotos que acabaron de descargarse y
+// cualquier dato escrito justo antes de pasar la app a segundo plano.
+if (typeof window !== 'undefined') {
+  window.addEventListener('personalhub:widgets-refresh', () => {
+    void refreshWidgets();
+  });
 }
 
 /**
@@ -236,16 +319,46 @@ export async function saveCountdownWidget({ title, date, events }) {
 }
 
 /**
- * Guarda el ánimo de hoy. Sin ánimo se guarda vacío a propósito: el widget
- * enseña su estado «sin registrar» en vez de la emoción de ayer.
+ * Guarda el ánimo que enseña el widget: la selección completa del último
+ * estado y SU fecha (no la de hoy).
+ *
+ * Nunca se borra lo guardado: si no hay ánimo que escribir, el widget sigue
+ * mostrando el último registrado en vez de quedarse en «sin registrar». Así el
+ * ánimo de ayer sigue a la vista hasta que se registre el de hoy.
  */
-export async function saveMoodWidget({ emoji, label, date }) {
+export async function saveMoodWidget({ emoji, label, date, items, clear }) {
+  const list = (Array.isArray(items) ? items : [])
+    .map(item => ({ emoji: item?.emoji || '', label: item?.label || '' }))
+    .filter(item => item.label);
+  const shownEmoji = emoji || list[0]?.emoji || '';
+  const shownLabel = label || list.map(item => item.label).join(' · ');
+
+  if (!shownEmoji && !shownLabel) {
+    // Sin nada que enseñar solo se limpia cuando de verdad no queda ningún
+    // ánimo (borró el suyo y el historial está vacío): dejarlo sería mostrar
+    // uno que ya no existe. Si solo falta el de hoy, no se llega aquí.
+    if (!clear) return;
+    await setStorage(
+      KEY_MOOD,
+      JSON.stringify({
+        emoji: '',
+        label: '',
+        date: '',
+        items: [],
+        at: new Date().toISOString(),
+      })
+    );
+    refreshWidgets();
+    return;
+  }
+
   await setStorage(
     KEY_MOOD,
     JSON.stringify({
-      emoji: emoji || '',
-      label: label || '',
+      emoji: shownEmoji,
+      label: shownLabel,
       date: date || '',
+      items: list,
       at: new Date().toISOString(),
     })
   );
@@ -269,25 +382,75 @@ export async function saveHerMoodWidget() {
   await saveMoodWidget(payload);
 }
 
-/** Primer emoji y «+N», igual que lo enseña Inicio. */
+/**
+ * El ánimo se registra desde Sentimientos, el perfil o la bienvenida, y el
+ * widget tiene que cambiar en ese mismo momento: no puede esperar a que se
+ * vuelva a abrir Inicio. Se engancha una sola vez al arrancar la app.
+ */
+let moodWatchStarted = false;
+export function initMoodWidgetSync() {
+  if (moodWatchStarted || !isNative()) return;
+  moodWatchStarted = true;
+  moodStore.subscribe(() => {
+    saveHerMoodWidget().catch(() => { /* el widget se queda con lo último */ });
+  });
+}
+
+/**
+ * Lo que enseña el widget: TODAS las emociones del último estado, no solo la
+ * primera. Dos caben en la etiqueta («Triste · Cansada»); el resto se resume
+ * con «+N», que es lo que entra en una tarjeta de 1×1 o 3×1.
+ */
 function moodText(mood) {
-  if (!mood) return { emoji: '', label: '' };
-  const first = mood.items?.[0];
-  const extra = (mood.count || mood.items?.length || 1) - 1;
+  if (!mood) return { emoji: '', label: '', items: [] };
+  const items = (mood.items || [])
+    .map(item => ({ emoji: item?.emoji || '', label: item?.label || '' }))
+    .filter(item => item.label);
+  const shown = items.slice(0, 2).map(item => item.label);
+  const extra = items.length - shown.length;
+
   return {
-    emoji: first?.emoji || mood.emoji || '',
-    label: extra > 0 ? `${first.label} +${extra}` : mood.label || 'Registrado',
+    emoji: items[0]?.emoji || mood.emoji || '',
+    label: shown.length
+      ? `${shown.join(' · ')}${extra > 0 ? ` +${extra}` : ''}`
+      : mood.label || 'Registrado',
+    items,
   };
 }
 
-/** El ánimo de ella de hoy, o null si no hay forma fiable de saberlo. */
+/** Último estado del historial local: `{ mood, date }`, o null si no hay. */
+function lastLocalMood() {
+  const history = moodStore.getHistory() || [];
+  let best = null;
+  for (const entry of history) {
+    const date = String(entry?.date || '').slice(0, 10);
+    if (!date) continue;
+    if (best && date <= best.date) continue;
+    const mood = moodStore.resolveMood({
+      mood: entry.moodId || entry.mood,
+      label: entry.label,
+      emoji: entry.emoji,
+      score: entry.score,
+    });
+    if (mood) best = { date, mood };
+  }
+  return best;
+}
+
+/**
+ * El ánimo de ella: el de hoy o, si todavía no hay, el último que registró
+ * (con su fecha, para que el widget pueda decir «ayer»).
+ */
 async function herMoodToday() {
   await auth.refreshAccount();
 
   if (!auth.isAdmin()) {
     const mood = moodStore.getTodayMood();
-    const text = moodText(mood);
-    return { ...text, date: mood ? todayISO() : '' };
+    if (mood) return { ...moodText(mood), date: todayISO() };
+    const last = lastLocalMood();
+    return last
+      ? { ...moodText(last.mood), date: last.date }
+      : { emoji: '', label: '', date: '', items: [], clear: true };
   }
 
   // Sesión de administrador: su ánimo no pinta nada en el widget de ella.
@@ -296,10 +459,17 @@ async function herMoodToday() {
     const her = (users || []).find(user => user && user.role === 'user' && user.enabled !== false);
     if (!her) return null;
 
-    const rows = await db.getUserMoods(her.id);
-    const row = (rows || []).find(item => String(item?.date || '').slice(0, 10) === todayISO());
-    const text = moodText(resolveMood(row));
-    return { ...text, date: row ? todayISO() : '' };
+    // La fila más reciente, sea de hoy o de días anteriores: el widget sigue
+    // enseñando el último ánimo en vez de vaciarse cada mañana.
+    const rows = (await db.getUserMoods(her.id)) || [];
+    const row = rows
+      .filter(item => item && item.mood)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0];
+    if (!row) return { emoji: '', label: '', date: '', items: [], clear: true };
+    return {
+      ...moodText(resolveMood(row)),
+      date: String(row.date || '').slice(0, 10) || todayISO(),
+    };
   } catch {
     return null;
   }
@@ -374,6 +544,59 @@ export async function saveGiftsWidget({ total, pending }) {
   refreshWidgets();
 }
 
+/**
+ * Razón del día: el mismo texto que enseña la pantalla de Razones.
+ * Se guarda con la fecha para que el widget sepa si sigue siendo la de hoy.
+ */
+export async function saveReasonWidget({ text, date }) {
+  const value = String(text || '').trim();
+  await setStorage(
+    KEY_REASON,
+    JSON.stringify({
+      text: value.slice(0, 400),
+      date: date || (value ? todayISO() : ''),
+      at: new Date().toISOString(),
+    })
+  );
+  refreshWidgets();
+}
+
+/** Cartas de Open When sin abrir: cuántas quedan y de qué categoría es la próxima. */
+export async function saveOpenWhenWidget({ pending, category, emoji }) {
+  await setStorage(
+    KEY_OPENWHEN,
+    JSON.stringify({
+      pending: Math.max(0, Number(pending) || 0),
+      category: String(category || '').slice(0, 80),
+      emoji: String(emoji || '').slice(0, 8),
+      at: new Date().toISOString(),
+    })
+  );
+  refreshWidgets();
+}
+
+/** Racha de ánimo: días seguidos y mejor racha de siempre. */
+export async function saveStreakWidget({ days, best }) {
+  const current = Math.max(0, Number(days) || 0);
+  const record = Math.max(current, Number(best) || 0);
+  try {
+    const stored = await getStorage(KEY_STREAK);
+    const prev = stored ? JSON.parse(stored) : null;
+    if (prev && prev.days === current && prev.best === record) return;
+  } catch { /* paquete roto: se reescribe */ }
+
+  await setStorage(
+    KEY_STREAK,
+    JSON.stringify({
+      days: current,
+      best: record,
+      date: current ? todayISO() : '',
+      at: new Date().toISOString(),
+    })
+  );
+  refreshWidgets();
+}
+
 export const WIDGET_KEYS = {
   days: KEY_DAYS,
   distance: KEY_DISTANCE,
@@ -382,4 +605,7 @@ export const WIDGET_KEYS = {
   cycle: KEY_CYCLE,
   watching: KEY_WATCHING,
   gifts: KEY_GIFTS,
+  reason: KEY_REASON,
+  openwhen: KEY_OPENWHEN,
+  streak: KEY_STREAK,
 };

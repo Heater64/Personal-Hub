@@ -185,10 +185,23 @@
 }
 
 /* ---- Utilidades ---- */
-.motion-stagger > *:nth-child(1)  { animation-delay: 0ms; }
-.motion-stagger > *:nth-child(2)  { animation-delay: 45ms; }
-.motion-stagger > *:nth-child(3)  { animation-delay: 90ms; }
-.motion-stagger > *:nth-child(4)  { animation-delay: 135ms; }
-.motion-stagger > *:nth-child(5)  { animation-delay: 180ms; }
-.motion-stagger > *:nth-child(6)  { animation-delay: 225ms; }
-.motion-stagger > *:nth-child(n+7) { animation-delay: 260ms; }
+/* El retardo sale de la posición del hijo: sibling-index() es 1-based, así que
+   el primero entra a 0 ms y cada uno suma 45 ms, con tope a los 260 ms. */
+.motion-stagger > * { animation-delay: 0ms; }
+
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .motion-stagger > * {
+    animation-delay: min(calc((sibling-index() - 1) * 45ms), 260ms);
+  }
+}
+
+/* Sin sibling-index() el escalonado lo siguen dando las reglas posicionales. */
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .motion-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+  .motion-stagger > *:nth-child(2)  { animation-delay: 45ms; }
+  .motion-stagger > *:nth-child(3)  { animation-delay: 90ms; }
+  .motion-stagger > *:nth-child(4)  { animation-delay: 135ms; }
+  .motion-stagger > *:nth-child(5)  { animation-delay: 180ms; }
+  .motion-stagger > *:nth-child(6)  { animation-delay: 225ms; }
+  .motion-stagger > *:nth-child(n+7) { animation-delay: 260ms; }
+}

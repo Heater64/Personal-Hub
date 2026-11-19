@@ -147,7 +147,7 @@ test('el menú lateral de la usuaria es exactamente el de antes', () => {
   // así que esa entrada no participa (ver routes.js).
   assert.ok(sidebarItems(ROLE_ADMIN).some(i => i.href === '/'), 'el admin tiene Inicio en PC');
   assert.deepEqual(sidebarItems(ROLE_ADMIN).filter(i => i.href !== '/'), SIDEBAR_ANTES.filter(i => i.id !== 'home'), 'el resto del menú lateral del admin es igual al de la usuaria');
-  assert.deepEqual(navEntry('/admin'), { href: '/admin', label: 'Admin', icon: 'gear' });
+  assert.deepEqual(navEntry('/admin'), { href: '/admin', label: 'Peluche', icon: 'gear' });
   assert.equal(navEntry('/no-existe'), null);
 });
 

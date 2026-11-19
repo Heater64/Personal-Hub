@@ -12,6 +12,7 @@
    propios duplicados).
    ========================================== */
 
+import '../styles/razones.css';
 import { h, icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { db } from '../services/db.service.js';
 import { escapeHtml, safeUrl } from '../utils/escape.js';
@@ -19,6 +20,9 @@ import { userPrefKey } from '../utils/userStorage.js';
 import { todayISO } from '../utils/format.js';
 import { onContentChange } from '../services/realtime.service.js';
 import { userStore } from '../stores/user.store.js';
+import { renderPageHeader } from '../components/PageHeader.js';
+import { reasonOfDay } from '../utils/pro-insights.js';
+import { saveReasonWidget } from '../services/widgets.service.js';
 
 const FAV_KEY = () => userPrefKey('razonesFavoritas');
 const READ_KEY = () => userPrefKey('razonesRead');
@@ -175,7 +179,7 @@ export function RazonesPage() {
     const wrap = page.querySelector('#razonFeatured');
     if (!wrap) return;
     const pick = pickFeatured();
-    if (!pick) { wrap.innerHTML = ''; return; }
+    if (!pick) { wrap.replaceChildren(); return; }
 
     const { idx, label } = pick;
     const r = razones[idx];
@@ -221,10 +225,40 @@ export function RazonesPage() {
       card.appendChild(fav);
     }
 
-    wrap.innerHTML = '';
+    wrap.replaceChildren();
     wrap.appendChild(card);
 
     btn.addEventListener('click', () => openSheetReason(idx));
+
+    renderReasonOfDay();
+  }
+
+  /**
+   * Razón del día: la misma para los dos durante todo el día, elegida por la
+   * fecha (no al azar en cada visita). Sale de las razones ya cargadas, así
+   * que no hace falta ningún dato nuevo.
+   */
+  function renderReasonOfDay() {
+    const wrap = page.querySelector('#razonDelDia');
+    if (!wrap) return;
+    const abiertas = razones.filter(r => reasonState(r) !== 'locked');
+    const pick = reasonOfDay(abiertas, todayISO());
+    if (!pick) {
+      wrap.replaceChildren();
+      return;
+    }
+    const idx = razones.indexOf(pick.item);
+    wrap.innerHTML = `
+      <article class="pro-card razon-day">
+        <header class="pro-card__head">
+          <span class="pro-card__kicker">Razón del día</span>
+          <span class="pro-item__meta">${escapeHtml(formatDate(todayISO()))}</span>
+        </header>
+        <p class="razon-day__text">${escapeHtml(pick.item.text)}</p>
+        <button type="button" class="btn" data-day-reason>Abrirla con calma</button>
+      </article>`;
+    wrap.querySelector('[data-day-reason]')?.addEventListener('click', () => openSheetReason(idx));
+    saveReasonWidget({ text: pick.item.text, date: todayISO() });
   }
 
   // ==========================================
@@ -246,14 +280,14 @@ export function RazonesPage() {
     const idxs = filteredIndexes();
 
     if (!idxs.length) {
-      grid.innerHTML = '';
+      grid.replaceChildren();
       grid.append(emptyFor(currentFilter));
       return;
     }
 
     const list = h('div', { class: 'razones-listbox' });
     idxs.forEach(idx => list.append(reasonRow(idx)));
-    grid.innerHTML = '';
+    grid.replaceChildren();
     grid.append(list);
   }
 
@@ -603,16 +637,14 @@ export function RazonesPage() {
   // RENDER
   // ==========================================
   page.innerHTML = `
-    <header class="scr-head">
-      <div>
-        <h1 class="scr-title">Razones</h1>
-        <p class="sub" id="razonesMeta"></p>
-      </div>
-      <div class="head-actions">
+    ${renderPageHeader({
+      title: 'Razones',
+      subtitleId: 'razonesMeta',
+      actions: `
         ${userStore.isAdmin ? `<button type="button" class="razones-admin-btn" id="newRazonBtn">${icon('plus', 15)} <span>Añadir razón</span></button>` : ''}
         <button type="button" class="icon-btn" id="randomBtn" aria-label="Razón aleatoria" title="Razón aleatoria">${icon('spark', 19)}</button>
-      </div>
-    </header>
+      `,
+    })}
 
     <div class="chips razones-chips" role="group" aria-label="Filtrar razones">
       <button type="button" class="chip razones-chip is-active" data-filter="todas" aria-pressed="true">Todas</button>
@@ -621,6 +653,8 @@ export function RazonesPage() {
     </div>
 
     <div id="razonFeatured"></div>
+
+    <div id="razonDelDia"></div>
 
     <section id="razonesGrid" aria-live="polite"></section>
   `;

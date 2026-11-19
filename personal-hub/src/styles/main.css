@@ -14,13 +14,10 @@
 @import url('./nav.css');
 @import url('./now-playing.css');
 @import url('./welcome.css');
-@import url('./login.css');
-@import url('./home.css');
-@import url('./juntos.css');
-@import url('./mapa.css');
-@import url('./profile.css');
-@import url('./razones.css');
-@import url('./maldia.css');
+/* Las hojas de cada pantalla las importa su propio módulo de página: así
+   viajan en su chunk y no engordan el arranque. Aquí queda solo lo que se ve
+   desde el primer fotograma: tokens, base, componentes, navegación,
+   reproductor y visor. */
 @import url('./lightbox.css');
 
 /* Motion va la última a propósito: sus transiciones deben ganar a las que ya

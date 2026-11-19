@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -340,6 +340,74 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Fase Pro: razón del día, Open When pendiente y racha -->
+        <receiver
+            android:name=".ReasonRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_reason_description_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_reason_info" />
+        </receiver>
+        <receiver
+            android:name=".ReasonCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_reason_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_reason_compact_info" />
+        </receiver>
+        <receiver
+            android:name=".OpenWhenRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_openwhen_description_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_openwhen_info" />
+        </receiver>
+        <receiver
+            android:name=".OpenWhenCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_openwhen_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_openwhen_compact_info" />
+        </receiver>
+        <receiver
+            android:name=".StreakRectWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_streak_description_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_streak_info" />
+        </receiver>
+        <receiver
+            android:name=".StreakCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_streak_description_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_streak_compact_info" />
+        </receiver>
     </application>
 
     <!-- Permissions -->

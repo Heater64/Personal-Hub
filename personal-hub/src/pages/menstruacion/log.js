@@ -12,8 +12,8 @@ export function renderLog(ctx) {
   const date = ctx.ui.logDate || ctx.today;
   const log = (ctx.data?.logs || []).find(item => item.log_date === date) || null;
   const esHoy = date === ctx.today;
-  const recent = [...(ctx.data?.logs || [])]
-    .sort((a, b) => b.log_date.localeCompare(a.log_date))
+  const recent = (ctx.data?.logs || [])
+    .toSorted((a, b) => b.log_date.localeCompare(a.log_date))
     .slice(0, 8);
 
   return `

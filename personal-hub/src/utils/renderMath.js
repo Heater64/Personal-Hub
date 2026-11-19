@@ -4,6 +4,43 @@
    ### headings, **bold**, listas, saltos de línea
    ========================================== */
 
+/* ==========================================
+   KaTeX bajo demanda
+
+   Antes se cargaba en `index.html` (una hoja y dos scripts) en TODAS las
+   pantallas, aunque solo el calendario usa fórmulas: era el recurso externo
+   más pesado del arranque. Ahora se pide cuando una pantalla que lo necesita
+   se monta (`loadKatex()`), y si aún no ha llegado el texto se pinta como
+   código — la vista nunca se bloquea esperándolo.
+   ========================================== */
+const KATEX_CDN = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist';
+let katexLoading = null;
+
+/** Carga KaTeX una sola vez. Resuelve `true` si queda disponible. */
+export function loadKatex() {
+  if (typeof document === 'undefined') return Promise.resolve(false);
+  if (typeof window !== 'undefined' && typeof window.katex !== 'undefined') return Promise.resolve(true);
+  if (katexLoading) return katexLoading;
+
+  katexLoading = new Promise(resolve => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = `${KATEX_CDN}/katex.min.css`;
+    css.crossOrigin = 'anonymous';
+    document.head.appendChild(css);
+
+    const js = document.createElement('script');
+    js.src = `${KATEX_CDN}/katex.min.js`;
+    js.crossOrigin = 'anonymous';
+    js.defer = true;
+    js.onload = () => resolve(true);
+    js.onerror = () => resolve(false);
+    document.head.appendChild(js);
+  });
+
+  return katexLoading;
+}
+
 /**
  * Escapa HTML en un texto plano.
  * Preserva los marcadores de LaTeX extraídos previamente.

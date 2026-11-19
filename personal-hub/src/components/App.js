@@ -23,6 +23,7 @@ import { NowPlayingBar } from './NowPlayingBar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
 import { setMoodWelcomeState } from './SpecialEventSheet.js';
 import { moodStore } from '../stores/mood.store.js';
+import { initMoodWidgetSync } from '../services/widgets.service.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
 import {
   initNativeApp,
@@ -42,6 +43,7 @@ import {
 } from '../services/notifications.service.js';
 import { closeLightbox } from './MediaLightbox.js';
 import { GameInviteCenter } from './GameInviteCenter.js';
+import { installGlobalSearch } from './GlobalSearch.js';
 import {
   initListenTogether,
   onListenTogether,
@@ -160,6 +162,11 @@ export function AppShell(router) {
   const nowPlayingBar = NowPlayingBar(router);
   app.appendChild(nowPlayingBar);
 
+  // Búsqueda global: Ctrl/⌘ + K en cualquier sitio y el botón «Buscar» del
+  // menú lateral en escritorio (ya no hay botón flotante). No se añade
+  // ninguna ruta: busca entre los módulos que ya existen.
+  installGlobalSearch({ router, isAdmin: () => userStore.isAdmin });
+
   // Centro persistente: no se desmonta al cambiar de sección y permite
   // responder invitaciones desde cualquier pantalla de la aplicación.
   const gameInviteCenter = GameInviteCenter(router);
@@ -225,7 +232,7 @@ export function AppShell(router) {
 
     mobileTopBar.classList.toggle('is-visible', shouldShow);
     if (!shouldShow) {
-      mobileTopBar.innerHTML = '';
+      mobileTopBar.replaceChildren();
       return;
     }
 
@@ -340,7 +347,11 @@ export function AppShell(router) {
     }
 
     // If logged in and on login page, go home
-    if (isLoggedIn && path === '/login') {
+    // Durante una recuperación Supabase crea una sesión temporal para poder
+    // cambiar la contraseña: no la desviamos a Inicio antes de mostrar el form.
+    const isPasswordRecovery = currentRoute?.query?.recovery === '1'
+      || new URLSearchParams(window.location.search).get('recovery') === '1';
+    if (isLoggedIn && path === '/login' && !isPasswordRecovery) {
       router.replace('/');
       return false;
     }
@@ -663,6 +674,9 @@ export function AppShell(router) {
   // ── Inicializar capa nativa (Capacitor) ──
   // No-op en el navegador: allí no se descarga ningún paquete @capacitor/*.
   initNativeApp();
+  // El widget de ánimo cambia en cuanto se registra, se haga desde la pantalla
+  // que se haga: antes solo se refrescaba al volver a Inicio.
+  initMoodWidgetSync();
   // Batería, conexión, ubicación y permisos: una sola fuente para toda la app.
   startDeviceMonitor();
   // Tocar un widget abre su pantalla (personalhub://juntos).

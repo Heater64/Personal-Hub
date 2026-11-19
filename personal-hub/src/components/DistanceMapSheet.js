@@ -190,7 +190,10 @@ function wireTracking(wrap) {
 
   const render = status => {
     const bg = status?.background || {};
-    const on = !!bg.enabled;
+    // `enabled` es la intención guardada; `running` confirma que Android ya
+    // mantiene el foreground service. Tras reiniciar la app puede llegar
+    // antes el segundo y no debemos pedir activar algo que ya está vivo.
+    const on = !!(bg.enabled || bg.running);
     toggle.textContent = on ? 'Desactivar' : 'Activar';
     stateEl.textContent = on ? 'Activo' : 'Inactivo';
     dot.classList.toggle('is-on', on);
@@ -226,7 +229,8 @@ function wireTracking(wrap) {
     busy = true;
     toggle.disabled = true;
     try {
-      if (getDeviceStatus().background.enabled) {
+      const current = getDeviceStatus().background;
+      if (current.enabled || current.running) {
         await disableBackgroundTracking();
       } else {
         const result = await enableBackgroundTracking();

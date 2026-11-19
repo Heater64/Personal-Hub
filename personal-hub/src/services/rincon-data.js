@@ -3,6 +3,8 @@
    Galería de atardeceres, memes y datos SPB
    ========================================== */
 
+import { mediaUrl } from './media.service.js';
+
 export const GALLERY_FOLDERS = {
   "Atardeceres": [
     "https://res.cloudinary.com/dcsent4fs/image/upload/q_auto,f_auto,w_800/v1778355903/20260505_070212_sgkvy2.jpg",
@@ -454,15 +456,18 @@ export function getVideoPoster(src, width = 800) {
  * (…/video/upload/…w_800…) y le cambia el ancho.
  */
 export function mediaThumb(src, width = 800) {
-  if (!src) return '';
-  if (isVideo(src)) return getVideoPoster(src, width);
-  if (src.includes('/video/upload/')) return src.replace(/w_\d+/, `w_${width}`);
-  return cloudinaryThumb(src, width);
+  // `mediaUrl` firma los recursos de Supabase Storage y deja intacto todo lo
+  // demás (Cloudinary, enlaces): el resto de la función sigue igual.
+  const base = mediaUrl(src);
+  if (!base) return '';
+  if (isVideo(base)) return getVideoPoster(base, width);
+  if (base.includes('/video/upload/')) return base.replace(/w_\d+/, `w_${width}`);
+  return cloudinaryThumb(base, width);
 }
 
 /** srcset de Cloudinary (320w, 640w…). Cadena vacía si no aplica. */
 export function mediaSrcset(src, widths = [320, 640, 960]) {
-  const base = String(src || '');
+  const base = String(mediaUrl(src) || '');
   if (!base.includes('res.cloudinary.com')) return '';
   const urls = widths.map(w => mediaThumb(base, w)).filter(Boolean);
   if (urls.length < 2 || urls[0] === urls[urls.length - 1]) return '';

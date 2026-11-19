@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Seguir viendo · 4×2
+<!-- Seguir viendo · 3×1
 
      Póster, título y «Ep. 4 de 10 · 40 %». -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -10,21 +10,21 @@
     android:background="@drawable/widget_watching_bg"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="14dp">
+    android:padding="10dp">
 
     <ImageView
         android:id="@+id/widget_watching_poster"
-        android:layout_width="52dp"
-        android:layout_height="72dp"
+        android:layout_width="44dp"
+        android:layout_height="60dp"
         android:contentDescription="@string/widget_watching_poster"
         android:scaleType="centerCrop"
         android:src="@drawable/widget_poster_empty"
-        tools:src="@drawable/widget_poster_empty"/>
+        tools:src="@drawable/widget_poster_empty" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="10dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -39,7 +39,7 @@
             android:textColor="@color/widget_coral_soft"
             android:textSize="8sp"
             android:textStyle="bold"
-        tools:text="SEGUIR VIENDO"/>
+            tools:text="SEGUIR VIENDO" />
 
         <TextView
             android:id="@+id/widget_watching_title"
@@ -51,9 +51,9 @@
             android:maxLines="1"
             android:text="@string/widget_watching_empty"
             android:textColor="#FFFFFF"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-        tools:text="Severance"/>
+            tools:text="Severance" />
 
         <TextView
             android:id="@+id/widget_watching_episode"
@@ -63,8 +63,8 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp"
-        tools:text="Ep. 4 de 10"/>
+            android:textSize="8sp"
+            tools:text="Ep. 4 de 10" />
 
         <TextView
             android:id="@+id/widget_watching_percent"
@@ -74,8 +74,8 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp"
-        tools:text="40 % visto"/>
+            android:textSize="8sp"
+            tools:text="40 % visto" />
     </LinearLayout>
 
 </LinearLayout>

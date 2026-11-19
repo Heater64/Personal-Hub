@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ciclo · 2×2
+<!-- Ciclo · 1×1
 
      La fase arriba y el día del ciclo grande. Sin fechas ni nombres de fase
-     largos: en un cuadrado solo cabe lo que se mira de reojo. -->
+     largos: en una celda solo cabe lo que se mira de reojo. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_cycle_root"
@@ -11,33 +11,32 @@
     android:background="@drawable/widget_cycle_bg"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="4dp">
 
     <TextView
         android:id="@+id/widget_cycle_kicker"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:includeFontPadding="false"
-        android:letterSpacing="0.14"
+        android:letterSpacing="0.08"
         android:maxLines="1"
         android:text="@string/widget_cycle_kicker"
         android:textColor="@color/widget_rose"
-        android:textSize="8sp"
+        android:textSize="7sp"
         android:textStyle="bold"
-        tools:text="CICLO"/>
+        tools:text="CICLO" />
 
     <TextView
         android:id="@+id/widget_cycle_day"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="—"
         android:textColor="#FFFFFF"
-        android:textSize="26sp"
+        android:textSize="24sp"
         android:textStyle="bold"
-        tools:text="día 21 de 28"/>
+        tools:text="21" />
 
     <TextView
         android:id="@+id/widget_cycle_phase"
@@ -49,7 +48,7 @@
         android:maxLines="1"
         android:text="@string/widget_cycle_empty"
         android:textColor="@color/widget_rose"
-        android:textSize="9sp"
-        tools:text="Fase lútea"/>
+        android:textSize="8sp"
+        tools:text="Fase lútea" />
 
 </LinearLayout>

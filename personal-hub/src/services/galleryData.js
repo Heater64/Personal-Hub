@@ -72,7 +72,7 @@ export function userPhotos() {
 /** Subir URLs de fotos del usuario al final (más recientes al principio) */
 export function addUserPhotos(urls) {
   const list = userPhotos();
-  writeJson(UPLOADS_KEY, [...[...urls].reverse(), ...list]);
+  writeJson(UPLOADS_KEY, [...urls.toReversed(), ...list]);
   sync.markDirty();
 }
 
@@ -241,3 +241,4 @@ export function albumYear(photos) {
   if (!years.length) return new Date().getFullYear();
   return Math.min(...years);
 }
+

@@ -3,6 +3,7 @@
    Professional uniform layout
    ========================================== */
 
+import '../styles/profile.css';
 import { userStore } from '../stores/user.store.js';
 import { auth } from '../services/auth.service.js';
 import { theme } from '../services/theme.service.js';
@@ -203,7 +204,7 @@ export function ProfilePage(router) {
             <button type="button" class="prof-btn prof-btn--sm" id="profileNameCancel">Cancelar</button>
           </div>
           <div class="prof-meta">
-            <span class="prof-badge">${isUserAdmin ? UI.adminShield + ' Admin' : UI.heart + ' Princesa'}</span>
+            <span class="prof-badge">${isUserAdmin ? UI.adminShield + ' Peluche' : UI.heart + ' Princesa'}</span>
             <span class="prof-email">${escapeHtml(user?.email || '')}</span>
           </div>
         </div>
@@ -363,7 +364,7 @@ export function ProfilePage(router) {
       <button class="prof-admin-btn" id="adminPanelBtn">
         <span class="prof-admin-icon">${UI.settings}</span>
         <div class="prof-admin-text">
-          <strong>Panel de Administración</strong>
+          <strong>Panel de Peluche</strong>
           <small>Gestionar contenido, usuarios y estadísticas</small>
         </div>
         ${UI.arrowRight}
@@ -1171,6 +1172,8 @@ export function ProfilePage(router) {
     nameSaveBtn?.addEventListener('click', commitName);
     nameCancelBtn?.addEventListener('click', closeNameEditor);
     nameInput.addEventListener('keydown', (e) => {
+      // Enter/Escape que confirman un candidato de IME no son «guardar» ni «cerrar».
+      if (e.isComposing || e.keyCode === 229) return;
       if (e.key === 'Enter') { e.preventDefault(); commitName(); }
       if (e.key === 'Escape') { e.preventDefault(); closeNameEditor(); }
     });

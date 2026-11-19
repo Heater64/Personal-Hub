@@ -20,17 +20,18 @@
 - **Principal:** blanco (emoji y etiqueta). **Secundario:** `#C9BBD1` («hoy» / «ayer»). **Acento:** rosa `#F3C5D0`.
 - **Radio:** 26 dp. **Tipografía del emoji:** la del sistema, anclada a su caja.
 
-### Pequeña (2×2)
+### Pequeña (1×1)
 
-- Emoji 40 sp centrado, etiqueta 10 sp y «hoy» / «toca para registrar».
+- Emoji 26 sp centrado, etiqueta 9 sp y «hoy» / «toca para registrar».
 
-### Rectangular (4×2)
+### Rectangular (3×1)
 
-- Emoji 36 sp a la izquierda; a la derecha «HOY», etiqueta 16 sp y cuándo.
+- Emoji 34 sp a la izquierda; a la derecha «HOY», etiqueta 14 sp y cuándo.
 
-### Grande (4×3)
+### Grande (4×2)
 
-- «ESTADO DE ÁNIMO», emoji 56 sp, etiqueta 20 sp y cuándo.
+- La misma composición horizontal que «días juntos»: barra coral, «ESTADO DE
+  ÁNIMO», etiqueta 20 sp y cuándo a la izquierda, y el emoji 44 sp a la derecha.
 
 ## 3. Información y funcionamiento
 

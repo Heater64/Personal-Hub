@@ -5,7 +5,7 @@
    este modulo exporta tambien lo que Galeria necesita.
    ========================================== */
 
-import { isVideo, getVideoPoster, buildMediaItems, mediaThumb, mediaSrcset } from '../../services/rincon-data.js';
+import { isVideo, getVideoPoster, buildMediaItems, mediaThumb } from '../../services/rincon-data.js';
 import { hapticTap } from '../../services/native.service.js';
 import { db } from '../../services/db.service.js';
 import { showToast } from '../../components/Toast.js';
@@ -13,7 +13,7 @@ import { escapeHtml, safeUrl } from '../../utils/escape.js';
 import { openLightbox, closeLightbox, playSlideshow, pauseSlideshow } from '../../components/MediaLightbox.js';
 import {
   userPhotos, addUserPhotos, hidePhoto, saveFavPhotos, toggleFavPhoto,
-  albumMeta, saveAlbumMeta, knownRatio, rememberRatio, photoDate, photoTs, albumYear
+  albumMeta, saveAlbumMeta, photoDate
 } from '../../services/galleryData.js';
 import {
   memeAlbums, memeItems, addMemesToAlbum, hideMeme, memePoster,
@@ -32,63 +32,18 @@ export function createMemes(ctx) {
     galleryAlbum, renderGaleriaContent
   } = ctx;
 
-  function bindGalleryHero(container, heroPhotos) {
-    if (!heroPhotos.length) return;
-    const hero = container.querySelector('#galleryHero');
-    if (!hero) return;
-    const slides = [...hero.querySelectorAll('.gallery-hero-slide')];
-    const dots = [...hero.querySelectorAll('.gallery-hero-dot')];
-
-    // Cada diapositiva se descarga la primera vez que se muestra: el hero no
-    // arrastra cinco fotos grandes en la carga inicial.
-    const hydrate = (slide) => {
-      const img = slide?.querySelector('img[data-src]');
-      if (!img) return;
-      if (img.dataset.srcset) {
-        img.sizes = img.dataset.sizes || '';
-        img.srcset = img.dataset.srcset;
-      }
-      img.src = img.dataset.src;
-      delete img.dataset.src;
-    };
-
-    const show = (i) => {
-      if (!slides.length) return;
-      const idx = ((i % slides.length) + slides.length) % slides.length;
-      hydrate(slides[idx]);
-      slides.forEach((s, n) => s.classList.toggle('is-active', n === idx));
-      dots.forEach((d, n) => d.classList.toggle('is-active', n === idx));
-    };
-
-    dots.forEach(d => d.addEventListener('click', () => show(Number(d.dataset.dot))));
-
-    // Pasar de foto deslizando, como en la galería del propio móvil.
-    let startX = null;
-    hero.addEventListener('touchstart', (e) => {
-      startX = e.touches[0]?.clientX ?? null;
-    }, { passive: true });
-    hero.addEventListener('touchend', (e) => {
-      if (startX == null || slides.length < 2) { startX = null; return; }
-      const dx = (e.changedTouches[0]?.clientX ?? startX) - startX;
-      startX = null;
-      if (Math.abs(dx) < 45) return;
-      const current = Math.max(0, slides.findIndex(s => s.classList.contains('is-active')));
-      show(current + (dx < 0 ? 1 : -1));
-    });
-  }
-  
-  // ----- Masonry con proporciones reales -----
+  // ----- Álbum: cuadrícula uniforme, la misma pieza visual que los memes -----
   function renderMasonryGrid(grid, photos) {
-    disconnectGalleryIO(grid);
     if (grid._galHandler) grid.removeEventListener('click', grid._galHandler);
-    grid.innerHTML = '';
+    grid.replaceChildren();
     grid.setAttribute('aria-busy', 'true');
     if (!photos.length) {
+      const onlyFavs = state.galeriaFilter === 'favoritas';
       grid.innerHTML = `
         <div class="gallery-empty">
           <div class="gallery-empty-icon">${ICON_SVGS['image']}</div>
-          <h3>Tu galería está esperando nuevos recuerdos</h3>
-          <p>Sube tus primeras fotos para empezar.</p>
+          <h3>${onlyFavs ? 'Todavía no hay favoritas' : 'Este álbum está vacío'}</h3>
+          <p>${onlyFavs ? 'Toca el corazón de cualquier foto y aparecerá aquí.' : 'Sube tus primeras fotos para empezar.'}</p>
           ${isAdmin ? `<button class="gallery-empty-btn" id="galleryEmptyAdd">${ICON_SVGS['plus'] || '＋'} Añadir fotos</button>` : ''}
         </div>`;
       grid.querySelector('#galleryEmptyAdd')?.addEventListener('click', () => document.getElementById('galleryFileInput')?.click());
@@ -96,136 +51,77 @@ export function createMemes(ctx) {
       return;
     }
     const favs = state.galeriaFavs;
-    const mediaItems = buildMediaItems(photos, galleryAlbum().title).map(m => ({
+    const albumTitle = galleryAlbum().title;
+    const mediaItems = buildMediaItems(photos, albumTitle).map(m => ({
       ...m,
+      date: photoDate(m.src),
       fav: favs.has(m.src),
       onToggleFav: () => togglePhotoFav(m.src)
     }));
+    const calCovers = calendarVideoCovers();
     grid._galHandler = (e) => {
-      const card = e.target.closest('.gallery-photo');
+      const card = e.target.closest('.meme-album-item');
       if (!card) return;
-      const favBtn = e.target.closest('.gallery-photo-fav');
-      const menuBtn = e.target.closest('.gallery-photo-menu');
+      const favBtn = e.target.closest('.meme-item-fav');
+      const menuBtn = e.target.closest('.meme-item-menu');
       if (favBtn) { e.stopPropagation(); togglePhotoFav(favBtn.dataset.url); return; }
       if (menuBtn) { e.stopPropagation(); openPhotoMenu(menuBtn.dataset.url, menuBtn); return; }
       hapticTap('light');
-      openLightbox(mediaItems, Number(card.dataset.index));
+      openLightbox(grid._galMediaItems, Number(card.dataset.index));
     };
     grid._galMediaItems = mediaItems;
     grid.addEventListener('click', grid._galHandler);
-    const token = ++state.galleryToken;
-  
-    // ===== SCROLL INFINITO (sin botón): renderiza todo, pero carga por lotes =====
-    // Las imágenes ya usan loading="lazy", así que el navegador descarga primero
-    // las visibles y el resto cuando se acercan al viewport (ahorro de recursos).
-    const BATCH = 18;
-    let offset = 0;
-    let io = null;
-    // Relativo al grid: en el primer render la página aún no está en el
-    // documento, así que getElementById devolvería null y el scroll
-    // infinito nunca arrancaría.
-    const sentinel = grid.parentElement?.querySelector('#gallerySentinel');
-  
-    function appendNext() {
-      if (token !== state.galleryToken) return;
-      const batch = photos.slice(offset, offset + BATCH);
-      if (!batch.length) { finishLoad(); return; }
-      offset += batch.length;
-      const calCovers = calendarVideoCovers();
-      // Título una sola vez por lote: galleryAlbum() lee la meta de localStorage
-      // y se llamaba una vez por tarjeta.
-      const albumTitle = galleryAlbum().title;
-      let batchHtml = '';
-      batch.forEach((src, i) => {
-        const idx = (offset - batch.length) + i;
-        const ratio = knownRatio(src);
-        const isVid = isVideo(src);
-        const poster = isVid ? (calCovers.get(src) || getVideoPoster(src)) : '';
-        const isFav = favs.has(src);
-        const date = photoDate(src);
-        // La celda mide ~170 px en el móvil: se piden 640 px como mucho y el
-        // navegador elige del srcset según el ancho real y la densidad.
-        const mediaSrc = poster || src;
-        const thumb = mediaThumb(mediaSrc, 640);
-        const srcset = mediaSrcset(mediaSrc, [320, 640, 960]);
-        batchHtml += `<article class="gallery-photo animate-in${isVid ? ' is-video' : ''}${isVid && !poster ? ' is-no-poster' : ''}" style="aspect-ratio:${ratio};--enter-delay:${(idx % BATCH) * 25}ms" data-index="${idx}">
-          ${isVid && !poster
-            ? `<span class="gallery-photo-placeholder" aria-hidden="true">${ICON_SVGS['play']}</span>`
-            : `<span class="gallery-photo-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}"${srcset ? ` srcset="${escapeHtml(srcset)}" sizes="(max-width: 599px) 46vw, (max-width: 899px) 31vw, 24vw"` : ''} data-key="${escapeHtml(src)}" alt="${escapeHtml(albumTitle)} ${idx + 1}" loading="${idx < 2 ? 'eager' : 'lazy'}"${idx < 2 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded');window.__galleryRemember && window.__galleryRemember(this)" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-photo-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`}
-          ${isVid ? `<span class="gallery-photo-play" aria-hidden="true">${ICON_SVGS['play']}</span>` : ''}
-          <div class="gallery-photo-shade"></div>
-          ${date ? `<span class="gallery-photo-date">${escapeHtml(date)}</span>` : ''}
-          <button class="gallery-photo-fav ${isFav ? 'is-on' : ''}" data-url="${escapeHtml(src)}" aria-label="${isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}">${isFav ? '♥' : '♡'}</button>
-          <button class="gallery-photo-menu" data-url="${escapeHtml(src)}" aria-label="Opciones de la foto" title="Opciones">⋮</button>
-        </article>`;
-      });
-      // Un único parse y una única inserción por lote (antes eran 18 innerHTML
-      // y 18 inserciones, cada una recalculando el masonry de columnas).
-      const holder = document.createElement('div');
-      holder.innerHTML = batchHtml;
-      const frag = document.createDocumentFragment();
-      while (holder.firstElementChild) frag.appendChild(holder.firstElementChild);
-      grid.appendChild(frag);
-      // setTimeout en vez de requestAnimationFrame: con la pestaña en segundo
-      // plano (o el móvil bajo de batería) rAF se congela y la galería se
-      // quedaba en blanco hasta volver a la app.
-      setTimeout(() => { grid.querySelectorAll('.gallery-photo.animate-in:not(.visible)').forEach(el => el.classList.add('visible')); }, 30);
-      // Sigue observando mientras queden fotos; finishLoad() desconecta al final
-      if (offset >= photos.length) {
-        finishLoad();
-      } else if (io) {
-        // Re-observar: IntersectionObserver solo avisa en cambios de estado, y si el
-        // centinela sigue visible tras el lote el scroll infinito se quedaría parado.
-        io.unobserve(sentinel);
-        io.observe(sentinel);
-      }
-    }
-  
-    function finishLoad() {
-      if (io) { io.disconnect(); io = null; }
-      grid.setAttribute('aria-busy', 'false');
-      if (sentinel) sentinel.style.display = 'none';
-    }
-  
-    appendNext();
-    // Lote inicial más pequeño para pintar las visibles enseguida; el resto
-    // se añade al acercarse al final (rootMargin = 600px de anticipación).
-    if (offset < photos.length && sentinel && 'IntersectionObserver' in window) {
-      io = new IntersectionObserver((entries) => {
-        if (entries.some(e => e.isIntersecting)) appendNext();
-      }, { rootMargin: '600px 0px' });
-      io.observe(sentinel);
-    } else {
-      finishLoad();
-    }
-    grid._galIO = io;
+
+    grid.innerHTML = photos.map((src, i) => {
+      const isVid = isVideo(src);
+      const poster = isVid ? (calCovers.get(src) || getVideoPoster(src, 640)) : '';
+      const thumb = mediaThumb(poster || src, 640);
+      const isFav = favs.has(src);
+      const media = thumb
+        ? `<span class="meme-item-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="${escapeHtml(albumTitle)} ${i + 1}" loading="${i < 6 ? 'eager' : 'lazy'}"${i < 6 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="meme-item-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
+        : `<div class="meme-item-posterless">${isVid ? `<span class="meme-item-play">${ICON_SVGS['play']}</span>` : '🎞️'}</div>`;
+      return `<article class="meme-album-item animate-in" style="--enter-delay:${(i % 12) * 25}ms" data-index="${i}">
+        ${media}
+        ${isVid && thumb ? `<span class="meme-item-play" aria-hidden="true">${ICON_SVGS['play']}</span>` : ''}
+        <div class="meme-item-actions">
+          <button class="meme-item-fav ${isFav ? 'is-on' : ''}" data-url="${escapeHtml(src)}" aria-label="${isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}">${isFav ? '♥' : '♡'}</button>
+          <button class="meme-item-menu" data-url="${escapeHtml(src)}" aria-label="Opciones de la foto" title="Opciones">⋮</button>
+        </div>
+      </article>`;
+    }).join('');
+    requestAnimationFrame(() => {
+      grid.querySelectorAll('.meme-album-item.animate-in:not(.visible)').forEach(el => el.classList.add('visible'));
+    });
+    grid.setAttribute('aria-busy', 'false');
   }
-  
-  // Recordar proporción real (exposición global mínima para el onload inline)
-  window.__galleryRemember = (img) => {
-    const key = img.dataset.key;
-    if (!img.naturalWidth || !key) return;
-    rememberRatio(key, img.naturalWidth, img.naturalHeight);
-    // La primera visita usa 4/3 por defecto: corregir la tarjeta con la proporción real
-    if (img.parentElement) img.parentElement.style.aspectRatio = knownRatio(key);
-  };
-  // Desconecta el observer del scroll infinito al re-renderizar
-  function disconnectGalleryIO(grid) {
-    if (grid?._galIO) { grid._galIO.disconnect(); grid._galIO = null; }
-  }
-  
+
   function togglePhotoFav(url) {
     const nowFav = toggleFavPhoto(url, state.galeriaFavs);
     if (nowFav) state.galeriaFavs.add(url); else state.galeriaFavs.delete(url);
     // Actualizar botones sin re-render completo
-    document.querySelectorAll(`.gallery-photo-fav[data-url="${CSS.escape(url)}"]`).forEach(btn => {
+    document.querySelectorAll(`#galeriaGrid .meme-item-fav[data-url="${CSS.escape(url)}"]`).forEach(btn => {
       btn.classList.toggle('is-on', nowFav);
       btn.setAttribute('aria-label', nowFav ? 'Quitar de favoritas' : 'Marcar como favorita');
       btn.textContent = nowFav ? '♥' : '♡';
     });
     return nowFav;
   }
-  
+
+  // Filtra las tarjetas de álbum sin re-render (no pierde el foco del buscador)
+  function applyGallerySearch(query) {
+    const grid = document.querySelector('#galleryCollections');
+    if (!grid) return;
+    const q = query.trim().toLowerCase();
+    let visible = 0;
+    grid.querySelectorAll('.meme-album-card').forEach(card => {
+      const match = !q || (card.dataset.search || '').includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    const emptyEl = document.querySelector('#galeriaRoot .meme-search-empty');
+    if (emptyEl) emptyEl.style.display = visible ? 'none' : '';
+  }
+
   // ----- Menú ⋮ por foto -----
   function openPhotoMenu(url, anchor) {
     const rect = anchor?.getBoundingClientRect();
@@ -336,6 +232,20 @@ export function createMemes(ctx) {
   }
   
   // ----- Subida de fotos -----
+  // La subida no informa de progreso real (una subida de Storage por archivo),
+  // así que se enseñan tarjetas fantasma indeterminadas: una por foto. Se
+  // retiran al terminar, tanto si va bien como si falla.
+  function showUploadGhosts(container, count) {
+    const grid = container.querySelector('#galeriaGrid');
+    if (!grid || !count) return () => {};
+    const ghost = document.createElement('div');
+    ghost.className = 'gallery-uploading';
+    ghost.innerHTML = `<p class="gallery-uploading-label">Subiendo ${count} ${count === 1 ? 'foto' : 'fotos'}…</p>
+      <div class="gallery-uploading-track">${Array.from({ length: Math.min(count, 8) }).map(() => '<span class="gallery-uploading-tile" aria-hidden="true"></span>').join('')}</div>`;
+    grid.prepend(ghost);
+    return () => ghost.remove();
+  }
+
   function bindGalleryUpload(container) {
     const input = container.querySelector('#galleryFileInput');
     container.querySelector('#galleryAddBtn')?.addEventListener('click', () => input?.click());
@@ -344,6 +254,7 @@ export function createMemes(ctx) {
         const files = [...input.files];
         input.value = '';
         if (!files.length) return;
+        const clearGhosts = showUploadGhosts(container, files.length);
         try {
           showToast('Subiendo fotos…', 'info');
           const urls = await db.uploadGalleryPhotos(files);
@@ -354,6 +265,8 @@ export function createMemes(ctx) {
           }
         } catch (err) {
           showToast(err?.message || 'Error al subir las fotos', 'error');
+        } finally {
+          clearGhosts();
         }
       });
     }
@@ -373,80 +286,58 @@ export function createMemes(ctx) {
   
   function bindGaleriaEvents(container) {
     if (!container) return;
-    // Al cambiar filtro/pestaña o repintar datos, el visor debe desmontar su
-    // video/audio y detener la presentación antes de perder el nodo dueño.
+
+    // Cambiar de álbum desmonta el visor y para lo que estuviera sonando antes
+    // de repintar (el nodo dueño del vídeo desaparece con el render).
     const stopGalleryPlayback = () => {
       closeLightbox();
-      const content = document.getElementById('galeriaMemesContent');
-      content?.querySelectorAll('audio, video').forEach(media => {
+      pauseSlideshow();
+      container.querySelectorAll('audio, video').forEach(media => {
         try { media.pause(); media.currentTime = 0; } catch { /* ignorar */ }
       });
     };
-    const photos = getGalleryPhotos();
-    const heroPhotos = photos.slice(0, 5);
-    // container.querySelector en vez de document.getElementById: la página
-    // se renderiza antes de montarse en el DOM (el router la adjunta al
-    // volver), y getElementById no encuentra nodos desacoplados.
-    const grid = container.querySelector('#galeriaGrid');
-    if (grid) renderMasonryGrid(grid, photos);
-    bindGalleryHero(container, heroPhotos);
-    bindGalleryUpload(container);
-  
-    const mediaItems = buildMediaItems(photos, galleryAlbum().title).map(m => ({
-      ...m,
-      fav: state.galeriaFavs.has(m.src),
-      onToggleFav: () => togglePhotoFav(m.src)
-    }));
-    container.querySelector('#viewAllGalleryBtn')?.addEventListener('click', () => {
-      // «Ver todas» baja a la colección; para el visor ya está «Presentación».
-      const target = container.querySelector('#galleryFilters') || container.querySelector('#galeriaGrid');
-      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      target?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+
+    // Biblioteca: abrir álbum y buscar (igual que en Memes)
+    container.querySelectorAll('.meme-album-card').forEach(card => {
+      const openAlbum = () => {
+        stopGalleryPlayback();
+        state.galeriaFilter = card.dataset.album;
+        rerenderGallery();
+      };
+      card.addEventListener('click', openAlbum);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAlbum(); }
+      });
     });
-    container.querySelector('#gallerySlideshowBtn')?.addEventListener('click', () => {
-      if (!mediaItems.length) return;
-      openLightbox(mediaItems, 0);
-      // Presentación automática: fotos 5s; vídeos avanzan al terminar.
-      playSlideshow();
+    const searchInput = container.querySelector('#gallerySearchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => applyGallerySearch(searchInput.value));
+    }
+    requestAnimationFrame(() => {
+      container.querySelectorAll('.meme-album-card.animate-in').forEach(el => el.classList.add('visible'));
+    });
+
+    const grid = container.querySelector('#galeriaGrid');
+    if (grid) renderMasonryGrid(grid, getGalleryPhotos());
+
+    bindGalleryUpload(container);
+
+    container.querySelector('#galleryAlbumBack')?.addEventListener('click', () => {
+      stopGalleryPlayback();
+      state.galeriaFilter = 'todas';
+      rerenderGallery();
     });
     container.querySelector('#galleryEditBtn')?.addEventListener('click', openAlbumEditor);
-  
-    // Filtros
-    // Al cambiar de álbum se vuelve a la cabecera de la colección: la vista
-    // nueva empieza arriba, como en una galería nativa.
-    const backToCollection = () => {
-      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      (container.querySelector('#galleryFilters') || container.querySelector('#galleryHero'))
-        ?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    };
-
-    container.querySelectorAll('.gallery-filter').forEach(btn => {
-      btn.addEventListener('click', () => {
-        stopGalleryPlayback();
-        state.galeriaFilter = btn.dataset.filter;
-        rerenderGallery();
-        backToCollection();
-      });
+    container.querySelector('#gallerySortBtn')?.addEventListener('click', () => {
+      stopGalleryPlayback();
+      state.galeriaSort = state.galeriaSort === 'recientes' ? 'antiguas' : 'recientes';
+      rerenderGallery();
     });
-    // Ordenación
-    const sortBtn = container.querySelector('#gallerySortBtn');
-    if (sortBtn) {
-      sortBtn.addEventListener('click', () => {
-        state.galeriaSort = state.galeriaSort === 'recientes' ? 'antiguas' : 'recientes';
-        container.querySelector('#gallerySortLabel').textContent = state.galeriaSort === 'antiguas' ? 'Más antiguas' : 'Más recientes';
-        rerenderGallery();
-        backToCollection();
-      });
-    }
-    // Teclado: Escape cierra menús de galería (sin acumular listeners)
-    if (!window.__galEscBound) {
-      window.__galEscBound = true;
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') document.querySelectorAll('.photo-menu-overlay').forEach(o => o.remove());
-      });
-    }
+    container.querySelectorAll('.memes-breadcrumb-item[data-nav="landing"]').forEach(btn => {
+      btn.addEventListener('click', () => router.navigate('/rincon'));
+    });
   }
-  
+
   function openMemeAlbumMenu(albumId) {
     const albums = memeAlbums();
     const album = albums.find(a => a.id === albumId);
@@ -832,9 +723,7 @@ export function createMemes(ctx) {
   }
   
   return {
-    bindGalleryHero,
     renderMasonryGrid,
-    disconnectGalleryIO,
     bindGalleryUpload,
     bindGaleriaEvents,
     togglePhotoFav,
@@ -853,6 +742,7 @@ export function createMemes(ctx) {
     toggleMemeItemFav,
     confirmDeleteMeme,
     applyMemeSearch,
+    applyGallerySearch,
     bindMemesEvents
   };
 }

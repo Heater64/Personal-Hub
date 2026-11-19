@@ -14,9 +14,12 @@ import '../styles/sentimientos.css';
 import { moodStore } from '../stores/mood.store.js';
 import { userStore } from '../stores/user.store.js';
 import { renderPageHeader } from '../components/PageHeader.js';
+import { skeletonHTML } from '../components/states.js';
+import { bestStreak, lastNDays } from '../utils/pro-insights.js';
+import { saveStreakWidget } from '../services/widgets.service.js';
 import { icon, toast } from '../components/ui.js';
 import { escapeHtml } from '../utils/escape.js';
-import { todayISO, hourInSpain } from '../utils/format.js';
+import { todayISO } from '../utils/format.js';
 import {
   MAX_CUSTOM_LABEL,
   encodeMood,
@@ -24,6 +27,7 @@ import {
   toggleMoodSelection,
 } from '../data/moods.data.js';
 
+// Los cuatro accesos de Sentimientos, en el orden en que se leen.
 const CARDS = [
   {
     id: 'razones',
@@ -32,6 +36,14 @@ const CARDS = [
     desc: 'Una razón nueva para quererte',
     href: '/razones',
     color: 'var(--violet-c)',
+  },
+  {
+    id: 'maldia',
+    icon: 'sun',
+    title: 'Mal Día',
+    desc: 'Un abrazo para el mal día',
+    href: '/maldia',
+    color: 'var(--warn)',
   },
   {
     id: 'openwhen',
@@ -48,14 +60,6 @@ const CARDS = [
     desc: 'Sorpresas y días especiales',
     href: '/calendario',
     color: 'var(--ok)',
-  },
-  {
-    id: 'maldia',
-    icon: 'sun',
-    title: 'Mal Día',
-    desc: 'Un abrazo para el mal día',
-    href: '/maldia',
-    color: 'var(--warn)',
   },
   {
     id: 'menstruacion',
@@ -85,22 +89,6 @@ const HIST_MONTHS = [
 const HIST_WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 const pad2 = n => String(n).padStart(2, '0');
-
-function getGreeting() {
-  const h = hourInSpain();
-  if (h < 12) return 'Buenos días';
-  if (h < 19) return 'Buenas tardes';
-  return 'Buenas noches';
-}
-
-function longDate(date = new Date()) {
-  const s = new Intl.DateTimeFormat('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(date);
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 export function SentimientosPage(router) {
   const page = document.createElement('div');
@@ -170,12 +158,15 @@ export function SentimientosPage(router) {
       totalDays: dates.length,
       daysThisMonth: dates.filter(date => date.startsWith(thisMonth)).length,
       streak,
+      // «Mejor racha» y la tira de la quincena: mismo historial, otra lectura.
+      best: bestStreak(historyMap),
+      recent: lastNDays(historyMap, 14, todayISO()),
       mostCommon: top ? moodStore.resolveMood({ mood: top[0] }) : null,
     };
   }
 
   page.innerHTML = `
-    ${renderPageHeader({ title: `${getGreeting()}, princesa`, subtitle: longDate() })}
+    ${renderPageHeader({ title: 'Sentimientos', subtitle: 'Cómo estamos y qué nos hace bien' })}
 
     <!-- ===== ÁNIMO DE HOY ===== -->
     <section class="card sent-mood" aria-labelledby="sentMoodTitle">
@@ -263,25 +254,22 @@ export function SentimientosPage(router) {
       <div class="sent-history-legend" id="histLegend"></div>
     </section>
 
-    <!-- ===== EXPLORAR ===== -->
-    <h2 class="section-title">Explorar</h2>
+    <!-- ===== ACCESOS ===== -->
     <div class="sent-cards-grid">
-      ${CARDS.map(card => {
-        // El chico no tiene ciclo: su tarjeta lleva a lo que ella comparte.
-        const desc =
-          card.id === 'menstruacion' && userStore.isAdmin
-            ? 'Lo que ella comparte contigo'
-            : card.desc;
-        return `
+      ${CARDS.map(
+        card => `
         <button type="button" class="sent-card lift" data-href="${card.href}" style="--card-color:${card.color}">
           <span class="sent-card-cover">${icon(card.icon, 30)}</span>
           <span class="sent-card-body">
             <span class="sent-card-title">${card.title}</span>
-            <span class="sent-card-desc">${desc}</span>
+            <span class="sent-card-desc">${
+              card.id === 'menstruacion' && userStore.isAdmin
+                ? 'Lo que ella comparte contigo'
+                : card.desc
+            }</span>
           </span>
-        </button>
-      `;
-      }).join('')}
+        </button>`
+      ).join('')}
     </div>
   `;
 
@@ -456,7 +444,7 @@ export function SentimientosPage(router) {
     paintStatsToggle(hasStats);
     if (!hasStats) {
       box.hidden = true;
-      box.innerHTML = '';
+      box.replaceChildren();
       return;
     }
     const items = [
@@ -471,6 +459,7 @@ export function SentimientosPage(router) {
         emoji: !!stats.mostCommon,
       },
       { value: stats.daysThisMonth, label: 'este mes' },
+      { value: stats.best, label: 'mejor racha' },
     ];
     box.innerHTML = items
       .map(
@@ -482,9 +471,19 @@ export function SentimientosPage(router) {
     `
       )
       .join('');
+    // Últimos 14 días de un vistazo: punto encendido = ese día hubo ánimo.
+    box.insertAdjacentHTML(
+      'beforeend',
+      `<div class="pro-strip" role="img" aria-label="Últimos 14 días con ánimo registrado">${stats.recent
+        .map(day => `<span class="pro-dot${day.mood ? ' is-on' : ''}"></span>`)
+        .join('')}</div>`
+    );
     // Se repinta en cada cambio de ánimo: el plegado lo decide el usuario, no
     // el repintado.
     box.hidden = !statsOpen;
+
+    // Widget de racha (solo APK: en el navegador la llamada no hace nada).
+    saveStreakWidget({ days: stats.streak, best: stats.best });
   }
 
   function renderHistory() {
@@ -553,16 +552,19 @@ export function SentimientosPage(router) {
         : 'Todavía sin registros este mes';
   }
 
+  // Mientras llega el historial del servidor la rejilla se sustituye por
+  // huecos con forma (solo si no hay nada local que enseñar).
+  let histSkeletonShown = false;
+
   // Historial completo desde el servidor: una sola consulta para toda la vida
   // del usuario (un estado por día, poco peso) y las cifras ya son las reales.
   async function loadRemoteHistory() {
     const user = userStore.getUser();
     if (!user) return;
+    let changed = false;
     try {
       const rows = await moodStore.getMoodHistory(user.id, '2000-01-01', todayISO());
-      if (!rows?.length) return;
-      let changed = false;
-      for (const row of rows) {
+      for (const row of rows || []) {
         // Vienen de la más reciente a la más antigua: el primer estado de cada
         // día es el último que se guardó, que es el que cuenta.
         if (!row?.date || !row.mood || historyMap[row.date]) continue;
@@ -574,12 +576,16 @@ export function SentimientosPage(router) {
         };
         changed = true;
       }
-      if (changed) {
-        renderStats();
-        renderHistory();
-      }
     } catch {
       /* sin conexión: vale el historial local */
+    }
+    // El hueco de carga se sustituye SIEMPRE: con el historial remoto, con el
+    // local o con el mensaje de «aún no hay ánimos». Si no, un fallo de red
+    // dejaría la rejilla cargando para siempre.
+    if (changed || histSkeletonShown) {
+      histSkeletonShown = false;
+      renderStats();
+      renderHistory();
     }
   }
 
@@ -641,6 +647,11 @@ export function SentimientosPage(router) {
   openPalette(selection.some(item => !quickIds.has(item.id)));
   renderStats();
   renderHistory();
+  const histCal = page.querySelector('#histCal');
+  if (histCal && !Object.keys(historyMap).length) {
+    histCal.innerHTML = skeletonHTML({ rows: 3, label: 'Cargando tu historial' });
+    histSkeletonShown = true;
+  }
   loadRemoteHistory();
 
   // El ánimo puede haber cambiado en otro dispositivo mientras mirábamos

@@ -86,8 +86,8 @@ export function renderHome(ctx) {
     return top ? `${symptomLabel(top[0])} (${top[1]})` : '—';
   })();
 
-  const recent = [...(data.logs || [])]
-    .sort((a, b) => b.log_date.localeCompare(a.log_date))
+  const recent = (data.logs || [])
+    .toSorted((a, b) => b.log_date.localeCompare(a.log_date))
     .slice(0, 3);
 
   return `

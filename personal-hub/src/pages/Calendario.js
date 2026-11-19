@@ -16,11 +16,13 @@ import {
   h, icon, emptyState, openSheet, closeSheets, toast
 } from '../components/ui.js';
 import { createLightbox, openLightbox, buildVideoPlayer } from '../components/MediaLightbox.js';
+import { renderPageHeader } from '../components/PageHeader.js';
+import { skeletonCardsHTML, skeletonHTML } from '../components/states.js';
 import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { db } from '../services/db.service.js';
 import { userStore } from '../stores/user.store.js';
 import { onContentChange } from '../services/realtime.service.js';
-import { renderMathText } from '../utils/renderMath.js';
+import { loadKatex, renderMathText } from '../utils/renderMath.js';
 import { escapeHtml } from '../utils/escape.js';
 import { todayISO } from '../utils/format.js';
 import { userPrefKey } from '../utils/userStorage.js';
@@ -87,6 +89,9 @@ const PROGRESS_KEY = () => userPrefKey('giftProgress');
    ESTADO (módulo: sobrevive entre renders del router)
    ========================================== */
 let catalog = null;
+// Primera carga del catálogo en vuelo: mientras tanto la pantalla enseña
+// huecos con forma en vez de un calendario vacío que parecería «no hay nada».
+let catalogPending = true;
 let progressMap = {};
 
 // Respuestas de la usuaria, indexadas por giftId. Vive a nivel de módulo
@@ -412,21 +417,18 @@ export function CalendarioPage(router) {
 
   function renderHead() {
     const pendientes = pendingAnswerCount();
-    return `
-      <div class="scr-head cal-page-head">
-        <div>
-          <h1 class="scr-title">Calendario</h1>
-          <p class="sub">Un regalo cada día, pensado para ti</p>
-        </div>
-        <div class="head-actions">
-          <button type="button" class="icon-btn" id="calSearchBtn" aria-label="Buscar regalos" title="Buscar regalos">${icon('search', 19)}</button>
-          <button type="button" class="icon-btn" id="calAnswersBtn" aria-label="${pendientes ? `Tus respuestas · ${pendientes} sin contestar` : 'Tus respuestas'}" title="Tus respuestas">
-            ${icon('mail', 19)}${pendientes ? `<span class="icon-btn__badge">${pendientes}</span>` : ''}
-          </button>
-          ${userStore.isAdmin ? `<button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>` : ''}
-        </div>
-      </div>
-    `;
+    return renderPageHeader({
+      title: 'Calendario',
+      subtitle: 'Un regalo cada día, pensado para ti',
+      className: 'cal-page-head',
+      actions: `
+        <button type="button" class="icon-btn" id="calSearchBtn" aria-label="Buscar regalos" title="Buscar regalos">${icon('search', 19)}</button>
+        <button type="button" class="icon-btn" id="calAnswersBtn" aria-label="${pendientes ? `Tus respuestas · ${pendientes} sin contestar` : 'Tus respuestas'}" title="Tus respuestas">
+          ${icon('mail', 19)}${pendientes ? `<span class="icon-btn__badge">${pendientes}</span>` : ''}
+        </button>
+        ${userStore.isAdmin ? `<button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>` : ''}
+      `,
+    });
   }
 
   /* ===== REGALO DESTACADO ===== */
@@ -445,6 +447,11 @@ export function CalendarioPage(router) {
     if (!host) return;
 
     stopSpotRotation();
+
+    if (!catalog && catalogPending) {
+      host.innerHTML = skeletonCardsHTML({ count: 1, label: 'Cargando el regalo de hoy' });
+      return;
+    }
 
     const today = todayISO();
     const todayIds = dayIds(today);
@@ -473,7 +480,7 @@ export function CalendarioPage(router) {
     const giftId = ids[spotRot.index];
     const gift = giftOf(giftId) || giftOf(ids[0]);
     if (!gift) {
-      host.innerHTML = '';
+      host.replaceChildren();
       return;
     }
 
@@ -522,6 +529,13 @@ export function CalendarioPage(router) {
   function paintMonth() {
     const host = page.querySelector('#calMonth');
     if (!host) return;
+
+    if (!catalog && catalogPending) {
+      page.querySelector('#calDay')?.setAttribute('hidden', '');
+      host.innerHTML = skeletonHTML({ rows: 4, label: 'Cargando el calendario' });
+      return;
+    }
+
     page.querySelector('#calDay')?.removeAttribute('hidden');
 
     // Meses reales, no solo los que tienen regalos: un mes vacío también se
@@ -1055,7 +1069,7 @@ export function CalendarioPage(router) {
         if (ansEl) payloadData.answer = ansEl.value.trim();
 
         try {
-          const currentCatalog = JSON.parse(JSON.stringify(catalog));
+          const currentCatalog = structuredClone(catalog);
           currentCatalog.months = currentCatalog.months || {};
           currentCatalog.gifts = Array.isArray(currentCatalog.gifts) ? currentCatalog.gifts : [];
 
@@ -1119,7 +1133,7 @@ export function CalendarioPage(router) {
     if (!confirm(`¿Eliminar la sorpresa "${gift.title}" del calendario?`)) return;
 
     try {
-      const currentCatalog = JSON.parse(JSON.stringify(catalog));
+      const currentCatalog = structuredClone(catalog);
       currentCatalog.gifts = (currentCatalog.gifts || []).filter(x => x.id !== id);
 
       const monthKey = dateStr.slice(0, 7);
@@ -2060,7 +2074,12 @@ export function CalendarioPage(router) {
 
   paintAll();
 
+  // Las fórmulas de los regalos necesitan KaTeX: se pide al montar (no en el
+  // arranque de la app) para que esté listo cuando se abra una experiencia.
+  void loadKatex();
+
   loadGiftsCatalog().then(data => {
+    catalogPending = false;
     if (!pageActive) return;
     if (data) {
       catalog = data; resetAnnouncement();

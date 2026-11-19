@@ -29,7 +29,10 @@ const ROSE = '#F3C5D0';
 const MUTED = '#B3C9BBD1';
 const WHITE = '#FFFFFF';
 
-const SIZES = { compact: [110, 110], rect: [250, 110], large: [250, 180] };
+// El destacado ya no ocupa 4×3: es la composición horizontal de 4×2, igual
+// que su layout. La miniatura tiene que medir lo mismo o el selector la
+// recorta y parece otro widget.
+const SIZES = { compact: [110, 110], rect: [250, 110], large: [220, 110] };
 const FONT = 'Segoe UI, Arial, Helvetica, sans-serif';
 
 const esc = text => String(text)
@@ -69,16 +72,12 @@ function faces(right, cy, r = 17) {
     + `<circle cx="${right - r * 1.05}" cy="${cy}" r="${r}" fill="${PLUM}" stroke="${ROSE}" stroke-width="2"/>`;
 }
 
-/** Dos caras superpuestas centradas (composición alta). */
-function facesTop(cx, cy, r = 18) {
-  return `<circle cx="${cx - r * 0.95}" cy="${cy}" r="${r}" fill="${PLUM}" stroke="${ROSE}" stroke-width="2"/>`
-    + `<circle cx="${cx + r * 0.95}" cy="${cy}" r="${r}" fill="${PLUM}" stroke="${ROSE}" stroke-width="2"/>`;
-}
-
 /** Póster con forma de portada y un triángulo de reproducción. */
 function poster(x, y, w, h) {
   const play = Math.min(w, h) * 0.28;
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="#3A2A42" stroke="#33F3C5D0"/>`
+  // Ojo: el hex de SVG es RRGGBBAA, no AARRGGBB. Con el alfa delante el
+  // borde salía verde turquesa en todas las miniaturas.
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="#3A2A42" stroke="#F3C5D033"/>`
     + `<path d="M ${x + w / 2 - play / 3} ${y + h / 2 - play / 2} L ${x + w / 2 + play / 1.6} ${y + h / 2}`
     + ` L ${x + w / 2 - play / 3} ${y + h / 2 + play / 2} Z" fill="${ROSE}" opacity="0.9"/>`;
 }
@@ -102,6 +101,12 @@ function smiley(cx, cy, r) {
     + ` fill="none" stroke="${WHITE}" stroke-width="${Math.max(2, r * 0.09)}" stroke-linecap="round"/>`;
 }
 
+/** Luna creciente: el bloque derecho del widget del ciclo. */
+function moon(cx, cy, r) {
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${ROSE}"/>`
+    + `<circle cx="${cx + r * 0.42}" cy="${cy - r * 0.18}" r="${r * 0.88}" fill="#2A1B30"/>`;
+}
+
 /** Marco del widget: fondo, borde y barra de acento opcional. */
 function frame(w, h, start, stroke, accent = false) {
   return `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">`
@@ -118,56 +123,56 @@ const DISCREET = 'su móvil · 82 % · Wi-Fi';
 
 const CONTENT = {
   days: {
-    start: '#2A1B30', stroke: '#30F3C5D0',
+    start: '#2A1B30', stroke: '#F3C5D030',
     compact: h => stack([
       line('DÍAS JUNTOS', 8, CORAL_SOFT, { track: 1.1 }),
       line('503', 40),
       line('días', 9, ROSE),
     ], 55, h),
-    rect: h => frame(250, h, '#2A1B30', '#30F3C5D0', true)
+    rect: h => frame(250, h, '#2A1B30', '#F3C5D030', true)
       + faces(240, h / 2, 15)
       + text('DÍAS JUNTOS', 32, 40, 8, CORAL_SOFT, { anchor: 'start', track: 1 })
       + text('503', 32, 76, 30, WHITE, { anchor: 'start' })
       + text('1 año y 4 meses', 32, 94, 9, MUTED, { anchor: 'start', bold: false }),
-    large: h => facesTop(125, 40, 18)
-      + text('DÍAS JUNTOS', 125, 78, 8, CORAL_SOFT, { track: 1.1 })
-      + text('503', 125, 124, 44)
-      + text('1 año y 4 meses', 125, 146, 9, MUTED, { bold: false })
-      + text('desde el 3 jul 2025', 125, 162, 9, MUTED, { bold: false }),
+    large: h => frame(220, h, '#2A1B30', '#F3C5D030', true)
+      + faces(212, h / 2, 17)
+      + text('DÍAS JUNTOS', 32, 32, 9, CORAL_SOFT, { anchor: 'start', track: 1.2 })
+      + text('503', 32, 74, 42, WHITE, { anchor: 'start' })
+      + text('días', 112, 74, 12, CORAL, { anchor: 'start' })
+      + text('1 año y 4 meses', 32, 92, 9, MUTED, { anchor: 'start', bold: false }),
   },
   distance: {
-    start: '#1E1A24', stroke: '#30E59277',
+    start: '#1E1A24', stroke: '#E5927730',
     compact: h => stack([line('ESTÁIS A', 8, CORAL_SOFT, { track: 1 }), line('412 km', 30), line('hace 2 min', 8, MUTED, { bold: false })], 55, h),
-    rect: h => frame(250, h, '#1E1A24', '#30E59277', true)
+    rect: h => frame(250, h, '#1E1A24', '#E5927730', true)
       + faces(240, h / 2, 15)
       + text('ESTÁIS A', 32, 36, 8, CORAL_SOFT, { anchor: 'start', track: 1 })
       + text('412 km', 32, 70, 28, WHITE, { anchor: 'start' })
       + text('hace 2 min', 32, 86, 9, MUTED, { anchor: 'start', bold: false })
       + text(DISCREET, 32, 100, 8, ROSE, { anchor: 'start', bold: false }),
-    large: h => facesTop(125, 36, 18)
-      + text('ESTÁIS A', 125, 74, 8, CORAL_SOFT, { track: 1 })
-      + text('412 km', 125, 118, 38)
-      + text('hace 2 min', 125, 140, 9, MUTED, { bold: false })
-      + text(DISCREET, 125, 158, 8, ROSE, { bold: false }),
+    large: h => frame(220, h, '#1E1A24', '#E5927730', true)
+      + faces(210, h / 2, 16)
+      + text('ESTÁIS A', 32, 26, 9, CORAL_SOFT, { anchor: 'start', track: 1 })
+      + text('412 km', 32, 66, 34, WHITE, { anchor: 'start' })
+      + text('hace 2 min', 32, 84, 9, MUTED, { anchor: 'start', bold: false })
+      + text(DISCREET, 32, 98, 8, ROSE, { anchor: 'start', bold: false }),
   },
   countdown: {
-    start: '#2C1B22', stroke: '#30C65A3A',
+    start: '#2C1B22', stroke: '#C65A3A30',
     compact: h => stack([line('Aniversario', 8, CORAL_SOFT), line('227', 34), line('días', 10, ROSE)], 55, h),
-    rect: (h) => frame(250, h, '#2C1B22', '#30C65A3A', true) + stack([
+    rect: (h) => frame(250, h, '#2C1B22', '#C65A3A30', true) + stack([
       line('Aniversario', 8, CORAL_SOFT),
       line('227 días', 34),
       line('3 jul 2027', 9, MUTED, { bold: false }),
     ], 154, h, { anchor: 'start' }),
-    large: h => stack([
-      line('FALTAN', 8, CORAL_SOFT, { track: 1.2 }),
-      line('227', 48),
-      line('días', 13, ROSE),
-      line('Aniversario', 11),
-      line('3 jul 2027', 9, MUTED, { bold: false }),
-    ], 125, h),
+    large: h => frame(220, h, '#2C1B22', '#C65A3A30', true)
+      + text('Aniversario', 32, 28, 9, CORAL_SOFT, { anchor: 'start', track: 1 })
+      + text('227', 32, 72, 42, WHITE, { anchor: 'start' })
+      + text('días', 116, 72, 12, ROSE, { anchor: 'start' })
+      + text('3 jul 2027', 32, 90, 9, MUTED, { anchor: 'start', bold: false }),
   },
   mood: {
-    start: '#2A1B30', stroke: '#30F3C5D0',
+    start: '#2A1B30', stroke: '#F3C5D030',
     compact: h => smiley(55, 38, 20)
       + text('contento', 55, 78, 12)
       + text('hoy', 55, 94, 8, MUTED, { bold: false }),
@@ -175,29 +180,30 @@ const CONTENT = {
       + text('HOY', 86, 38, 8, ROSE, { anchor: 'start', track: 1.2 })
       + text('contento', 86, 66, 16, WHITE, { anchor: 'start' })
       + text('hoy', 86, 82, 9, MUTED, { anchor: 'start', bold: false }),
-    large: h => text('ESTADO DE ÁNIMO', 125, 24, 8, ROSE, { track: 1.2 })
-      + smiley(125, 86, 26)
-      + text('contento', 125, 146, 18)
-      + text('hoy', 125, 164, 9, MUTED, { bold: false }),
+    large: h => frame(220, h, '#2A1B30', '#F3C5D030', true)
+      + smiley(190, h / 2, 22)
+      + text('ESTADO DE ÁNIMO', 32, 32, 9, ROSE, { anchor: 'start', track: 1.2 })
+      + text('contento', 32, 68, 20, WHITE, { anchor: 'start' })
+      + text('hoy', 32, 86, 9, MUTED, { anchor: 'start', bold: false }),
   },
   cycle: {
-    start: '#2A1B30', stroke: '#30F3C5D0',
+    start: '#2A1B30', stroke: '#F3C5D030',
     compact: h => stack([line('CICLO', 8, ROSE, { track: 1.2 }), line('12', 26), line('Fase lútea', 9, ROSE, { bold: false })], 55, h),
-    rect: h => frame(250, h, '#2A1B30', '#30F3C5D0', true) + stack([
+    rect: h => frame(250, h, '#2A1B30', '#F3C5D030', true) + stack([
       line('CICLO', 8, CORAL_SOFT, { track: 1 }),
       line('Fase lútea', 13),
       line('día 12 de ~28', 9, ROSE, { bold: false }),
       line('próxima regla en 16 d', 8, MUTED, { bold: false }),
     ], 154, h, { anchor: 'start' }),
-    large: h => stack([
-      line('CICLO', 8, CORAL_SOFT, { track: 1.2 }),
-      line('Fase lútea', 20),
-      line('día 12 de ~28', 12, ROSE, { bold: false }),
-      line('próxima regla en 16 d', 9, MUTED, { bold: false }),
-    ], 125, h),
+    large: h => frame(220, h, '#2A1B30', '#F3C5D030', true)
+      + moon(190, h / 2, 22)
+      + text('CICLO', 32, 26, 9, CORAL_SOFT, { anchor: 'start', track: 1.2 })
+      + text('Fase lútea', 32, 56, 18, WHITE, { anchor: 'start' })
+      + text('día 12 de ~28', 32, 74, 10, ROSE, { anchor: 'start', bold: false })
+      + text('próxima regla en 16 d', 32, 90, 8, MUTED, { anchor: 'start', bold: false }),
   },
   watching: {
-    start: '#241A2C', stroke: '#30E59277',
+    start: '#241A2C', stroke: '#E5927730',
     compact: () => `<g transform="translate(10,25)">${poster(0, 0, 44, 60)}</g>`
       + text('Dragon', 60, 48, 8, WHITE, { anchor: 'start' })
       + text('Ball Super', 60, 60, 8, WHITE, { anchor: 'start' })
@@ -209,30 +215,28 @@ const CONTENT = {
         line('Ep. 4 de 10', 9, MUTED, { bold: false }),
         line('40 % visto', 9, ROSE, { bold: false }),
       ], 190, h, { anchor: 'start' }),
-    large: h => `<g transform="translate(89,14)">${poster(0, 0, 72, 96)}</g>`
-      + stack([
-        line('Dragon Ball Super', 14),
-        line('Ep. 4 de 10', 9, MUTED, { bold: false }),
-        line('40 % visto', 10, ROSE, { bold: false }),
-      ], 125, h, { gap: 6 }).replace(/^/, `<g transform="translate(0,42)">`) + '</g>',
+    large: () => `<g transform="translate(14,19)">${poster(0, 0, 52, 72)}</g>`
+      + text('SEGUIR VIENDO', 78, 28, 9, CORAL_SOFT, { anchor: 'start', track: 1 })
+      + text('Dragon Ball Super', 78, 52, 15, WHITE, { anchor: 'start' })
+      + text('Ep. 4 de 10', 78, 72, 9, MUTED, { anchor: 'start', bold: false })
+      + text('40 % visto', 78, 90, 9, ROSE, { anchor: 'start', bold: false }),
   },
   gifts: {
-    start: '#2C1B22', stroke: '#30C65A3A',
+    start: '#2C1B22', stroke: '#C65A3A30',
     compact: () => gift(55, 32, 22)
       + text('1', 55, 74, 24)
       + text('sorpresa', 55, 90, 8, ROSE, { bold: false }),
-    rect: h => frame(250, h, '#2C1B22', '#30C65A3A', true) + stack([
+    rect: h => frame(250, h, '#2C1B22', '#C65A3A30', true) + stack([
       line('HOY', 8, CORAL_SOFT, { track: 1 }),
       line('1 sorpresa', 26),
       line('en el calendario', 9, MUTED, { bold: false }),
     ], 154, h, { anchor: 'start' }),
-    large: h => stack([
-      line('HOY', 8, CORAL_SOFT, { track: 1.2 }),
-    ], 125, 30) + gift(125, 62, 28) + stack([
-      line('1', 40),
-      line('sorpresa', 10, ROSE, { bold: false }),
-      line('en el calendario', 9, MUTED, { bold: false }),
-    ], 125, h - 62).replace(/^/, `<g transform="translate(0,62)">`) + '</g>',
+    large: h => frame(220, h, '#2C1B22', '#C65A3A30', true)
+      + gift(190, h / 2, 26)
+      + text('HOY', 32, 26, 9, CORAL_SOFT, { anchor: 'start', track: 1.2 })
+      + text('1', 32, 68, 42, WHITE, { anchor: 'start' })
+      + text('sorpresa', 56, 68, 12, ROSE, { anchor: 'start' })
+      + text('en el calendario', 32, 86, 8, MUTED, { anchor: 'start', bold: false }),
   },
 };
 

@@ -35,14 +35,8 @@
     width: 40px;
     height: 40px;
     border-radius: var(--r-md);
-    background: var(--primary);
-    color: var(--on-accent, #fff);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-ui);
-    font-weight: 800;
-    font-size: 19px;
+    display: block;
+    object-fit: cover;
     flex: none;
     box-shadow: var(--sh-m);
   }

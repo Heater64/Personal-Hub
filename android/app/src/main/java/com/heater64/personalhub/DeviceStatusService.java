@@ -105,6 +105,14 @@ public class DeviceStatusService extends Service {
         return prefs(context).getBoolean("enabled", false);
     }
 
+    /** Solo se usa para reanudar tras reinicio: fuera de la app visible,
+     * Android exige ubicación permanente antes de crear un FGS de location. */
+    public static boolean hasBackgroundLocationPermission(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true;
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
     public static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
@@ -115,11 +123,20 @@ public class DeviceStatusService extends Service {
         createChannel();
         try {
             startForeground(NOTIFICATION_ID, buildNotification("Preparando el seguimiento…"));
+            prefs(this).edit()
+                    .putBoolean("running", true)
+                    .remove("last_error")
+                    .apply();
         } catch (Exception err) {
             // Android 14+ exige el permiso de ubicación para el tipo
             // «location»: sin él no hay aviso válido y el servicio se apaga
             // solo en vez de tumbar la app.
             Log.w(TAG, "el sistema no dejó empezar el primer plano", err);
+            prefs(this).edit()
+                    .putBoolean("enabled", false)
+                    .putBoolean("running", false)
+                    .putString("last_error", "foreground-service-rejected")
+                    .apply();
             stopSelf();
             return;
         }
@@ -137,7 +154,7 @@ public class DeviceStatusService extends Service {
             return START_NOT_STICKY;
         }
 
-        prefs(this).edit().putBoolean("enabled", true).apply();
+        prefs(this).edit().putBoolean("enabled", true).putBoolean("running", true).apply();
         startForeground(NOTIFICATION_ID, buildNotification("Compartiendo estado…"));
         if (handler != null) {
             handler.removeCallbacks(tick);
@@ -148,6 +165,10 @@ public class DeviceStatusService extends Service {
 
     @Override
     public void onDestroy() {
+        // `enabled` es la intención explícita del usuario; `running` es el
+        // hecho observable. No los mezclemos: Android puede matar el proceso
+        // y reintentarlo con START_STICKY sin que la UI mienta mientras tanto.
+        prefs(this).edit().putBoolean("running", false).apply();
         if (handler != null) {
             handler.removeCallbacksAndMessages(null);
             handler = null;
@@ -294,6 +315,11 @@ public class DeviceStatusService extends Service {
         if (location != null) {
             data.put("lat", round(location.getLatitude()));
             data.put("lng", round(location.getLongitude()));
+            // `at` es la hora de este envío (batería/red). La ubicación tiene
+            // su propio reloj: sustituirlo hacía que un GPS viejo pareciera
+            // recién actualizado en el mapa de la pareja.
+            data.put("location_at", isoAt(location.getTime()));
+            data.put("location_age_ms", Math.max(0L, System.currentTimeMillis() - location.getTime()));
             if (location.hasAccuracy()) data.put("accuracy", Math.round(location.getAccuracy()));
             if (location.hasSpeed() && location.getSpeed() >= 0) {
                 data.put("speed", Math.round(location.getSpeed() * 3.6));
@@ -305,6 +331,10 @@ public class DeviceStatusService extends Service {
             if (previous != null && previous.has("lat") && previous.has("lng")) {
                 data.put("lat", previous.optDouble("lat"));
                 data.put("lng", previous.optDouble("lng"));
+                String locationAt = previous.optString("location_at", "");
+                if (!locationAt.isEmpty()) data.put("location_at", locationAt);
+                long previousAge = previous.optLong("location_age_ms", -1L);
+                if (previousAge >= 0L) data.put("location_age_ms", previousAge);
                 if (previous.has("accuracy")) data.put("accuracy", previous.optInt("accuracy"));
             }
         }
@@ -344,15 +374,21 @@ public class DeviceStatusService extends Service {
         String anon = prefs.getString("anonKey", "");
         String token = prefs.getString("accessToken", "");
         String userId = prefs.getString("user_id", "");
+        String coupleId = prefs.getString("couple_id", "");
         if (base.isEmpty() || anon.isEmpty() || token.isEmpty() || userId.isEmpty()) return;
 
-        boolean admin = prefs.getBoolean("is_admin", false);
         JSONObject row = new JSONObject();
         row.put("data", data);
         row.put("updated_at", data.optString("at"));
 
         String path;
-        if (admin) {
+        if (!coupleId.isEmpty()) {
+            row.put("couple_id", coupleId);
+            row.put("user_id", userId);
+            row.put("location_at", data.optString("location_at", data.optString("at")));
+            row.put("sent_at", data.optString("at"));
+            path = "/rest/v1/couple_locations?on_conflict=couple_id,user_id";
+        } else if (prefs.getBoolean("is_admin", false)) {
             row.put("id", "location_admin");
             path = "/rest/v1/content?on_conflict=id";
         } else {
@@ -497,7 +533,13 @@ public class DeviceStatusService extends Service {
     }
 
     private static String isoNow() {
-        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).format(new Date());
+        return isoAt(System.currentTimeMillis());
+    }
+
+    private static String isoAt(long timeMs) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+        format.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        return format.format(new Date(timeMs));
     }
 
     private static double round(double value) {

@@ -8,11 +8,13 @@ import '../styles/openwhen.css';
 import { icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { userStore } from '../stores/user.store.js';
 import { createLightbox, openLightbox, closeLightbox } from '../components/MediaLightbox.js';
+import { renderPageHeader } from '../components/PageHeader.js';
 import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { OPENWHEN_READ_PREFIX } from '../utils/stats-metrics.js';
 import { db } from '../services/db.service.js';
 import { seenCategories, markCategorySeen, readSeenUpdates, markUpdateSeen } from '../utils/openwhen-categories.js';
+import { saveOpenWhenWidget } from '../services/widgets.service.js';
 
 import { CATEGORIES, TYPE_META, LETTERS, loadAllOpenWhenLetters } from '../data/openwhen.data.js';
 
@@ -231,6 +233,8 @@ export function OpenWhenPage(router) {
   // Categorías que ella ya conoce. Las que lleguen después se marcan como
   // nuevas; abrir la categoría la da por vista.
   let seenCats = seenCategories(catIdsWithLetters());
+  // Deja el widget con la cuenta de cartas sin descubrir desde el arranque.
+  savePendingWidget();
 
   function isNewCategory(catId) {
     return !userStore.isAdmin && totalOf(catId) > 0 && !seenCats.includes(catId);
@@ -238,6 +242,16 @@ export function OpenWhenPage(router) {
 
   function persist() {
     setUserPref(SEEN_KEY, JSON.stringify(seen));
+    savePendingWidget();
+  }
+
+  /**
+   * Widget de Open When: cuántas cartas quedan por descubrir.
+   * Se apoya en el estado que ya se guarda (`seen`), sin datos nuevos.
+   */
+  function savePendingWidget() {
+    const siguiente = visibleLetters().find(isNew);
+    saveOpenWhenWidget({ pending: newTotal(), category: siguiente?.category || '' });
   }
 
   function letterById(id) {
@@ -412,21 +426,18 @@ export function OpenWhenPage(router) {
     const sub = drafts.length ? `${base} · ${drafts.length} por escribir` : base;
 
     const adminBtn = userStore.isAdmin
-      ? `<div class="ow-head-actions">
-          <button type="button" class="ow-admin-btn" data-new-letter>
-            ${icon('plus', 15)} <span>Escribir carta</span>
-          </button>
-        </div>`
+      ? `<button type="button" class="ow-admin-btn" data-new-letter>
+          ${icon('plus', 15)} <span>Escribir carta</span>
+        </button>`
       : '';
 
     return `
-      <header class="scr-head">
-        <div>
-          <h1 class="scr-title">Open When</h1>
-          <p class="sub">${escapeHtml(sub)}</p>
-        </div>
-        ${adminBtn}
-      </header>
+      ${renderPageHeader({
+        title: 'Open When',
+        subtitle: sub,
+        actions: adminBtn,
+        actionsClassName: 'head-actions ow-head-actions',
+      })}
 
       ${drafts.length ? `
         <section class="ow-section">
@@ -449,24 +460,20 @@ export function OpenWhenPage(router) {
     const olds = all.filter(l => !isNew(l));
 
     const adminBtn = userStore.isAdmin
-      ? `<div class="ow-head-actions">
-          <button type="button" class="ow-admin-btn" data-new-letter="${catId}">
-            ${icon('plus', 15)} <span>Nueva en ${escapeHtml(cat.title)}</span>
-          </button>
-        </div>`
+      ? `<button type="button" class="ow-admin-btn" data-new-letter="${catId}">
+          ${icon('plus', 15)} <span>Nueva en ${escapeHtml(cat.title)}</span>
+        </button>`
       : '';
 
     return `
-      <header class="scr-head">
-        <div class="ow-head-main">
-          <button type="button" class="icon-btn ow-back" data-back aria-label="Volver a Open When">${icon('back', 18)}</button>
-          <div>
-            <h1 class="scr-title">${cat.emoji} ${escapeHtml(cat.title)}</h1>
-            <p class="sub">${escapeHtml(cat.tagline)}</p>
-          </div>
-        </div>
-        ${adminBtn}
-      </header>
+      ${renderPageHeader({
+        title: `${cat.emoji} ${cat.title}`,
+        subtitle: cat.tagline,
+        back: true,
+        backLabel: 'Volver a Open When',
+        actions: adminBtn,
+        actionsClassName: 'head-actions ow-head-actions',
+      })}
 
       ${news.length ? `
         <section class="ow-section">
@@ -737,7 +744,7 @@ export function OpenWhenPage(router) {
             </div>
           `;
         } else {
-          extraDiv.innerHTML = '';
+          extraDiv.replaceChildren();
         }
       }
 

@@ -17,23 +17,25 @@
 - **Radio:** 26 dp. **Sombras:** ninguna (limitación de RemoteViews).
 - **Iconografía:** ninguna; aquí el dato es el día.
 
-### Pequeña (2×2)
+### Pequeña (1×1)
 
-- Título (8 sp, recortado si es largo) y número 34 sp con «días». Sin fecha.
+- Título (7 sp, recortado si es largo) y número 24 sp con «días». Sin fecha.
 
-### Rectangular (4×2)
+### Rectangular (3×1)
 
-- Barra coral + columna: título, número 36 sp con «días» y fecha («3 jul 2026»).
+- Barra coral + columna: título, número 30 sp con «días» y fecha («3 jul 2026»).
 
-### Grande (4×3)
+### Grande (4×2)
 
-- «FALTAN», número 48 sp con «días», título de la fecha y día concreto, centrados.
+- La misma composición horizontal con más aire: título 9 sp, número 42 sp con
+  «días» y fecha. El destacado ya no reserva 4×3.
 
-### Grande con varias fechas (4×3)
+### Grande con varias fechas (4×2)
 
-- Con dos o tres elegidas, el número gigante deja paso a una fila por fecha:
-  título, día concreto y días que faltan (20 sp). Las filas comparten altura,
-  así el widget no cambia de tamaño al añadir una fecha.
+- Con dos o tres elegidas, el número grande deja paso a una fila por fecha:
+  título, día concreto y días que faltan (16 sp). Las filas comparten altura,
+  así el widget no cambia de tamaño al añadir una fecha, y las tres caben en
+  las dos filas que reserva el widget.
 - Con la letra del sistema grande se oculta la línea del día concreto para que
   las tres filas sigan cabiendo.
 

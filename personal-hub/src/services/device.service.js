@@ -41,8 +41,11 @@ const state = {
 const background = {
   native: false,
   enabled: false,
+  running: false,
+  lastError: '',
   location: 'unknown',
   background: 'unknown',
+  locationServices: 'unknown',
   notifications: 'unknown',
   batteryUnrestricted: null,
   data: null,
@@ -179,8 +182,11 @@ export async function refreshBackgroundStatus() {
     Object.assign(background, {
       native: true,
       enabled: !!res?.enabled,
+      running: res?.running === true,
+      lastError: res?.lastError || '',
       location: res?.location || 'unknown',
       background: res?.background || 'unknown',
+      locationServices: res?.locationServices || 'unknown',
       notifications: res?.notifications || 'unknown',
       batteryUnrestricted: res?.batteryUnrestricted === true,
       data: res?.data || null,
@@ -247,6 +253,18 @@ async function nativeConfig() {
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return null;
 
+  let coupleId = '';
+  try {
+    const { data } = await supabase
+      .from('couple_members')
+      .select('couple_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    coupleId = data?.couple_id || '';
+  } catch {
+    /* despliegue anterior a 029: el servicio conserva el formato heredado */
+  }
+
   return {
     url,
     anonKey,
@@ -254,6 +272,7 @@ async function nativeConfig() {
     refreshToken: session.refresh_token || '',
     expiresAt: (session.expires_at || 0) * 1000,
     userId: user.id,
+    coupleId,
     isAdmin: userStore.isAdmin,
     name: user.name || '',
     avatar: user.avatar || '',

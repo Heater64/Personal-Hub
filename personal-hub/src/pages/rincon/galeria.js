@@ -5,16 +5,13 @@
    reexportan aqui) para no duplicar codigo.
    ========================================== */
 
-import { getVideoPoster, isVideo, cloudinaryThumb, mediaThumb, mediaSrcset } from '../../services/rincon-data.js';
-import { loadGiftsCatalog, getGiftsCatalog, unlockedCalendarVideos } from '../../services/gifts.service.js';
-import { db } from '../../services/db.service.js';
-import { showToast } from '../../components/Toast.js';
-import { escapeHtml, safeUrl } from '../../utils/escape.js';
-import { openLightbox, playSlideshow } from '../../components/MediaLightbox.js';
+import { getVideoPoster, isVideo, cloudinaryThumb, mediaThumb } from '../../services/rincon-data.js';
+import { loadGiftsCatalog, unlockedCalendarVideos } from '../../services/gifts.service.js';
+import { escapeHtml } from '../../utils/escape.js';
 import {
-  baseFolders, basePhotos, userPhotos, addUserPhotos,
-  visiblePhotos, hiddenPhotos, hidePhoto, saveFavPhotos, toggleFavPhoto,
-  albumMeta, saveAlbumMeta, photoDate, photoTs, albumYear
+  baseFolders, basePhotos, userPhotos,
+  visiblePhotos, hiddenPhotos,
+  albumMeta, photoTs
 } from '../../services/galleryData.js';
 import {
   memeAlbums, memeItems, memePoster, albumCover as memeAlbumCover,
@@ -67,39 +64,48 @@ export function createGaleria(ctx) {
     return map;
   }
   
-  /** Fotos visibles según filtro + ordenación (ocultas siempre excluidas) */
-  function getGalleryPhotos() {
-    const folders = baseFolders();
+  /** Todas las fotos visibles: subidas + carpetas + vídeos del calendario */
+  function allGalleryPhotos() {
     const hidden = new Set(hiddenPhotos());
-    const calVideos = calendarVideos();
-    let photos = [];
-    if (state.galeriaFilter === 'favoritas') {
-      photos = [...state.galeriaFavs].filter(u => !hidden.has(u));
-    } else if (state.galeriaFilter === 'calendario') {
-      // Si ya no quedan vídeos (ocultos todos), vuelve al álbum general
-      if (!calVideos.length) state.galeriaFilter = 'todas';
-      else photos = calVideos.filter(u => !hidden.has(u));
-    } else if (state.galeriaFilter !== 'todas' && folders.includes(state.galeriaFilter)) {
-      photos = visiblePhotos(state.galeriaFilter);
-    } else {
-      // Todas: cada carpeta base + subidas + vídeos del calendario (sin duplicar, sin ocultas)
-      const seen = new Set();
-      const pushUnique = (arr) => arr.forEach(u => { if (!seen.has(u) && !hidden.has(u)) { seen.add(u); photos.push(u); } });
-      pushUnique(userPhotos());
-      folders.forEach(f => pushUnique(basePhotos(f)));
-      pushUnique(calVideos);
-    }
-    // Ordenación por fecha (Cloudinary v<ts> o Supabase <ms>-hash)
-    if (state.galeriaSort === 'antiguas') photos.sort((a, b) => photoTs(a) - photoTs(b));
-    else photos.sort((a, b) => photoTs(b) - photoTs(a));
-    // Las subidas del usuario siempre van primero en 'recientes' (son lo nuevo)
-    if (state.galeriaSort !== 'antiguas') {
-      const ups = userPhotos();
-      photos = [...ups.filter(u => photos.includes(u)), ...photos.filter(u => !ups.includes(u))];
-    }
+    const seen = new Set();
+    const photos = [];
+    const push = (list) => list.forEach(u => {
+      if (!seen.has(u) && !hidden.has(u)) { seen.add(u); photos.push(u); }
+    });
+    push(userPhotos());
+    baseFolders().forEach(folder => push(basePhotos(folder)));
+    push(calendarVideos());
     return photos;
   }
-  
+
+  /** Orden pedido en el álbum: fecha, y las subidas siempre primero */
+  function sortPhotos(photos) {
+    const list = [...photos];
+    if (state.galeriaSort === 'antiguas') list.sort((a, b) => photoTs(a) - photoTs(b));
+    else list.sort((a, b) => photoTs(b) - photoTs(a));
+    if (state.galeriaSort === 'antiguas') return list;
+    const ups = userPhotos();
+    return [...ups.filter(u => list.includes(u)), ...list.filter(u => !ups.includes(u))];
+  }
+
+  /** Fotos visibles según el álbum abierto (ocultas siempre excluidas) */
+  function getGalleryPhotos() {
+    const hidden = new Set(hiddenPhotos());
+    const folders = baseFolders();
+    const calVideos = calendarVideos();
+    if (state.galeriaFilter === 'favoritas') {
+      return sortPhotos([...state.galeriaFavs].filter(u => !hidden.has(u)));
+    }
+    if (state.galeriaFilter === 'calendario') {
+      if (!calVideos.length) { state.galeriaFilter = 'todas'; return sortPhotos(allGalleryPhotos()); }
+      return sortPhotos(calVideos.filter(u => !hidden.has(u)));
+    }
+    if (state.galeriaFilter !== 'todas' && state.galeriaFilter !== 'recientes' && folders.includes(state.galeriaFilter)) {
+      return sortPhotos(visiblePhotos(state.galeriaFilter));
+    }
+    return sortPhotos(allGalleryPhotos());
+  }
+
   /** Título + descripción del álbum (con meta editable del usuario) */
   function galleryAlbum() {
     const folders = baseFolders();
@@ -107,6 +113,7 @@ export function createGaleria(ctx) {
     let title, desc, id;
     if (state.galeriaFilter === 'favoritas') { title = 'Favoritas'; desc = 'Las fotos que más me llegan al corazón.'; id = 'favoritas'; }
     else if (state.galeriaFilter === 'calendario') { title = 'Del calendario'; desc = 'Los vídeos que se desbloquean cada día en el Calendario.'; id = 'calendario'; }
+    else if (state.galeriaFilter === 'recientes') { title = 'Todos los recuerdos'; desc = 'Todo lo que habéis guardado, junto.'; id = 'recientes'; }
     else if (state.galeriaFilter !== 'todas' && folders.includes(state.galeriaFilter)) { title = state.galeriaFilter; desc = ''; id = state.galeriaFilter; }
     else { title = meta.titulo || 'Nuestros recuerdos'; desc = meta.descripcion || 'Momentos que el cielo pinta solo para nosotros.'; id = 'todas'; }
     return {
@@ -116,106 +123,145 @@ export function createGaleria(ctx) {
       portada: meta[`portada:${id}`] || ''
     };
   }
-  
-  function renderGaleriaContent() {
-    const photos = getGalleryPhotos();
-    const album = galleryAlbum();
+
+  /** Miniatura (o póster, si es vídeo) de un recurso de la galería */
+  function galleryThumb(src, width = 480) {
+    if (!src) return '';
+    if (!isVideo(src)) return mediaThumb(src, width);
+    const cover = calendarVideoCovers().get(src) || getVideoPoster(src, width);
+    return cover ? mediaThumb(cover, width) : '';
+  }
+
+  /** Colecciones de la biblioteca, con la misma forma que los álbumes de memes */
+  function galleryCollections() {
+    const meta = albumMeta();
+    const hidden = new Set(hiddenPhotos());
     const folders = baseFolders();
-    const calVideos = calendarVideos();
-    const filterFolders = calVideos.length ? [...folders, 'calendario'] : folders;
-    const filterLabel = (f) => f === 'calendario' ? '🎁 Del calendario' : f;
-    const calCovers = calendarVideoCovers();
-    const galleryThumb = (s) => isVideo(s) ? (calCovers.get(s) || getVideoPoster(s) || '') : s;
-    // Portada: la elegida por el usuario, siempre que siga visible
-    const cover = (album.portada && photos.includes(album.portada)) ? album.portada : (photos[0] || '');
-    const year = photos.length ? albumYear(photos) : new Date().getFullYear();
-    const favCount = state.galeriaFavs.size;
-    const vidCount = photos.filter(isVideo).length;
-    const fotoCount = photos.length - vidCount;
-    // El hero solo recibe recursos que realmente tienen una miniatura. Así un
-    // vídeo sin póster no provoca una petición accidental a la página actual.
-    // Portada primero y sin repetir. Solo la primera diapositiva se descarga
-    // al abrir; las demás esperan a que se pase a ellas (data-src).
-    const heroSources = [...new Set([cover, ...photos.slice(0, 8)].map(galleryThumb).filter(Boolean))]
-      .slice(0, 5);
-    const heroSrc = (src) => mediaThumb(src, 1600);
-    const heroSet = (src) => mediaSrcset(src, [800, 1200, 1600]);
-    const HERO_SIZES = '(max-width: 599px) 100vw, (max-width: 899px) 92vw, 900px';
-  
-    return `<div class="gallery-app">
-      <!-- Añadir fotos (acción primaria, solo ADMIN) -->
-      ${isAdmin ? `<div class="gallery-topbar">
-        <button class="gallery-add-btn" id="galleryAddBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          <span class="gallery-add-label">Añadir fotos</span>
-        </button>
-        <input type="file" id="galleryFileInput" accept="image/*" multiple hidden>
-      </div>` : ''}
-  
-      <!-- Hero del álbum -->
-      <div class="gallery-hero" id="galleryHero">
-        ${heroSources.length ? `
-          <div class="gallery-hero-slide is-active">
-            <span class="gallery-hero-loader" aria-hidden="true"></span>
-            <img src="${escapeHtml(heroSrc(heroSources[0]))}"${heroSet(heroSources[0]) ? ` srcset="${escapeHtml(heroSet(heroSources[0]))}" sizes="${HERO_SIZES}"` : ''} alt="${escapeHtml(album.title)}" class="gallery-hero-bg" loading="eager" fetchpriority="high" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()">
-            <span class="gallery-hero-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>
-          </div>
-          ${heroSources.slice(1).map((src, i) => `<div class="gallery-hero-slide" data-slide="${i + 1}"><span class="gallery-hero-loader" aria-hidden="true"></span><img data-src="${escapeHtml(heroSrc(src))}"${heroSet(src) ? ` data-srcset="${escapeHtml(heroSet(src))}" data-sizes="${HERO_SIZES}"` : ''} alt="" class="gallery-hero-bg" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="gallery-hero-fallback" aria-hidden="true">${ICON_SVGS['image']}</span></div>`).join('')}
-        ` : ''}
-        <div class="gallery-hero-shade"></div>
-        ${isAdmin ? `
-        <button class="gallery-hero-edit" id="galleryEditBtn" aria-label="Editar álbum" title="Editar álbum">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>` : ''}
-        <div class="gallery-hero-body">
-          <h2 class="gallery-hero-title">${escapeHtml(album.title)}${state.galeriaFilter === 'favoritas' ? ' ❤️' : ''}</h2>
-          ${album.desc ? `<p class="gallery-hero-desc">${escapeHtml(album.desc)}</p>` : ''}
-          <div class="gallery-hero-meta">
-            <span>${ICON_SVGS['camera']} ${fotoCount} ${fotoCount === 1 ? 'foto' : 'fotos'}${vidCount ? ` · ${vidCount} ${vidCount === 1 ? 'vídeo' : 'vídeos'}` : ''}</span>
-            <span>${ICON_SVGS['calendar-days']} ${year}</span>
-            <span>${ICON_SVGS['lock'] || '🔒'} Privado</span>
-          </div>
-          <div class="gallery-hero-actions">
-            <button class="gallery-hero-btn gallery-hero-btn--primary" id="viewAllGalleryBtn">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-              <span>Ver todas</span>
-            </button>
-            <button class="gallery-hero-btn gallery-hero-btn--ghost" id="gallerySlideshowBtn">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              <span>Presentación</span>
-            </button>
-          </div>
+    const calVideos = calendarVideos().filter(u => !hidden.has(u));
+    const favs = [...state.galeriaFavs].filter(u => !hidden.has(u));
+    const list = [
+      { id: 'recientes', title: meta['titulo:recientes'] || 'Todos los recuerdos', photos: sortPhotos(allGalleryPhotos()) },
+      { id: 'favoritas', title: meta['titulo:favoritas'] || 'Favoritas', photos: sortPhotos(favs) },
+    ];
+    folders.forEach(folder => {
+      const photos = sortPhotos(visiblePhotos(folder));
+      if (!photos.length) return;
+      // La portada elegida a mano abre el collage.
+      const portada = meta[`portada:${folder}`];
+      if (portada && photos.includes(portada)) {
+        photos.splice(photos.indexOf(portada), 1);
+        photos.unshift(portada);
+      }
+      list.push({ id: folder, title: meta[`titulo:${folder}`] || folder, photos });
+    });
+    if (calVideos.length) {
+      list.push({ id: 'calendario', title: meta['titulo:calendario'] || 'Del calendario', photos: sortPhotos(calVideos) });
+    }
+    return list;
+  }
+
+  /** Collage 2×2 de portada (mismas clases que los álbumes de memes) */
+  function galleryCollage(photos, prioritize = false) {
+    if (!photos.length) {
+      return `<div class="meme-album-collage is-empty">
+        <div class="meme-album-empty-icon">${ICON_SVGS['image']}</div>
+        <span>Álbum vacío</span>
+      </div>`;
+    }
+    const previews = photos.slice(0, 4);
+    const cells = previews.map((src, i) => {
+      const vid = isVideo(src);
+      const thumb = galleryThumb(src, 480);
+      const media = thumb
+        ? `<span class="meme-cell-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="" loading="${prioritize ? 'eager' : 'lazy'}"${prioritize ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="meme-cell-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
+        : `<span class="meme-cell-fallback" aria-hidden="true">${vid ? ICON_SVGS['play'] : ICON_SVGS['image']}</span>`;
+      return `<div class="meme-album-cell${vid ? ' is-video' : ''}${thumb ? '' : ' is-no-poster'}" data-cell-index="${i}">${media}${vid ? `<span class="meme-cell-play" aria-hidden="true">${ICON_SVGS['play']}</span>` : ''}</div>`;
+    }).join('');
+    const empty = Array.from({ length: Math.max(0, 4 - previews.length) }, () => '<div class="meme-album-cell is-empty"></div>').join('');
+    return `<div class="meme-album-collage">${cells}${empty}</div>`;
+  }
+
+  /** Biblioteca: los álbumes, con el mismo lenguaje visual que Memes */
+  function renderGalleryLibrary() {
+    const collections = galleryCollections();
+    const total = collections[0]?.photos.length || 0;
+    return `<div class="memes-immersive" id="galeriaRoot">
+      <header class="memes-library-head">
+        <div class="memes-library-titles">
+          <h2 class="memes-library-title">Nuestros recuerdos ❤️</h2>
+          <p class="memes-library-count">${total} ${total === 1 ? 'foto' : 'fotos'} · ${collections.length} ${collections.length === 1 ? 'álbum' : 'álbumes'}</p>
         </div>
-        ${heroSources.length > 1 ? `
-          <div class="gallery-hero-dots">
-            ${heroSources.map((_, i) => `<button class="gallery-hero-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Foto ${i + 1}"></button>`).join('')}
+        <div class="memes-library-tools">
+          <div class="memes-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="gallerySearchInput" placeholder="Buscar álbum…" aria-label="Buscar en la galería">
           </div>
-        ` : ''}
+          ${isAdmin ? `
+          <button class="meme-add-album" id="galleryAddBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Añadir fotos</span>
+          </button>` : ''}
+          <input type="file" id="galleryFileInput" accept="image/*" multiple hidden>
+        </div>
+      </header>
+      <div class="meme-albums-grid" id="galleryCollections">
+        ${collections.map((album, i) => `
+          <div class="meme-album-card card animate-in" data-album="${escapeHtml(album.id)}" data-search="${escapeHtml((album.title + ' ' + album.id).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(album.title)}">
+            <div class="meme-album-media">${galleryCollage(album.photos, i === 0)}</div>
+            <div class="meme-album-info">
+              <div class="meme-album-name-row">
+                <h3 class="meme-album-name">${escapeHtml(album.title)}${album.id === 'favoritas' ? ' ❤️' : ''}</h3>
+              </div>
+              <p class="meme-album-sub">${album.photos.length} ${album.photos.length === 1 ? 'recuerdo' : 'recuerdos'}</p>
+            </div>
+          </div>`).join('')}
       </div>
-  
-      <h2 class="section-title">Tu colección
-        <span class="gallery-toolbar-actions">
-          <span class="text-3" style="text-transform:none;letter-spacing:0">${photos.length} ${photos.length === 1 ? 'momento' : 'momentos'}</span>
-          <button class="btn-soft btn--sm gallery-sort-btn" id="gallerySortBtn" title="Cambiar el orden de los recuerdos">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
-            <span id="gallerySortLabel">${state.galeriaSort === 'antiguas' ? 'Más antiguas' : 'Más recientes'}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-        </span>
-      </h2>
-  
-      <!-- Filtros -->
-      <div class="chips gallery-filters" id="galleryFilters">
-        <button class="chip gallery-filter ${state.galeriaFilter === 'todas' ? 'is-active' : ''}" data-filter="todas"${state.galeriaFilter === 'todas' ? ' aria-current="page"' : ''}>Todas</button>
-        ${filterFolders.map(f => `<button class="chip gallery-filter ${state.galeriaFilter === f ? 'is-active' : ''}" data-filter="${escapeHtml(f)}"${state.galeriaFilter === f ? ' aria-current="page"' : ''}>${escapeHtml(filterLabel(f))}</button>`).join('')}
-        <button class="chip gallery-filter ${state.galeriaFilter === 'favoritas' ? 'is-active' : ''}" data-filter="favoritas"${state.galeriaFilter === 'favoritas' ? ' aria-current="page"' : ''}>❤ Favoritas${favCount ? ` (${favCount})` : ''}</button>
+      <div class="meme-search-empty" style="display:none">
+        <div class="meme-empty-icon">${ICON_SVGS['image']}</div>
+        <h3>Sin resultados</h3>
+        <p>Prueba con otro nombre de álbum.</p>
       </div>
-  
-      <div class="gallery-masonry" id="galeriaGrid"></div>
-      <div class="gallery-sentinel" id="gallerySentinel" aria-hidden="true"><span class="gallery-sentinel-spin"></span></div>
     </div>`;
   }
-  
+
+  /** Álbum abierto: cabecera y cuadrícula, igual que un álbum de memes */
+  function renderGalleryAlbum() {
+    const photos = getGalleryPhotos();
+    const album = galleryAlbum();
+    const vidCount = photos.filter(isVideo).length;
+    const editables = album.id !== 'favoritas' && album.id !== 'calendario' && album.id !== 'recientes';
+    return `<div class="meme-album-view" id="galeriaRoot">
+      <div class="memes-breadcrumb">
+        <button class="memes-breadcrumb-item" data-nav="landing">El Rincón</button>
+        <span class="memes-breadcrumb-sep">/</span>
+        <button class="memes-breadcrumb-item" id="galleryAlbumBack">Galería</button>
+        <span class="memes-breadcrumb-sep">/</span>
+        <span class="memes-breadcrumb-current">${escapeHtml(album.title)}</span>
+      </div>
+      <header class="meme-album-head">
+        <div>
+          <h2 class="meme-album-title">${escapeHtml(album.title)}${album.id === 'favoritas' ? ' ❤️' : ''}</h2>
+          ${album.desc ? `<p class="meme-album-desc">${escapeHtml(album.desc)}</p>` : ''}
+          <p class="meme-album-meta">${photos.length} ${photos.length === 1 ? 'recuerdo' : 'recuerdos'}${vidCount ? ` · ${vidCount} ${vidCount === 1 ? 'vídeo' : 'vídeos'}` : ''}</p>
+        </div>
+        <div class="meme-album-actions">
+          <button class="gallery-hero-btn" id="gallerySortBtn" title="Cambiar el orden">
+            <span id="gallerySortLabel">${state.galeriaSort === 'antiguas' ? 'Más antiguas' : 'Más recientes'}</span>
+          </button>
+          ${isAdmin ? `
+          <button class="gallery-hero-btn gallery-hero-btn--primary" id="galleryAddBtn">＋ Añadir</button>
+          ${editables ? `<button class="meme-album-menu-btn" id="galleryEditBtn" aria-label="Editar álbum">⋮</button>` : ''}` : ''}
+          <input type="file" id="galleryFileInput" accept="image/*" multiple hidden>
+        </div>
+      </header>
+      <div class="meme-album-grid" id="galeriaGrid"></div>
+    </div>`;
+  }
+
+  function renderGaleriaContent() {
+    if (state.galeriaFilter === 'todas') return renderGalleryLibrary();
+    return renderGalleryAlbum();
+  }
   function memeCollage(items, albumId, prioritize = false) {
     const previews = items.slice(0, 4);
     const cover = memeAlbumCover(albumId, items);

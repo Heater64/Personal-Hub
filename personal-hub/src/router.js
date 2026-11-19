@@ -24,6 +24,26 @@ const ROUTE_SKELETON = `<div class="route-loading" role="status" aria-live="poli
             <span>Cargando…</span>
           </div>`;
 
+/**
+ * Entrada suave de la página recién montada.
+ *
+ * Con `prefers-reduced-motion: reduce` no se añade ninguna clase: no hay
+ * desplazamiento ni zoom, el cambio es instantáneo (el CSS además anula la
+ * animación por si la clase llegara de otro sitio). Es solo entrada: no se
+ * retrasa el montaje ni la salida de la página anterior, así que no hay
+ * parpadeo ni navegación más lenta.
+ */
+function enterTransition(el) {
+  if (!el?.classList) return;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  el.classList.add('route-enter');
+  const done = () => el.classList.remove('route-enter');
+  el.addEventListener('animationend', done, { once: true });
+  // Respaldo: si el CSS decide no animar (pestaña en segundo plano), la
+  // clase no puede quedarse pegada.
+  setTimeout(done, 400);
+}
+
 export class Router {
   constructor(options = {}) {
     this.routes = [];
@@ -357,10 +377,12 @@ export class Router {
           // replaceChildren sustituye el contenido anterior de una sola vez
           this._container.replaceChildren(component);
           this._currentComponent = component;
+          enterTransition(component);
         } else if (typeof component === 'string') {
           this._container.innerHTML = component;
+          enterTransition(this._container.firstElementChild);
         } else {
-          this._container.innerHTML = '';
+          this._container.replaceChildren();
         }
       } catch (err) {
         clearTimeout(skeletonTimer);

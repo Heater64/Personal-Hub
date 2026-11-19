@@ -140,6 +140,24 @@ class AuthService {
     return data;
   }
 
+  /** Envía un enlace de un solo uso para recuperar la contraseña. */
+  async requestPasswordReset(email) {
+    // El código PKCE de Supabase necesita ir en la query real, antes del hash
+    // que utiliza el router SPA. Así detectSessionInUrl puede intercambiarlo.
+    const redirectTo = `${window.location.origin}${window.location.pathname}?recovery=1#/login`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+  }
+
+  /** Actualiza la contraseña después de abrir un enlace válido de Supabase. */
+  async updatePassword(password) {
+    if (typeof password !== 'string' || password.length < 12) {
+      throw new Error('La contraseña debe tener al menos 12 caracteres.');
+    }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  }
+
   async signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;

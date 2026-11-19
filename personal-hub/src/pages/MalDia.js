@@ -4,6 +4,7 @@
    A pantalla completa: sin barras, se sale con la flecha o deslizando
    ========================================== */
 
+import '../styles/maldia.css';
 import { h, icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { db } from '../services/db.service.js';
 import { onContentChange } from '../services/realtime.service.js';
@@ -1029,8 +1030,12 @@ export function MalDiaPage(router) {
       attachBtn?.setAttribute('aria-expanded', 'false');
     }
 
+    // El alto lo pone `field-sizing: content` (maldia.css). Este cálculo queda
+    // solo para navegadores que aún no entiendan esa propiedad.
+    const autosizeConJS = !globalThis.CSS?.supports?.('field-sizing', 'content');
+
     function autoGrow() {
-      if (!threadInput) return;
+      if (!threadInput || !autosizeConJS) return;
       threadInput.style.height = 'auto';
       threadInput.style.height = `${Math.min(threadInput.scrollHeight, 120)}px`;
     }
@@ -1049,6 +1054,9 @@ export function MalDiaPage(router) {
     threadInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
+        // Confirmar un candidato de un IME (japonés, chino, coreano) también
+        // llega como Enter: no debe mandar el mensaje a medio componer.
+        if (e.isComposing || e.keyCode === 229) return;
         sendMsg();
       }
     });

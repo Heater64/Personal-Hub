@@ -62,6 +62,9 @@
     <!-- Estado de ánimo -->
     <string name="widget_mood_label">🙂 estado de ánimo</string>
     <string name="widget_mood_kicker">HOY</string>
+    <!-- El ánimo no se borra al acabar el día: si el último es de ayer, el
+         widget lo sigue enseñando y lo dice con esta etiqueta. -->
+    <string name="widget_mood_kicker_last">ÚLTIMO</string>
     <string name="widget_mood_kicker_large">ESTADO DE ÁNIMO</string>
     <string name="widget_mood_empty">sin registrar</string>
     <string name="widget_mood_hint">toca para registrar</string>
@@ -127,4 +130,29 @@
     <string name="widget_distance_description_rect">Distancia (rectangular)</string>
     <string name="widget_distance_description_wide">Distancia (grande)</string>
 
+    <!-- Widgets Pro (fase 5) -->
+    <string name="widget_reason_kicker">RAZÓN DEL DÍA</string>
+    <string name="widget_reason_label">de vuestra lista</string>
+    <string name="widget_reason_empty">escribe la primera</string>
+    <string name="widget_reason_description_wide">La razón del día para los dos</string>
+    <string name="widget_reason_description_compact">Razón del día (pequeño)</string>
+    <string name="widget_openwhen_kicker">OPEN WHEN</string>
+    <string name="widget_openwhen_empty">sin cartas todavía</string>
+    <string name="widget_openwhen_done">todo visto</string>
+    <string name="widget_openwhen_description_wide">Las cartas de Open When que te esperan</string>
+    <string name="widget_openwhen_description_compact">Open When (pequeño)</string>
+    <plurals name="widget_openwhen_pending">
+        <item quantity="one">%d carta por descubrir</item>
+        <item quantity="other">%d cartas por descubrir</item>
+    </plurals>
+    <string name="widget_streak_kicker">RACHA</string>
+    <string name="widget_streak_empty">sin ánimo todavía</string>
+    <string name="widget_streak_none">empieza hoy</string>
+    <string name="widget_streak_best">mejor: %d</string>
+    <string name="widget_streak_description_wide">Los días seguidos con ánimo registrado</string>
+    <string name="widget_streak_description_compact">Racha (pequeño)</string>
+    <plurals name="widget_streak_days">
+        <item quantity="one">%d día seguido</item>
+        <item quantity="other">%d días seguidos</item>
+    </plurals>
 </resources>

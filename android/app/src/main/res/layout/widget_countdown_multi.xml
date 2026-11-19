@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cuenta atrás · 4×3 con varias fechas
+<!-- Cuenta atrás · 4×2 con varias fechas
 
      Cuando se eligen dos o tres, el número gigante se sustituye por una fila
-     por fecha: título, cuándo cae y los días que faltan. Las filas comparten
-     altura para que el widget no cambie de tamaño al añadir una fecha. -->
+     por fecha: título y día a la izquierda, días que faltan a la derecha. Las
+     filas comparten altura para que el widget no cambie de tamaño al añadir
+     una fecha, y todo cabe en las dos filas que reserva el widget. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_countdown_root"
@@ -25,13 +26,13 @@
         android:textColor="@color/widget_coral_soft"
         android:textSize="8sp"
         android:textStyle="bold"
-        tools:text="FALTAN"/>
+        tools:text="FALTAN" />
 
     <LinearLayout
         android:id="@+id/widget_countdown_row1"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="3dp"
         android:layout_weight="1"
         android:gravity="center_vertical"
         android:orientation="horizontal">
@@ -50,9 +51,9 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
-                android:textSize="11sp"
+                android:textSize="9sp"
                 android:textStyle="bold"
-        tools:text="Aniversario"/>
+                tools:text="Aniversario" />
 
             <TextView
                 android:id="@+id/widget_countdown_row1_date"
@@ -62,40 +63,40 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="8sp"
-        tools:text="3 jul 2026"/>
+                android:textSize="7sp"
+                tools:text="3 jul 2026" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/widget_countdown_row1_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="6dp"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:textSize="16sp"
             android:textStyle="bold"
-        tools:text="23"/>
+            tools:text="23" />
 
         <TextView
             android:id="@+id/widget_countdown_row1_unit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="3dp"
+            android:layout_marginStart="2dp"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp"
-        tools:text="días"/>
+            android:textSize="8sp"
+            tools:text="días" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/widget_countdown_row2"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="3dp"
         android:layout_weight="1"
         android:gravity="center_vertical"
         android:orientation="horizontal">
@@ -114,9 +115,9 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
-                android:textSize="11sp"
+                android:textSize="9sp"
                 android:textStyle="bold"
-        tools:text="Cumpleaños de dada"/>
+                tools:text="Cumpleaños de dada" />
 
             <TextView
                 android:id="@+id/widget_countdown_row2_date"
@@ -126,40 +127,40 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="8sp"
-        tools:text="12 sep 2026"/>
+                android:textSize="7sp"
+                tools:text="12 sep 2026" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/widget_countdown_row2_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="6dp"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:textSize="16sp"
             android:textStyle="bold"
-        tools:text="94"/>
+            tools:text="94" />
 
         <TextView
             android:id="@+id/widget_countdown_row2_unit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="3dp"
+            android:layout_marginStart="2dp"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp"
-        tools:text="días"/>
+            android:textSize="8sp"
+            tools:text="días" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/widget_countdown_row3"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="3dp"
         android:layout_weight="1"
         android:gravity="center_vertical"
         android:orientation="horizontal">
@@ -178,9 +179,9 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
-                android:textSize="11sp"
+                android:textSize="9sp"
                 android:textStyle="bold"
-        tools:text="Nuestro primer mensaje"/>
+                tools:text="Nuestro primer mensaje" />
 
             <TextView
                 android:id="@+id/widget_countdown_row3_date"
@@ -190,33 +191,33 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="8sp"
-        tools:text="14 feb 2027"/>
+                android:textSize="7sp"
+                tools:text="14 feb 2027" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/widget_countdown_row3_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="6dp"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:textSize="16sp"
             android:textStyle="bold"
-        tools:text="249"/>
+            tools:text="249" />
 
         <TextView
             android:id="@+id/widget_countdown_row3_unit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="3dp"
+            android:layout_marginStart="2dp"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp"
-        tools:text="días"/>
+            android:textSize="8sp"
+            tools:text="días" />
     </LinearLayout>
 
 </LinearLayout>

@@ -312,7 +312,7 @@ export function AdminPage(router) {
 
   const esc = escapeHtml;
   const user = userStore.getUser();
-  const userName = user?.name || 'Admin';
+  const userName = user?.name || 'Peluche';
   const userInitial = userName.charAt(0).toUpperCase();
   const userPhoto = user?.avatar || user?.photo || '';
   const userRole = user?.role || 'admin';
@@ -340,7 +340,7 @@ export function AdminPage(router) {
     <div class="admin-layout">
       <aside class="admin-sidebar" id="adminSidebar" aria-label="Menú del panel">
         <div class="admin-sidebar-top">
-          <span class="admin-sidebar-top-label">Panel de admin</span>
+          <span class="admin-sidebar-top-label">Panel de Peluche</span>
           <button type="button" class="admin-sidebar-close" id="adminNavClose" aria-label="Cerrar menú">${UI.close}</button>
         </div>
         <nav class="admin-sidebar-nav" id="adminSidebarNav" aria-label="Secciones del panel">${navHTML}</nav>
@@ -1063,7 +1063,7 @@ export function AdminPage(router) {
     const perSection = sectionUsage(sessions);
     const perUser = userUsage(sessions);
     const sessionStats = sessionSummary(sessions);
-    const sortedVisits = [...navVisits].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const sortedVisits = navVisits.toSorted((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const topSections = Object.entries(perSection)
       .filter(([, s]) => s.count > 0)
       .sort((a, b) => b[1].ms - a[1].ms || b[1].count - a[1].count)
@@ -1098,7 +1098,7 @@ export function AdminPage(router) {
       ? connections.map(c => `
         <div class="dash-conn-row">
           <span class="dash-conn-dot${c.isAdmin ? ' admin' : ''}"></span>
-          <span class="dash-conn-name">${esc(c.name)}${c.isAdmin ? ' <span class="admin-badge-tag">Admin</span>' : ''}</span>
+          <span class="dash-conn-name">${esc(c.name)}${c.isAdmin ? ' <span class="admin-badge-tag">Peluche</span>' : ''}</span>
           <span class="dash-conn-meta">${c.count} visita${c.count === 1 ? '' : 's'} · ${c.topSec}</span>
           <span class="dash-conn-time">${relTimeShort(c.lastTs)}</span>
         </div>`).join('')
@@ -1468,7 +1468,7 @@ export function AdminPage(router) {
         .filter(ds => (S.moodMonthData[ds] || []).some(row => moodRowItems(row).length))
         .sort();
       target = delta < 0
-        ? [...days].reverse().find(ds => ds <= from) || null
+        ? days.findLast(ds => ds <= from) || null
         : days.find(ds => ds >= from) || null;
     }
 
@@ -1772,7 +1772,7 @@ export function AdminPage(router) {
     const entries = Object.values(monthMoods).flat();
     if (entries.length === 0) {
       stats.innerHTML = '<div class="admin-empty">No hay datos de ánimo para este mes</div>';
-      breakdown.innerHTML = '';
+      breakdown.replaceChildren();
       return;
     }
 
@@ -2001,7 +2001,7 @@ export function AdminPage(router) {
         </div>
         <div style="flex:1;min-width:0">
           <div class="item-title">${esc(u.name||'Sin nombre')}
-            ${u.role === 'admin' ? '<span class="admin-badge-tag">Admin</span>' : ''}
+            ${u.role === 'admin' ? '<span class="admin-badge-tag">Peluche</span>' : ''}
             ${enabled ? '' : '<span class="admin-badge-tag warn">Deshabilitado</span>'}
           </div>
           <div class="item-sub">
@@ -2155,7 +2155,7 @@ export function AdminPage(router) {
             <strong style="font-size:1rem;">${esc(user.name||'Sin nombre')}</strong><br>
             <span style="font-size:0.82rem;color:var(--theme-text-secondary);">${esc(user.email) || 'ID: ' + user.id}</span>
           </div>
-          <span style="margin-left:auto;font-size:0.72rem;padding:3px 12px;border-radius:30px;background:${user.role === 'admin' ? 'var(--accent-dim)' : 'var(--theme-surface)'};color:${user.role === 'admin' ? 'var(--theme-accent)' : 'var(--theme-text-secondary)'};">${user.role || 'user'}</span>
+          <span style="margin-left:auto;font-size:0.72rem;padding:3px 12px;border-radius:30px;background:${user.role === 'admin' ? 'var(--accent-dim)' : 'var(--theme-surface)'};color:${user.role === 'admin' ? 'var(--theme-accent)' : 'var(--theme-text-secondary)'};">${user.role === 'admin' ? 'Peluche' : user.role || 'user'}</span>
         </div>
 
         <div class="admin-field">
@@ -2867,7 +2867,7 @@ export function AdminPage(router) {
           `<p style="margin:0;">¿Seguro que quieres eliminar <strong>${esc(g.title || 'este contenido')}</strong> del día ${esc(selDateStr)}? Esta acción no se puede deshacer.</p>`,
           async () => {
             const nextIds = selIds.filter(id => id !== g.id);
-            const nextMonths = JSON.parse(JSON.stringify(catalog.months || {}));
+            const nextMonths = structuredClone(catalog.months || {});
             const m = nextMonths[monthKey] || { calendarMapping: {} };
             if (nextIds.length === 0) delete m.calendarMapping[String(selDay)];
             else if (nextIds.length === 1) m.calendarMapping[String(selDay)] = nextIds[0];
@@ -2960,7 +2960,7 @@ export function AdminPage(router) {
           if (el) payloadData[key] = el.value.trim();
         });
 
-        const next = JSON.parse(JSON.stringify(catalog));
+        const next = structuredClone(catalog);
         next.months = next.months || {};
         next.gifts = Array.isArray(next.gifts) ? next.gifts : [];
         next.version = Math.max(Number(next.version) || 0, 5);
@@ -3293,7 +3293,7 @@ export function AdminPage(router) {
               </select>
             </div>`;
         } else {
-          fieldsBox.innerHTML = '';
+          fieldsBox.replaceChildren();
         }
         wireUpload();
       };
@@ -4089,7 +4089,7 @@ export function AdminPage(router) {
       const btn = page.querySelector('#testPushBtn');
       const result = page.querySelector('#notifResult');
       btn.disabled = true;
-      result.innerHTML = '';
+      result.replaceChildren();
       try {
         const ok = await showDailyNotification('📣 Personal Hub', 'El panel de administración funciona correctamente 🎉', '/');
         result.innerHTML = ok

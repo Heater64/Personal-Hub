@@ -1,65 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Seguir viendo · 4×3
+<!-- Seguir viendo · 4×2
 
-     Póster grande arriba, título y avance debajo. -->
+     La composición horizontal de 4×2: póster grande a la izquierda y, a la
+     derecha, título y avance. El póster es la identidad, así que aquí sustituye
+     a la barra coral. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_watching_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_watching_bg"
-    android:gravity="center"
-    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:padding="14dp">
 
     <ImageView
         android:id="@+id/widget_watching_poster"
-        android:layout_width="72dp"
-        android:layout_height="96dp"
+        android:layout_width="52dp"
+        android:layout_height="72dp"
         android:contentDescription="@string/widget_watching_poster"
         android:scaleType="centerCrop"
         android:src="@drawable/widget_poster_empty"
-        tools:src="@drawable/widget_poster_empty"/>
+        tools:src="@drawable/widget_poster_empty" />
 
-    <TextView
-        android:id="@+id/widget_watching_title"
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:maxLines="2"
-        android:text="@string/widget_watching_empty"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        tools:text="Severance"/>
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/widget_watching_episode"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="@color/widget_text_muted"
-        android:textSize="9sp"
-        tools:text="Ep. 4 de 10"/>
+        <TextView
+            android:id="@+id/widget_watching_kicker"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.14"
+            android:maxLines="1"
+            android:text="@string/widget_watching_kicker"
+            android:textColor="@color/widget_coral_soft"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            tools:text="SEGUIR VIENDO" />
 
-    <TextView
-        android:id="@+id/widget_watching_percent"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="@color/widget_rose"
-        android:textSize="10sp"
-        tools:text="40 % visto"/>
+        <TextView
+            android:id="@+id/widget_watching_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:text="@string/widget_watching_empty"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Severance" />
+
+        <TextView
+            android:id="@+id/widget_watching_episode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/widget_text_muted"
+            android:textSize="9sp"
+            tools:text="Ep. 4 de 10" />
+
+        <TextView
+            android:id="@+id/widget_watching_percent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/widget_rose"
+            android:textSize="9sp"
+            tools:text="40 % visto" />
+    </LinearLayout>
 
 </LinearLayout>

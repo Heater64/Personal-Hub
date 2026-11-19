@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cuenta atrás · 2×2
+<!-- Cuenta atrás · 1×1
 
      El título arriba (recortado si es largo) y el número con «días» debajo.
-     Sin fecha: en un cuadrado no cabe sin comerse el número. -->
+     Sin fecha: en una celda no cabe sin comerse el número. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_countdown_root"
@@ -11,7 +11,7 @@
     android:background="@drawable/widget_countdown_bg"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="4dp">
 
     <TextView
         android:id="@+id/widget_countdown_title"
@@ -20,18 +20,17 @@
         android:ellipsize="end"
         android:gravity="center"
         android:includeFontPadding="false"
-        android:letterSpacing="0.1"
+        android:letterSpacing="0.08"
         android:maxLines="1"
         android:text="@string/widget_countdown_empty"
         android:textColor="@color/widget_coral_soft"
-        android:textSize="8sp"
+        android:textSize="7sp"
         android:textStyle="bold"
-        tools:text="Nuestro aniversario"/>
+        tools:text="Nuestro aniversario" />
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
         android:gravity="bottom"
         android:orientation="horizontal">
 
@@ -43,22 +42,22 @@
             android:maxLines="1"
             android:text="—"
             android:textColor="#FFFFFF"
-            android:textSize="34sp"
+            android:textSize="24sp"
             android:textStyle="bold"
-        tools:text="23"/>
+            tools:text="23" />
 
         <TextView
             android:id="@+id/widget_countdown_unit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="3dp"
-            android:layout_marginBottom="3dp"
+            android:layout_marginStart="2dp"
+            android:layout_marginBottom="2dp"
             android:includeFontPadding="false"
             android:maxLines="1"
-            android:text="@string/widget_countdown_unit"
+            android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="10sp"
-        tools:text="días"/>
+            android:textSize="8sp"
+            tools:text="días" />
     </LinearLayout>
 
 </LinearLayout>
