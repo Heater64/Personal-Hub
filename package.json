@@ -31,6 +31,8 @@
   "description": "Tu lugar especial con sorpresas, juegos y fotos nuestras.",
   "main": "personal-hub/index.html",
   "scripts": {
+    "dev:tamp": "vite tamp",
+    "build:tamp": "vite build tamp",
     "dev": "npx vite personal-hub",
     "build": "npx vite build personal-hub",
     "preview": "npx vite preview personal-hub",
