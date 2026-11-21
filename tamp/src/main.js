@@ -15,6 +15,30 @@ import { ROUTES } from './routes.js';
 // debe esperar un chunk. Todo lo demás entra por `lazy()`.
 import { LoginPage } from './pages/Login.js';
 
+// Tras un despliegue, una pestaña abierta con el bundle anterior pide chunks
+// con hash que el servidor ya no tiene (404) y la ruta muere con «Failed to
+// fetch dynamically imported module». Vite avisa por `vite:preloadError`:
+// recargamos una sola vez para recoger el index y los chunks nuevos. Si el
+// fallo se repite en menos de 30 s es real (red, chunk roto) y dejamos que el
+// error suba para que la telemetría lo vea, en vez de recargar en bucle.
+const PRELOAD_RETRY_KEY = 'ph.preload-retry';
+window.addEventListener('vite:preloadError', event => {
+  let last = 0;
+  try {
+    last = Number(sessionStorage.getItem(PRELOAD_RETRY_KEY) || 0);
+  } catch {
+    /* sessionStorage bloqueado: recargamos igual, sin guard */
+  }
+  if (Date.now() - last < 30_000) return;
+  event.preventDefault();
+  try {
+    sessionStorage.setItem(PRELOAD_RETRY_KEY, String(Date.now()));
+  } catch {
+    /* sin guard disponible */
+  }
+  window.location.reload();
+});
+
 // Lazy loader para páginas pesadas → code-splitting
 // Uso: lazy(() => import('./pages/X.js').then(m => m.XPage))
 // El router resuelve el Promise y muestra el skeleton mientras carga
