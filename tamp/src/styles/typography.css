@@ -1,0 +1,58 @@
+/* ==========================================
+   TYPOGRAPHY
+   ========================================== */
+
+/* Los títulos del sistema usan la tipografía de interfaz (Inter) con
+   tracking cerrado, como en habitos-web. Playfair Display queda como
+   acento puntual en .font-display (bienvenida, cartas, páginas íntimas). */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+h1 { font-size: var(--fs-2xl); letter-spacing: -0.03em; margin-bottom: var(--space-sm); }
+h2 { font-size: var(--fs-xl); margin-bottom: var(--space-sm); }
+h3 { font-size: var(--fs-lg); margin-bottom: var(--space-xs); }
+h4 { font-size: var(--fs-md); margin-bottom: var(--space-xs); }
+h5 { font-size: var(--fs-md); font-weight: 500; }
+h6 { font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+
+p {
+  font-size: var(--fs-base);
+  line-height: 1.65;
+  margin-bottom: var(--space-sm);
+  color: var(--text-2);
+}
+
+p:last-child { margin-bottom: 0; }
+
+small, .text-small { font-size: var(--fs-xs); letter-spacing: 0.02em; color: var(--theme-text-secondary); }
+.text-sm { font-size: var(--fs-sm); }
+.text-lg { font-size: var(--fs-lg); }
+.text-xl { font-size: var(--fs-xl); }
+
+.text-primary { color: var(--theme-text-primary); }
+.text-secondary { color: var(--theme-text-secondary); }
+.text-muted { color: var(--theme-text-secondary); }
+.text-accent { color: var(--theme-accent); }
+.text-center { text-align: center; }
+
+.font-light { font-weight: 300; }
+.font-regular { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+
+/* Icons */
+i[data-lucide] {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  stroke-width: 1.5;
+  stroke: currentColor;
+  fill: none;
+  vertical-align: middle;
+  flex-shrink: 0;
+}

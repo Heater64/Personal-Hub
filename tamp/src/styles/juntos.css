@@ -1,0 +1,344 @@
+/* ==========================================
+   JUNTOS — pantalla del aniversario
+   ==========================================
+   A pantalla completa, sin barra ni menú. El fondo son las fotos compartidas
+   de «días juntos» (las mismas del Inicio); si no hay ninguna, queda el
+   degradado de la app, sin imagen de serie. Encima, el contador en una
+   tarjeta de cristal y, debajo, el desglose y lo que viene. */
+.juntos-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 18px
+    calc(env(safe-area-inset-bottom, 0px) + 28px);
+  overflow-x: hidden;
+  background: #0b0710;
+  color: #fff;
+  font-family: var(--font-ui);
+}
+
+/* Fondo: focos cálidos difuminados. Va fijo para que no se mueva al
+   desplazar la pantalla. */
+.juntos__bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Halo base: da profundidad cuando no hay fotos (el caso normal). */
+.juntos__bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      120% 70% at 50% -10%,
+      rgba(240, 178, 60, 0.22),
+      transparent 68%
+    ),
+    radial-gradient(
+      90% 60% at 50% 108%,
+      rgba(123, 75, 179, 0.26),
+      transparent 70%
+    );
+}
+
+/* Viñeta: oscurece los bordes para que la tarjeta y el texto destaquen. */
+.juntos__bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 95% at 50% 42%,
+    transparent 42%,
+    rgba(6, 4, 9, 0.62) 100%
+  );
+}
+
+/* Fotos de la pareja: dos capas, para que el cambio cada 5 s se funda en vez
+   de dar un salto. Sin fotos no se pinta ninguna. */
+.juntos__photo {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+.juntos__photo.is-on {
+  opacity: 1;
+}
+
+/* Velo: solo con foto, para que las cifras se lean sobre cualquier imagen.
+   Oscurece también el centro: una foto clara dejaba la tarjeta lavada. */
+.juntos__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 5, 12, 0.62) 0%,
+    rgba(8, 5, 12, 0.4) 28%,
+    rgba(8, 5, 12, 0.42) 65%,
+    rgba(8, 5, 12, 0.82) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.juntos-page.is-photo .juntos__shade {
+  opacity: 1;
+}
+.juntos__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(54px);
+  opacity: 0.55;
+}
+.juntos__glow--a {
+  top: -12%;
+  left: -22%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, #f0b23c 0%, transparent 70%);
+}
+.juntos__glow--b {
+  top: 26%;
+  right: -26%;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, #7b4bb3 0%, transparent 72%);
+}
+.juntos__glow--c {
+  bottom: -14%;
+  left: 2%;
+  width: 400px;
+  height: 320px;
+  background: radial-gradient(circle, #a8462f 0%, transparent 70%);
+}
+
+/* Cabecera: volver, el nombre de la pantalla y las fotos. */
+.juntos__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+}
+.juntos__icon-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.juntos__icon-btn:hover,
+.juntos__icon-btn:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+.juntos__icon-btn:active {
+  transform: scale(0.94);
+}
+/* El chevron del set apunta a la derecha: girado mira a la izquierda (volver). */
+.juntos__icon-btn[data-back] svg {
+  transform: rotate(180deg);
+}
+.juntos__title {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+/* Columna del contenido: centrada y sin huecos muertos. */
+.juntos__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 18px 0 4px;
+}
+
+/* Tarjeta de cristal con el contador. */
+.juntos__hero {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 26px 20px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 26px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.36);
+  text-align: center;
+}
+.juntos__since {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.juntos__count {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(62px, 21vw, 92px);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+.juntos__count-label {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+/* Desglose en años / meses / días. */
+.juntos__chips {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  margin: 18px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  list-style: none;
+}
+.juntos__chips li {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  max-width: 108px;
+}
+.juntos__chips b {
+  font-size: 21px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.juntos__chips span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Resumen en una línea: no repite el número grande. */
+.juntos__verse {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+}
+.juntos__verse b {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Tarjetas de datos: lo que viene y el móvil de la otra persona. */
+.juntos__card {
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(12, 8, 15, 0.42);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.juntos__card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.juntos__card-head span:first-child {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.juntos__card-head span:last-child {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+}
+.juntos__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.juntos__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.juntos__row:first-child {
+  border-top: 0;
+}
+.juntos__row-label {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.juntos__row-value {
+  flex: none;
+  font-size: 13.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.juntos__empty {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+}
+
+/* Pantallas altas: un poco más de aire sin separar en exceso. */
+@media (min-height: 780px) {
+  .juntos__body {
+    gap: 22px;
+  }
+  .juntos__hero {
+    padding: 32px 22px 24px;
+  }
+}

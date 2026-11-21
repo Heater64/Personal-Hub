@@ -1,0 +1,424 @@
+/* ==========================================
+   RAZONES — álbum de razones
+   Cabecera del sistema, cita destacada, lista
+   densa con corazón y sheet compartido.
+   ========================================== */
+
+/* ==========================================
+   CHIPS DE FILTRO
+   ========================================== */
+.razones-page { position: relative; }
+
+.razones-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  margin-bottom: var(--sp-16);
+}
+
+.razones-chip__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+}
+
+.chip.is-active .razones-chip__count {
+  background: color-mix(in srgb, var(--on-accent, #fff) 22%, transparent);
+  color: var(--on-accent, #fff);
+}
+
+/* ==========================================
+   RAZÓN DESTACADA
+   ========================================== */
+#razonFeatured { margin-bottom: var(--sp-20); }
+
+.razon-spot {
+  position: relative;
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-s);
+  overflow: hidden;
+  transition: box-shadow var(--dur-fast), transform var(--dur-fast);
+}
+
+.razon-spot:hover { box-shadow: var(--sh-m); }
+.razon-spot:active { transform: scale(0.995); }
+
+.razon-spot__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-10);
+  padding: var(--sp-20) var(--sp-18);
+  text-align: left;
+  cursor: pointer;
+}
+
+.razon-spot__body { display: flex; flex-direction: column; gap: var(--sp-8); width: 100%; }
+
+.razon-spot__label {
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.razon-spot__text {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  line-height: 1.38;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  margin: 0;
+}
+
+.razon-spot__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.razon-spot__lock {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+.razon-spot .razon-fav {
+  position: absolute;
+  top: var(--sp-12);
+  right: var(--sp-12);
+  z-index: 2;
+}
+
+/* ==========================================
+   LISTA
+   ========================================== */
+.razones-listbox {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-s);
+  overflow: hidden;
+}
+
+.razon-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--border-soft);
+  padding-right: var(--sp-10);
+}
+
+.razon-row:last-child { border-bottom: none; }
+
+.razon-row__open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-12);
+  padding: var(--sp-14) var(--sp-4) var(--sp-14) var(--sp-16);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+
+.razon-row__open:hover { background: var(--surface-2); }
+
+.razon-row__num {
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+  flex: none;
+  min-width: 20px;
+}
+
+.razon-row__text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.razon-row.is-new .razon-row__open .razon-row__num { color: var(--primary); }
+
+.razon-row__new {
+  flex: none;
+  align-self: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+}
+
+/* Bloqueada */
+.razon-row.is-locked { align-items: center; padding: var(--sp-14) var(--sp-4) var(--sp-14) var(--sp-16); }
+
+.razon-row__lock {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--text-3);
+  flex: none;
+  margin-right: var(--sp-8);
+}
+
+.razon-row__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.razon-row__main b {
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.razon-row__sub { font-size: var(--fs-xs); color: var(--text-3); }
+
+/* Corazón */
+.razon-fav {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  align-self: center;
+  border-radius: var(--r-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+
+.razon-fav:hover { background: var(--surface-2); color: var(--primary); }
+.razon-fav.is-on { color: var(--primary); }
+.razon-fav.is-on svg { fill: currentColor; }
+
+/* ==========================================
+   VACÍO
+   ========================================== */
+.razones-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-10);
+  padding: var(--sp-32) var(--sp-20);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-xl);
+}
+
+.razones-empty__ic {
+  width: 54px;
+  height: 54px;
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.razones-empty b {
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.razones-empty p {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  max-width: 34ch;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.razones-empty .btn { margin-top: var(--sp-6); max-width: 240px; }
+
+/* ==========================================
+   SHEET
+   ========================================== */
+.razon-sheet { display: flex; flex-direction: column; gap: var(--sp-14); }
+
+.razon-sheet__text {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  line-height: 1.4;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  margin: 0;
+}
+
+.razon-sheet__date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  margin: 0;
+}
+
+.razon-sheet .btn.is-on { color: var(--primary); }
+.razon-sheet .btn.is-on svg { fill: currentColor; }
+
+@media (max-width: 420px) {
+  .razon-spot__text { font-size: var(--fs-lg); }
+  .razon-row__open { padding-left: var(--sp-12); gap: var(--sp-10); }
+}
+
+
+/* ==========================================
+   GESTION IN-SITU (ADMIN) - RAZONES
+   ========================================== */
+.razones-admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: 8px 14px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  background: var(--surface-1, #111114);
+  border: 1px solid var(--theme-divider-strong, rgba(255,255,255,0.12));
+  color: var(--accent, #e8735a);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.razones-admin-btn:hover {
+  background: var(--accent-dim, rgba(232,115,90,0.12));
+  border-color: var(--accent, #e8735a);
+  box-shadow: 0 0 16px rgba(232,115,90,0.2);
+}
+
+.razon-row__admin {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.razon-action-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.razon-action-btn:hover {
+  color: var(--accent, #e8735a);
+  background: var(--surface-2, #19191d);
+  border-color: var(--theme-divider, rgba(255,255,255,0.1));
+}
+
+.razon-action-btn.is-delete:hover {
+  color: #ff5c5c;
+  background: rgba(255, 92, 92, 0.12);
+  border-color: #ff5c5c;
+}
+
+/* Editor de razones (bottom sheet). Reutiliza el marcado del editor de
+   Open When (.ow-form-field / .ow-editor-actions), pero esa hoja solo se
+   carga al entrar en Open When: aquí se definen los estilos para que el
+   formulario no salga desmaquetado. */
+.razon-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-14);
+}
+
+.razon-editor-form .ow-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.razon-editor-form .ow-form-field label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-2);
+}
+
+.razon-editor-form .ow-form-field input,
+.razon-editor-form .ow-form-field select,
+.razon-editor-form .ow-form-field textarea {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: var(--fs-base);
+  color: var(--text);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.razon-editor-form .ow-form-field input:focus,
+.razon-editor-form .ow-form-field select:focus,
+.razon-editor-form .ow-form-field textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-softer);
+}
+
+.razon-editor-form .ow-form-field small {
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+  line-height: 1.45;
+}
+
+.razon-editor-form .ow-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-10);
+  margin-top: var(--sp-8);
+}
+
+.razon-editor-form .ow-form-field textarea {
+  min-height: 100px;
+  resize: vertical;
+}

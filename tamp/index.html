@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    // Aplica paleta y modo antes de renderizar (sin flash de color).
+    // Debe coincidir con theme.service.js.
+    (function() {
+      var PALETAS = ['coral', 'frambuesa', 'azul'];
+      var paleta = localStorage.getItem('ph.paleta');
+      var modo = localStorage.getItem('ph.modo');
+      var legacy = localStorage.getItem('ph.theme');
+
+      if (PALETAS.indexOf(paleta) === -1) paleta = null;
+      if (['auto', 'dark', 'light'].indexOf(modo) === -1) modo = null;
+
+      if (!paleta && legacy) {
+        if (legacy === 'azul-oscuro' || legacy === 'azul-claro') paleta = 'azul';
+        else if (legacy === 'umbra-claro') paleta = 'frambuesa';
+        else paleta = 'coral';
+      }
+      if (!modo && legacy) {
+        if (legacy === 'auto') modo = 'auto';
+        else modo = /-oscuro$/.test(legacy) ? 'dark' : (/^umbra-claro$/.test(legacy) || /-claro$/.test(legacy) ? 'light' : 'dark');
+      }
+      if (!paleta) paleta = 'coral';
+      if (!modo) modo = 'dark';
+
+      var resolved = modo === 'auto'
+        ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        : modo;
+
+      var el = document.documentElement;
+      el.dataset.paleta = paleta;
+      el.dataset.theme = resolved;
+      el.style.colorScheme = resolved;
+      if (paleta === 'azul') el.dataset.tema = 'azul';
+      else delete el.dataset.tema;
+
+      // Sincroniza la meta theme-color: la statusbar coincide desde el primer frame.
+      var metas = {
+        coral:     { dark: '#0a0a0c', light: '#f7f2ee' },
+        frambuesa: { dark: '#140a10', light: '#f8edf0' },
+        azul:      { dark: '#0b1220', light: '#f8fafc' }
+      };
+      var meta = document.head.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', metas[paleta][resolved]);
+    })();
+  </script>
+  <!-- ============================================================
+       Boot splash: pantalla de marca que se muestra al instante
+       (mientras carga JS/CSS) y se desvanece cuando la app monta la
+       primera vista (AppShell → router.afterEach). Sin JS, se oculta
+       con la clase .no-js en <html>.
+       ============================================================ -->
+  <style>
+    #boot-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: var(--surface-0, #0a0a0c);
+      color: var(--text-primary, #e8e6e3);
+      transition: opacity .45s ease, visibility .45s ease;
+    }
+    .boot-splash__logo {
+      width: 84px;
+      height: 84px;
+      border-radius: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      background: var(--accent, #e8735a);
+      box-shadow: 0 10px 34px var(--accent-dim-strong, rgba(198, 90, 58, .35));
+      animation: boot-pulse 1.6s ease-in-out infinite;
+    }
+    .boot-splash__name {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: -.02em;
+    }
+    .boot-splash__tag {
+      font-size: 12px;
+      opacity: .55;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+    .boot-splash__bar {
+      width: 74px;
+      height: 3px;
+      border-radius: 99px;
+      overflow: hidden;
+      background: var(--divider-strong, rgba(255, 255, 255, .12));
+    }
+    .boot-splash__bar::after {
+      content: '';
+      display: block;
+      width: 40%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent, #e8735a);
+      animation: boot-slide 1.1s ease-in-out infinite;
+    }
+    #boot-splash.boot-splash--hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    @keyframes boot-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    @keyframes boot-slide {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(320%); }
+    }
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#0a0a0c">
+  <meta name="color-scheme" content="dark light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Hub">
+  <title>Tamp</title>
+  <meta name="description" content="Tu rincón personal">
+  <!-- Solo los orígenes que se tocan al arrancar: fuentes, imágenes y el
+       backend. Los de carátulas (Spotify, Genius, YouTube, Deezer, SoundCloud,
+       Amazon, Akamai) solo aparecen en pantallas diferidas: precalentarlos en
+       cada visita no ahorraba nada y gastaba conexiones móviles. -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="dns-prefetch" href="https://res.cloudinary.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+  <!-- Debe coincidir con VITE_SUPABASE_URL. -->
+  <link rel="preconnect" href="https://ydkyvfifiadtwgmwgrslo.supabase.co" crossorigin>
+  <!-- Critical font loading with display=swap for instant text rendering -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap"></noscript>
+  <!-- KaTeX no va aquí: solo lo usa el calendario y se carga bajo demanda
+       desde src/utils/renderMath.js (`loadKatex()`). -->
+  <!-- Critical CSS -->
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png">
+  <link rel="apple-touch-icon" href="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958838/imagen_180x180_vzdvku.png">
+  <meta property="og:image" content="https://res.cloudinary.com/dcsent4fs/image/upload/v1777118022/Gemini_Generated_Image_6wkfln6wk_aj0v2y.png">
+</head>
+<body>
+  <div id="boot-splash" aria-hidden="true">
+    <div class="boot-splash__logo">🧸</div>
+    <div class="boot-splash__name">Tamp</div>
+    <div class="boot-splash__bar"></div>
+    <div class="boot-splash__tag">Hecho con amor</div>
+  </div>
+  <div id="app"></div>
+  <div id="toast-container"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

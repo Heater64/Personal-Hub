@@ -1,0 +1,105 @@
+/* ==========================================
+   RESET — Personal Hub v3 (Native)
+   Optimizado para experiencia móvil nativa.
+   ========================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: none;
+  /* La app es un shell de altura fija con su propio scroller (.main). Si el
+     documento puede desplazarse, cualquier elemento con position:absolute cuyo
+     bloque contenedor esté fuera de .main (por ejemplo .sr-only) se escapa de su
+     recorte, alarga el documento, y al hacer scrollIntoView se arrastra toda la
+     app: el menú lateral sube y queda una franja negra al pie de la pantalla.
+     El documento no debe desplazarse nunca; el scroll es de .main. */
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  height: 100dvh;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  background: var(--bg);
+  /* Las zonas seguras las gestiona el shell (.content / .bottom-nav):
+     así el alto de la app sigue siendo exactamente 100dvh. */
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+/* Selection */
+::selection {
+  background: var(--theme-accent);
+  color: #fff;
+}
+
+/* Focus visible — subtle ring */
+:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* Scrollbar — minimal nativa */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-scrollbar-thumb-hover);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-scrollbar-thumb) transparent;
+}

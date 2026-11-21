@@ -1,0 +1,871 @@
+/* ==========================================
+   Personal Hub v2 — Notifications Service
+   Push API (Web Push) como sistema principal.
+   - Se suscribe al push server via /api/push/subscribe
+   - El servidor envía push diario a las 8:00 AM via cron
+   - Fallback: notificación local vía SW si push no disponible
+   - Fallback legacy: PeriodicSync (Chromium PWA instalada)
+   ========================================== */
+
+import { getUserPref, setUserPref, getUserId } from '../utils/userStorage.js';
+import { todayISO, hourInSpain } from '../utils/format.js';
+import { supabase } from './supabase.js';
+import { getTodayNovelties, getNoveltyNotificationRoute } from './novelties.service.js';
+import { CATEGORIES, loadAllOpenWhenLetters } from '../data/openwhen.data.js';
+import { normalizeNotificationRoute } from '../utils/notification-route.js';
+import { readSeenCategories, readSeenUpdates } from '../utils/openwhen-categories.js';
+import { urlBase64ToUint8Array, subscriptionKeyChanged } from '../utils/push-key.js';
+
+// VAPID public key — debe coincidir con VAPID_PUBLIC_KEY en el servidor
+const VAPID_PUBLIC_KEY = 'BALzk9q-6CaVPmvMC0h4JIMQ582uOKAhX7AwwqefqLQzAeFxbLMhIaeazaZ8OqSQjFQJVIhwPis7zsJL2SrNY3A';
+
+const SYNC_TAG = 'daily-welcome';
+const NOVELTIES_TAG = 'daily-novelties';
+const OPENWHEN_TAG = 'openwhen-new';
+const OPENWHEN_UPDATED_TAG = 'openwhen-updated';
+const MOOD_TAG = 'mood';
+const OPENWHEN_ANNOUNCED_KEY = 'openwhen.announced';
+const OPENWHEN_UPDATES_KEY = 'openwhen.announced-updates';
+const DB_NAME = 'ph-notifications';
+const DB_STORE = 'state';
+
+// ==========================================
+// AJUSTES DE NOTIFICACIONES (estilo habitos-web)
+// - Toggles por tipo de aviso
+// - Horario de silencio: ninguna notificación local suena dentro
+// - Dedupe diario igual que antes
+// ==========================================
+const NOTIF_SETTINGS_KEY = 'notifSettings';
+const DEFAULT_NOTIF_SETTINGS = {
+  daily: true,       // recordatorio diario (bienvenida + novedades)
+  letters: true,     // cartas nuevas en Open When
+  moods: true,       // aviso cada vez que registra su estado de ánimo
+  reminders: true,   // avisos que escribe el admin a mano (recordatorios de 022)
+  // --- Avisos del ADMIN (024): seguimiento de ella, no contenido ----------
+  // Solo tienen efecto en la cuenta del admin; en la suya quedan ignorados.
+  adminMood: true,        // cada vez que ella registra su ánimo del día
+  adminMoodChanges: true, // cuando cambia el ánimo de hoy más tarde
+  adminNotes: true,       // cuando deja una nota en Mal Día
+  adminCycle: true,       // cuando registra su menstruación o un día del ciclo
+  adminHealth: true,      // avisos técnicos: envíos fallidos, bajas de dispositivos
+  quietFrom: '23:00', // silencio desde…
+  quietTo: '08:00'    // …hasta
+};
+
+export function getNotifSettings() {
+  try {
+    const raw = getUserPref(NOTIF_SETTINGS_KEY, '');
+    if (!raw) return { ...DEFAULT_NOTIF_SETTINGS };
+    return { ...DEFAULT_NOTIF_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_NOTIF_SETTINGS };
+  }
+}
+
+export function setNotifSettings(patch) {
+  // `updatedAt` es la marca que decide quién gana cuando la misma persona
+  // cambia sus ajustes desde dos dispositivos (ver syncNotifPrefs).
+  const next = { ...getNotifSettings(), ...patch, updatedAt: Date.now() };
+  setUserPref(NOTIF_SETTINGS_KEY, JSON.stringify(next));
+  // El servidor necesita saberlo para no despertar a nadie: se refleja en
+  // Supabase sin esperar — un fallo de red no puede romper el ajuste local,
+  // que es el que decide al instante en este dispositivo.
+  pushNotifPrefs(next);
+  return next;
+}
+
+/**
+ * Refleja los ajustes en `notification_prefs` (023).
+ *
+ * Nunca lanza: si la migración aún no está aplicada (42P01), no hay red o la
+ * sesión ha caducado, el ajuste local sigue valiendo y el servidor se queda
+ * con el valor por defecto (entregar sin silencio).
+ */
+async function pushNotifPrefs(settings) {
+  const userId = getUserId();
+  if (!userId) return false;
+  try {
+    const { error } = await supabase.from('notification_prefs').upsert({
+      user_id: userId,
+      daily: settings.daily !== false,
+      letters: settings.letters !== false,
+      moods: settings.moods !== false,
+      reminders: settings.reminders !== false,
+      admin_mood: settings.adminMood !== false,
+      admin_mood_changes: settings.adminMoodChanges !== false,
+      admin_notes: settings.adminNotes !== false,
+      admin_cycle: settings.adminCycle !== false,
+      admin_health: settings.adminHealth !== false,
+      quiet_from: settings.quietFrom || '23:00',
+      quiet_to: settings.quietTo || '08:00',
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    if (error) {
+      console.warn('[notif] no se pudieron subir los ajustes:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[notif] no se pudieron subir los ajustes:', err?.message);
+    return false;
+  }
+}
+
+/**
+ * Sincroniza los ajustes con la copia del servidor al entrar.
+ *
+ * Gana el más reciente (last-write-wins por marca de tiempo): si otra
+ * persona/dispositivo los cambió después de la última vez aquí, se adoptan;
+ * si no, se suben los de este dispositivo. Sin fila en el servidor se sube
+ * la copia local (si existe): así los ajustes que ya había antes de 023 no
+ * se pierden.
+ *
+ * Devuelve los ajustes efectivos. Nunca lanza.
+ */
+export async function syncNotifPrefs() {
+  const userId = getUserId();
+  if (!userId) return getNotifSettings();
+
+  try {
+    const { data, error } = await supabase
+      .from('notification_prefs')
+      .select('daily, letters, moods, reminders, admin_mood, admin_mood_changes, admin_notes, admin_health, quiet_from, quiet_to, updated_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    // Sin tabla (023 sin aplicar) o sin red: manda lo local.
+    if (error) return getNotifSettings();
+
+    if (!data) {
+      // Sin fila en el servidor: se suben los ajustes efectivos de este
+      // dispositivo, haya tocado algo o sean los de por defecto. Si no, el
+      // servidor no sabría su horario de silencio (23:00–08:00) y un
+      // recordatorio programado de madrugada le sonaría a las 3:00.
+      await pushNotifPrefs(getNotifSettings());
+      return getNotifSettings();
+    }
+
+    const remoteAt = Date.parse(data.updated_at) || 0;
+    const local = getNotifSettings();
+    // La comparación es entre relojes distintos: un desfase de segundos solo
+    // puede hacer que gane la copia "equivocada" de dos ajustes casi iguales.
+    if (remoteAt > (Number(local.updatedAt) || 0)) {
+      const merged = {
+        ...local,
+        daily: data.daily !== false,
+        letters: data.letters !== false,
+        moods: data.moods !== false,
+        reminders: data.reminders !== false,
+        adminMood: data.admin_mood !== false,
+        adminMoodChanges: data.admin_mood_changes !== false,
+        adminNotes: data.admin_notes !== false,
+        adminHealth: data.admin_health !== false,
+        quietFrom: data.quiet_from || '23:00',
+        quietTo: data.quiet_to || '08:00',
+        updatedAt: remoteAt
+      };
+      setUserPref(NOTIF_SETTINGS_KEY, JSON.stringify(merged));
+      return merged;
+    }
+
+    await pushNotifPrefs(local);
+    return local;
+  } catch {
+    return getNotifSettings();
+  }
+}
+
+/** Permiso actual: 'granted' | 'denied' | 'default' | 'unsupported'. */
+export function notifPermission() {
+  return 'Notification' in window ? Notification.permission : 'unsupported';
+}
+
+/** ¿Estamos dentro del horario de silencio configurado? */
+export function inQuietHours(settings = getNotifSettings()) {
+  const { quietFrom, quietTo } = settings || {};
+  if (!quietFrom || !quietTo) return false;
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const from = Number(quietFrom.slice(0, 2)) * 60 + Number(quietFrom.slice(3));
+  const to = Number(quietTo.slice(0, 2)) * 60 + Number(quietTo.slice(3));
+  if (Number.isNaN(from) || Number.isNaN(to) || from === to) return false;
+  // Franja que cruza medianoche (23:00 → 8:00) también soportada.
+  return from < to ? minutes >= from && minutes < to : minutes >= from || minutes < to;
+}
+
+// Single-flight: evita duplicados si notifyTodayNovelties se invoca
+// a la vez desde login y desde scheduleMoodCheck.
+let noveltyCheckPromise = null;
+
+let dbPromise = null;
+
+function openDb() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => { dbPromise = null; reject(req.error); };
+  });
+  return dbPromise;
+}
+
+async function getState() {
+  try {
+    const db = await openDb();
+    return await new Promise((resolve) => {
+      const get = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get('reminder');
+      get.onsuccess = () => resolve(get.result || null);
+      get.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function setState(state) {
+  try {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(state, 'reminder');
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    /* no-op */
+  }
+}
+
+// ==========================================
+// PUBLIC API
+// ==========================================
+
+export function isEnabled() {
+  return getUserPref('notifications', '0') === '1';
+}
+
+/**
+ * Check if Web Push is supported in this browser.
+ */
+export function isPushSupported() {
+  return (
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window
+  );
+}
+
+/**
+ * Request notification permission + subscribe to push server.
+ * Returns true if fully enabled (push subscription active).
+ */
+export async function requestEnable() {
+  if (!('Notification' in window)) return false;
+
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    return false;
+  }
+
+  setUserPref('notifications', '1');
+
+  // Intentar suscribirse a push
+  const pushOk = await subscribeToPush();
+
+  // Sincronizar estado con el SW (fallback)
+  await syncReminderState();
+
+  return true;
+}
+
+/**
+ * Disable notifications: unsubscribe from push + clear prefs.
+ */
+export async function disable() {
+  setUserPref('notifications', '0');
+  await unsubscribeFromPush();
+  await syncReminderState();
+}
+
+/**
+ * Subscribe to the push server.
+ * Stores the subscription on the server for later push sending.
+ */
+export async function subscribeToPush() {
+  if (!isPushSupported()) return false;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+
+    // Check existing subscription
+    let subscription = await reg.pushManager.getSubscription();
+
+    // Una suscripción vieja se creó con la clave VAPID anterior y el push
+    // service la rechaza para siempre (403 VapidPkHashMismatch). Reutilizarla
+    // es exactamente lo que dejaba a los dispositivos sin avisos tras rotar
+    // las claves, así que si la clave no coincide se renueva aquí mismo.
+    if (subscription && subscriptionKeyChanged(subscription, VAPID_PUBLIC_KEY)) {
+      console.warn('[notif] La suscripción usa otra clave VAPID: se renueva');
+      try {
+        await subscription.unsubscribe();
+      } catch {
+        /* si el navegador no deja cancelarla, subscribe() fallará y se ve abajo */
+      }
+      subscription = null;
+    }
+
+    if (subscription) {
+      // Already subscribed — verify it on the server
+      await sendSubscriptionToServer(subscription);
+      return true;
+    }
+
+    // Subscribe
+    subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+
+    await sendSubscriptionToServer(subscription);
+    return true;
+  } catch (err) {
+    console.warn('[notif] Push subscription failed:', err.message);
+    // Push no disponible: el fallback (local + periodicSync) sigue activo
+    return false;
+  }
+}
+
+/**
+ * Unsubscribe from push and remove from server.
+ */
+export async function unsubscribeFromPush() {
+  if (!isPushSupported()) return;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.getSubscription();
+
+    if (subscription) {
+      // Unsubscribe locally
+      await subscription.unsubscribe();
+
+      // Notify server
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await fetch('/api/push?action=unsubscribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ endpoint: subscription.endpoint })
+          });
+        }
+      } catch (e) {
+        console.warn('[notif] Server unsubscribe failed:', e.message);
+      }
+    }
+  } catch (err) {
+    console.warn('[notif] Push unsubscribe error:', err.message);
+  }
+}
+
+/**
+ * Resync push subscription on login — ensures the server has the
+ * latest subscription for the current user + device.
+ */
+export async function resyncPushSubscription() {
+  if (!isEnabled()) return;
+  if (!isPushSupported()) return;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.getSubscription();
+
+    // Con la clave cambiada, la suscripción guardada ya no sirve: se renueva
+    // antes de mandarla al servidor. subscribeToPush() hace la comparación y
+    // la sustituye si hace falta (y si no hay, la crea).
+    if (subscription && !subscriptionKeyChanged(subscription, VAPID_PUBLIC_KEY)) {
+      await sendSubscriptionToServer(subscription);
+    } else {
+      await subscribeToPush();
+    }
+  } catch {
+    /* silent */
+  }
+}
+
+// ==========================================
+// INTERNAL
+// ==========================================
+
+/**
+ * Sends the PushSubscription to the server API.
+ */
+async function sendSubscriptionToServer(subscription) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    const subObj = subscription.toJSON ? subscription.toJSON() : subscription;
+
+    const res = await fetch('/api/push?action=subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ subscription: subObj })
+    });
+
+    if (!res.ok) {
+      console.warn('[notif] Server subscribe failed:', res.status);
+    }
+  } catch (err) {
+    console.warn('[notif] Could not send subscription to server:', err.message);
+  }
+}
+
+/**
+ * Sincroniza el estado del recordatorio con el SW (IndexedDB)
+ * y registra/desregistra el periodic sync (fallback legacy).
+ */
+export async function syncReminderState() {
+  const enabled = isEnabled() && 'Notification' in window && Notification.permission === 'granted';
+  const userId = getUserId();
+  const prev = await getState();
+  // El SW respeta el horario de silencio al lanzar el aviso diario.
+  const { quietFrom, quietTo } = getNotifSettings();
+  const state = {
+    enabled: enabled && !!userId,
+    userId,
+    lastShown: prev?.lastShown ?? null,
+    // El saludo de `periodicsync` (app cerrada) también obedece al interruptor
+    // «Recordatorio diario»; el SW lo lee de aquí. Sin este campo se quedaba en
+    // `undefined` y sonaba aunque estuviera apagado.
+    daily: getNotifSettings().daily !== false,
+    quiet: { from: quietFrom, to: quietTo }
+  };
+  await setState(state);
+
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+
+    // PeriodicSync fallback (solo Chromium + PWA instalada)
+    if ('periodicSync' in reg) {
+      if (state.enabled) {
+        const status = await navigator.permissions.query({ name: 'periodic-background-sync' }).catch(() => null);
+        if (!status || status.state === 'granted') {
+          await reg.periodicSync.register(SYNC_TAG, { minInterval: 12 * 60 * 60 * 1000 });
+        }
+      } else {
+        await reg.periodicSync.unregister(SYNC_TAG).catch(() => {});
+      }
+    }
+  } catch {
+    /* silent */
+  }
+}
+
+/** Marca que la bienvenida ya se mostró hoy. */
+export async function markWelcomeShownToday() {
+  const state = (await getState()) || {};
+  await setState({ ...state, lastShown: todayISO() });
+}
+
+/**
+ * Notificación local inmediata vía SW (app abierta, fallback).
+ * Devuelve true si la notificación llegó a mostrarse; false si no se pudo
+ * (permiso no concedido, notificaciones apagadas, sin service worker o error).
+ */
+export async function showDailyNotification(title, body, url = '/', opts = {}) {
+  if (!isEnabled()) return false;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  if (!('serviceWorker' in navigator)) return false;
+  // Horario de silencio: ninguna notificación local mientras dure
+  // (la prueba y otros avisos explícitos pueden saltárselo con ignoreQuiet).
+  if (!opts.ignoreQuiet && inQuietHours()) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, {
+      body,
+      tag: opts.tag || SYNC_TAG,
+      vibrate: [200, 100, 200],
+      data: { url: normalizeNotificationRoute(url, window.location.origin) }
+    });
+    return true;
+  } catch (err) {
+    console.warn('[notif] showDailyNotification error:', err?.message);
+    return false;
+  }
+}
+
+/**
+ * Notificación diaria de novedades: si hoy hay contenido nuevo
+ * (regalo del calendario sin abrir o razones nuevas por leer),
+ * muestra una notificación con enlace directo a esa sección.
+ * - Máximo 1 vez al día por usuario (dedupe en localStorage).
+ * - Solo a partir de las 8:00 (misma ventana que el push del cron).
+ */
+export async function notifyTodayNovelties() {
+  if (!isEnabled() || !('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+  const userId = getUserId();
+  if (!userId) return;
+
+  // Ajustes: tipo desactivado o horario de silencio → no consume el dedupe
+  // del día (si es silencio, el aviso puede salir más tarde ese mismo día).
+  const settings = getNotifSettings();
+  if (!settings.daily) return;
+  if (inQuietHours(settings)) return;
+
+  // Solo a partir de las 8:00 (hora de España, península)
+  if (hourInSpain() < 8) return;
+
+  // Dedupe: una comprobación/notificación de novedades por día y por usuario
+  const dedupeKey = 'noveltiesNotifDate';
+  if (getUserPref(dedupeKey) === todayISO()) return;
+
+  // Single-flight: si ya hay una comprobación en curso, únete a ella
+  if (noveltyCheckPromise) return noveltyCheckPromise;
+
+  noveltyCheckPromise = (async () => {
+    try {
+      const items = await getTodayNovelties();
+      if (!items.length) return;
+
+      let title;
+      let body;
+      let url;
+      if (items.length === 1) {
+        const n = items[0];
+        title = `Novedad de hoy ${n.icon}`;
+        body = n.text;
+        url = n.route; // enlace directo a la sección (p. ej. /calendario?day=...)
+      } else {
+        title = `Tienes ${items.length} novedades hoy`;
+        body = items.map(n => `${n.icon} ${n.tag}: ${n.text}`).join('\n');
+        url = getNoveltyNotificationRoute(items);
+      }
+
+      await showDailyNotification(title, body, url, { tag: NOVELTIES_TAG });
+    } finally {
+      // Marca el día como comprobado haya o no novedades: la comprobación
+      // (lectura de db) se hace 1 vez al día, no en cada navegación.
+      setUserPref(dedupeKey, todayISO());
+      noveltyCheckPromise = null;
+    }
+  })();
+
+  return noveltyCheckPromise;
+}
+
+/**
+ * Notificación local de cartas nuevas en Open When.
+ * Detecta cartas recién añadidas (aún sin abrir y nunca anunciadas)
+ * y avisa una sola vez por carta, con enlace directo a Open When.
+ * No tiene puerta de hora: avisa en cuanto la usuaria abre la app
+ * tras una actualización que añada cartas nuevas.
+ */
+export async function notifyNewOpenWhenLetters() {
+  if (!isEnabled()) return;
+  const userId = getUserId();
+  if (!userId) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+
+  // Ajustes: cartas desactivadas u horario de silencio → sin aviso.
+  const settings = getNotifSettings();
+  if (!settings.letters) return;
+  if (inQuietHours(settings)) return;
+
+  // Cartas que la usuaria aún no ha abierto
+  let seen = [];
+  try {
+    const arr = JSON.parse(getUserPref('openwhen.seen', '[]'));
+    if (Array.isArray(arr)) seen = arr;
+  } catch { /* noop */ }
+
+  // Cartas de las que ya avisamos (dedupe por usuaria)
+  let announced = [];
+  try {
+    const arr = JSON.parse(getUserPref(OPENWHEN_ANNOUNCED_KEY, '[]'));
+    if (Array.isArray(arr)) announced = arr;
+  } catch { /* noop */ }
+
+  // Cartas editadas de las que ya avisamos, por versión.
+  let announcedUpdates = {};
+  try {
+    const obj = JSON.parse(getUserPref(OPENWHEN_UPDATES_KEY, '{}'));
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) announcedUpdates = obj;
+  } catch { /* noop */ }
+
+  // Incluye también las cartas personalizadas creadas desde el Admin.
+  // Los borradores «pronto» no se anuncian: todavía no tienen texto.
+  const all = await loadAllOpenWhenLetters();
+  const ready = all.filter(l => l.status !== 'pronto');
+  const fresh = ready.filter(l => !seen.includes(l.id) && !announced.includes(l.id));
+
+  // Editadas que aún no ha abierto y cuya versión no se ha avisado todavía.
+  const seenUpdates = readSeenUpdates();
+  const edited = ready.filter(l =>
+    l.updatedAt && seenUpdates[l.id] !== l.updatedAt && announcedUpdates[l.id] !== l.updatedAt
+  );
+
+  if (!fresh.length && !edited.length) return;
+
+  let title, body, route, tag;
+
+  if (fresh.length) {
+    // Si alguna carta nueva viene de una categoría que no había visto nunca,
+    // el aviso habla de categoría («Open When nueva») y dice cuál.
+    const seenCats = readSeenCategories();
+    const freshCatId = seenCats
+      ? fresh.find(l => l.category && !seenCats.includes(l.category))?.category
+      : null;
+    const freshCat = freshCatId ? CATEGORIES.find(c => c.id === freshCatId)?.title : '';
+    const cuantas = fresh.length === 1 ? 'una carta' : `${fresh.length} cartas`;
+
+    title = freshCatId ? 'Open When nueva 🗂️' : 'Open When actualizada 💌';
+    body = freshCatId
+      ? `${freshCat ? `«${freshCat}»` : 'Una categoría'} es nueva. Tienes ${cuantas} esperándote.`
+      : fresh.length === 1
+        ? `«${fresh[0].title}» te está esperando.`
+        : 'Tienes cartas nuevas esperándote. ¿Qué necesitas ahora? 🤍';
+    route = fresh.length === 1
+      ? `/openwhen?letter=${encodeURIComponent(fresh[0].id)}`
+      : '/openwhen';
+    tag = OPENWHEN_TAG;
+  } else {
+    title = 'Carta actualizada en Open When ✏️';
+    body = edited.length === 1
+      ? `«${edited[0].title}» ha cambiado. Mírala cuando quieras.`
+      : `${edited.length} cartas han cambiado. Míralas cuando quieras.`;
+    route = edited.length === 1
+      ? `/openwhen?letter=${encodeURIComponent(edited[0].id)}`
+      : '/openwhen';
+    tag = OPENWHEN_UPDATED_TAG;
+  }
+
+  const shown = await showDailyNotification(title, body, route, { tag });
+  if (!shown) return;
+
+  // Solo se apunta lo que de verdad se avisó: una edición no se pierde porque
+  // coincida con un aviso de cartas nuevas.
+  if (fresh.length) {
+    setUserPref(OPENWHEN_ANNOUNCED_KEY, JSON.stringify([...new Set([...announced, ...fresh.map(l => l.id)])]));
+  } else {
+    setUserPref(OPENWHEN_UPDATES_KEY, JSON.stringify({
+      ...announcedUpdates,
+      ...Object.fromEntries(edited.map(l => [l.id, l.updatedAt]))
+    }));
+  }
+}
+
+/* ==========================================
+   ESTADO DE ÁNIMO
+   Cada vez que registra cómo está le llega el aviso: es la respuesta a lo
+   que acaba de hacer, no un recordatorio. Silenciarlo a ella misma sería
+   raro (y ella lo ha pedido), así que este aviso NO respeta el horario de
+   silencio: el resto de avisos, sí.
+   ========================================== */
+
+const MOOD_LINES = {
+  preocupada: [
+    'Algo te rondaba la cabeza. Aquí me quedo por si quieres soltarlo 🤍',
+    'Guardado. No hace falta arreglarlo ahora, solo cuenta con que lo tienes.',
+    'Hoy te has apoyado en alguien. En mí también vale.'
+  ],
+  enfadada: [
+    'Guardado. Que te sea leve, que mañana será otro día.',
+    'Lo de hoy ha sido mucho. Tienes derecho a estar enfadada.',
+    'Registrado. Mañana ya vemos; hoy no tienes que hacer nada con esto.'
+  ],
+  triste: [
+    'Aquí estoy. No hace falta que hagas nada más hoy.',
+    'Guardado 🤍 Los días malos también cuentan como días.',
+    'Te leo. Con esto me basta para saber cómo estás.'
+  ],
+  bien: [
+    'Qué bien. Me alegra leerte así hoy.',
+    'Guardado. Este ánimo te lo guardo para los días malos.',
+    'Me gusta verte así ✨'
+  ],
+  carino: [
+    'Aquí estoy, como siempre que me necesites 🤍',
+    'Guardado. Pídelo sin vergüenza, que para eso estoy.',
+    'Te mando un abrazo de los que funcionan ❤️'
+  ],
+  emocionada: [
+    '¡Qué bonito leerte así! Guardo este momento contigo ✨',
+    'Se nota que hoy algo te hace brillar 🤩',
+    'Me encanta cuando estás así de ilusionada.'
+  ],
+  decepcionada: [
+    'Guardado. No pasa nada por esperar otra cosa 🤍',
+    'Lo que esperabas no llegó. Aquí sigo.',
+    'Te leo. Los chascos también se cuentan.'
+  ],
+  molesta: [
+    'Guardado. Tienes todo el derecho a estar molesta.',
+    'Hoy algo te ha tocado las narices. Lo apunto sin juzgar.',
+    'Respira. Yo me quedo aquí a tu lado.'
+  ],
+  miedo: [
+    'Con miedo también se puede, y no estás sola 🤍',
+    'Guardado. Si quieres, lo hablamos despacio.',
+    'Aquí estoy para cuando quieras contarlo.'
+  ],
+  asustada: [
+    'Te leo y me quedo cerca. Nada de esto lo tienes que pasar sola.',
+    'Guardado. Respira conmigo un momento 🤍',
+    'Da miedo, y aun así lo has contado. Eso ya es mucho.'
+  ],
+  dolor: [
+    'Guardado. Ojalá se te pase pronto 🤍',
+    'Duele, y se entiende. Descansa todo lo que puedas.',
+    'Me quedo cerca para lo que necesites.'
+  ],
+  nauseas: [
+    'Guardado. Bebe agua y tómatelo con calma 🤍',
+    'Qué mal cuerpo. Descansa, que hoy no hay prisa.',
+    'Te leo. Cuídate mucho.'
+  ],
+  cansada: [
+    'Guardado. Hoy toca descansar sin culpa 😴',
+    'Estás cansada y se entiende. Para un rato.',
+    'Descansa, que el mundo puede esperar.'
+  ],
+  estresada: [
+    'Guardado. Una cosa a la vez, nada más 🤍',
+    'Respira. No tienes que poder con todo hoy.',
+    'Te leo. Suelta lo que puedas y déjame el resto.'
+  ],
+  enferma: [
+    'Guardado. Abrigo, agua y a recuperarse 🤍',
+    'Qué mal estar enferma. Descansa mucho.',
+    'Te leo. Ojalá te encuentres mejor pronto.'
+  ],
+  muyfeliz: [
+    '¡MUUUY FELIZ! Me alegra muchísimo leerte así 🥳',
+    'Guardado con confeti. Este día se queda.',
+    'Así me gusta verte. ¿Qué ha pasado?'
+  ],
+  // Emociones escritas a mano: una frase general que sirve para cualquiera.
+  general: [
+    'Guardado 🤍 Me quedo con cómo estás hoy.',
+    'Registrado. Aquí estoy para lo que necesites.',
+    'Te leo. Gracias por contármelo.'
+  ]
+};
+
+/**
+ * Frase del aviso. Cambia de día, pero dentro del mismo día es fija: si
+ * toca el mismo ánimo dos veces, no ve dos textos distintos.
+ */
+function moodLine(mood) {
+  // Con varias emociones se usa la que más necesita compañía (la de menor
+  // score); si es una escrita a mano, la frase general.
+  const items = mood?.items || [];
+  const main = items.length
+    ? items.reduce((worst, item) => (item.score < worst.score ? item : worst))
+    : null;
+  const pool = MOOD_LINES[main?.id] || MOOD_LINES.general;
+  const day = Number(String(todayISO()).replace(/-/g, '')) || 0;
+  return pool[day % pool.length];
+}
+
+/**
+ * Aviso de que su estado de ánimo queda registrado. Se llama desde el store
+ * (el único punto por el que se escribe un ánimo), así que vale desde
+ * Sentimientos, desde el perfil y desde la pantalla de bienvenida.
+ *
+ * `mood = null` significa que el día se queda sin ánimo.
+ */
+export async function notifyMoodSaved(mood) {
+  if (!isEnabled()) return false;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  if (!getNotifSettings().moods) return false;
+
+  const title = mood ? `${mood.emoji} ${mood.label}` : '🫧 Ánimo de hoy';
+  const body = mood
+    ? moodLine(mood)
+    : 'Se ha quitado el estado de este día. Si cambias de idea, puedes volver a ponerlo.';
+  // Tag propio: los avisos del mismo tipo se reemplazan en vez de apilarse.
+  return showDailyNotification(title, body, '/sentimientos', { tag: MOOD_TAG, ignoreQuiet: true });
+}
+
+/**
+ * Pide al servidor que avise a los admins de algo que ha hecho la usuaria.
+ * El aviso sale como push desde el servidor, así que llega aunque el admin no
+ * tenga la web abierta. El servidor lee el CONTENIDO de la base de datos (el
+ * ánimo de hoy, la última nota) y nunca avisa a los admins de lo suyo propio.
+ *
+ * `kind` elige el texto y el interruptor que lo gobierna (024):
+ *   'mood'        — primer estado del día            (adminMood)
+ *   'mood_update' — corrección dentro de los 5 min   (adminMood, solo si es mal día)
+ *   'mood_change' — estado nuevo que sustituye al de antes (adminMoodChanges)
+ *   'note'        — nota dejada en Mal Día           (adminNotes)
+ *   'cycle_period'— menstruación nueva o terminada   (adminCycle)
+ *   'cycle_log'   — día del ciclo con síntomas       (adminCycle)
+ *   'cycle_share' — activa o cambia lo que comparte  (adminCycle)
+ *
+ * Nunca lanza: un fallo del aviso no debe romper la acción de ella.
+ */
+export async function notifyAdmin(kind = 'mood') {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return false;
+
+    const res = await fetch('/api/push?action=notify-admin', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ kind })
+    });
+    if (!res.ok) {
+      console.warn('[notif] Admin alert failed:', kind, res.status);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[notif] Could not notify admin:', err.message);
+    return false;
+  }
+}
+
+/** Aviso al admin de que ella ha registrado su ánimo (ver `notifyAdmin`). */
+export function notifyAdminOfMood(kind = 'mood') {
+  return notifyAdmin(kind);
+}
+
+/** Aviso al admin de que ella ha dejado una nota en Mal Día. */
+export function notifyAdminOfNote() {
+  return notifyAdmin('note');
+}
+
+/**
+ * Aviso al admin de su ciclo: una menstruación registrada o un día con
+ * síntomas, flujo o notas. El texto lo compone el servidor leyendo la fila
+ * recién guardada, así que el aviso dice lo mismo que se ve en la app.
+ */
+export function notifyAdminOfCycle(kind = 'cycle_period') {
+  if (!['cycle_period', 'cycle_log', 'cycle_share'].includes(kind)) return Promise.resolve(false);
+  return notifyAdmin(kind);
+}
+
+/**
+ * Notificación de prueba desde los ajustes: siempre se muestra aunque
+ * estemos en horario de silencio (la usuaria la está pidiendo).
+ */
+export async function sendTestNotification() {
+  return showDailyNotification(
+    '🔔 Tamp',
+    'Las notificaciones funcionan correctamente ✨',
+    '/',
+    { tag: 'notif-test', ignoreQuiet: true }
+  );
+}
+
