@@ -24,7 +24,7 @@ import { announcePayload, ANNOUNCE_KINDS, isAllowedNotificationPath } from '../a
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectPath = (...parts) => path.join(ROOT, ...parts);
-const hub = (...parts) => projectPath('personal-hub', ...parts);
+const hub = (...parts) => projectPath('tamp', ...parts);
 
 const readApi = () => readFile(projectPath('api', 'push.js'), 'utf8');
 const readClient = () => readFile(hub('src', 'services', 'announce.service.js'), 'utf8');

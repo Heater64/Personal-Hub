@@ -47,17 +47,51 @@ test('el bootstrap de la pareja se detiene antes de elegir usuarios ambiguos', a
 });
 
 test('el cliente distingue que el servicio está en marcha de que fue activado', async () => {
-  const device = await read('personal-hub/src/services/device.service.js');
+  const device = await read('tamp/src/services/device.service.js');
   const plugin = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusPlugin.java');
 
-  assert.match(plugin, /out\.put\("running", prefs\.getBoolean\("running", false\)\)/);
+  assert.match(plugin, /out\.put\("enabled", prefs\.getBoolean\("enabled", false\)\)/);
+  assert.match(plugin, /out\.put\("running", DeviceStatusService\.isRunning\(\)\)/);
   assert.match(plugin, /out\.put\("locationServices", locationServicesState\(context\)\)/);
   assert.match(device, /running: res\?\.running === true/);
   assert.match(device, /locationServices: res\?\.locationServices/);
 });
 
+test('el servicio publica fuera del hilo principal y solo confirma envíos aceptados', async () => {
+  const service = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusService.java');
+  const plugin = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusPlugin.java');
+
+  assert.match(service, /ExecutorService io = Executors\.newSingleThreadExecutor\(\)/);
+  assert.match(service, /io\.execute\(\(\) -> \{\s*String error = publish\(\)/);
+  assert.match(service, /if \(code >= 200 && code < 300\) return ""/);
+  assert.match(service, /if \(error\.isEmpty\(\)\) edit\.putString\("last_sent_at", at\)/);
+  assert.match(plugin, /out\.put\("lastAt", prefs\.getString\("last_sent_at", ""\)\)/);
+  assert.match(plugin, /out\.put\("lastAttemptAt", prefs\.getString\("last_attempt_at", ""\)\)/);
+});
+
+test('la alerta de batería baja pasa la API al servicio y se reintenta hasta que FCM entrega', async () => {
+  const device = await read('tamp/src/services/device.service.js');
+  const service = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusService.java');
+
+  assert.match(device, /apiOrigin,/);
+  assert.match(service, /battery_paused.*battery_alert_delivered/s);
+  assert.match(service, /sendBatteryAlert\(config, Math\.max\(0, batteryLevel\)\)/);
+  assert.match(service, /optInt\("sent", 0\)/);
+  assert.match(service, /delay = Math\.min\(delay, RETRY_MS\)/);
+  assert.match(service, /level >= 30[\s\S]*?remove\("battery_alert_delivered"\)/);
+});
+
+test('el seguimiento conserva el último punto y respeta el permiso de ubicación aproximada', async () => {
+  const service = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusService.java');
+
+  assert.match(service, /if \(!data\.has\("location_at"\)\) error = "waiting-location";\s*else error = upsert\(data, config\)/);
+  assert.match(service, /fix\.precise\(\) && !precise/);
+  assert.match(service, /precise \|\| "approximate"\.equals\(previous\.optString\("location_precision"\)\)/);
+  assert.match(service, /resume && \(!enabled \|\| !sameUser\)/);
+});
+
 test('web y servicio nativo prefieren la ubicación de pareja al contrato admin heredado', async () => {
-  const location = await read('personal-hub/src/services/location.service.js');
+  const location = await read('tamp/src/services/location.service.js');
   const native = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusService.java');
 
   assert.match(location, /from\('couple_locations'\)\.upsert/);
@@ -66,14 +100,14 @@ test('web y servicio nativo prefieren la ubicación de pareja al contrato admin 
 });
 
 test('el control no pide activar si Android ya mantiene el servicio vivo', async () => {
-  const sheet = await read('personal-hub/src/components/DistanceMapSheet.js');
+  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
 
   assert.match(sheet, /const on = !!\(bg\.enabled \|\| bg\.running\)/);
 });
 
 test('los widgets se refrescan al reanudar sin depender de abrir Inicio', async () => {
-  const native = await read('personal-hub/src/services/native.service.js');
-  const widgets = await read('personal-hub/src/services/widgets.service.js');
+  const native = await read('tamp/src/services/native.service.js');
+  const widgets = await read('tamp/src/services/widgets.service.js');
 
   assert.match(native, /personalhub:widgets-refresh/);
   assert.match(widgets, /window\.addEventListener\('personalhub:widgets-refresh'/);

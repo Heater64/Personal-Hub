@@ -25,7 +25,7 @@ import {
   storageUrlsIn,
   createMediaService,
   installMediaFallback,
-} from '../personal-hub/src/services/media.service.js';
+} from '../tamp/src/services/media.service.js';
 
 const BASE = 'https://demo.supabase.co/storage/v1/object';
 const publicUrl = (bucket, path) => `${BASE}/public/${bucket}/${path}`;

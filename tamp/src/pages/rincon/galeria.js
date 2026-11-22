@@ -206,7 +206,7 @@ export function createGaleria(ctx) {
       </header>
       <div class="meme-albums-grid" id="galleryCollections">
         ${collections.map((album, i) => `
-          <div class="meme-album-card card animate-in" data-album="${escapeHtml(album.id)}" data-search="${escapeHtml((album.title + ' ' + album.id).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(album.title)}">
+          <div class="meme-album-card card animate-in visible" data-album="${escapeHtml(album.id)}" data-search="${escapeHtml((album.title + ' ' + album.id).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(album.title)}">
             <div class="meme-album-media">${galleryCollage(album.photos, i === 0)}</div>
             <div class="meme-album-info">
               <div class="meme-album-name-row">
@@ -334,7 +334,7 @@ export function createGaleria(ctx) {
           ${albums.map((a, i) => {
             const s = albumSummary(a.items);
             const isFavCount = a.items.filter(u => state.memeFavs.has(u)).length;
-            return `<div class="meme-album-card card animate-in" data-album="${escapeHtml(a.id)}" data-search="${escapeHtml((a.name + ' ' + a.items.join(' ')).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(a.name)}">
+            return `<div class="meme-album-card card animate-in visible" data-album="${escapeHtml(a.id)}" data-search="${escapeHtml((a.name + ' ' + a.items.join(' ')).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(a.name)}">
               <div class="meme-album-media">${memeCollage(a.items, a.id, i === 0)}</div>
               <div class="meme-album-info">
                 <div class="meme-album-name-row">

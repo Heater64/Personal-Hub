@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EVENT_COMPOSITIONS, EVENT_TEMPLATES, eventTemplateFor } from '../personal-hub/src/utils/event-templates.js';
+import { EVENT_COMPOSITIONS, EVENT_TEMPLATES, eventTemplateFor } from '../tamp/src/utils/event-templates.js';
 
 test('las plantillas de días especiales cubren los tipos guardados y degradan a personalizada', () => {
   for (const type of ['custom', 'birthday', 'anniversary', 'memory', 'halloween', 'christmas', 'valentine']) {
@@ -70,10 +70,10 @@ test('cada plantilla cambia la composición de la bienvenida y el Inicio deja vo
   assert.doesNotMatch(admin, /mediaFieldsHTML|typeOptions|templateHint/);
 });
 
-import { expandCalendarCatalog } from '../personal-hub/src/data/calendar-expansion.js';
+import { expandCalendarCatalog } from '../tamp/src/data/calendar-expansion.js';
 import { calendarPayloadForCatalog } from '../api/push.js';
-import { ROUTES } from '../personal-hub/src/routes.js';
-import { cleanEventActions, isExternalAction, isActionRoute, MAX_EVENT_ACTIONS } from '../personal-hub/src/utils/event-actions.js';
+import { ROUTES } from '../tamp/src/routes.js';
+import { cleanEventActions, isExternalAction, isActionRoute, MAX_EVENT_ACTIONS } from '../tamp/src/utils/event-actions.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -81,7 +81,7 @@ function projectPath(...parts) {
   return path.join(ROOT, ...parts);
 }
 
-const hub = (...parts) => projectPath('personal-hub', ...parts);
+const hub = (...parts) => projectPath('tamp', ...parts);
 
 test('el catálogo expandido cubre del 15 de agosto al 1 de octubre', () => {
   const catalog = expandCalendarCatalog({});
@@ -474,11 +474,16 @@ test('las páginas de carga diferida se enrutan con el helper lazy', async () =>
     const idx = main.indexOf(`'${ruta}':`);
     assert.notEqual(idx, -1, `falta la página de ${ruta} en main.js`);
     const linea = main.slice(idx, main.indexOf('\n', idx));
-    assert.ok(linea.includes('lazy('), `${ruta} debería cargarse con lazy()`);
+    if (ruta === '/calendario') {
+      assert.match(main, /import\('\.\/pages\/Calendario\.js'\)/, 'el calendario carga su vista histórica bajo demanda');
+      assert.match(main, /import\('\.\/pages\/Agenda\.js'\)/, 'la agenda compartida carga bajo demanda');
+    } else {
+      assert.ok(linea.includes('lazy('), `${ruta} debería cargarse con lazy()`);
+    }
   }
   // Login se queda estático: es la primera pantalla con la sesión cerrada.
   assert.ok(main.includes("from './pages/Login.js'"), 'Login debería seguir siendo estático');
-  for (const page of ['Home', 'Profile', 'Razones', 'MalDia']) {
+  for (const page of ['Home', 'Profile', 'Razones', 'Agenda']) {
     assert.doesNotMatch(
       main,
       new RegExp(`from '\\./pages/${page}\\.js'`),
@@ -490,7 +495,8 @@ test('las páginas de carga diferida se enrutan con el helper lazy', async () =>
   // main.js son las dos mitades de la misma lista (nada de rutas huérfanas).
   const rutas = ROUTES.map(r => r.path);
   assert.equal(new Set(rutas).size, rutas.length, 'el registro no puede repetir rutas');
-  const mapa = main.slice(main.indexOf('const PAGES = {'), main.indexOf('};', main.indexOf('const PAGES = {')));
+  const inicioMapa = main.indexOf('const PAGES = {');
+  const mapa = main.slice(inicioMapa, main.indexOf('\n};', inicioMapa));
   const paginas = [...mapa.matchAll(/^\s+'([^']+)':/gm)].map(m => m[1]);
   assert.deepEqual(paginas.slice().sort(), rutas.slice().sort(),
     'el mapa de páginas y el registro deben cubrir exactamente lo mismo');
@@ -508,7 +514,7 @@ test('cada página diferida importa su propio CSS y main.css solo trae lo compar
     'Menstruacion.js': 'menstruacion.css',
     // Fase 4: también las que antes colgaban de main.css.
     'Home.js': 'home.css', 'Profile.js': 'profile.css', 'Razones.js': 'razones.css',
-    'MalDia.js': 'maldia.css', 'Juntos.js': 'juntos.css', 'Mapa.js': 'mapa.css',
+    'Agenda.js': 'agenda.css', 'Juntos.js': 'juntos.css', 'Mapa.js': 'mapa.css',
     'Login.js': 'login.css'
   };
 
@@ -529,89 +535,37 @@ test('cada página diferida importa su propio CSS y main.css solo trae lo compar
   }
 });
 
-test('Mal Día: la conversación es una sola y ambos leen lo del otro', async () => {
-  const maldia = await readFile(hub('src', 'pages', 'MalDia.js'), 'utf8');
+test('Mal Día se integra en Agenda y conserva la importación de notas antiguas', async () => {
+  const main = await readFile(hub('src', 'main.js'), 'utf8');
+  const agenda = await readFile(hub('src', 'pages', 'Agenda.js'), 'utf8');
   const service = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
 
-  // La sección arranca oculta y solo se revela con sesión: sin más no hay
-  // por qué enseñar la conversación a un invitado.
-  assert.match(maldia, /id="mdThreadSection"[^>]*\bhidden\b/);
-  assert.match(maldia, /if \(!isAdmin && !userStore\.isLoggedIn\) \{[^}]*section\.hidden = true;/, 
-    'sin sesión la conversación no se enseña');
-
-  // Una sola fuente para los dos: notas (todas si es admin, las suyas si es
-  // ella) + respuestas del admin, ordenadas por fecha.
-  assert.match(maldia, /db\.getMaldiaConversation\(\)/);
-  assert.match(service, /isAdmin \? getAllMaldiaNotes\(\) : getMyMaldiaNotes\(\)/,
-    'el rol decide si ve todas las notas o solo las propias');
-  assert.match(service, /\.sort\(\(a, b\) => String\(a\.createdAt\)\.localeCompare\(String\(b\.createdAt\)\)\)/,
-    'la conversación va en orden cronológico');
-
-  // El admin responde en `content` (legible por cualquier sesión) porque la
-  // RLS de user_progress solo deja leer la fila propia.
-  assert.match(service, /const MALDIA_THREAD_ID = 'maldia_conversacion';/);
-  assert.match(service, /await saveContent\(MALDIA_THREAD_ID, \{/);
-
-  // Cada uno escribe desde el mismo campo: nota si no es admin, respuesta si lo es.
-  assert.match(maldia, /isAdmin\s*\r?\n\s*\? await db\.saveMaldiaReply\(value, replyTarget\)\s*\r?\n\s*: await db\.saveMaldiaNote\(value\)/);
-  assert.match(maldia, /id="mdThreadInput"/, 'la conversación necesita su propio campo de envío');
+  assert.ok(main.includes("'/maldia': lazy(() => import('./pages/Agenda.js').then(m => m.MalDiaPage))"));
+  assert.ok(agenda.includes("export const MalDiaPage = () => renderAgenda('feeling')"));
+  assert.ok(service.includes('let maldiaLegacyImportTried = false;'),
+    'las notas anteriores se pueden importar una sola vez al diario nuevo');
 });
-
-test('Mal Día: el admin responde a un mensaje concreto y puede borrarlo', async () => {
-  const maldia = await readFile(hub('src', 'pages', 'MalDia.js'), 'utf8');
-  const service = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
-
-  // La cita viaja dentro del mensaje y se pinta en las dos cuentas.
-  assert.match(service, /entry\.replyTo = \{/);
-  assert.match(service, /text: String\(replyTo\.text\)\.trim\(\)\.slice\(0, 140\)/);
-  assert.match(maldia, /md-bubble__quote/);
-
-  // Responder y borrar ya no se pintan en cada burbuja: se abren al tocar el
-  // mensaje, y solo el admin tiene el asa que abre sus acciones.
-  assert.match(maldia, /const canAct = iAmAdmin \?/, 'las acciones son solo del admin');
-  assert.match(maldia, /data-msg-idx="\$\{idx\}"/, 'la burbuja del admin se puede tocar');
-  assert.match(maldia, /id="mdMsgSheet"/, 'un solo menú de acciones para toda la conversación');
-  assert.match(maldia, /data-msg-action="reply"/);
-  assert.match(maldia, /data-msg-action="delete"/);
-
-  // Borrar cubre las dos fuentes: respuestas en content y notas en la fila de
-  // ella, con lápida para que su copia local no la resucite.
-  assert.match(service, /async function deleteMaldiaMessage\(message\) \{\s*\r?\n\s*await requireAdmin\(\);/);
-  assert.match(service, /type: MALDIA_NOTES_TYPE, data: remaining/);
-  assert.match(service, /deleted: \[\.\.\.thread\.deleted, key\]/);
-  assert.match(service, /deleteMaldiaMessage,/);
-});
-
-test('Mal Día: las notas viejas del admin entran en la conversación', async () => {
-  const service = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
-
-  // Las notas que él escribió antes de que existiera el chat estaban en su
-  // propia fila de user_progress, que ella no puede leer. Se copian al hilo.
-  assert.match(service, /const ownNotes = myId \? allNotes\.filter\(n => n\.userId && n\.userId === myId\) : \[\];/);
-  assert.match(service, /messages: \[\s*\r?\n\s*\.\.\.thread\.messages,/,
-    'la copia conserva las respuestas que ya hubiera');
-  assert.match(service, /let maldiaLegacyImportTried = false;/, 'la copia se intenta una sola vez');
-});
-
 test('el catálogo de Open When vive en un módulo sin dependencias de UI', async () => {
   const data = await readFile(hub('src', 'data', 'openwhen.data.js'), 'utf8');
+  const seed = await readFile(hub('src', 'data', 'openwhen-seed.data.js'), 'utf8');
   const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
 
   // El módulo de datos no puede arrastrar componentes: si los importara, Home.js
   // y el service de notificaciones voltarían a traer la página entera.
   assert.doesNotMatch(data, /from '\.\.\/components\//);
   assert.doesNotMatch(data, /from '\.\.\/pages\//);
-  assert.ok(data.includes('export const LETTERS = ['));
+  assert.doesNotMatch(seed, /from '\.\.\//);
+  assert.ok(seed.includes('export const LETTERS = ['));
   // Las categorías viven aparte (datos puros) para que el aviso del panel
   // pueda nombrar la categoría nueva sin arrastrar la base de datos.
-  assert.ok(data.includes('export { CATEGORIES };'));
+  assert.ok(data.includes('export { CATEGORIES, LETTERS };'));
   const cats = await readFile(hub('src', 'data', 'openwhen-categories.data.js'), 'utf8');
   assert.ok(cats.includes('export const CATEGORIES = ['));
   assert.ok(data.includes('export const TYPE_META = {'));
   assert.ok(data.includes('export async function loadAllOpenWhenLetters()'));
 
   // Cartas de fábrica, con id único.
-  const ids = [...data.slice(data.indexOf('export const LETTERS = [')).matchAll(/^\s{4}id: '([^']+)'/gm)].map(m => m[1]);
+  const ids = [...seed.matchAll(/^\s{4}id: '([^']+)'/gm)].map(m => m[1]);
   assert.equal(ids.length, 48);
   assert.equal(new Set(ids).size, ids.length, 'las cartas de fábrica necesitan id único');
 
@@ -643,7 +597,7 @@ test('las medias del ciclo están plegadas hasta que se piden', async () => {
 });
 
 test('Open When: las cartas «pronto» son borradores que solo ve el admin', async () => {
-  const data = await readFile(hub('src', 'data', 'openwhen.data.js'), 'utf8');
+  const data = await readFile(hub('src', 'data', 'openwhen-seed.data.js'), 'utf8');
   const cats = await readFile(hub('src', 'data', 'openwhen-categories.data.js'), 'utf8');
   const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
   const admin = await readFile(hub('src', 'pages', 'Admin.js'), 'utf8');
@@ -854,7 +808,7 @@ test('el README documenta el orden de migraciones y el rollback', async () => {
 });
 
 test('el catálogo de ánimos es el nuevo y el histórico conserva el antiguo', async () => {
-  const { MOODS, QUICK_MOODS, PALETTE_MOODS, LEGACY_MOODS, ALL_MOODS, findMood, resolveMood } = await import('../personal-hub/src/data/moods.data.js');
+  const { MOODS, QUICK_MOODS, PALETTE_MOODS, LEGACY_MOODS, ALL_MOODS, findMood, resolveMood } = await import('../tamp/src/data/moods.data.js');
 
   // Atajos de la tarjeta de bienvenida (el quinto botón, «Otras», no es una
   // emoción: abre el catálogo largo).
@@ -897,7 +851,7 @@ test('el catálogo de ánimos es el nuevo y el histórico conserva el antiguo', 
 });
 
 test('se pueden elegir varias emociones y caben en una sola fila', async () => {
-  const { encodeMood, resolveMood, toggleMoodSelection, makeCustomMood, CUSTOM_MOOD_ID } = await import('../personal-hub/src/data/moods.data.js');
+  const { encodeMood, resolveMood, toggleMoodSelection, makeCustomMood, CUSTOM_MOOD_ID } = await import('../tamp/src/data/moods.data.js');
 
   // Una sola emoción se guarda EXACTAMENTE como antes: el histórico no cambia.
   assert.deepEqual(encodeMood(['triste']), { mood: 'triste', label: 'Triste', emoji: '🥺', score: 2 });
@@ -932,7 +886,7 @@ test('se pueden elegir varias emociones y caben en una sola fila', async () => {
 });
 
 test('un estado ya registrado se sigue viendo tal cual se puso', async () => {
-  const { resolveMood, moodEmoji } = await import('../personal-hub/src/data/moods.data.js');
+  const { resolveMood, moodEmoji } = await import('../tamp/src/data/moods.data.js');
 
   // 1. Fila con etiqueta propia (lo que guarda la tabla moods): manda la fila.
   const conDatos = resolveMood({ mood: 'great', label: 'Muy bieeeen', emoji: '🤍', score: 4 });
@@ -1095,8 +1049,6 @@ test('cambiar de foto llega a la otra cuenta sin recargar', async () => {
   const loc = await readFile(hub('src', 'services', 'location.service.js'), 'utf8');
   const pres = await readFile(hub('src', 'services', 'presence.service.js'), 'utf8');
   const home = await readFile(hub('src', 'pages', 'Home.js'), 'utf8');
-  const chat = await readFile(hub('src', 'pages', 'MalDia.js'), 'utf8');
-
   // La foto viaja dentro de la posición y del latido: es la única vía por la
   // que la otra cuenta puede verla (la RLS de `profiles` no le deja leerla).
   assert.ok(loc.includes('export function updateSharedIdentity'), 'falta refrescar la copia de la posición');
@@ -1109,10 +1061,7 @@ test('cambiar de foto llega a la otra cuenta sin recargar', async () => {
 
   // Las vistas dejan de quedarse con la primera foto que pintaron.
   assert.ok(home.includes('themEl.dataset.identity'), 'el mapa no repinta una foto nueva');
-  assert.ok(
-    chat.includes("existing.getAttribute('src') !== profile.avatar"),
-    'el chat no sustituye la foto vieja'
-  );
+  assert.ok(home.includes('themEl.dataset.identity'), 'Inicio repinta la identidad actualizada');
 });
 
 test('las cifras de Sentimientos están plegadas hasta que se piden', async () => {
@@ -2030,11 +1979,20 @@ test('la pantalla diaria lee cada dato de su dueño, sin re-derivarlo', async ()
   assert.match(store, /subscribe\(fn\) \{/);
   assert.match(store, /_emitMoodChange\(\);/, 'el store avisa a quien escucha');
 
-  // Y lo primero que se mira es cómo está hoy; la próxima fecha va detrás.
-  const idxMood = home.indexOf('data-route="/sentimientos"');
-  const idxNext = home.indexOf('data-route="/calendario"');
-  assert.ok(idxMood !== -1 && idxNext !== -1, 'las dos tarjetas del día existen');
-  assert.ok(idxMood < idxNext, 'el estado de ánimo del día va primero');
+  // Primero se muestran ambos estados, luego accesos rápidos y después la fecha.
+  const idxMood = home.indexOf('<div class="home-stats">');
+  const idxShortcuts = home.indexOf('${shortcutsHTML()}');
+  const idxNext = home.indexOf('<div id="homeNextDateSlot">');
+  assert.ok(idxMood !== -1 && idxShortcuts !== -1 && idxNext !== -1, 'los tres bloques del día existen');
+  assert.ok(idxMood < idxShortcuts && idxShortcuts < idxNext, 'los bloques siguen el orden de la planificación');
+  assert.match(home, /Tu estado de hoy/);
+  assert.match(home, /Estado de hoy de tu pareja/);
+});
+
+test('el catálogo de regalos no consulta Supabase solo por importarse', async () => {
+  const gifts = await readFile(hub('src', 'services', 'gifts.service.js'), 'utf8');
+  assert.doesNotMatch(gifts, /\nloadGiftsCatalog\(\);\s*\n/, 'la carga debe iniciarse desde una pantalla que la necesita');
+  assert.match(gifts, /export function loadGiftsCatalog\(\)/);
 });
 
 test('la cabecera y los días juntos mantienen una jerarquía legible', async () => {

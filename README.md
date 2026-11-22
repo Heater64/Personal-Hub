@@ -8,7 +8,7 @@ Vite + Supabase (Auth/Postgres/Storage) + funciones serverless de Vercel.
 ## 1. Estructura
 
 ```
-personal-hub/          Frontend (Vite). index.html → src/main.js
+tamp/          Frontend (Vite). index.html → src/main.js
   public/              manifest.json, sw.js, offline.html, games/ (25 HTML sueltos)
   src/pages/           18 pantallas; las pesadas se cargan con import() diferido
   src/components/      shell, sidebar, bottom-nav, lightbox, page-header
@@ -88,8 +88,8 @@ en `ui.css`: **253,48 kB de JS (gzip 79,77)** y **94,58 kB de CSS (gzip 17,97)**
 ```bash
 npm install
 cp .env.example .env      # plantilla en la raíz; rellena VITE_* (ver §3)
-npm run dev               # http://localhost:5173
-npm run build             # genera personal-hub/dist
+npm run dev               # http://127.0.0.1:5175
+npm run build             # genera tamp/dist
 npm run preview           # sirve el build
 npm test                  # tests de contrato (prepush)
 npm run lint              # ESLint mínimo
@@ -97,8 +97,8 @@ npm run lint              # ESLint mínimo
 
 Contribuir / PRs: ver [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-`npm run dev` = `npx vite personal-hub`, y `npm run build` = `npx vite build personal-hub`.
-Para cambiar de puerto: `npx vite personal-hub --port 5178 --strictPort`.
+`npm run dev` = `npx vite tamp`, y `npm run build` = `npx vite build tamp`.
+Para cambiar de puerto: `npx vite tamp --port 5178 --strictPort`.
 
 > Nota: el script histórico `FIX-SUPABASE.sql` está archivado en [`docs/archive/FIX-SUPABASE.sql`](docs/archive/FIX-SUPABASE.sql). Usa `sql/` como fuente de verdad (ver §4).
 
@@ -106,10 +106,10 @@ Para cambiar de puerto: `npx vite personal-hub --port 5178 --strictPort`.
 
 | Variable | Dónde | Para qué |
 |---|---|---|
-| `VITE_SUPABASE_URL` | cliente (`.env` y `personal-hub/.env`) | URL del proyecto Supabase |
+| `VITE_SUPABASE_URL` | cliente (`.env` y `tamp/.env`) | URL del proyecto Supabase |
 | `VITE_SUPABASE_ANON_KEY` | cliente | clave anon, con RLS activa |
-| `VITE_CLOUDINARY_CLOUD_NAME` | `personal-hub/.env` | subida de multimedia |
-| `VITE_CLOUDINARY_UPLOAD_PRESET` | `personal-hub/.env` | preset **unsigned** |
+| `VITE_CLOUDINARY_CLOUD_NAME` | `tamp/.env` | subida de multimedia |
+| `VITE_CLOUDINARY_UPLOAD_PRESET` | `tamp/.env` | preset **unsigned** |
 | `SUPABASE_SERVICE_ROLE_KEY` | solo servidor | `api/*`. **Nunca** en el cliente |
 | `VAPID_PUBLIC_KEY` | servidor | debe coincidir con el literal en `notifications.service.js` y `public/sw.js` |
 | `VAPID_PRIVATE_KEY` | solo servidor | firma de los push |
@@ -248,8 +248,8 @@ select relname, relrowsecurity from pg_class where relname in ('push_reminders',
 
 ## 5. Despliegue
 
-Vercel detecta el repo y `api/` como funciones serverless. El build es `npx vite build personal-hub`
-y la salida `personal-hub/dist`.
+Vercel detecta el repo y `api/` como funciones serverless. El build es `npx vite build tamp`
+y la salida `tamp/dist`.
 
 1. `git push` a la rama de producción → Vercel despliega.
 2. Si tocaste SQL, aplica las migraciones **antes** de desplegar el código que las exige
@@ -322,7 +322,7 @@ sustituyen a las pruebas manuales de §9.
   hoy la app se comporta igual que antes.
 
   Lo que ya está:
-  - `personal-hub/src/services/media.service.js`: URL pública → ruta, firma por lote, caché con
+  - `tamp/src/services/media.service.js`: URL pública → ruta, firma por lote, caché con
     caducidad, renovación antes de expirar, deduplicación (una firma por objeto, no por render) y paso
     directo para Cloudinary.
   - Galería, memes, audios, avatares, lightbox, fondos de Juntos y portada de Inicio piden su URL con

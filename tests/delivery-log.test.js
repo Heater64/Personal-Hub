@@ -34,7 +34,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectPath = (...parts) => path.join(ROOT, ...parts);
-const hub = (...parts) => projectPath('personal-hub', ...parts);
+const hub = (...parts) => projectPath('tamp', ...parts);
 
 const readApi = () => readFile(projectPath('api', 'push.js'), 'utf8');
 const readAdmin = () => readFile(hub('src', 'pages', 'Admin.js'), 'utf8');

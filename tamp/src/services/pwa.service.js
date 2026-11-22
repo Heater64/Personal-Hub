@@ -124,7 +124,7 @@ function showInstallBanner() {
   const banner = document.createElement('div');
   banner.className = 'pwa-install-banner';
   banner.setAttribute('role', 'dialog');
-  banner.setAttribute('aria-label', 'Descargar Tamp');
+  banner.setAttribute('aria-label', 'Descargar Personal Hub');
   banner.innerHTML = `
     <div class="pwa-install-icon">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -134,7 +134,7 @@ function showInstallBanner() {
       </svg>
     </div>
     <div class="pwa-install-body">
-      <div class="pwa-install-title">Descarga Tamp</div>
+      <div class="pwa-install-title">Descarga Personal Hub</div>
       <div class="pwa-install-text">Llévate la app contigo: acceso rápido, sin internet y novedades al instante. Gratis.</div>
     </div>
     <div class="pwa-install-actions">
@@ -226,7 +226,7 @@ function showUpdateBanner() {
   banner.innerHTML = `
     <div class="pwa-update-icon">✨</div>
     <div class="pwa-update-body">
-      <div class="pwa-update-title">Descarga Tamp</div>
+      <div class="pwa-update-title">Descarga Personal Hub</div>
       <div class="pwa-update-text">Hay una versión nueva lista. Descárgala para verla al instante.</div>
     </div>
     <div class="pwa-update-actions">

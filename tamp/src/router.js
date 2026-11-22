@@ -139,7 +139,7 @@ export class Router {
     this.routes.push({
       path,
       component,
-      title: options.title || 'Tamp',
+      title: options.title || 'Personal Hub',
       protected: options.protected || false,
       adminOnly: options.adminOnly || false,
       skipMood: options.skipMood || false
@@ -335,7 +335,7 @@ export class Router {
     this.currentRoute = { path: finalPath, ...finalRoute };
 
     // Update document title
-    document.title = finalRoute.title || 'Tamp';
+    document.title = finalRoute.title || 'Personal Hub';
 
     // Clean up the previous page (listeners, timers, media)
     if (this._currentComponent?.cleanup) {

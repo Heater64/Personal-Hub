@@ -20,9 +20,9 @@ import {
   MUNDO_DE,
   mundoDe,
   agruparPorMundo,
-} from '../personal-hub/src/data/mundos.data.js';
+} from '../tamp/src/data/mundos.data.js';
 
-const leer = ruta => readFileSync(new URL(`../personal-hub/src/${ruta}`, import.meta.url), 'utf8');
+const leer = ruta => readFileSync(new URL(`../tamp/src/${ruta}`, import.meta.url), 'utf8');
 
 /** Ids de un array literal del código fuente, sin evaluar el módulo. */
 function idsDeArray(src, marca) {

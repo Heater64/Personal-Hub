@@ -8,7 +8,7 @@ import {
   isoDateTimeToDisplay,
   isoToDisplay,
   maskDateInput,
-} from '../personal-hub/src/utils/datefield.js';
+} from '../tamp/src/utils/datefield.js';
 
 test('una fecha ISO se lee día/mes/año', () => {
   assert.equal(isoToDisplay('2026-11-18'), '18/11/2026');

@@ -1,5 +1,5 @@
 /* ==========================================
-   Tamp — Now Playing Bar (reproductor global)
+   Personal Hub — Now Playing Bar (reproductor global)
    Barra fija tipo Spotify / YouTube Music: aparece
    al reproducir cualquier canción y sigue sonando al
    navegar entre secciones (el <audio> vive en
@@ -97,7 +97,7 @@ export function NowPlayingBar(router) {
     }
 
     bar.classList.add('is-visible');
-    const title = info.title || 'Tamp';
+    const title = info.title || 'Personal Hub';
     const artist = info.artist || '';
     const hasCover = !!info.cover;
 
@@ -157,7 +157,7 @@ export function NowPlayingBar(router) {
 
   function renderOverlay() {
     if (!info) { setExpanded(false); return; }
-    const title = info.title || 'Tamp';
+    const title = info.title || 'Personal Hub';
     const artist = info.artist || '';
     const hasCover = !!info.cover;
     const repeatMode = player.repeat;
@@ -166,7 +166,7 @@ export function NowPlayingBar(router) {
     overlay.innerHTML = `
       <div class="npf-top">
         <button type="button" class="npf-collapse" id="npfCollapse" aria-label="Contraer reproductor" title="Contraer">${ICON_CHEVRON_DOWN}</button>
-        <span class="npf-brand">Tamp</span>
+        <span class="npf-brand">Personal Hub</span>
         <span class="npf-top-spacer"></span>
       </div>
 

@@ -1,8 +1,8 @@
-import { CATEGORIES } from '../personal-hub/src/data/openwhen-categories.data.js';
-import { mergeOpenWhenLetters } from '../personal-hub/src/data/openwhen-seed.data.js';
-import { DEFAULT_RAZONES, normalizeReasons } from '../personal-hub/src/data/reasons.data.js';
-import { reasonOfDay } from '../personal-hub/src/utils/pro-insights.js';
-import { OPENWHEN_READ_PREFIX, openWhenReadIds } from '../personal-hub/src/utils/stats-metrics.js';
+import { CATEGORIES } from '../tamp/src/data/openwhen-categories.data.js';
+import { mergeOpenWhenLetters } from '../tamp/src/data/openwhen-seed.data.js';
+import { DEFAULT_RAZONES, normalizeReasons } from '../tamp/src/data/reasons.data.js';
+import { reasonOfDay } from '../tamp/src/utils/pro-insights.js';
+import { OPENWHEN_READ_PREFIX, openWhenReadIds } from '../tamp/src/utils/stats-metrics.js';
 
 async function loadContent(db, id) {
   const { data, error } = await db.from('content').select('data').eq('id', id).maybeSingle();

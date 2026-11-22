@@ -1,8 +1,13 @@
 /* ==========================================
    location.service.js — Dónde está cada uno.
 
-   La ubicación se comparte dentro de la pareja en `couple_locations`.
-   Las instalaciones anteriores a la migración 029 conservan su ruta antigua.
+   Misma idea que presence.service.js, y por la misma razón: la RLS de esta
+   app solo deja leer al admin, así que cada rol escribe donde el otro SÍ
+   puede leer, sin tocar el esquema.
+
+     · admin    → `content` id `location_admin` (lectura abierta a todos)
+     · usuaria  → `user_progress` type `location` (el admin la lee por RLS)
+
    La web pide la posición al abrir la portada y al volver a primer plano.
    Dentro del APK, `DeviceStatusService` sigue enviando batería, red y
    ubicación con la app cerrada, en la misma fila que esto.
@@ -10,7 +15,7 @@
 
 import { supabase } from './supabase.js';
 import { isNative } from './native.service.js';
-import { deviceFactsSnapshot, getDeviceStatus, onDeviceStatus, refreshBackgroundStatus } from './device.service.js';
+import { deviceFactsSnapshot } from './device.service.js';
 
 const ADMIN_ROW_ID = 'location_admin';
 const SHARE_MS = 120000; // repite tu posición cada 2 min en uso
@@ -20,11 +25,6 @@ let self = null; // { userId, isAdmin }
 let shareTimer = null;
 let onVisible = null;
 let myLocation = null; // { lat, lng } de este dispositivo
-const distanceListeners = new Set();
-let nextDistanceWatch = 0;
-
-const hasNativePermission = perm =>
-  perm?.location === 'granted' || perm?.coarseLocation === 'granted';
 
 /** ¿La fila está lo bastante fresca para usarla? */
 export function isFresh(at) {
@@ -34,6 +34,9 @@ export function isFresh(at) {
 
 /**
  * Posición actual del dispositivo.
+ *
+ * enableHighAccuracy va apagado a propósito: para una distancia entre dos
+ * ciudades sobra con la antena y gasta mucha menos batería que el GPS.
  *
  * Dentro del APK, `navigator.geolocation` no pide el permiso de Android por sí
  * solo: el plugin nativo sí, y además devuelve el error tipado que el panel
@@ -59,8 +62,7 @@ export async function locationPermissionState() {
     const mod = await import('@capacitor/geolocation').catch(() => null);
     try {
       const perm = await mod?.Geolocation?.checkPermissions();
-      if (hasNativePermission(perm)) return 'granted';
-      if (perm?.location === 'denied') return 'denied';
+      if (perm?.location === 'granted' || perm?.location === 'denied') return perm.location;
       return 'prompt';
     } catch {
       return 'unknown';
@@ -77,18 +79,24 @@ export async function locationPermissionState() {
 async function currentPosition({ prompt = false } = {}) {
   if (isNative()) {
     const mod = await import('@capacitor/geolocation').catch(() => null);
-    if (!mod) throw new Error('sin geolocalización nativa');
-    const { Geolocation } = mod;
-    let perm = await Geolocation.checkPermissions();
-    if (!hasNativePermission(perm) && prompt) {
-      perm = await Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] });
+    if (mod) {
+      const { Geolocation } = mod;
+      try {
+        let perm = await Geolocation.checkPermissions();
+        // El diálogo del sistema solo sale si la persona lo pidió (su botón).
+        // Abrir la portada no debe abrir permisos por su cuenta.
+        if (perm.location !== 'granted' && prompt) perm = await Geolocation.requestPermissions();
+        if (perm.location !== 'granted') throw deniedError(perm.location !== 'denied');
+        return await Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          timeout: 12000,
+          maximumAge: 60000,
+        });
+      } catch (err) {
+        if (err?.code === 1) throw err;
+        // Cualquier otro fallo cae al navegador antes de rendirse.
+      }
     }
-    if (!hasNativePermission(perm)) throw deniedError(perm.location !== 'denied');
-    return Geolocation.getCurrentPosition({
-      enableHighAccuracy: perm.location === 'granted',
-      timeout: 12000,
-      maximumAge: 60000,
-    });
   }
 
   // En la web, `getCurrentPosition` abre el diálogo del sitio si aún no hay
@@ -164,56 +172,23 @@ async function deviceFacts(pos) {
 }
 
 /** Escribe tu posición donde la otra persona puede leerla. */
-function setMyLocation(location) {
-  if (!location || (location.at === myLocation?.at && location.sentAt === myLocation?.sentAt)) return;
-  myLocation = location;
-  for (const notify of distanceListeners) notify();
-}
-
-function statusFor(error) {
-  return error?.code === 1 ? (error.needsPrompt ? 'prompt' : 'denied') : 'error';
-}
-
-async function push(account, setStatus = account?.onStatus, position) {
-  if (!account || self !== account) return;
-  if (account.sending && !position) return account.sending;
-  if (account.sending) await account.sending;
-  if (self !== account) return;
-  account.sending = publish(account, setStatus, position).finally(() => { account.sending = null; });
-  return account.sending;
-}
-
-async function publish(account, setStatus, position) {
-  const { userId, isAdmin } = account;
-  const report = status => { if (self === account) setStatus?.(status); };
+async function push({ userId, isAdmin, coupleId }, setStatus) {
+  if (!userId || !supabase) return;
   try {
-    const { coupleId, legacy } = await account.scope;
-    if (self !== account) return;
-    if (isNative() && getDeviceStatus().background.running) {
-      const mine = fetchMyLocation();
-      report(mine && isFresh(mine.at) ? 'ok' : 'error');
-      return;
-    }
-    const pos = position || await currentPosition();
+    const pos = await currentPosition();
     const at = new Date().toISOString();
-    const locationAt = Number.isFinite(pos.timestamp) && pos.timestamp > 0
-      ? new Date(pos.timestamp).toISOString()
-      : at;
     const data = {
       lat: Number(pos.coords.latitude.toFixed(5)),
       lng: Number(pos.coords.longitude.toFixed(5)),
       at,
-      location_at: locationAt,
       user_id: userId,
       // El nombre y la foto viajan con la posición: la cuenta de ella no
       // puede leer la fila de `profiles` del admin (RLS), así que si esto
       // dependiera de esa lectura el mapa se quedaría sin nombre ni cara.
-      name: account.name,
-      avatar: account.avatar,
+      name: self?.name || '',
+      avatar: self?.avatar || '',
       ...(await deviceFacts(pos)),
     };
-    if (self !== account) return;
-    setMyLocation(toLocation(data, userId));
 
     if (coupleId) {
       const { error } = await supabase.from('couple_locations').upsert(
@@ -221,44 +196,33 @@ async function publish(account, setStatus, position) {
           couple_id: coupleId,
           user_id: userId,
           data,
-          location_at: locationAt,
+          location_at: data.at,
           sent_at: at,
           updated_at: at,
         },
         { onConflict: 'couple_id,user_id' }
       );
       if (error) throw error;
-    } else if (legacy && isAdmin) {
-      const { error } = await supabase
+    } else if (isAdmin) {
+      await supabase
         .from('content')
         .upsert({ id: ADMIN_ROW_ID, data, updated_at: at }, { onConflict: 'id' });
-      if (error) throw error;
-    } else if (legacy) {
-      const { error } = await supabase
+    } else {
+      await supabase
         .from('user_progress')
         .upsert(
           { user_id: userId, type: 'location', data, updated_at: at },
           { onConflict: 'user_id,type' }
         );
-      if (error) throw error;
     }
-    report('ok');
+    // La propia se guarda entera en memoria: el panel calcula con ella sin
+    // volver a encender el GPS cada minuto y el mapa enseña tus datos.
+    myLocation = data;
+    setStatus?.('ok');
   } catch (err) {
-    report(statusFor(err));
-  }
-}
-
-async function loadScope(account) {
-  try {
-    const { data, error } = await supabase
-      .from('couple_members')
-      .select('couple_id')
-      .eq('user_id', account.userId)
-      .maybeSingle();
-    const legacy = ['42P01', 'PGRST205'].includes(error?.code);
-    return { coupleId: data?.couple_id || null, legacy, retry: !!error && !legacy };
-  } catch {
-    return { coupleId: null, legacy: false, retry: true };
+    // 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT.
+    // «prompt» es distinto de «denied»: todavía se puede pedir, con un botón.
+    setStatus?.(err?.code === 1 ? (err?.needsPrompt ? 'prompt' : 'denied') : 'error');
   }
 }
 
@@ -269,19 +233,29 @@ async function loadScope(account) {
 export function startLocationSharing({ userId, isAdmin, name, avatar } = {}, onStatus) {
   stopLocationSharing();
   if (!userId || !supabase) return;
-  const account = { userId: String(userId), isAdmin: !!isAdmin, name: name || '', avatar: avatar || '', onStatus, sending: null };
-  self = account;
-  account.scope = loadScope(account);
-  const tick = async () => {
-    if (document.visibilityState === 'hidden') return;
-    if ((await account.scope).retry && self === account) account.scope = loadScope(account);
-    if (isNative()) await refreshBackgroundStatus();
-    await push(account);
-  };
-  void tick();
-  shareTimer = setInterval(tick, SHARE_MS);
+  // La otra persona puede cambiar de sesión en este móvil: el id cacheado
+  // dejaría de ser suyo y acabaría pintando mi foto en los dos círculos.
+  cachedPartnerId = null;
+  self = { userId: String(userId), isAdmin: !!isAdmin, coupleId: null, name: name || '', avatar: avatar || '' };
+
+  // La pareja es el contrato definitivo. Se conserva la ruta heredada solo
+  // mientras una instalación antigua aún no haya aplicado 029/030.
+  void supabase
+    .from('couple_members')
+    .select('couple_id')
+    .eq('user_id', self.userId)
+    .maybeSingle()
+    .then(({ data }) => {
+      if (!self || data?.couple_id == null) return;
+      self.coupleId = data.couple_id;
+      void push(self, onStatus);
+    })
+    .catch(() => {});
+
+  push(self, onStatus);
+  shareTimer = setInterval(() => push(self, onStatus), SHARE_MS);
   onVisible = () => {
-    if (document.visibilityState === 'visible') void tick();
+    if (document.visibilityState === 'visible') push(self, onStatus);
   };
   document.addEventListener('visibilitychange', onVisible);
 }
@@ -311,16 +285,31 @@ export function updateSharedIdentity({ name, avatar } = {}) {
  * diálogo del sitio. Devuelve true si quedó concedido.
  */
 export async function requestLocationPermission(onStatus) {
-  const account = self;
-  if (!account) return false;
+  if (!self) return false;
+
+  if (isNative()) {
+    const mod = await import('@capacitor/geolocation').catch(() => null);
+    if (mod) {
+      try {
+        const perm = await mod.Geolocation.requestPermissions();
+        const granted = perm.location === 'granted';
+        if (granted) await push(self, onStatus);
+        onStatus?.(granted ? 'ok' : 'denied');
+        return granted;
+      } catch {
+        /* cae al camino del navegador */
+      }
+    }
+  }
+
   try {
-    const pos = await currentPosition({ prompt: true });
-    if (self !== account) return false;
-    await push(account, onStatus, pos);
-    return self === account;
+    // Con gesto de por medio sí se puede abrir el diálogo del navegador.
+    await currentPosition({ prompt: true });
+    await push(self, onStatus);
+    return true;
   } catch (err) {
-    if (self === account) onStatus?.(statusFor(err));
-    return self === account && err?.code !== 1 && await locationPermissionState() === 'granted';
+    onStatus?.(err?.code === 1 ? (err?.needsPrompt ? 'prompt' : 'denied') : 'error');
+    return false;
   }
 }
 
@@ -334,67 +323,59 @@ export function stopLocationSharing() {
     onVisible = null;
   }
   self = null;
-  myLocation = null;
-  cachedPartnerId = null;
 }
 
 /** Última posición conocida de la otra persona: { lat, lng, at, userId } o null. */
 export async function fetchPartnerLocation() {
-  return self ? queryPartnerLocation(self).catch(() => null) : null;
+  if (!self?.userId || !supabase) return null;
+  try {
+    if (self.coupleId) {
+      const { data, error } = await supabase
+        .from('couple_locations')
+        .select('user_id, data, location_at, sent_at')
+        .eq('couple_id', self.coupleId)
+        .neq('user_id', self.userId)
+        .order('sent_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const row = data?.[0];
+      if (!row?.data) return null;
+      return toLocation({ ...row.data, location_at: row.location_at || row.data.location_at }, row.user_id);
+    }
+    if (self.isAdmin) {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('user_id, data, updated_at')
+        .eq('type', 'location')
+        .neq('user_id', self.userId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const row = data?.[0];
+      if (!row?.data) return null;
+      return toLocation(row.data, row.user_id);
+    }
+
+    const { data, error } = await supabase
+      .from('content')
+      .select('data, updated_at')
+      .eq('id', ADMIN_ROW_ID)
+      .maybeSingle();
+    if (error) throw error;
+    const loc = data?.data ? toLocation(data.data, data.data.user_id) : null;
+    // Si la fila dice ser de esta misma cuenta, se escribió por error desde
+    // este móvil: no es la otra persona y no debe pintarse como pareja.
+    if (loc && loc.userId && loc.userId === self.userId) return null;
+    return loc;
+  } catch {
+    return null;
+  }
 }
 
-async function queryPartnerLocation(account) {
-  const { coupleId, legacy, retry } = await account.scope;
-  if (self !== account) return null;
-  if (retry) throw new Error('ubicación temporalmente no disponible');
-  if (coupleId) {
-    const { data, error } = await supabase
-      .from('couple_locations')
-      .select('user_id, data, location_at, sent_at')
-      .eq('couple_id', coupleId)
-      .neq('user_id', account.userId)
-      .order('sent_at', { ascending: false })
-      .limit(1);
-    if (error) throw error;
-    const row = data?.[0];
-    if (!row?.data || self !== account) return null;
-    return toLocation({ ...row.data, location_at: row.location_at || row.data.location_at }, row.user_id, row.sent_at);
-  }
-  if (!legacy) return null;
-  if (account.isAdmin) {
-    const { data, error } = await supabase
-      .from('user_progress')
-      .select('user_id, data, updated_at')
-      .eq('type', 'location')
-      .neq('user_id', account.userId)
-      .order('updated_at', { ascending: false })
-      .limit(1);
-    if (error) throw error;
-    const row = data?.[0];
-    if (!row?.data || self !== account) return null;
-    return toLocation(row.data, row.user_id, row.updated_at);
-  }
-
-  const { data, error } = await supabase
-    .from('content')
-    .select('data, updated_at')
-    .eq('id', ADMIN_ROW_ID)
-    .maybeSingle();
-  if (error) throw error;
-  if (self !== account || !data?.data || data.data.user_id === account.userId) return null;
-  return toLocation(data.data, data.data.user_id, data.updated_at);
-}
-
-const optionalNumber = value => {
-  if (value == null || value === '' || typeof value === 'boolean') return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-};
-
-function toLocation(data, userId, sentAt) {
-  const lat = optionalNumber(data?.lat);
-  const lng = optionalNumber(data?.lng);
-  if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+function toLocation(data, userId) {
+  const lat = Number(data?.lat);
+  const lng = Number(data?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return {
     lat,
     lng,
@@ -402,18 +383,18 @@ function toLocation(data, userId, sentAt) {
     // la hora real de GPS: una última ubicación no puede aparentar actualidad
     // solo porque el servicio siguió enviando el porcentaje de batería.
     at: data?.location_at || data?.at || null,
-    sentAt: sentAt || data?.at || null,
-    locationAgeMs: optionalNumber(data?.location_age_ms),
+    sentAt: data?.at || null,
+    locationAgeMs: Number.isFinite(Number(data?.location_age_ms)) ? Number(data.location_age_ms) : null,
     userId: data?.user_id || userId || null,
     name: data?.name || '',
     avatar: data?.avatar || '',
     // Datos del dispositivo: viajan con la posición, si el móvil los da.
-    battery: optionalNumber(data?.battery),
+    battery: Number.isFinite(Number(data?.battery)) ? Number(data.battery) : null,
     charging: data?.charging === true,
     net: data?.net || '',
-    mbps: optionalNumber(data?.mbps),
-    speed: optionalNumber(data?.speed),
-    accuracy: optionalNumber(data?.accuracy),
+    mbps: Number.isFinite(Number(data?.mbps)) ? Number(data.mbps) : null,
+    speed: Number.isFinite(Number(data?.speed)) ? Number(data.speed) : null,
+    accuracy: Number.isFinite(Number(data?.accuracy)) ? Math.round(Number(data.accuracy)) : null,
     // true = la fila la escribió el servicio en segundo plano del APK.
     bg: data?.bg === true,
   };
@@ -446,38 +427,35 @@ let cachedPartnerId = null;
  * salen de filas que los dos roles ya pueden leer.
  */
 export async function fetchPartnerIdentity() {
-  const account = self;
-  if (!account) return null;
+  if (!self?.userId || !supabase) return null;
   if (cachedPartnerId) return cachedPartnerId;
 
   const located = await fetchPartnerLocation();
-  if (self !== account) return null;
   if (located?.userId) {
     cachedPartnerId = located.userId;
     return cachedPartnerId;
   }
 
   try {
-    const { coupleId, legacy } = await account.scope;
-    if (self !== account) return null;
-    if (coupleId) {
+    if (self.coupleId) {
       const { data } = await supabase
         .from('couple_members')
         .select('user_id')
-        .eq('couple_id', coupleId)
-        .neq('user_id', account.userId)
+        .eq('couple_id', self.coupleId)
+        .neq('user_id', self.userId)
         .limit(1);
-      if (self === account) cachedPartnerId = data?.[0]?.user_id || null;
-      return self === account ? cachedPartnerId : null;
+      if (data?.[0]?.user_id) {
+        cachedPartnerId = data[0].user_id;
+        return cachedPartnerId;
+      }
     }
-    if (!legacy) return null;
-    if (account.isAdmin) {
+    if (self.isAdmin) {
       const { data } = await supabase
         .from('user_progress')
         .select('user_id')
-        .neq('user_id', account.userId)
+        .neq('user_id', self.userId)
         .limit(1);
-      if (self === account && data?.[0]?.user_id) {
+      if (data?.[0]?.user_id) {
         cachedPartnerId = data[0].user_id;
         return cachedPartnerId;
       }
@@ -487,7 +465,7 @@ export async function fetchPartnerIdentity() {
         .select('data')
         .eq('id', 'presence_admin')
         .maybeSingle();
-      if (self === account && data?.data?.user_id) {
+      if (data?.data?.user_id) {
         cachedPartnerId = data.data.user_id;
         return cachedPartnerId;
       }
@@ -497,15 +475,14 @@ export async function fetchPartnerIdentity() {
   }
 
   try {
-    if (self !== account) return null;
-    const { data } = await supabase.from('profiles').select('id').neq('id', account.userId).limit(1);
-    if (self === account && data?.[0]?.id) cachedPartnerId = data[0].id;
+    const { data } = await supabase.from('profiles').select('id').neq('id', self.userId).limit(1);
+    if (data?.[0]?.id) cachedPartnerId = data[0].id;
   } catch {
     /* RLS sin acceso: el círculo se queda con el corazón */
   }
 
   // Nunca devolver mi propio id: acabaría pintando mi foto como la pareja.
-  return self === account && cachedPartnerId !== account.userId ? cachedPartnerId : null;
+  return cachedPartnerId && cachedPartnerId !== self.userId ? cachedPartnerId : null;
 }
 
 /** Distancia en km entre dos coordenadas (haversine). */
@@ -523,8 +500,7 @@ export function distanceKm(a, b) {
 /** 0.85 → «850 m»; 3.2 → «3,2 km»; 42.6 → «43 km». */
 export function formatDistance(km) {
   if (!Number.isFinite(km)) return '—';
-  if (km < 0.01) return km === 0 ? '0 m' : '<10 m';
-  if (km < 1) return `${Math.round((km * 1000) / 10) * 10} m`;
+  if (km < 1) return `${Math.max(10, Math.round((km * 1000) / 10) * 10)} m`;
   const value = km < 10 ? km.toFixed(1).replace('.', ',') : String(Math.round(km));
   return `${value.replace(/,0$/, '')} km`;
 }
@@ -569,61 +545,32 @@ export function togetherInfo(me, partner) {
 
 export function watchDistance(handler, { intervalMs = 60000 } = {}) {
   let alive = true;
-  let querying = false;
-  let again = false;
-  let partner = null;
-  let channel = null;
-  const account = self;
-  const emitDistance = () => {
-    if (!alive || self !== account) return;
-    const me = fetchMyLocation();
-    const stale = !!partner && !isFresh(partner.at);
-    const km = me && isFresh(me.at) && !stale ? distanceKm(me, partner) : null;
-    handler({ km, partner, partnerId: partner?.userId || null, stale });
-  };
 
   const tick = async () => {
-    if (!alive || !account || self !== account || document.visibilityState === 'hidden') return;
-    if (querying) {
-      again = true;
+    const partner = await fetchPartnerLocation();
+    if (!alive) return;
+    if (!partner) {
+      handler({ km: null, partner: null, partnerId: null, stale: false });
       return;
     }
-    querying = true;
-    try {
-      const { coupleId } = await account.scope;
-      if (!alive || self !== account) return;
-      if (coupleId && !channel) {
-        channel = supabase.channel(`location:${coupleId}:${++nextDistanceWatch}`)
-          .on('postgres_changes', {
-            event: '*', schema: 'public', table: 'couple_locations', filter: `couple_id=eq.${coupleId}`,
-          }, payload => {
-            const userId = payload.new?.user_id || payload.old?.user_id;
-            if (userId !== account.userId) void tick();
-          }).subscribe();
-      }
-      partner = await queryPartnerLocation(account);
-    } catch {
-      // Un corte de red conserva el último dato y el reloj indica si ha caducado.
-    } finally {
-      querying = false;
-      emitDistance();
-      if (again) {
-        again = false;
-        void tick();
-      }
+    // La primera vez el GPS puede tardar más que la lectura del otro lado:
+    // se le da un margen antes de aceptar que no hay distancia.
+    let me = fetchMyLocation();
+    if (!me) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!alive) return;
+      me = fetchMyLocation();
     }
+    const km = me ? distanceKm(me, partner) : null;
+    handler({
+      km,
+      partner,
+      partnerId: partner.userId,
+      stale: !isFresh(partner.at),
+    });
   };
 
-  distanceListeners.add(emitDistance);
-  const offDevice = isNative() ? onDeviceStatus(({ background }) => {
-    const row = background.data;
-    if (row?.user_id !== account?.userId || !self || self !== account) return;
-    const parsed = toLocation(row, row.user_id);
-    if (parsed && Date.parse(parsed.at) >= (Date.parse(myLocation?.at) || 0)) {
-      setMyLocation(parsed);
-    }
-  }) : null;
-  void tick();
+  tick();
   const timer = setInterval(tick, intervalMs);
   const onVis = () => {
     if (document.visibilityState === 'visible') tick();
@@ -632,9 +579,6 @@ export function watchDistance(handler, { intervalMs = 60000 } = {}) {
 
   return () => {
     alive = false;
-    distanceListeners.delete(emitDistance);
-    offDevice?.();
-    if (channel) void supabase.removeChannel(channel);
     clearInterval(timer);
     document.removeEventListener('visibilitychange', onVis);
   };
@@ -642,10 +586,5 @@ export function watchDistance(handler, { intervalMs = 60000 } = {}) {
 
 /** Tu propia posición, la última que se escribió. */
 export function fetchMyLocation() {
-  const row = getDeviceStatus().background.data;
-  if (self && row?.user_id === self.userId) {
-    const location = toLocation(row, row.user_id);
-    if (location && Date.parse(location.at) >= (Date.parse(myLocation?.at) || 0)) return location;
-  }
   return myLocation;
 }

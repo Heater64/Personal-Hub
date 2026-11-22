@@ -24,7 +24,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
-const indexHtml = readFileSync(new URL('../personal-hub/index.html', import.meta.url), 'utf8');
+const indexHtml = readFileSync(new URL('../tamp/index.html', import.meta.url), 'utf8');
 
 /** Cabeceras de la regla que cubre todas las rutas. */
 function globalHeaders() {
@@ -101,7 +101,7 @@ test('todo script externo está permitido por la CSP, también los que se cargan
   // desde renderMath.js al abrir el calendario. Ese origen tiene que seguir
   // permitido o las fórmulas dejan de renderizarse solo en producción.
   const renderMath = readFileSync(
-    new URL('../personal-hub/src/utils/renderMath.js', import.meta.url),
+    new URL('../tamp/src/utils/renderMath.js', import.meta.url),
     'utf8'
   );
   const katex = renderMath.match(/https:\/\/cdn\.jsdelivr\.net/);

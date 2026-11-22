@@ -1,69 +1,76 @@
+/* ==========================================
+   MAPA — pantalla completa del widget de distancia
+   ==========================================
+   El mismo mapa de la hoja de la portada, pero ocupando toda la pantalla:
+   cabecera propia con el botón de volver y el mapa creciendo hasta abajo. */
 .mapa-page {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--surface-0);
-  color: var(--text-primary);
-}
-
-.mapa-page__top,
-.mapa-page__body {
-  width: min(100%, 1100px);
-  margin-inline: auto;
-  padding-inline: var(--sp-16);
+  background: var(--bg);
+  color: var(--text);
 }
 
 .mapa-page__top {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  display: flex;
   align-items: center;
-  gap: var(--sp-12);
-  padding-block: calc(env(safe-area-inset-top, 0px) + var(--sp-12)) var(--sp-16);
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
 }
-
 .mapa-page__back {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--theme-divider-strong);
-  border-radius: var(--r-full);
-  background: var(--theme-surface);
-  color: var(--text-primary);
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
   cursor: pointer;
 }
-
 .mapa-page__back svg {
-  transform: rotate(180deg);
+  transform: rotate(90deg);
 }
-
-.mapa-page__back:focus-visible {
-  outline: 2px solid var(--theme-accent);
-  outline-offset: 2px;
-}
-
 .mapa-page__title {
+  flex: 1;
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
+  font-size: 16px;
   font-weight: 600;
   text-align: center;
 }
+.mapa-page__spacer {
+  width: 38px;
+}
 
 .mapa-page__body {
+  display: flex;
   flex: 1;
-  padding-block-end: calc(env(safe-area-inset-bottom, 0px) + var(--sp-24));
+  flex-direction: column;
+  padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+.mapa-page__loading {
+  margin: auto;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  text-align: center;
 }
 
-.mapa-page .distmap__canvas,
-.mapa-page .distmap__placeholder {
-  height: clamp(280px, 51dvh, 600px);
+/* El mapa ocupa todo el alto que sobre; las fichas, justo debajo. */
+.mapa-page .distmap {
+  flex: 1;
+  gap: 12px;
 }
-
-@media (min-width: 769px) {
-  .mapa-page__top,
-  .mapa-page__body {
-    padding-inline: var(--sp-24);
-  }
+.mapa-page .distmap__frame {
+  display: flex;
+  flex: 1;
+  min-height: 300px;
+}
+.mapa-page .distmap__canvas {
+  flex: 1;
+  height: auto;
+  min-height: 300px;
+}
+.mapa-page .distmap__devices {
+  padding-bottom: 4px;
 }

@@ -53,7 +53,7 @@
 
 ## 6. Verificación
 
-- `npx vite build personal-hub` y `./gradlew assembleDebug`.
+- `npx vite build tamp` y `./gradlew assembleDebug`.
 - Altura con fuente del sistema 1,0×, 1,3×, 1,5× y 2,0×: cabe en las tres composiciones; a partir de 1,7× se oculta la hora en la composición baja.
 - Pendiente de probar en dispositivo real (render, no solo geometría).
 

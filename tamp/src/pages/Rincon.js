@@ -83,6 +83,7 @@ export function RinconPage(router) {
   } else if (router?.currentRoute?.query?.tab === 'curiosidades') {
     state.view = 'curiosidades';
     state.curiosidadTab = 'landing';
+    state.curioDetail = null;
   }
 
   // Secciones independientes del Rincón: cada ruta abre su contenido directo
@@ -99,11 +100,16 @@ export function RinconPage(router) {
       state.audiosMonth = null;
     }
   }
-  else if (_rinconBase === '/curiosidades') { state.view = 'curiosidades'; state.curiosidadTab = 'landing'; }
+  else if (_rinconBase === '/curiosidades') {
+    state.view = 'curiosidades';
+    state.curiosidadTab = 'landing';
+    state.curioDetail = null;
+  }
 
   // Colecciones de curiosidades desde la sidebar: /curiosidades?cat=spb|sp|gatos
   if (_rinconBase === '/curiosidades' && ['spb', 'sp', 'gatos'].includes(router?.currentRoute?.query?.cat)) {
     state.curiosidadTab = router.currentRoute.query.cat;
+    state.curioDetail = null;
   }
 
   // Mapa de secciones internas del Rincón → rutas independientes
@@ -163,7 +169,10 @@ export function RinconPage(router) {
     // Cabecera única (volver + título) y pestañas compactas: las cuatro
     // secciones (Galería, Memes, Audios, Minecraft) son rutas independientes.
     const currentBase = (router.getCurrentPath() || '').split('?')[0];
-    const activeTab = currentBase === '/memes' ? 'memes' : currentBase === '/audios' ? 'audios' : 'galeria';
+    const activeTab = currentBase === '/memes' ? 'memes'
+      : currentBase === '/audios' ? 'audios'
+      : currentBase === '/rincon' && state.view === 'memes' ? 'memes'
+      : 'galeria';
     const TABS = [
       { id: 'galeria', label: 'Galería', icon: 'image', sub: 'Cada foto guarda un recuerdo' },
       { id: 'memes', label: 'Memes', icon: 'smile', sub: 'Tu colección de Humor' },

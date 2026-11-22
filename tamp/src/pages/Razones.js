@@ -15,7 +15,7 @@
 import '../styles/razones.css';
 import { h, icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { db } from '../services/db.service.js';
-import { escapeHtml } from '../utils/escape.js';
+import { escapeHtml, safeUrl } from '../utils/escape.js';
 import { userPrefKey } from '../utils/userStorage.js';
 import { todayISO } from '../utils/format.js';
 import { onContentChange } from '../services/realtime.service.js';
@@ -23,10 +23,24 @@ import { userStore } from '../stores/user.store.js';
 import { renderPageHeader } from '../components/PageHeader.js';
 import { reasonOfDay } from '../utils/pro-insights.js';
 import { saveReasonWidget } from '../services/widgets.service.js';
-import { DEFAULT_RAZONES, normalizeReasons } from '../data/reasons.data.js';
 
 const FAV_KEY = () => userPrefKey('razonesFavoritas');
 const READ_KEY = () => userPrefKey('razonesRead');
+
+// Contenido por defecto (primer arranque, hasta que Admin guarde su lista)
+const DEFAULT_RAZONES = [
+  'Por lo lista, lo hermosa y lo increíble que eres.',
+  'Por todo lo que me has enseñado y lo que me sigues enseñando cada día.',
+  'Por toda la paciencia que tienes conmigo.',
+  'Por lo mucho que me cuidas y te preocupas por mí.',
+  'Por lo cariñosa que eres en cada momento.',
+  'Por lo divertida y graciosa que eres.',
+  'Por cómo me miras, como si fuera lo más especial del mundo.',
+  'Porque contigo cualquier plan es el mejor plan.',
+  'Por cómo haces que los días grises se vuelvan coloridos.',
+  'Por tu forma de ser, única e irrepetible.',
+  'No son las únicas razones pero así te obligaré a entrar de vez en cuando para ver las nuevas jsjsj',
+];
 
 const MONTHS_SHORT = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -78,14 +92,34 @@ export function RazonesPage() {
   // CARGA DE DATOS (db con fallback estático)
   // ==========================================
   async function loadRazones() {
-    let raw = null;
+    let raw = [];
     try {
-      raw = await db.getReasons({ fallback: null });
+      const r = await db.getReasons();
+      if (Array.isArray(r) && r.length) raw = r;
     } catch { /* fallback */ }
 
-    // Un resultado vacío guardado también es válido.
-    const missing = raw === null && localStorage.getItem('ph.config.razones') === null;
-    razones = normalizeReasons(missing ? DEFAULT_RAZONES : raw);
+    // Normaliza y descarta basura (p. ej. objetos sin texto real que
+    // renderizarían como "[object Object]")
+    const normalized = raw
+      .map((r, i) => {
+        if (typeof r === 'string') return { id: `r${i}`, text: r.trim(), date: '' };
+        return {
+          id: r?.id || `r${i}`,
+          text: String(r?.text || r?.reason || '').trim(),
+          date: r?.date || ''
+        };
+      })
+      .filter(r => r.text);
+
+    // La semilla por defecto SOLO aplica la primera vez (nunca se ha
+    // guardado nada). Si el Admin borra TODAS las razones, no deben
+    // reaparecer al recargar.
+    const everSaved = localStorage.getItem('ph.config.razones') !== null;
+    if (!normalized.length && !everSaved) {
+      razones = DEFAULT_RAZONES.map((text, i) => ({ id: `r${i}`, text, date: '' }));
+    } else {
+      razones = normalized;
+    }
 
     // Migra favoritos guardados por índice (formato legacy) a ids
     const migrated = favoritos.map(f =>

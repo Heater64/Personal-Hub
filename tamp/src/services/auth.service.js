@@ -117,7 +117,6 @@ class AuthService {
    * la cuenta ya no es válida y no queremos depender del servidor.
    */
   async _forceSignOut() {
-    await this._clearNativeWidgets();
     try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* */ }
     this.currentUser = null;
     this._profileRole = null;
@@ -176,7 +175,6 @@ class AuthService {
   }
 
   async signOut() {
-    await this._clearNativeWidgets();
     // Invalidación en servidor (best effort): si la red falla, el logout
     // local continúa — nunca se bloquea el cierre de sesión por estar offline.
     try {
@@ -197,16 +195,6 @@ class AuthService {
     this._profileRole = null;
     this._profileEnabled = null;
     this._notify();
-  }
-
-  async _clearNativeWidgets() {
-    if (!window.Capacitor?.isNativePlatform?.()) return;
-    try {
-      const { disconnectWidgetSync } = await import('./widgets.service.js');
-      await disconnectWidgetSync();
-    } catch {
-      /* el estado nativo se vuelve a validar al perder la sesión */
-    }
   }
 
   /**

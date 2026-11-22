@@ -7,7 +7,7 @@
 
 import { db } from '../services/db.service.js';
 import { CATEGORIES } from './openwhen-categories.data.js';
-import { LETTERS, mergeOpenWhenLetters } from './openwhen-seed.data.js';
+import { LETTERS } from './openwhen-seed.data.js';
 
 export { CATEGORIES, LETTERS };
 
@@ -24,6 +24,7 @@ export const TYPE_META = {
   sorpresa: { emoji: '🎁', label: 'Sorpresa' }
 };
 
+
 /**
  * Lista completa de cartas: las personalizadas del Admin (Supabase)
  * sobrescriben a las de la app por id; el resto se mantienen.
@@ -36,5 +37,8 @@ export async function loadAllOpenWhenLetters() {
   } catch {
     custom = [];
   }
-  return mergeOpenWhenLetters(custom);
+  const byId = new Map();
+  custom.forEach(l => { if (l && l.id) byId.set(l.id, l); });
+  LETTERS.forEach(l => { if (!byId.has(l.id)) byId.set(l.id, l); });
+  return [...byId.values()];
 }

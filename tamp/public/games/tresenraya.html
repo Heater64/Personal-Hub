@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Tres en Raya</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        /* Tres en Raya: tablero cuadrado protagonista, HUD compacto, móvil edge-to-edge */
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            width: min(100%, 640px);
+            padding: 18px 24px 34px;
+        }
+
+        .game-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "copy toolbar" "subtitle subtitle";
+            align-items: center;
+            gap: 4px 14px;
+            margin: 0 auto 15px;
+            text-align: left;
+        }
+
+        .game-header h1 {
+            grid-area: copy;
+            font-size: clamp(1.45rem, 2.8vw, 1.9rem);
+            line-height: 1.05;
+        }
+
+        .game-header .subtitle {
+            grid-area: subtitle;
+            width: auto;
+            margin: 0;
+            text-align: left;
+            font-size: 0.72rem;
+        }
+
+        .game-header__emoji {
+            display: none;
+        }
+
+        .toolbar {
+            grid-area: toolbar;
+            justify-self: end;
+        }
+
+        .icon-btn {
+            width: auto;
+            min-width: 42px;
+            min-height: 42px;
+            padding: 0 13px;
+            border-radius: 13px;
+            font-family: var(--font-body);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .score-display {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            width: min(100%, 520px);
+            margin: 0 auto 12px;
+        }
+
+        .score-item {
+            min-width: 0;
+            padding: 9px 10px 8px;
+            border-radius: 15px;
+            background: linear-gradient(145deg, var(--surface-2), var(--panel));
+            box-shadow: var(--elev-1);
+        }
+
+        .score-item .label {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .score-item .value {
+            font-size: 1.18rem;
+            line-height: 1.1;
+        }
+
+        .size-control {
+            width: min(100%, 520px);
+            margin: 0 auto 12px;
+        }
+
+        .canvas-wrap {
+            width: min(100%, 400px, calc(100dvh - 340px));
+            max-width: 400px;
+            padding: 6px;
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            background: linear-gradient(145deg, var(--surface-2), rgba(96, 165, 250, 0.07));
+            box-shadow: var(--elev-3), 0 0 38px rgba(96, 165, 250, 0.1);
+        }
+
+        canvas {
+            width: 100%;
+            max-width: none;
+            aspect-ratio: 1 / 1;
+            border: 0;
+            border-radius: 18px;
+            outline: none;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .controls-hint {
+            width: min(100%, 520px);
+            margin: 10px auto 0;
+            padding: 8px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            background: var(--panel);
+            color: var(--ink-dim);
+            font-size: 0.66rem;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                padding: max(14px, env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                grid-template-columns: 1fr auto;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            .game-header h1 {
+                grid-column: 1 / -1;
+                font-size: 1.3rem;
+            }
+
+            .game-header .subtitle {
+                text-align: center;
+                font-size: 0.68rem;
+            }
+
+            .score-display {
+                max-width: none;
+                gap: 5px;
+                margin-bottom: 9px;
+            }
+
+            .score-item {
+                padding: 7px 4px 6px;
+                border-radius: 13px;
+            }
+
+            .score-item .label {
+                font-size: 0.42rem;
+                letter-spacing: 0.05em;
+            }
+
+            .score-item .value {
+                font-size: 0.95rem;
+            }
+
+            .size-control {
+                margin-bottom: 9px;
+            }
+
+            .canvas-wrap {
+                width: min(100%, calc(100dvh - 340px));
+                max-width: none;
+                padding: 5px;
+                border-radius: 20px;
+            }
+
+            canvas {
+                border-radius: 15px;
+            }
+
+            .controls-hint {
+                margin: 8px auto 0;
+                font-size: 0.63rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Tres en Raya</h1>
+            <div class="toolbar">
+                <button class="icon-btn" id="resetBtn" title="Reiniciar (R)" aria-label="Reiniciar partida">🔄 Reiniciar</button>
+            </div>
+            <span class="subtitle">Tú contra la máquina · Tres en línea</span>
+        </div>
+
+        <div class="score-display">
+            <div class="score-item"><span class="label">🙂 Tú</span><span class="value green" id="pWinDisplay">0</span></div>
+            <div class="score-item"><span class="label">🤖 IA</span><span class="value red" id="aWinDisplay">0</span></div>
+            <div class="score-item"><span class="label">Empates</span><span class="value white" id="drawDisplay">0</span></div>
+        </div>
+
+        <div class="size-control">
+            <button class="size-btn active" data-diff="easy">Fácil</button>
+            <button class="size-btn" data-diff="medium">Medio</button>
+            <button class="size-btn" data-diff="hard">Difícil</button>
+        </div>
+
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="360" height="360" tabindex="0" aria-label="Tres en Raya. Toca una casilla para poner tu X"></canvas>
+        </div>
+
+        <div class="controls-hint" aria-label="Controles">
+            <span>Clic para poner tu X · La IA juega con O</span>
+        </div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🎉</div>
+            <h2 id="msgTitle">¡Has ganado!</h2>
+            <p id="msgText">Tú: 0 · IA: 0 · Empates: 0</p>
+            <button class="btn-primary" id="msgBtn">Jugar otra vez</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const S = 360, CELL = S / 3;
+
+        let board, playerTurn, over, diff, pWins, aWins, draws;
+        pWins = parseInt(localStorage.getItem('tresenrayaWins') || '0', 10);
+        aWins = parseInt(localStorage.getItem('tresenrayaLosses') || '0', 10);
+        draws = parseInt(localStorage.getItem('tresenrayaDraws') || '0', 10);
+        diff = ['easy', 'medium', 'hard'].includes(localStorage.getItem('tresenrayaDiff')) ? localStorage.getItem('tresenrayaDiff') : 'easy';
+
+        function applyDiffUI() {
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.toggle('active', b.dataset.diff === diff));
+        }
+        document.querySelectorAll('.size-btn').forEach(b => b.addEventListener('click', () => {
+            diff = b.dataset.diff;
+            localStorage.setItem('tresenrayaDiff', diff);
+            applyDiffUI();
+            resetGame();
+        }));
+
+        function resetGame() {
+            board = Array(9).fill(0); // 0 vacío, 1 jugador, 2 IA
+            playerTurn = true;
+            over = false;
+            document.getElementById('gameMessage').classList.remove('show');
+            draw();
+        }
+
+        function updateTally() {
+            document.getElementById('pWinDisplay').textContent = pWins;
+            document.getElementById('aWinDisplay').textContent = aWins;
+            document.getElementById('drawDisplay').textContent = draws;
+        }
+
+        function winner(b) {
+            const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            for (const [a, c, d] of lines) if (b[a] && b[a] === b[c] && b[a] === b[d]) return b[a];
+            return b.every(v => v) ? 0 : null;
+        }
+
+        function playMove(i) {
+            if (over || !playerTurn || board[i]) return;
+            board[i] = 1;
+            SFX.point();
+            draw();
+            const w = winner(board);
+            if (w !== null) { endGame(w); return; }
+            playerTurn = false;
+            setTimeout(aiMove, 350);
+        }
+
+        function aiMove() {
+            if (over) return;
+            let move = -1;
+            if (diff === 'easy') {
+                const empties = board.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+                move = empties[Math.floor(Math.random() * empties.length)];
+            } else if (diff === 'medium') {
+                move = Math.random() < 0.7 ? minimax(board, 2, -Infinity, Infinity, true).index : (board.map((v, i) => v ? -1 : i).filter(i => i >= 0))[0];
+            } else {
+                move = minimax(board, 9, -Infinity, Infinity, true).index;
+            }
+            if (move >= 0) {
+                board[move] = 2;
+                SFX.point();
+                draw();
+                const w = winner(board);
+                if (w !== null) { endGame(w); return; }
+                playerTurn = true;
+            }
+        }
+
+        function minimax(b, depth, alpha, beta, maximizing) {
+            const w = winner(b);
+            if (w === 2) return { score: 10 + depth };
+            if (w === 1) return { score: -10 - depth };
+            if (w === 0) return { score: 0 };
+            const moves = b.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+            if (maximizing) {
+                let best = { score: -Infinity, index: -1 };
+                for (const i of moves) {
+                    b[i] = 2;
+                    const s = minimax(b, depth - 1, alpha, beta, false).score;
+                    b[i] = 0;
+                    if (s > best.score) best = { score: s, index: i };
+                    alpha = Math.max(alpha, s);
+                    if (beta <= alpha) break;
+                }
+                return best;
+            } else {
+                let best = { score: Infinity, index: -1 };
+                for (const i of moves) {
+                    b[i] = 1;
+                    const s = minimax(b, depth - 1, alpha, beta, true).score;
+                    b[i] = 0;
+                    if (s < best.score) best = { score: s, index: i };
+                    beta = Math.min(beta, s);
+                    if (beta <= alpha) break;
+                }
+                return best;
+            }
+        }
+
+        function endGame(w) {
+            over = true;
+            let icon = '🤝', title = '¡Empate!';
+            if (w === 1) { pWins++; localStorage.setItem('tresenrayaWins', pWins); icon = '🎉'; title = '¡Has ganado!'; SFX.win(); buzz(30); }
+            else if (w === 2) { aWins++; localStorage.setItem('tresenrayaLosses', aWins); icon = '💀'; title = 'Ha ganado la IA'; SFX.lose(); buzz([60, 40, 60]); }
+            else { draws++; localStorage.setItem('tresenrayaDraws', draws); }
+            updateTally();
+            showMessage(icon, title, `Tú: ${pWins} · IA: ${aWins} · Empates: ${draws}`);
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Jugar otra vez';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, S, S);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, S, S);
+            const lineC = 'rgba(255,255,255,0.14)';
+            ctx.strokeStyle = lineC;
+            ctx.lineWidth = 4;
+            for (let i = 1; i < 3; i++) {
+                ctx.beginPath(); ctx.moveTo(i * CELL, 8); ctx.lineTo(i * CELL, S - 8); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(8, i * CELL); ctx.lineTo(S - 8, i * CELL); ctx.stroke();
+            }
+            for (let i = 0; i < 9; i++) {
+                const r = Math.floor(i / 3), c = i % 3;
+                const x = c * CELL + CELL / 2, y = r * CELL + CELL / 2;
+                if (board[i] === 1) {
+                    ctx.strokeStyle = '#e8735a';
+                    ctx.lineWidth = 8;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath(); ctx.moveTo(x - 34, y - 34); ctx.lineTo(x + 34, y + 34); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x + 34, y - 34); ctx.lineTo(x - 34, y + 34); ctx.stroke();
+                } else if (board[i] === 2) {
+                    ctx.strokeStyle = '#60a5fa';
+                    ctx.lineWidth = 8;
+                    ctx.beginPath(); ctx.arc(x, y, 38, 0, Math.PI * 2); ctx.stroke();
+                }
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width * S;
+            const y = (e.clientY - rect.top) / rect.height * S;
+            const c = Math.floor(x / CELL), r = Math.floor(y / CELL);
+            playMove(r * 3 + c);
+        });
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = (t.clientX - rect.left) / rect.width * S;
+            const y = (t.clientY - rect.top) / rect.height * S;
+            playMove(Math.floor(y / CELL) * 3 + Math.floor(x / CELL));
+        }, { passive: false });
+
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') resetGame();
+            if (e.key >= '1' && e.key <= '9') playMove(parseInt(e.key, 10) - 1);
+        });
+
+        updateTally();
+        applyDiffUI();
+        resetGame();
+
+        window.__tresenraya = { playMove, resetGame, aiMove, get state() { return { board, playerTurn, over, diff, pWins, aWins }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+</html>

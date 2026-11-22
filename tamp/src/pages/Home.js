@@ -42,6 +42,7 @@ import { icon } from '../components/ui.js';
 import { moodStore } from '../stores/mood.store.js';
 import { userStore } from '../stores/user.store.js';
 import { db } from '../services/db.service.js';
+import { onMoodChange } from '../services/realtime.service.js';
 import { entries as agendaEntries, nextEvent } from '../services/agenda.js';
 import {
   startLocationSharing,
@@ -578,7 +579,7 @@ function yearAgoHTML() {
   } catch {
     return '';
   }
-  const matches = sameDayInPast(photos).slice(0, 6);
+  const matches = sameDayInPast(photos, todayISO()).slice(0, 6);
   if (!matches.length) return '';
 
   return `
@@ -774,15 +775,8 @@ function initDistancePanel(page, onChange) {
 
   // Una cara: foto si la hay; si no, la inicial (o el corazón). `blockedAvatar`
   // evita pintar en la pareja una foto que en realidad es la mía.
-  const fill = (el, profile, fallbackAvatar, blockedAvatar = '') => {
-    if (!el) return;
-    const candidate = profile?.avatar || fallbackAvatar || '';
-    const avatar = candidate && candidate !== blockedAvatar ? candidate : '';
-    const initial = (profile?.name || '').trim().charAt(0).toUpperCase();
-    el.innerHTML = avatar
-      ? `<img src="${escapeHtml(avatar)}" alt="">`
-      : `<span aria-hidden="true">${escapeHtml(initial || '♥')}</span>`;
-  };
+  const fill = (el, profile, fallbackAvatar, blockedAvatar = '') =>
+    paintFace(el, profile, fallbackAvatar, blockedAvatar);
 
   // El nombre y la foto viajan con la posición: la otra cuenta no siempre
   // puede leerlos de `profiles`, así que los manda quien los conoce.
@@ -794,6 +788,7 @@ function initDistancePanel(page, onChange) {
   // Lo que necesita el mapa al abrirse: última distancia y datos de cada uno.
   const state = {
     km: null,
+    together: false,
     partner: null,
     me: { name: me?.name || 'Tú', avatar: me?.avatar || '' },
   };
@@ -831,6 +826,7 @@ function initDistancePanel(page, onChange) {
     // de una cifra que ya no distingue nada.
     const mine = fetchMyLocation();
     const near = Number.isFinite(km) ? togetherInfo(mine, partner) : null;
+    state.together = !!near?.together;
     if (valueEl) valueEl.textContent = near?.together ? 'Juntos' : formatDistance(km);
     if (labelEl) labelEl.textContent = near?.together ? 'en el mismo sitio' : 'Distancia';
     state.km = km;
@@ -1131,7 +1127,9 @@ export function HomePage(router) {
       partner: state.partner,
       stats,
       days: total,
-      km: Number.isFinite(state.km) ? formatDistance(state.km) : null,
+      km: Number.isFinite(state.km)
+        ? state.together ? 'Juntos' : formatDistance(state.km)
+        : null,
       kmAt: Number.isFinite(state.km) ? Date.now() : null,
     };
     if (!isNative()) return;
@@ -1175,14 +1173,20 @@ export function HomePage(router) {
   // La lista es de la pareja (sql/031), así que lo que se añade o se quita en
   // un móvil aparece en el otro. El componente lleva la rotación (5 s) y la
   // hoja para añadir y quitar; aquí solo se monta y se recoge al salir.
-  db.getMoodsForDate(todayISO()).then(rows => {
+  const ownMoodUserId = String(userStore.getUser()?.id || '');
+  const refreshPartnerMood = async () => {
+    const rows = await db.getMoodsForDate(todayISO());
     if (!page.isConnected) return;
-    const ownId = String(userStore.getUser()?.id || '');
-    const row = rows.find(item => String(item.user_id || '') !== ownId);
+    const row = rows.find(item => String(item.user_id || '') !== ownMoodUserId);
     partnerMood = row ? moodStore.resolveMood(row) : null;
     const stats = page.querySelector('.home-stats');
     if (stats) stats.innerHTML = todayCards(partnerMood);
+  };
+  const stopPartnerMoodUpdates = onMoodChange(mood => {
+    if (String(mood?.user_id || '') === ownMoodUserId || mood?.date !== todayISO()) return;
+    void refreshPartnerMood();
   });
+  void refreshPartnerMood();
 
   const stopPortada = initHomePortada(page.querySelector('.home-hero'));
 
@@ -1332,6 +1336,7 @@ export function HomePage(router) {
   page.cleanup = () => {
     cancelled = true;
     unsubscribeMood();
+    stopPartnerMoodUpdates();
     stopRotation();
     stopPortada();
     stopHeaderFaces();

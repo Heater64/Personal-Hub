@@ -15,7 +15,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const leer = ruta => readFileSync(new URL(`../personal-hub/${ruta}`, import.meta.url), 'utf8');
+const leer = ruta => readFileSync(new URL(`../tamp/${ruta}`, import.meta.url), 'utf8');
 
 const mainCss = leer('src/styles/main.css');
 const mainJs = leer('src/main.js');
@@ -29,7 +29,7 @@ test('main.css solo trae lo compartido: ninguna hoja de pantalla', () => {
     'login.css',
     'profile.css',
     'razones.css',
-    'maldia.css',
+    'agenda.css',
     'juntos.css',
     'mapa.css',
     'calendario.css',
@@ -53,7 +53,7 @@ test('cada pantalla carga su propia hoja desde su módulo', () => {
     'pages/Login.js': 'login.css',
     'pages/Profile.js': 'profile.css',
     'pages/Razones.js': 'razones.css',
-    'pages/MalDia.js': 'maldia.css',
+    'pages/Agenda.js': 'agenda.css',
     'pages/Juntos.js': 'juntos.css',
     'pages/Mapa.js': 'mapa.css',
   };
@@ -69,7 +69,7 @@ test('las pantallas pesadas se montan con lazy() y Login no espera chunk', () =>
   assert.ok(mainJs.includes('const lazy = (loader)'), 'existe el helper lazy');
   assert.ok(mainJs.includes("from './pages/Login.js'"), 'Login sigue estático');
 
-  for (const pagina of ['Home', 'Profile', 'Razones', 'MalDia']) {
+  for (const pagina of ['Home', 'Profile', 'Razones', 'Agenda']) {
     assert.ok(
       !mainJs.includes(`from './pages/${pagina}.js'`),
       `${pagina} no puede volver al bundle de arranque`

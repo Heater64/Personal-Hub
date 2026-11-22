@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ahorcado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ==========================================================
+           AHORCADO — integrado con el design system de la web.
+           Usa los tokens de _game-ui.css (superficies, acento coral,
+           tema claro) y el acento del juego (?accent=ffb347).
+           ========================================================== */
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 12px;
+        }
+
+        .game-container {
+            max-width: 620px;
+            width: 100%;
+            margin: 16px auto;
+            padding: 24px 20px;
+            background: var(--surface-1);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: var(--elev-3);
+            animation: fade-in 0.4s ease;
+        }
+
+        .game-header h1 {
+            font-family: var(--font-display);
+            font-size: 1.7rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--ink);
+            margin: 0 0 2px;
+        }
+
+        .game-header .subtitle {
+            color: var(--ink-dim);
+            font-size: 0.8rem;
+            margin-bottom: 14px;
+        }
+
+        /* ===== BARRA SUPERIOR ===== */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .stat {
+            background: var(--surface-2);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 6px 12px;
+            text-align: left;
+            min-width: 64px;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.58rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--ash);
+            white-space: nowrap;
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--ink);
+        }
+
+        .stat-value.gold { color: var(--gold); }
+
+        /* ===== CATEGORÍAS ===== */
+        .categories-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .category-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border: 1px solid var(--panel-border);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--ink-dim);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font-body);
+            white-space: nowrap;
+        }
+
+        .category-btn:hover {
+            border-color: var(--border-accent);
+            color: var(--ink);
+            background: var(--accent-dim);
+        }
+
+        .category-btn.active {
+            background: var(--accent-dim);
+            border-color: var(--coral);
+            color: var(--coral);
+        }
+
+        .category-btn .count {
+            font-size: 0.62rem;
+            opacity: 0.55;
+        }
+
+        /* ===== HORCA — dibujo SVG progresivo ===== */
+        .hangman-wrap {
+            width: 140px;
+            margin: 0 auto 4px;
+        }
+
+        .hangman-svg {
+            width: 140px;
+            height: 165px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .hangman-svg line,
+        .hangman-svg circle,
+        .hangman-svg path {
+            fill: none;
+            stroke: var(--ink);
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .hangman-gallows {
+            stroke: var(--ink-dim) !important;
+            opacity: 0.5;
+        }
+
+        .hangman-part {
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+
+        .hangman-part.visible { opacity: 1; }
+
+        .hangman-part--face { stroke: var(--red) !important; }
+
+        .hangman-figure {
+            transform-origin: 92px 10px;
+        }
+
+        .hangman-svg.swinging .hangman-figure {
+            animation: hangmanSwing 0.8s ease;
+        }
+
+        @keyframes hangmanSwing {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(3.5deg); }
+            75% { transform: rotate(-3.5deg); }
+        }
+
+        /* ===== ESTADO ===== */
+        .status-msg {
+            font-size: 0.85rem;
+            color: var(--ink-dim);
+            margin: 6px 0 10px;
+            min-height: 18px;
+        }
+
+        .status-msg .hint {
+            color: var(--ash);
+            font-size: 0.72rem;
+            display: block;
+            margin-top: 2px;
+        }
+
+        /* ===== PALABRA ===== */
+        .word-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 58px;
+            margin: 8px 0 16px;
+        }
+
+        .word-display .letter-slot {
+            display: inline-block;
+            min-width: 30px;
+            padding: 2px 0 4px;
+            border-bottom: 2px solid var(--panel-strong);
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            text-align: center;
+            color: var(--ink);
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .word-display .space-slot { min-width: 16px; }
+
+        .word-display .letter-slot.revealed-by-hint {
+            color: var(--coral);
+            border-bottom-color: var(--coral);
+            animation: hintPop 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+        }
+
+        @keyframes hintPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+
+        /* ===== TECLADO ===== */
+        .letters-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+            margin: 0 0 16px;
+        }
+
+        .letter-btn {
+            width: 38px;
+            height: 40px;
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            background: var(--surface-2);
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .letter-btn:hover:not(.used) {
+            border-color: var(--border-accent);
+            background: var(--accent-dim);
+            color: var(--coral);
+            transform: translateY(-2px);
+        }
+
+        .letter-btn:active:not(.used) { transform: translateY(0); }
+
+        .letter-btn.used {
+            opacity: 0.35;
+            cursor: default;
+            transform: scale(0.94);
+        }
+
+        .letter-btn.correct {
+            border-color: color-mix(in srgb, var(--green) 55%, transparent);
+            background: var(--green-dim);
+            color: var(--green);
+            opacity: 0.75;
+        }
+
+        .letter-btn.wrong {
+            border-color: color-mix(in srgb, var(--red) 55%, transparent);
+            background: var(--red-dim);
+            color: var(--red);
+            opacity: 0.75;
+        }
+
+        .letter-btn.hint-revealed {
+            border-color: var(--coral);
+            background: var(--accent-dim);
+            color: var(--coral);
+            opacity: 0.9;
+        }
+
+        /* ===== ACCIONES ===== */
+        .actions-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .btn-ghost {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: 999px;
+            background: transparent;
+            border: 1px solid var(--panel-strong);
+            color: var(--ink-dim);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+            transition: all 0.2s;
+        }
+
+        .btn-ghost:hover { transform: translateY(-1px); }
+
+        .btn-ghost.hint-btn { color: var(--coral); }
+        .btn-ghost.hint-btn:hover {
+            border-color: var(--coral);
+            background: var(--accent-dim);
+            color: var(--coral);
+        }
+
+        .btn-ghost.hint-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn-ghost.reset { color: var(--red); }
+        .btn-ghost.reset:hover {
+            border-color: var(--red);
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .game-back-nav { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 20px;
+            border: 1px solid var(--panel-border);
+            border-radius: 999px;
+            background: var(--panel);
+            color: var(--ink-dim);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            border-color: var(--coral);
+            color: var(--coral);
+            transform: translateX(-3px);
+        }
+
+        /* ===== MODAL ===== */
+        .game-message-content .answer {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--coral);
+            margin: 4px 0 2px;
+        }
+
+        .game-message-content .btn-primary { min-width: 160px; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .game-container { padding: 16px 12px; border-radius: 18px; }
+            .stat { padding: 5px 10px; min-width: 56px; }
+            .category-btn { font-size: 0.68rem; padding: 5px 11px; }
+            .letter-btn { width: 32px; height: 34px; font-size: 0.8rem; }
+            .word-display .letter-slot { min-width: 22px; font-size: 1.5rem; }
+            .hangman-wrap { width: 118px; }
+            .hangman-svg { width: 118px; height: 140px; }
+        }
+
+        @media (max-width: 400px) {
+            .letter-btn { width: 28px; height: 30px; font-size: 0.72rem; }
+            .word-display .letter-slot { min-width: 18px; font-size: 1.25rem; }
+            .stat-label { font-size: 0.52rem; }
+            .stat-value { font-size: 0.85rem; }
+        }
+    </style>
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style id="ahorcado-polish">
+        /* Ahorcado: una pantalla de juego clara, sin paneles accesorios.
+           El dibujo, la palabra y el teclado forman una única experiencia. */
+        .game-container {
+            max-width: 700px;
+            padding: 28px 24px 24px;
+        }
+
+        .game-header {
+            margin-bottom: 18px;
+        }
+
+        .game-header__emoji {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            font-size: 1.55rem;
+            margin-bottom: 8px;
+        }
+
+        .top-bar {
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .stat {
+            min-width: 0;
+            padding: 8px 10px;
+            text-align: center;
+            background: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.58rem;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+        }
+
+        .top-actions {
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .record-compact {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--ink-dim);
+            font-size: 0.68rem;
+            white-space: nowrap;
+        }
+
+        .record-compact strong {
+            color: var(--gold);
+            font-size: 0.72rem;
+        }
+
+        .record-compact__label {
+            color: var(--ash);
+        }
+
+        .categories-bar {
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding: 2px 2px 4px;
+            margin: 0 -2px 14px;
+        }
+
+        .categories-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .category-btn {
+            position: relative;
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 72px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 11px;
+            border-radius: 16px;
+            background: linear-gradient(145deg, var(--surface-2), var(--surface-1));
+            border: 1px solid var(--panel-border);
+            color: var(--ink-dim);
+            text-align: left;
+            overflow: hidden;
+        }
+
+        .category-btn::after {
+            content: '';
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 0;
+            height: 3px;
+            border-radius: 3px 3px 0 0;
+            background: var(--coral);
+            opacity: 0;
+            transform: scaleX(0.35);
+            transition: opacity 0.2s, transform 0.25s;
+        }
+
+        .category-btn__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .category-btn__icon {
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            background: var(--accent-dim);
+            color: var(--coral);
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .category-btn__label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .category-btn .count {
+            margin-left: auto;
+            padding: 3px 6px;
+            border: 1px solid var(--panel-border);
+            border-radius: 7px;
+            background: var(--panel);
+            color: var(--ash);
+            font-size: 0.6rem;
+            line-height: 1;
+            opacity: 1;
+        }
+
+        .category-btn:hover:not(.active) {
+            border-color: var(--border-accent);
+            color: var(--ink);
+            transform: translateY(-2px);
+        }
+
+        .category-btn.active {
+            background: linear-gradient(145deg, var(--accent-dim-strong), var(--surface-2));
+            border-color: var(--coral);
+            color: var(--coral);
+            box-shadow: var(--elev-1), 0 8px 22px color-mix(in srgb, var(--coral) 12%, transparent);
+        }
+
+        .category-btn.active::after {
+            opacity: 1;
+            transform: scaleX(1);
+        }
+
+        .hangman-wrap {
+            width: 150px;
+            margin: 0 auto 2px;
+        }
+
+        .hangman-svg {
+            width: 150px;
+            height: 168px;
+        }
+
+        .status-msg {
+            margin: 2px 0 8px;
+            min-height: 34px;
+        }
+
+        .word-display {
+            max-width: 620px;
+            margin: 6px auto 16px;
+            gap: 7px;
+        }
+
+        .letters-grid {
+            max-width: 620px;
+            margin-left: auto;
+            margin-right: auto;
+            gap: 7px;
+        }
+
+        .letter-btn {
+            text-transform: uppercase;
+            width: 38px;
+            height: 40px;
+        }
+
+        .actions-row {
+            margin-top: 4px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                align-items: flex-start;
+                padding: 0;
+            }
+
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                margin: 0;
+                padding: max(16px, env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom));
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .game-header {
+                margin-bottom: 14px;
+            }
+
+            .game-header__emoji {
+                width: 46px;
+                height: 46px;
+                border-radius: 14px;
+                font-size: 1.4rem;
+                margin-bottom: 7px;
+            }
+
+            .game-header h1 {
+                font-size: 1.55rem;
+            }
+
+            .game-header .subtitle {
+                margin-bottom: 0;
+                font-size: 0.74rem;
+            }
+
+            .top-bar {
+                display: block;
+                margin-bottom: 13px;
+            }
+
+            .stats {
+                gap: 6px;
+            }
+
+            .stat {
+                min-height: 46px;
+                padding: 7px 5px;
+                border-radius: 12px;
+            }
+
+            .stat-label {
+                font-size: 0.52rem;
+            }
+
+            .stat-value {
+                font-size: 0.94rem;
+            }
+
+            .top-actions {
+                justify-content: space-between;
+                min-height: 36px;
+                margin-top: 7px;
+                padding: 6px 2px 0;
+                border-top: 1px solid var(--panel-border);
+            }
+
+            .record-compact {
+                font-size: 0.66rem;
+            }
+
+            .icon-btn {
+                width: 34px;
+                height: 34px;
+                min-height: 34px;
+            }
+
+            .categories-bar {
+                margin-bottom: 10px;
+            }
+
+            .category-btn {
+                flex: 0 0 104px;
+                min-height: 70px;
+                padding: 9px 10px;
+                font-size: 0.7rem;
+            }
+
+            .category-btn__icon {
+                width: 26px;
+                height: 26px;
+                font-size: 0.92rem;
+            }
+
+            .hangman-wrap {
+                width: 118px;
+                margin-bottom: 0;
+            }
+
+            .hangman-svg {
+                width: 118px;
+                height: 138px;
+            }
+
+            .status-msg {
+                margin: 0 0 6px;
+                min-height: 32px;
+                font-size: 0.8rem;
+            }
+
+            .status-msg .hint {
+                font-size: 0.68rem;
+            }
+
+            .word-display {
+                gap: 5px;
+                min-height: 52px;
+                margin: 4px auto 13px;
+            }
+
+            .word-display .letter-slot {
+                min-width: 22px;
+                font-size: 1.5rem;
+            }
+
+            .letters-grid {
+                gap: 6px;
+                margin-bottom: 14px;
+            }
+
+            .letter-btn {
+                width: 32px;
+                height: 34px;
+                font-size: 0.78rem;
+                border-radius: 9px;
+            }
+
+            .actions-row {
+                gap: 8px;
+            }
+
+            .actions-row .btn-ghost {
+                flex: 1;
+                min-height: 42px;
+                padding: 9px 10px;
+            }
+
+            .game-back-nav {
+                margin-top: 10px;
+            }
+
+            .game-back-nav .back-btn {
+                flex: 1;
+                justify-content: center;
+                padding: 9px 10px;
+                font-size: 0.72rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .game-container {
+                padding-left: 9px;
+                padding-right: 9px;
+            }
+
+            .letter-btn {
+                width: 29px;
+                height: 31px;
+                font-size: 0.72rem;
+            }
+
+            .word-display .letter-slot {
+                min-width: 18px;
+                font-size: 1.28rem;
+            }
+
+            .record-compact__label {
+                display: none;
+            }
+        }
+    </style>
+
+<body>
+    <div class="game-container">
+        <!-- ===== CABECERA ===== -->
+        <div class="game-header">
+            <span class="game-header__emoji" aria-hidden="true">💀</span>
+            <h1>Ahorcado</h1>
+            <p class="subtitle">Adivina la palabra antes de que se complete el dibujo</p>
+        </div>
+
+        <!-- ===== BARRA SUPERIOR ===== -->
+        <div class="top-bar">
+            <div class="stats">
+                <div class="stat">
+                    <span class="stat-label">Intentos</span>
+                    <span class="stat-value" id="attemptDisplay">0/7</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Letras</span>
+                    <span class="stat-value" id="lettersDisplay">0/0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Racha</span>
+                    <span class="stat-value" id="streakDisplay">0</span>
+                </div>
+            </div>
+            <div class="top-actions">
+                <span class="record-compact"><span aria-hidden="true">👑</span><span class="record-compact__label">Mejor</span><strong id="bestDisplay">0</strong></span>
+                <button class="icon-btn" id="soundBtn" title="Sonido" aria-label="Activar o silenciar sonido">🔊</button>
+            </div>
+        </div>
+
+        <!-- ===== CATEGORÍAS ===== -->
+        <div class="categories-bar" id="categoriesBar"></div>
+
+        <!-- ===== HORCA ===== -->
+        <div class="hangman-wrap">
+            <svg class="hangman-svg" id="hangmanSvg" viewBox="0 0 120 145" aria-hidden="true">
+                <g class="hangman-gallows">
+                    <line x1="30" y1="10" x2="30" y2="135" />
+                    <line x1="30" y1="10" x2="92" y2="10" />
+                    <line x1="22" y1="135" x2="38" y2="135" />
+                    <line x1="92" y1="10" x2="92" y2="36" />
+                </g>
+                <g class="hangman-figure">
+                    <g class="hangman-part part-head"><circle cx="92" cy="48" r="12" /></g>
+                    <g class="hangman-part part-body"><line x1="92" y1="60" x2="92" y2="98" /></g>
+                    <g class="hangman-part part-arm-l"><line x1="92" y1="68" x2="73" y2="88" /></g>
+                    <g class="hangman-part part-arm-r"><line x1="92" y1="68" x2="111" y2="88" /></g>
+                    <g class="hangman-part part-leg-l"><line x1="92" y1="98" x2="75" y2="120" /></g>
+                    <g class="hangman-part part-leg-r"><line x1="92" y1="98" x2="109" y2="120" /></g>
+                    <g class="hangman-part part-face hangman-part--face">
+                        <line x1="87" y1="44" x2="91" y2="48" />
+                        <line x1="91" y1="44" x2="87" y2="48" />
+                        <line x1="94" y1="44" x2="98" y2="48" />
+                        <line x1="98" y1="44" x2="94" y2="48" />
+                        <path d="M87 55 q5 4 10 0" />
+                    </g>
+                </g>
+            </svg>
+        </div>
+        <div class="status-msg" id="statusMsg">
+            Adivina la palabra
+            <span class="hint" id="hintText"></span>
+        </div>
+
+        <!-- ===== PALABRA ===== -->
+        <div class="word-display" id="wordDisplay"></div>
+
+        <!-- ===== TECLADO ===== -->
+        <div class="letters-grid" id="lettersGrid"></div>
+
+        <!-- ===== ACCIONES ===== -->
+        <div class="actions-row">
+            <button class="btn-ghost hint-btn" id="hintBtn">💡 Pista</button>
+            <button class="btn-ghost reset" id="resetBtn">🔄 Reiniciar</button>
+        </div>
+
+        <div class="game-back-nav">
+            <a href="/#/juegos" class="back-btn">← Juegos</a>
+            <a href="/#/calendario" class="back-btn">← Calendario</a>
+        </div>
+    </div>
+
+    <!-- ===== MODAL POSTJUEGO ===== -->
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🎉</div>
+            <h2 id="msgTitle">¡Ganaste!</h2>
+            <div class="answer" id="msgAnswer"></div>
+            <p id="msgText"></p>
+            <button class="btn-primary" id="msgBtn">Jugar otra vez</button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            // ==========================================================
+            // PALABRAS POR CATEGORÍA
+            // ==========================================================
+            const categories = {
+                'disney': {
+                    label: 'Disney',
+                    words: [
+                        'mulan', 'luca', 'wish', 'elemental', 'hercules', 'tarzan',
+                        'pocahontas', 'frozen', 'moana', 'ralph', 'tiana y el sapo',
+                        'la bella y la bestia', 'peter pan', 'aladdin', 'el rey leon', 'lilo y stich',
+                        'la sirenita'
+                    ]
+                },
+                'peliculas': {
+                    label: 'Películas',
+                    words: [
+                        'avatar', 'avengers end game', 'titanic', 'star wars', 'frozen',
+                        'el rey leon', 'harry potter', 'spiderman no way home',
+                        'mario bros', 'iron man', 'capitan america', 'la sirenita'
+                    ]
+                },
+                'casa': {
+                    label: 'Casa',
+                    words: [
+                        'mesa', 'silla', 'armario', 'cama', 'lampara', 'ventana',
+                        'puerta', 'espejo', 'alfombra', 'cuadro', 'libro', 'reloj',
+                        'telefono', 'ordenador', 'television', 'nevera', 'horno',
+                        'microondas', 'lavadora', 'secadora', 'plancha', 'aspiradora',
+                        'escoba', 'jabon', 'toalla', 'cortina', 'percha',
+                        'zapatero', 'bastidor', 'perchero', 'sabanas', 'cojin', 'manta',
+                        'edredon', 'almohada', 'cortina de ducha', 'alfombrilla'
+                    ]
+                },
+                'animales': {
+                    label: 'Animales',
+                    words: [
+                        'perro', 'gato', 'elefante', 'jirafa', 'leon', 'tigre',
+                        'oso panda', 'koala', 'canguro', 'delfin', 'ballena',
+                        'tiburon', 'ornitorrinco', 'pinguino', 'aguila', 'halcon',
+                        'buitre', 'colibri', 'mariposa', 'abeja', 'hormiga',
+                        'escorpion', 'araña', 'camaleon', 'iguana', 'serpiente',
+                        'tortuga', 'cocodrilo', 'hipopotamo', 'rinoceronte',
+                        'cebra', 'gacela', 'ñu', 'suricata', 'lemur', 'lince'
+                    ]
+                },
+                'ciencias': {
+                    label: 'Ciencias',
+                    words: [
+                        'atomo', 'molecula', 'celula', 'genetica', 'evolucion',
+                        'fotosintesis', 'mitosis', 'meiosis', 'adn', 'arn',
+                        'proteinas', 'carbohidratos', 'lipidos', 'enzima', 'hormona',
+                        'neuronas', 'sinapsis', 'cerebro', 'corazon', 'pulmon',
+                        'mitocondria', 'cloroplasto', 'membrana', 'nucleo',
+                        'gravedad', 'electricidad', 'magnetismo', 'energia',
+                        'materia', 'espacio', 'tiempo', 'planeta', 'estrella',
+                        'galaxia', 'agujero negro', 'supernova'
+                    ]
+                },
+                'geografia': {
+                    label: 'Geografía',
+                    words: [
+                        'españa', 'francia', 'italia', 'alemania', 'portugal',
+                        'marruecos', 'argelia', 'egipto', 'senegal', 'ghana',
+                        'argentina', 'chile', 'peru', 'colombia', 'mexico',
+                        'estados unidos', 'canada', 'japon', 'china', 'india',
+                        'australia', 'nueva zelanda', 'islandia', 'noruega',
+                        'suecia', 'dinamarca', 'holanda', 'belgica', 'suiza',
+                        'paises bajos', 'reino unido', 'irlanda', 'polonia',
+                        'grecia', 'turquia', 'rusia', 'ucrania', 'amazonas',
+                        'nilo', 'ganges', 'danubio', 'rin', 'everest', 'alpes'
+                    ]
+                }
+            };
+
+            // ==========================================================
+            // ESTADO
+            // ==========================================================
+            let currentCategory = 'disney';
+            let wordsPool = [];
+            let selectedWord = '';
+            let guessedLetters = [];
+            let wrongGuesses = 0;
+            const maxWrong = 7;
+            let usedHints = 0;
+            let hintRevealedLetters = [];
+            let gameOver = false;
+            let tabHidden = false;
+            let endTimeout = null;
+
+            // ==========================================================
+            // DOM
+            // ==========================================================
+            const categoriesBar = document.getElementById('categoriesBar');
+            const hangmanSvg = document.getElementById('hangmanSvg');
+            const statusMsg = document.getElementById('statusMsg');
+            const hintText = document.getElementById('hintText');
+            const wordDisplay = document.getElementById('wordDisplay');
+            const lettersGrid = document.getElementById('lettersGrid');
+            const attemptDisplay = document.getElementById('attemptDisplay');
+            const lettersDisplay = document.getElementById('lettersDisplay');
+            const streakDisplay = document.getElementById('streakDisplay');
+            const bestDisplay = document.getElementById('bestDisplay');
+            const gameMessage = document.getElementById('gameMessage');
+            const msgIcon = document.getElementById('msgIcon');
+            const msgTitle = document.getElementById('msgTitle');
+            const msgAnswer = document.getElementById('msgAnswer');
+            const msgText = document.getElementById('msgText');
+            const msgBtn = document.getElementById('msgBtn');
+            const hintBtn = document.getElementById('hintBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const soundBtn = document.getElementById('soundBtn');
+
+            // ==========================================================
+            // SONIDO (WebAudio) + vibración
+            // ==========================================================
+            let audioCtx = null;
+            let soundOn = localStorage.getItem('ahorcadoSound') !== 'off';
+
+            function tone(freq, dur, type, vol, when) {
+                if (!soundOn) return;
+                try {
+                    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    const t0 = audioCtx.currentTime + (when || 0);
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.type = type || 'sine';
+                    o.frequency.value = freq;
+                    g.gain.setValueAtTime(vol || 0.05, t0);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.start(t0);
+                    o.stop(t0 + dur + 0.03);
+                } catch (e) { /* sin audio: no pasa nada */ }
+            }
+
+            const sfx = {
+                correct: () => { tone(587, 0.09, 'sine', 0.05); tone(880, 0.1, 'sine', 0.05, 0.07); },
+                wrong:   () => tone(200, 0.16, 'sawtooth', 0.04),
+                hint:    () => { tone(1046, 0.07, 'triangle', 0.04); tone(1568, 0.09, 'triangle', 0.04, 0.08); },
+                win:     () => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.16, 'sine', 0.05, i * 0.11)),
+                lose:    () => { tone(392, 0.18, 'sine', 0.05); tone(261.63, 0.26, 'sine', 0.05, 0.16); }
+            };
+
+            function updateSoundBtn() {
+                soundBtn.textContent = soundOn ? '🔊' : '🔇';
+            }
+            soundBtn.addEventListener('click', () => {
+                soundOn = !soundOn;
+                localStorage.setItem('ahorcadoSound', soundOn ? 'on' : 'off');
+                updateSoundBtn();
+            });
+
+            // ==========================================================
+            // RACHAS (localStorage)
+            // ==========================================================
+            function readStreak() { return parseInt(localStorage.getItem('ahorcadoStreak') || '0', 10); }
+            function readBest() { return parseInt(localStorage.getItem('ahorcadoBest') || '0', 10); }
+
+            function updateStreak(won) {
+                let streak = won ? readStreak() + 1 : 0;
+                localStorage.setItem('ahorcadoStreak', streak);
+                let best = readBest();
+                if (streak > best) {
+                    best = streak;
+                    localStorage.setItem('ahorcadoBest', best);
+                }
+                return { streak, best, isBest: won && streak === best };
+            }
+
+            function updateStats() {
+                streakDisplay.textContent = readStreak();
+                bestDisplay.textContent = readBest();
+                bestDisplay.classList.toggle('gold', readBest() > 0);
+            }
+
+            // ==========================================================
+            // CATEGORÍAS
+            // ==========================================================
+            function renderCategories() {
+                const categoryIcons = {
+                    disney: '✨', peliculas: '🎬', casa: '🏠', animales: '🐾', ciencias: '⚛️', geografia: '🌍'
+                };
+                categoriesBar.innerHTML = Object.keys(categories).map(key => `
+                    <button class="category-btn ${key === currentCategory ? 'active' : ''}" data-category="${key}">
+                        <span class="category-btn__head">
+                            <span class="category-btn__icon" aria-hidden="true">${categoryIcons[key]}</span>
+                            <span class="count">${categories[key].words.length}</span>
+                        </span>
+                        <span class="category-btn__label">${categories[key].label}</span>
+                    </button>
+                `).join('');
+
+                categoriesBar.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        if (btn.dataset.category !== currentCategory) {
+                            currentCategory = btn.dataset.category;
+                            categoriesBar.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                            resetGame();
+                        }
+                    });
+                });
+            }
+
+            // ==========================================================
+            // JUEGO
+            // ==========================================================
+            function initGame() {
+                if (endTimeout) {
+                    clearTimeout(endTimeout);
+                    endTimeout = null;
+                }
+                wordsPool = categories[currentCategory].words || [];
+                if (wordsPool.length === 0) wordsPool = ['error'];
+                selectedWord = wordsPool[Math.floor(Math.random() * wordsPool.length)];
+                guessedLetters = [];
+                wrongGuesses = 0;
+                usedHints = 0;
+                hintRevealedLetters = [];
+                gameOver = false;
+                tabHidden = false;
+                hintBtn.disabled = false;
+                renderGame();
+            }
+
+            function uniqueLetters() {
+                return [...new Set(selectedWord.split('').filter(c => c !== ' '))];
+            }
+
+            function calculateHints() {
+                const n = uniqueLetters().length;
+                if (n <= 4) return 1;
+                if (n <= 6) return 2;
+                if (n <= 9) return 3;
+                return 4;
+            }
+
+            function renderHangman() {
+                const parts = hangmanSvg.querySelectorAll('.hangman-part');
+                parts.forEach((p, i) => p.classList.toggle('visible', i < wrongGuesses));
+            }
+
+            function renderGame() {
+                renderHangman();
+
+                // Estado
+                statusMsg.innerHTML = 'Adivina la palabra<span class="hint" id="hintText"></span>';
+                const hintEl = statusMsg.querySelector('#hintText');
+                hintEl.textContent = hintBtn.disabled
+                    ? `💡 Pistas agotadas (${calculateHints()}/${calculateHints()})`
+                    : `💡 Pistas disponibles: ${calculateHints() - usedHints}`;
+
+                // Palabra
+                const allRevealed = new Set([...guessedLetters, ...hintRevealedLetters]);
+                wordDisplay.innerHTML = selectedWord.split('').map(char => {
+                    if (char === ' ') return '<span class="space-slot">&nbsp;</span>';
+                    const isHint = hintRevealedLetters.includes(char) && !guessedLetters.includes(char);
+                    const cls = isHint ? 'revealed-by-hint' : '';
+                    return `<span class="letter-slot ${cls}">${allRevealed.has(char) ? char : '_'}</span>`;
+                }).join('');
+
+                // Contadores superiores
+                attemptDisplay.textContent = `${wrongGuesses}/${maxWrong}`;
+                const totalUnique = uniqueLetters().length;
+                const found = new Set([...guessedLetters, ...hintRevealedLetters].filter(l => selectedWord.includes(l)));
+                lettersDisplay.textContent = `${found.size}/${totalUnique}`;
+
+                // Teclado
+                const alphabet = 'abcdefghijklmnopqrstuvwxyzñ';
+                lettersGrid.innerHTML = '';
+                alphabet.split('').forEach(letter => {
+                    const btn = document.createElement('button');
+                    btn.className = 'letter-btn';
+                    btn.textContent = letter;
+                    btn.setAttribute('aria-label', `Letra ${letter}`);
+                    if (guessedLetters.includes(letter) || hintRevealedLetters.includes(letter)) {
+                        btn.classList.add('used');
+                        if (selectedWord.includes(letter)) {
+                            btn.classList.add('correct');
+                        } else if (guessedLetters.includes(letter)) {
+                            btn.classList.add('wrong');
+                        }
+                        if (hintRevealedLetters.includes(letter) && !guessedLetters.includes(letter)) {
+                            btn.classList.add('hint-revealed');
+                        }
+                    }
+                    btn.addEventListener('click', () => guessLetter(letter));
+                    lettersGrid.appendChild(btn);
+                });
+
+                // ¿Victoria o derrota?
+                const allGuessed = uniqueLetters().every(l => allRevealed.has(l));
+                if (allGuessed && wrongGuesses < maxWrong && !gameOver) {
+                    gameOver = true;
+                    endTimeout = setTimeout(() => {
+                        endTimeout = null;
+                        const { streak, isBest } = updateStreak(true);
+                        updateStats();
+                        msgIcon.textContent = '🎉';
+                        msgTitle.textContent = '¡Ganaste!';
+                        msgAnswer.textContent = `"${selectedWord}"`;
+                        msgText.textContent = `Aciertos: ${guessedLetters.filter(l => selectedWord.includes(l)).length} · Fallos: ${wrongGuesses} · Racha: ${streak}${isBest ? ' · Récord: Nuevo 🏆' : ''}`;
+                        statusMsg.innerHTML = '🎉 ¡Felicidades! Has ganado.<span class="hint" id="hintText"></span>';
+                        sfx.win();
+                        if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+                        gameMessage.classList.add('show');
+                    }, 420);
+                } else if (wrongGuesses >= maxWrong && !gameOver) {
+                    gameOver = true;
+                    endTimeout = setTimeout(() => {
+                        endTimeout = null;
+                        const { streak } = updateStreak(false);
+                        updateStats();
+                        msgIcon.textContent = '💀';
+                        msgTitle.textContent = 'Has perdido';
+                        msgAnswer.textContent = `"${selectedWord}"`;
+                        msgText.textContent = `Aciertos: ${guessedLetters.filter(l => selectedWord.includes(l)).length} · Fallos: ${wrongGuesses} · Racha: ${streak}`;
+                        statusMsg.innerHTML = `💀 Perdiste. La palabra era: "${selectedWord}"<span class="hint" id="hintText"></span>`;
+                        sfx.lose();
+                        if (navigator.vibrate) navigator.vibrate(80);
+                        gameMessage.classList.add('show');
+                    }, 420);
+                }
+            }
+
+            function guessLetter(letter) {
+                if (tabHidden || gameOver) return;
+                if (guessedLetters.includes(letter)) return;
+
+                guessedLetters.push(letter);
+
+                if (selectedWord.includes(letter)) {
+                    sfx.correct();
+                    if (navigator.vibrate) navigator.vibrate(12);
+                } else {
+                    wrongGuesses++;
+                    sfx.wrong();
+                    if (navigator.vibrate) navigator.vibrate(40);
+                    hangmanSvg.classList.remove('swinging');
+                    void hangmanSvg.offsetWidth; // reiniciar animación
+                    hangmanSvg.classList.add('swinging');
+                }
+
+                renderGame();
+            }
+
+            // ==========================================================
+            // PISTAS
+            // ==========================================================
+            function revealHint() {
+                if (gameOver || tabHidden) return;
+                if (hintBtn.disabled) return;
+
+                const maxHintsForWord = calculateHints();
+                if (usedHints >= maxHintsForWord) {
+                    hintBtn.disabled = true;
+                    renderGame();
+                    return;
+                }
+
+                const unrevealed = uniqueLetters().filter(l => !guessedLetters.includes(l) && !hintRevealedLetters.includes(l));
+                if (unrevealed.length === 0) {
+                    hintBtn.disabled = true;
+                    renderGame();
+                    return;
+                }
+
+                const letter = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+                hintRevealedLetters.push(letter);
+                usedHints++;
+                sfx.hint();
+                if (navigator.vibrate) navigator.vibrate(10);
+
+                if (usedHints >= maxHintsForWord) hintBtn.disabled = true;
+
+                renderGame();
+
+                // Comprobar victoria por pista
+                const allRevealed = new Set([...guessedLetters, ...hintRevealedLetters]);
+                const allGuessed = uniqueLetters().every(l => allRevealed.has(l));
+                if (allGuessed && wrongGuesses < maxWrong && !gameOver) {
+                    gameOver = true;
+                    endTimeout = setTimeout(() => {
+                        endTimeout = null;
+                        const { streak, isBest } = updateStreak(true);
+                        updateStats();
+                        msgIcon.textContent = '🎉';
+                        msgTitle.textContent = '¡Ganaste!';
+                        msgAnswer.textContent = `"${selectedWord}"`;
+                        msgText.textContent = `Aciertos: ${guessedLetters.filter(l => selectedWord.includes(l)).length} · Fallos: ${wrongGuesses} · Racha: ${streak}${isBest ? ' · Récord: Nuevo 🏆' : ''}`;
+                        statusMsg.innerHTML = '🎉 ¡Felicidades! Has ganado.<span class="hint" id="hintText"></span>';
+                        sfx.win();
+                        if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+                        gameMessage.classList.add('show');
+                    }, 420);
+                }
+            }
+
+            // ==========================================================
+            // REINICIO / MODAL
+            // ==========================================================
+            function resetGame() {
+                gameMessage.classList.remove('show');
+                initGame();
+            }
+
+            function hideModal() {
+                gameMessage.classList.remove('show');
+            }
+
+            // ==========================================================
+            // EVENTOS
+            // ==========================================================
+            hintBtn.addEventListener('click', revealHint);
+            resetBtn.addEventListener('click', resetGame);
+            msgBtn.addEventListener('click', resetGame);
+            gameMessage.addEventListener('click', (e) => {
+                if (e.target === gameMessage) hideModal();
+            });
+
+            // Teclado físico: letras (A-Z y Ñ) y cerrar modal (Esc).
+            // Sin atajos con letras para pista/reinicio: "H" y "R" son letras
+            // del juego y deben adivinarse, no disparar acciones (si no, pulsar
+            // R reiniciaba la partida en lugar de adivinar la letra).
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') hideModal();
+                if (/^[a-zñ]$/i.test(e.key)) {
+                    guessLetter(e.key.toLowerCase());
+                }
+            });
+
+            // Pausa con pestaña oculta
+            document.addEventListener('visibilitychange', () => {
+                tabHidden = document.hidden;
+            });
+
+            // ==========================================================
+            // INICIO
+            // ==========================================================
+            updateSoundBtn();
+            updateStats();
+            renderCategories();
+            initGame();
+        })();
+    </script>
+
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js')
+        .catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+
+    <script src="_online.js"></script>
+</html>

@@ -1,7 +1,8 @@
 /* ==========================================
    BottomNav — navegación inferior (móvil)
-   4 secciones compartidas, indicador activo suave y píldora en el icono.
-   El panel de administración se abre desde Perfil.
+   5 secciones, indicador activo suave y píldora en el icono.
+   Las pestañas salen del registro de rutas: la usuaria ve «Inicio» y el
+   admin ve «Admin» en su lugar (no usa la pantalla diaria).
    ========================================== */
 
 import { userStore } from '../stores/user.store.js';

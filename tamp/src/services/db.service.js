@@ -141,6 +141,18 @@ async function loadContent(id, fallback = null) {
   }
 }
 
+/** Fuente del editor. Una lectura fallida nunca equivale a una lista vacía. */
+async function getAdminContentSnapshot(id) {
+  await requireAdmin();
+  const { data, error } = await supabase
+    .from(CONTENT_TABLE)
+    .select('data, updated_at')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return { id, exists: Boolean(data), data: data?.data ?? null, updatedAt: data?.updated_at ?? null };
+}
+
 /**
  * Cuántos elementos tiene una sección. Sirve para saber si al guardar se han
  * AÑADIDO cosas (lo único que avisa): editar un texto o reordenar no cambia
@@ -196,15 +208,15 @@ function updatedLettersIn(prev, next) {
     .filter(letter => letter?.id && letter?.updatedAt && before.get(letter.id) !== letter.updatedAt);
 }
 
-async function saveContent(id, data) {
+async function saveContent(id, data, snapshot) {
   await requireAdmin(); // contenido global: solo ADMIN
 
   // Lo que había antes de escribir: el aviso de contenido nuevo sale solo si
   // el recuento sube. Si no se puede leer, `prev` es null y no se avisa —
   // mejor quedarse callado que anunciar todo el catálogo como «nuevo».
   const countOf = CONTENT_COUNT[id];
-  let prev = null;
-  if (CONTENT_ANNOUNCE[id]) {
+  let prev = snapshot?.data ?? null;
+  if (!snapshot && CONTENT_ANNOUNCE[id]) {
     try { prev = await loadContent(id, null); } catch { prev = null; }
   }
 
@@ -212,7 +224,7 @@ async function saveContent(id, data) {
   // drástica frente a lo que ya había, es un catálogo truncado (carga fallida
   // o bug) y sobrescribirlo BORRARÍA meses de contenido de un plumazo.
   // El panel ya avisa, pero esta es la red de seguridad definitiva.
-  if (id === 'gifts') {
+  if (id === 'gifts' && !snapshot) {
     const incoming = Array.isArray(data?.gifts) ? data.gifts.length : 0;
     let current = 0;
     try {
@@ -227,10 +239,25 @@ async function saveContent(id, data) {
   }
 
   try {
-    const { error } = await supabase
-      .from(CONTENT_TABLE)
-      .upsert({ id, data, updated_at: new Date().toISOString() }, { onConflict: 'id' });
-    if (error) throw error;
+    const updatedAt = new Date(Math.max(Date.now(), (Date.parse(snapshot?.updatedAt) || 0) + 1)).toISOString();
+    const table = supabase.from(CONTENT_TABLE);
+    if (snapshot) {
+      // La colección se guarda entera. Si otro editor guardó desde la carga,
+      // el filtro evita sobrescribir sus cambios incluso entre lectura y escritura.
+      const update = snapshot.exists ? table.update({ data, updated_at: updatedAt }).eq('id', id) : null;
+      const write = update
+        ? (snapshot.updatedAt === null ? update.is('updated_at', null) : update.eq('updated_at', snapshot.updatedAt))
+        : table.insert({ id, data, updated_at: updatedAt });
+      const { data: confirmed, error } = await write.select('updated_at').maybeSingle();
+      if (error && error.code !== '23505') throw error;
+      if (!confirmed) {
+        throw new Error('El contenido cambió desde que lo abriste. Conserva tu edición y vuelve a cargar la sección antes de guardar.');
+      }
+      Object.assign(snapshot, { exists: true, data, updatedAt: confirmed.updated_at });
+    } else {
+      const { error } = await table.upsert({ id, data, updated_at: updatedAt }, { onConflict: 'id' });
+      if (error) throw error;
+    }
     lsSet('ph.config.' + id, data);
     notifyLocalSave(id, data);
 
@@ -263,7 +290,7 @@ async function saveContent(id, data) {
     }
     return true;
   } catch (err) {
-    if (isSupabaseConfigured()) {
+    if (snapshot || isSupabaseConfigured()) {
       console.warn(`[db] Supabase write failed for "${id}":`, err.message);
       throw new Error(`No se pudo guardar en Supabase: ${err.message}`);
     }
@@ -271,6 +298,10 @@ async function saveContent(id, data) {
     notifyLocalSave(id, data);
     return true;
   }
+}
+
+function saveAdminContent(snapshot, data) {
+  return saveContent(snapshot.id, data, snapshot);
 }
 
 /**
@@ -295,7 +326,9 @@ function notifyLocalSave(id, data) {
       .catch(() => {});
   }
 
-  window.dispatchEvent(new CustomEvent('ph:content-updated', { detail: { id } }));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ph:content-updated', { detail: { id } }));
+  }
 }
 
 async function checkConnection() {
@@ -319,22 +352,18 @@ async function getMoods() {
   return lsGet(KEYS.moods, {});
 }
 
+async function readAdminMoods(options) {
+  const { readAdminHistory } = await import('./admin-analytics-read.js');
+  return readAdminHistory(isSupabaseConfigured() ? supabase : null, 'moods', options);
+}
+
 /**
  * Fetch all moods from Supabase within a date range (admin use).
  * Returns an array of mood rows.
  */
 async function getAllMoods(startDate, endDate) {
   try {
-    const { data, error } = await supabase
-      .from('moods')
-      .select('*')
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date', { ascending: false })
-      .limit(1000);
-
-    if (error) throw error;
-    return data || [];
+    return (await readAdminMoods({ from: startDate, through: endDate })).rows;
   } catch (err) {
     console.warn('[db] Could not fetch all moods:', err.message);
     return [];
@@ -356,18 +385,20 @@ async function getMoodsForDate(date) {
  * limita a una cuenta; sin él se miran todas (opción «Todos» del panel).
  * Devuelve 'YYYY-MM-DD' o null si no hay nada.
  */
-async function getNearestMoodDate({ from, direction = 'next', userId = null } = {}) {
-  if (!from) return null;
+async function getNearestMoodDate({ from, direction = 'next', userId = null, strict = false, signal } = {}) {
+  if (!from || !isSupabaseConfigured()) return null;
   try {
     let query = supabase.from('moods').select('date');
     query = direction === 'prev'
       ? query.lte('date', from).order('date', { ascending: false })
       : query.gte('date', from).order('date', { ascending: true });
     if (userId) query = query.eq('user_id', userId);
+    if (signal) query = query.abortSignal(signal);
     const { data, error } = await query.limit(1);
     if (error) throw error;
     return data?.[0]?.date || null;
   } catch (err) {
+    if (strict) throw err;
     console.warn('[db] Could not find the nearest mood date:', err.message);
     return null;
   }
@@ -396,37 +427,24 @@ async function saveMood(date, moodData) {
   return true;
 }
 
-async function getMoodMonth(year, month) {
+async function getMoodMonth(year, month, { strict = false, userId, signal } = {}) {
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
   const result = {};
 
-  // 1. Try Supabase first (all users) — source of truth
   try {
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const startDate = `${prefix}-01`;
     const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
-    const { data: supabaseMoods, error } = await supabase
-      .from('moods')
-      .select('*')
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .limit(1000);
-
-    if (!error && supabaseMoods && supabaseMoods.length > 0) {
-      supabaseMoods.forEach(m => {
-        const dateStr = m.date;
-        if (!result[dateStr]) result[dateStr] = [];
-        result[dateStr].push({
-          mood: m.mood, label: m.label, emoji: m.emoji,
-          score: m.score, user_id: m.user_id,
-          source: 'supabase'
-        });
-      });
-      return result;
+    const endDate = `${prefix}-${lastDay}`;
+    const { rows, source } = await readAdminMoods({ from: startDate, through: endDate, userId, signal });
+    for (const row of rows) {
+      (result[row.date] ||= []).push({ ...row, source });
     }
-  } catch { /* */ }
+    if (source === 'supabase' || strict || userId) return result;
+  } catch (error) {
+    if (strict) throw error;
+  }
 
-  // 2. Fallback to localStorage (current user) when Supabase is unavailable
+  // Compatibilidad con el historial antiguo del navegador.
   const localMoods = lsGet(KEYS.moods, {});
   Object.entries(localMoods).forEach(([date, data]) => {
     if (date.startsWith(prefix)) {
@@ -441,9 +459,9 @@ async function getMoodMonth(year, month) {
 // REASONS (via content table)
 // ==========================================
 
-async function getReasons({ fallback = [] } = {}) {
-  const data = await loadContent('razones');
-  return data ? data.reasons || [] : fallback;
+async function getReasons() {
+  const data = await loadContent('razones', { reasons: [] });
+  return data.reasons || [];
 }
 
 async function saveReasons(reasons) {
@@ -553,22 +571,30 @@ function cleanSeasonal(event) {
   };
 }
 
+function normalizeHubDates(data) {
+  const merged = { ...DEFAULT_HUB_DATES, ...(data && typeof data === 'object' ? data : {}) };
+  merged.events = Array.isArray(merged.events) ? merged.events : [];
+  merged.titles = { ...DEFAULT_HUB_DATES.titles, ...(merged.titles && typeof merged.titles === 'object' ? merged.titles : {}) };
+  merged.recurring = { ...DEFAULT_HUB_DATES.recurring, ...(merged.recurring && typeof merged.recurring === 'object' ? merged.recurring : {}) };
+  merged.looks = merged.looks && typeof merged.looks === 'object' ? merged.looks : {};
+  merged.seasonal = Array.isArray(merged.seasonal) ? merged.seasonal : [];
+  return merged;
+}
+
 async function getHubDates() {
   try {
-    const data = await loadContent('hub_dates', {});
-    const merged = { ...DEFAULT_HUB_DATES, ...(data && typeof data === 'object' ? data : {}) };
-    merged.events = Array.isArray(merged.events) ? merged.events : [];
-    merged.titles = { ...DEFAULT_HUB_DATES.titles, ...(merged.titles && typeof merged.titles === 'object' ? merged.titles : {}) };
-    merged.recurring = { ...DEFAULT_HUB_DATES.recurring, ...(merged.recurring && typeof merged.recurring === 'object' ? merged.recurring : {}) };
-    merged.looks = merged.looks && typeof merged.looks === 'object' ? merged.looks : {};
-    merged.seasonal = Array.isArray(merged.seasonal) ? merged.seasonal : [];
-    return merged;
+    return normalizeHubDates(await loadContent('hub_dates', {}));
   } catch {
     return { ...DEFAULT_HUB_DATES, titles: { ...DEFAULT_HUB_DATES.titles }, recurring: { ...DEFAULT_HUB_DATES.recurring }, looks: {}, seasonal: [] };
   }
 }
 
-async function saveHubDates(dates) {
+async function getAdminHubDates() {
+  const snapshot = await getAdminContentSnapshot('hub_dates');
+  return { snapshot, dates: normalizeHubDates(snapshot.data) };
+}
+
+async function saveHubDates(dates, snapshot) {
   const clean = {
     anniversary: dates?.anniversary || DEFAULT_HUB_DATES.anniversary,
     hubStart: dates?.hubStart || DEFAULT_HUB_DATES.hubStart,
@@ -603,7 +629,7 @@ async function saveHubDates(dates) {
         || look.video || look.gallery.length)),
     seasonal: Array.isArray(dates?.seasonal) ? dates.seasonal.map(cleanSeasonal).filter(Boolean) : []
   };
-  await saveContent('hub_dates', clean);
+  await saveContent('hub_dates', clean, snapshot);
   return clean;
 }
 
@@ -718,8 +744,8 @@ async function getOpenWhenLetters() {
   // como fallback offline (mismo patrón que el catálogo de Series).
   try {
     const data = await loadContent('openwhen_letters');
-    const letters = data?.letters;
-    if (Array.isArray(letters)) {
+    if (Array.isArray(data?.letters)) {
+      const { letters } = data;
       try { localStorage.setItem('ph.config.openwhen_letters', JSON.stringify({ letters })); } catch { /* cuota llena: ignorar */ }
       return letters;
     }
@@ -736,64 +762,43 @@ async function saveOpenWhenLetters(customLetters) {
 // ==========================================
 
 async function logActivity(action, details) {
-  const activities = await getCollection(KEYS.activity, []);
+  const userId = auth.getUser()?.id || '';
+  const timestamp = new Date().toISOString();
+  const stored = lsGet(KEYS.activity, []);
+  const activities = Array.isArray(stored) ? stored : [];
   activities.unshift({
     id: generateId(), action,
     details: details || '',
-    timestamp: new Date().toISOString()
+    timestamp, user_id: userId
   });
   if (activities.length > 200) activities.length = 200;
   lsSet(KEYS.activity, activities);
 
-  // Also log to Supabase
+  if (!isSupabaseConfigured() || !userId) return;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      // .catch no existe en el builder thenable de supabase-js: try/catch + await
-      try {
-        await supabase.from('activity_log').insert({
-          action, user_id: user.id,
-          details: details || '',
-          timestamp: new Date().toISOString()
-        });
-      } catch { /* log local ya registrado */ }
-    }
-  } catch {}
+    const { error } = await supabase.from('activity_log').insert({
+      action, user_id: userId, details: details || '', timestamp
+    });
+    if (error) throw error;
+  } catch (error) {
+    console.warn('[db] Actividad no sincronizada:', error.message);
+  }
+}
+
+async function readAdminActivity(options) {
+  const { readAdminHistory } = await import('./admin-analytics-read.js');
+  return readAdminHistory(isSupabaseConfigured() ? supabase : null, 'activity', {
+    ...options, localRows: lsGet(KEYS.activity, [])
+  });
 }
 
 async function getActivity(limit = 50) {
-  const local = await getCollection(KEYS.activity, []);
-
-  // Fuente de verdad: activity_log en Supabase (multi-dispositivo).
-  // La RLS permite SELECT solo a admins (public.is_admin()).
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('activity_log')
-        .select('id, action, details, timestamp, user_id')
-        .order('timestamp', { ascending: false })
-        .limit(limit * 2);
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const remote = data.map(r => ({
-          id: r.id,
-          action: r.action,
-          details: r.details || '',
-          timestamp: r.timestamp
-        }));
-        // Merge con el espejo local (por si algún evento solo quedó ahí),
-        // deduplicando por id y manteniendo el orden más reciente primero.
-        const seen = new Set(remote.map(r => r.id));
-        const localExtra = local.filter(e => e.id && !seen.has(e.id));
-        return [...remote, ...localExtra].sort((a, b) =>
-          new Date(b.timestamp || 0) - new Date(a.timestamp || 0)
-        ).slice(0, limit);
-      }
-    } catch (err) {
-      console.warn('[db] Supabase activity read failed:', err.message);
-    }
+  try {
+    return (await readAdminActivity({ limit })).rows;
+  } catch (err) {
+    console.warn('[db] Supabase activity read failed:', err.message);
+    return lsGet(KEYS.activity, []).slice(0, limit);
   }
-
-  return local.slice(0, limit);
 }
 
 // ==========================================
@@ -814,23 +819,13 @@ async function saveCollection(key, data) {
 // ==========================================
 
 async function trackVisit(page) {
-  // Resuelve el usuario primero para registrarlo tanto en el espejo local
-  // como en Supabase (así el Admin ve la actividad por usuario incluso si
-  // la sincronización remota falla).
-  let userId = '';
-  if (isSupabaseConfigured()) {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) userId = user.id;
-    } catch { /* sesión no válida: se registra como invitado */ }
-  }
-
+  const userId = auth.getUser()?.id || '';
   const visit = { page, timestamp: new Date().toISOString(), id: generateId(), user_id: userId };
   // Espejo local (offline / fallback).
   const analytics = lsGet(KEYS.analytics, { visits: [] });
-  analytics.visits.push(visit);
-  if (analytics.visits.length > 500) analytics.visits.length = 500;
-  lsSet(KEYS.analytics, analytics);
+  const history = Array.isArray(analytics?.visits) ? analytics.visits : [];
+  history.push(visit);
+  lsSet(KEYS.analytics, { visits: history.slice(-500) });
 
   // Sync a Supabase (analytics_visits): el Admin ve la actividad de cada
   // usuario aunque navegue desde otro dispositivo. RLS: insert = cualquier
@@ -840,6 +835,7 @@ async function trackVisit(page) {
     const { error } = await supabase.from('analytics_visits').insert({
       user_id: userId,
       page,
+      timestamp: visit.timestamp,
       user_agent: (typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '').slice(0, 200)
     });
     if (error) console.warn('[db] Visita no sincronizada:', error.message);
@@ -850,6 +846,13 @@ async function trackVisit(page) {
 
 async function getAnalytics() { return lsGet(KEYS.analytics, { visits: [] }); }
 
+async function readAdminVisits(options) {
+  const { readAdminHistory } = await import('./admin-analytics-read.js');
+  return readAdminHistory(isSupabaseConfigured() ? supabase : null, 'visits', {
+    ...options, localRows: lsGet(KEYS.analytics, { visits: [] })?.visits
+  });
+}
+
 /**
  * Visitas registradas para el Admin: [{ id, user_id, page, timestamp }] de
  * más a menos reciente. En Supabase la RLS solo deja leer al admin; si no
@@ -858,27 +861,17 @@ async function getAnalytics() { return lsGet(KEYS.analytics, { visits: [] }); }
  * visitas consecutivas de la misma persona (gap <= 30 min).
  */
 async function getPageVisits(limit = 2000) {
-  const local = lsGet(KEYS.analytics, { visits: [] });
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('analytics_visits')
-        .select('id, user_id, page, timestamp')
-        .order('timestamp', { ascending: false })
-        .limit(limit);
-      if (!error && Array.isArray(data) && data.length > 0) {
-        return data.map(v => ({
-          id: v.id,
-          user_id: v.user_id || '',
-          page: v.page || '/',
-          timestamp: v.timestamp
-        }));
-      }
-    } catch (err) {
-      console.warn('[db] Lectura de visitas fallida:', err.message);
-    }
+  let rows;
+  try {
+    ({ rows } = await readAdminVisits({ limit }));
+  } catch (err) {
+    console.warn('[db] Lectura de visitas fallida:', err.message);
+    const { readAdminHistory } = await import('./admin-analytics-read.js');
+    ({ rows } = await readAdminHistory(null, 'visits', {
+      limit, localRows: lsGet(KEYS.analytics, { visits: [] })?.visits
+    }));
   }
-  return local.visits.map(v => ({
+  return rows.map(v => ({
     id: v.id, user_id: v.user_id || '', page: v.page || '/', timestamp: v.timestamp
   }));
 }
@@ -892,19 +885,12 @@ async function getPageVisits(limit = 2000) {
 let listUsersPromise = null;
 
 // Fetch all moods for a specific user, sorted by date descending.
-async function getUserMoods(userId) {
+async function getUserMoods(userId, { strict = false, limit = 1000, signal } = {}) {
   if (!userId) return [];
   try {
-    const { data, error } = await supabase
-      .from('moods')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: false })
-      .limit(1000);
-
-    if (error) throw error;
-    return data || [];
+    return (await readAdminMoods({ userId, limit, signal })).rows;
   } catch (err) {
+    if (strict) throw err;
     console.warn('[db] Could not fetch user moods:', err.message);
     return [];
   }
@@ -1235,6 +1221,44 @@ async function listUsers() {
   }
 }
 
+async function requestAdminUsers(payload) {
+  const { data, error } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (error || !token) throw new Error('La sesión de administración ha caducado.');
+  const response = await fetch('/api/users', {
+    method: payload ? 'POST' : 'GET',
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(payload ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(payload ? { body: JSON.stringify(payload) } : {}),
+  });
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) throw new Error('El servicio de cuentas no está disponible.');
+  const body = await response.json();
+  if (!response.ok) throw new Error(body?.error || 'No se pudo completar la operación de cuentas.');
+  return { body, truncated: response.headers.get('x-users-truncated') === 'true' };
+}
+
+let adminUsersRequest = null;
+async function readAdminUsers() {
+  await requireAdmin();
+  if (!isSupabaseConfigured()) {
+    return { rows: lsGet('ph.data.users', []), source: 'local', truncated: false };
+  }
+  if (!adminUsersRequest) {
+    const request = requestAdminUsers().then(({ body, truncated }) => {
+      if (!Array.isArray(body)) throw new Error('El servicio devolvió una lista de cuentas inválida.');
+      return { rows: body, source: 'supabase', truncated };
+    }).finally(() => {
+      if (adminUsersRequest === request) adminUsersRequest = null;
+    });
+    adminUsersRequest = request;
+  }
+  return adminUsersRequest;
+}
+
 // ==========================================
 // PROFILE SYNC — sincroniza nombre/avatar con la tabla profiles
 // (el panel Admin, las invitaciones de juego y el RPC de rivales leen
@@ -1261,6 +1285,13 @@ async function saveProfile(updates) {
 
 async function saveUser(userId, updates) {
   await requireAdmin(); // gestión de usuarios: solo ADMIN
+  let result = {};
+  if (typeof userId === 'string' && isUuid(userId)) {
+    const { body } = await requestAdminUsers({ action: 'update', id: userId, enabled: updates?.enabled });
+    if (body?.success !== true) throw new Error('El servidor no confirmó el cambio de la cuenta.');
+    adminUsersRequest = null;
+    result = body;
+  }
   const users = lsGet('ph.data.users', []);
   const idx = users.findIndex(u => u.id === userId);
   if (idx !== -1) {
@@ -1270,35 +1301,7 @@ async function saveUser(userId, updates) {
     lsSet('ph.data.users', users);
   }
 
-  // Sincroniza con Supabase cuando el usuario es real (id UUID), no local
-  if (typeof userId === 'string' && isUuid(userId)) {
-    try {
-      const sessionRes = await supabase.auth.getSession();
-      const accessToken = sessionRes.data?.session?.access_token;
-      if (accessToken) {
-        const res = await fetch('/api/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
-          },
-          body: JSON.stringify({
-            action: 'update',
-            id: userId,
-            enabled: updates?.enabled
-          })
-        });
-        // En dev (Vite) /api/users no existe y devuelve el HTML del SPA con 200:
-        // detectarlo para no dar por hecho un cambio que no se aplicó.
-        if (!res.ok || !(res.headers.get('content-type') || '').includes('application/json')) {
-          console.warn('[db] Server user update skipped (dev o endpoint no disponible).');
-        }
-      }
-    } catch (err) {
-      console.warn('[db] Could not sync user update with server:', err.message);
-    }
-  }
-  return true;
+  return result;
 }
 
 async function createUser(userData) {
@@ -1315,55 +1318,18 @@ async function createUser(userData) {
 
 async function deleteUser(userId) {
   await requireAdmin(); // eliminación de usuarios: solo ADMIN
+  let result = {};
+  if (typeof userId === 'string' && isUuid(userId)) {
+    const { body } = await requestAdminUsers({ action: 'delete', id: userId });
+    if (body?.success !== true) throw new Error('El servidor no confirmó la eliminación de la cuenta.');
+    adminUsersRequest = null;
+    result = body;
+  }
   const users = lsGet('ph.data.users', []);
   lsSet('ph.data.users', users.filter(u => u.id !== userId));
-  logActivity('user_deleted', `Usuario eliminado: ${userId}`);
+  void logActivity('user_deleted', `Usuario eliminado: ${userId}`);
   markUserDeleted(userId);
-
-  // Mejor esfuerzo en local: borra sus datos directamente (profiles, moods y
-  // analytics_visits) — las políticas RLS lo permiten al admin tras la
-  // migración 015_borrado_usuarios.sql. Sin esto, listUsers() reconstruiría
-  // al usuario desde esas tablas. Si la migración aún no se ha aplicado,
-  // cada borrado falla con un warn y el tombstone local lo sigue ocultando.
-  if (typeof userId === 'string' && isUuid(userId)) {
-    const cleanups = [
-      ['profiles', 'id'],
-      ['moods', 'user_id'],
-      ['analytics_visits', 'user_id']
-    ];
-    for (const [table, col] of cleanups) {
-      try {
-        const { error } = await supabase.from(table).delete().eq(col, userId);
-        if (error) console.warn(`[db] No se pudieron borrar ${table} en local:`, error.message);
-      } catch (err) {
-        console.warn(`[db] ${table} cleanup skipped:`, err.message);
-      }
-    }
-  }
-
-  // Si es un usuario real de Supabase, elimínalo también en Auth
-  if (typeof userId === 'string' && isUuid(userId)) {
-    try {
-      const sessionRes = await supabase.auth.getSession();
-      const accessToken = sessionRes.data?.session?.access_token;
-      if (accessToken) {
-        const res = await fetch('/api/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
-          },
-          body: JSON.stringify({ action: 'delete', id: userId })
-        });
-        if (!res.ok || !(res.headers.get('content-type') || '').includes('application/json')) {
-          console.warn('[db] Server user deletion skipped (dev o endpoint no disponible).');
-        }
-      }
-    } catch (err) {
-      console.warn('[db] Could not sync user deletion with server:', err.message);
-    }
-  }
-  return true;
+  return result;
 }
 
 /** ¿Es un id UUID real de Supabase Auth (no local)? */
@@ -2001,6 +1967,8 @@ function formatAction(action) {
 // ==========================================
 
 export const db = {
+  getAdminContentSnapshot, saveAdminContent, getAdminHubDates,
+  readAdminVisits, readAdminMoods, readAdminActivity,
   getMoods, saveMood, getMoodMonth, getNearestMoodDate, getAllMoods, getMoodsForDate, getUserMoods,
   getReasons, saveReasons,
   getRinconCovers, saveRinconCovers,
@@ -2018,7 +1986,7 @@ export const db = {
   getMaldiaFrases, getMaldiaMensajes, saveMaldiaFrases, saveMaldiaMensajes,
   logActivity, getActivity, formatAction, isKnownAction,
   trackVisit, getAnalytics, getPageVisits,
-  listUsers, saveUser, createUser, deleteUser, saveProfile,
+  listUsers, readAdminUsers, saveUser, createUser, deleteUser, saveProfile,
   uploadAvatar, uploadGalleryPhotos, uploadMemes, uploadAudios,
   saveGiftResponse, getMyGiftResponses, getAllGiftResponses,
   saveMaldiaNote, getMyMaldiaNotes, getAllMaldiaNotes,

@@ -28,7 +28,7 @@ export function LoginPage(router) {
             </svg>
           </div>
           <p class="login-kicker">NUESTRO ESPACIO</p>
-          <h1>Tamp</h1>
+          <h1>Personal Hub</h1>
           <p id="loginSubtitle">${isRecovery ? 'Crea una contraseña nueva y segura' : 'Vuestra vida juntos, en un solo lugar'}</p>
         </div>
 

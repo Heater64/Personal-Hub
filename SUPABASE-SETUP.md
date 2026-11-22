@@ -86,6 +86,18 @@ Las playlists históricas con `created_by IS NULL` no se reasignan automáticame
 - Copia los datos existentes y solo borra la fila antigua cuando el recuento
   coincide. Hay copia de seguridad en `push_subscriptions_legacy_backup`.
 
+### Migración local 033: lectura compartida de ánimo y ciclo
+
+`sql/033_datos_compartidos_de_pareja.sql` actualiza la lectura cruzada para
+que ambos usuarios puedan consultar los registros de ánimo y del ciclo sin
+ganar permisos para modificarlos. Solo permite lectura compartida si existen
+exactamente dos perfiles habilitados con roles `admin` y `user`.
+
+Este archivo se preparó durante la auditoría y **no se ha aplicado**. Antes
+de usarlo en la base desplegada, probarlo en una copia con las dos sesiones:
+verificar que ambas ven los registros de la otra, que no pueden editarlos ni
+borrarlos, y que una tercera sesión o cuenta deshabilitada no obtiene acceso.
+
 **`sql/022_push_reminders.sql`**
 
 - Crea `push_reminders` (título, mensaje, destino, cuándo y cada cuánto) y

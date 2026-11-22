@@ -2005,6 +2005,103 @@
   margin-bottom: var(--sp-16);
 }
 
+/* Catálogo externo de TMDB */
+.sr-tmdb-panel {
+  margin-top: var(--sp-28);
+  padding-top: var(--sp-24);
+  border-top: 1px solid var(--theme-divider);
+}
+
+.sr-tmdb-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-16);
+}
+
+.sr-tmdb-heading h3 {
+  margin: 3px 0 0;
+  color: var(--theme-text-primary);
+  font-size: var(--fs-h3);
+}
+
+.sr-tmdb-kicker,
+.sr-tmdb-meta,
+.sr-tmdb-attribution,
+.sr-tmdb-count {
+  color: var(--theme-text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.sr-tmdb-kicker { color: var(--theme-accent); font-weight: 700; }
+.sr-tmdb-count { white-space: nowrap; }
+.sr-tmdb-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.sr-tmdb-modes button { padding: 6px 10px; border: 1px solid var(--theme-divider); border-radius: var(--r-full); background: transparent; color: var(--theme-text-secondary); font: inherit; font-size: var(--fs-caption); cursor: pointer; }
+.sr-tmdb-modes button[aria-pressed="true"] { border-color: var(--theme-border-accent, var(--theme-accent)); background: var(--accent-dim); color: var(--theme-accent); font-weight: 700; }
+
+.sr-tmdb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  gap: var(--sp-12);
+}
+
+.sr-tmdb-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--sp-12);
+  min-width: 0;
+  padding: var(--sp-12);
+  border: 1px solid var(--theme-divider);
+  border-radius: var(--r-lg);
+  background: var(--theme-surface);
+}
+
+.sr-tmdb-poster {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--theme-surface-raised, var(--theme-bg));
+  color: var(--theme-text-secondary);
+}
+
+.sr-tmdb-poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sr-tmdb-poster > span { font-size: 24px; }
+.sr-tmdb-card.is-no-poster .sr-tmdb-poster img { display: none; }
+.sr-tmdb-copy { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.sr-tmdb-meta { margin-bottom: 5px; }
+.sr-tmdb-copy h4 { margin: 0 0 6px; color: var(--theme-text-primary); font-size: var(--fs-body); }
+.sr-tmdb-copy p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin: 0 0 10px; color: var(--theme-text-secondary); font-size: var(--fs-sm); line-height: 1.45; }
+
+.sr-tmdb-add {
+  margin-top: auto;
+  padding: 7px 11px;
+  border: 1px solid var(--theme-border-accent, var(--theme-divider));
+  border-radius: var(--r-full);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+  font: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sr-tmdb-add:disabled { opacity: .7; cursor: default; }
+.sr-tmdb-status { margin: 0; padding: var(--sp-16); color: var(--theme-text-secondary); text-align: center; }
+.sr-tmdb-status--error { color: var(--theme-danger, #c65353); }
+.sr-tmdb-attribution { margin: var(--sp-12) 0 0; text-align: right; }
+
+@media (max-width: 420px) {
+  .sr-tmdb-card { grid-template-columns: 72px minmax(0, 1fr); gap: var(--sp-8); }
+  .sr-tmdb-poster { width: 72px; }
+  .sr-tmdb-heading h3 { font-size: var(--fs-h4); }
+  .sr-tmdb-heading { align-items: flex-start; flex-direction: column; }
+}
+
 /* ==========================================
    BARRA FIJA DEL DETALLE — marcar el siguiente
    ========================================== */

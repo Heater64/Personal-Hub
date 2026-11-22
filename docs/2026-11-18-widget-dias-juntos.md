@@ -72,7 +72,7 @@
 
 ## 6. Verificación
 
-- `npx vite build personal-hub` — compila la web.
+- `npx vite build tamp` — compila la web.
 - `./gradlew assembleDebug` — compila el APK con los tres `appwidget-provider`.
 - Altura de las tres composiciones con fuente del sistema 1,0×, 1,3×, 1,5× y 2,0× (`.freebuff-tmp/widget-fit-check.mjs`): caben todas; a partir de 1,3× se oculta «hace N días» y a partir de 1,7× el desglose de la composición baja.
 - Pendiente de probar en dispositivo: colocación real en el launcher de Xiaomi y el render con la fuente grande (la comprobación anterior es geométrica, sobre los valores del XML).

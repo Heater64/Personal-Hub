@@ -11,7 +11,7 @@
    ========================================== */
 
 import { callNativeApi, isNative, nativeApiUrl } from './native.service.js';
-import { formatDistance } from './location.service.js';
+import { formatDistance, togetherInfo } from './location.service.js';
 import { auth } from './auth.service.js';
 import { db } from './db.service.js';
 import { moodStore } from '../stores/mood.store.js';
@@ -377,6 +377,7 @@ export function togetherBreakdown(totalDays) {
 export async function saveDistanceWidget({ km, me, partner, device }) {
   if (!isNative()) return;
   const battery = device?.battery;
+  const together = Number.isFinite(km) && togetherInfo(me, partner)?.together;
   const oldestFix = Math.min(Date.parse(me?.at), Date.parse(partner?.at));
   const telemAt = Date.parse(device?.sentAt || device?.at);
   const expires = timestamp => Number.isFinite(timestamp) ? new Date(timestamp + 1800000).toISOString() : '';
@@ -384,7 +385,7 @@ export async function saveDistanceWidget({ km, me, partner, device }) {
     KEY_DISTANCE,
     JSON.stringify({
       km: Number.isFinite(km) ? Number(km.toFixed(2)) : null,
-      text: formatDistance(km),
+      text: together ? 'Juntos' : formatDistance(km),
       me: { name: me?.name || '', avatar: me?.avatar || '' },
       partner: { name: partner?.name || '', avatar: partner?.avatar || '' },
       device: Number.isFinite(battery)

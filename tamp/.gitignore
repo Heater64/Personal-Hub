@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Capturas y diagnósticos de widgets (no van al repo)
+.tmp-widgets/
+admin-*.png
+banner-menstruacion.png
+educacion-plegada.png
+eliminar-boton.png
+este-mes-caja.png
+estimacion-abierta.png
+estimacion-boton.png
+estimacion-cerrada.png
+foto-sin-efectos.png
+hero-final.png
+hero-sin-barra.png
+hero-sin-barra2.png
+hoja-widgets.png
+info-abierto.png
+info-cerrado.png
+info-desplegable.png
+inicio-antes.png
+inicio-arriba.png
+inicio-despues.png
+inicio-jerarquia.png
+inicio-movil.png
+inicio-movil2.png
+pantalla-mapa.png
+pareja-final.png
+pareja-solo.png
+razones-modal.png
+registro-antes.png
+registro-despues.png
+registro-movil.png
+registro-sin-animo.png
+registros-vacio.png
+sintoma-propio.png
+widgets-compact.png
+widgets-grande.png
+widgets-preview.png

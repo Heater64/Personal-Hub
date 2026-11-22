@@ -146,12 +146,11 @@ export function todayCalendarGifts() {
   const monthKey = today.slice(0, 7);
   const raw = catalog?.months?.[monthKey]?.calendarMapping?.[String(Number(today.slice(8, 10)))];
   const ids = Array.isArray(raw) ? raw.filter(Boolean) : (raw ? [raw] : []);
+  if (!ids.length) return { ids: [], total: 0, pending: 0 };
 
   let progress = {};
   try { progress = JSON.parse(localStorage.getItem(userPrefKey('giftProgress')) || '{}'); } catch { /* sin progreso */ }
-  progress ||= {};
-  const openedIds = Object.keys(progress).filter(id => progress[id]?.opened);
-  return { ids, total: ids.length, pending: ids.filter(id => !progress[id]?.opened).length, openedIds, date: today };
+  return { ids, total: ids.length, pending: ids.filter(id => !progress[id]?.opened).length };
 }
 
 /**

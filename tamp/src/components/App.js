@@ -561,6 +561,10 @@ export function AppShell(router) {
   // Re-evaluate schedule whenever the user state changes
   let legacyKeysCleaned = false;
   let schedulePending = false;
+  // onChange se invoca una vez al suscribirse, antes de que auth termine de
+  // restaurar la sesión. Ese null inicial no es un logout y no debe borrar
+  // la configuración persistente del servicio nativo.
+  let hadAuthenticatedUser = Boolean(userStore.getUser());
   userStore.onChange(async () => {
     // Al reautenticar, congela la bienvenida temática hasta conocer el ánimo
     // sincronizado de esta cuenta (evita que una sesión previa dé vía libre).
@@ -580,6 +584,7 @@ export function AppShell(router) {
     // Sync today's mood with the server so the welcome screen doesn't ask
     // again if it was already answered on another device.
     if (userStore.getUser()) {
+      hadAuthenticatedUser = true;
       // Tiempo real: los cambios del Admin se propagan a todos los usuarios
       // (Realtime + polling). Se inicia al loguearse y se detiene al salir.
       initRealtime();
@@ -620,8 +625,12 @@ export function AppShell(router) {
       // Logout: desactiva todo (incluida la sincronización en tiempo real)
       stopRealtime();
       stopPresence();
-      // Sin sesión no hay dónde escribir: el servicio en segundo plano se para.
-      void disableBackgroundTracking();
+      // Solo parar al pasar de una sesión real a logout. El null inicial
+      // mientras se restaura Auth no debe desactivar el seguimiento guardado.
+      if (hadAuthenticatedUser) {
+        hadAuthenticatedUser = false;
+        void disableBackgroundTracking();
+      }
       syncReminderState();
       if (moodNotifCleanup) {
         moodNotifCleanup();

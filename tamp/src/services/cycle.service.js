@@ -1,5 +1,5 @@
 /* ==========================================
-   Tamp — cycle.service.js
+   Personal Hub — cycle.service.js
    Persistencia del seguimiento menstrual en Supabase.
 
    Diferencias conscientes con el resto de servicios:
@@ -112,38 +112,17 @@ export async function loadSharing() {
   return data || null;
 }
 
-/** Historial de la pareja; RLS limita la lectura cruzada a las dos cuentas activas. */
+/** Resumen autorizado que ve la pareja. `{ shared:false }` si no hay permiso. */
 export async function getPartnerSnapshot() {
   if (!currentUserId()) return { shared: false };
-  try {
-    const partnerId = await resolvePartnerId();
-    if (!partnerId) return { shared: false, unavailable: true };
-    const [settingsRes, periodsRes, logsRes] = await Promise.all([
-      supabase.from(TABLES.settings).select('*').eq('user_id', partnerId).maybeSingle(),
-      supabase.from(TABLES.periods).select('*').eq('user_id', partnerId).order('start_date', { ascending: true }),
-      supabase.from(TABLES.logs).select('*').eq('user_id', partnerId).order('log_date', { ascending: true })
-    ]);
-    const failure = settingsRes.error || periodsRes.error || logsRes.error;
-    if (failure) throw translate(failure, 'No se pudo consultar el ciclo compartido.');
-    const raw = settingsRes.data || {};
-    return {
-      shared: true,
-      fields: ['next_period', 'cycle_status', 'cycle_day', 'period', 'symptoms', 'mood', 'notes', 'stats'],
-      settings: {
-        avgCycleLength: raw.avg_cycle_length ?? 28,
-        avgPeriodLength: raw.avg_period_length ?? 5,
-        lutealPhaseLength: raw.luteal_phase_length ?? 14,
-        preferences: normalizePreferences(raw.preferences)
-      },
-      periods: periodsRes.data || [],
-      logs: logsRes.data || [],
-      support_message: ''
-    };
-  } catch (error) {
+  const { data, error } = await supabase.rpc('cycle_partner_snapshot');
+  if (error) {
+    // Sin la migración aplicada o sin red: se comporta como "sin permiso".
     if (error.code === MISSING_FUNCTION || error.code === MISSING_TABLE) return { shared: false, unavailable: true };
-    console.warn('[ciclo] no se pudo leer el ciclo compartido:', error.message);
-    return { shared: false, unavailable: true };
+    console.warn('[ciclo] no se pudo leer el resumen de pareja:', error.message);
+    return { shared: false };
   }
+  return data || { shared: false };
 }
 
 /* ==========================================
@@ -281,18 +260,6 @@ export async function deleteLog(log_date) {
 export async function resolvePartnerId() {
   const me = requireUser();
 
-  // La relación de pareja es la fuente de verdad de Tamp. Las pistas antiguas
-  // (`presence_admin`, `user_progress`) se conservan solo para instalaciones
-  // que todavía no hayan ejecutado la migración de parejas.
-  try {
-    const { data: members, error } = await supabase
-      .from('couple_members')
-      .select('user_id')
-      .neq('user_id', me)
-      .limit(1);
-    if (!error && members?.[0]?.user_id) return members[0].user_id;
-  } catch { /* instalación antigua sin couple_members */ }
-
   // Camino principal: lo resuelve el servidor (ella no puede leer el
   // perfil del admin por RLS). Si la migración aún no está aplicada, se
   // cae a las pistas que ambos roles ya pueden leer.
@@ -362,7 +329,7 @@ export async function saveSharing({ enabled = false, fields = [], supportMessage
 export function toJSON({ settings, periods, logs }) {
   return JSON.stringify({
     exported_at: new Date().toISOString(),
-    app: 'Tamp — Menstruación',
+    app: 'Personal Hub — Menstruación',
     settings,
     periods,
     daily_logs: logs

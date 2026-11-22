@@ -21,8 +21,8 @@
 ### Task 1: PageHeader + barra móvil contextual
 
 **Files:**
-- Modify: `personal-hub/src/components/PageHeader.js` (revisar; añadir variante si falta)
-- Modify: CSS de `.page-header*` (localizar con grep; si no existe, crear `personal-hub/src/styles/page-header.css` e importarlo donde se importan estilos)
+- Modify: `tamp/src/components/PageHeader.js` (revisar; añadir variante si falta)
+- Modify: CSS de `.page-header*` (localizar con grep; si no existe, crear `tamp/src/styles/page-header.css` e importarlo donde se importan estilos)
 - Modify: router (donde viven `MOBILE_ROOT_ROUTES` y el mapa de labels/iconos) — barra con icono+título+volver en rutas internas
 - Modify: `tests/prepush.test.js` (1 test)
 - Test: `tests/prepush.test.js`
@@ -35,17 +35,17 @@
 
 ```js
 test('pageheader umbra con tokens y barra movil contextual', async () => {
-  const comp = await readFile(projectPath('personal-hub', 'src', 'components', 'PageHeader.js'), 'utf8');
+  const comp = await readFile(projectPath('tamp', 'src', 'components', 'PageHeader.js'), 'utf8');
   assert.ok(comp.includes('renderPageHeader'));
   assert.ok(comp.includes('<h1'));
   assert.ok(comp.includes('mobileHidden'));
   assert.ok(comp.includes('page-header__icon'));
   assert.ok(comp.includes('page-header__line'));
-  const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'page-header.css'), 'utf8');
+  const css = await readFile(projectPath('tamp', 'src', 'styles', 'page-header.css'), 'utf8');
   assert.ok(!css.includes('#') || css.includes('rgba('));
   assert.ok(css.includes('--accent-dim'));
   assert.ok(css.includes('--theme-divider-strong'));
-  const main = await readFile(projectPath('personal-hub', 'src', 'styles', 'main.css'), 'utf8');
+  const main = await readFile(projectPath('tamp', 'src', 'styles', 'main.css'), 'utf8');
   assert.ok(main.includes('page-header'));
 });
 ```
@@ -69,7 +69,7 @@ Expected: PASS + build OK.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add personal-hub/src/components/PageHeader.js personal-hub/src/styles/page-header.css <router> tests/prepush.test.js
+git add tamp/src/components/PageHeader.js tamp/src/styles/page-header.css <router> tests/prepush.test.js
 git commit -m "feat(rincon): pageheader umbra y barra movil contextual"
 ```
 
@@ -80,7 +80,7 @@ git commit -m "feat(rincon): pageheader umbra y barra movil contextual"
 **Files:**
 - Modify: CSS de BottomNav (localizar `.bottom-nav__label`)
 - Modify: CSS/marcado de la subnavegación del Rincón (Galería/Memes/Audios/Minecraft)
-- Modify: `personal-hub/src/pages/Rincon.js` (quitar solo botones “Volver a Rincón” duplicados)
+- Modify: `tamp/src/pages/Rincon.js` (quitar solo botones “Volver a Rincón” duplicados)
 - Modify: `tests/prepush.test.js` (1 test)
 
 - [ ] **Step 1: Write the failing test**
@@ -89,7 +89,7 @@ git commit -m "feat(rincon): pageheader umbra y barra movil contextual"
 test('bottomnav compacta a 390px y subnav con scroll horizontal', async () => {
   const cssFiles = ['bottom-nav.css', 'rincon.css'];
   let css = '';
-  for (const f of cssFiles) { try { css += await readFile(projectPath('personal-hub', 'src', 'styles', f), 'utf8'); } catch (e) {} }
+  for (const f of cssFiles) { try { css += await readFile(projectPath('tamp', 'src', 'styles', f), 'utf8'); } catch (e) {} }
   assert.ok(css.includes('390px'));
   assert.ok(css.includes('overflow-x'));
 });
@@ -103,14 +103,14 @@ test('bottomnav compacta a 390px y subnav con scroll horizontal', async () => {
 ### Task 3: Inicio (header + bienvenida, sin duplicados)
 
 **Files:**
-- Modify: `personal-hub/src/pages/Home.js` + su CSS
+- Modify: `tamp/src/pages/Home.js` + su CSS
 - Modify: `tests/prepush.test.js` (1 test)
 
 - [ ] **Step 1: Write the failing test**
 
 ```js
 test('inicio usa pageheader y tarjeta de bienvenida sin frase ni particulas', async () => {
-  const home = await readFile(projectPath('personal-hub', 'src', 'pages', 'Home.js'), 'utf8');
+  const home = await readFile(projectPath('tamp', 'src', 'pages', 'Home.js'), 'utf8');
   assert.ok(home.includes('renderPageHeader'));
   assert.ok(!home.includes('home-hero__phrase'));
   assert.ok(!home.includes('home-hero__particle'));
@@ -127,14 +127,14 @@ test('inicio usa pageheader y tarjeta de bienvenida sin frase ni particulas', as
 ### Task 4: Rincón landing (header + carrusel manual)
 
 **Files:**
-- Modify: `personal-hub/src/pages/Rincon.js` (landing: hero + `getDescubreHoy()` + featured) + su CSS
+- Modify: `tamp/src/pages/Rincon.js` (landing: hero + `getDescubreHoy()` + featured) + su CSS
 - Modify: `tests/prepush.test.js` (1 test)
 
 - [ ] **Step 1: Write the failing test**
 
 ```js
 test('rincon con cabecera y carrusel manual accesible', async () => {
-  const rincon = await readFile(projectPath('personal-hub', 'src', 'pages', 'Rincon.js'), 'utf8');
+  const rincon = await readFile(projectPath('tamp', 'src', 'pages', 'Rincon.js'), 'utf8');
   assert.ok(rincon.includes("renderPageHeader"));
   assert.ok(rincon.includes('El Rincón'));
   assert.ok(rincon.includes('aria-roledescription'));
@@ -160,17 +160,17 @@ test('rincon con cabecera y carrusel manual accesible', async () => {
 ### Task 5: Interiores (4 cabeceras + Minecraft)
 
 **Files:**
-- Modify: `personal-hub/src/pages/Rincon.js` (vistas galeria-memes/memes/audios/curiosidades)
-- Modify: `personal-hub/src/pages/Minecraft.js` (jerarquía h1/h2)
+- Modify: `tamp/src/pages/Rincon.js` (vistas galeria-memes/memes/audios/curiosidades)
+- Modify: `tamp/src/pages/Minecraft.js` (jerarquía h1/h2)
 - Modify: `tests/prepush.test.js` (1 test)
 
 - [ ] **Step 1: Write the failing test**
 
 ```js
 test('interiores con cabecera y minecraft con h1-h2', async () => {
-  const rincon = await readFile(projectPath('personal-hub', 'src', 'pages', 'Rincon.js'), 'utf8');
+  const rincon = await readFile(projectPath('tamp', 'src', 'pages', 'Rincon.js'), 'utf8');
   for (const t of ['Galería', 'Memes', 'Audios', 'Curiosidades']) assert.ok(rincon.includes(t));
-  const mc = await readFile(projectPath('personal-hub', 'src', 'pages', 'Minecraft.js'), 'utf8');
+  const mc = await readFile(projectPath('tamp', 'src', 'pages', 'Minecraft.js'), 'utf8');
   assert.ok(mc.includes('renderPageHeader'));
   assert.ok(mc.includes("'Minecraft'"));
   assert.ok(mc.includes('Nuestros mundos'));

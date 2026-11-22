@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /* ==========================================
-   Personal Hub — contenedor nativo (Android)
+   Tamp - contenedor nativo (Android)
 
    Dos modos, elegidos por entorno — no hay que editar este archivo:
 
@@ -28,8 +28,8 @@ const remoteUrl = '';
 
 const config: CapacitorConfig = {
   appId: 'com.heater64.personalhub',
-  appName: 'Hub',
-  webDir: 'personal-hub/dist',
+  appName: 'Tamp',
+  webDir: 'tamp/dist',
   // El tema de la app es oscuro por defecto; evita el destello blanco entre
   // la splash nativa y el primer frame del WebView.
   android: {

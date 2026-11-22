@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CSS = join(ROOT, 'personal-hub/src/styles/home.css');
+const CSS = join(ROOT, 'tamp/src/styles/home.css');
 const XML = join(ROOT, 'android/app/src/main/res/values/widget_colors.xml');
 
 const css = readFileSync(CSS, 'utf8');

@@ -5,7 +5,7 @@ import {
   normalizeNotificationRoute,
   notificationAppUrl,
   getNoveltyNotificationRoute
-} from '../personal-hub/src/utils/notification-route.js';
+} from '../tamp/src/utils/notification-route.js';
 
 const ORIGIN = 'https://hub.example';
 

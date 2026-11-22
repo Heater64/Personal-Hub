@@ -14,9 +14,13 @@ import android.widget.RemoteViews;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.text.ParsePosition;
+import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.TimeZone;
 
 /**
@@ -52,8 +56,7 @@ final class WidgetRenderer {
     /** A partir de aquí la composición baja tampoco admite tres líneas. */
     private static final float EXTREME_FONT_SCALE = 1.7f;
 
-    private static final int DAYS_FACE_SIZE_PX = 160;
-    private static final int DISTANCE_FACE_SIZE_PX = 160;
+    private static final long LOCATION_FRESH_MS = 30 * 60 * 1000L;
 
     /**
      * Vista previa dentro de la app.
@@ -127,50 +130,65 @@ final class WidgetRenderer {
 
     private WidgetRenderer() {}
 
-    /**
-     * Todos los providers. Fuente única: el puente y el receiver de cambio de
-     * día tienen que repintar exactamente el mismo conjunto.
-     */
-    static final Class<?>[] PROVIDERS = {
-            DaysWidgetProvider.class,
-            DaysRectWidgetProvider.class,
-            DaysCompactWidgetProvider.class,
-            DistanceWidgetProvider.class,
-            DistanceRectWidgetProvider.class,
-            DistanceCompactWidgetProvider.class,
-            CountdownWidgetProvider.class,
-            CountdownRectWidgetProvider.class,
-            CountdownCompactWidgetProvider.class,
-            MoodWidgetProvider.class,
-            MoodRectWidgetProvider.class,
-            MoodCompactWidgetProvider.class,
-            CycleWidgetProvider.class,
-            CycleRectWidgetProvider.class,
-            CycleCompactWidgetProvider.class,
-            WatchingWidgetProvider.class,
-            WatchingRectWidgetProvider.class,
-            WatchingCompactWidgetProvider.class,
-            GiftsWidgetProvider.class,
-            GiftsRectWidgetProvider.class,
-            GiftsCompactWidgetProvider.class,
-            ReasonRectWidgetProvider.class,
-            ReasonCompactWidgetProvider.class,
-            OpenWhenRectWidgetProvider.class,
-            OpenWhenCompactWidgetProvider.class,
-            StreakRectWidgetProvider.class,
-            StreakCompactWidgetProvider.class,
-    };
+    enum Group {
+        DAYS("widget_days", DaysWidgetProvider.class, DaysRectWidgetProvider.class, DaysCompactWidgetProvider.class),
+        DISTANCE("widget_distance", DistanceWidgetProvider.class, DistanceRectWidgetProvider.class,
+                DistanceCompactWidgetProvider.class),
+        COUNTDOWN("widget_countdown", CountdownWidgetProvider.class, CountdownRectWidgetProvider.class,
+                CountdownCompactWidgetProvider.class),
+        MOOD("widget_mood", MoodWidgetProvider.class, MoodRectWidgetProvider.class, MoodCompactWidgetProvider.class),
+        CYCLE("widget_cycle", CycleWidgetProvider.class, CycleRectWidgetProvider.class, CycleCompactWidgetProvider.class),
+        WATCHING("widget_watching", WatchingWidgetProvider.class, WatchingRectWidgetProvider.class,
+                WatchingCompactWidgetProvider.class),
+        GIFTS("widget_gifts", GiftsWidgetProvider.class, GiftsRectWidgetProvider.class, GiftsCompactWidgetProvider.class),
+        REASON("widget_reason", ReasonRectWidgetProvider.class, ReasonCompactWidgetProvider.class),
+        OPEN_WHEN("widget_openwhen", OpenWhenRectWidgetProvider.class, OpenWhenCompactWidgetProvider.class),
+        STREAK("widget_streak", StreakRectWidgetProvider.class, StreakCompactWidgetProvider.class);
 
-    /** Repinta todos los widgets colocados (los que no están, se saltan). */
-    static void refreshAll(Context context) {
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        for (Class<?> provider : PROVIDERS) {
-            int[] ids = manager.getAppWidgetIds(new ComponentName(context, provider));
-            if (ids.length > 0) refresh(context, manager, provider, ids);
+        final String key;
+        final Class<?>[] providers;
+
+        Group(String key, Class<?>... providers) {
+            this.key = key;
+            this.providers = providers;
         }
     }
 
-    static void refresh(Context context, AppWidgetManager manager, Class<?> provider, int[] ids) {
+    static boolean isDataKey(String key) {
+        for (Group group : Group.values()) if (group.key.equals(key)) return true;
+        return false;
+    }
+
+    static Set<String> installedKeys(Context context) {
+        Set<String> keys = new LinkedHashSet<>();
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        for (Group group : Group.values()) {
+            for (Class<?> provider : group.providers) {
+                if (manager.getAppWidgetIds(new ComponentName(context, provider)).length == 0) continue;
+                keys.add(group.key);
+                break;
+            }
+        }
+        return keys;
+    }
+
+    /** Repinta todos los widgets colocados (los que no están, se saltan). */
+    static void refreshAll(Context context) {
+        refreshKeys(context, null);
+    }
+
+    static synchronized void refreshKeys(Context context, Set<String> keys) {
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        for (Group group : Group.values()) {
+            if (keys != null && !keys.contains(group.key)) continue;
+            for (Class<?> provider : group.providers) {
+                int[] ids = manager.getAppWidgetIds(new ComponentName(context, provider));
+                if (ids.length > 0) refresh(context, manager, provider, ids);
+            }
+        }
+    }
+
+    static synchronized void refresh(Context context, AppWidgetManager manager, Class<?> provider, int[] ids) {
         if (provider == DaysCompactWidgetProvider.class) {
             renderDays(context, manager, ids, Size.COMPACT);
         } else if (provider == DaysRectWidgetProvider.class) {
@@ -246,6 +264,7 @@ final class WidgetRenderer {
         float scale = fontScale(context);
         boolean tight = scale > TIGHT_FONT_SCALE;
         boolean extreme = scale > EXTREME_FONT_SCALE;
+        Runnable onImage = imageCallback(context, Group.DAYS);
 
         for (int id : ids) {
             int[] box = box(context, manager, id);
@@ -280,7 +299,7 @@ final class WidgetRenderer {
 
                 paintFaces(context, views, data, R.id.widget_days_faces,
                         R.id.widget_days_me, R.id.widget_days_partner,
-                        R.drawable.widget_days_face_empty);
+                        R.drawable.widget_days_face_empty, onImage);
 
                 if (stacked) {
                     // Solo avisa si el paquete tiene más de un día: un contador
@@ -301,7 +320,6 @@ final class WidgetRenderer {
             push(manager, id, views);
         }
 
-        scheduleFaceRefresh(context, data, DAYS_FACE_SIZE_PX);
     }
 
     /**
@@ -346,16 +364,18 @@ final class WidgetRenderer {
     static void renderDistance(
             Context context, AppWidgetManager manager, int[] ids, Size defaultSize) {
         JSONObject data = WidgetSupport.read(context, "widget_distance");
-        String text = data == null ? "" : data.optString("text", "");
-        boolean known = !text.isEmpty();
+        String text = WidgetSupport.str(data, "text");
+        boolean expired = expired(data);
+        boolean known = !text.isEmpty() && !"—".equals(text) && !expired;
         String value = known ? text : "—";
-        String empty = context.getString(R.string.widget_distance_empty);
+        String empty = context.getString(expired ? R.string.widget_distance_stale : R.string.widget_distance_unavailable);
         // La distancia es un dato que caduca: aquí sí interesa decir siempre
         // cuándo se supo, no solo cuando está viejo.
         String fresh = known ? agoLabel(data) : empty;
 
         float scale = fontScale(context);
         boolean extreme = scale > EXTREME_FONT_SCALE;
+        Runnable onImage = imageCallback(context, Group.DISTANCE);
 
         for (int id : ids) {
             int[] box = box(context, manager, id);
@@ -375,7 +395,8 @@ final class WidgetRenderer {
                     R.id.widget_distance_value, TypedValue.COMPLEX_UNIT_SP, valueSp);
 
             if (compact) {
-                views.setTextViewText(R.id.widget_distance_hint, empty);
+                views.setTextViewText(R.id.widget_distance_hint,
+                        context.getString(R.string.widget_distance_compact_empty));
                 views.setViewVisibility(
                         R.id.widget_distance_hint, known ? View.GONE : View.VISIBLE);
             } else {
@@ -388,7 +409,7 @@ final class WidgetRenderer {
 
                 paintFaces(context, views, data, R.id.widget_distance_faces,
                         R.id.widget_distance_me, R.id.widget_distance_partner,
-                        R.drawable.widget_face_empty);
+                        R.drawable.widget_face_empty, onImage);
 
                 // Su móvil: batería y red de la última posición compartida.
                 paintDevice(context, views, data);
@@ -399,7 +420,6 @@ final class WidgetRenderer {
             push(manager, id, views);
         }
 
-        scheduleFaceRefresh(context, data, DISTANCE_FACE_SIZE_PX);
     }
 
     /**
@@ -610,16 +630,7 @@ final class WidgetRenderer {
 
     /** Repinta solo las cuentas atrás (acaba de cambiar su configuración). */
     static void refreshCountdowns(Context context) {
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        Class<?>[] providers = {
-                CountdownCompactWidgetProvider.class,
-                CountdownRectWidgetProvider.class,
-                CountdownWidgetProvider.class,
-        };
-        for (Class<?> provider : providers) {
-            int[] ids = manager.getAppWidgetIds(new ComponentName(context, provider));
-            if (ids.length > 0) refresh(context, manager, provider, ids);
-        }
+        refreshKeys(context, Collections.singleton(Group.COUNTDOWN.key));
     }
 
     // ==========================================
@@ -847,6 +858,7 @@ final class WidgetRenderer {
         String percentLabel = known
                 ? context.getString(R.string.widget_watching_percent, percent)
                 : "";
+        Runnable onImage = imageCallback(context, Group.WATCHING);
 
         for (int id : ids) {
             int[] box = box(context, manager, id);
@@ -860,27 +872,22 @@ final class WidgetRenderer {
 
             // El póster sí se pierde con los datos vacíos: sin serie no hay
             // portada que enseñar (el hueco redondeado se queda solo).
-            paintPoster(context, views, R.id.widget_watching_poster, known ? poster : "", layout);
+            paintPoster(context, views, R.id.widget_watching_poster, known ? poster : "", layout, onImage);
 
             WidgetSupport.openApp(context, views, R.id.widget_watching_root, "rincon");
             push(manager, id, views);
         }
 
-        if (known && !poster.isEmpty() && !previewing()) {
-            int[] size = posterSizePx(context, defaultSize);
-            WidgetSupport.poster(context, poster, size[0], size[1],
-                    () -> WidgetSupport.requestUpdate(context, watchingProvider(defaultSize)));
-        }
     }
 
     private static void paintPoster(
-            Context context, RemoteViews views, int viewId, String url, int layout) {
+            Context context, RemoteViews views, int viewId, String url, int layout, Runnable onImage) {
         if (url.isEmpty()) {
             views.setImageViewResource(viewId, R.drawable.widget_poster_empty);
             return;
         }
         int[] size = posterSizePx(context, layout);
-        Bitmap bitmap = WidgetSupport.poster(context, url, size[0], size[1], null);
+        Bitmap bitmap = WidgetSupport.poster(context, url, size[0], size[1], onImage);
         if (bitmap == null) {
             views.setImageViewResource(viewId, R.drawable.widget_poster_empty);
         } else {
@@ -895,18 +902,6 @@ final class WidgetRenderer {
         int hDp = layout == R.layout.widget_watching ? 72
                 : layout == R.layout.widget_watching_rect ? 60 : 40;
         return new int[] { WidgetSupport.dp(context, wDp), WidgetSupport.dp(context, hDp) };
-    }
-
-    private static int[] posterSizePx(Context context, Size size) {
-        return posterSizePx(context, size == Size.LARGE ? R.layout.widget_watching
-                : size == Size.RECT ? R.layout.widget_watching_rect
-                : R.layout.widget_watching_compact);
-    }
-
-    private static Class<?> watchingProvider(Size size) {
-        return size == Size.LARGE ? WatchingWidgetProvider.class
-                : size == Size.RECT ? WatchingRectWidgetProvider.class
-                : WatchingCompactWidgetProvider.class;
     }
 
     private static int watchingLayout(int[] box, Size defaultSize) {
@@ -951,11 +946,14 @@ final class WidgetRenderer {
         JSONObject data = WidgetSupport.read(context, "widget_gifts");
         int total = data == null ? 0 : data.optInt("total", 0);
         int pending = data == null ? 0 : data.optInt("pending", 0);
-        boolean known = data != null;
+        String date = WidgetSupport.str(data, "date");
+        boolean known = data != null && (date.isEmpty() || date.equals(WidgetSupport.todayISO()));
 
         String count = known ? String.valueOf(pending) : "—";
         String label = !known
                 ? context.getString(R.string.widget_gifts_empty)
+                : total == 0
+                ? context.getString(R.string.widget_gifts_no_today)
                 : pending > 0
                 ? context.getResources().getQuantityString(
                         R.plurals.widget_gifts_pending, pending, pending)
@@ -1184,7 +1182,8 @@ final class WidgetRenderer {
             int groupId,
             int meId,
             int partnerId,
-            int placeholder) {
+            int placeholder,
+            Runnable onImage) {
         String me = WidgetSupport.faceUrl(data, "me");
         String partner = WidgetSupport.faceUrl(data, "partner");
 
@@ -1193,20 +1192,8 @@ final class WidgetRenderer {
             return;
         }
 
-        // setFace pinta el hueco y lanza la descarga: el bitmap llega en el
-        // siguiente repintado, así que aquí solo se elige el recurso.
-        if (me.isEmpty()) {
-            WidgetSupport.clearFace(views, meId, placeholder);
-        } else {
-            WidgetSupport.setFace(views, context, meId, me, placeholder);
-        }
-
-        if (partner.isEmpty()) {
-            WidgetSupport.clearFace(views, partnerId, placeholder);
-        } else {
-            WidgetSupport.setFace(views, context, partnerId, partner, placeholder);
-        }
-
+        WidgetSupport.setFace(views, context, meId, me, placeholder, onImage);
+        WidgetSupport.setFace(views, context, partnerId, partner, placeholder, onImage);
         views.setViewVisibility(groupId, View.VISIBLE);
     }
 
@@ -1217,7 +1204,8 @@ final class WidgetRenderer {
     private static void paintDevice(Context context, RemoteViews views, JSONObject data) {
         JSONObject device = data == null ? null : data.optJSONObject("device");
         int battery = device == null ? -1 : device.optInt("battery", -1);
-        if (battery < 0) {
+        boolean deviceHasTime = device != null && (device.has("expiresAt") || device.has("at"));
+        if (battery < 0 || battery > 100 || expired(deviceHasTime ? device : data)) {
             views.setViewVisibility(R.id.widget_distance_device, View.GONE);
             return;
         }
@@ -1232,6 +1220,15 @@ final class WidgetRenderer {
 
         views.setTextViewText(R.id.widget_distance_device, text.toString());
         views.setViewVisibility(R.id.widget_distance_device, View.VISIBLE);
+    }
+
+    private static boolean expired(JSONObject data) {
+        long expiresAt = parseIso(WidgetSupport.str(data, "expiresAt"));
+        if (expiresAt == 0L) {
+            long received = parseIso(WidgetSupport.str(data, "at"));
+            if (received > 0L) expiresAt = received + LOCATION_FRESH_MS;
+        }
+        return expiresAt > 0L && expiresAt <= System.currentTimeMillis();
     }
 
     /** «wifi» → «Wi-Fi»; lo que no se reconoce se deja como venga. */
@@ -1277,16 +1274,17 @@ final class WidgetRenderer {
 
     private static long parseIso(String iso) {
         if (iso == null || iso.isEmpty()) return 0L;
-        String[] patterns = { "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'" };
+        // Supabase puede devolver seis decimales y una zona (+00:00).
+        String normalized = iso.replaceFirst("(\\.\\d{3})\\d+(?=Z|[+-])", "$1");
+        normalized = normalized.replaceFirst("\\.(\\d{2})(?=Z|[+-])", ".$10");
+        normalized = normalized.replaceFirst("\\.(\\d)(?=Z|[+-])", ".$100");
+        String[] patterns = { "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "yyyy-MM-dd'T'HH:mm:ssXXX" };
         for (String pattern : patterns) {
-            try {
-                SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.US);
-                format.setTimeZone(TimeZone.getTimeZone("UTC"));
-                Date date = format.parse(iso);
-                if (date != null) return date.getTime();
-            } catch (Exception ignored) {
-                // siguiente formato
-            }
+            SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.US);
+            format.setLenient(false);
+            ParsePosition offset = new ParsePosition(0);
+            Date date = format.parse(normalized, offset);
+            if (date != null && offset.getIndex() == normalized.length()) return date.getTime();
         }
         return 0L;
     }
@@ -1306,7 +1304,9 @@ final class WidgetRenderer {
         String route;
 
         if ("widget_reason".equals(key)) {
-            String text = data == null ? "" : data.optString("text", "").trim();
+            String today = WidgetSupport.todayISO(java.util.TimeZone.getTimeZone("Europe/Madrid"));
+            String text = today.equals(WidgetSupport.str(data, "date"))
+                    ? WidgetSupport.str(data, "text").trim() : "";
             kicker = context.getString(R.string.widget_reason_kicker);
             value = text.isEmpty() ? "\u2014" : text;
             label = text.isEmpty()
@@ -1363,14 +1363,9 @@ final class WidgetRenderer {
         return R.layout.widget_pro_rect;
     }
 
-    /** Descarga las caras que falten y repinta todos los widgets al terminar. */
-    private static void scheduleFaceRefresh(Context context, JSONObject data, int sizePx) {
-        if (data == null || previewing()) return;
-        String[] urls = { WidgetSupport.faceUrl(data, "me"), WidgetSupport.faceUrl(data, "partner") };
-        for (String url : urls) {
-            if (url == null || url.isEmpty()) continue;
-            WidgetSupport.face(context, url, sizePx,
-                    () -> WidgetRenderer.refreshAll(context));
-        }
+    private static Runnable imageCallback(Context context, Group group) {
+        if (previewing()) return null;
+        Context app = context.getApplicationContext();
+        return () -> refreshKeys(app, Collections.singleton(group.key));
     }
 }

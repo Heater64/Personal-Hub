@@ -5,7 +5,7 @@
 
 import { icon } from '../../components/ui.js';
 import { escapeHtml } from '../../utils/escape.js';
-import { daysBetween } from '../../utils/cycleMath.js';
+import { daysBetween, periodDurations } from '../../utils/cycleMath.js';
 import { flowLabel } from '../../data/cycle.data.js';
 import { badge, emptyHtml, fmtDay, sectionTitle } from './shared.js';
 
@@ -58,14 +58,11 @@ export function renderHistory(ctx) {
       <ul class="cy-history">
         ${rows
           .map(period => {
-            const duration = period.end_date
-              ? daysBetween(period.start_date, period.end_date) + 1
-              : period.start_date <= ctx.today
-                ? daysBetween(period.start_date, ctx.today) + 1
-                : null;
-            const cycleLength = nextStart.get(period.start_date)
+            const duration = periodDurations([period], ctx.today)[0] ?? null;
+            const rawCycleLength = nextStart.get(period.start_date)
               ? daysBetween(period.start_date, nextStart.get(period.start_date))
               : null;
+            const cycleLength = rawCycleLength >= 15 && rawCycleLength <= 90 ? rawCycleLength : null;
             const flow = dominantFlow(logs, period);
             const ongoing = !period.end_date;
 
@@ -80,7 +77,7 @@ export function renderHistory(ctx) {
                 <span class="cy-history-body">
                   <span class="cy-history-line">
                     ${period.end_date ? `hasta ${escapeHtml(fmtDay(period.end_date))}` : 'en curso'}
-                    ${duration ? ` · ${duration} día${duration === 1 ? '' : 's'}` : ''}
+                    ${duration ? ` · ${duration} día${duration === 1 ? '' : 's'}` : ' · duración por revisar'}
                     ${ongoing ? badge('En curso', 'log') : ''}
                   </span>
                   <span class="cy-history-meta">

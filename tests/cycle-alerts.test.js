@@ -18,7 +18,7 @@ const root = join(here, '..');
 const read = path => readFile(join(root, path), 'utf8');
 
 test('cada guardado del ciclo pide su aviso al servidor', async () => {
-  const service = await read('personal-hub/src/services/cycle.service.js');
+  const service = await read('tamp/src/services/cycle.service.js');
 
   // Menstruación nueva o con fecha de fin: es el aviso que explica su semana.
   assert.match(service, /notifyAdminOfCycle\('cycle_period'\)/);
@@ -38,7 +38,7 @@ test('cada guardado del ciclo pide su aviso al servidor', async () => {
 });
 
 test('el cliente solo acepta las clases del ciclo que el servidor conoce', async () => {
-  const notifications = await read('personal-hub/src/services/notifications.service.js');
+  const notifications = await read('tamp/src/services/notifications.service.js');
   assert.match(notifications, /export function notifyAdminOfCycle/);
   assert.match(
     notifications,

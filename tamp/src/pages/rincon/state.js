@@ -31,6 +31,9 @@ export const state = {
   covers: {},                  // portadas personalizadas por tarjeta
   audios: [],                  // lista de audios del Rincón (día 3)
   audiosLoaded: false,         // carga inicial hecha
+  audiosLoading: false,        // carga en curso
+  audiosLoadPromise: null,     // evita solicitudes repetidas al entrar/reintentar
+  audiosError: '',             // error visible con opción de reintentar
   audiosView: 'months',        // months | detail
   audiosMonth: null,           // { year, month } abierto en detalle
   audiosEditId: null,          // id del audio en edición (nombre/fecha)

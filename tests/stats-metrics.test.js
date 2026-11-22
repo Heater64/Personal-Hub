@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
-import { readAdminHistory } from '../personal-hub/src/services/admin-analytics-read.js';
+import { readAdminHistory } from '../tamp/src/services/admin-analytics-read.js';
 import {
   SESSION_GAP_MS,
   TAIL_MIN_MS,
@@ -31,7 +31,7 @@ import {
   OPENWHEN_READ_PREFIX,
   isOpenWhenReadVisit,
   openWhenReadIds
-} from '../personal-hub/src/utils/stats-metrics.js';
+} from '../tamp/src/utils/stats-metrics.js';
 
 const visit = (timestamp, page, user_id = 'u1') => ({ timestamp, page, user_id });
 

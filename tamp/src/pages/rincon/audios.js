@@ -212,18 +212,30 @@ function showAudioError(card) {
 
 export async function loadAudios(force = false) {
   if (state.audiosLoaded && !force) return state.audios;
-  state.audiosLoaded = true;
-  try {
-    const list = await db.getAudios();
-    state.audios = Array.isArray(list) ? list : [];
-    // Los audios viven en Storage: se firman antes de pintar para que el
-    // reproductor no tenga que reintentar con el bucket privado.
-    await prepareMedia(state.audios.map(audio => audio?.url).filter(Boolean));
-  } catch (err) {
-    console.warn('[rincon] No se pudieron cargar los audios:', err?.message);
-    state.audios = [];
-  }
-  return state.audios;
+  if (state.audiosLoadPromise) return state.audiosLoadPromise;
+  state.audiosLoading = true;
+  state.audiosError = '';
+  state.audiosLoadPromise = (async () => {
+    try {
+      const list = await db.getAudios();
+      state.audios = Array.isArray(list) ? list : [];
+      // Los audios viven en Storage: se firman antes de pintar para que el
+      // reproductor no tenga que reintentar con el bucket privado.
+      await prepareMedia(state.audios.map(audio => audio?.url).filter(Boolean));
+      state.audiosLoaded = true;
+      return state.audios;
+    } catch (err) {
+      console.warn('[rincon] No se pudieron cargar los audios:', err?.message);
+      state.audios = [];
+      state.audiosLoaded = false;
+      state.audiosError = 'No se pudieron cargar los audios. Comprueba la conexión y vuelve a intentarlo.';
+      return state.audios;
+    } finally {
+      state.audiosLoading = false;
+      state.audiosLoadPromise = null;
+    }
+  })();
+  return state.audiosLoadPromise;
 }
 
 export function createAudiosView(ctx) {
@@ -302,6 +314,9 @@ export function createAudiosView(ctx) {
   
   /** HTML de la pestaña Audios (vista de meses). Vive dentro de #galeriaMemesContent. */
   function renderAudiosTabContent() {
+    if (state.audiosError) {
+      return `<div class="audios-page"><h2 class="section-title">Nuestra cápsula</h2><div class="audios-empty audios-empty--error" role="alert"><p>${escapeHtml(state.audiosError)}</p><button type="button" class="btn btn--sm" id="audiosRetryBtn">Reintentar</button></div></div>`;
+    }
     if (state.audiosView === 'detail' && state.audiosMonth) {
       return renderAudioDetailContent(state.audiosMonth.year, state.audiosMonth.month);
     }
@@ -487,6 +502,16 @@ export function createAudiosView(ctx) {
   function bindAudiosEvents(container) {
     if (!container) return;
     bindAudioPlayers(container);
+
+    container.querySelector('#audiosRetryBtn')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      await loadAudios(true);
+      if (state.view === 'audios' && page.isConnected) {
+        container.innerHTML = renderAudiosTabContent();
+        bindAudiosEvents(container);
+      }
+    });
   
     // Volver de detalle → meses
     container.querySelector('[data-back="months"]')?.addEventListener('click', () => {

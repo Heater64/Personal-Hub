@@ -1,7 +1,6 @@
 package com.heater64.personalhub;
 
 import android.app.PendingIntent;
-import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -17,6 +16,7 @@ import android.graphics.Shader;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.widget.RemoteViews;
 
 import org.json.JSONObject;
@@ -30,8 +30,18 @@ import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Utilidades de los widgets: leer lo que dejó la app, abrir la app al tocar y
@@ -43,14 +53,11 @@ import java.util.TimeZone;
  */
 final class WidgetSupport {
 
-    /** @capacitor/preferences: fichero y claves sin prefijo. */
-    static final String PREFS_NAME = "CapacitorStorage";
-
     private WidgetSupport() {}
 
     static JSONObject read(Context context, String key) {
         try {
-            String raw = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString(key, null);
+            String raw = WidgetData.read(context, key);
             if (raw == null) return null;
             return new JSONObject(raw);
         } catch (Exception ignored) {
@@ -138,7 +145,11 @@ final class WidgetSupport {
 
     /** Hoy como `yyyy-MM-dd` en hora local. */
     static String todayISO() {
-        Calendar today = Calendar.getInstance();
+        return todayISO(TimeZone.getDefault());
+    }
+
+    static String todayISO(TimeZone zone) {
+        Calendar today = Calendar.getInstance(zone);
         return String.format(Locale.US, "%04d-%02d-%02d",
                 today.get(Calendar.YEAR),
                 today.get(Calendar.MONTH) + 1,
@@ -250,6 +261,9 @@ final class WidgetSupport {
      */
     private static final java.util.Map<String, Bitmap> MEMO = new java.util.HashMap<>();
     private static final int MEMO_MAX = 12;
+    private static final int MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+    private static final ExecutorService IMAGES = Executors.newFixedThreadPool(2);
+    private static final Map<File, CompletableFuture<Boolean>> DOWNLOADS = new HashMap<>();
 
     private static Bitmap memo(String key) {
         synchronized (MEMO) {
@@ -280,7 +294,7 @@ final class WidgetSupport {
             return null;
         }
 
-        Bitmap raw = BitmapFactory.decodeFile(file.getAbsolutePath());
+        Bitmap raw = decodeImage(file, sizePx);
         // Una descarga interrumpida dejaba un fichero parcial para siempre:
         // exists() era true pero decodeFile devolvía null y no se reintentaba.
         if (raw == null) {
@@ -310,7 +324,7 @@ final class WidgetSupport {
             return null;
         }
 
-        Bitmap raw = BitmapFactory.decodeFile(file.getAbsolutePath());
+        Bitmap raw = decodeImage(file, Math.max(widthPx, heightPx));
         if (raw == null) {
             file.delete();
             download(url, file, onReady);
@@ -355,32 +369,117 @@ final class WidgetSupport {
         }
     }
 
-    private static void download(String url, File target, Runnable onReady) {
-        new Thread(() -> {
-            File partial = new File(target.getParentFile(), target.getName() + ".part");
-            try {
-                HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-                connection.setConnectTimeout(8000);
-                connection.setReadTimeout(8000);
-                connection.connect();
-                if (connection.getResponseCode() < 200 || connection.getResponseCode() >= 300) {
-                    return;
-                }
-                try (InputStream in = connection.getInputStream();
-                     FileOutputStream out = new FileOutputStream(partial)) {
-                    byte[] buffer = new byte[8192];
-                    int read;
-                    while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
-                }
-                if (target.exists()) target.delete();
-                if (!partial.renameTo(target)) return;
-                if (onReady != null) new Handler(Looper.getMainLooper()).post(onReady);
-            } catch (Exception ignored) {
-                // sin red: el widget sigue sin foto, sin romperse
-            } finally {
-                if (partial.exists()) partial.delete();
+    private static Bitmap decodeImage(File file, int targetSize) {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+        if (options.outWidth <= 0 || options.outHeight <= 0) return null;
+        options.inSampleSize = 1;
+        int side = Math.max(options.outWidth, options.outHeight);
+        while (side / options.inSampleSize > Math.max(64, targetSize * 3)) options.inSampleSize *= 2;
+        options.inJustDecodeBounds = false;
+        return BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+    }
+
+    private static CompletableFuture<Boolean> download(String url, File target, Runnable onReady) {
+        CompletableFuture<Boolean> result;
+        synchronized (DOWNLOADS) {
+            result = DOWNLOADS.get(target);
+            if (result == null) {
+                result = target.exists() ? CompletableFuture.completedFuture(true) : queueDownload(url, target);
             }
-        }).start();
+        }
+        if (onReady != null) result.thenAccept(ready -> {
+            if (ready) new Handler(Looper.getMainLooper()).post(onReady);
+        });
+        return result;
+    }
+
+    private static CompletableFuture<Boolean> queueDownload(String url, File target) {
+        CompletableFuture<Boolean> pending = new CompletableFuture<>();
+        DOWNLOADS.put(target, pending);
+        IMAGES.execute(() -> {
+            boolean ready = fetchImage(url, target);
+            synchronized (DOWNLOADS) {
+                DOWNLOADS.remove(target);
+            }
+            pending.complete(ready);
+        });
+        return pending;
+    }
+
+    /** Mantiene vivas las descargas iniciadas desde un repintado en segundo plano. */
+    static Set<String> awaitImages(Context context, Set<String> keys) {
+        Map<String, Set<CompletableFuture<Boolean>>> pending = new HashMap<>();
+        for (String key : keys) {
+            JSONObject data = read(context, key);
+            Set<String> urls = new LinkedHashSet<>();
+            if ("widget_days".equals(key) || "widget_distance".equals(key)) {
+                urls.add(faceUrl(data, "me"));
+                urls.add(faceUrl(data, "partner"));
+            } else if ("widget_watching".equals(key)) {
+                urls.add(str(data, "poster"));
+            }
+            for (String url : urls) {
+                if (url.isEmpty()) continue;
+                File target = cacheFile(context, url);
+                if (target.exists()) continue;
+                pending.computeIfAbsent(key, ignored -> new LinkedHashSet<>()).add(download(url, target, null));
+            }
+        }
+
+        Set<String> ready = new LinkedHashSet<>();
+        long deadline = SystemClock.elapsedRealtime() + 16_000L;
+        for (Map.Entry<String, Set<CompletableFuture<Boolean>>> entry : pending.entrySet()) {
+            for (CompletableFuture<Boolean> image : entry.getValue()) {
+                try {
+                    if (image.get(Math.max(0L, deadline - SystemClock.elapsedRealtime()), TimeUnit.MILLISECONDS)) {
+                        ready.add(entry.getKey());
+                    }
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    return ready;
+                } catch (ExecutionException | TimeoutException ignored) {
+                    // La siguiente actualización recupera las imágenes que falten.
+                }
+            }
+        }
+        return ready;
+    }
+
+    private static boolean fetchImage(String value, File target) {
+        File partial = new File(target.getParentFile(), target.getName() + ".part");
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(value);
+            if (!"https".equals(url.getProtocol()) || url.getUserInfo() != null) return false;
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5_000);
+            connection.setReadTimeout(5_000);
+            if (connection.getResponseCode() != 200) return false;
+            try (InputStream in = connection.getInputStream();
+                 FileOutputStream out = new FileOutputStream(partial)) {
+                byte[] buffer = new byte[8_192];
+                int size = 0;
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    size += read;
+                    if (size > MAX_IMAGE_BYTES) return false;
+                    out.write(buffer, 0, read);
+                }
+            }
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(partial.getAbsolutePath(), bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return false;
+            if (!partial.renameTo(target)) return false;
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        } finally {
+            if (connection != null) connection.disconnect();
+            if (partial.exists()) partial.delete();
+        }
     }
 
     private static Bitmap circle(Bitmap source, int sizePx) {
@@ -404,32 +503,17 @@ final class WidgetSupport {
         return output;
     }
 
-    static void setFace(RemoteViews views, Context context, int viewId, String url) {
-        setFace(views, context, viewId, url, R.drawable.widget_face_empty);
-    }
-
-    /** Igual que {@link #setFace(RemoteViews, Context, int, String)} pero con
-     *  el hueco de cada widget, para no mezclar paletas. */
-    static void setFace(RemoteViews views, Context context, int viewId, String url, int placeholder) {
+    static void setFace(RemoteViews views, Context context, int viewId, String url, int placeholder, Runnable onReady) {
         if (url == null || url.isEmpty()) {
             views.setImageViewResource(viewId, placeholder);
             return;
         }
-        Bitmap bitmap = face(context, url, 160, null);
+        Bitmap bitmap = face(context, url, 160, onReady);
         if (bitmap == null) {
             views.setImageViewResource(viewId, placeholder);
         } else {
             views.setImageViewBitmap(viewId, bitmap);
         }
-    }
-
-    /** Icono de relleno mientras no hay foto. */
-    static void clearFace(RemoteViews views, int viewId) {
-        views.setImageViewResource(viewId, R.drawable.widget_face_empty);
-    }
-
-    static void clearFace(RemoteViews views, int viewId, int placeholder) {
-        views.setImageViewResource(viewId, placeholder);
     }
 
     static int dp(Context context, float value) {
@@ -444,11 +528,4 @@ final class WidgetSupport {
         }
     }
 
-    /** Vuelve a pedir la actualización de un provider concreto. */
-    static void requestUpdate(Context context, Class<?> provider) {
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        int[] ids = manager.getAppWidgetIds(
-                new android.content.ComponentName(context, provider));
-        if (ids.length > 0) WidgetRenderer.refresh(context, manager, provider, ids);
-    }
 }

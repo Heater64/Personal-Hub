@@ -16,6 +16,7 @@ import { getNativePushStatus, registerNativePush } from '../services/native.serv
 import { escapeHtml } from '../utils/escape.js';
 import { MAX_CUSTOM_LABEL, makeCustomMood, toggleMoodSelection } from '../data/moods.data.js';
 import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/specialDates.js';
+import { isValidISO } from '../utils/cycleMath.js';
 
 // ==========================================
 // APP — versión y novedades
@@ -356,6 +357,14 @@ export function ProfilePage(router) {
           </span>
           ${UI.arrowRight}
         </button>
+        <div class="prof-divider"></div>
+        <button class="prof-app-btn" id="tmdbCreditsBtn" type="button">
+          <span class="prof-app-btn-text">
+            <strong>Créditos y fuentes</strong>
+            <small>Datos de películas y series</small>
+          </span>
+          ${UI.arrowRight}
+        </button>
       </div>
     </div>
 
@@ -585,6 +594,7 @@ export function ProfilePage(router) {
 
   // ===== DÍAS ESPECIALES =====
   function dayBadge(iso, recurring) {
+    if (!isValidISO(iso)) return '<span class="prof-day-badge is-review">Revisa la fecha</span>';
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     let target;
@@ -608,8 +618,9 @@ export function ProfilePage(router) {
     const d = specialDates();
     const t = d.titles || {};
     const r = d.recurring || {};
-    const fmt = (iso) => new Date(iso + 'T00:00:00')
-      .toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+    const fmt = (iso) => isValidISO(iso)
+      ? new Date(iso + 'T00:00:00').toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'Fecha por revisar';
     const items = [
       { emoji: '🤍', title: t.anniversary || 'Aniversario', date: d.anniversary, recurring: r.anniversary !== false },
       { emoji: '🎁', title: t.birthday || 'Cumpleaños de dada', date: d.birthday, recurring: r.birthday !== false },
@@ -1205,6 +1216,12 @@ export function ProfilePage(router) {
       </div>
     `).join('');
     openSheet({ title: 'Novedades', body });
+  });
+  page.querySelector('#tmdbCreditsBtn')?.addEventListener('click', () => {
+    openSheet({
+      title: 'Créditos y fuentes',
+      body: `<div class="prof-tmdb-credits"><a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" aria-label="The Movie Database"><img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg" alt="TMDB"></a><p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p><a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">themoviedb.org</a></div>`,
+    });
   });
 
   return page;

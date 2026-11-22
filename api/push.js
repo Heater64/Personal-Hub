@@ -58,6 +58,12 @@ function requireVapid(res) {
   return true;
 }
 
+/** Push funciona si está disponible Web Push o el canal nativo FCM. */
+function requirePushTransport(res) {
+  if (fcmConfigured()) return false;
+  return requireVapid(res);
+}
+
 /**
  * ¿Es este error «esta suscripción se creó con OTRA clave VAPID»?
  *
@@ -809,7 +815,7 @@ export function cleanReminderInput(input = {}) {
  */
 function findGiftsCatalog() {
   const candidates = [
-    path.join(process.cwd(), 'personal-hub', 'public', 'data', 'gifts.json'),
+    path.join(process.cwd(), 'tamp', 'public', 'data', 'gifts.json'),
     path.join(process.cwd(), 'public', 'data', 'gifts.json'),
     path.join(process.cwd(), 'data', 'gifts.json'),
   ];
@@ -1030,6 +1036,8 @@ export default async function handler(req, res) {
         return await handleSend(req, res);
       case 'notify-admin':
         return await handleNotifyAdmin(req, res);
+      case 'battery-low':
+        return await handleBatteryLow(req, res);
       case 'announce':
         return await handleAnnounce(req, res);
       case 'reminders':
@@ -1052,6 +1060,36 @@ export default async function handler(req, res) {
     console.error('[api/push] error:', err.message);
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
+}
+
+// Battery alerts are emitted by the authenticated background device service.
+// Resolve recipients from couple_members; never accept user IDs from the client.
+async function handleBatteryLow(req, res) {
+  const user = await authenticate(req, res);
+  if (!user) return;
+  if (!fcmConfigured()) return res.status(503).json({ error: 'FCM no está configurado' });
+  const level = Number(req.body?.level);
+  if (!Number.isInteger(level) || level < 0 || level > 20) {
+    return res.status(400).json({ error: 'Nivel de batería no válido' });
+  }
+  const supabase = getSupabase();
+  const { data: membership, error: membershipError } = await supabase
+    .from('couple_members').select('couple_id').eq('user_id', user.id).maybeSingle();
+  if (membershipError) throw membershipError;
+  if (!membership?.couple_id) return res.status(200).json({ sent: 0, skipped: true });
+  const { data: members, error: membersError } = await supabase
+    .from('couple_members').select('user_id').eq('couple_id', membership.couple_id);
+  if (membersError) throw membersError;
+  const userIds = [...new Set((members || []).map(row => row.user_id).filter(Boolean))];
+  const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).maybeSingle();
+  const payload = {
+    type: 'battery_low',
+    title: 'Batería baja',
+    body: `${profile?.name || 'Tu pareja'} tiene ${level}% de batería. La ubicación se pausó hasta llegar al 30%.`,
+    url: '/mapa',
+  };
+  const result = await sendTokensToUsers(userIds, payload);
+  return res.status(200).json({ sent: result?.sent || 0, configured: true });
 }
 
 // ==========================================
@@ -1316,7 +1354,7 @@ async function handleNotifyAdmin(req, res) {
   const user = await authenticate(req, res);
   if (!user) return;
 
-  if (requireVapid(res)) return;
+  if (requirePushTransport(res)) return;
 
   // Una clase desconocida (o ausente) cae a 'mood': el cliente antiguo sigue
   // funcionando sin cambio alguno.
@@ -1416,9 +1454,7 @@ async function handleNotifyAdmin(req, res) {
 
   const allSubscriptions = await getSubscriptions();
   const adminSubscriptions = allSubscriptions.filter(s => adminIdSet.has(s.userId));
-  if (adminSubscriptions.length === 0) {
-    return res.status(200).json({ success: true, sent: 0, message: 'No admin subscriptions' });
-  }
+  const nativeCandidates = await getNativeUserIds(adminIds);
 
   const prefsById = await loadPrefsByIds(adminIds);
   const { allowed, quiet, off } = splitRecipients(
@@ -1429,14 +1465,24 @@ async function handleNotifyAdmin(req, res) {
   );
   // En silencio se incluye: el service worker ya lo silencia en el dispositivo.
   const recipients = [...allowed, ...quiet];
-  if (recipients.length === 0) {
+  const native = splitRecipients(
+    nativeCandidates.map(userId => ({ userId })),
+    prefsById,
+    new Date(),
+    adminAlertPrefFor(kind)
+  );
+  const webUserIds = new Set(adminSubscriptions.map(sub => String(sub.userId)));
+  const nativeOnly = native.allowed
+    .map(row => String(row.userId))
+    .filter(userId => !webUserIds.has(userId));
+  if (recipients.length === 0 && nativeOnly.length === 0) {
     return res
       .status(200)
       .json({ success: true, sent: 0, filtered: off.length, message: 'Admin alert off' });
   }
 
   const payload = JSON.stringify({ ...alert, timestamp: Date.now() });
-  const { results, expired } = await deliverPush(recipients, payload);
+  const { results, expired } = await deliverPush(recipients, payload, null, nativeOnly);
   if (expired.length > 0) {
     await saveSubscriptions(allSubscriptions.filter(s => !expired.includes(s.endpoint)));
   }
@@ -1461,7 +1507,7 @@ async function handleNotifyAdmin(req, res) {
 async function handleAnnounce(req, res) {
   const admin = await requireAdmin(req, res);
   if (!admin) return;
-  if (requireVapid(res)) return;
+  if (requirePushTransport(res)) return;
 
   const kind = ANNOUNCE_KINDS.includes(req.body?.kind) ? req.body.kind : null;
   if (!kind) {
@@ -1480,22 +1526,39 @@ async function handleAnnounce(req, res) {
   const supabase = getSupabase();
   const { data: admins, error: adminsError } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, role, enabled')
     .eq('role', 'admin');
   if (adminsError) throw adminsError;
   const adminIds = new Set((admins || []).map(a => String(a.id)));
 
   const all = await excludeDisabledUsers(await getSubscriptions());
   const recipients = all.filter(sub => !adminIds.has(String(sub.userId)));
-  if (recipients.length === 0) {
-    return res.status(200).json({ success: true, sent: 0, message: 'No subscriptions' });
-  }
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, role, enabled');
+  if (profilesError) throw profilesError;
+  const eligibleUsers = (profiles || [])
+    .filter(row => row.enabled !== false && row.role !== 'admin')
+    .map(row => row.id);
+  const nativeCandidates = await getNativeUserIds(eligibleUsers);
 
   const now = new Date();
-  const prefsById = await loadPrefsByIds([...new Set(recipients.map(s => String(s.userId)))]);
+  const prefsById = await loadPrefsByIds([
+    ...new Set([...recipients.map(s => String(s.userId)), ...nativeCandidates]),
+  ]);
   const { allowed, quiet, off } = splitRecipients(recipients, prefsById, now, ANNOUNCE_PREF[kind]);
+  const native = splitRecipients(
+    nativeCandidates.map(userId => ({ userId })),
+    prefsById,
+    now,
+    ANNOUNCE_PREF[kind]
+  );
+  const webUserIds = new Set(recipients.map(sub => String(sub.userId)));
+  const nativeOnly = native.allowed
+    .map(row => String(row.userId))
+    .filter(userId => !webUserIds.has(userId));
 
-  if (allowed.length === 0) {
+  if (allowed.length === 0 && nativeOnly.length === 0) {
     return res.status(200).json({
       success: true,
       sent: 0,
@@ -1507,7 +1570,7 @@ async function handleAnnounce(req, res) {
   }
 
   const payload = JSON.stringify({ ...alert, timestamp: Date.now() });
-  const { results, expired } = await deliverPush(allowed, payload);
+  const { results, expired } = await deliverPush(allowed, payload, null, nativeOnly);
   if (expired.length > 0) {
     await saveSubscriptions(all.filter(s => !expired.includes(s.endpoint)));
   }
@@ -1557,7 +1620,7 @@ async function notifyAdminsOfHealth(summary) {
   const failed = Number(summary?.failed) || 0;
   const removed = Number(summary?.removed) || 0;
   if (failed === 0 && removed === 0) return null;
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || vapidConfigError) return null;
+  if (!fcmConfigured() && (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || vapidConfigError)) return null;
   try {
     const supabase = getSupabase();
     const { data: admins, error } = await supabase
@@ -1570,7 +1633,7 @@ async function notifyAdminsOfHealth(summary) {
 
     const allSubscriptions = await getSubscriptions();
     const adminSubscriptions = allSubscriptions.filter(s => adminIds.includes(s.userId));
-    if (adminSubscriptions.length === 0) return null;
+    const nativeCandidates = await getNativeUserIds(adminIds);
 
     const prefsById = await loadPrefsByIds(adminIds);
     const { allowed, quiet } = splitRecipients(
@@ -1580,10 +1643,14 @@ async function notifyAdminsOfHealth(summary) {
       adminAlertPrefFor('health')
     );
     const recipients = [...allowed, ...quiet];
-    if (recipients.length === 0) return null;
+    const webUserIds = new Set(adminSubscriptions.map(sub => String(sub.userId)));
+    const nativeOnly = nativeCandidates
+      .filter(id => prefsById.get(String(id))?.adminHealth !== false)
+      .filter(id => !webUserIds.has(String(id)));
+    if (recipients.length === 0 && nativeOnly.length === 0) return null;
 
     const payload = JSON.stringify({ ...adminHealthPayload(summary), timestamp: Date.now() });
-    await deliverPush(recipients, payload);
+    await deliverPush(recipients, payload, null, nativeOnly);
     return true;
   } catch (err) {
     console.warn('[api/push] no se pudo avisar de los fallos:', err?.message);
@@ -1593,13 +1660,14 @@ async function notifyAdminsOfHealth(summary) {
  * Envía a cada suscripción y devuelve los endpoints caducados.
  * El payload puede ser una cadena o una función de la suscripción.
  */
-async function deliverPush(subscriptions, payload, onResult) {
+async function deliverPush(subscriptions, payload, onResult, additionalFcmUserIds = []) {
   const results = { sent: 0, failed: 0, removed: 0 };
   const expired = [];
   // El payload puede depender del destinatario (un token de acuse por
   // dispositivo). Acepta una cadena —lo normal— o una función de la suscripción.
   const payloadFor = typeof payload === 'function' ? payload : () => payload;
-  for (const sub of subscriptions) {
+  const webConfigured = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && !vapidConfigError);
+  for (const sub of webConfigured ? subscriptions : []) {
     try {
       await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payloadFor(sub));
       results.sent++;
@@ -1630,7 +1698,11 @@ async function deliverPush(subscriptions, payload, onResult) {
   }
   // El mismo aviso, también a la app Android. Es un canal aparte: que falle
   // FCM no invalida lo que ya salió por Web Push.
-  await deliverFcmForSubscriptions(subscriptions, payloadFor).catch(() => null);
+  const fcmUserIds = [
+    ...(subscriptions || []).map(sub => sub.userId),
+    ...(additionalFcmUserIds || []),
+  ];
+  await deliverFcmForUsers(fcmUserIds, payloadFor).catch(() => null);
   return { results, expired };
 }
 
@@ -1641,20 +1713,20 @@ async function deliverPush(subscriptions, payload, onResult) {
  * del acuse). Un mensaje nativo no tiene ese canal de vuelta, así que se
  * compone uno genérico: sirve igual para el texto y la URL.
  */
-async function deliverFcmForSubscriptions(subscriptions, payloadFor) {
+async function deliverFcmForUsers(userIds, payloadFor) {
   if (!fcmConfigured()) return null;
-  const userIds = [...new Set((subscriptions || []).map(sub => sub.userId).filter(Boolean))];
-  if (userIds.length === 0) return null;
+  const uniqueIds = [...new Set((userIds || []).map(id => String(id || '')).filter(Boolean))];
+  if (uniqueIds.length === 0) return null;
 
   let payload;
   try {
-    const raw = payloadFor({ userId: userIds[0], endpoint: 'fcm', keys: null });
+    const raw = payloadFor({ userId: uniqueIds[0], endpoint: 'fcm', keys: null });
     payload = typeof raw === 'string' ? JSON.parse(raw) : raw;
   } catch {
     return null;
   }
 
-  return sendTokensToUsers(userIds, payload);
+  return sendTokensToUsers(uniqueIds, payload);
 }
 
 /** Lee los tokens activos de esos usuarios, envía y borra los caducados. */
@@ -1677,6 +1749,31 @@ async function sendTokensToUsers(userIds, payload) {
     await supabase.from('push_tokens').delete().in('token', result.removed);
   }
   return result;
+}
+
+/** Tokens FCM activos que pertenecen a las cuentas habilitadas indicadas. */
+async function getNativeUserIds(userIds) {
+  const candidates = [...new Set((userIds || []).map(id => String(id || '')).filter(Boolean))];
+  if (!fcmConfigured() || candidates.length === 0) return [];
+  const { data, error } = await getSupabase()
+    .from('push_tokens')
+    .select('user_id')
+    .in('user_id', candidates)
+    .eq('enabled', true);
+  if (error) {
+    if (['42P01', 'PGRST205'].includes(error.code)) return [];
+    throw error;
+  }
+  return [...new Set((data || []).map(row => String(row.user_id || '')).filter(Boolean))];
+}
+
+/** Usuarios habilitados con token nativo, para envíos programados generales. */
+async function getEnabledNativeUserIds() {
+  if (!fcmConfigured()) return [];
+  const { data, error } = await getSupabase().from('profiles').select('id, enabled');
+  if (error) throw error;
+  const enabledIds = (data || []).filter(row => row.enabled !== false).map(row => row.id);
+  return getNativeUserIds(enabledIds);
 }
 
 // ==========================================
@@ -1787,7 +1884,7 @@ function reminderPayload(reminder, deliveryId) {
  * apagado): se registran igual, para poder explicar en el panel por qué a
  * alguien no le llegó, que es justo lo que antes no se sabía.
  */
-async function deliverReminder(reminder, subscriptions, skipped = []) {
+async function deliverReminder(reminder, subscriptions, skipped = [], additionalFcmUserIds = []) {
   const entries = skipped.map(({ sub, reason }) => ({
     reminder_id: reminder.id,
     user_id: sub.userId,
@@ -1837,7 +1934,8 @@ async function deliverReminder(reminder, subscriptions, skipped = []) {
               status: failure ? 'failed' : 'sent',
               error: failure ? failure.error : null,
             })
-          )
+          ),
+    additionalFcmUserIds
   );
 
   if (!registroPrevio) await logReminderPush(entries, { allowLegacy: true });
@@ -1941,19 +2039,31 @@ async function runDueReminders(now = new Date()) {
   // filtrada, o el filtro de cuentas deshabilitadas borraría sus suscripciones.
   const all = await getSubscriptions();
   let subscriptions = await excludeDisabledUsers(all);
+  const nativeCandidates = await getEnabledNativeUserIds();
   const prefsById = await loadPrefsByIds([
-    ...new Set(subscriptions.map(sub => String(sub.userId))),
+    ...new Set([...subscriptions.map(sub => String(sub.userId)), ...nativeCandidates]),
   ]);
 
   for (const reminder of due) {
     const stamp = new Date().toISOString();
     const { allowed, quiet, off } = splitRecipients(subscriptions, prefsById, now, 'reminders');
+    const native = splitRecipients(
+      nativeCandidates.map(userId => ({ userId })),
+      prefsById,
+      now,
+      'reminders'
+    );
+    const webUserIds = new Set(subscriptions.map(sub => String(sub.userId)));
+    const nativeOnly = native.allowed
+      .map(row => String(row.userId))
+      .filter(userId => !webUserIds.has(userId));
+    const allQuiet = allowed.length === 0 && nativeOnly.length === 0 && quiet.length + native.quiet.length > 0;
 
     // Nadie puede recibirlo ahora y el motivo es el silencio: la ocurrencia
     // se aplaza SIN gastarse. Al contrario, un recordatorio de una sola vez
     // que caiga dentro del silencio no llegaría nunca.
-    if (allowed.length === 0 && quiet.length > 0) {
-      const until = deferUntilFor(quiet, prefsById, now);
+    if (allQuiet) {
+      const until = deferUntilFor([...quiet, ...native.quiet], prefsById, now);
       if (until && Date.parse(until) > now.getTime()) {
         const { error: deferError } = await supabase
           .from(REMINDERS_TABLE)
@@ -1986,9 +2096,9 @@ async function runDueReminders(now = new Date()) {
     }
 
     summary.reminders++;
-    summary.filtered += quiet.length + off.length;
+    summary.filtered += quiet.length + off.length + native.quiet.length + native.off.length;
 
-    if (allowed.length === 0) {
+    if (allowed.length === 0 && nativeOnly.length === 0) {
       summary.skipped++;
       continue;
     }
@@ -1997,7 +2107,7 @@ async function runDueReminders(now = new Date()) {
       ...quiet.map(sub => ({ sub, reason: 'quiet_hours' })),
       ...off.map(sub => ({ sub, reason: 'prefs_off' })),
     ];
-    const { results, expired } = await deliverReminder(reminder, allowed, skipped);
+    const { results, expired } = await deliverReminder(reminder, allowed, skipped, nativeOnly);
     summary.sent += results.sent;
     summary.failed += results.failed;
     summary.removed += results.removed;
@@ -2020,7 +2130,7 @@ async function handleRunReminders(req, res) {
     if (!user) return; // ya respondió con el error
   }
 
-  if (requireVapid(res)) return;
+  if (requirePushTransport(res)) return;
 
   try {
     const summary = await runDueReminders();
@@ -2113,7 +2223,7 @@ async function handleReminders(req, res) {
 
     if (action === 'run') {
       if (!id) return res.status(400).json({ error: 'Falta el id del recordatorio' });
-      if (requireVapid(res)) return;
+      if (requirePushTransport(res)) return;
       const { data: reminder, error: readError } = await supabase
         .from(REMINDERS_TABLE)
         .select('*')
@@ -2123,7 +2233,10 @@ async function handleReminders(req, res) {
       if (!reminder) return res.status(404).json({ error: 'Ese recordatorio no existe' });
 
       const subscriptions = await excludeDisabledUsers(await getSubscriptions());
-      if (subscriptions.length === 0) {
+      const nativeCandidates = await getEnabledNativeUserIds();
+      const webUserIds = new Set(subscriptions.map(sub => String(sub.userId)));
+      const nativeOnly = nativeCandidates.filter(id => !webUserIds.has(String(id)));
+      if (subscriptions.length === 0 && nativeOnly.length === 0) {
         return res
           .status(200)
           .json({
@@ -2136,7 +2249,7 @@ async function handleReminders(req, res) {
       }
 
       // Enviarlo a mano no toca su calendario: la programación sigue igual.
-      const { results } = await deliverReminder(reminder, subscriptions);
+      const { results } = await deliverReminder(reminder, subscriptions, [], nativeOnly);
       return res.status(200).json({ success: true, ...results });
     }
 
@@ -2269,12 +2382,12 @@ async function handleSend(req, res) {
       .json({ success: true, skipped: true, reason: 'Outside delivery window', reminders });
   }
 
-  if (!manual && requireVapid(res)) return;
+  if (!manual && requirePushTransport(res)) return;
 
   const allSubscriptions = await getSubscriptions();
   const webConfigured = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && !vapidConfigError);
   const androidConfigured = fcmConfigured();
-  let nativeCandidates = [];
+  let nativeCandidates = await getEnabledNativeUserIds();
   let availableSubscriptions = allSubscriptions;
   if (manual) {
     const supabase = getSupabase();
@@ -2282,14 +2395,10 @@ async function handleSend(req, res) {
     if (error) throw error;
     const enabled = new Set((profiles || []).map(row => row.id));
     availableSubscriptions = allSubscriptions.filter(subscription => enabled.has(subscription.userId));
-    if (androidConfigured) {
-      const { data, error: tokensError } = await supabase.from('push_tokens').select('user_id').eq('enabled', true);
-      if (tokensError && !['42P01', 'PGRST205'].includes(tokensError.code)) throw tokensError;
-      nativeCandidates = [...new Set((data || []).map(row => row.user_id))].filter(id => enabled.has(id));
-    }
+    nativeCandidates = nativeCandidates.filter(id => enabled.has(id));
   }
 
-  if (!manual && allSubscriptions.length === 0) {
+  if (!manual && allSubscriptions.length === 0 && nativeCandidates.length === 0) {
     return res.status(200).json({ success: true, sent: 0, message: 'No subscriptions', reminders });
   }
 
@@ -2307,8 +2416,12 @@ async function handleSend(req, res) {
   const recipients = isAdmin ? [...allowed, ...quiet] : allowed;
   const native = splitRecipients(nativeCandidates.map(userId => ({ userId })), prefsById, new Date(), 'daily');
   const filtered = off.length + (isAdmin ? 0 : quiet.length) + native.off.length;
+  const nativeAllowedIds = (manual ? [...native.allowed, ...native.quiet] : native.allowed)
+    .map(row => String(row.userId));
+  const webRecipientIds = new Set(recipients.map(row => String(row.userId)));
+  const fcmRecipients = nativeAllowedIds.filter(userId => !webRecipientIds.has(userId));
 
-  if (!manual && recipients.length === 0) {
+  if (!manual && recipients.length === 0 && fcmRecipients.length === 0) {
     return res.status(200).json({
       success: true,
       sent: 0,
@@ -2362,10 +2475,9 @@ async function handleSend(req, res) {
     }
   }
 
-  // El saludo diario también suena en la app Android (FCM).
-  const fcmRecipients = manual
-    ? [...native.allowed, ...native.quiet].map(row => row.userId)
-    : [...new Set(recipients.map(sub => sub.userId).filter(Boolean))];
+  // FCM incluye las cuentas con app nativa aunque no tengan una suscripción
+  // Web Push en otro navegador. Las que ya están en `recipients` se mandan
+  // desde el mismo lote para no duplicarles el aviso.
   let android = { sent: 0, failed: 0, removed: 0, configured: androidConfigured };
   if (fcmRecipients.length > 0) {
     try {

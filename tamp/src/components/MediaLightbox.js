@@ -223,7 +223,7 @@ async function shareCurrentMedia() {
   const item = getItem();
   if (!item) return;
   const url = lightboxSrc(item.src);
-  const title = item.caption || 'Tamp';
+  const title = item.caption || 'Personal Hub';
   const btn = document.getElementById('mlShareBtn');
   if (navigator.share) {
     try {

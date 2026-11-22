@@ -1,12 +1,12 @@
 # Tamp
 
-Versión de trabajo separada de PersonalHub. La app actual no se sustituye hasta revisar esta carpeta.
+Aplicación principal. La web y la APK Android se construyen desde este proyecto.
 
 ## Ejecutar
 
 ```powershell
-npm run dev:tamp
-npm run build:tamp
+npm run dev
+npm run build
 ```
 
 Vite la abre en `http://127.0.0.1:5175`.

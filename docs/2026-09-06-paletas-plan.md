@@ -20,7 +20,7 @@
 ### Task 1: Tokens familia azul + tests base
 
 **Files:**
-- Modify: `personal-hub/src/styles/design-tokens.css` (SOLO añadir al final)
+- Modify: `tamp/src/styles/design-tokens.css` (SOLO añadir al final)
 - Modify: `tests/prepush.test.js` (añadir 1 test, estilo `node:test` + `assert/strict` + `readFile` existente)
 - Test: `tests/prepush.test.js`
 
@@ -32,7 +32,7 @@
 
 ```js
 test('la familia azul existe como override por data-tema (modo intacto)', async () => {
-  const css = await readFile(projectPath('personal-hub', 'src', 'styles', 'design-tokens.css'), 'utf8');
+  const css = await readFile(projectPath('tamp', 'src', 'styles', 'design-tokens.css'), 'utf8');
   for (const s of ['[data-tema="azul"]', '#2563EB', '#7DB7FF']) assert.match(css, new RegExp(s.replace(/[[\]]/g, '\\$&')));
   assert.match(css, /\[data-theme="light"\]/);
 });
@@ -77,7 +77,7 @@ Expected: PASS todo.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add personal-hub/src/styles/design-tokens.css tests/prepush.test.js
+git add tamp/src/styles/design-tokens.css tests/prepush.test.js
 git commit -m "feat(paletas): tokens familia azul por data-tema"
 ```
 
@@ -86,8 +86,8 @@ git commit -m "feat(paletas): tokens familia azul por data-tema"
 ### Task 2: Servicio 4 ids + dual + arranque
 
 **Files:**
-- Modify: `personal-hub/src/services/theme.service.js`
-- Modify: `personal-hub/index.html` (script inline líneas 5-20, mínimo)
+- Modify: `tamp/src/services/theme.service.js`
+- Modify: `tamp/index.html` (script inline líneas 5-20, mínimo)
 - Modify: `tests/prepush.test.js` (añadir 1 test)
 - Test: `tests/prepush.test.js`
 
@@ -99,9 +99,9 @@ git commit -m "feat(paletas): tokens familia azul por data-tema"
 
 ```js
 test('el servicio de temas maneja 4 paletas con escritura dual y legacy', async () => {
-  const svc = await readFile(projectPath('personal-hub', 'src', 'services', 'theme.service.js'), 'utf8');
+  const svc = await readFile(projectPath('tamp', 'src', 'services', 'theme.service.js'), 'utf8');
   for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro', 'dataset.tema', 'dataset.theme']) assert.ok(svc.includes(s));
-  const boot = await readFile(projectPath('personal-hub', 'index.html'), 'utf8');
+  const boot = await readFile(projectPath('tamp', 'index.html'), 'utf8');
   assert.ok(boot.includes('dataset.tema'));
 });
 ```
@@ -135,7 +135,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add personal-hub/src/services/theme.service.js personal-hub/index.html tests/prepush.test.js
+git add tamp/src/services/theme.service.js tamp/index.html tests/prepush.test.js
 git commit -m "feat(paletas): servicio 4 ids con escritura dual y legacy"
 ```
 
@@ -144,9 +144,9 @@ git commit -m "feat(paletas): servicio 4 ids con escritura dual y legacy"
 ### Task 3: Selector elegante en Perfil + Admin
 
 **Files:**
-- Modify: `personal-hub/src/pages/Profile.js` (bloque `#themeOptions`, líneas ~150-153 y 204-210; handler ~342)
-- Modify: CSS de `.prof-theme-*` (buscar dónde vive: provavelmente `personal-hub/src/styles/profile.css`)
-- Modify: `personal-hub/src/pages/Admin.js` (segmented líneas ~2956 y 2973-2974, handler 3067-3073)
+- Modify: `tamp/src/pages/Profile.js` (bloque `#themeOptions`, líneas ~150-153 y 204-210; handler ~342)
+- Modify: CSS de `.prof-theme-*` (buscar dónde vive: provavelmente `tamp/src/styles/profile.css`)
+- Modify: `tamp/src/pages/Admin.js` (segmented líneas ~2956 y 2973-2974, handler 3067-3073)
 - Modify: `tests/prepush.test.js` (añadir 1 test)
 - Test: `tests/prepush.test.js`
 
@@ -158,9 +158,9 @@ git commit -m "feat(paletas): servicio 4 ids con escritura dual y legacy"
 
 ```js
 test('perfil y admin ofrecen las 4 paletas + auto', async () => {
-  const profile = await readFile(projectPath('personal-hub', 'src', 'pages', 'Profile.js'), 'utf8');
+  const profile = await readFile(projectPath('tamp', 'src', 'pages', 'Profile.js'), 'utf8');
   for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(profile.includes(s));
-  const admin = await readFile(projectPath('personal-hub', 'src', 'pages', 'Admin.js'), 'utf8');
+  const admin = await readFile(projectPath('tamp', 'src', 'pages', 'Admin.js'), 'utf8');
   for (const s of ['umbra-oscuro', 'umbra-claro', 'azul-claro', 'azul-oscuro']) assert.ok(admin.includes(s));
 });
 ```
@@ -186,7 +186,7 @@ Manual en servidor dev: 4 paletas persisten tras recarga, Auto sigue al SO, jueg
 - [ ] **Step 5: Commit**
 
 ```bash
-git add personal-hub/src/pages/Profile.js personal-hub/src/pages/Admin.js personal-hub/src/styles/profile.css tests/prepush.test.js
+git add tamp/src/pages/Profile.js tamp/src/pages/Admin.js tamp/src/styles/profile.css tests/prepush.test.js
 git commit -m "feat(paletas): selector elegante 2x2 en perfil y admin"
 ```
 (Ajustar la ruta del CSS a la real si vive en otro archivo.)

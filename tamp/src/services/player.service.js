@@ -1,5 +1,5 @@
 /* ==========================================
-   Tamp — Player Service (reproductor global)
+   Personal Hub — Player Service (reproductor global)
    El Audio vive aquí, fuera de cualquier página:
    la música sigue sonando al navegar entre
    secciones (feeling de app de música real).
@@ -113,9 +113,9 @@ class PlayerService {
     }
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: t.title || 'Tamp',
+        title: t.title || 'Personal Hub',
         artist: t.artist || 'Canciones para ti',
-        album: 'Tamp',
+        album: 'Personal Hub',
         artwork: t.cover
           ? [{ src: t.cover, sizes: '512x512', type: 'image/jpeg' }]
           : []

@@ -72,7 +72,7 @@ comportamiento en dispositivos móviles reales. Eso requiere staging, un dominio
 ## 2. Arquitectura encontrada
 
 - Frontend SPA vanilla JavaScript con Vite y routing basado en hash.
-- Entrada: `personal-hub/index.html` → `personal-hub/src/main.js`.
+- Entrada: `tamp/index.html` → `tamp/src/main.js`.
 - `Router` monta páginas directas o lazy-loaded, ejecuta guards y llama a `cleanup()` al cambiar de ruta.
 - Estado global de usuario: Supabase Auth + `userStore`; preferencias locales con claves por usuario.
 - Persistencia: Supabase para contenido, perfiles, ánimos, progreso, analítica y juegos; `localStorage` como espejo/fallback en varias áreas.
@@ -159,7 +159,7 @@ El build emitía además un warning `INEFFECTIVE_DYNAMIC_IMPORT`: `notifications
 - La sesión usa Supabase Auth con persistencia y auto-refresh.
 - Los guards de router esperan la restauración inicial de sesión.
 - Las rutas admin tienen guard frontend y las APIs validan el JWT en servidor.
-- La clave `SUPABASE_SERVICE_ROLE_KEY` solo aparece en APIs serverless, no en `personal-hub/src`.
+- La clave `SUPABASE_SERVICE_ROLE_KEY` solo aparece en APIs serverless, no en `tamp/src`.
 - El rol no se toma de `user_metadata.role`.
 - El correo de administrador debe estar confirmado.
 - Pendiente: probar registro, confirmación, recuperación, expiración, logout en varias pestañas y bloqueo de cuenta contra el proyecto Supabase real.
@@ -224,4 +224,4 @@ Resuelto desde la revisión anterior: la vulnerabilidad high de `npm audit` (nan
 
 Cambios propios de la auditoría: APIs de admin/push/users, autenticación, playlists, sync, SQL de seguridad, `vercel.json`, tests y documentación de Supabase.
 
-También hay cambios concurrentes o previos en `personal-hub/index.html`, `personal-hub/src/pages/Admin.js`, `personal-hub/src/pages/Calendario.js`, `personal-hub/src/styles/calendario.css` y `personal-hub/src/utils/renderMath.js`. No se revirtieron ni se consideran validados funcionalmente más allá de que el build los incluye.
+También hay cambios concurrentes o previos en `tamp/index.html`, `tamp/src/pages/Admin.js`, `tamp/src/pages/Calendario.js`, `tamp/src/styles/calendario.css` y `tamp/src/utils/renderMath.js`. No se revirtieron ni se consideran validados funcionalmente más allá de que el build los incluye.

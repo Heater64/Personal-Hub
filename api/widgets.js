@@ -3,10 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 import { sendFcmToTokens } from './_fcm.js';
 import { getOpenWhenWidget, getReasonWidget } from './_widget-content.js';
-import { resolveMood } from '../personal-hub/src/data/moods.data.js';
-import { defaultCatalog } from '../personal-hub/src/data/series-seed.js';
-import { computeCycle } from '../personal-hub/src/utils/cycleMath.js';
-import { streaks } from '../personal-hub/src/utils/stats-metrics.js';
+import { resolveMood } from '../tamp/src/data/moods.data.js';
+import { defaultCatalog } from '../tamp/src/data/series-seed.js';
+import { computeCycle } from '../tamp/src/utils/cycleMath.js';
+import { streaks } from '../tamp/src/utils/stats-metrics.js';
 
 const INSTALLATIONS = 'widget_installations';
 const DAY = 86400000;
@@ -192,7 +192,7 @@ async function getWatching(db, userId) {
 async function getGifts(db, today) {
   const remote = await getContent(db, 'gifts');
   const catalog = remote || JSON.parse(await readFile(
-    new URL('../personal-hub/public/data/gifts.json', import.meta.url), 'utf8'
+    new URL('../tamp/public/data/gifts.json', import.meta.url), 'utf8'
   ));
   const assigned = catalog?.months?.[today.slice(0, 7)]?.calendarMapping?.[String(Number(today.slice(8)))];
   const giftIds = (Array.isArray(assigned) ? assigned : [assigned]).filter(id => typeof id === 'string' && id);

@@ -1,15 +1,24 @@
+/* ==========================================
+   DistanceMapSheet.js — el mapa de verdad.
+
+   El panel de la portada es un dibujo (ligero, siempre visible). Al tocarlo se
+   abre esta hoja: un mapa real de OpenStreetMap con las dos fotos clavadas en
+   su posición, la línea entre ellas y, debajo, lo que cada móvil cuenta de sí
+   mismo (batería, red, velocidad) en fichas con iconos, no en una lista de
+   símbolos.
+
+   Leaflet se importa aquí dentro: quien no abra el mapa no paga su peso, y la
+   web sigue cargando igual que antes.
+   ========================================== */
+
 import { openSheet, icon } from './ui.js';
 import { escapeHtml } from '../utils/escape.js';
 import {
-  distanceKm,
-  fetchMyLocation,
-  fetchProfile,
   formatDistance,
-  isFresh,
   requestLocationPermission,
   locationPermissionState,
   togetherInfo,
-  watchDistance,
+  TOGETHER_M,
 } from '../services/location.service.js';
 import {
   getDeviceStatus,
@@ -23,24 +32,11 @@ import {
   refreshBackgroundStatus,
 } from '../services/device.service.js';
 import { isNative } from '../services/native.service.js';
-import 'leaflet/dist/leaflet.css';
 import '../styles/distance-map.css';
+import 'leaflet/dist/leaflet.css';
 
-const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-
-function hasPosition(person) {
-  return Number.isFinite(person?.lat) && Math.abs(person.lat) <= 90
-    && Number.isFinite(person?.lng) && Math.abs(person.lng) <= 180;
-}
-
-function hasFreshPosition(person) {
-  return hasPosition(person) && isFresh(person.location_at || person.at);
-}
-
-function togetherAtCurrentPosition(me, partner) {
-  return hasFreshPosition(me) && hasFreshPosition(partner) && togetherInfo(me, partner)?.together;
-}
+const TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const ATTR = '© OpenStreetMap';
 
 /** Icono de la red que usa ese móvil. */
 function netIcon(person) {
@@ -52,7 +48,6 @@ function netIcon(person) {
 
 /** Nombre de la red sin la velocidad, que va aparte y con su propia etiqueta. */
 function netName(person) {
-  if (person.net === 'offline') return 'Sin conexión';
   return networkLabel({ ...person, mbps: undefined });
 }
 
@@ -90,7 +85,7 @@ function batteryTile(person) {
   const level = Math.max(0, Math.min(100, Math.round(person.battery)));
   const tone = level <= 15 ? 'low' : level <= 40 ? 'mid' : 'ok';
   const hint = person.charging
-    ? 'En carga'
+    ? 'Cargando ahora'
     : level <= 15
       ? 'Muy baja'
       : level <= 40
@@ -109,12 +104,11 @@ function batteryTile(person) {
 }
 
 /** Una fila con la cara, cuándo se supo de ella y lo que comparte su móvil. */
-function cardHTML(person, fallbackName, local = false) {
-  const at = person.location_at || person.at;
-  const known = hasPosition(person);
-  const stale = !hasFreshPosition(person);
-  const updated = known && timeAgo(at);
-  const sentAt = person.sentAt || person.at;
+function cardHTML(person, fallbackName) {
+  if (!person) return '';
+
+  const stale = isStale(person.at);
+  const updated = timeAgo(person.at);
   const stats = [];
 
   if (Number.isFinite(person.battery)) stats.push(batteryTile(person));
@@ -129,7 +123,7 @@ function cardHTML(person, fallbackName, local = false) {
   }
 
   if (Number.isFinite(person.speed)) {
-    stats.push(tile('speed', 'Velocidad', `${person.speed} km/h`, stale ? 'última lectura' : ''));
+    stats.push(tile('speed', 'Velocidad', `${person.speed} km/h`, person.speed < 2 ? 'parado' : 'en marcha'));
   }
 
   if (Number.isFinite(person.accuracy)) {
@@ -141,40 +135,39 @@ function cardHTML(person, fallbackName, local = false) {
   const initial = (person.name || fallbackName || '').trim().charAt(0).toUpperCase();
 
   return `
-    <article class="distmap__card">
+    <article class="distmap__card${stale ? ' is-stale' : ''}">
       <header class="distmap__card-head">
         <span class="distmap__ava">
           ${person.avatar ? `<img src="${escapeHtml(person.avatar)}" alt="" loading="lazy">` : `<span aria-hidden="true">${escapeHtml(initial || '♥')}</span>`}
         </span>
         <div class="distmap__who">
           <strong>${escapeHtml(person.name || fallbackName)}</strong>
-          <span class="distmap__stamp">${updated ? `Ubicación ${escapeHtml(updated)}` : 'Sin ubicación recibida'}</span>
+          <span class="distmap__stamp">
+            ${icon('clock', 11)}${escapeHtml(updated || 'sin hora')}
+          </span>
         </div>
         <span class="distmap__live${stale ? ' is-stale' : ''}">
-          <i aria-hidden="true"></i>${known ? (stale ? 'Última conocida' : 'Reciente') : 'Pendiente'}
+          <i aria-hidden="true"></i>${stale ? 'Sin señal' : person.bg ? 'En vivo' : 'Al abrir'}
         </span>
       </header>
-      ${stats.length ? `<div class="distmap__stats">${stats.join('')}</div>` : ''}
-      ${!local && (Number.isFinite(person.battery) || net)
-        ? `<p class="distmap__stamp">Batería y conexión ${escapeHtml(timeAgo(sentAt) || 'sin hora de envío')}${sentAt && isStale(sentAt) ? ' · última lectura' : ''}</p>`
-        : ''}
+      ${stats.length ? `<div class="distmap__stats">${stats.join('')}</div>` : '<p class="distmap__empty">Este móvil no comparte batería ni conexión.</p>'}
     </article>`;
 }
 
 /** Control del seguimiento en segundo plano (solo tiene sentido en el APK). */
 function trackingPanelHTML() {
   if (!isNative()) {
-    return `<p class="distmap__note">${icon('info', 15)}En el navegador, tu ubicación se actualiza mientras la app está visible.</p>`;
+    return `<p class="distmap__note">${icon('info', 13)}En el navegador los datos solo se actualizan con la app abierta. En Android puedes mantenerlos siempre.</p>`;
   }
   return `
     <section class="distmap__track" aria-label="Seguimiento en segundo plano">
       <div class="distmap__track-head">
         <span class="distmap__dot" data-bg-dot></span>
-        <b>Seguimiento en segundo plano</b>
-        <span class="distmap__track-state" data-bg-state role="status">Comprobando…</span>
+        <b>Seguimiento siempre</b>
+        <span class="distmap__track-state" data-bg-state>…</span>
       </div>
-      <p class="distmap__track-note" data-bg-note></p>
-      <p class="distmap__track-note distmap__track-error" data-bg-error role="status" hidden></p>
+      <p class="distmap__track-note" data-bg-note>Batería, conexión y ubicación también con la app cerrada.</p>
+      <ul class="distmap__track-chips" data-bg-chips></ul>
       <div class="distmap__track-actions">
         <button class="distmap__track-btn" type="button" data-bg-toggle>Activar</button>
         <button class="distmap__track-link" type="button" data-bg-settings hidden>Ajustes de Android</button>
@@ -190,87 +183,76 @@ function wireTracking(wrap) {
   const dot = wrap.querySelector('[data-bg-dot]');
   const stateEl = wrap.querySelector('[data-bg-state]');
   const note = wrap.querySelector('[data-bg-note]');
-  const error = wrap.querySelector('[data-bg-error]');
+  const chips = wrap.querySelector('[data-bg-chips]');
   const settings = wrap.querySelector('[data-bg-settings]');
   let busy = false;
-  let previousRunning = false;
 
-  const showError = message => {
-    error.hidden = !message;
-    error.textContent = message;
-  };
+  const chip = (ic, text) => `<li>${icon(ic, 13)}<span>${escapeHtml(text)}</span></li>`;
 
   const render = status => {
     const bg = status?.background || {};
+    // `enabled` es la intención guardada; `running` confirma que Android ya
+    // mantiene el foreground service. Tras reiniciar la app puede llegar
+    // antes el segundo y no debemos pedir activar algo que ya está vivo.
     const on = !!(bg.enabled || bg.running);
-    const noLocation = bg.location === 'denied' || bg.locationServices === 'disabled';
-    const needsPermission = on && bg.background !== 'granted';
     toggle.textContent = on ? 'Desactivar' : 'Activar';
-    const liveLabel = status?.online === false ? 'Sin conexión' : 'En marcha';
-    const label = bg.running ? liveLabel : on ? 'En pausa' : 'Desactivado';
-    if (stateEl.textContent !== label) stateEl.textContent = label;
-    dot.classList.toggle('is-on', bg.running && status?.online !== false && !noLocation);
-    settings.hidden = !on || (!needsPermission && bg.location !== 'denied');
-    if (bg.running && !previousRunning) showError('');
-    previousRunning = bg.running;
+    stateEl.textContent = on ? 'Activo' : 'Inactivo';
+    dot.classList.toggle('is-on', on);
 
-    if (!on) {
-      note.textContent = 'Mantén al día la ubicación, la batería y la conexión al salir de la app.';
-    } else if (bg.locationServices === 'disabled') {
-      note.textContent = 'Activa Ubicación en los ajustes rápidos de Android para actualizar tu posición.';
-    } else if (needsPermission || bg.location === 'denied') {
-      note.textContent = 'En los ajustes de Android, elige Ubicación y «Permitir todo el tiempo».';
-    } else if (status?.online === false) {
-      note.textContent = 'Los datos volverán a enviarse al recuperar la conexión.';
-    } else if (!bg.running) {
-      note.textContent = 'Android ha detenido el seguimiento. Puedes desactivarlo y volver a activarlo.';
-    } else if (bg.lastError === 'waiting-location') {
-      note.textContent = 'Esperando la primera ubicación de Android.';
-    } else if (bg.lastError === 'session') {
-      note.textContent = 'Vuelve a iniciar sesión para reanudar los envíos.';
-    } else if (bg.lastError === 'upload-failed') {
-      note.textContent = 'El último envío falló. La app volverá a intentarlo.';
-    } else if (bg.lastAt) {
-      note.textContent = `Último envío confirmado ${timeAgo(bg.lastAt)}.`;
+    const items = [];
+    if (Number.isFinite(status?.battery)) items.push(chip(status.charging ? 'bolt' : 'battery', `${status.battery}%`));
+    const net = netName(status || {});
+    if (net) items.push(chip(netIcon(status || {}), net));
+    if (status?.online === false) items.push(chip('wifi', 'Sin conexión'));
+    if (status?.locationPermission === 'denied') items.push(chip('shield', 'Ubicación bloqueada'));
+    chips.innerHTML = items.join('');
+
+    const needsPermission = on && bg.background !== 'granted';
+    settings.hidden = !needsPermission;
+    if (needsPermission) {
+      note.textContent =
+        'Para seguir con la app cerrada, concede «Permitir todo el tiempo» en los ajustes de la app.';
+    } else if (on && bg.batteryUnrestricted === false) {
+      note.textContent =
+        'Activo. Android puede pausarlo para ahorrar batería; quita la optimización en los ajustes para que no lo haga.';
     } else {
-      note.textContent = 'Comparte tu ubicación, tu batería y tu conexión en segundo plano.';
+      note.textContent = on
+        ? 'Batería, conexión y ubicación se actualizan también con la app cerrada.'
+        : 'Se actualiza solo con la app abierta. Actívalo para que siga en segundo plano.';
     }
   };
 
+  render(getDeviceStatus());
   const off = onDeviceStatus(render);
 
   toggle.addEventListener('click', async () => {
     if (busy) return;
     busy = true;
     toggle.disabled = true;
-    showError('');
     try {
       const current = getDeviceStatus().background;
       if (current.enabled || current.running) {
-        if (!(await disableBackgroundTracking())) showError('No se pudo desactivar. Inténtalo otra vez.');
+        await disableBackgroundTracking();
       } else {
         const result = await enableBackgroundTracking();
         if (!result.ok) {
-          const messages = {
-            denied: 'Concede el permiso de ubicación para activar el seguimiento.',
-            'location-disabled': 'Activa Ubicación en los ajustes rápidos de Android.',
-            session: 'Se necesita una sesión activa y conexión para activar el seguimiento.',
-          };
-          showError(messages[result.reason] || 'No se pudo activar el seguimiento. Inténtalo otra vez.');
+          note.textContent =
+            result.reason === 'denied'
+              ? 'Sin permiso de ubicación no se puede compartir la posición.'
+              : result.reason === 'web'
+                ? 'El seguimiento en segundo plano solo existe en la app de Android.'
+                : 'No se pudo activar el seguimiento. Inténtalo otra vez.';
         }
       }
       await refreshBackgroundStatus();
-    } catch {
-      showError('No se pudo cambiar el seguimiento. Inténtalo otra vez.');
+      render(getDeviceStatus());
     } finally {
       busy = false;
       toggle.disabled = false;
     }
   });
 
-  settings.addEventListener('click', async () => {
-    if (!(await openDeviceSettings())) showError('Abre el permiso de ubicación en los ajustes de Android.');
-  });
+  settings.addEventListener('click', () => void openDeviceSettings());
 
   return off;
 }
@@ -281,113 +263,60 @@ function permissionHTML() {
     <section class="distmap__perm" data-perm hidden>
       <span class="distmap__perm-ico">${icon('map', 18)}</span>
       <div class="distmap__perm-txt">
-        <b data-perm-title>Comparte tu ubicación</b>
-        <p data-perm-note role="status"></p>
+        <b>Falta tu ubicación</b>
+        <p data-perm-note>Sin permiso no hay distancia ni mapa. Solo se comparte mientras la app está abierta.</p>
       </div>
       <button class="distmap__perm-btn" type="button" data-perm-btn>Permitir</button>
     </section>`;
 }
 
-function wirePermission(wrap) {
+async function wirePermission(wrap) {
   const btn = wrap.querySelector('[data-perm-btn]');
   const card = wrap.querySelector('[data-perm]');
-  const title = wrap.querySelector('[data-perm-title]');
+  if (!btn || !card) return;
   const note = wrap.querySelector('[data-perm-note]');
-  let state = 'unknown';
-  let pending = false;
-  let disposed = false;
-  let checked = 0;
 
-  const render = () => {
-    const disabled = isNative() && getDeviceStatus().background.locationServices === 'disabled';
-    const denied = state === 'denied';
-    card.hidden = !pending && !disabled && !['prompt', 'denied', 'error'].includes(state);
-    btn.disabled = pending;
-    btn.hidden = denied && !isNative();
-    if (pending) {
-      btn.textContent = 'Comprobando…';
-      title.textContent = 'Comparte tu ubicación';
-      note.textContent = 'Esperando el permiso y una lectura de ubicación.';
-      return;
-    }
-    if (denied) {
-      btn.textContent = 'Ajustes';
-      title.textContent = 'Ubicación bloqueada';
-      note.textContent = isNative()
-        ? 'Permite el acceso a la ubicación en los ajustes de la app.'
-        : 'Permite la ubicación en los ajustes del sitio de tu navegador y recarga.';
-      return;
-    }
-    if (disabled || state === 'error') {
-      btn.textContent = 'Reintentar';
-      title.textContent = 'Ubicación no disponible';
-      note.textContent = disabled
-        ? 'Activa Ubicación en los ajustes rápidos de Android y vuelve a intentarlo.'
-        : 'Comprueba la ubicación y la conexión antes de reintentar.';
-      return;
-    }
-    btn.textContent = 'Permitir';
-    title.textContent = 'Comparte tu ubicación';
-    note.textContent = 'Permite el acceso para mostrar tu posición y la distancia.';
-  };
-
-  const set = next => {
-    if (!next || disposed) return;
-    checked++;
-    state = next === 'ok' ? 'granted' : next;
-    render();
-  };
-
-  const refresh = async () => {
-    if (pending || disposed) return;
-    const current = ++checked;
-    const next = await locationPermissionState();
-    if (disposed || checked !== current || next === 'unknown') return;
-    if (next === 'granted' && state === 'error') {
-      render();
-      return;
-    }
-    set(next);
-  };
-  const resume = () => {
-    if (!document.hidden) void refresh();
-  };
-  document.addEventListener('visibilitychange', resume);
-  void refresh();
-
-  btn.addEventListener('click', async () => {
-    if (pending || disposed) return;
+  // El aviso solo sale si de verdad falta el permiso: mientras el navegador
+  // busca la posición no hay nada que pedir todavía.
+  const state = await locationPermissionState();
+  if (state === 'prompt' || state === 'denied') {
+    card.hidden = false;
     if (state === 'denied') {
-      if (!(await openDeviceSettings())) note.textContent = 'Abre el permiso de ubicación en los ajustes de Android.';
+      btn.textContent = 'Ajustes';
+      btn.dataset.mode = 'settings';
+      note.textContent =
+        'Está bloqueada en los ajustes del móvil. Actívala ahí y vuelve a abrir el mapa.';
+    }
+  }
+  btn.addEventListener('click', async () => {
+    // Si ya está bloqueada, el diálogo no vuelve a salir: solo quedan ajustes.
+    if (btn.dataset.mode === 'settings') {
+      void openDeviceSettings();
       return;
     }
-    checked++;
-    pending = true;
-    render();
-    let result;
-    try {
-      const granted = await requestLocationPermission(status => { result = status; });
-      set(result || (granted ? 'granted' : 'prompt'));
-    } catch {
-      set('error');
-    } finally {
-      pending = false;
-      if (!disposed) render();
+    btn.disabled = true;
+    btn.textContent = 'Pidiendo…';
+    const granted = await requestLocationPermission(status => {
+      if (status === 'denied') {
+        note.textContent = 'Está bloqueada en los ajustes del móvil: actívala ahí y vuelve a abrir el mapa.';
+        btn.textContent = 'Ajustes';
+        btn.disabled = false;
+        btn.dataset.mode = 'settings';
+      } else if (status === 'error') {
+        note.textContent = 'No se pudo leer la ubicación. Prueba otra vez en un momento.';
+        btn.textContent = 'Reintentar';
+        btn.disabled = false;
+      }
+    });
+    if (granted) {
+      btn.textContent = 'Listo';
+      note.textContent = 'Permiso concedido. Tu posición aparecerá en el mapa en unos segundos.';
     }
   });
-
-  return {
-    set,
-    render,
-    cleanup() {
-      disposed = true;
-      document.removeEventListener('visibilitychange', resume);
-    },
-  };
 }
 
 /** Las dos caras juntas, para cuando comparten sitio. */
-function pairPin(L, me, partner, current) {
+function pairPin(L, me, partner) {
   const face = (person, role) => {
     const initial = (person.name || '').trim().charAt(0).toUpperCase();
     return `<span class="distmap__pair-face distmap__pair-face--${role}">${
@@ -398,7 +327,7 @@ function pairPin(L, me, partner, current) {
   };
   return L.divIcon({
     className: 'distmap__pin distmap__pin--pair',
-    html: `<span class="distmap__pair">${face(me, 'me')}${face(partner, 'them')}<span class="distmap__pin-tag">${current ? 'Juntos' : 'Últimas ubicaciones'}</span></span>`,
+    html: `<span class="distmap__pair">${face(me, 'me')}${face(partner, 'them')}<span class="distmap__pin-tag">Juntos</span></span>`,
     iconSize: [86, 64],
     iconAnchor: [43, 32],
   });
@@ -411,7 +340,7 @@ function avatarPin(L, person, role, label) {
     ? `<img src="${escapeHtml(person.avatar)}" alt="">`
     : `<span class="distmap__pin-initial">${escapeHtml(initial || '♥')}</span>`;
   return L.divIcon({
-    className: `distmap__pin distmap__pin--${role}${hasFreshPosition(person) ? '' : ' is-stale'}`,
+    className: `distmap__pin distmap__pin--${role}`,
     html: `
       <span class="distmap__pin-wrap">
         <span class="distmap__pin-ring">${inner}</span>
@@ -422,280 +351,146 @@ function avatarPin(L, person, role, label) {
   });
 }
 
-function createMap(wrap) {
-  const canvas = wrap.querySelector('[data-map-canvas]');
-  const placeholder = wrap.querySelector('[data-map-empty]');
-  const fitButton = wrap.querySelector('[data-map-fit]');
-  const failure = wrap.querySelector('[data-map-error]');
-  const failureText = failure.querySelector('span');
-  const retry = failure.querySelector('button');
-  let points = [];
-  let overlap = false;
-  let together = false;
-  let L;
-  let map;
-  let tiles;
-  let pins;
-  let resize;
-  let disposed = false;
-  let loading = false;
-  let signature = '';
-  let pointRoles = '';
+async function paint(wrap, me, partner) {
+  const canvas = wrap.querySelector('#distmapCanvas');
+  if (!canvas) return;
 
-  const fit = () => {
-    if (!map || !points.length) return;
-    map.invalidateSize({ animate: false });
-    const coords = points.map(point => [point.lat, point.mapLng]);
-    if (overlap) {
-      const center = [(coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2];
-      map.setView(center, 17, { animate: false });
-    } else if (coords.length > 1) {
-      map.fitBounds(coords, { padding: [44, 57], maxZoom: 15, animate: false });
-    } else {
-      map.setView(coords[0], 14, { animate: false });
-    }
-  };
+  const points = [
+    me && Number.isFinite(me.lat) && Number.isFinite(me.lng) ? { ...me, __role: 'me', __label: 'Tú' } : null,
+    partner && Number.isFinite(partner.lat) && Number.isFinite(partner.lng)
+      ? { ...partner, __role: 'them', __label: 'Tu pareja' }
+      : null,
+  ].filter(Boolean);
 
-  const showFailure = message => {
-    failure.hidden = !message;
-    failureText.textContent = message;
-  };
+  if (!points.length) {
+    canvas.classList.add('is-empty');
+    canvas.innerHTML = `${icon('map', 26)}<span>Todavía no hay ninguna ubicación que enseñar.</span>`;
+    return;
+  }
 
-  const paint = () => {
-    const next = JSON.stringify([together, ...points.map(point => [
-      point.role, point.lat, point.mapLng, point.accuracy, point.name, point.avatar, hasFreshPosition(point),
-    ])]);
-    if (next === signature) return;
-    signature = next;
-    pins.clearLayers();
-    if (overlap) {
-      const [me, partner] = points;
-      const center = [(me.lat + partner.lat) / 2, (me.mapLng + partner.mapLng) / 2];
-      L.marker(center, { icon: pairPin(L, me, partner, together), interactive: false, keyboard: false }).addTo(pins);
-    } else {
-      for (const point of points) {
-        const coords = [point.lat, point.mapLng];
-        if (Number.isFinite(point.accuracy) && point.accuracy > 0 && point.accuracy < 800) {
-          const color = getComputedStyle(wrap).getPropertyValue(point.role === 'me' ? '--dm-you' : '--dm-her').trim();
-          L.circle(coords, { radius: point.accuracy, color, weight: 0, fillOpacity: 0.16, interactive: false }).addTo(pins);
-        }
-        L.marker(coords, {
-          icon: avatarPin(L, point, point.role, point.label),
-          interactive: false,
-          keyboard: false,
-          zIndexOffset: point.role === 'me' ? 200 : 400,
-        }).addTo(pins);
-      }
-      if (points.length > 1) {
-        const line = points.map(point => [point.lat, point.mapLng]);
-        const color = getComputedStyle(wrap).getPropertyValue('--dm-her').trim();
-        L.polyline(line, { color: '#fff', weight: 5, opacity: 0.8, interactive: false }).addTo(pins);
-        L.polyline(line, { color, weight: 2, dashArray: '6 8', interactive: false }).addTo(pins);
-      }
-    }
-    const roles = points.map(point => point.role).join('/');
-    if (roles !== pointRoles) {
-      pointRoles = roles;
-      fit();
-    }
-  };
+  const mod = await import('leaflet');
+  const L = mod.default || mod;
 
-  const load = async () => {
-    if (loading || disposed || map || !points.length) return;
-    loading = true;
-    try {
-      const mod = await import('leaflet');
-      if (disposed || !points.length) return;
-      L = mod.default || mod;
-      map = L.map(canvas, { zoomControl: false, scrollWheelZoom: false });
-      L.control.zoom({ zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar' }).addTo(map);
-      map.attributionControl.setPrefix(false);
-      tiles = L.tileLayer(TILES, { maxZoom: 19, attribution: ATTR });
-      let tileLoaded = false;
-      tiles.on('loading', () => { tileLoaded = false; });
-      tiles.on('tileload', () => { tileLoaded = true; });
-      tiles.on('load', () => showFailure(tileLoaded ? '' : 'Mapa base no disponible.'));
-      tiles.addTo(map);
-      pins = L.layerGroup().addTo(map);
-      paint();
-      resize = new ResizeObserver(() => {
-        if (canvas.clientWidth) map.invalidateSize({ debounceMoveend: true });
-      });
-      resize.observe(canvas);
-      retry.hidden = false;
-      fitButton.hidden = false;
-    } catch {
-      resize?.disconnect();
-      map?.remove();
-      map = null;
-      tiles = null;
-      signature = '';
-      pointRoles = '';
-      showFailure('No se pudo abrir el mapa.');
-    } finally {
-      loading = false;
-    }
-  };
-
-  fitButton.addEventListener('click', fit);
-  retry.addEventListener('click', () => {
-    showFailure('');
-    if (tiles) tiles.redraw();
-    else void load();
+  const map = L.map(canvas, {
+    zoomControl: false,
+    scrollWheelZoom: false,
+    attributionControl: true,
   });
-  const onOnline = () => {
-    if (!failure.hidden && !canvas.hidden) retry.click();
-  };
-  window.addEventListener('online', onOnline);
 
-  return {
-    render(me, partner) {
-      overlap = hasPosition(me) && hasPosition(partner) && !!togetherInfo(me, partner)?.together;
-      together = overlap && hasFreshPosition(me) && hasFreshPosition(partner);
-      points = [];
-      if (hasPosition(me)) points.push({ ...me, mapLng: me.lng, role: 'me', label: 'Tú' });
-      if (hasPosition(partner)) {
-        // Elige la copia del meridiano que queda cerca de la otra posición.
-        const delta = partner.lng - (me?.lng ?? partner.lng);
-        const mapLng = hasPosition(me) && Math.abs(delta) > 180 ? partner.lng - 360 * Math.sign(delta) : partner.lng;
-        points.push({ ...partner, mapLng, role: 'them', label: 'Tu pareja' });
+  L.tileLayer(TILES, { maxZoom: 19, attribution: ATTR }).addTo(map);
+
+  // Con tu posición en el mapa, el aviso de permiso ya no pinta nada.
+  if (points.some(p => p.__role === 'me')) {
+    const perm = wrap.querySelector('[data-perm]');
+    if (perm) perm.hidden = true;
+  }
+
+  const mine = points.find(p => p.__role === 'me');
+  const theirs = points.find(p => p.__role === 'them');
+  const near = togetherInfo(mine, theirs);
+
+  if (near?.together) {
+    // Si comparten sitio, dos chinchetas se taparían: una sola con las dos
+    // caras y la etiqueta «Juntos», en el punto medio.
+    const mid = [(mine.lat + theirs.lat) / 2, (mine.lng + theirs.lng) / 2];
+    L.marker(mid, {
+      icon: pairPin(L, mine, theirs),
+      keyboard: false,
+      zIndexOffset: 500,
+    }).addTo(map);
+    map.setView(mid, 17);
+  } else {
+    for (const person of points) {
+      // Halo de precisión: dice «está por aquí», no una chincheta más.
+      if (Number.isFinite(person.accuracy) && person.accuracy < 800) {
+        L.circle([person.lat, person.lng], {
+          radius: person.accuracy,
+          color: person.__role === 'me' ? '#b0616f' : '#c65a3a',
+          weight: 0,
+          fillOpacity: 0.12,
+        }).addTo(map);
       }
-      canvas.hidden = !points.length;
-      placeholder.hidden = !!points.length;
-      fitButton.hidden = !map || !points.length;
-      if (!points.length) showFailure('');
-      if (map) paint();
-      else void load();
-    },
-    cleanup() {
-      disposed = true;
-      window.removeEventListener('online', onOnline);
-      resize?.disconnect();
-      map?.remove();
-    },
-  };
+      L.marker([person.lat, person.lng], {
+        icon: avatarPin(L, person, person.__role, person.__label),
+        keyboard: false,
+        zIndexOffset: person.__role === 'me' ? 200 : 400,
+      }).addTo(map);
+    }
+
+    if (points.length > 1) {
+      const line = points.map(p => [p.lat, p.lng]);
+      L.polyline(line, { color: '#ffffff', weight: 5, opacity: 0.7 }).addTo(map);
+      L.polyline(line, { color: '#c65a3a', weight: 2, dashArray: '6 8', opacity: 0.95 }).addTo(map);
+      map.fitBounds(line, { padding: [64, 64], maxZoom: 13 });
+    } else {
+      map.setView([points[0].lat, points[0].lng], 13);
+    }
+  }
+
+  // La hoja termina de montarse después de crear el mapa: sin este empujón
+  // Leaflet mide 0×0 y las teselas salen a medias.
+  setTimeout(() => map.invalidateSize(), 150);
+
+  wrap._map = map;
 }
 
-function distanceHTML(me, partner) {
-  if (togetherAtCurrentPosition(me, partner)) {
-    return `<p class="distmap__km distmap__km--together">${icon('heart', 15)}Estáis juntos</p>`;
-  }
-  if (!hasPosition(me) || !hasPosition(partner)) {
-    return `<p class="distmap__km">${icon('map', 15)}Distancia pendiente</p>`;
-  }
-  const current = hasFreshPosition(me) && hasFreshPosition(partner);
-  const km = distanceKm(me, partner);
-  const text = km === 0 ? '0 m' : km < 0.01 ? 'Menos de 10 m' : formatDistance(km);
-  return `<p class="distmap__km">
-    ${icon('map', 15)}<strong>${escapeHtml(text)}</strong>
-    <span>${current ? 'de distancia' : 'entre las últimas ubicaciones'}</span>
-  </p>`;
-}
-
-/** Contenido compartido por la hoja de Inicio y /mapa. */
-export function distanceMapBody({ me: initialMe, partner: initialPartner, meName, meAvatar } = {}) {
+/**
+ * El contenido del mapa (sin hoja): lo usan la hoja de la portada y la
+ * pantalla /mapa que abre el widget de distancia.
+ * `me` y `partner` son `{ lat, lng, name, avatar, battery, charging, net, mbps, speed }`.
+ */
+export function distanceMapBody({ me, partner, km, meName } = {}) {
   const wrap = document.createElement('div');
   wrap.className = 'distmap';
+
+  const near = togetherInfo(me, partner);
+  const distance = near?.together
+    ? `<p class="distmap__km distmap__km--together" title="La distancia es menor que el error del GPS (±${Math.round(near.margin)} m)">
+            ${icon('heart', 15)}
+            <span>Estáis juntos</span>
+            <small>a menos de ${TOGETHER_M} m</small>
+          </p>`
+    : `<p class="distmap__km">
+            ${icon('map', 15)}
+            <span>${Number.isFinite(km) ? escapeHtml(formatDistance(km)) : '—'}</span>
+            <small>de distancia</small>
+          </p>`;
+
   wrap.innerHTML = `
-    <div class="distmap__head" data-map-distance></div>
-    <div class="distmap__frame">
-      <div class="distmap__canvas" data-map-canvas aria-label="Mapa de ubicaciones" hidden></div>
-      <div class="distmap__placeholder" data-map-empty>${icon('map', 26)}<span>Esperando ubicaciones compartidas</span></div>
-      <button class="distmap__fit" type="button" data-map-fit aria-label="Centrar el mapa en las ubicaciones" hidden>${icon('map', 18)}</button>
-      <div class="distmap__tile-error" data-map-error hidden>
-        <span role="status"></span>
-        <button type="button">Reintentar</button>
-      </div>
-    </div>
-    ${permissionHTML()}
-    <section class="distmap__devices" aria-label="Los móviles">
-      <h2 class="distmap__devices-title">${icon('phone', 15)}Los móviles</h2>
-      <div class="distmap__people" data-map-people></div>
-    </section>
-    ${trackingPanelHTML()}
-  `;
-
-  const map = createMap(wrap);
-  const permission = wirePermission(wrap);
-  const offTracking = wireTracking(wrap);
-  const distance = wrap.querySelector('[data-map-distance]');
-  const people = wrap.querySelector('[data-map-people]');
-  let shownDistance;
-  let shownPeople;
-  let me = initialMe;
-  let partner = initialPartner;
-  let partnerProfile;
-  let requestedProfileId;
-  let stopWatch;
-  let frame;
-  let disposed = false;
-
-  const render = () => {
-    const status = getDeviceStatus();
-    const mine = {
-      ...me,
-      name: me?.name || meName || 'Tú',
-      avatar: me?.avatar || meAvatar || '',
-      battery: status.battery ?? me?.battery,
-      charging: Number.isFinite(status.battery) ? status.charging : me?.charging,
-      net: status.online === false ? 'offline' : status.net || me?.net,
-      mbps: status.online === false ? null : status.mbps ?? me?.mbps,
-    };
-    const theirs = partner && {
-      ...partner,
-      name: partner.name || partnerProfile?.name,
-      avatar: partner.avatar || partnerProfile?.avatar,
-    };
-    const nextDistance = distanceHTML(mine, theirs);
-    if (shownDistance !== nextDistance) distance.innerHTML = shownDistance = nextDistance;
-    const nextPeople = cardHTML(mine, 'Tú', true) + cardHTML(theirs || {}, 'Tu pareja');
-    if (shownPeople !== nextPeople) people.innerHTML = shownPeople = nextPeople;
-    map.render(mine, theirs);
-    permission.render();
-  };
-  const schedule = () => {
-    if (frame != null || disposed) return;
-    frame = requestAnimationFrame(() => {
-      frame = null;
-      render();
-    });
-  };
-  const offStatus = onDeviceStatus(schedule);
-
-  wrap.setLocationStatus = permission.set;
-  wrap.watch = () => {
-    stopWatch = watchDistance(({ partner: next, partnerId }) => {
-      me = fetchMyLocation();
-      partner = next;
-      if (partnerId !== requestedProfileId) {
-        requestedProfileId = partnerId;
-        partnerProfile = null;
-        if (partnerId && (!next?.avatar || !next?.name)) {
-          void fetchProfile(partnerId).then(profile => {
-            if (disposed || requestedProfileId !== partnerId) return;
-            partnerProfile = profile;
-            schedule();
-          });
-        }
-      }
-      schedule();
-    });
-  };
-  wrap.cleanup = () => {
-    disposed = true;
-    if (frame != null) cancelAnimationFrame(frame);
-    stopWatch?.();
-    offStatus();
-    offTracking();
-    permission.cleanup();
-    map.cleanup();
-  };
+        <div class="distmap__head">
+          ${distance}
+          <span class="distmap__persons">
+            <i class="distmap__swatch distmap__swatch--me" aria-hidden="true"></i>Tú
+            <i class="distmap__swatch distmap__swatch--them" aria-hidden="true"></i>${escapeHtml(partner?.name || 'Ella')}
+          </span>
+        </div>
+        <div class="distmap__frame">
+          <div class="distmap__canvas" id="distmapCanvas"></div>
+        </div>
+        ${permissionHTML()}
+        <section class="distmap__devices" aria-label="Los móviles">
+          <h2 class="distmap__devices-title">${icon('phone', 14)}Los móviles</h2>
+          ${cardHTML(me, meName || 'Tú')}
+          ${cardHTML(partner, 'La otra persona')}
+          <p class="distmap__foot">${icon('info', 13)}Batería, conexión y precisión las envía cada móvil con su posición. Si falta una, ese dispositivo no la comparte.</p>
+        </section>
+        ${trackingPanelHTML()}
+      `;
+  wirePermission(wrap);
+  wrap._offStatus = wireTracking(wrap);
+  requestAnimationFrame(() => void paint(wrap, me, partner));
   return wrap;
 }
 
 /** Abre la hoja del mapa (desde el panel de la portada). */
-export function openDistanceMap(options) {
-  const body = distanceMapBody(options);
-  openSheet('Dónde estáis', () => body, body.cleanup);
-  body.watch();
+export function openDistanceMap({ me, partner, km, meName } = {}) {
+  openSheet(
+    'Dónde estáis',
+    () => distanceMapBody({ me, partner, km, meName }),
+    () => {
+      const body = document.querySelector('.distmap');
+      body?._offStatus?.();
+      body?._map?.remove();
+    }
+  );
 }

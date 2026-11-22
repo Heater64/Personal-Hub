@@ -42,9 +42,8 @@ export const MUNDO_DE = Object.freeze({
   razones: 'sentimientos',
   maldia: 'sentimientos',
   calendario: 'planes',
-  agenda: 'planes',
-  sorpresas: 'planes',
   openwhen: 'planes',
+  sorpresas: 'planes',
   menstruacion: 'bienestar',
 });
 

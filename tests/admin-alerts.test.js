@@ -30,7 +30,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectPath = (...parts) => path.join(ROOT, ...parts);
-const hub = (...parts) => projectPath('personal-hub', ...parts);
+const hub = (...parts) => projectPath('tamp', ...parts);
 
 const readApi = () => readFile(projectPath('api', 'push.js'), 'utf8');
 const readService = () => readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
@@ -347,16 +347,6 @@ test('el store distingue registrarlo, corregirlo y cambiarlo', async () => {
   assert.match(store, /const hadStates = states\.length > 0;/);
   assert.match(store, /const adminKind = fresh \? 'mood_update' : \(hadStates \? 'mood_change' : 'mood'\);/);
   assert.match(store, /notifyAdminOfMood\(adminKind\)/);
-});
-
-test('la nota solo avisa si llegó al servidor', async () => {
-  const maldia = await readFile(hub('src', 'pages', 'MalDia.js'), 'utf8');
-  assert.match(maldia, /import \{ notifyAdminOfNote \} from '\.\.\/services\/notifications\.service\.js';/);
-  // Avisar de una nota que se quedó en el dispositivo mandaría al admin a una
-  // lista donde todavía no está.
-  // Solo las notas de ella avisan: una respuesta del admin no le empuja un
-  // aviso a sí mismo.
-  assert.match(maldia, /if \(synced && !isAdmin\) notifyAdminOfNote\(\)\.catch\(/);
 });
 
 test('el perfil ofrece los interruptores de sus avisos, y solo al admin', async () => {

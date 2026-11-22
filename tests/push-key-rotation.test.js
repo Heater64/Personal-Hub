@@ -30,7 +30,7 @@ import {
   subscriptionUsesKey,
   subscriptionKeyChanged,
   urlBase64ToUint8Array
-} from '../personal-hub/src/utils/push-key.js';
+} from '../tamp/src/utils/push-key.js';
 import { isVapidMismatchError } from '../api/push.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -112,7 +112,7 @@ test('el 403 de clave VAPID se reconoce, y los demás 403 no', () => {
 });
 
 test('el cliente renueva la suscripción vieja en vez de reutilizarla', async () => {
-  const service = await read('personal-hub', 'src', 'services', 'notifications.service.js');  assert.match(service, /subscriptionKeyChanged\(subscription, VAPID_PUBLIC_KEY\)/);
+  const service = await read('tamp', 'src', 'services', 'notifications.service.js');  assert.match(service, /subscriptionKeyChanged\(subscription, VAPID_PUBLIC_KEY\)/);
   assert.match(service, /subscription\.unsubscribe\(\)/);
   // Las dos entradas al alta (activar y resincronizar al abrir la app) deben
   // pasar por la comprobación; si una la salta, ese dispositivo no se cura.

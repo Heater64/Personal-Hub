@@ -5,7 +5,7 @@
 
 ## Mapa técnico (levantado del repo)
 
-- `personal-hub/src/components/PageHeader.js` YA existe (`renderPageHeader({title, icon, mobileHidden})`, iconos home/heart/image/smile/mic/compass/minecraft). El trabajo es aplicarlo + CSS tokens + barra móvil.
+- `tamp/src/components/PageHeader.js` YA existe (`renderPageHeader({title, icon, mobileHidden})`, iconos home/heart/image/smile/mic/compass/minecraft). El trabajo es aplicarlo + CSS tokens + barra móvil.
 - Páginas: `src/pages/Home.js` (hero + partículas + frase + 4 tarjetas + Datos curiosos), `src/pages/Rincon.js` (landing con hero corona/contador + `getDescubreHoy()` + grid + vistas galeria-memes/memes/audios/curiosidades), `src/pages/Minecraft.js`.
 - Rutas (router): `/rincon`, `/galeria`, `/memes`, `/audios`, `/curiosidades` → RinconPage; `/minecraft` → MinecraftPage. Ya existe mapa de barra móvil (`MOBILE_ROOT_ROUTES` + labels/iconos por ruta) que se extiende con icono+título+volver.
 - `src/components/BottomNav.js`: 5 tabs con `aria-label` y `aria-current` ya; falta modo icono-solo ≤390px.

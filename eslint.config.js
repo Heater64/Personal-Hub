@@ -6,8 +6,8 @@ export default [
   {
     ignores: [
       'node_modules/**',
-      'personal-hub/dist/**',
-      'personal-hub/public/**',
+      'tamp/dist/**',
+      'tamp/public/**',
       'api/**',
       'scripts/**',
       '.vercel/**',
@@ -15,7 +15,7 @@ export default [
     ],
   },
   {
-    files: ['personal-hub/src/**/*.{js,mjs}', 'tests/**/*.{js,mjs}'],
+    files: ['tamp/src/**/*.{js,mjs}', 'tests/**/*.{js,mjs}'],
     ...js.configs.recommended,
     languageOptions: {
       ecmaVersion: 2022,

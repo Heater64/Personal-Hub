@@ -7,6 +7,7 @@ import { icon } from '../../components/ui.js';
 import { showToast } from '../../components/Toast.js';
 import { escapeHtml } from '../../utils/escape.js';
 import { todayISO } from '../../utils/format.js';
+import { SHARE_FIELDS } from '../../data/cycle.data.js';
 import * as cycleService from '../../services/cycle.service.js';
 import { confirmSheet, setConfirmReload } from './sheets.js';
 import { fmtDay, sectionTitle } from './shared.js';
@@ -25,6 +26,8 @@ export function renderSettings(ctx) {
   const settings = ctx.data?.settings || {};
   const notifications = settings.notifications || {};
   const preferences = settings.preferences || {};
+  const sharing = ctx.sharing;
+  const sharedFields = new Set(sharing?.shared_fields || []);
   const lastStart = ctx.cycle?.lastStart || '';
 
   return `
@@ -84,9 +87,39 @@ export function renderSettings(ctx) {
     </section>
 
     <section class="card cy-settings">
-      ${sectionTitle('heart', 'Datos compartidos')}
-      <p class="cy-muted">Los registros del ciclo son visibles para ambos. Cada persona mantiene la autoría y solo puede editar o borrar sus propios datos.</p>
+      ${sectionTitle('💞', 'Compartir con tu pareja')}
+      <p class="cy-muted">Nada se comparte por defecto. Puedes marcar solo lo que quieras enseñar y quitarlo cuando quieras.</p>
+      <form data-form="sharing" class="cy-form">
+        ${toggleRow('enabled', 'Permitir que vea lo marcado', sharing?.sharing_enabled === true)}
+        <fieldset class="cy-field">
+          <legend>Qué puede ver</legend>
+          <div class="cy-share-list">
+            ${SHARE_FIELDS.map(
+              field => `
+              <label class="cy-share-item">
+                <input type="checkbox" name="fields" value="${field.id}"${sharedFields.has(field.id) ? ' checked' : ''}>
+                <span><b>${escapeHtml(field.label)}</b><small>${escapeHtml(field.hint)}</small></span>
+              </label>
+            `
+            ).join('')}
+          </div>
+        </fieldset>
+        <label class="cy-field">
+          <span>Mensaje de apoyo (opcional)</span>
+          <textarea class="cy-textarea" name="support_message" rows="2" maxlength="500" placeholder="Lo que quieras que lea cuando abra tu resumen">${escapeHtml(sharing?.support_message || '')}</textarea>
+        </label>
+        <p class="cy-hint">Él nunca puede editar tus registros. Si desactivas el permiso, deja de verlos en la siguiente consulta.</p>
+        <div class="cy-actions">
+          <button type="submit" class="btn">Guardar permiso</button>
+        </div>
+      </form>
+      ${
+        sharing?.sharing_enabled
+          ? `<p class="cy-sharing-state">${icon('lock', 15)} Compartiendo: ${sharedFields.size ? [...sharedFields].map(id => escapeHtml(SHARE_FIELDS.find(f => f.id === id)?.label || id)).join(', ') : 'nada marcado'}</p>`
+          : `<p class="cy-sharing-state">${icon('lock', 15)} Ahora mismo no ve nada.</p>`
+      }
     </section>
+
     <section class="card cy-settings">
       ${sectionTitle('📅', 'Calendario')}
       <form data-form="prefs" class="cy-form">
@@ -192,6 +225,26 @@ export function bindSettings(root, ctx) {
       await ctx.reload();
     } catch (err) {
       showToast(err.message || 'No se pudieron guardar', 'error');
+    }
+  });
+
+  on('[data-form="sharing"]', 'submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const fields = [...form.querySelectorAll('[name="fields"]:checked')].map(input => input.value);
+    try {
+      await cycleService.saveSharing({
+        enabled: form.elements.enabled.checked,
+        fields,
+        supportMessage: form.elements.support_message.value,
+      });
+      showToast(
+        form.elements.enabled.checked ? 'Permiso guardado' : 'Deja de ver tus datos',
+        'success'
+      );
+      await ctx.reload();
+    } catch (err) {
+      showToast(err.message || 'No se pudo guardar el permiso', 'error');
     }
   });
 

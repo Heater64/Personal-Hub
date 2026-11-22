@@ -16,7 +16,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const leer = ruta => readFileSync(new URL(`../personal-hub/src/${ruta}`, import.meta.url), 'utf8');
+const leer = ruta => readFileSync(new URL(`../tamp/src/${ruta}`, import.meta.url), 'utf8');
 
 /* `states.js` reutiliza `icon()` de ui.js, que espera un navegador. Lo que se
    comprueba aquí es el marcado que devuelve, así que basta con un DOM mínimo:
@@ -84,13 +84,13 @@ globalThis.IntersectionObserver =
   globalThis.IntersectionObserver || class { observe() {} unobserve() {} disconnect() {} };
 
 const { emptyStateHTML, skeletonHTML, skeletonCardsHTML } = await import(
-  '../personal-hub/src/components/states.js'
+  '../tamp/src/components/states.js'
 );
-const { renderPageHeader } = await import('../personal-hub/src/components/PageHeader.js');
+const { renderPageHeader } = await import('../tamp/src/components/PageHeader.js');
 const { buscarModulos, modulos, SEARCH_CARDS, normalizar } = await import(
-  '../personal-hub/src/data/search.data.js'
+  '../tamp/src/data/search.data.js'
 );
-const { ROUTES } = await import('../personal-hub/src/routes.js');
+const { ROUTES } = await import('../tamp/src/routes.js');
 
 const routesSrc = leer('routes.js');
 const routerSrc = leer('router.js');

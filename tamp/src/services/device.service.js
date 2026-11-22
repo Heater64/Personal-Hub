@@ -246,6 +246,16 @@ async function nativeConfig() {
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return null;
 
+  // El servicio Android no tiene acceso al bundle de Vite. Pásale el origen
+  // de la API junto con la sesión para que pueda entregar avisos FCM.
+  let apiOrigin = '';
+  try {
+    const apiUrl = new URL(import.meta.env.VITE_NATIVE_API_ORIGIN);
+    if (apiUrl.protocol === 'https:') apiOrigin = apiUrl.origin;
+  } catch {
+    /* sin API nativa configurada: el seguimiento de ubicación sigue activo */
+  }
+
   let coupleId;
   try {
     const { data, error } = await supabase
@@ -261,6 +271,7 @@ async function nativeConfig() {
 
   return {
     url,
+    apiOrigin,
     anonKey,
     accessToken: session.access_token,
     refreshToken: session.refresh_token || '',

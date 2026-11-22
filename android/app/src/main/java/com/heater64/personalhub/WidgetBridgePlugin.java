@@ -12,16 +12,16 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Collections;
 
 /**
  * Puente de los widgets.
  *
- * `refresh` repinta todos los widgets en cuanto la web guarda datos (sin esto
- * Android solo refresca cada 30 min) y `requestPin` abre el diálogo del
- * sistema para colocar el widget del tamaño elegido: Android no permite
- * añadirlos sin que el usuario confirme.
+ * Los cambios locales se publican al instante. La credencial de lectura permite
+ * al launcher recibir novedades aunque el WebView esté dormido.
  */
 @CapacitorPlugin(name = "WidgetBridge")
 public class WidgetBridgePlugin extends Plugin {
@@ -35,28 +35,75 @@ public class WidgetBridgePlugin extends Plugin {
     @PluginMethod
     public void setWidgetData(PluginCall call) {
         String key = call.getString("key");
-        String value = call.getString("value");
-        if (key != null && value != null) {
-            getContext().getSharedPreferences(WidgetSupport.PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putString(key, value)
-                    .apply();
-            WidgetRenderer.refreshAll(getContext());
+        if (WidgetData.writeLocal(getContext(), key, call.getString("value"), call.getString("userId"))) {
+            WidgetRenderer.refreshKeys(getContext(), Collections.singleton(key));
         }
         call.resolve();
     }
 
     @PluginMethod
     public void getWidgetData(PluginCall call) {
-        String key = call.getString("key");
-        String value = null;
-        if (key != null) {
-            value = getContext().getSharedPreferences(WidgetSupport.PREFS_NAME, Context.MODE_PRIVATE)
-                    .getString(key, null);
-        }
         JSObject result = new JSObject();
-        result.put("value", value);
+        result.put("value", WidgetData.read(getContext(), call.getString("key")));
         call.resolve(result);
+    }
+
+    @PluginMethod
+    public void setAccount(PluginCall call) {
+        String userId = call.getString("userId");
+        if (userId == null || userId.isEmpty()) {
+            call.reject("widget-account-required");
+            return;
+        }
+        if (WidgetData.setAccount(getContext(), userId)) {
+            WidgetRenderer.refreshAll(getContext());
+            WidgetSync.reconcile(getContext());
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void configureSync(PluginCall call) {
+        if (!WidgetData.configure(getContext(), call.getString("endpoint"), call.getString("token"),
+                call.getString("userId"))) {
+            call.reject("widget-sync-invalid-configuration");
+            return;
+        }
+        WidgetSync.request(getContext());
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void requestSync(PluginCall call) {
+        boolean schedule = Boolean.TRUE.equals(call.getBoolean("schedule", true));
+        JSObject result = new JSObject();
+        result.put("scheduled", schedule && WidgetSync.request(getContext()));
+        result.put("configured", WidgetData.isConfigured(getContext()));
+        result.put("configuredAt", WidgetData.configuredAt(getContext()));
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void getMessagingToken(PluginCall call) {
+        try {
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                JSObject result = new JSObject();
+                result.put("token", task.isSuccessful() ? task.getResult() : "");
+                call.resolve(result);
+            });
+        } catch (IllegalStateException ignored) {
+            JSObject result = new JSObject();
+            result.put("token", "");
+            call.resolve(result);
+        }
+    }
+
+    @PluginMethod
+    public void clearSync(PluginCall call) {
+        WidgetData.clear(getContext());
+        WidgetRenderer.refreshAll(getContext());
+        WidgetSync.reconcile(getContext());
+        call.resolve();
     }
 
     @PluginMethod

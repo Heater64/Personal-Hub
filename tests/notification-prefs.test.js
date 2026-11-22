@@ -22,7 +22,7 @@ import { inQuietHours, splitRecipients, deferUntilFor } from '../api/push.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectPath = (...parts) => path.join(ROOT, ...parts);
-const hub = (...parts) => projectPath('personal-hub', ...parts);
+const hub = (...parts) => projectPath('tamp', ...parts);
 
 const sub = (userId) => ({ userId, endpoint: `https://push.example/${userId}`, keys: {} });
 const prefs = (patch = {}) => ({
@@ -198,7 +198,7 @@ test('el servidor filtra por preferencias y aplaza sin gastar la ocurrencia', as
   const iConsume = runner.indexOf("{ active: false, updated_at: stamp }");
   assert.notEqual(iDefer, -1, 'debe existir la rama de aplazamiento');
   assert.ok(iDefer < iConsume, 'se aplaza antes de consumir la ocurrencia');
-  assert.match(runner, /const until = deferUntilFor\(quiet, prefsById, now\);/);
+  assert.match(runner, /const until = deferUntilFor\(\[\.\.\.quiet, \.\.\.native\.quiet\], prefsById, now\);/);
   assert.match(runner, /Date\.parse\(until\) > now\.getTime\(\)/, 'no se aplaza a un momento ya pasado');
 
   // Lo que no se envía también se registra, con su motivo.

@@ -311,7 +311,7 @@ juegos · cuenta atrás para ambos · resumen del ciclo · estado del móvil del
   (récords, racha, tira, razón del día, «un año hoy») y los contratos de cada pantalla y de los tres
   widgets nativos.
 - `npm run build` correcto: **253,48 kB de JS (gzip 79,77)** y **94,58 kB de CSS (gzip 17,97)**.
-- `eslint personal-hub/src`: 0 errores (los avisos son los previos).
+- `eslint tamp/src`: 0 errores (los avisos son los previos).
 - `./gradlew assembleDebug`: BUILD SUCCESSFUL con los seis receptores nuevos.
 - Hoja de widgets (navegador, cuenta real): 10/10 miniaturas con contenido (`days`, `distance`,
   `countdown`, `mood`, `cycle`, `watching`, `gifts`, `reason`, `openwhen`, `streak`), con la razón de

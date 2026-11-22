@@ -22,8 +22,7 @@ jobs:
 
     # Valores de mentira: los builds solo necesitan que existan para no
     # emitir "undefined" en el bundle. Las reales viven en Vercel.
-    # Van a nivel de job para que lleguen a los dos builds (personal-hub y
-    # Tamp); un `env` de un step sin `run` no se aplicaba a nada.
+    # Valores compartidos por el único build de Tamp.
     env:
       VITE_SUPABASE_URL: https://placeholder.supabase.co
       VITE_SUPABASE_ANON_KEY: placeholder-anon-key
@@ -50,18 +49,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Es lo que Vercel publica: vercel.json compila `npm run build:tamp`
-      # y sirve `tamp/dist`. Si esto rompe, el deploy rompe.
-      - name: Build de Tamp
-        run: npm run build:tamp
-
       # El informe de auditoría bloqueaba el lanzamiento por nanoid < 3.3.18.
       - name: Auditoría de dependencias
         run: npm audit --audit-level=high
 
       - name: Comprobar que los builds no arrastran secretos
         run: |
-          for dir in personal-hub/dist tamp/dist; do
+          for dir in tamp/dist; do
             if grep -rIl --exclude-dir=assets --exclude-dir=games \
                  -E 'eyJ[A-Za-z0-9_-]{20,}\.|service_role' "$dir"; then
               echo "::error::El bundle ($dir) contiene algo con pinta de clave de Supabase"

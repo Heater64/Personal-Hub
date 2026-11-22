@@ -463,7 +463,11 @@ class MoodStore {
         .eq('user_id', userId)
         .gte('date', startDate)
         .lte('date', endDate)
-        .order('date', { ascending: true });
+        // El calendario toma el primer estado de cada día como el vigente.
+        // Ordenar ambas columnas en descendente hace que sea el más reciente,
+        // incluso si hubo varios cambios de ánimo en la misma fecha.
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data || [];

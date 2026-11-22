@@ -4,7 +4,7 @@
    mensual + accesos. Sin hero propio ni decoración:
    el saludo es el título y el ánimo manda.
 
-   El ánimo admite VARIAS emociones a la vez: los atajos van en la
+   Cada registro guarda una sola emoción. Los atajos van en la
    rejilla y el resto (más la que ella escriba) en el desplegable
    «Otras». Cada cambio se guarda solo, con la misma ventana de
    5 minutos del modelo de estados.
@@ -17,9 +17,11 @@ import { renderPageHeader } from '../components/PageHeader.js';
 import { skeletonHTML } from '../components/states.js';
 import { bestStreak, lastNDays } from '../utils/pro-insights.js';
 import { saveStreakWidget } from '../services/widgets.service.js';
-import { icon, toast } from '../components/ui.js';
+import { icon, toast, openSheet } from '../components/ui.js';
 import { escapeHtml } from '../utils/escape.js';
 import { todayISO } from '../utils/format.js';
+import { supabase } from '../services/supabase.js';
+import { fetchPartnerPresence } from '../services/presence.service.js';
 import {
   MAX_CUSTOM_LABEL,
   encodeMood,
@@ -116,20 +118,40 @@ export function SentimientosPage(router) {
      también en otro dispositivo.
      ========================================== */
   const historyMap = {};
+  const historyRowsByDate = {};
+  const localHistoryMap = {};
+  const selfUser = userStore.getUser();
+  const selfId = selfUser?.id || null;
+  const selfLabel = userStore.isAdmin ? 'Peluche' : 'Princesa';
+  const partnerLabel = userStore.isAdmin ? 'Princesa' : 'Peluche';
+  let partnerId = null;
+  let historyOwnerId = selfId;
+  let historyOwnerLabel = selfLabel;
+  let historyLoadToken = 0;
   let histMonth = new Date();
   for (const entry of moodStore.getHistory() || []) {
     if (entry?.date && entry.moodId) {
-      historyMap[entry.date] = {
+      localHistoryMap[entry.date] = {
         mood: entry.moodId,
         label: entry.label,
         emoji: entry.emoji,
         score: entry.score,
       };
+      historyRowsByDate[entry.date] = [{
+        mood: entry.moodId,
+        label: entry.label,
+        emoji: entry.emoji,
+        score: entry.score,
+      }];
     }
   }
+  Object.assign(historyMap, localHistoryMap);
   if (todayMood?.id) {
     const stored = encodeMood(todayMood.items);
-    if (stored) historyMap[todayISO()] = stored;
+    if (stored) {
+      historyMap[todayISO()] = stored;
+      localHistoryMap[todayISO()] = stored;
+    }
   }
 
   function computeStats() {
@@ -177,7 +199,7 @@ export function SentimientosPage(router) {
         <h2 class="sent-mood-title" id="sentMoodTitle">¿Cómo te sientes hoy?</h2>
         <span class="sent-mood-saved" id="moodSaved" hidden></span>
       </div>
-      <div class="sent-mood-grid" id="moodGrid" role="group" aria-label="Elige cómo te sientes hoy. Puedes marcar varias">
+      <div class="sent-mood-grid" id="moodGrid" role="group" aria-label="Elige cómo te sientes hoy">
         ${quickMoods
           .map(
             m => `
@@ -198,7 +220,7 @@ export function SentimientosPage(router) {
       <div class="sent-mood-extra" id="moodExtra" hidden>
         <div class="sent-mood-extra-head">
           <span class="sent-mood-extra-title">Más emociones</span>
-          <small class="sent-mood-extra-hint">Puedes marcar varias · toca otra vez para quitar</small>
+          <small class="sent-mood-extra-hint">Elige una emoción · toca otra vez para quitar</small>
         </div>
         <div class="sent-mood-palette" id="moodPalette">
           ${paletteMoods
@@ -242,9 +264,13 @@ export function SentimientosPage(router) {
 
     <!-- ===== TU MES DE ÁNIMOS ===== -->
     <section class="card sent-history" aria-labelledby="sentHistoryTitle">
+      <div class="sent-history-person" role="group" aria-label="Ver ánimo de">
+        <button type="button" class="sent-history-person-btn is-active" data-history-person="self" aria-pressed="true">${selfLabel}</button>
+        <button type="button" class="sent-history-person-btn" data-history-person="partner" aria-pressed="false" disabled>${partnerLabel}</button>
+      </div>
       <div class="sent-history-head">
         <div class="sent-history-copy">
-          <h2 class="sent-history-title" id="sentHistoryTitle">Tu mes de ánimos</h2>
+          <h2 class="sent-history-title" id="sentHistoryTitle">Ánimo de ${selfLabel}</h2>
           <p class="sent-history-sub" id="sentHistorySub"></p>
         </div>
         <div class="sent-history-nav">
@@ -323,11 +349,15 @@ export function SentimientosPage(router) {
     selection = mood ? mood.items.map(item => ({ ...item })) : [];
 
     const today = todayISO();
-    if (mood) {
+    if (historyOwnerId === selfId && mood) {
       const stored = encodeMood(mood.items);
-      if (stored) historyMap[today] = stored;
-    } else {
+      if (stored) {
+        historyMap[today] = stored;
+        localHistoryMap[today] = stored;
+      }
+    } else if (historyOwnerId === selfId) {
       delete historyMap[today];
+      delete localHistoryMap[today];
     }
 
     paintSelection();
@@ -408,8 +438,10 @@ export function SentimientosPage(router) {
   }
 
   function refreshMoodSide() {
-    renderStats();
-    renderHistory();
+    if (historyOwnerId === selfId) {
+      renderStats();
+      renderHistory();
+    }
   }
 
   function openPalette(open) {
@@ -514,12 +546,14 @@ export function SentimientosPage(router) {
       const mood = historyMap[dateStr] ? moodStore.resolveMood(historyMap[dateStr]) : null;
       const isToday = dateStr === todayStr;
       const isFuture = dateStr > todayStr;
+      const changeCount = historyRowsByDate[dateStr]?.length || (mood ? 1 : 0);
       cells += `
-        <div class="sent-hist-cell${mood ? ' has-mood' : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}"
-             ${mood ? `title="${escapeHtml(mood.label)}" aria-label="${escapeHtml(`${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}`)}"` : ''}>
+        <button type="button" class="sent-hist-cell${mood ? ' has-mood is-openable' : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}"
+             data-history-date="${dateStr}" ${mood ? `title="${escapeHtml(mood.label)}" aria-label="${escapeHtml(`${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}${changeCount > 1 ? ` · ${changeCount} cambios` : ''}`)}"` : 'disabled aria-hidden="true"'}>
           <span class="sent-hist-day">${day}</span>
           ${mood ? `<span class="sent-hist-emoji" aria-hidden="true">${escapeHtml(mood.emoji)}</span>` : ''}
-        </div>`;
+          ${mood && changeCount > 1 ? `<span class="sent-hist-changes" aria-hidden="true">${changeCount}</span>` : ''}
+        </button>`;
     }
 
     cal.innerHTML = `
@@ -562,15 +596,30 @@ export function SentimientosPage(router) {
   // Historial completo desde el servidor: una sola consulta para toda la vida
   // del usuario (un estado por día, poco peso) y las cifras ya son las reales.
   async function loadRemoteHistory() {
-    const user = userStore.getUser();
-    if (!user) return;
+    const targetId = historyOwnerId;
+    if (!targetId) return;
+    const token = ++historyLoadToken;
     let changed = false;
+    const remoteDates = new Set();
     try {
-      const rows = await moodStore.getMoodHistory(user.id, '2000-01-01', todayISO());
+      const rows = await moodStore.getMoodHistory(targetId, '2000-01-01', todayISO());
+      if (!page.isConnected || token !== historyLoadToken) return;
+      if (targetId === selfId) {
+        Object.keys(historyMap).forEach(date => delete historyMap[date]);
+        Object.keys(historyRowsByDate).forEach(date => delete historyRowsByDate[date]);
+        Object.assign(historyMap, localHistoryMap);
+      } else {
+        Object.keys(historyMap).forEach(date => delete historyMap[date]);
+        Object.keys(historyRowsByDate).forEach(date => delete historyRowsByDate[date]);
+      }
       for (const row of rows || []) {
-        // Vienen de la más reciente a la más antigua: el primer estado de cada
-        // día es el último que se guardó, que es el que cuenta.
-        if (!row?.date || !row.mood || historyMap[row.date]) continue;
+        if (row?.date && row.mood) {
+          (historyRowsByDate[row.date] ||= []).push(row);
+        }
+        // Vienen de la más reciente a la más antigua. La primera fila por día
+        // es la vigente y sustituye cualquier copia local desactualizada.
+        if (!row?.date || !row.mood || remoteDates.has(row.date)) continue;
+        remoteDates.add(row.date);
         historyMap[row.date] = {
           mood: row.mood,
           label: row.label,
@@ -579,21 +628,96 @@ export function SentimientosPage(router) {
         };
         changed = true;
       }
+      if (targetId === selfId) {
+        for (const [date, entry] of Object.entries(localHistoryMap)) {
+          if (!historyRowsByDate[date]?.length) historyRowsByDate[date] = [{ ...entry }];
+        }
+      }
     } catch {
       /* sin conexión: vale el historial local */
     }
     // El hueco de carga se sustituye SIEMPRE: con el historial remoto, con el
     // local o con el mensaje de «aún no hay ánimos». Si no, un fallo de red
     // dejaría la rejilla cargando para siempre.
-    if (changed || histSkeletonShown) {
+    if (token === historyLoadToken && (changed || histSkeletonShown || historyOwnerId !== selfId)) {
       histSkeletonShown = false;
       renderStats();
       renderHistory();
     }
   }
 
+  async function selectHistoryPerson(person) {
+    const isSelf = person === 'self';
+    historyOwnerId = isSelf ? selfId : partnerId;
+    historyOwnerLabel = isSelf ? selfLabel : partnerLabel;
+    if (!historyOwnerId) {
+      toast('No se pudo encontrar la cuenta de tu pareja', 'error');
+      return;
+    }
+    page.querySelectorAll('[data-history-person]').forEach(button => {
+      const active = button.dataset.historyPerson === person;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    const title = page.querySelector('#sentHistoryTitle');
+    if (title) title.textContent = `Ánimo de ${historyOwnerLabel}`;
+    Object.keys(historyMap).forEach(date => delete historyMap[date]);
+    Object.keys(historyRowsByDate).forEach(date => delete historyRowsByDate[date]);
+    if (isSelf) Object.assign(historyMap, localHistoryMap);
+    if (isSelf) for (const [date, entry] of Object.entries(localHistoryMap)) historyRowsByDate[date] = [{ ...entry }];
+    histSkeletonShown = !Object.keys(historyMap).length;
+    if (histSkeletonShown) page.querySelector('#histCal').innerHTML = skeletonHTML({ rows: 3, label: `Cargando ánimo de ${historyOwnerLabel}` });
+    renderStats();
+    if (!histSkeletonShown) renderHistory();
+    await loadRemoteHistory();
+  }
+
   page.querySelectorAll('.sent-card').forEach(card => {
     card.addEventListener('click', () => router.navigate(card.dataset.href));
+  });
+  page.querySelectorAll('[data-history-person]').forEach(button => {
+    button.addEventListener('click', () => selectHistoryPerson(button.dataset.historyPerson));
+  });
+
+  function openMoodDay(date) {
+    const rows = [...(historyRowsByDate[date] || [])]
+      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+    const dayDate = new Date(`${date}T12:00:00`);
+    const dateLabel = dayDate.toLocaleDateString('es', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+    const entries = rows.map(row => {
+      const mood = moodStore.resolveMood({
+        mood: row.mood,
+        label: row.label,
+        emoji: row.emoji,
+        score: row.score,
+      });
+      const at = row.created_at ? new Date(row.created_at) : null;
+      const time = at && !Number.isNaN(at.getTime())
+        ? at.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+        : '';
+      return `<li class="sent-mood-change">
+        <span class="sent-mood-change-emoji" aria-hidden="true">${escapeHtml(mood?.emoji || '💭')}</span>
+        <span class="sent-mood-change-label">${escapeHtml(mood?.label || 'Estado de ánimo')}</span>
+        ${time ? `<time class="sent-mood-change-time" datetime="${escapeHtml(row.created_at)}">${time}</time>` : ''}
+      </li>`;
+    }).join('');
+    openSheet(`Ánimo de ${historyOwnerLabel}`, sheet => {
+      const body = document.createElement('div');
+      body.className = 'sent-mood-day-detail';
+      body.innerHTML = `<p class="sent-mood-day-date">${escapeHtml(dateLabel)}</p>
+        ${rows.length > 1 ? `<p class="sent-mood-day-summary">${rows.length} cambios de ánimo</p>` : ''}
+        ${rows.length ? `<ol class="sent-mood-change-list">${entries}</ol>` : '<p class="sent-mood-day-empty">Ese día no tiene registros disponibles en este dispositivo.</p>'}`;
+      sheet.append(body);
+      return null;
+    });
+  }
+
+  page.querySelector('#histCal')?.addEventListener('click', event => {
+    const cell = event.target.closest('[data-history-date]');
+    if (!cell || cell.disabled) return;
+    openMoodDay(cell.dataset.historyDate);
   });
 
   // ==========================================
@@ -602,7 +726,8 @@ export function SentimientosPage(router) {
   page.addEventListener('click', event => {
     const removeCustom = event.target.closest('[data-custom-remove]');
     if (removeCustom && page.contains(removeCustom)) {
-      selection = selection.filter(item => item.id !== customMood.id);
+      const remaining = selection.filter(item => item.id !== customMood.id);
+      selection = remaining.length > 1 ? [remaining[0]] : remaining;
       customInput.value = '';
       paintSelection();
       scheduleSave();
@@ -610,9 +735,16 @@ export function SentimientosPage(router) {
     }
     const btn = event.target.closest('[data-mood]');
     if (!btn || !page.contains(btn)) return;
-    // Tocar una emoción ya marcada la quita: puede quedar sin ninguna, y
-    // entonces el día vuelve a estar sin emoción.
-    selection = toggleMoodSelection(selection, btn.dataset.mood);
+    // Cada toque registra una emoción independiente. No acumular la nueva
+    // emoción con las del último estado, porque aparentaría que se eligieron
+    // todas a la vez. Tocar la activa sigue permitiendo quitar el estado.
+    const selected = selection.some(item => item.id === btn.dataset.mood);
+    if (selected) {
+      const remaining = selection.filter(item => item.id !== btn.dataset.mood);
+      selection = remaining.length > 1 ? [remaining[0]] : remaining;
+    } else {
+      selection = toggleMoodSelection([], btn.dataset.mood);
+    }
     paintSelection();
     scheduleSave();
   });
@@ -627,7 +759,8 @@ export function SentimientosPage(router) {
       toast('Escribe cómo te sientes', 'info');
       return;
     }
-    selection = [...selection.filter(i => i.id !== customMood.id), item];
+    // El texto libre también es un estado individual, no se suma al anterior.
+    selection = [item];
     customInput.value = item.label;
     paintSelection();
     scheduleSave();
@@ -656,6 +789,28 @@ export function SentimientosPage(router) {
     histSkeletonShown = true;
   }
   loadRemoteHistory();
+  (async () => {
+    // Resolver la pareja desde la relación compartida; los latidos de
+    // presencia solo existen cuando el otro dispositivo está conectado.
+    try {
+      if (selfId && supabase) {
+        const { data: membership } = await supabase.from('couple_members')
+          .select('couple_id').eq('user_id', selfId).maybeSingle();
+        if (membership?.couple_id) {
+          const { data: members } = await supabase.from('couple_members')
+            .select('user_id').eq('couple_id', membership.couple_id).neq('user_id', selfId).limit(1);
+          partnerId = members?.[0]?.user_id || null;
+        }
+      }
+    } catch { /* intenta la identidad heredada de presencia */ }
+    if (!partnerId) partnerId = (await fetchPartnerPresence())?.userId || null;
+    return partnerId;
+  })().then(userId => {
+    if (!page.isConnected || !userId) return;
+    partnerId = userId;
+    const partnerButton = page.querySelector('[data-history-person="partner"]');
+    if (partnerButton) partnerButton.disabled = false;
+  });
 
   // El ánimo puede haber cambiado en otro dispositivo mientras mirábamos
   moodStore.fetchTodayMood().then(remoteMood => {

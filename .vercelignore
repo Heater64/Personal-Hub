@@ -1,0 +1,38 @@
+# Local secrets and files containing credentials
+.env
+.env.*
+**/.env
+**/.env.*
+.env.example
+.cloud-attachments/
+firebase-service-account.json
+fcm-service-account-oneline.txt
+*firebase-adminsdk*.json
+.mcp.json
+opencode.json
+
+# Runtime and development artifacts
+*.log
+*.out
+*.err
+*.pid
+**/*.log
+**/*.out
+**/*.err
+**/*.pid
+.idea/
+.tmp-widgets/
+strix_runs/
+.ruff_cache/
+apks/
+
+# Local build tools, backups and reference repositories
+node_modules/
+android/
+external/
+obscura/
+.tamp-migration-backup/
+.agents/
+.freebuff/
+.freebuff-tmp/
+

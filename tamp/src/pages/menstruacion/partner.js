@@ -1,10 +1,12 @@
 /* ==========================================
    Menstruación — Vista de pareja
+   Solo lo que ella ha autorizado. El filtrado ocurre en el servidor
+   (cycle_partner_snapshot); aquí no se recibe nada de más.
    ========================================== */
 
 import { icon } from '../../components/ui.js';
 import { escapeHtml } from '../../utils/escape.js';
-import { computeCycle, daysBetween } from '../../utils/cycleMath.js';
+import { computeCycle, periodDurations } from '../../utils/cycleMath.js';
 import { flowLabel } from '../../data/cycle.data.js';
 import {
   badge,
@@ -29,10 +31,7 @@ function kpi(emoji, label, value, hint = '') {
 
 /** Días que duró (o lleva) una menstruación. */
 function durationOf(period, today) {
-  const start = period.start_date;
-  const end = period.end_date || today;
-  const span = start && end ? daysBetween(start, end) : null;
-  return Number.isFinite(span) ? Math.max(0, span + 1) : 0;
+  return periodDurations([period], today)[0] ?? null;
 }
 
 export function renderPartner(ctx) {
@@ -42,16 +41,17 @@ export function renderPartner(ctx) {
     return `
       <section class="cy-section">
         ${emptyHtml({
-          iconHtml: icon('heart', 24),
-          title: snapshot.unavailable ? 'No se pudo cargar el ciclo' : 'Aún no hay registros compartidos',
+          iconHtml: icon('lock', 24),
+          title: 'Ahora mismo no se comparte nada',
           text: snapshot.unavailable
-            ? 'Comprueba la conexión y vuelve a intentarlo.'
-            : 'Cuando haya registros, aparecerán aquí con su fecha y autoría.',
+            ? 'No se pudo consultar el permiso. Si acabas de activarlo, espera un momento y vuelve a intentarlo.'
+            : 'Esta vista solo muestra lo que ella decida compartir desde Ajustes → Compartir. Nada se comparte por defecto y se puede revocar en cualquier momento.',
         })}
       </section>
-      <p class="cy-hint cy-hint--center">La vista es de consulta. Cada persona gestiona sus propios registros.</p>
+      <p class="cy-hint cy-hint--center">Los registros siguen siendo suyos: esta vista nunca permite editarlos.</p>
     `;
   }
+
   const fields = new Set(snapshot.fields || []);
   const cycle = computeCycle({
     periods: snapshot.periods || [],
@@ -64,8 +64,14 @@ export function renderPartner(ctx) {
 
   // Resumen: solo con los datos que ella ha dejado ver.
   const heroMeta = [
-    fields.has('cycle_day') && cycle.cycleDay ? `Día ${cycle.cycleDay} de ~${cycle.avgCycle}` : '',
-    fields.has('next_period') && cycle.nextStart ? `Próxima: ${fmtDay(cycle.nextStart)}` : '',
+    fields.has('cycle_day') && cycle.cycleDay
+      ? cycle.isOverdue ? `Día ${cycle.cycleDay} · estimación superada` : `Día ${cycle.cycleDay} de ~${cycle.avgCycle}`
+      : '',
+    fields.has('next_period') && cycle.nextStart
+      ? cycle.isOverdue
+        ? `${cycle.daysLate} día${cycle.daysLate === 1 ? '' : 's'} de retraso · nueva estimación ${fmtDay(cycle.nextStart)}`
+        : `Próxima: ${fmtDay(cycle.nextStart)}`
+      : '',
   ].filter(Boolean);
   const showHero = fields.has('cycle_status') || heroMeta.length > 0;
 
@@ -97,7 +103,7 @@ export function renderPartner(ctx) {
 
     <section class="cy-section">
       <div class="cy-section-head">
-        ${sectionTitle('📊', 'Historial compartido')}
+        ${sectionTitle('📊', 'Lo que comparte contigo')}
         <button type="button" class="btn btn--ghost" data-refresh>${icon('clock', 16)} Actualizar</button>
       </div>
 
@@ -107,17 +113,19 @@ export function renderPartner(ctx) {
             ? kpi(
                 '📆',
                 'Próxima menstruación',
-                fmtDay(cycle.nextStart),
-                cycle.daysUntilNext === 0
-                  ? 'estimada hoy'
-                  : `en ${cycle.daysUntilNext} día${cycle.daysUntilNext === 1 ? '' : 's'}`
+                cycle.isOverdue ? `${cycle.daysLate} día${cycle.daysLate === 1 ? '' : 's'}` : fmtDay(cycle.nextStart),
+                cycle.isOverdue
+                  ? `de retraso · nueva estimación ${fmtDay(cycle.nextStart)}`
+                  : cycle.daysUntilNext === 0
+                    ? 'estimada hoy'
+                    : `en ${cycle.daysUntilNext} día${cycle.daysUntilNext === 1 ? '' : 's'}`
               )
             : ''
         }
         ${fields.has('cycle_status') ? kpi(phaseEmoji(cycle.phase.id), 'Estado del ciclo', cycle.phase.label, 'estimado') : ''}
         ${
           fields.has('cycle_day') && cycle.cycleDay
-            ? kpi('🔄', 'Día del ciclo', String(cycle.cycleDay), `de ~${cycle.avgCycle}`)
+            ? kpi('🔄', 'Día del ciclo', String(cycle.cycleDay), cycle.isOverdue ? 'estimación media superada' : `de ~${cycle.avgCycle}`)
             : ''
         }
         ${fields.has('stats') ? kpi('📈', 'Ciclos registrados', String(cycle.cycle.count), 'según sus registros') : ''}
@@ -137,14 +145,15 @@ export function renderPartner(ctx) {
                 .map(period => {
                   const days = durationOf(period, ctx.today);
                   const open = !period.end_date;
+                  const duration = days == null ? 'Duración por revisar' : `${days} ${days === 1 ? 'día' : 'días'}${open ? ' · sigue' : ''}`;
                   return `
               <li class="cy-period${open ? ' is-current' : ''}">
                 <span class="cy-period__ic" aria-hidden="true">${open ? '🩸' : '🌸'}</span>
                 <span class="cy-period__body">
                   <b>${escapeHtml(fmtDay(period.start_date))}${period.end_date ? ` → ${escapeHtml(fmtDay(period.end_date))}` : ''}</b>
-                  <small>${days} ${days === 1 ? 'día' : 'días'}${open ? ' · sigue' : ''}</small>
+                  <small>${escapeHtml(duration)}</small>
                 </span>
-                ${open ? badge('En curso', 'log') : badge('Registrado', 'period')}
+                ${days == null ? badge('Revisar', 'log') : open ? badge('En curso', 'log') : badge('Registrado', 'period')}
               </li>`;
                 })
                 .join('')}</ul>`
@@ -222,7 +231,7 @@ export function renderPartner(ctx) {
         : ''
     }
 
-    <p class="cy-hint cy-hint--center">Los registros son visibles para ambos. Cada persona conserva la autoría y solo modifica sus propios datos.</p>
+    <p class="cy-hint cy-hint--center">Ella controla qué ves y puede quitarte el acceso cuando quiera. Esta vista no permite modificar nada.</p>
   `;
 }
 

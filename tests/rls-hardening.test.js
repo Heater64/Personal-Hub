@@ -20,6 +20,26 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectPath = (...parts) => path.join(ROOT, ...parts);
 
 const migration = () => readFile(projectPath('sql', '026_rls_hardening.sql'), 'utf8');
+const sharedDataMigration = () => readFile(projectPath('sql', '033_datos_compartidos_de_pareja.sql'), 'utf8');
+
+test('033 limita los datos compartidos a las dos cuentas activas y sus roles', async () => {
+  const sql = await sharedDataMigration();
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.is_tamp_partner\(p_user_id UUID\)/);
+  assert.match(sql, /count\(\*\).*profiles.*enabled.*\) = 2/s);
+  assert.match(sql, /me\.role = 'admin'.*partner\.role = 'user'/s);
+  assert.match(sql, /me\.role = 'user'.*partner\.role = 'admin'/s);
+  assert.match(sql, /user_id = auth\.uid\(\) OR public\.is_tamp_partner\(user_id\)/);
+});
+
+test('033 comparte la lectura, pero mantiene propios los cambios de ánimo y ciclo', async () => {
+  const sql = await sharedDataMigration();
+  assert.match(sql, /moods_delete_policy[\s\S]*?user_id = auth\.uid\(\)/);
+  for (const table of ['cycle_settings', 'cycle_periods', 'cycle_daily_logs']) {
+    assert.match(sql, new RegExp(`${table}_select_own[\\s\\S]*?is_tamp_partner\\(user_id\\)`));
+  }
+  const readme = await readFile(projectPath('sql', 'README.md'), 'utf8');
+  assert.ok(readme.includes('033_datos_compartidos_de_pareja.sql'));
+});
 
 test('026 existe y está listada donde se busca antes de aplicarla', async () => {
   const sql = await migration();

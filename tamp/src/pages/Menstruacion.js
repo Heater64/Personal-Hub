@@ -137,6 +137,9 @@ export function MenstruacionPage(router) {
   }
 
   function subtitle() {
+    const describeCycle = cycle => cycle.isOverdue
+      ? `${cycle.phase.label} · día ${cycle.cycleDay} · estimación superada`
+      : `${cycle.phase.label} · día ${cycle.cycleDay} de ~${cycle.avgCycle}`;
     if (partnerOnly) {
       const snap = ctx.snapshot;
       if (snap?.shared) {
@@ -145,12 +148,12 @@ export function MenstruacionPage(router) {
           settings: snap.settings || {},
           today: ctx.today,
         });
-        if (c?.hasData) return `${c.phase.label} · día ${c.cycleDay} de ~${c.avgCycle}`;
+        if (c?.hasData) return describeCycle(c);
       }
       return 'Lo que ella comparte contigo';
     }
     if (ctx.cycle?.hasData) {
-      return `${ctx.cycle.phase.label} · día ${ctx.cycle.cycleDay} de ~${ctx.cycle.avgCycle}`;
+      return describeCycle(ctx.cycle);
     }
     return 'Tu ciclo, con tus datos y tus reglas';
   }
@@ -226,7 +229,12 @@ export function MenstruacionPage(router) {
 
     try {
       ctx.data = await cycleService.loadAll();
-      ctx.snapshot = await cycleService.getPartnerSnapshot().catch(() => ({ shared: false, unavailable: true }));
+      const [sharing, snapshot] = await Promise.all([
+        cycleService.loadSharing().catch(() => null),
+        cycleService.getPartnerSnapshot().catch(() => ({ shared: false })),
+      ]);
+      ctx.sharing = sharing;
+      ctx.snapshot = snapshot;
     } catch (err) {
       ctx.ui.error = err?.message || 'No se pudieron cargar tus datos.';
       if (!ctx.data) {

@@ -6,11 +6,13 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -23,165 +25,265 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.ServiceCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.location.LocationManagerCompat;
 
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.InputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-/**
- * Seguimiento del móvil con la app cerrada.
- *
- * Un servicio en primer plano (con su aviso fijo, como exige Android) que
- * cada cinco minutos junta ubicación, batería y red y las escribe en la misma
- * fila que usa la web. El token se renueva solo con el refresh token, así que
- * el seguimiento no se cae cuando caduca la sesión.
- *
- * La web arranca y para el servicio desde DeviceStatusPlugin; el estado
- * también queda en SharedPreferences para que el panel lo lea al instante.
- */
+/** Comparte ubicación, batería y conexión desde un servicio iniciado por el usuario. */
 public class DeviceStatusService extends Service {
 
-    public static final String PREFS = "device_status";
-    public static final String CHANNEL_ID = "device_status";
-    public static final String ACTION_STOP = "com.heater64.personalhub.DEVICE_STATUS_STOP";
-
+    private static final String PREFS = "device_status";
+    private static final String CHANNEL_ID = "device_status";
+    private static final String ACTION_STOP = "com.heater64.personalhub.DEVICE_STATUS_STOP";
     private static final String TAG = "DeviceStatus";
     private static final int NOTIFICATION_ID = 4310;
-    private static final long TICK_MS = 5 * 60 * 1000L;
-    private static final long LOCATION_MS = 5 * 60 * 1000L;
+    private static final long HEARTBEAT_MS = 5 * 60 * 1000L;
+    private static final long LOCATION_INTERVAL_MS = 2 * 60 * 1000L;
+    private static final long CHANGE_DELAY_MS = 5_000L;
+    private static final long RETRY_MS = 60_000L;
 
-    private Handler handler;
+    // La generación invalida envíos y renovaciones en curso al cambiar de cuenta o salir.
+    private static final Object CONFIG_LOCK = new Object();
+    private static long generation;
+
+    // Los arranques, las paradas y los observadores se coordinan en el hilo principal.
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    private static final List<Runnable> START_WAITERS = new ArrayList<>();
+    private static volatile DeviceStatusService active;
+    private static Runnable startTimeout;
+
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final Runnable tick = this::publishPending;
+    private long scheduledAt = Long.MAX_VALUE;
+    private boolean publishing;
+    private boolean publishAgain;
+    private volatile Fix lastFix;
+
     private LocationManager locationManager;
     private LocationListener locationListener;
-    private Location lastLocation;
+    private ConnectivityManager connectivityManager;
+    private ConnectivityManager.NetworkCallback networkCallback;
+    private BroadcastReceiver batteryReceiver;
+    private int batteryLevel = -1;
+    private boolean charging;
+    private String connectionKey = "";
 
-    private final Runnable tick = new Runnable() {
-        @Override
-        public void run() {
-            try {
-                publish();
-            } catch (Exception err) {
-                Log.w(TAG, "no se pudo publicar el estado", err);
-            }
-            if (handler != null) handler.postDelayed(this, TICK_MS);
-        }
-    };
-
-    /** Arranca el servicio (no-op silencioso si el sistema lo impide). */
-    public static void start(Context context) {
-        try {
-            Intent intent = new Intent(context, DeviceStatusService.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent);
-            } else {
-                context.startService(intent);
-            }
-        } catch (Exception err) {
-            Log.w(TAG, "Android no dejó arrancar el servicio", err);
-        }
-    }
-
-    public static void stop(Context context) {
-        try {
-            context.stopService(new Intent(context, DeviceStatusService.class));
-        } catch (Exception ignored) {
-        }
-    }
-
-    public static boolean isEnabled(Context context) {
-        return prefs(context).getBoolean("enabled", false);
-    }
-
-    /** Solo se usa para reanudar tras reinicio: fuera de la app visible,
-     * Android exige ubicación permanente antes de crear un FGS de location. */
-    public static boolean hasBackgroundLocationPermission(Context context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true;
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                == PackageManager.PERMISSION_GRANTED;
-    }
-
-    public static SharedPreferences prefs(Context context) {
+    static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        createChannel();
-        try {
-            startForeground(NOTIFICATION_ID, buildNotification("Preparando el seguimiento…"));
-            prefs(this).edit()
-                    .putBoolean("running", true)
-                    .remove("last_error")
+    static boolean isEnabled(Context context) {
+        return prefs(context).getBoolean("enabled", false);
+    }
+
+    static boolean isRunning() {
+        return active != null;
+    }
+
+    static boolean hasPreciseLocationPermission(Context context) {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    static boolean hasLocationPermission(Context context) {
+        return hasPreciseLocationPermission(context)
+                || ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    static boolean hasBackgroundLocationPermission(Context context) {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+                || ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    static String locationServicesState(Context context) {
+        LocationManager manager = context.getSystemService(LocationManager.class);
+        if (manager == null) return "unknown";
+        return LocationManagerCompat.isLocationEnabled(manager) ? "enabled" : "disabled";
+    }
+
+    static boolean configure(Context context, Config config, boolean resume) {
+        synchronized (CONFIG_LOCK) {
+            SharedPreferences prefs = prefs(context);
+            boolean sameUser = config.userId().equals(prefs.getString("user_id", ""));
+            boolean enabled = prefs.getBoolean("enabled", false);
+            if (resume && (!enabled || !sameUser)) return false;
+
+            boolean sameScope = enabled && sameUser
+                    && config.coupleId().equals(prefs.getString("couple_id", ""))
+                    && config.url().equals(prefs.getString("url", ""));
+            SharedPreferences.Editor edit = prefs.edit();
+            if (!sameScope) {
+                generation++;
+                clearSnapshot(edit);
+            }
+            // Evita reemplazar una sesión que el servicio acaba de renovar.
+            if (!sameScope || config.session().expiresAt() >= prefs.getLong("expiresAt", 0L)) {
+                writeSession(edit, config.session());
+            }
+            edit.putString("url", config.url())
+                    .putString("apiOrigin", config.apiOrigin())
+                    .putString("anonKey", config.anonKey())
+                    .putString("user_id", config.userId())
+                    .putString("couple_id", config.coupleId())
+                    .putBoolean("is_admin", config.isAdmin())
+                    .putString("name", config.name())
+                    .putString("avatar", config.avatar())
+                    .putBoolean("enabled", true)
                     .apply();
-        } catch (Exception err) {
-            // Android 14+ exige el permiso de ubicación para el tipo
-            // «location»: sin él no hay aviso válido y el servicio se apaga
-            // solo en vez de tumbar la app.
-            Log.w(TAG, "el sistema no dejó empezar el primer plano", err);
-            prefs(this).edit()
-                    .putBoolean("enabled", false)
-                    .putBoolean("running", false)
-                    .putString("last_error", "foreground-service-rejected")
-                    .apply();
-            stopSelf();
+            return true;
+        }
+    }
+
+    static String startPrerequisite(Context context) {
+        if (!hasLocationPermission(context)) return "location-permission";
+        return "disabled".equals(locationServicesState(context)) ? "location-disabled" : "";
+    }
+
+    /** Espera a que Android confirme el arranque en primer plano. */
+    static void start(Context context, Runnable callback) {
+        if (callback != null) START_WAITERS.add(callback);
+        if (active != null) {
+            active.schedulePublish(CHANGE_DELAY_MS);
+            finishStart();
             return;
         }
-        registerLocationUpdates();
-        handler = new Handler(Looper.getMainLooper());
-        handler.post(tick);
+        if (startTimeout != null) return;
+
+        String error = startPrerequisite(context);
+        if (readConfig(context) == null || !error.isEmpty()) {
+            recordStartError(context, error.isEmpty() ? "session" : error);
+            return;
+        }
+        try {
+            ContextCompat.startForegroundService(context, new Intent(context, DeviceStatusService.class));
+            Context app = context.getApplicationContext();
+            startTimeout = () -> recordStartError(app, "foreground-service-timeout");
+            MAIN.postDelayed(startTimeout, 4_000L);
+        } catch (RuntimeException err) {
+            Log.w(TAG, "Android rechazó el inicio del servicio", err);
+            recordStartError(context, "foreground-service-rejected");
+        }
+    }
+
+    private static void finishStart() {
+        if (startTimeout != null) MAIN.removeCallbacks(startTimeout);
+        startTimeout = null;
+        List<Runnable> callbacks = new ArrayList<>(START_WAITERS);
+        START_WAITERS.clear();
+        for (Runnable callback : callbacks) callback.run();
+    }
+
+    private static void recordStartError(Context context, String error) {
+        if (isEnabled(context)) prefs(context).edit().putString("last_error", error).apply();
+        finishStart();
+    }
+
+    static void stop(Context context) {
+        synchronized (CONFIG_LOCK) {
+            generation++;
+            SharedPreferences.Editor edit = prefs(context).edit()
+                    .putBoolean("enabled", false)
+                    .remove("accessToken").remove("refreshToken").remove("expiresAt")
+                    .remove("user_id").remove("couple_id").remove("is_admin")
+                    .remove("name").remove("avatar").remove("running");
+            clearSnapshot(edit);
+            edit.apply();
+        }
+        if (active != null) active.shutdown();
+        context.stopService(new Intent(context, DeviceStatusService.class));
+        finishStart();
+    }
+
+    private static void clearSnapshot(SharedPreferences.Editor edit) {
+        edit.remove("last_data").remove("last_at").remove("last_sent_at")
+                .remove("last_attempt_at").remove("last_error");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            prefs(this).edit().putBoolean("enabled", false).apply();
-            stopForeground(true);
-            stopSelf();
+            stop(this);
+            return START_NOT_STICKY;
+        }
+        if (active == this) return START_STICKY;
+
+        // Android puede recrear un servicio START_STICKY sin el Intent inicial.
+        String error = startPrerequisite(this);
+        if (readConfig(this) == null || !error.isEmpty()) {
+            recordStartError(this, error.isEmpty() ? "session" : error);
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
+        try {
+            createChannel();
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification("Compartiendo estado…"),
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                            ? ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION : 0);
+        } catch (RuntimeException err) {
+            Log.w(TAG, "Android rechazó el servicio en primer plano", err);
+            recordStartError(this, "foreground-service-rejected");
+            stopSelf(startId);
             return START_NOT_STICKY;
         }
 
-        prefs(this).edit().putBoolean("enabled", true).putBoolean("running", true).apply();
-        startForeground(NOTIFICATION_ID, buildNotification("Compartiendo estado…"));
-        if (handler != null) {
-            handler.removeCallbacks(tick);
-            handler.post(tick);
-        }
+        active = this;
+        prefs(this).edit().remove("last_error").remove("running").apply();
+        registerLocationUpdates();
+        registerDeviceObservers();
+        schedulePublish(0L);
+        finishStart();
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        // `enabled` es la intención explícita del usuario; `running` es el
-        // hecho observable. No los mezclemos: Android puede matar el proceso
-        // y reintentarlo con START_STICKY sin que la UI mienta mientras tanto.
-        prefs(this).edit().putBoolean("running", false).apply();
-        if (handler != null) {
-            handler.removeCallbacksAndMessages(null);
-            handler = null;
-        }
-        if (locationManager != null && locationListener != null) {
-            try {
-                locationManager.removeUpdates(locationListener);
-            } catch (Exception ignored) {
-            }
-        }
-        locationManager = null;
-        locationListener = null;
+        shutdown();
         super.onDestroy();
+    }
+
+    private void shutdown() {
+        if (active == this) {
+            active = null;
+            stopForeground(STOP_FOREGROUND_REMOVE);
+        }
+        MAIN.removeCallbacks(tick);
+        io.shutdownNow();
+        if (locationManager != null && locationListener != null) {
+            locationManager.removeUpdates(locationListener);
+            locationListener = null;
+        }
+        if (connectivityManager != null && networkCallback != null) {
+            connectivityManager.unregisterNetworkCallback(networkCallback);
+            networkCallback = null;
+        }
+        if (batteryReceiver != null) {
+            unregisterReceiver(batteryReceiver);
+            batteryReceiver = null;
+        }
     }
 
     @Override
@@ -189,27 +291,57 @@ public class DeviceStatusService extends Service {
         return null;
     }
 
-    /* ==========================================
-       UBICACIÓN
-       ========================================== */
+    private void schedulePublish(long delayMs) {
+        if (active != this) return;
+        long deadline = SystemClock.uptimeMillis() + delayMs;
+        if (deadline >= scheduledAt) return;
+        scheduledAt = deadline;
+        MAIN.removeCallbacks(tick);
+        MAIN.postAtTime(tick, deadline);
+    }
 
-    private boolean hasLocationPermission() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED;
+    private void publishPending() {
+        scheduledAt = Long.MAX_VALUE;
+        if (active != this) return;
+        if (publishing) {
+            publishAgain = true;
+            return;
+        }
+        if (!hasLocationPermission(this)) {
+            recordStartError(this, "location-permission");
+            shutdown();
+            stopSelf();
+            return;
+        }
+        publishing = true;
+        io.execute(() -> {
+            String error = publish();
+            MAIN.post(() -> {
+                if (active != this) return;
+                publishing = false;
+                long delay = publishAgain ? CHANGE_DELAY_MS : HEARTBEAT_MS;
+                if ("upload-failed".equals(error)) delay = Math.min(delay, RETRY_MS);
+                SharedPreferences prefs = prefs(this);
+                if (prefs.getBoolean("battery_paused", false)
+                        && !prefs.getBoolean("battery_alert_delivered", false)) {
+                    delay = Math.min(delay, RETRY_MS);
+                }
+                publishAgain = false;
+                schedulePublish(delay);
+            });
+        });
     }
 
     @SuppressWarnings("deprecation")
     private void registerLocationUpdates() {
-        if (!hasLocationPermission()) return;
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (prefs(this).getBoolean("battery_paused", false)) return;
+        locationManager = getSystemService(LocationManager.class);
         if (locationManager == null) return;
 
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                lastLocation = location;
+                acceptLocation(location);
             }
 
             @Override
@@ -218,277 +350,470 @@ public class DeviceStatusService extends Service {
 
             @Override
             public void onProviderEnabled(String provider) {
+                schedulePublish(CHANGE_DELAY_MS);
             }
 
             @Override
             public void onProviderDisabled(String provider) {
+                schedulePublish(CHANGE_DELAY_MS);
             }
         };
 
-        for (String provider : new String[]{
-                LocationManager.NETWORK_PROVIDER,
-                LocationManager.GPS_PROVIDER,
-        }) {
-            try {
-                if (locationManager.isProviderEnabled(provider)) {
-                    locationManager.requestLocationUpdates(
-                            provider, LOCATION_MS, 0f, locationListener, Looper.getMainLooper());
-                }
-                Location known = locationManager.getLastKnownLocation(provider);
-                if (known != null && (lastLocation == null || known.getTime() > lastLocation.getTime())) {
-                    lastLocation = known;
-                }
-            } catch (Exception err) {
-                Log.w(TAG, "sin proveedor " + provider, err);
+        List<String> providers = locationManager.getAllProviders();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && providers.contains(LocationManager.FUSED_PROVIDER)
+                && registerProvider(LocationManager.FUSED_PROVIDER)) return;
+        if (providers.contains(LocationManager.NETWORK_PROVIDER)) registerProvider(LocationManager.NETWORK_PROVIDER);
+        if (hasPreciseLocationPermission(this) && providers.contains(LocationManager.GPS_PROVIDER)) {
+            registerProvider(LocationManager.GPS_PROVIDER);
+        }
+    }
+
+    private boolean registerProvider(String provider) {
+        try {
+            // Si el proveedor está apagado, Android reanuda sus avisos al habilitarlo.
+            locationManager.requestLocationUpdates(provider, LOCATION_INTERVAL_MS, 0f,
+                    locationListener, Looper.getMainLooper());
+            acceptLocation(locationManager.getLastKnownLocation(provider));
+            return true;
+        } catch (SecurityException | IllegalArgumentException err) {
+            Log.w(TAG, "Proveedor de ubicación no disponible: " + provider);
+            return false;
+        }
+    }
+
+    private void acceptLocation(Location candidate) {
+        if (candidate == null || candidate.getTime() <= 0) return;
+        boolean precise = hasPreciseLocationPermission(this);
+        Fix previousFix = lastFix;
+        Location previous = previousFix == null || previousFix.precise() != precise ? null : previousFix.location();
+        if (previous != null) {
+            long deltaNanos = candidate.getElapsedRealtimeNanos() - previous.getElapsedRealtimeNanos();
+            if (deltaNanos <= 0) return;
+            if (deltaNanos < 30_000_000_000L && previous.hasAccuracy()
+                    && (!candidate.hasAccuracy() || candidate.getAccuracy() > previous.getAccuracy() * 2)) return;
+        }
+        lastFix = new Fix(candidate, precise);
+        schedulePublish(previous == null ? 0L : CHANGE_DELAY_MS);
+    }
+
+    private void registerDeviceObservers() {
+        BroadcastReceiver observer = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int level = readBatteryLevel(intent);
+                boolean isCharging = isCharging(intent);
+                if (level == batteryLevel && isCharging == charging) return;
+                batteryLevel = level;
+                charging = isCharging;
+                handleBatteryLevel(level);
+                schedulePublish(CHANGE_DELAY_MS);
             }
+        };
+        try {
+            Intent battery = registerReceiver(observer, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            batteryLevel = readBatteryLevel(battery);
+            charging = isCharging(battery);
+            batteryReceiver = observer;
+            handleBatteryLevel(batteryLevel);
+        } catch (RuntimeException err) {
+            Log.w(TAG, "No se pudo escuchar la batería", err);
+        }
+
+        connectivityManager = getSystemService(ConnectivityManager.class);
+        if (connectivityManager == null) return;
+        try {
+            connectionKey = connectionKey(networkCapabilities(this));
+            networkCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
+                    MAIN.post(() -> handleConnectionChange(capabilities));
+                }
+
+                @Override
+                public void onLost(Network network) {
+                    MAIN.post(() -> handleConnectionChange(null));
+                }
+            };
+            connectivityManager.registerDefaultNetworkCallback(networkCallback);
+        } catch (RuntimeException err) {
+            networkCallback = null;
+            Log.w(TAG, "No se pudo escuchar la conexión", err);
         }
     }
 
-    /* ==========================================
-       DATOS DEL MÓVIL
-       ========================================== */
-
-    private void addBattery(JSONObject data) {
-        try {
-            Intent battery = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-            if (battery == null) return;
-            int level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-            int scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-            if (level < 0 || scale <= 0) return;
-            int status = battery.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-            data.put("battery", Math.round(level * 100f / scale));
-            data.put("charging",
-                    status == BatteryManager.BATTERY_STATUS_CHARGING
-                            || status == BatteryManager.BATTERY_STATUS_FULL);
-        } catch (Exception ignored) {
+    private void handleBatteryLevel(int level) {
+        if (level < 0) return;
+        SharedPreferences prefs = prefs(this);
+        boolean paused = prefs.getBoolean("battery_paused", false);
+        if (!paused && level <= 20) {
+            prefs.edit().putBoolean("battery_paused", true)
+                    .putBoolean("battery_alert_sent", true)
+                    .putBoolean("battery_alert_delivered", false)
+                    .apply();
+            if (locationManager != null && locationListener != null) {
+                locationManager.removeUpdates(locationListener);
+                locationListener = null;
+            }
+            lastFix = null;
+            schedulePublish(0L);
+        } else if (paused && level >= 30) {
+            prefs.edit().putBoolean("battery_paused", false)
+                    .putBoolean("battery_alert_sent", false)
+                    .remove("battery_alert_delivered")
+                    .apply();
+            registerLocationUpdates();
+            schedulePublish(0L);
         }
     }
 
-    private void addNetwork(JSONObject data) {
+    private void sendBatteryAlert(Config config, int level) {
+        if (config.apiOrigin().isEmpty() || !canPublish(config)) return;
+        HttpURLConnection conn = null;
         try {
-            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return;
-            Network network = cm.getActiveNetwork();
-            if (network == null) {
-                data.put("online", false);
+            String base = config.apiOrigin().replaceAll("/+$", "");
+            conn = (HttpURLConnection) new URL(base + "/api/push?action=battery-low").openConnection();
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(12_000);
+            conn.setReadTimeout(12_000);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Authorization", "Bearer " + readSession(prefs(this)).accessToken());
+            conn.setRequestProperty("Content-Type", "application/json");
+            writeBody(conn, new JSONObject().put("level", level));
+            int status = conn.getResponseCode();
+            if (status < 200 || status >= 300) {
+                Log.w(TAG, "No se pudo enviar el aviso de batería: HTTP " + status);
                 return;
             }
-            NetworkCapabilities caps = cm.getNetworkCapabilities(network);
-            if (caps == null) return;
-
-            String net = "online";
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) net = "wifi";
-            else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) net = "cellular";
-            else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) net = "ethernet";
-
-            data.put("online", true);
-            data.put("net", net);
-            int kbps = caps.getLinkDownstreamBandwidthKbps();
-            if (kbps > 0) data.put("mbps", Math.round(kbps / 100.0) / 10.0);
-        } catch (Exception ignored) {
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) response.append(line);
+            }
+            int sent = new JSONObject(response.toString()).optInt("sent", 0);
+            if (sent > 0) {
+                prefs(this).edit().putBoolean("battery_alert_delivered", true).apply();
+            } else {
+                Log.w(TAG, "Aviso de batería pendiente: FCM no entregó ningún aviso");
+            }
+        } catch (Exception err) {
+            Log.w(TAG, "No se pudo avisar a la pareja de la batería baja", err);
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
 
-    private JSONObject snapshot() throws Exception {
-        JSONObject data = new JSONObject();
-        SharedPreferences prefs = prefs(this);
-        String at = isoNow();
-        data.put("at", at);
-        data.put("user_id", prefs.getString("user_id", ""));
-        data.put("name", prefs.getString("name", ""));
-        data.put("avatar", prefs.getString("avatar", ""));
+    private void handleConnectionChange(NetworkCapabilities caps) {
+        String key = connectionKey(caps);
+        if (connectionKey.equals(key)) return;
+        connectionKey = key;
+        schedulePublish(CHANGE_DELAY_MS);
+    }
+
+    private static String connectionKey(NetworkCapabilities caps) {
+        return isOnline(caps) + ":" + networkType(caps);
+    }
+
+    private static int readBatteryLevel(Intent battery) {
+        if (battery == null) return -1;
+        int level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        int scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+        return level >= 0 && scale > 0 ? Math.min(100, Math.round(level * 100f / scale)) : -1;
+    }
+
+    private static boolean isCharging(Intent battery) {
+        if (battery == null) return false;
+        int status = battery.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+        return status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL;
+    }
+
+    private static NetworkCapabilities networkCapabilities(Context context) {
+        ConnectivityManager manager = context.getSystemService(ConnectivityManager.class);
+        if (manager == null) return null;
+        Network network = manager.getActiveNetwork();
+        return network == null ? null : manager.getNetworkCapabilities(network);
+    }
+
+    private static boolean isOnline(NetworkCapabilities caps) {
+        return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+    }
+
+    private static String networkType(NetworkCapabilities caps) {
+        if (caps == null) return "";
+        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return "wifi";
+        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) return "cellular";
+        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) return "ethernet";
+        return "online";
+    }
+
+    static JSONObject deviceFacts(Context context) {
+        JSONObject facts = new JSONObject();
+        try {
+            Intent battery = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            int level = readBatteryLevel(battery);
+            if (level >= 0) {
+                facts.put("battery", level);
+                facts.put("charging", isCharging(battery));
+            }
+            NetworkCapabilities caps = networkCapabilities(context);
+            facts.put("online", isOnline(caps));
+            if (caps != null) {
+                facts.put("net", networkType(caps));
+                int kbps = caps.getLinkDownstreamBandwidthKbps();
+                if (kbps > 0) facts.put("mbps", Math.round(kbps / 100.0) / 10.0);
+            }
+        } catch (Exception err) {
+            Log.w(TAG, "No se pudo leer el estado del dispositivo", err);
+        }
+        return facts;
+    }
+
+    private JSONObject snapshot(Config config) throws Exception {
+        JSONObject data = deviceFacts(this);
+        data.put("at", isoAt(System.currentTimeMillis()));
+        data.put("user_id", config.userId());
+        data.put("name", config.name());
+        data.put("avatar", config.avatar());
         data.put("bg", true);
 
-        Location location = lastLocation;
-        if (location == null && locationManager != null && hasLocationPermission()) {
-            for (String provider : new String[]{LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER}) {
-                try {
-                    Location known = locationManager.getLastKnownLocation(provider);
-                    if (known != null && (location == null || known.getTime() > location.getTime())) {
-                        location = known;
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-        }
-
-        if (location != null) {
+        boolean precise = hasPreciseLocationPermission(this);
+        JSONObject previous = config.previous();
+        String previousAt = previous.optString("location_at", "");
+        boolean mayReusePrevious = config.userId().equals(previous.optString("user_id"))
+                && previous.has("lat") && previous.has("lng")
+                && (precise || "approximate".equals(previous.optString("location_precision")));
+        long previousTime = mayReusePrevious ? parseLocationTime(previousAt) : 0L;
+        Fix fix = lastFix;
+        Location location = fix == null || (fix.precise() && !precise) ? null : fix.location();
+        if (location != null && location.getTime() >= previousTime) {
             data.put("lat", round(location.getLatitude()));
             data.put("lng", round(location.getLongitude()));
-            // `at` es la hora de este envío (batería/red). La ubicación tiene
-            // su propio reloj: sustituirlo hacía que un GPS viejo pareciera
-            // recién actualizado en el mapa de la pareja.
+            // Un cambio de batería no cambia la hora de la última posición GPS.
             data.put("location_at", isoAt(location.getTime()));
             data.put("location_age_ms", Math.max(0L, System.currentTimeMillis() - location.getTime()));
+            data.put("location_precision", fix.precise() ? "precise" : "approximate");
             if (location.hasAccuracy()) data.put("accuracy", Math.round(location.getAccuracy()));
             if (location.hasSpeed() && location.getSpeed() >= 0) {
                 data.put("speed", Math.round(location.getSpeed() * 3.6));
             }
-        } else {
-            // Sin posición nueva se conservan las coordenadas del último envío:
-            // es mejor «la última conocida» que borrar el mapa.
-            JSONObject previous = previousData(prefs);
-            if (previous != null && previous.has("lat") && previous.has("lng")) {
-                data.put("lat", previous.optDouble("lat"));
-                data.put("lng", previous.optDouble("lng"));
-                String locationAt = previous.optString("location_at", "");
-                if (!locationAt.isEmpty()) data.put("location_at", locationAt);
-                long previousAge = previous.optLong("location_age_ms", -1L);
-                if (previousAge >= 0L) data.put("location_age_ms", previousAge);
-                if (previous.has("accuracy")) data.put("accuracy", previous.optInt("accuracy"));
-            }
+        } else if (previousTime > 0L) {
+            data.put("lat", previous.optDouble("lat"));
+            data.put("lng", previous.optDouble("lng"));
+            data.put("location_at", previousAt);
+            data.put("location_age_ms", Math.max(0L, System.currentTimeMillis() - previousTime));
+            data.put("location_precision", previous.optString("location_precision", "precise"));
+            if (previous.has("accuracy")) data.put("accuracy", previous.optInt("accuracy"));
         }
-
-        addBattery(data);
-        addNetwork(data);
         return data;
     }
 
-    private void publish() throws Exception {
-        JSONObject data = snapshot();
-        SharedPreferences prefs = prefs(this);
-        prefs.edit()
-                .putString("last_data", data.toString())
-                .putString("last_at", data.optString("at"))
-                .apply();
-        updateNotification(data);
-        upsert(data, true);
+    private String publish() {
+        Config config = readConfig(this);
+        if (config == null) return "session";
+        if (prefs(this).getBoolean("battery_paused", false)) {
+            if (!prefs(this).getBoolean("battery_alert_delivered", false)) {
+                sendBatteryAlert(config, Math.max(0, batteryLevel));
+            }
+            return "battery-low";
+        }
+        JSONObject data = null;
+        String error;
+        String at = "";
+        try {
+            data = snapshot(config);
+            at = data.optString("at");
+            synchronized (CONFIG_LOCK) {
+                if (!canPublish(config)) return "";
+                prefs(this).edit().putString("last_data", data.toString())
+                        .putString("last_attempt_at", at).apply();
+            }
+            if (!data.optBoolean("online")) error = "offline";
+            // No sustituir una posición publicada por un envío que solo contiene batería.
+            else if (!data.has("location_at")) error = "waiting-location";
+            else error = upsert(data, config);
+        } catch (Exception err) {
+            Log.w(TAG, "No se pudo sincronizar el dispositivo", err);
+            error = "upload-failed";
+        }
+        synchronized (CONFIG_LOCK) {
+            if (!canPublish(config)) return "";
+            SharedPreferences.Editor edit = prefs(this).edit();
+            if (error.isEmpty()) edit.putString("last_sent_at", at).remove("last_error");
+            else edit.putString("last_error", error);
+            edit.apply();
+        }
+        JSONObject observed = data;
+        String result = error;
+        MAIN.post(() -> {
+            if (observed != null && canPublish(config)) updateNotification(observed, result);
+        });
+        return error;
     }
 
-    private JSONObject previousData(SharedPreferences prefs) {
-        try {
-            String raw = prefs.getString("last_data", "");
-            return raw.isEmpty() ? null : new JSONObject(raw);
-        } catch (Exception ignored) {
-            return null;
+    private boolean canPublish(Config config) {
+        synchronized (CONFIG_LOCK) {
+            return active == this && generation == config.generation() && hasLocationPermission(this);
         }
     }
 
-    /* ==========================================
-       ENVÍO A SUPABASE (misma fila que la web)
-       ========================================== */
+    private record Fix(Location location, boolean precise) {}
 
-    private void upsert(JSONObject data, boolean allowRefresh) throws Exception {
-        SharedPreferences prefs = prefs(this);
-        String base = prefs.getString("url", "");
-        String anon = prefs.getString("anonKey", "");
-        String token = prefs.getString("accessToken", "");
-        String userId = prefs.getString("user_id", "");
-        String coupleId = prefs.getString("couple_id", "");
-        if (base.isEmpty() || anon.isEmpty() || token.isEmpty() || userId.isEmpty()) return;
+    record Session(String accessToken, String refreshToken, long expiresAt) {}
 
+    record Config(String url, String apiOrigin, String anonKey, String userId, String coupleId, boolean isAdmin,
+                  String name, String avatar, Session session, long generation, JSONObject previous) {
+        boolean valid() {
+            return url.startsWith("https://") && !anonKey.isEmpty() && !userId.isEmpty()
+                    && !session.accessToken().isEmpty();
+        }
+    }
+
+    private static Config readConfig(Context context) {
+        synchronized (CONFIG_LOCK) {
+            SharedPreferences prefs = prefs(context);
+            if (!prefs.getBoolean("enabled", false)) return null;
+            JSONObject previous;
+            try {
+                previous = new JSONObject(prefs.getString("last_data", "{}"));
+            } catch (Exception ignored) {
+                previous = new JSONObject();
+            }
+            Config config = new Config(prefs.getString("url", ""), prefs.getString("apiOrigin", ""), prefs.getString("anonKey", ""),
+                    prefs.getString("user_id", ""), prefs.getString("couple_id", ""), prefs.getBoolean("is_admin", false),
+                    prefs.getString("name", ""), prefs.getString("avatar", ""), readSession(prefs), generation, previous);
+            return config.valid() ? config : null;
+        }
+    }
+
+    static Session readSession(SharedPreferences prefs) {
+        synchronized (CONFIG_LOCK) {
+            return new Session(prefs.getString("accessToken", ""), prefs.getString("refreshToken", ""),
+                    prefs.getLong("expiresAt", 0L));
+        }
+    }
+
+    private static void writeSession(SharedPreferences.Editor edit, Session session) {
+        edit.putString("accessToken", session.accessToken())
+                .putString("refreshToken", session.refreshToken())
+                .putLong("expiresAt", session.expiresAt());
+    }
+
+    private String upsert(JSONObject data, Config config) throws Exception {
         JSONObject row = new JSONObject();
         row.put("data", data);
         row.put("updated_at", data.optString("at"));
 
         String path;
-        if (!coupleId.isEmpty()) {
-            row.put("couple_id", coupleId);
-            row.put("user_id", userId);
-            row.put("location_at", data.optString("location_at", data.optString("at")));
+        if (!config.coupleId().isEmpty()) {
+            row.put("couple_id", config.coupleId());
+            row.put("user_id", config.userId());
+            row.put("location_at", data.getString("location_at"));
             row.put("sent_at", data.optString("at"));
             path = "/rest/v1/couple_locations?on_conflict=couple_id,user_id";
-        } else if (prefs.getBoolean("is_admin", false)) {
+        } else if (config.isAdmin()) {
             row.put("id", "location_admin");
             path = "/rest/v1/content?on_conflict=id";
         } else {
-            row.put("user_id", userId);
+            row.put("user_id", config.userId());
             row.put("type", "location");
             path = "/rest/v1/user_progress?on_conflict=user_id,type";
         }
 
-        int code = send("POST", base + path, anon, token, row.toString());
-        if (code == 401 && allowRefresh && refreshToken(base, anon)) {
-            upsert(data, false);
-            return;
+        int code = send(path, config, config.session().accessToken(), row);
+        if (code == 401) {
+            Session session = renewSession(config);
+            if (session == null) return "session";
+            code = send(path, config, session.accessToken(), row);
         }
-        if (code >= 300) Log.w(TAG, "Supabase respondió " + code);
+        if (code >= 200 && code < 300) return "";
+        Log.w(TAG, "Supabase respondió HTTP " + code);
+        return code == 401 || code == 403 ? "session" : "upload-failed";
     }
 
-    private int send(String method, String endpoint, String anon, String token, String body) throws Exception {
-        HttpURLConnection conn = (HttpURLConnection) new URL(endpoint).openConnection();
+    private HttpURLConnection open(String path, Config config) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(config.url() + path).openConnection();
+        conn.setRequestMethod("POST");
+        conn.setConnectTimeout(12_000);
+        conn.setReadTimeout(12_000);
+        conn.setInstanceFollowRedirects(false);
+        conn.setDoOutput(true);
+        conn.setRequestProperty("apikey", config.anonKey());
+        conn.setRequestProperty("Content-Type", "application/json");
+        return conn;
+    }
+
+    private int send(String path, Config config, String token, JSONObject data) throws Exception {
+        if (!canPublish(config)) return -1;
+        HttpURLConnection conn = open(path, config);
         try {
-            conn.setRequestMethod(method);
-            conn.setConnectTimeout(15000);
-            conn.setReadTimeout(15000);
-            conn.setDoOutput(true);
-            conn.setRequestProperty("apikey", anon);
             conn.setRequestProperty("Authorization", "Bearer " + token);
-            conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("Prefer", "resolution=merge-duplicates,return=minimal");
-            try (OutputStream out = conn.getOutputStream()) {
-                out.write(body.getBytes(StandardCharsets.UTF_8));
-            }
+            if (!canPublish(config)) return -1;
+            writeBody(conn, data);
             return conn.getResponseCode();
         } finally {
             conn.disconnect();
         }
     }
 
-    /** Renueva el token con el refresh token y lo guarda para los siguientes envíos. */
-    private boolean refreshToken(String base, String anon) {
+    private Session renewSession(Config config) throws Exception {
         SharedPreferences prefs = prefs(this);
-        String refresh = prefs.getString("refreshToken", "");
-        if (refresh.isEmpty()) return false;
+        Session current;
+        synchronized (CONFIG_LOCK) {
+            if (!canPublish(config)) return null;
+            current = readSession(prefs);
+            if (!current.accessToken().equals(config.session().accessToken())) return current;
+        }
+        if (current.refreshToken().isEmpty()) return null;
 
-        HttpURLConnection conn = null;
+        HttpURLConnection conn = open("/auth/v1/token?grant_type=refresh_token", config);
         try {
-            conn = (HttpURLConnection) new URL(base + "/auth/v1/token?grant_type=refresh_token").openConnection();
-            conn.setRequestMethod("POST");
-            conn.setConnectTimeout(15000);
-            conn.setReadTimeout(15000);
-            conn.setDoOutput(true);
-            conn.setRequestProperty("apikey", anon);
-            conn.setRequestProperty("Content-Type", "application/json");
-            try (OutputStream out = conn.getOutputStream()) {
-                JSONObject body = new JSONObject();
-                body.put("refresh_token", refresh);
-                out.write(body.toString().getBytes(StandardCharsets.UTF_8));
+            JSONObject body = new JSONObject().put("refresh_token", current.refreshToken());
+            if (!canPublish(config)) return null;
+            writeBody(conn, body);
+            int code = conn.getResponseCode();
+            if (code >= 500) throw new IOException("Renovación de sesión: HTTP " + code);
+
+            StringBuilder response = new StringBuilder();
+            if (code == 200) {
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) response.append(line);
+                }
             }
-            if (conn.getResponseCode() != 200) return false;
-
-            String raw = read(conn.getInputStream());
-            JSONObject json = new JSONObject(raw);
-            String access = json.optString("access_token", "");
-            String next = json.optString("refresh_token", refresh);
-            if (access.isEmpty()) return false;
-
-            int expiresIn = json.optInt("expires_in", 3600);
-            prefs.edit()
-                    .putString("accessToken", access)
-                    .putString("refreshToken", next)
-                    .putLong("expiresAt", System.currentTimeMillis() + expiresIn * 1000L)
-                    .apply();
-            return true;
-        } catch (Exception err) {
-            Log.w(TAG, "no se pudo renovar la sesión", err);
-            return false;
+            JSONObject json = code == 200 ? new JSONObject(response.toString()) : new JSONObject();
+            String access = json.optString("access_token");
+            synchronized (CONFIG_LOCK) {
+                if (!canPublish(config)) return null;
+                Session latest = readSession(prefs);
+                if (!latest.equals(current)) return latest;
+                if (access.isEmpty()) return null;
+                Session next = new Session(access, json.optString("refresh_token", current.refreshToken()),
+                        System.currentTimeMillis() + json.optInt("expires_in", 3600) * 1000L);
+                SharedPreferences.Editor edit = prefs.edit();
+                writeSession(edit, next);
+                edit.apply();
+                return next;
+            }
         } finally {
-            if (conn != null) conn.disconnect();
+            conn.disconnect();
         }
     }
 
-    private static String read(InputStream in) throws Exception {
-        StringBuilder out = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) out.append(line);
+    private static void writeBody(HttpURLConnection conn, JSONObject body) throws IOException {
+        try (OutputStream out = conn.getOutputStream()) {
+            out.write(body.toString().getBytes(StandardCharsets.UTF_8));
         }
-        return out.toString();
     }
-
-    /* ==========================================
-       AVISO FIJO
-       ========================================== */
 
     private void createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager == null) return;
         NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.notification_channel_status),
-                NotificationManager.IMPORTANCE_LOW);
+                CHANNEL_ID, getString(R.string.notification_channel_status), NotificationManager.IMPORTANCE_LOW);
         channel.setDescription(getString(R.string.notification_channel_status_desc));
         channel.setShowBadge(false);
         manager.createNotificationChannel(channel);
@@ -497,49 +822,55 @@ public class DeviceStatusService extends Service {
     private Notification buildNotification(String text) {
         Intent open = new Intent(this, MainActivity.class);
         open.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        Intent stop = new Intent(this, DeviceStatusService.class).setAction(ACTION_STOP);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, open, flags);
+        PendingIntent stopIntent = PendingIntent.getService(this, 1, stop, flags);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setContentTitle(getString(R.string.notification_status_title))
                 .setContentText(text)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setContentIntent(contentIntent)
+                .addAction(0, "Dejar de compartir", stopIntent)
                 .build();
     }
 
-    private void updateNotification(JSONObject data) {
-        try {
-            StringBuilder text = new StringBuilder();
-            if (data.has("battery")) {
-                text.append(data.optInt("battery")).append("%");
-                if (data.optBoolean("charging")) text.append(" · cargando");
-            }
-            String net = data.optString("net", "");
-            if (!net.isEmpty()) {
-                if (text.length() > 0) text.append(" · ");
-                text.append(net);
-            }
-            if (text.length() == 0) text.append("Compartiendo estado");
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.notify(NOTIFICATION_ID, buildNotification(text.toString()));
-            }
-        } catch (Exception ignored) {
-        }
+    private void updateNotification(JSONObject data, String error) {
+        String text = data.has("battery")
+                ? getString(R.string.notification_status_battery, data.optInt("battery"))
+                : getString(R.string.notification_status_title);
+        if (data.optBoolean("charging")) text += " · " + getString(R.string.notification_status_charging);
+        if ("offline".equals(error)) text += " · Sin conexión";
+        else if ("waiting-location".equals(error)) text += " · Buscando ubicación";
+        else if (!error.isEmpty()) text += " · Sin sincronizar";
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) manager.notify(NOTIFICATION_ID, buildNotification(text));
     }
 
-    private static String isoNow() {
-        return isoAt(System.currentTimeMillis());
+    private static SimpleDateFormat isoFormat() {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+        format.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        return format;
     }
 
     private static String isoAt(long timeMs) {
-        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
-        format.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-        return format.format(new Date(timeMs));
+        return isoFormat().format(new Date(timeMs));
+    }
+
+    private static long parseLocationTime(String value) {
+        if (value.isEmpty()) return 0L;
+        try {
+            Date at = isoFormat().parse(value);
+            return at == null ? 0L : at.getTime();
+        } catch (ParseException ignored) {
+            return 0L;
+        }
     }
 
     private static double round(double value) {

@@ -2,7 +2,7 @@
    search.data.js — índice de la búsqueda global
 
    La búsqueda no inventa módulos: solo indexa lo que ya existe.
-     · las tarjetas de los dos hubs (con su mundo)
+     · las 11 tarjetas de los dos hubs (con su mundo)
      · las rutas reales del registro, filtradas por rol
 
    Las tarjetas y las rutas comparten puerta: si una tarjeta ya lleva a una
@@ -70,19 +70,19 @@ export const SEARCH_CARDS = Object.freeze([
     id: 'calendario',
     label: 'Calendario',
     path: '/calendario',
-    keywords: 'regalos sorpresas dias especiales planes fechas compartido citas aniversarios',
-  },
-  {
-    id: 'sorpresas',
-    label: 'Mis sorpresas',
-    path: '/sorpresas',
-    keywords: 'regalos sorpresas ideas planificar privado',
+    keywords: 'regalos sorpresas dias especiales planes fechas compartido',
   },
   {
     id: 'maldia',
     label: 'Mal Día',
     path: '/maldia',
     keywords: 'abrazo triste mal dia frases consuelo',
+  },
+  {
+    id: 'sorpresas',
+    label: 'Mis sorpresas',
+    path: '/sorpresas',
+    keywords: 'regalos sorpresas planes detalles abrir',
   },
   {
     id: 'menstruacion',

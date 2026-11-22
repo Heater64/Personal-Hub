@@ -26,8 +26,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLIENT_FILES = [
-  path.join(root, 'personal-hub', 'src', 'services', 'notifications.service.js'),
-  path.join(root, 'personal-hub', 'public', 'sw.js')
+  path.join(root, 'tamp', 'src', 'services', 'notifications.service.js'),
+  path.join(root, 'tamp', 'public', 'sw.js')
 ];
 const ENV_FILE = path.join(root, '.env');
 

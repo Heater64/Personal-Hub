@@ -101,8 +101,8 @@ export function initRealtime() {
     // Canal de ánimos: el Admin la recibe cuando la usuaria guarda su ánimo.
     moodChannel = supabase
       .channel('ph-mood-sync')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'moods' }, (payload) => {
-        handleMoodChange(payload.new);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'moods' }, (payload) => {
+        handleMoodChange(payload.eventType === 'DELETE' ? payload.old : payload.new);
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' && !warned) {
@@ -233,6 +233,7 @@ export function onContentChange(ids, handler) {
  * desuscribirse (llamar en page.cleanup).
  */
 export function onMoodChange(handler) {
-  window.addEventListener('ph:mood-changed', handler);
-  return () => window.removeEventListener('ph:mood-changed', handler);
+  const wrapped = event => handler(event.detail);
+  window.addEventListener('ph:mood-changed', wrapped);
+  return () => window.removeEventListener('ph:mood-changed', wrapped);
 }

@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
@@ -44,72 +43,89 @@ public class DeviceStatusPlugin extends Plugin {
     @PluginMethod
     public void start(PluginCall call) {
         Context context = getContext();
-        SharedPreferences prefs = DeviceStatusService.prefs(context);
-
         Long expiresAt = call.getLong("expiresAt", 0L);
-        prefs.edit()
-                .putString("url", trimUrl(call.getString("url", "")))
-                .putString("anonKey", call.getString("anonKey", ""))
-                .putString("accessToken", call.getString("accessToken", ""))
-                .putString("refreshToken", call.getString("refreshToken", ""))
-                .putLong("expiresAt", expiresAt == null ? 0L : expiresAt)
-                .putString("user_id", call.getString("userId", ""))
-                .putString("couple_id", call.getString("coupleId", ""))
-                .putBoolean("is_admin", Boolean.TRUE.equals(call.getBoolean("isAdmin", false)))
-                .putString("name", call.getString("name", ""))
-                .putString("avatar", call.getString("avatar", ""))
-                .putBoolean("enabled", true)
-                .apply();
+        var session = new DeviceStatusService.Session(call.getString("accessToken", ""),
+                call.getString("refreshToken", ""), expiresAt == null ? 0L : expiresAt);
+        var config = new DeviceStatusService.Config(trimUrl(call.getString("url", "")),
+                call.getString("apiOrigin", ""),
+                call.getString("anonKey", ""), call.getString("userId", ""), call.getString("coupleId", ""),
+                Boolean.TRUE.equals(call.getBoolean("isAdmin", false)), call.getString("name", ""),
+                call.getString("avatar", ""), session, 0L, new JSONObject());
+        boolean resume = Boolean.TRUE.equals(call.getBoolean("resume", false));
 
-        DeviceStatusService.start(context);
-
-        JSObject out = new JSObject();
-        out.put("enabled", true);
-        call.resolve(out);
+        getBridge().executeOnMainThread(() -> {
+            if (!config.valid()) {
+                resolveStart(call, "session");
+                return;
+            }
+            if (!resume && !DeviceStatusService.isRunning()) {
+                String error = DeviceStatusService.startPrerequisite(context);
+                if (!error.isEmpty()) {
+                    resolveStart(call, error);
+                    return;
+                }
+            }
+            if (!DeviceStatusService.configure(context, config, resume)) {
+                resolveStart(call, "session");
+                return;
+            }
+            DeviceStatusService.start(context, () -> resolveStart(call, null));
+        });
     }
 
     @PluginMethod
     public void stop(PluginCall call) {
-        Context context = getContext();
-        // Se borra también la sesión guardada: al cerrar sesión (o apagar el
-        // seguimiento) el servicio no debe poder resucitarla al arrancar.
-        DeviceStatusService.prefs(context)
-                .edit()
-                .putBoolean("enabled", false)
-                .remove("accessToken")
-                .remove("refreshToken")
-                .remove("expiresAt")
-                .remove("user_id")
-                .remove("couple_id")
-                .remove("is_admin")
-                .apply();
-        DeviceStatusService.stop(context);
-        call.resolve();
+        getBridge().executeOnMainThread(() -> {
+            DeviceStatusService.stop(getContext());
+            call.resolve();
+        });
     }
 
     @PluginMethod
     public void status(PluginCall call) {
+        getBridge().executeOnMainThread(() -> call.resolve(readStatus()));
+    }
+
+    private void resolveStart(PluginCall call, String error) {
+        JSObject out = trackingState(getContext());
+        if (error != null) out.put("lastError", error);
+        call.resolve(out);
+    }
+
+    private JSObject trackingState(Context context) {
+        SharedPreferences prefs = DeviceStatusService.prefs(context);
+        JSObject out = new JSObject();
+        out.put("enabled", prefs.getBoolean("enabled", false));
+        out.put("running", DeviceStatusService.isRunning());
+        out.put("lastError", prefs.getString("last_error", ""));
+        return out;
+    }
+
+    private JSObject readStatus() {
         Context context = getContext();
         SharedPreferences prefs = DeviceStatusService.prefs(context);
 
-        JSObject out = new JSObject();
-        out.put("enabled", prefs.getBoolean("enabled", false));
-        out.put("running", prefs.getBoolean("running", false));
-        out.put("lastError", prefs.getString("last_error", ""));
-        out.put("location", permissionState(context, Manifest.permission.ACCESS_FINE_LOCATION));
+        JSObject out = trackingState(context);
+        boolean locationGranted = DeviceStatusService.hasLocationPermission(context);
+        out.put("location", locationGranted ? "granted" : "denied");
+        out.put("locationPrecision", DeviceStatusService.hasPreciseLocationPermission(context) ? "precise"
+                : locationGranted ? "approximate" : "none");
         out.put("background", backgroundPermissionState(context));
         out.put("locationServices", locationServicesState(context));
         out.put("notifications", notificationPermissionState(context));
         out.put("batteryUnrestricted", batteryUnrestricted(context));
-        out.put("lastAt", prefs.getString("last_at", ""));
+        out.put("lastAt", prefs.getString("last_sent_at", ""));
+        out.put("lastAttemptAt", prefs.getString("last_attempt_at", ""));
+        out.put("facts", DeviceStatusService.deviceFacts(context));
 
         // La sesión que usa el servicio. El servicio renueva el token cuando
         // caduca y la web adopta el más reciente al abrir: así las dos partes
         // comparten un refresh token válido en vez de pisarse.
+        var savedSession = DeviceStatusService.readSession(prefs);
         JSObject session = new JSObject();
-        session.put("accessToken", prefs.getString("accessToken", ""));
-        session.put("refreshToken", prefs.getString("refreshToken", ""));
-        session.put("expiresAt", prefs.getLong("expiresAt", 0L));
+        session.put("accessToken", savedSession.accessToken());
+        session.put("refreshToken", savedSession.refreshToken());
+        session.put("expiresAt", savedSession.expiresAt());
         session.put("userId", prefs.getString("user_id", ""));
         out.put("session", session);
 
@@ -120,7 +136,7 @@ public class DeviceStatusPlugin extends Plugin {
             out.put("data", new JSONObject());
         }
 
-        call.resolve(out);
+        return out;
     }
 
     /**
@@ -185,12 +201,7 @@ public class DeviceStatusPlugin extends Plugin {
     }
 
     private String locationServicesState(Context context) {
-        try {
-            LocationManager manager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
-            return manager != null && manager.isLocationEnabled() ? "enabled" : "disabled";
-        } catch (Exception ignored) {
-            return "unknown";
-        }
+        return DeviceStatusService.locationServicesState(context);
     }
 
     private boolean batteryUnrestricted(Context context) {

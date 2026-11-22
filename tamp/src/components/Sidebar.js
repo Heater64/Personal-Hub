@@ -64,9 +64,9 @@ export function Sidebar(router) {
     aside.innerHTML = `
       <div>
         <div class="brand">
-          <img class="brand-mark" src="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png" alt="Tamp">
+          <img class="brand-mark" src="https://res.cloudinary.com/dcsent4fs/image/upload/v1783958827/imagen_192x192_cqgclt.png" alt="Personal Hub">
           <div>
-            <h1>Tamp</h1>
+            <h1>Personal Hub</h1>
             <p>Todo lo bonito, en un sitio</p>
           </div>
         </div>

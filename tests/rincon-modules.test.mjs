@@ -28,8 +28,8 @@ globalThis.Audio = class {
 
 // Raiz del repo: este script vive en .split-tmp/, asi que subimos un nivel.
 const ROOT = pathResolve(pathDirname(fileURLToPath(import.meta.url)), '..');
-const R = 'personal-hub/src/pages/rincon/';
-const RINCON = 'personal-hub/src/pages/Rincon.js';
+const R = 'tamp/src/pages/rincon/';
+const RINCON = 'tamp/src/pages/Rincon.js';
 
 let failed = 0;
 function check(name, fn) {

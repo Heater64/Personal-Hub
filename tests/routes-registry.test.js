@@ -18,7 +18,7 @@ import {
   routeFor, roleFor, homePathFor, isVisibleTo, isChromeHidden,
   isMobileRoot, mobileTopbarMeta, mobileBackTarget, sectionFor,
   bottomNavItems, sidebarItems, sidebarGroupFor, navEntry, labelForPath
-} from '../personal-hub/src/routes.js';
+} from '../tamp/src/routes.js';
 
 // Todas las rutas que puede visitar alguien, con las query que se usan.
 const PATHS = [
@@ -136,15 +136,15 @@ test('el registro reconoce rutas con segmento dinámico y su query', () => {
 // LA USUARIA NO NOTA EL CAMBIO
 // ==========================================
 
-test('la barra inferior de la usuaria es exactamente la de antes', () => {
+test('ambos roles tienen la misma barra inferior de cuatro secciones', () => {
   assert.deepEqual(bottomNavItems(ROLE_USER), BOTTOM_ANTES);
+  assert.deepEqual(bottomNavItems(ROLE_ADMIN), BOTTOM_ANTES);
 });
 
 test('el menú lateral de la usuaria es exactamente el de antes', () => {
   const sidebarForUser = sidebarItems(ROLE_USER);
   assert.deepEqual(sidebarForUser, SIDEBAR_ANTES);
-  // El admin ahora sí tiene Inicio en PC; en móvil no hay sidebar,
-  // así que esa entrada no participa (ver routes.js).
+  // Ambos roles comparten Inicio y las secciones principales.
   assert.ok(sidebarItems(ROLE_ADMIN).some(i => i.href === '/'), 'el admin tiene Inicio en PC');
   assert.deepEqual(sidebarItems(ROLE_ADMIN).filter(i => i.href !== '/'), SIDEBAR_ANTES.filter(i => i.id !== 'home'), 'el resto del menú lateral del admin es igual al de la usuaria');
   assert.deepEqual(navEntry('/admin'), { href: '/admin', label: 'Peluche', icon: 'gear' });
@@ -192,17 +192,17 @@ test('raíces móviles, barra de vuelta y destino de Atrás siguen igual para la
   // casa, así que el Atrás de una página suya vuelve al panel y no a Inicio.
   assert.equal(isMobileRoot('/admin', ROLE_ADMIN), true);
   assert.equal(mobileBackTarget('/galeria', ROLE_ADMIN), '/rincon');
-  assert.equal(mobileBackTarget('/no-existe', ROLE_ADMIN), '/admin');
+  assert.equal(mobileBackTarget('/no-existe', ROLE_ADMIN), '/');
   assert.equal(mobileBackTarget('/no-existe', ROLE_USER), '/');
 });
 
-test('la pestaña activa sigue siendo la de antes (salvo la del admin, que ahora es suya)', () => {
+test('la pestaña activa corresponde a una de las cuatro secciones compartidas', () => {
   for (const path of PATHS) {
     const esperado = seccionActivaAntes(path);
-    if (baseOf(path) === '/admin') continue; // el admin ya marca «Admin», no «Perfil»
+    if (baseOf(path) === '/admin') continue; // Admin se abre desde Perfil.
     assert.equal(sectionFor(path), esperado ?? null, `pestaña activa de ${path}`);
   }
-  assert.equal(sectionFor('/admin'), 'admin');
+  assert.equal(sectionFor('/admin'), 'perfil');
 });
 
 test('sin navegación y etiquetas de sección siguen resolviéndose igual', () => {
@@ -224,7 +224,7 @@ test('sin navegación y etiquetas de sección siguen resolviéndose igual', () =
 // PERO LA TIENE EXPUESTA EN EL MENÚ LATERAL DE ESCRITORIO (PC)
 // ==========================================
 
-test('el admin no usa la pantalla diaria como flujo por defecto, pero la tiene en PC', () => {
+test('el admin comparte Inicio y la navegación principal, con Admin aparte', () => {
   const inicio = routeFor('/');
   assert.deepEqual(inicio.roles, [ROLE_USER, ROLE_ADMIN], 'la pantalla diaria es de ambos roles');
   assert.equal(isVisibleTo('/', ROLE_ADMIN), true, 'el admin puede ver Inicio');
@@ -235,20 +235,16 @@ test('el admin no usa la pantalla diaria como flujo por defecto, pero la tiene e
   assert.equal(routeFor('/admin').skipMood, true);
   assert.equal(routeFor('/admin').adminOnly, true);
 
-  // El admin ahora tiene Inicio tanto en la barra inferior de móvil
-  // como en el menú lateral de PC (ver routes.js: `/` tiene
-  // `roles: [ROLE_USER, ROLE_ADMIN]`).
+  // El admin usa las mismas cuatro pestañas y abre su panel desde Perfil.
   assert.ok(bottomNavItems(ROLE_ADMIN).some(i => i.id === 'home'), 'el admin tiene Inicio en la barra inferior de móvil');
   assert.ok(bottomNavItems(ROLE_ADMIN).some(i => i.href === '/'), 'el admin tiene Inicio en la barra inferior de móvil');
   assert.ok(sidebarItems(ROLE_ADMIN).some(i => i.href === '/'), 'el admin tiene Inicio en el menú lateral de PC');
 
-  // Su casa es la gestión de eventos del panel, pero ahora la barra inferior
-  // del admin empieza con Inicio (la pantalla diaria es de ambos roles).
-  assert.equal(homePathFor(ROLE_ADMIN), '/admin', 'su casa sigue siendo el panel');
+  assert.equal(homePathFor(ROLE_ADMIN), '/', 'el admin entra en Inicio');
   assert.equal(homePathFor(ROLE_USER), '/');
-  assert.equal(bottomNavItems(ROLE_ADMIN)[0].href, '/', 'la primera pestaña del admin ahora es Inicio');
-  assert.equal(bottomNavItems(ROLE_ADMIN).length, 5, 'la barra del admin ahora tiene 5 pestañas');
-  assert.deepEqual(bottomNavItems(ROLE_ADMIN).map(i => i.id), ['home', 'admin', 'rincon', 'sentimientos', 'perfil']);
+  assert.deepEqual(bottomNavItems(ROLE_ADMIN), BOTTOM_ANTES);
+  assert.equal(routeFor('/admin').bottomNav, undefined, 'Admin no es una pestaña principal');
+  assert.equal(sectionFor('/admin'), 'perfil', 'Admin se abre desde Perfil');
 
   // Y el panel abre en el editor de fechas y eventos, no en el resumen.
   assert.equal(routeFor('/admin').mobileRoot, true, 'el panel es raíz: no lleva flecha de vuelta');

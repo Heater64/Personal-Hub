@@ -144,6 +144,10 @@ final class CountdownSelection {
         editor.apply();
     }
 
+    static void clearAll(Context context) {
+        prefs(context).edit().clear().apply();
+    }
+
     private static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }

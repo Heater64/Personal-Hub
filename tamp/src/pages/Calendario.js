@@ -18,8 +18,7 @@ import {
 import { createLightbox, openLightbox, buildVideoPlayer } from '../components/MediaLightbox.js';
 import { renderPageHeader } from '../components/PageHeader.js';
 import { skeletonCardsHTML, skeletonHTML } from '../components/states.js';
-import { loadGiftsCatalog, invalidateGiftsCache, todayCalendarGifts } from '../services/gifts.service.js';
-import { saveGiftsWidget } from '../services/widgets.service.js';
+import { loadGiftsCatalog, invalidateGiftsCache } from '../services/gifts.service.js';
 import { db } from '../services/db.service.js';
 import { userStore } from '../stores/user.store.js';
 import { onContentChange } from '../services/realtime.service.js';
@@ -42,9 +41,11 @@ const WEEKDAYS_SHORT = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const WEEKDAYS_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-// La pantalla tiene una única navegación: el día actual es la vista inicial
-// y el mes completo se abre dentro del mismo lugar, bajo demanda.
-const CALENDAR_VIEW = { DAY: 'day', MONTH: 'month' };
+const CALENDAR_VIEWS = [
+  { id: 'month', label: 'Mes' },
+  { id: 'week', label: 'Semana' }
+];
+const CALENDAR_VIEW = { MONTH: 'month', WEEK: 'week' };
 
 /** Icono y etiqueta de cada tipo de experiencia. */
 const TYPE_META = {
@@ -398,7 +399,7 @@ export function CalendarioPage(router) {
   const requestedDay = /^\d{4}-\d{2}-\d{2}$/.test(query.day || '') ? query.day : todayISO();
   const requestedGiftId = typeof query.gift === 'string' && /^[\w-]{1,120}$/.test(query.gift) ? query.gift : '';
   const selectedDay = { value: requestedDay };
-  const view = { monthKey: monthKeyOf(requestedDay), mode: CALENDAR_VIEW.DAY };
+  const view = { monthKey: monthKeyOf(requestedDay), mode: CALENDAR_VIEW.MONTH };
   let requestedGiftOpened = false;
   let pageActive = true;
 
@@ -425,7 +426,6 @@ export function CalendarioPage(router) {
         <button type="button" class="icon-btn" id="calAnswersBtn" aria-label="${pendientes ? `Tus respuestas · ${pendientes} sin contestar` : 'Tus respuestas'}" title="Tus respuestas">
           ${icon('mail', 19)}${pendientes ? `<span class="icon-btn__badge">${pendientes}</span>` : ''}
         </button>
-        ${requestedGiftId ? `<button type="button" class="btn btn--sm" id="calBackToShared">Volver al calendario</button>` : ''}
         ${userStore.isAdmin ? `<button type="button" class="icon-btn" id="calDevBtn" aria-label="Modo revisión" title="Modo revisión">${icon('gear', 19)}</button>` : ''}
       `,
     });
@@ -447,13 +447,6 @@ export function CalendarioPage(router) {
     if (!host) return;
 
     stopSpotRotation();
-
-    // Esta ruta solo se usa como soporte para abrir un regalo concreto desde
-    // el calendario compartido. No muestres aquí el estado de otro día.
-    if (requestedGiftId) {
-      host.replaceChildren();
-      return;
-    }
 
     if (!catalog && catalogPending) {
       host.innerHTML = skeletonCardsHTML({ count: 1, label: 'Cargando el regalo de hoy' });
@@ -505,7 +498,7 @@ export function CalendarioPage(router) {
         <button type="button" class="cal-spot__hit" data-gift="${escapeHtml(giftId)}" aria-label="${escapeHtml(`Abrir ${gift.title || meta.label}`)}"></button>
         ${art}
         <div class="cal-spot__body">
-          <span class="cal-spot__when">${dateStr === today ? 'Hoy' : escapeHtml(countdownText(dateStr))}</span>
+          <span class="cal-spot__when">${escapeHtml(countdownText(dateStr))}</span>
           <b class="cal-spot__title">${escapeHtml(gift.title || meta.label)}</b>
           <span class="cal-spot__type">${escapeHtml(meta.label)}${ids.length > 1 ? ` · ${spotRot.index + 1} de ${ids.length}` : ''}</span>
           ${dots}
@@ -543,48 +536,7 @@ export function CalendarioPage(router) {
       return;
     }
 
-    // En la vista diaria solo mostramos el resumen del mes y el botón para
-    // abrir la cuadrícula. La cuadrícula ocupa este mismo contenedor.
-    if (view.mode === CALENDAR_VIEW.DAY) {
-      const monthKey = monthKeyOf(selectedDay.value);
-      const [summaryYear, summaryMonth] = monthKey.split('-').map(Number);
-      let summaryPlans = 0;
-      let summaryDays = 0;
-      for (let day = 1; day <= daysInMonth(summaryYear, summaryMonth); day++) {
-        const ids = dayIds(`${summaryYear}-${pad(summaryMonth)}-${pad(day)}`);
-        if (!ids.length) continue;
-        summaryDays++;
-        summaryPlans += ids.length;
-      }
-      host.innerHTML = `
-        <section class="cal-month-summary" aria-labelledby="calMonthTitle">
-          <div class="cal-month-summary__heading">
-            <div>
-              <h1 id="calMonthTitle">${escapeHtml(monthLabel(monthKey))}</h1>
-              <p>${summaryPlans} ${summaryPlans === 1 ? 'regalo' : 'regalos'} este mes.</p>
-            </div>
-            <span class="cal-month-summary__icon" aria-hidden="true">${icon('calendar', 24)}</span>
-          </div>
-          <div class="cal-month-summary__stats">
-            <div><b>${summaryPlans}</b><span>${summaryPlans === 1 ? 'regalo' : 'regalos'}</span></div>
-            <div><b>${summaryDays}</b><span>${summaryDays === 1 ? 'día con regalo' : 'días con regalo'}</span></div>
-          </div>
-          <button type="button" class="cal-month-summary__button" data-calendar-view="month">
-            <span>${icon('calendar', 17)} Calendario</span>
-            <span>Ver todo el mes ${icon('chev', 16)}</span>
-          </button>
-        </section>
-      `;
-      page.querySelector('#calDay')?.removeAttribute('hidden');
-      host.querySelector('[data-calendar-view]')?.addEventListener('click', () => {
-        view.mode = CALENDAR_VIEW.MONTH;
-        paintMonth();
-        paintDay();
-      });
-      return;
-    }
-
-    page.querySelector('#calDay')?.setAttribute('hidden', '');
+    page.querySelector('#calDay')?.removeAttribute('hidden');
 
     // Meses reales, no solo los que tienen regalos: un mes vacío también se
     // pinta (con sus días) y se puede recorrer con las flechas.
@@ -606,8 +558,15 @@ export function CalendarioPage(router) {
     const firstCell = new Date(year, month - 1, 1);
     let cellCount;
 
-    firstCell.setDate(1 - offset);
-    cellCount = Math.ceil((offset + total) / 7) * 7;
+    if (view.mode === CALENDAR_VIEW.WEEK) {
+      const selectedDate = new Date(selectedParts[0], selectedParts[1] - 1, selectedParts[2]);
+      firstCell.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      firstCell.setDate(firstCell.getDate() - mondayIndex(selectedParts[0], selectedParts[1], selectedParts[2]));
+      cellCount = 7;
+    } else {
+      firstCell.setDate(1 - offset);
+      cellCount = Math.ceil((offset + total) / 7) * 7;
+    }
 
     // Progreso mensual por día con regalos y progreso global por regalo.
     let monthTotal = 0;
@@ -631,7 +590,7 @@ export function CalendarioPage(router) {
       const day = date.getDate();
       const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(day)}`;
       const inMonth = date.getFullYear() === year && date.getMonth() === month - 1;
-      const adjacent = !inMonth;
+      const adjacent = view.mode === CALENDAR_VIEW.MONTH && !inMonth;
       // Un mes enseña las fechas de relleno sin revelar regalos del mes
       // siguiente; la vista semanal sí muestra su contenido completo.
       const ids = adjacent ? [] : dayIds(dateStr);
@@ -681,11 +640,13 @@ export function CalendarioPage(router) {
           </div>
           <div class="cal-head__controls">
             <div class="cal-nav" role="group" aria-label="Navegar por el calendario">
-              <button type="button" class="icon-btn" data-period="-1" aria-label="Mes anterior">${icon('back', 18)}</button>
+              <button type="button" class="icon-btn" data-period="-1" aria-label="${view.mode === CALENDAR_VIEW.MONTH ? 'Mes anterior' : 'Semana anterior'}">${icon('back', 18)}</button>
               <button type="button" class="cal-today-btn" data-today>Hoy</button>
-              <button type="button" class="icon-btn" data-period="1" aria-label="Mes siguiente">${icon('chev', 18)}</button>
+              <button type="button" class="icon-btn" data-period="1" aria-label="${view.mode === CALENDAR_VIEW.MONTH ? 'Mes siguiente' : 'Semana siguiente'}">${icon('chev', 18)}</button>
             </div>
-            <button type="button" class="cal-back-day-btn" data-calendar-view="day">${icon('back', 15)} Ver hoy</button>
+            <div class="cal-view-tabs" role="group" aria-label="Vista del calendario">
+              ${CALENDAR_VIEWS.map(({ id, label: viewLabel }) => `<button type="button" class="cal-view-btn${view.mode === id ? ' is-active' : ''}" data-calendar-view="${id}" aria-pressed="${view.mode === id}">${viewLabel}</button>`).join('')}
+            </div>
           </div>
         </header>
         <div class="cal-weekdays" aria-label="Días de la semana">
@@ -713,11 +674,10 @@ export function CalendarioPage(router) {
     host.querySelectorAll('[data-calendar-view]').forEach(button => {
       button.addEventListener('click', () => {
         const nextMode = button.dataset.calendarView;
-        // «Ver hoy» del calendario vuelve al día de hoy, no al día que
-        // estuviera seleccionado del mes que se estaba mirando.
-        if (nextMode === CALENDAR_VIEW.DAY) {
-          selectCalendarDate(todayISO());
-          return;
+        if (nextMode === CALENDAR_VIEW.WEEK && monthKeyOf(selectedDay.value) !== view.monthKey) {
+          const [year, month] = view.monthKey.split('-').map(Number);
+          const day = Number(selectedDay.value.slice(-2));
+          selectedDay.value = `${view.monthKey}-${pad(Math.min(day, daysInMonth(year, month)))}`;
         }
         view.mode = nextMode;
         paintMonth();
@@ -729,7 +689,6 @@ export function CalendarioPage(router) {
   function selectCalendarDate(dateStr) {
     selectedDay.value = dateStr;
     view.monthKey = monthKeyOf(dateStr);
-    view.mode = CALENDAR_VIEW.DAY;
     paintMonth();
     paintDay();
     page.querySelector('#calDay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -790,8 +749,8 @@ export function CalendarioPage(router) {
 
     if (!ids.length) {
       host.innerHTML = `
-        <div class="cal-day-heading">
-          <div><h2>${isToday ? 'Hoy' : escapeHtml(prettyDate(dateStr))}</h2><p>Regalos programados</p></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-12);">
+          <p class="section-title" style="margin:0;">${escapeHtml(prettyDate(dateStr))}</p>
           ${userStore.isAdmin ? `<button type="button" class="cal-admin-btn" id="calInSituAddDayBtn">${icon('plus', 14)} <span>Añadir regalo</span></button>` : ''}
         </div>
         ${emptyState('gift', 'Ese día no tiene regalo', isToday ? 'Hoy no hay nada programado.' : 'Este día todavía no tiene nada asignado.', isToday ? 'Ver el primer regalo' : 'Ir al siguiente', () => {
@@ -814,7 +773,7 @@ export function CalendarioPage(router) {
     if (state === 'locked') {
       const unlock = giftOf(ids[0])?.unlock?.value;
       host.innerHTML = `
-        <div class="cal-day-heading"><div><h2>${isToday ? 'Hoy' : escapeHtml(prettyDate(dateStr))}</h2><p>Regalos programados</p></div></div>
+        <p class="section-title">${escapeHtml(prettyDate(dateStr))}</p>
         <div class="cal-locked">
           <span class="e-ic">${icon('lock', 22)}</span>
           <b>Todavía no</b>
@@ -837,9 +796,10 @@ export function CalendarioPage(router) {
       : '';
 
     host.innerHTML = `
-      <div class="cal-day-heading">
-        <div><h2>${isToday ? 'Hoy' : escapeHtml(prettyDate(dateStr))}</h2><p>${ids.length === 1 ? '1 regalo' : `${ids.length} regalos`}</p></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-12);">
+        <p class="section-title" style="margin:0;">${escapeHtml(prettyDate(dateStr))}
           <span class="section-title__aside">${abiertos === ids.length ? 'Todo abierto ✓' : `${abiertos} de ${ids.length}`}</span>
+        </p>
         ${adminDayHeaderBtn}
       </div>
       ${abiertos > 0 ? `<div class="cal-dayprogress${abiertos === ids.length ? ' is-done' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${ids.length}" aria-valuenow="${abiertos}">
@@ -1266,14 +1226,6 @@ export function CalendarioPage(router) {
           if (media.currentTime) media.currentTime = 0;
         } catch { /* ya sin recurso */ }
       });
-      // Los enlaces del calendario compartido abren esta vista histórica con
-      // un deep-link. Al cerrar el regalo hay que volver al calendario único;
-      // quedarse en la vista antigua daba la sensación de que la pantalla se
-      // había quedado bloqueada.
-      if (requestedGiftId && router) {
-        // Reemplazar la entrada evita que Atrás vuelva a abrir el regalo.
-        queueMicrotask(() => router.replace('/calendario'));
-      }
     };
 
     const overlay = openSheet(gift.title || metaOf(gift.type).label, () => {
@@ -1440,7 +1392,6 @@ export function CalendarioPage(router) {
     if (!progressMap[giftId]?.opened) {
       progressMap[giftId] = { opened: true, openedAt: new Date().toISOString() };
       saveProgress();
-      void saveGiftsWidget(todayCalendarGifts());
     }
     paintAll();
   }
@@ -2092,10 +2043,6 @@ export function CalendarioPage(router) {
   page.addEventListener('click', (event) => {
     if (event.target.closest('#calSearchBtn')) openSearch();
     else if (event.target.closest('#calAnswersBtn')) openMyAnswers();
-    else if (event.target.closest('#calBackToShared')) {
-      closeSheets();
-      router.replace('/calendario');
-    }
     else if (event.target.closest('#calDevBtn')) openDevSheet();
   });
 
@@ -2138,7 +2085,6 @@ export function CalendarioPage(router) {
       catalog = data; resetAnnouncement();
       catalog.giftsById = catalog.giftsById || {};
       (catalog.gifts || []).forEach(gift => { if (gift.id) catalog.giftsById[gift.id] = gift; });
-      void saveGiftsWidget(todayCalendarGifts());
       if (!dayIds(requestedDay).length || !catalog.months?.[monthKeyOf(requestedDay)]) {
         selectedDay.value = todayISO();
         view.monthKey = monthKeyOf(selectedDay.value);
@@ -2172,7 +2118,6 @@ export function CalendarioPage(router) {
         resetAnnouncement();
         catalog.giftsById = catalog.giftsById || {};
         (catalog.gifts || []).forEach(gift => { if (gift.id) catalog.giftsById[gift.id] = gift; });
-        void saveGiftsWidget(todayCalendarGifts());
         // Si el día seleccionado sigue vacío tras el guardado (p. ej. se
         // añadió contenido a otro día), saltamos al primero con contenido.
         if (!dayIds(selectedDay.value).length) {

@@ -124,7 +124,7 @@ export function reasonOfDay(list, today = toISO(new Date())) {
   if (!items.length) return null;
   const digits = today.replace(/\D/g, '').split('').reduce((sum, d) => sum + Number(d), 0);
   const dayOfYear = Math.floor(
-    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${today.slice(0, 4)}-01-01T00:00:00Z`)) / 86400000
+    (new Date(`${today}T12:00:00`) - new Date(`${today.slice(0, 4)}-01-01T12:00:00`)) / 86400000
   );
   const index = (digits + dayOfYear) % items.length;
   return { item: items[index], index, date: today };

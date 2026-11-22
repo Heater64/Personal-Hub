@@ -862,7 +862,7 @@ export function notifyAdminOfCycle(kind = 'cycle_period') {
  */
 export async function sendTestNotification() {
   return showDailyNotification(
-    '🔔 Tamp',
+    '🔔 Personal Hub',
     'Las notificaciones funcionan correctamente ✨',
     '/',
     { tag: 'notif-test', ignoreQuiet: true }

@@ -46,6 +46,10 @@ Los archivos **dependen entre sí** — ejecútalos en orden numérico.
 | **027** | `027_ciclo_menstrual.sql` | **Seguimiento menstrual: `cycle_settings`, `cycle_periods`, `cycle_daily_logs`, `cycle_sharing` + vista de pareja filtrada por campo** | 🔴 seguridad / tablas nuevas |
 | 028 | `028_avisos_ciclo.sql` | Interruptor `admin_cycle`: avisos del ciclo hacia el admin (menstruación, día con síntomas, permiso de compartir) | añade columna |
 | 031 | `031_pareja_portada.sql` | Fotos compartidas de «días juntos»: columna `data` en `couples` y permiso de actualización para la pareja | añade columna + policy |
+| 033 | `033_datos_compartidos_de_pareja.sql` | Lectura compartida de ánimos y ciclo, conservando escritura y borrado propios y limitando la lectura a dos perfiles activos | funciones + policies; requiere prueba con ambas cuentas |
+| **034** | `034_agenda_tamp.sql` | **Calendario compartido, sorpresas privadas y registro de Mal Día en `tamp_entries`: RLS por pareja y sorpresas visibles solo para su autor** | 🔴 privacidad / tabla nueva |
+| 035 | `035_sorpresas_regalos.sql` | Presupuesto, enlace de compra y foto en las sorpresas: tres columnas, sus GRANT y un CHECK que las limita a `kind='surprise'` | añade columnas |
+| **036** | `036_tamp_media.sql` | Metadatos de archivos de Tamp y RLS por pareja; los binarios se entregan desde Cloudinary autenticado | tabla nueva |
 
 ---
 
@@ -115,6 +119,23 @@ aplicados) y subir solo lo nuevo:
    igual (el servidor entrega cuando no encuentra la preferencia), pero el
    admin no puede apagarlos; con ella los enciende y apaga desde Perfil →
    Notificaciones, como el resto de avisos suyos.
+11. `034_agenda_tamp.sql` — crea `tamp_entries`, la tabla de los tres módulos
+   nuevos de Sentimientos en `tamp/`: calendario compartido (`kind='event'`),
+   sorpresas y regalos privados (`kind='surprise'`) y registro de Mal Día
+   (`kind='feeling'`). No toca datos existentes y es idempotente. La
+   privacidad no depende de la interfaz: la política de lectura devuelve las
+   sorpresas **solo a su autor** y el resto a la pareja; los eventos solo los
+   crea y edita el admin, y la papelera de 30 días también se filtra en SQL.
+   Las pantallas `/agenda`, `/sorpresas` y `/maldia` de `tamp/` no funcionan
+   hasta aplicarla.
+12. `035_sorpresas_regalos.sql` — añade `price`, `link` y `photo` a
+   `tamp_entries` para el presupuesto, el enlace de compra y la foto de una
+   sorpresa. La foto se guarda en la propia fila (data URL redimensionada),
+   no en un bucket: así la privacidad de la sorpresa sigue dependiendo solo
+   de la RLS de 034. No crea ni cambia políticas, no toca datos y es
+   idempotente. **Sin ella la pantalla funciona igual**: detecta que las
+   columnas no existen y esconde esos tres campos en la ficha. Con ella, el
+   `CHECK` impide que un evento compartido o un registro de Mal Día los use.
 
 ### Orden recomendado para producción
 
@@ -180,9 +201,38 @@ SELECT p.proname,
                      'protect_user_metadata', 'sync_profile_from_auth',
                      'prune_game_history', 'backfill_inviter_avatars')
  ORDER BY p.proname;  -- todas deben salir en false
+
+-- 034: la tabla existe, tiene RLS y conserva el aislamiento por pareja
+SELECT relname, relrowsecurity FROM pg_class WHERE relname = 'tamp_entries';
+SELECT policyname, cmd FROM pg_policies
+ WHERE tablename = 'tamp_entries' ORDER BY policyname;
+
+-- 034: las sorpresas no se filtran entre los dos miembros
+-- (entrar con la otra cuenta debe devolver 0 aquí y en la pantalla)
+SELECT count(*) FROM public.tamp_entries WHERE kind = 'surprise';
+
+-- 035: las tres columnas existen, con sus GRANT por columna
+SELECT column_name FROM information_schema.columns
+ WHERE table_schema = 'public' AND table_name = 'tamp_entries'
+   AND column_name IN ('price', 'link', 'photo')
+ ORDER BY column_name;  -- deben salir las tres
+SELECT privilege_type, column_name FROM information_schema.column_privileges
+ WHERE table_name = 'tamp_entries' AND grantee = 'authenticated'
+   AND column_name IN ('price', 'link', 'photo')
+ ORDER BY column_name, privilege_type;  -- INSERT y UPDATE en cada una
 ```
 
 ---
+
+## Comprobación adicional de Tamp
+
+```sql
+SELECT relname, relrowsecurity FROM pg_class WHERE relname IN ('tamp_entries', 'tamp_media');
+SELECT policyname, tablename, cmd FROM pg_policies
+ WHERE tablename IN ('tamp_entries', 'tamp_media') ORDER BY tablename, policyname;
+```
+
+`tamp_media` guarda los permisos y metadatos. Los binarios se suben mediante `api/tamp-media.js` con entrega autenticada de Cloudinary y enlaces de corta duración.
 
 ## Cómo usar
 
@@ -206,6 +256,7 @@ SELECT p.proname,
 | Suscripciones push | `push_subscriptions` | Antes en `content` (legible por cualquier autenticado) |
 | Recordatorios programados | `push_reminders` | Los escribe la API con `service_role`; el cliente solo lee (y solo el admin) |
 | Preferencias de avisos | `notification_prefs` | Por persona y atada a `auth.uid()`; el envío del servidor las lee antes de mandar. Las columnas `admin_*` (024) gobiernan lo que recibe él |
+| Calendario compartido, sorpresas y Mal Día | `tamp_entries` | Una fila por registro, con `kind` y autor; la RLS limita a la pareja y deja las sorpresas solo para su autor |
 
 ---
 

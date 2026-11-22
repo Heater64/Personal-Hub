@@ -67,7 +67,7 @@ class ThemeService {
 
     this.modo = ['auto', 'dark', 'light'].includes(storedModo)
       ? storedModo
-      : (fromLegacy?.modo || 'dark');
+      : (fromLegacy?.modo || 'auto');
 
     this.apply();
 

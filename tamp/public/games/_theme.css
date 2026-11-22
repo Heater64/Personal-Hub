@@ -1,0 +1,148 @@
+/* ==========================================================
+   GAMES COMMON LIGHT THEME
+   Shared by /games/*.html. Applied via data-theme="light"
+   set in each game's <head>. Comes AFTER each game's inline
+   <style> + main.css so source order makes light win.
+   ========================================================== */
+[data-theme="light"] :root {
+  --bg-deep: #f8edf0;
+  --bg-mid: #ffffff;
+  --panel: rgba(50, 16, 32, 0.04);
+  --panel-border: rgba(50, 16, 32, 0.10);
+  --ink: rgba(50, 16, 32, 0.94);
+  --ash: rgba(50, 16, 32, 0.40);
+  --coral: #c2185b;
+  --coral-dark: #b00f4e;
+  --gold: #b45309;
+  --green: #15803d;
+  --red: #dc2626;
+  --blue: #2563eb;
+  --purple: #7c3aed;
+  --purple-glow: rgba(124, 58, 237, 0.30);
+  --umbra-light: rgba(50, 16, 32, 0.94);
+  --umbra-ash: rgba(50, 16, 32, 0.62);
+  --accent-coral: #c2185b;
+  --accent-border: rgba(194, 24, 91, 0.30);
+}
+
+[data-theme="light"] body {
+  background: #f8edf0;
+  color: rgba(50, 16, 32, 0.94);
+}
+
+[data-theme="light"] .game-container {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(50, 16, 32, 0.10);
+  box-shadow: 0 8px 32px rgba(90, 30, 55, 0.08);
+}
+
+[data-theme="light"] canvas {
+  background: #ffffff;
+  border: 1px solid rgba(50, 16, 32, 0.10);
+  box-shadow: 0 8px 32px rgba(90, 30, 55, 0.10);
+}
+
+[data-theme="light"] .game-message {
+  background: rgba(248, 237, 240, 0.92);
+}
+
+[data-theme="light"] .game-message-content {
+  background: linear-gradient(180deg, #ffffff, #fdf3f6);
+  border: 1px solid rgba(194, 24, 91, 0.30);
+}
+
+[data-theme="light"] .game-message-content .icon { color: #c2185b; }
+[data-theme="light"] .game-message-content h2 { color: rgba(50, 16, 32, 0.94); }
+[data-theme="light"] .game-message-content p { color: rgba(50, 16, 32, 0.62); }
+[data-theme="light"] .game-message-content .btn-primary {
+  background: #c2185b;
+  color: #fff;
+}
+[data-theme="light"] .game-message-content .btn-primary:hover {
+  background: #b00f4e;
+}
+
+/* ahorcado: letter slots / buttons */
+[data-theme="light"] .letter-slot { border-bottom-color: rgba(50, 16, 32, 0.12); color: rgba(50, 16, 32, 0.94); }
+[data-theme="light"] .letter-btn {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(50, 16, 32, 0.12);
+  color: rgba(50, 16, 32, 0.94);
+}
+[data-theme="light"] .letter-btn:hover:not(.used) {
+  border-color: rgba(194, 24, 91, 0.35);
+  background: rgba(194, 24, 91, 0.06);
+}
+[data-theme="light"] .letter-btn.correct {
+  border-color: #15803d;
+  background: rgba(21, 128, 61, 0.12);
+  color: #15803d;
+}
+[data-theme="light"] .letter-btn.wrong {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+[data-theme="light"] .letter-btn.hint-revealed {
+  border-color: #c2185b;
+  background: rgba(194, 24, 91, 0.12);
+  color: #c2185b;
+}
+
+/* ahorcado: category + nav buttons */
+[data-theme="light"] .category-btn {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(50, 16, 32, 0.12);
+  color: rgba(50, 16, 32, 0.62);
+}
+[data-theme="light"] .category-btn:hover {
+  border-color: rgba(194, 24, 91, 0.35);
+  color: rgba(50, 16, 32, 0.94);
+}
+[data-theme="light"] .category-btn.active {
+  background: rgba(194, 24, 91, 0.12);
+  border-color: #c2185b;
+  color: #c2185b;
+}
+[data-theme="light"] .btn-ghost,
+[data-theme="light"] .back-btn {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(50, 16, 32, 0.12);
+  color: rgba(50, 16, 32, 0.62);
+}
+[data-theme="light"] .btn-ghost:hover,
+[data-theme="light"] .back-btn:hover,
+[data-theme="light"] .btn-ghost.hint-btn:hover {
+  border-color: rgba(194, 24, 91, 0.35);
+  color: rgba(50, 16, 32, 0.94);
+}
+[data-theme="light"] .btn-ghost.hint-btn { color: #c2185b; }
+[data-theme="light"] .btn-ghost.reset { color: #dc2626; }
+[data-theme="light"] .btn-ghost.reset:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+/* ahorcado: hangman / status */
+[data-theme="light"] .hangman-display { color: rgba(50, 16, 32, 0.94); }
+[data-theme="light"] .status-msg { color: rgba(50, 16, 32, 0.62); }
+[data-theme="light"] .word-display { color: rgba(50, 16, 32, 0.94); }
+
+
+/* ==========================================================
+   REDUCED MOTION — respeta la preferencia del sistema
+   (se aplica a todos los juegos: desactiva animaciones
+   decorativas y transiciones, mantiene las imprescindibles)
+   ========================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal-anim, .card, .flipped, .shake, .pulse, .pop, .fade-in {
+    animation: none !important;
+    transition: none !important;
+  }
+}

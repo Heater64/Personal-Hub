@@ -11,6 +11,9 @@ import assert from 'node:assert/strict';
 import { readFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getOpenWhenWidget, getReasonWidget } from '../api/_widget-content.js';
+import { LETTERS } from '../tamp/src/data/openwhen-seed.data.js';
+import { OPENWHEN_READ_PREFIX } from '../tamp/src/utils/stats-metrics.js';
 
 import {
   gameRecords,
@@ -20,7 +23,7 @@ import {
   sameDayInPast,
   parsePhotoDate,
   GAME_RECORDS,
-} from '../personal-hub/src/utils/pro-insights.js';
+} from '../tamp/src/utils/pro-insights.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => readFile(path.join(ROOT, relative), 'utf8');
@@ -81,6 +84,78 @@ test('la razón del día es estable durante el día y cambia de una lista a otra
   assert.equal(reasonOfDay([], '2026-11-19'), null);
 });
 
+function widgetContentDatabase(content, visits = []) {
+  return {
+    from(table) {
+      if (table === 'content') {
+        return {
+          select() { return this; },
+          eq(_field, id) {
+            return {
+              async maybeSingle() { return { data: content[id] ? { data: content[id] } : null }; },
+            };
+          },
+        };
+      }
+      assert.equal(table, 'analytics_visits');
+      return {
+        select() { return this; },
+        eq(field, userId) {
+          assert.equal(field, 'user_id');
+          const owned = visits.filter(visit => visit.user_id === userId);
+          return {
+            like(column, pattern) {
+              assert.equal(column, 'page');
+              const matching = owned.filter(visit => visit.page.startsWith(pattern.slice(0, -1)));
+              return {
+                order(column) {
+                  assert.equal(column, 'id');
+                  return {
+                    async range(start, end) { return { data: matching.slice(start, end + 1) }; },
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+test('el widget de razón usa el día indicado y respeta fechas de desbloqueo y listas vacías', async () => {
+  const today = '2026-07-17';
+  const db = widgetContentDatabase({
+    razones: { reasons: [{ text: 'futura', date: '2026-07-18' }, { reason: ' disponible ', date: today }] },
+  });
+  assert.deepEqual(await getReasonWidget(db, 'a', { role: 'admin' }, today), { text: 'disponible', date: today });
+  assert.equal(await getReasonWidget(db, 'a', { role: 'user' }, '2026-07-16'), null);
+  assert.equal(await getReasonWidget(
+    widgetContentDatabase({ razones: { reasons: [] } }), 'a', { role: 'user' }, today
+  ), null);
+});
+
+test('el widget de Open When filtra borradores y descontabiliza solo lecturas de la misma cuenta', async () => {
+  const draft = { id: 'primer-borrador', category: 'noche', status: 'pronto' };
+  const read = { id: 'leida', category: 'amor' };
+  const next = { id: 'sin-leer', category: 'alegria' };
+  const hiddenSeed = LETTERS.find(letter => letter.status !== 'pronto');
+  const db = widgetContentDatabase({
+    openwhen_letters: { letters: [draft, read, next, { ...hiddenSeed, status: 'pronto' }] },
+  }, [
+    ...Array.from({ length: 500 }, () => ({ user_id: 'ella', page: `${OPENWHEN_READ_PREFIX}otra` })),
+    { user_id: 'ella', page: `${OPENWHEN_READ_PREFIX}${read.id}` },
+    { user_id: 'él', page: `${OPENWHEN_READ_PREFIX}${next.id}` },
+  ]);
+  const visibleSeedCount = LETTERS.filter(letter => letter.status !== 'pronto').length - 1;
+  assert.deepEqual(await getOpenWhenWidget(db, 'ella', { role: 'user' }), {
+    pending: visibleSeedCount + 1, category: 'alegria', emoji: '🥰',
+  });
+  assert.deepEqual(await getOpenWhenWidget(db, 'él', { role: 'admin' }), {
+    pending: LETTERS.length + 2, category: 'noche', emoji: '🌙',
+  });
+});
+
 test('«un año hoy» solo trae fotos del mismo día de años anteriores', () => {
   const photos = [
     { url: 'a.jpg', dateText: '19 nov 2024' },
@@ -104,7 +179,7 @@ test('«un año hoy» solo trae fotos del mismo día de años anteriores', () =>
 /* ---------- pantallas ---------- */
 
 test('Sentimientos añade mejor racha, tira de días y widget', async () => {
-  const page = await read('personal-hub/src/pages/Sentimientos.js');
+  const page = await read('tamp/src/pages/Sentimientos.js');
 
   assert.match(page, /import \{ bestStreak, lastNDays \}/);
   assert.match(page, /best: bestStreak\(historyMap\)/);
@@ -115,7 +190,7 @@ test('Sentimientos añade mejor racha, tira de días y widget', async () => {
 });
 
 test('Razones pinta la razón del día con el helper y la guarda para el widget', async () => {
-  const page = await read('personal-hub/src/pages/Razones.js');
+  const page = await read('tamp/src/pages/Razones.js');
 
   assert.match(page, /import \{ reasonOfDay \}/);
   assert.match(page, /id="razonDelDia"/);
@@ -125,7 +200,7 @@ test('Razones pinta la razón del día con el helper y la guarda para el widget'
 });
 
 test('Juegos lee los récords de localStorage sin tocar los juegos', async () => {
-  const page = await read('personal-hub/src/pages/Juegos.js');
+  const page = await read('tamp/src/pages/Juegos.js');
 
   assert.match(page, /import \{ gameRecords \}/);
   assert.match(page, /gameRecords\(typeof localStorage !== 'undefined'/);
@@ -134,16 +209,16 @@ test('Juegos lee los récords de localStorage sin tocar los juegos', async () =>
 });
 
 test('Inicio monta «Un año hoy» con las fotos que ya existen', async () => {
-  const page = await read('personal-hub/src/pages/Home.js');
+  const page = await read('tamp/src/pages/Home.js');
 
   assert.match(page, /import \{ visiblePhotos, photoDate \}/);
-  assert.match(page, /sameDayInPast\(photos\)/);
+  assert.match(page, /sameDayInPast\(photos, todayISO\(\)\)/);
   assert.match(page, /Tal día como hoy/);
   assert.match(page, /\$\{yearAgoHTML\(\)\}/);
 });
 
 test('Juntos añade próximas fechas y estado del móvil de la otra persona', async () => {
-  const page = await read('personal-hub/src/pages/Juntos.js');
+  const page = await read('tamp/src/pages/Juntos.js');
 
   assert.match(page, /upcomingSpecialDates\(3\)/);
   assert.match(page, /import \{ fetchPartnerLocation \}/);
@@ -154,8 +229,8 @@ test('Juntos añade próximas fechas y estado del móvil de la otra persona', as
 });
 
 test('la watchlist compartida vive en una fila de `content` y se edita desde Series', async () => {
-  const service = await read('personal-hub/src/services/pro.service.js');
-  const page = await read('personal-hub/src/pages/Series.js');
+  const service = await read('tamp/src/services/pro.service.js');
+  const page = await read('tamp/src/pages/Series.js');
 
   assert.match(service, /const DOC_ID = 'series_watchlist'/);
   assert.match(service, /from\('content'\)/);
@@ -167,8 +242,8 @@ test('la watchlist compartida vive en una fila de `content` y se edita desde Ser
 });
 
 test('los tres widgets nuevos tienen datos, hoja y lado nativo', async () => {
-  const service = await read('personal-hub/src/services/widgets.service.js');
-  const sheet = await read('personal-hub/src/components/WidgetsSheet.js');
+  const service = await read('tamp/src/services/widgets.service.js');
+  const sheet = await read('tamp/src/components/WidgetsSheet.js');
   const renderer = await read(
     'android/app/src/main/java/com/heater64/personalhub/WidgetRenderer.java'
   );
@@ -207,8 +282,8 @@ test('los tres widgets nuevos tienen datos, hoja y lado nativo', async () => {
 });
 
 test('las miniaturas de los tres widgets nuevos nunca salen vacías', async () => {
-  const sheet = await read('personal-hub/src/components/WidgetsSheet.js');
-  const css = await read('personal-hub/src/styles/home.css');
+  const sheet = await read('tamp/src/components/WidgetsSheet.js');
+  const css = await read('tamp/src/styles/home.css');
 
   assert.match(sheet, /const PREVIEW_SAMPLES = \{/);
   for (const id of ['reason', 'openwhen', 'streak']) {
@@ -223,7 +298,7 @@ test('las miniaturas de los tres widgets nuevos nunca salen vacías', async () =
 });
 
 test('Open When deja en el widget las cartas que quedan por descubrir', async () => {
-  const page = await read('personal-hub/src/pages/OpenWhen.js');
+  const page = await read('tamp/src/pages/OpenWhen.js');
 
   assert.match(page, /import \{ saveOpenWhenWidget \}/);
   assert.match(page, /pending: newTotal\(\)/);

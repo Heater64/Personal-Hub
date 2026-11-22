@@ -26,8 +26,8 @@ const projectPath = (...parts) => path.join(root, ...parts);
 const read = (...parts) => readFileSync(projectPath(...parts), 'utf8');
 
 const CLIENT_FILES = [
-  ['personal-hub', 'src', 'services', 'notifications.service.js'],
-  ['personal-hub', 'public', 'sw.js'],
+  ['tamp', 'src', 'services', 'notifications.service.js'],
+  ['tamp', 'public', 'sw.js'],
 ];
 
 function clientLiteral(parts) {
@@ -68,16 +68,17 @@ test('api/push.js no puede morir al importar por unas claves mal formadas', () =
     'el error de configuración se guarda para poder responder un 500 legible'
   );
   // Cualquier envío pasa por la misma guardia con su mensaje claro.
-  const guards = source.match(/requireVapid\(res\)/g) || [];
-  assert.ok(guards.length >= 4, 'todas las acciones de envío usan requireVapid(res)');
+  const guards = source.match(/requirePushTransport\(res\)/g) || [];
+  assert.ok(guards.length >= 4, 'todas las acciones de envío exigen un transporte disponible');
+  assert.match(source, /function requirePushTransport\(res\)[\s\S]*?if \(fcmConfigured\(\)\) return false;[\s\S]*?return requireVapid\(res\);/);
   assert.match(source, /function requireVapid\(res\)/);
   assert.match(source, /VAPID keys not configured/);
 });
 
 test('el cliente no arrastra secretos de servidor', () => {
-  const service = read('personal-hub', 'src', 'services', 'notifications.service.js');
+  const service = read('tamp', 'src', 'services', 'notifications.service.js');
   assert.doesNotMatch(service, /SERVICE_ROLE|VAPID_PRIVATE|CRON_SECRET/);
-  const sw = read('personal-hub', 'public', 'sw.js');
+  const sw = read('tamp', 'public', 'sw.js');
   assert.doesNotMatch(sw, /SERVICE_ROLE|VAPID_PRIVATE|CRON_SECRET/);
 });
 

@@ -25,6 +25,7 @@ import {
 } from '../services/seriesData.js';
 import { seasonEditorHTML, collectSeasons, emptySeasonHTML, bindSeasonEditorEvents } from '../services/seriesEditor.js';
 import { isValidUrlField } from '../utils/format.js';
+import { searchTmdbTitles, getTrendingTmdbTitles, getUpcomingTmdbTitles } from '../services/tmdb.service.js';
 
 let page = null;                       // elemento raíz (asignado en SeriesPage)
 let catalog = [];
@@ -43,6 +44,13 @@ let heroTimer = null;
 let heroIndex = 0;
 let heroPool = [];
 let heroMode = 'random';            // 'random' | 'continue' (Seguir viendo)
+let tmdbItems = [];
+let tmdbLoading = true;
+let tmdbError = '';
+let tmdbQuery = '';
+let tmdbMode = 'trending';
+let tmdbRequestId = 0;
+let tmdbSearchTimer = null;
 
 // ==========================================
 // CARGA / PERSISTENCIA (delegada a seriesData)
@@ -475,6 +483,95 @@ function renderCatalog() {
     <div class="sr-results-summary">${filtered.length} título${filtered.length === 1 ? '' : 's'}${filterNote}</div>
     <div class="series-flat-grid">${filtered.map(cardHTML).join('')}</div>`;
   bindCards(root);
+}
+
+function renderTmdbCatalog() {
+  const root = page?.querySelector('#srTmdbResults');
+  if (!root) return;
+  const query = tmdbQuery.trim();
+  if (tmdbLoading) {
+    root.innerHTML = `<section class="sr-tmdb-panel" aria-live="polite"><div class="sr-tmdb-heading"><div><span class="sr-tmdb-kicker">Catálogo actualizado</span><h3>${query ? `Buscando «${escapeHtml(query)}»` : tmdbMode === 'upcoming' ? 'Próximamente' : 'Lo más popular esta semana'}</h3></div>${query ? '' : `<div class="sr-tmdb-modes"><button type="button" data-tmdb-mode="trending" aria-pressed="${tmdbMode === 'trending'}">Tendencias</button><button type="button" data-tmdb-mode="upcoming" aria-pressed="${tmdbMode === 'upcoming'}">Próximamente</button></div>`}</div><p class="sr-tmdb-status">Consultando TMDB…</p></section>`;
+    return;
+  }
+  if (tmdbError) {
+    root.innerHTML = `<section class="sr-tmdb-panel" aria-live="polite"><div class="sr-tmdb-heading"><div><span class="sr-tmdb-kicker">Catálogo actualizado</span><h3>${query ? 'Búsqueda externa' : 'Descubre series y películas'}</h3></div>${query ? '' : `<div class="sr-tmdb-modes"><button type="button" data-tmdb-mode="trending" aria-pressed="${tmdbMode === 'trending'}">Tendencias</button><button type="button" data-tmdb-mode="upcoming" aria-pressed="${tmdbMode === 'upcoming'}">Próximamente</button></div>`}</div><p class="sr-tmdb-status sr-tmdb-status--error">${escapeHtml(tmdbError)}</p><p class="sr-tmdb-attribution">Datos e imágenes proporcionados por TMDB.</p></section>`;
+    return;
+  }
+
+  const isFiltered = ['favoritas', 'encurso', 'vistas', 'porver'].includes(currentFilter);
+  if (isFiltered) {
+    root.innerHTML = `<section class="sr-tmdb-panel"><p class="sr-tmdb-status">Cambia a «Todo» para ver los resultados de TMDB.</p></section>`;
+    return;
+  }
+  const filteredItems = tmdbItems.filter(item => currentFilter === 'todo' || item.tipo === currentFilter);
+  const heading = query ? `Resultados de «${escapeHtml(query)}»` : tmdbMode === 'upcoming' ? 'Próximamente en España' : 'Lo más popular esta semana';
+  const cards = filteredItems.map(item => {
+    const inWatchlist = sharedWatchlist.some(entry => entry.id === item.id);
+    const date = item.anio ? ` · ${escapeHtml(item.anio)}` : '';
+    const poster = item.portada
+      ? `<img src="${escapeHtml(item.portada)}" alt="" loading="lazy" decoding="async" onerror="this.closest('.sr-tmdb-card')?.classList.add('is-no-poster')">`
+      : '';
+    return `<article class="sr-tmdb-card ${poster ? '' : 'is-no-poster'}">
+      <div class="sr-tmdb-poster">${poster}<span aria-hidden="true">${item.tipo === 'serie' ? '▣' : '▶'}</span></div>
+      <div class="sr-tmdb-copy"><div class="sr-tmdb-meta">${item.tipo === 'serie' ? 'Serie' : 'Película'}${date}${item.valoracion ? ` · ★ ${item.valoracion.toFixed(1)}` : ''}${item.generos?.length ? ` · ${escapeHtml(item.generos.slice(0, 2).join(', '))}` : ''}</div>
+        <h4>${escapeHtml(item.titulo)}</h4><p>${escapeHtml(item.descripcion || 'Sin sinopsis disponible.')}</p>
+        <button type="button" class="sr-tmdb-add" data-tmdb-add="${escapeHtml(item.id)}" ${inWatchlist ? 'disabled' : ''}>${inWatchlist ? 'En nuestra lista ✓' : '+ Añadir a nuestra lista'}</button>
+      </div>
+    </article>`;
+  }).join('');
+  root.innerHTML = `<section class="sr-tmdb-panel" aria-live="polite"><div class="sr-tmdb-heading"><div><span class="sr-tmdb-kicker">Catálogo actualizado</span><h3>${heading}</h3></div>${query ? `<span class="sr-tmdb-count">${filteredItems.length} títulos</span>` : `<div class="sr-tmdb-modes"><button type="button" data-tmdb-mode="trending" aria-pressed="${tmdbMode === 'trending'}">Tendencias</button><button type="button" data-tmdb-mode="upcoming" aria-pressed="${tmdbMode === 'upcoming'}">Próximamente</button></div>`}</div>${cards ? `<div class="sr-tmdb-grid">${cards}</div>` : `<p class="sr-tmdb-status">${query ? 'No se encontraron títulos en TMDB.' : 'Todavía no hay recomendaciones disponibles.'}</p>`}<p class="sr-tmdb-attribution">Datos e imágenes proporcionados por TMDB.</p></section>`;
+}
+
+async function loadTmdbCatalog(query = '') {
+  const requestId = ++tmdbRequestId;
+  tmdbQuery = query;
+  tmdbLoading = true;
+  tmdbError = '';
+  renderTmdbCatalog();
+  try {
+    const data = query.length >= 2
+      ? await searchTmdbTitles(query)
+      : tmdbMode === 'upcoming' ? await getUpcomingTmdbTitles() : await getTrendingTmdbTitles();
+    if (requestId !== tmdbRequestId || !page?.isConnected) return;
+    tmdbItems = Array.isArray(data.results) ? data.results : [];
+    tmdbError = '';
+  } catch (error) {
+    if (requestId !== tmdbRequestId || !page?.isConnected) return;
+    tmdbItems = [];
+    tmdbError = error?.message || 'No se pudo conectar con TMDB.';
+  } finally {
+    if (requestId === tmdbRequestId && page?.isConnected) {
+      tmdbLoading = false;
+      renderTmdbCatalog();
+    }
+  }
+}
+
+async function addTmdbTitleToWatchlist(id) {
+  const item = tmdbItems.find(entry => entry.id === id);
+  if (!item) return;
+  if (!sharedWatchlistLoaded) {
+    sharedWatchlist = await loadSharedWatchlist();
+    sharedWatchlistLoaded = true;
+  }
+  if (sharedWatchlist.some(entry => entry.id === item.id)) {
+    renderTmdbCatalog();
+    return;
+  }
+  const previous = sharedWatchlist;
+  sharedWatchlist = toggleInWatchlist(previous, {
+    id: item.id,
+    title: item.titulo,
+    poster: item.portada,
+  }, userStore.getUser()?.name || '');
+  if (!(await saveSharedWatchlist(sharedWatchlist))) {
+    sharedWatchlist = previous;
+    showToast('No se pudo guardar en la lista compartida. Comprueba la conexión.');
+    return;
+  }
+  showToast('Añadido a vuestra lista ✓', 'success');
+  renderTmdbCatalog();
+  void pintarWatchlistCompartida();
 }
 
 // ==========================================
@@ -1126,6 +1223,7 @@ function render() {
           </label>
         </div>
         <div id="srCatalogResults"></div>
+        <div id="srTmdbResults"></div>
       </div>
 
       <div id="srViewTop5" class="sr-view ${currentView === 'top5' ? 'is-active' : ''}" role="tabpanel" aria-labelledby="srTabTop5"></div>
@@ -1241,6 +1339,12 @@ function render() {
       searchTerm = e.target.value;
       ensureClearBtn();
       renderCatalog();
+      if (tmdbSearchTimer) clearTimeout(tmdbSearchTimer);
+      const query = searchTerm.trim();
+      tmdbSearchTimer = setTimeout(() => {
+        tmdbSearchTimer = null;
+        void loadTmdbCatalog(query.length >= 2 ? query : '');
+      }, query.length >= 2 ? 350 : 0);
     });
   }
   page.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => {
@@ -1248,7 +1352,23 @@ function render() {
     btn.classList.add('active');
     currentFilter = btn.dataset.filter;
     renderCatalog();
+    renderTmdbCatalog();
   }));
+
+  page.querySelector('#srTmdbResults')?.addEventListener('click', event => {
+    const modeButton = event.target.closest('[data-tmdb-mode]');
+    if (modeButton) {
+      tmdbMode = modeButton.dataset.tmdbMode === 'upcoming' ? 'upcoming' : 'trending';
+      void loadTmdbCatalog('');
+      return;
+    }
+    const button = event.target.closest('[data-tmdb-add]');
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    void addTmdbTitleToWatchlist(button.dataset.tmdbAdd).finally(() => {
+      if (button.isConnected) button.disabled = false;
+    });
+  });
 
   // Orden del catálogo
   page.querySelector('#srSort')?.addEventListener('change', (e) => {
@@ -1515,6 +1635,7 @@ export function SeriesPage(router) {
     if (!page.isConnected) return; // navegó mientras cargaba
     render();
     renderAll();
+    void loadTmdbCatalog('');
     // Deep-link desde Inicio/Rincón (Seguir viendo): /series?id=<id> abre el detalle
     const deepId = router.currentRoute?.query?.id;
     if (deepId) {

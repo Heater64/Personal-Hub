@@ -91,7 +91,16 @@ async function accessTokenFor(sa) {
  * igual que en la web, aunque el acuse lo cumplimenta el service worker:
  * un mensaje nativo no tiene ese canal de vuelta.
  */
-function buildMessage(deviceToken, payload) {
+export function buildMessage(deviceToken, payload) {
+  if (payload?.type === 'widget_sync') {
+    return {
+      message: {
+        token: deviceToken,
+        data: { type: 'widget_sync' },
+        android: { priority: 'normal', collapse_key: 'widget_sync', ttl: '900s' },
+      },
+    };
+  }
   const data = {};
   for (const [key, value] of Object.entries(payload || {})) {
     if (value === null || value === undefined) continue;

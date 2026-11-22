@@ -1,16 +1,16 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <!-- Nombre corto: el que se ve bajo el icono. -->
-    <string name="app_name">Hub🧸</string>
+    <string name="app_name">Tamp</string>
     <!-- Nombre largo: título de la tarea y de Ajustes. -->
-    <string name="title_activity_main">Personalhub</string>
+    <string name="title_activity_main">Tamp</string>
     <string name="package_name">com.heater64.personalhub</string>
     <string name="custom_url_scheme">com.heater64.personalhub</string>
 
     <!-- Estado del móvil / segundo plano -->
     <string name="notification_channel_status">Conexión y estado</string>
     <string name="notification_channel_status_desc">Mantiene la distancia, batería y widgets actualizados.</string>
-    <string name="notification_status_title">Personal Hub activo</string>
+    <string name="notification_status_title">Tamp activo</string>
     <string name="notification_status_desc">Conexión y distancia sincronizadas</string>
     <string name="notification_status_battery">%1$d%%</string>
     <string name="notification_status_charging">cargando</string>
@@ -21,6 +21,10 @@
     <!-- Widget de la distancia -->
     <string name="widget_distance_label">📍 distancia</string>
     <string name="widget_distance_empty">abre la app</string>
+    <string name="widget_distance_stale">ubicación desactualizada</string>
+    <string name="widget_distance_unavailable">sin ubicación reciente</string>
+    <string name="widget_distance_compact_empty">sin datos</string>
+    <string name="widget_gifts_no_today">Sin regalos hoy</string>
     <string name="widget_distance_description">Distancia entre vosotros</string>
 
     <!-- Textos del rediseño -->
@@ -49,7 +53,7 @@
     <!-- Configuración: qué fechas enseña cada widget -->
     <string name="widget_countdown_config_title">Cuenta atrás</string>
     <string name="widget_countdown_config_subtitle">Elige qué fechas mostrar. Puedes marcar hasta tres.</string>
-    <string name="widget_countdown_config_hint_empty">Abre PersonalHub una vez para cargar tus fechas.</string>
+    <string name="widget_countdown_config_hint_empty">Abre Tamp una vez para cargar tus fechas.</string>
     <string name="widget_countdown_config_hint_max">Tres fechas como máximo: quita alguna para guardar.</string>
     <string name="widget_countdown_config_today">hoy</string>
     <string name="widget_countdown_config_save">Guardar</string>

@@ -13,7 +13,7 @@ import {
   normalizePeriods, cycleLengths, periodDurations,
   computeCycle, estimatedPeriods, cycleDayFor,
   computeStats, filterSince, confidenceFor
-} from '../personal-hub/src/utils/cycleMath.js';
+} from '../tamp/src/utils/cycleMath.js';
 
 const TODAY = '2026-11-17';
 

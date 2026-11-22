@@ -21,7 +21,7 @@ import { nextRunFor, dueReminders, cleanReminderInput } from '../api/push.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectPath = (...parts) => path.join(ROOT, ...parts);
-const hub = (...parts) => projectPath('personal-hub', ...parts);
+const hub = (...parts) => projectPath('tamp', ...parts);
 
 // ==========================================
 // 1 · CUÁNDO SE ENVÍA

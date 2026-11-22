@@ -117,7 +117,7 @@ function renderAgenda(kind, router = null) {
   const initialDay = isCalendar && /^\d{4}-\d{2}-\d{2}$/.test(routeDay || '')
     ? routeDay
     : todayISO();
-  let monthView = false;
+  let monthView = isCalendar && router?.currentRoute?.query?.view === 'month';
   const isFeeling = !isCalendar;
   const own = userStore.getUser()?.id;
   const canCreate = !isCalendar || userStore.isAdmin;
@@ -371,7 +371,20 @@ function renderAgenda(kind, router = null) {
         <div class="ag-card__body">
           <p class="ag-card__meta">${esc(bits.join(' · '))}</p>
           <h3 class="ag-card__title">${esc(row.title)}</h3>
-          ${row.detail && !gift ? `<p class="ag-card__text">${esc(row.detail)}</p>` : ''}
+          ${row.detail && !gift
+            ? row.detail.length > 280
+              ? `<details class="ag-card__details">
+                  <summary>
+                    <span class="ag-card__preview">${esc(`${row.detail.slice(0, 180).trimEnd()}…`)}</span>
+                    <span class="ag-card__details-action">
+                      <span class="is-collapsed">Leer nota completa</span>
+                      <span class="is-expanded">Ocultar nota</span>
+                    </span>
+                  </summary>
+                  <p class="ag-card__text">${esc(row.detail)}</p>
+                </details>`
+              : `<p class="ag-card__text">${esc(row.detail)}</p>`
+            : ''}
           ${row.place ? `<p class="ag-card__where">${icon('map', 14)}<span>${esc(row.place)}</span></p>` : ''}
           <div class="ag-card__foot">
             ${gift ? `<button type="button" class="ag-card__action" data-gift="${esc(row.id)}" data-day="${esc(day)}">${icon('gift', 14)}<span>Ver regalo</span></button>` : ''}
@@ -502,7 +515,9 @@ function renderAgenda(kind, router = null) {
     // En la papelera no hay mes que recorrer ni vista que alternar: se dejan
     // «Hoy» y «Actualizar», que sí sirven.
     const monthNav = el('[data-nav]');
-    if (monthNav) monthNav.hidden = trash;
+    if (monthNav) monthNav.hidden = trash || !isCalendar;
+    const todayBtn = el('[data-today]');
+    if (todayBtn) todayBtn.hidden = trash || !isCalendar;
     const monthLink = el('[data-toggle-view]');
     if (monthLink) {
       monthLink.textContent = monthView ? 'Ver solo hoy' : 'Ver todo el mes';

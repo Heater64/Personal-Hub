@@ -19,10 +19,10 @@
 
 ## 2. Arquitectura
 
-- Fuente visual: `personal-hub/src/styles/design-tokens.css` (solo se añaden bloques `[data-tema="azul"]` y `[data-tema="azul"][data-theme="light"]` al final).
+- Fuente visual: `tamp/src/styles/design-tokens.css` (solo se añaden bloques `[data-tema="azul"]` y `[data-tema="azul"][data-theme="light"]` al final).
 - Lógica: `src/services/theme.service.js` (`ph.theme`, normaliza legacy, escribe dual, `color-scheme` + meta por paleta, listener Auto).
 - UI: `src/pages/Profile.js` (grid 2x2 con previews + Auto) + `src/pages/Admin.js` (segmented 5) + CSS correspondiente.
-- Arranque: `personal-hub/index.html` inline (mismo mapa dual mínimo) + `offline.html` sin cambios.
+- Arranque: `tamp/index.html` inline (mismo mapa dual mínimo) + `offline.html` sin cambios.
 - Juegos (`public/games/` + `_postgame.js`): sin tocar; heredan `data-theme` modo y las variables que ya usan.
 
 ## 3. Data flow y compat
@@ -38,9 +38,9 @@
 
 ## 5. Archivos a tocar
 
-1. `personal-hub/src/styles/design-tokens.css` (overrides familia azul)
-2. `personal-hub/src/services/theme.service.js` (4 ids + dual + legacy)
-3. `personal-hub/src/pages/Profile.js` + CSS (grid 2x2 + Auto)
-4. `personal-hub/src/pages/Admin.js` + CSS (segmented 5)
-5. `personal-hub/index.html` (inline dual mínimo)
+1. `tamp/src/styles/design-tokens.css` (overrides familia azul)
+2. `tamp/src/services/theme.service.js` (4 ids + dual + legacy)
+3. `tamp/src/pages/Profile.js` + CSS (grid 2x2 + Auto)
+4. `tamp/src/pages/Admin.js` + CSS (segmented 5)
+5. `tamp/index.html` (inline dual mínimo)
 6. `tests/prepush.test.js` (asserts nuevos)

@@ -2581,3 +2581,25 @@ button.home-map:focus-visible {
   width: 72px;
   height: 96px;
 }
+
+/* En móvil, deja el nombre debajo del saludo y evita que se recorte. */
+@media (max-width: 600px) {
+  .home-topbar__greet {
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    white-space: normal;
+  }
+
+  .home-topbar__hi {
+    white-space: nowrap;
+  }
+
+  .home-topbar__name {
+    max-width: 100%;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+  }
+}

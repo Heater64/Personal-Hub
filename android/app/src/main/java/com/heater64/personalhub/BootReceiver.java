@@ -6,8 +6,7 @@ import android.content.Intent;
 
 /**
  * Al reiniciar el móvil, Android olvida los servicios: si el seguimiento
- * estaba activo, se vuelve a arrancar. La ubicación solo se actualiza cuando
- * el sistema lo permite; batería y red siguen enviándose igual.
+ * estaba activo, se vuelve a solicitar cuando el sistema puede conceder ubicación.
  */
 public class BootReceiver extends BroadcastReceiver {
 
@@ -20,6 +19,6 @@ public class BootReceiver extends BroadcastReceiver {
         // siempre»; esperar a que el usuario abra la app es más honesto que
         // fingir que el seguimiento continúa.
         if (!DeviceStatusService.hasBackgroundLocationPermission(context)) return;
-        DeviceStatusService.start(context);
+        DeviceStatusService.start(context, null);
     }
 }

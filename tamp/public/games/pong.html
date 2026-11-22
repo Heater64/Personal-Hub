@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){var t=localStorage.getItem('ph.theme');if(t){if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pong</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_theme.css">
+    <link rel="stylesheet" href="_game-ui.css">
+    <link rel="manifest" href="../manifest.json">
+    <style>
+        /* Pong: canvas panorámico protagonista, HUD compacto, móvil edge-to-edge */
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            width: min(100%, 760px);
+            padding: 18px 24px 34px;
+        }
+
+        .game-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "copy toolbar" "subtitle subtitle";
+            align-items: center;
+            gap: 4px 14px;
+            margin: 0 auto 15px;
+            text-align: left;
+        }
+
+        .game-header h1 {
+            grid-area: copy;
+            font-size: clamp(1.45rem, 2.8vw, 1.9rem);
+            line-height: 1.05;
+        }
+
+        .game-header .subtitle {
+            grid-area: subtitle;
+            width: auto;
+            margin: 0;
+            text-align: left;
+            font-size: 0.72rem;
+        }
+
+        .game-header__emoji {
+            display: none;
+        }
+
+        .toolbar {
+            grid-area: toolbar;
+            justify-self: end;
+        }
+
+        .icon-btn {
+            width: auto;
+            min-width: 42px;
+            min-height: 42px;
+            padding: 0 13px;
+            border-radius: 13px;
+            font-family: var(--font-body);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .score-display {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            width: min(100%, 560px);
+            margin: 0 auto 12px;
+        }
+
+        .score-item {
+            min-width: 0;
+            padding: 9px 10px 8px;
+            border-radius: 15px;
+            background: linear-gradient(145deg, var(--surface-2), var(--panel));
+            box-shadow: var(--elev-1);
+        }
+
+        .score-item .label {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .score-item .value {
+            font-size: 1.18rem;
+            line-height: 1.1;
+        }
+
+        /* Selector de modo */
+        .size-control {
+            display: inline-flex;
+            margin: 0 auto 12px;
+        }
+
+        .canvas-wrap {
+            width: min(100%, 560px, calc((100dvh - 380px) * 14 / 9));
+            max-width: 560px;
+            padding: 6px;
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            background: linear-gradient(145deg, var(--surface-2), rgba(232, 115, 90, 0.07));
+            box-shadow: var(--elev-3), 0 0 38px rgba(232, 115, 90, 0.1);
+        }
+
+        canvas {
+            width: 100%;
+            max-width: none;
+            aspect-ratio: 14 / 9;
+            border: 0;
+            border-radius: 18px;
+            outline: none;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+            touch-action: none;
+        }
+
+        .controls-hint {
+            width: min(100%, 560px);
+            margin: 10px auto 0;
+            padding: 8px 12px;
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            background: var(--panel);
+            color: var(--ink-dim);
+            font-size: 0.66rem;
+            line-height: 1.45;
+        }
+
+        .actions {
+            width: min(100%, 560px);
+            margin: 12px auto 0;
+        }
+
+        .actions .btn-primary {
+            min-width: 170px;
+            min-height: 44px;
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+                max-width: none;
+                min-height: 100dvh;
+                padding: max(14px, env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom));
+            }
+
+            .game-header {
+                grid-template-columns: 1fr auto;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            .game-header h1 {
+                grid-column: 1 / -1;
+                font-size: 1.3rem;
+            }
+
+            .game-header .subtitle {
+                text-align: center;
+                font-size: 0.68rem;
+            }
+
+            .score-display {
+                max-width: none;
+                gap: 5px;
+                margin-bottom: 10px;
+            }
+
+            .score-item {
+                padding: 7px 4px 6px;
+                border-radius: 13px;
+            }
+
+            .score-item .label {
+                font-size: 0.42rem;
+                letter-spacing: 0.05em;
+            }
+
+            .score-item .value {
+                font-size: 0.95rem;
+            }
+
+            .size-control {
+                margin: 0 auto 10px;
+            }
+
+            .canvas-wrap {
+                width: min(100%, calc((100dvh - 380px) * 14 / 9));
+                max-width: none;
+                padding: 5px;
+                border-radius: 20px;
+            }
+
+            canvas {
+                border-radius: 15px;
+            }
+
+            .controls-hint {
+                margin: 8px auto 0;
+                font-size: 0.63rem;
+            }
+
+            .actions {
+                margin: 10px auto 0;
+            }
+
+            .actions .btn-primary {
+                width: 100%;
+                min-width: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Pong</h1>
+            <div class="toolbar">
+                <button class="icon-btn" id="pauseBtn" title="Pausa" aria-label="Pausar">⏸️ Pausa</button>
+            </div>
+            <span class="subtitle">El clásico de las palas · Llega a 10</span>
+        </div>
+
+        <div class="score-display">
+            <div class="score-item"><span class="label">🔴 J1</span><span class="value red" id="p1Display">0</span></div>
+            <div class="score-item"><span class="label">🔵 J2/CPU</span><span class="value blue" id="p2Display">0</span></div>
+            <div class="score-item"><span class="label">🔥 Racha</span><span class="value gold" id="rallyDisplay">0</span></div>
+        </div>
+
+        <div class="size-control" aria-label="Modo de juego">
+            <button class="size-btn active" data-mode="1p">1 Jugador</button>
+            <button class="size-btn" data-mode="2p">2 Jugadores</button>
+        </div>
+
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="560" height="360" tabindex="0" aria-label="Pong. W/S mueven la pala izquierda, flechas la derecha"></canvas>
+        </div>
+
+        <div class="controls-hint" aria-label="Controles">
+            <span>J1: W/S · J2: ↑/↓ · Espacio pausa · En móvil: arrastra las palas</span>
+        </div>
+
+        <div class="actions">
+            <button class="btn-primary" id="resetBtn">🔄 Reiniciar</button>
+        </div>
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <div class="game-message-content">
+            <div class="icon" id="msgIcon">🎉</div>
+            <h2 id="msgTitle">¡Gana el Jugador 1!</h2>
+            <p id="msgText">Jugador 1: 10 · Jugador 2: 0</p>
+            <button class="btn-primary" id="msgBtn">Jugar otra vez</button>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 560, H = 360;
+        const PW = 12, PH = 78, WIN = 10;
+
+        let p1, p2, ball, p1Score, p2Score, rally, mode, running, paused, gameOver, lastTime, animId, serveDelay;
+        const pauseBtn = document.getElementById('pauseBtn');
+
+        mode = ['1p', '2p'].includes(localStorage.getItem('pongMode')) ? localStorage.getItem('pongMode') : '1p';
+
+        function applyModeUI() {
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        }
+        document.querySelectorAll('.size-btn').forEach(b => b.addEventListener('click', () => {
+            mode = b.dataset.mode;
+            localStorage.setItem('pongMode', mode);
+            applyModeUI();
+            resetGame();
+        }));
+
+        function serve() {
+            ball = { x: W / 2, y: H / 2, dx: (Math.random() > 0.5 ? 1 : -1) * (4.6 + Math.random()), dy: (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2) };
+            serveDelay = 60;
+            rally = 0;
+            document.getElementById('rallyDisplay').textContent = 0;
+        }
+
+        function resetGame() {
+            p1 = { y: H / 2 - PH / 2 };
+            p2 = { y: H / 2 - PH / 2 };
+            p1Score = 0; p2Score = 0;
+            running = true; paused = false; gameOver = false;
+            pauseBtn.textContent = '⏸️ Pausa';
+            pauseBtn.setAttribute('aria-label', 'Pausar');
+            document.getElementById('gameMessage').classList.remove('show');
+            updateUI();
+            serve();
+        }
+
+        function updateUI() {
+            document.getElementById('p1Display').textContent = p1Score;
+            document.getElementById('p2Display').textContent = p2Score;
+        }
+
+        function update(dt) {
+            if (paused || !running || gameOver) return;
+            const s = dt / 16.7;
+
+            // CPU
+            if (mode === '1p') {
+                const target = ball.dx > 0 ? ball.y : H / 2;
+                const diff = target - (p2.y + PH / 2);
+                p2.y += Math.sign(diff) * Math.min(Math.abs(diff), 3.4 * s);
+            }
+
+            if (serveDelay > 0) { serveDelay -= s; return; }
+
+            const px = ball.x, py = ball.y; // posición previa para el barrido
+            ball.x += ball.dx * s;
+            ball.y += ball.dy * s;
+
+            // paredes
+            if (ball.y < 6) { ball.y = 6; ball.dy = Math.abs(ball.dy); }
+            if (ball.y > H - 6) { ball.y = H - 6; ball.dy = -Math.abs(ball.dy); }
+
+            // palas — colisión por barrido del segmento recorrido en el frame:
+            // si la bola cruza el plano de la pala y en ese punto su Y está
+            // dentro del rango de la pala, rebota. Evita que la bola atraviese
+            // las palas a alta velocidad o con bajadas de FPS.
+            const R = 7;
+            if (ball.dx < 0 && px > 8 + PW + R && ball.x <= 8 + PW + R) {
+                const t = (px - (8 + PW + R)) / (px - ball.x);
+                const yAt = py + (ball.y - py) * t;
+                if (yAt > p1.y - R && yAt < p1.y + PH + R) {
+                    ball.dx = Math.abs(ball.dx);
+                    ball.x = 8 + PW + R + 0.1;
+                    const off = (yAt - (p1.y + PH / 2)) / (PH / 2);
+                    ball.dy = off * 5;
+                    ball.dx += 0.3;
+                    rally++;
+                    document.getElementById('rallyDisplay').textContent = rally;
+                    SFX.point();
+                    buzz(6);
+                }
+            }
+            if (ball.dx > 0 && px < W - 8 - PW - R && ball.x >= W - 8 - PW - R) {
+                const t = ((W - 8 - PW - R) - px) / (ball.x - px);
+                const yAt = py + (ball.y - py) * t;
+                if (yAt > p2.y - R && yAt < p2.y + PH + R) {
+                    ball.dx = -Math.abs(ball.dx);
+                    ball.x = W - 8 - PW - R - 0.1;
+                    const off = (yAt - (p2.y + PH / 2)) / (PH / 2);
+                    ball.dy = off * 5;
+                    ball.dx -= 0.3;
+                    rally++;
+                    document.getElementById('rallyDisplay').textContent = rally;
+                    SFX.point();
+                    buzz(6);
+                }
+            }
+
+            // gol
+            if (ball.x < -20) { p2Score++; scorePoint(2); }
+            if (ball.x > W + 20) { p1Score++; scorePoint(1); }
+        }
+
+        function scorePoint(who) {
+            updateUI();
+            SFX.lose();
+            buzz(20);
+            if ((who === 1 ? p1Score : p2Score) >= WIN) {
+                gameOver = true;
+                SFX.win();
+                const winner = who === 1 ? 'Jugador 1' : (mode === '2p' ? 'Jugador 2' : 'la CPU');
+                showMessage('🎉', `¡Gana ${winner}!`, `Jugador 1: ${p1Score} · Jugador 2: ${p2Score}`);
+            } else {
+                serve();
+            }
+        }
+
+        function showMessage(icon, title, text) {
+            document.getElementById('msgIcon').textContent = icon;
+            document.getElementById('msgTitle').textContent = title;
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgBtn').textContent = 'Jugar otra vez';
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep') || '#0a0a0c';
+            ctx.fillRect(0, 0, W, H);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 12]);
+            ctx.beginPath(); ctx.moveTo(W / 2, 8); ctx.lineTo(W / 2, H - 8); ctx.stroke();
+            ctx.setLineDash([]);
+            // palas
+            ctx.fillStyle = '#e8735a';
+            ctx.fillRect(8, p1.y, PW, PH);
+            ctx.fillStyle = '#60a5fa';
+            ctx.fillRect(W - 8 - PW, p2.y, PW, PH);
+            // bola
+            ctx.fillStyle = '#ffd166';
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, 7, 0, Math.PI * 2); ctx.fill();
+            // puntuación central
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.font = '700 42px Playfair Display, serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(p1Score, W / 2 - 70, 58);
+            ctx.fillText(p2Score, W / 2 + 70, 58);
+            // Overlay de pausa
+            if (paused) {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.font = '700 26px Inter, sans-serif';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⏸️ Pausa', W / 2, H / 2);
+            }
+        }
+
+        function loop(ts) {
+            if (!lastTime) lastTime = ts;
+            const dt = Math.min(ts - lastTime, 50);
+            lastTime = ts;
+            update(dt);
+            draw();
+            animId = requestAnimationFrame(loop);
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            paused = !paused;
+            pauseBtn.textContent = paused ? '▶️ Reanudar' : '⏸️ Pausa';
+            pauseBtn.setAttribute('aria-label', paused ? 'Reanudar' : 'Pausar');
+            pauseBtn.title = paused ? 'Reanudar' : 'Pausar';
+            SFX.pause();
+            draw();
+        }
+
+        pauseBtn.addEventListener('click', togglePause);
+        document.getElementById('msgBtn').addEventListener('click', () => { document.getElementById('gameMessage').classList.remove('show'); resetGame(); });
+        document.getElementById('resetBtn').addEventListener('click', () => { resetGame(); SFX.click(); });
+
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ') { e.preventDefault(); togglePause(); return; }
+            keys[e.key] = true;
+        });
+        document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+        // movimiento por teclado en update
+        const baseUpdate = update;
+        update = function (dt) {
+            if (!paused && !gameOver) {
+                if (keys['w'] || keys['W']) p1.y -= 6.5 * dt / 16.7;
+                if (keys['s'] || keys['S']) p1.y += 6.5 * dt / 16.7;
+                if (mode === '2p') {
+                    if (keys['ArrowUp']) p2.y -= 6.5 * dt / 16.7;
+                    if (keys['ArrowDown']) p2.y += 6.5 * dt / 16.7;
+                }
+                p1.y = Math.max(6, Math.min(H - PH - 6, p1.y));
+                p2.y = Math.max(6, Math.min(H - PH - 6, p2.y));
+            }
+            baseUpdate(dt);
+        };
+
+        // ratón y táctil
+        canvas.addEventListener('mousemove', (e) => {
+            if (paused || gameOver) return;
+            const rect = canvas.getBoundingClientRect();
+            const y = (e.clientY - rect.top) / rect.height * H;
+            p1.y = Math.max(6, Math.min(H - PH - 6, y - PH / 2));
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const y = (t.clientY - rect.top) / rect.height * H;
+            if (t.clientX < rect.left + rect.width / 2) p1.y = Math.max(6, Math.min(H - PH - 6, y - PH / 2));
+            else p2.y = Math.max(6, Math.min(H - PH - 6, y - PH / 2));
+        }, { passive: false });
+
+        document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused && !gameOver) togglePause(); });
+
+        applyModeUI();
+        resetGame();
+        lastTime = 0;
+        animId = requestAnimationFrame(loop);
+
+        window.__pong = { resetGame, togglePause, get state() { return { p1Score, p2Score, mode, gameOver, paused }; } };
+    })();
+    </script>
+    <script src="_interface.js"></script>
+    <script src="_postgame.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js').catch(function(err) { console.warn('SW error:', err); });
+    }
+    </script>
+    <script src="_online.js"></script>
+</html>
