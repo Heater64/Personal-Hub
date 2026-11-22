@@ -40,6 +40,10 @@ class PlayerService {
     this.audio.addEventListener('play', () => this.setPlaying(true));
     this.audio.addEventListener('pause', () => this.setPlaying(false));
     this.audio.addEventListener('ended', () => this.setPlaying(false));
+    this.audio.addEventListener('loadedmetadata', () => this._updateMediaPosition());
+    this.audio.addEventListener('durationchange', () => this._updateMediaPosition());
+    this.audio.addEventListener('timeupdate', () => this._updateMediaPosition());
+    this.audio.addEventListener('seeked', () => this._updateMediaPosition());
   }
 
   /** Suscripción a eventos: 'change', 'next', 'prev', 'toggle'. */
@@ -58,11 +62,14 @@ class PlayerService {
   setInfo(info) {
     this.info = info || null;
     this._updateMediaSession();
+    this._updateMediaPosition();
     this.emit('change', { info: this.info });
   }
 
   setPlaying(playing) {
     this._playing = !!playing;
+    this._updateMediaPlaybackState();
+    this._updateMediaPosition();
     this.emit('change', { playing: this._playing });
   }
 
@@ -98,6 +105,13 @@ class PlayerService {
   commandNext() { this.emit('next'); }
   commandPrev() { this.emit('prev'); }
   commandToggle() { this.emit('toggle'); }
+  commandSeek(position) {
+    if (!Number.isFinite(position)) return;
+    const duration = this.audio.duration;
+    const target = Math.max(0, Number.isFinite(duration) && duration > 0 ? Math.min(duration, position) : position);
+    this.audio.currentTime = target;
+    this.emit('seek', { position: target });
+  }
   /** Abre la cola en la página de Canciones (la recoge al montarse). */
   commandQueue() { this.emit('queue'); }
 
@@ -109,18 +123,46 @@ class PlayerService {
     const t = this.info;
     if (!t) {
       try { navigator.mediaSession.metadata = null; } catch { /* no-op */ }
+      this._updateMediaPlaybackState();
       return;
     }
     try {
+      const imageType = t.cover?.match(/\.(avif|png|webp|jpe?g)(?:[?#]|$)/i)?.[1]?.toLowerCase();
       navigator.mediaSession.metadata = new MediaMetadata({
         title: t.title || 'Personal Hub',
         artist: t.artist || 'Canciones para ti',
         album: 'Personal Hub',
         artwork: t.cover
-          ? [{ src: t.cover, sizes: '512x512', type: 'image/jpeg' }]
+          ? [{ src: t.cover, sizes: '512x512', ...(imageType ? { type: `image/${imageType === 'jpg' ? 'jpeg' : imageType}` } : {}) }]
           : []
       });
     } catch { /* no-op */ }
+    this._updateMediaPlaybackState();
+  }
+
+  _updateMediaPlaybackState() {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.playbackState = this.info
+        ? (this._playing ? 'playing' : 'paused')
+        : 'none';
+    } catch { /* navegador sin soporte completo */ }
+  }
+
+  _updateMediaPosition() {
+    if (!('mediaSession' in navigator) || typeof navigator.mediaSession.setPositionState !== 'function') return;
+    const duration = this.audio.duration;
+    if (!this.info || !Number.isFinite(duration) || duration <= 0) {
+      try { navigator.mediaSession.setPositionState(); } catch { /* no-op */ }
+      return;
+    }
+    try {
+      navigator.mediaSession.setPositionState({
+        duration,
+        position: Math.min(duration, Math.max(0, this.audio.currentTime || 0)),
+        playbackRate: this.audio.playbackRate || 1,
+      });
+    } catch { /* metadata todavía incompleta o navegador sin soporte */ }
   }
 
   _wireMediaSession() {
@@ -128,25 +170,23 @@ class PlayerService {
     try {
       navigator.mediaSession.setActionHandler('play', () => {
         this.audio.play().catch(() => {});
-        this.setPlaying(true);
       });
       navigator.mediaSession.setActionHandler('pause', () => {
         this.audio.pause();
-        this.setPlaying(false);
       });
       navigator.mediaSession.setActionHandler('previoustrack', () => this.commandPrev());
       navigator.mediaSession.setActionHandler('nexttrack', () => this.commandNext());
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (details && Number.isFinite(details.seekTime)) {
-          this.audio.currentTime = details.seekTime;
+          this.commandSeek(details.seekTime);
         }
       });
       navigator.mediaSession.setActionHandler('seekbackward', () => {
-        this.audio.currentTime = Math.max(0, this.audio.currentTime - 10);
+        this.commandSeek(Math.max(0, this.audio.currentTime - 10));
       });
       navigator.mediaSession.setActionHandler('seekforward', () => {
         if (Number.isFinite(this.audio.duration)) {
-          this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 10);
+          this.commandSeek(Math.min(this.audio.duration, this.audio.currentTime + 10));
         }
       });
     } catch { /* navegador sin soporte completo */ }

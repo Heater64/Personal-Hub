@@ -1,3 +1,4 @@
+import '../styles/game-invite-center.css';
 import { userStore } from '../stores/user.store.js';
 import { supabase } from '../services/supabase.js';
 import { showToast } from './Toast.js';
@@ -255,18 +256,20 @@ export function GameInviteCenter(router) {
       </div>
     `;
 
-    card.querySelector('.game-invite-card__accept').addEventListener('click', () => {
+    card.querySelector('.game-invite-card__accept').addEventListener('click', async () => {
       const user = userStore.getUser();
+      const sent = await respondListenTogether(true, user?.name || 'Tu pareja', user?.avatar || '');
+      if (!sent) return;
       listenRequest = null;
-      respondListenTogether(true, user?.name || 'Tu pareja', user?.avatar || '');
       startListenTogether(user?.name || 'Tu pareja', user?.avatar || '');
       showToast('Solicitud aprobada. Escuchando juntos 🎧', 'success');
       render();
     });
 
-    card.querySelector('.game-invite-card__reject').addEventListener('click', () => {
+    card.querySelector('.game-invite-card__reject').addEventListener('click', async () => {
+      const sent = await respondListenTogether(false);
+      if (!sent) return;
       listenRequest = null;
-      respondListenTogether(false);
       showToast('Solicitud rechazada.', 'info');
       render();
     });
@@ -386,6 +389,12 @@ export function GameInviteCenter(router) {
         playInviteChime('listen');
         showToast(`🎧 ${listenRequest.name} quiere escuchar juntos`, 'info', 6000);
         render();
+      } else if (type === 'cancel') {
+        if (!listenRequest) return;
+        listenRequest = null;
+        render();
+      } else if (type === 'error') {
+        showToast(payload?.message || 'No se pudo completar la invitación.', 'error', 5000);
       } else if (type === 'response') {
         const approved = payload?.approved;
         if (approved) {

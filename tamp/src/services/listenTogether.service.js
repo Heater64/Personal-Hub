@@ -27,6 +27,8 @@ const CHANNEL = 'ph-listen-together';
 const LISTEN_CHANNEL = 'ph-listen-state';
 
 let channel = null;
+let channelReady = false;
+let channelReadyPromise = null;
 let listenChannel = null; // canal de postgres_changes para listen_sessions
 let subscribed = false;   // el canal está escuchando (solicitudes incluidas)
 let listenSubscribed = false; // suscripción a cambios de estado en tiempo real
@@ -46,24 +48,47 @@ function emit(type, payload) {
   });
 }
 
-function broadcast(event, payload) {
-  if (!channel) return;
+async function broadcast(event, payload) {
+  const ready = channelReady || await initListenTogether();
+  if (!ready || !channel) return false;
+  const target = channel;
   try {
-    channel.send({ type: 'broadcast', event, payload });
+    const status = await target.send({ type: 'broadcast', event, payload });
+    return status === 'ok' && target === channel;
   } catch (err) {
     console.warn('[listen] No se pudo enviar:', err.message);
+    return false;
   }
 }
 
 /** Suscribe el canal globalmente (idempotente). Permite recibir solicitudes
  *  de 'escuchar juntos' estando en cualquier página de la web. */
 export function initListenTogether() {
-  if (subscribed || !db.isSupabaseConfigured()) return;
+  if (channelReady) return Promise.resolve(true);
+  if (channelReadyPromise) return channelReadyPromise;
+  if (!db.isSupabaseConfigured()) return Promise.resolve(false);
   subscribed = true;
-  try {
-    channel = supabase
-      .channel(CHANNEL)
+  channelReadyPromise = new Promise(resolve => {
+    let settled = false;
+    const finish = (ready, target) => {
+      if (target !== channel) return;
+      channelReady = ready;
+      if (!ready) {
+        subscribed = false;
+        channel = null;
+        channelReadyPromise = null;
+        try { void supabase.removeChannel(target); } catch { /* ya cerrado */ }
+      }
+      if (settled) return;
+      settled = true;
+      resolve(ready);
+    };
+
+    try {
+      const target = supabase
+      .channel(CHANNEL, { config: { broadcast: { ack: true } } })
       .on('broadcast', { event: 'request' }, ({ payload }) => emit('request', payload))
+      .on('broadcast', { event: 'cancel' }, ({ payload }) => emit('cancel', payload || {}))
       .on('broadcast', { event: 'response' }, ({ payload }) => {
         pending = false;
         emit('state', {});
@@ -80,16 +105,32 @@ export function initListenTogether() {
       })
       .on('broadcast', { event: 'bye' }, ({ payload }) => {
         if (!active) return;
-        if (peerName) {
-          peerName = '';
-          peerAvatar = '';
-          emit('bye', {});
-        }
+        // Salir en un dispositivo debe terminar también el estado local del
+        // otro. Antes solo se borraba el nombre del compañero: la sesión
+        // seguía activa y el reproductor continuaba sondeando el servidor.
+        active = false;
+        pending = false;
+        myName = '';
+        myAvatar = '';
+        peerName = '';
+        peerAvatar = '';
+        lastHello = null;
+        emit('bye', payload || {});
+        emit('state', {});
       })
-      .subscribe();
-  } catch (err) {
-    console.warn('[listen] Realtime no disponible:', err.message);
-  }
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') finish(true, target);
+        else if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status)) finish(false, target);
+      });
+      channel = target;
+    } catch (err) {
+      console.warn('[listen] Realtime no disponible:', err.message);
+      subscribed = false;
+      channelReadyPromise = null;
+      resolve(false);
+    }
+  });
+  return channelReadyPromise;
 }
 
 /** Suscribe a cambios en listen_sessions vía postgres_changes (push instantáneo).
@@ -150,6 +191,9 @@ export function stopListenTogether() {
   pending = false;
   myName = '';
   myAvatar = '';
+  peerName = '';
+  peerAvatar = '';
+  lastHello = null;
   if (channel) {
     try { broadcast('bye', {}); } catch { /* no-op */ }
   }
@@ -157,25 +201,33 @@ export function stopListenTogether() {
 }
 
 /** Envía una solicitud para escuchar juntos. */
-export function requestListenTogether(name = '', avatar = '') {
-  initListenTogether();
-  if (active) return;
+export async function requestListenTogether(name = '', avatar = '') {
+  if (active) return true;
   pending = true;
-  broadcast('request', { name, avatar });
   emit('state', {});
+  const sent = await broadcast('request', { name, avatar });
+  if (!sent && pending) {
+    pending = false;
+    emit('state', {});
+    emit('error', { message: 'No se pudo conectar para enviar la invitación. Inténtalo de nuevo.' });
+  }
+  return sent;
 }
 
 /** Cancela una solicitud pendiente sin desactivar la sesión activa. */
-export function cancelListenRequest() {
+export async function cancelListenRequest() {
   if (!pending) return;
   pending = false;
   emit('state', {});
+  const sent = await broadcast('cancel', {});
+  if (!sent) emit('error', { message: 'La solicitud se canceló aquí, pero no se pudo avisar al otro dispositivo.' });
 }
 
 /** Responde a una solicitud de escuchar juntos. */
-export function respondListenTogether(approved, name = '', avatar = '') {
-  initListenTogether();
-  broadcast('response', { approved: Boolean(approved), name, avatar });
+export async function respondListenTogether(approved, name = '', avatar = '') {
+  const sent = await broadcast('response', { approved: Boolean(approved), name, avatar });
+  if (!sent) emit('error', { message: 'No se pudo enviar la respuesta. Comprueba la conexión e inténtalo otra vez.' });
+  return sent;
 }
 
 /** Estado actual de la sesión: { active, pending, peerName, peerAvatar }. */

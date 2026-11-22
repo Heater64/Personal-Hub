@@ -1,0 +1,212 @@
+.game-invite-center {
+  --os-surface: var(--surface-1, #111114);
+  --os-surface-2: var(--surface-2, #19191d);
+  --os-ink: var(--text-primary, rgba(255,255,255,.93));
+  --os-ink-2: var(--text-secondary, rgba(255,255,255,.65));
+  --os-ink-3: var(--text-tertiary, rgba(255,255,255,.38));
+  --os-accent: var(--accent, #e8735a);
+  --os-accent-dim: var(--accent-dim, rgba(232,115,90,.12));
+  --os-line: var(--divider, rgba(255,255,255,.06));
+  --os-line-strong: var(--divider-strong, rgba(255,255,255,.10));
+  --os-green: var(--green, #4ade80);
+  --os-green-dim: var(--green-dim, rgba(74,222,128,.12));
+}
+.game-invite-center { position: fixed; inset: 0; z-index: 1200; pointer-events: none; }
+.game-invite-bell {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-accent, rgba(232,115,90,0.3));
+  border-radius: var(--r-full, 9999px);
+  background: var(--os-surface);
+  color: var(--os-ink);
+  padding: 9px 15px;
+  font-weight: 700;
+  box-shadow: var(--elevation-3, 0 10px 20px rgba(0,0,0,0.5));
+  cursor: pointer;
+  transition: transform var(--dur-fast, 0.15s ease), box-shadow var(--dur-fast, 0.15s ease);
+}
+.game-invite-bell:hover { transform: translateY(-1px); box-shadow: var(--elevation-4, 0 14px 28px rgba(0,0,0,0.6)), var(--glow-accent, 0 0 20px rgba(232,115,90,0.15)); }
+.game-invite-bell__icon { display: inline-flex; color: var(--os-accent); }
+.game-invite-bell__icon svg { width: 17px; height: 17px; display: block; }
+.game-invite-bell__count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-full, 9999px);
+  display: inline-grid;
+  place-items: center;
+  font-size: var(--fs-caption, 0.6875rem);
+  background: var(--os-accent);
+  color: #fff;
+  animation: gameBellPop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+@keyframes gameBellPop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+.game-invite-card {
+  position: fixed;
+  right: 16px;
+  top: 72px;
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: auto;
+  padding: 24px;
+  border-radius: var(--r-xl, 28px);
+  overflow: hidden;
+  background: var(--os-surface);
+  color: var(--os-ink);
+  border: 1px solid var(--os-line-strong);
+  box-shadow: var(--elevation-4, 0 14px 28px rgba(0,0,0,0.6));
+  transform: translateX(calc(100% + 48px));
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.game-invite-card.is-visible { opacity: 1; transform: none; }
+.game-invite-card.is-fresh.is-visible { animation: gameCardIn 0.62s cubic-bezier(0.2, 0.85, 0.3, 1.3) both; }
+@keyframes gameCardIn {
+  0% { opacity: 0; transform: translateX(calc(100% + 48px)) scale(0.94); }
+  58% { opacity: 1; transform: translateX(-15px) scale(1.02); }
+  76% { transform: translateX(7px) scale(0.995); }
+  90% { transform: translateX(-3px); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+.game-invite-bell.is-fresh { animation: gameBellIn 0.5s cubic-bezier(0.2, 0.85, 0.3, 1.35) both; }
+@keyframes gameBellIn {
+  0% { opacity: 0; transform: translateY(-16px) scale(0.82); }
+  60% { opacity: 1; transform: translateY(3px) scale(1.05); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.game-invite-card__glow {
+  position: absolute;
+  top: -70px;
+  right: -70px;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, var(--accent-dim-strong, rgba(232,115,90,0.3)), transparent 70%);
+}
+.game-invite-card__head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.game-invite-card__emblem {
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: var(--r-md, 16px);
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  background: var(--os-accent-dim);
+  border: 1px solid var(--border-accent, rgba(232,115,90,0.3));
+  overflow: hidden;
+}
+.game-invite-card__emblem--cover { padding: 0; }
+.game-invite-card__cover { width: 100%; height: 100%; object-fit: cover; display: block; }
+.game-invite-card__emblem-icon { display: grid; place-items: center; color: var(--os-accent); }
+.game-invite-card__emblem-icon svg { width: 26px; height: 26px; display: block; }
+.game-invite-card__eyebrow { color: var(--os-accent); font-size: var(--fs-caption, 0.6875rem); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
+.game-invite-card h2 { margin: 0; font-size: 1.3rem; font-family: var(--font-display, Georgia, serif); }
+.game-invite-card__body { margin: 0 0 4px; color: var(--os-ink-2); line-height: 1.5; }
+.game-invite-card__body strong { color: var(--os-ink); }
+.game-invite-card p { margin: 0; color: var(--os-ink-2); }
+.game-invite-card__inviter { display: flex; align-items: center; gap: 10px; margin: 4px 0 2px; }
+.game-invite-card__inviter p { margin: 0; }
+.game-invite-card__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--os-accent-dim);
+  color: var(--os-accent);
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.game-invite-card__avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.game-invite-card__avatar-fallback { display: grid; place-items: center; width: 100%; height: 100%; }
+.game-invite-card__meta {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--os-ink-3);
+  font-size: var(--fs-caption, 0.6875rem);
+  line-height: 1.45;
+  padding-top: 12px;
+  border-top: 1px solid var(--os-line);
+}
+.game-invite-card__meta-icon { display: inline-flex; margin-top: 1px; flex-shrink: 0; }
+.game-invite-card__meta-icon svg { width: 13px; height: 13px; display: block; }
+.game-invite-card__actions { display: flex; gap: 9px; justify-content: flex-end; margin-top: 18px; }
+.game-invite-card__actions button,
+.online-btn,
+.online-choice,
+.online-game-chip,
+.online-game__cell { min-height: 44px; font: inherit; cursor: pointer; }
+.game-invite-card__reject {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--os-line-strong);
+  background: transparent;
+  color: var(--os-ink-2);
+  padding: 10px 15px;
+  border-radius: var(--r-full, 9999px);
+  transition: transform var(--dur-fast, 0.15s ease), background var(--dur-fast, 0.15s ease), border-color var(--dur-fast, 0.15s ease);
+}
+.game-invite-card__reject:hover { border-color: var(--os-line-strong); background: var(--os-surface-2); color: var(--os-ink); }
+.game-invite-card__accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: var(--os-accent);
+  color: #fff;
+  padding: 10px 16px;
+  font-weight: 700;
+  border-radius: var(--r-full, 9999px);
+  box-shadow: 0 8px 20px var(--accent-dim-strong, rgba(232,115,90,0.22));
+  transition: transform var(--dur-fast, 0.15s ease), box-shadow var(--dur-fast, 0.15s ease);
+}
+.game-invite-card__accept:hover { transform: translateY(-1px); box-shadow: 0 10px 26px var(--accent-dim-strong, rgba(232,115,90,0.34)); }
+.game-invite-card__btn-icon { display: inline-flex; }
+.game-invite-card__btn-icon svg { width: 15px; height: 15px; display: block; }
+.game-invite-card--rematch .game-invite-card__emblem,
+.game-invite-card--rematch .game-invite-card__emblem-icon,
+.game-invite-card--rematch .game-invite-card__eyebrow { color: var(--os-green); }
+.game-invite-card--rematch .game-invite-card__emblem { background: var(--os-green-dim); border-color: var(--os-green); }
+.game-invite-card--rematch .game-invite-card__accept { background: var(--os-green); color: #052e16; box-shadow: 0 8px 20px var(--os-green-dim); }
+.game-invite-card--music .game-invite-card__emblem,
+.game-invite-card--music .game-invite-bell__icon { color: #a78bfa; }
+.game-invite-card--music .game-invite-card__emblem { background: rgba(167,139,250,0.14); border-color: rgba(167,139,250,0.4); }
+.game-invite-card--music .game-invite-card__accept { background: #8b5cf6; color: #fff; box-shadow: 0 8px 20px rgba(139,92,246,0.34); }
+
+
+/* En móvil el aviso funciona como un diálogo centrado: acciones siempre visibles. */
+@media (max-width: 640px) {
+  .game-invite-card {
+    left: 50%;
+    right: auto;
+    top: 50%;
+    width: min(380px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    padding: 20px;
+    transform: translate(-50%, -50%) scale(.96);
+  }
+  .game-invite-card.is-visible { transform: translate(-50%, -50%); }
+  .game-invite-card.is-fresh.is-visible { animation: gameCardInMobile .28s ease-out both; }
+  .game-invite-card__head { gap: 12px; margin-bottom: 12px; }
+  .game-invite-card__emblem { width: 46px; height: 46px; }
+  .game-invite-card__actions { gap: 8px; margin-top: 16px; }
+  .game-invite-card__actions button { flex: 1; justify-content: center; padding-inline: 10px; }
+}
+@keyframes gameCardInMobile {
+  from { opacity: 0; transform: translate(-50%, -47%) scale(.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-invite-card, .game-invite-bell { transition: none; animation: none; transform: none; opacity: 1; }
+}

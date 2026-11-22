@@ -9,7 +9,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--nav-h) + 4px + env(safe-area-inset-bottom, 0px));
   z-index: calc(var(--z-sticky) - 1);
   align-items: center;
   gap: var(--sp-12);
@@ -211,7 +211,7 @@
 }
 
 /* Desktop: la barra vive bajo el sidebar (sin bottom-nav) */
-@media (min-width: 769px) {
+@media (min-width: 768px) {
   .app-shell.has-sidebar .now-playing-bar {
     left: var(--sidebar-width);
     bottom: 0;

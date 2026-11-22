@@ -142,13 +142,13 @@ export function NowPlayingBar(router) {
         if (!Number.isFinite(a.duration) || a.duration <= 0) return;
         const rect = prog.getBoundingClientRect();
         const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-        a.currentTime = ratio * a.duration;
+        player.commandSeek(ratio * a.duration);
       };
       prog.addEventListener('click', seek);
       prog.addEventListener('keydown', (e) => {
         const a = player.audio;
-        if (e.key === 'ArrowRight') { a.currentTime = Math.min(a.duration, a.currentTime + 10); e.preventDefault(); }
-        else if (e.key === 'ArrowLeft') { a.currentTime = Math.max(0, a.currentTime - 10); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { player.commandSeek(Math.min(a.duration, a.currentTime + 10)); e.preventDefault(); }
+        else if (e.key === 'ArrowLeft') { player.commandSeek(Math.max(0, a.currentTime - 10)); e.preventDefault(); }
       });
     }
 
@@ -222,13 +222,13 @@ export function NowPlayingBar(router) {
         if (!Number.isFinite(a.duration) || a.duration <= 0) return;
         const rect = npfProg.getBoundingClientRect();
         const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-        a.currentTime = ratio * a.duration;
+        player.commandSeek(ratio * a.duration);
       };
       npfProg.addEventListener('click', seek);
       npfProg.addEventListener('keydown', (e) => {
         const a = player.audio;
-        if (e.key === 'ArrowRight') { a.currentTime = Math.min(a.duration, a.currentTime + 10); e.preventDefault(); }
-        else if (e.key === 'ArrowLeft') { a.currentTime = Math.max(0, a.currentTime - 10); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { player.commandSeek(Math.min(a.duration, a.currentTime + 10)); e.preventDefault(); }
+        else if (e.key === 'ArrowLeft') { player.commandSeek(Math.max(0, a.currentTime - 10)); e.preventDefault(); }
       });
     }
 

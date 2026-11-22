@@ -1098,7 +1098,7 @@ export function CancionesPage(router) {
     // punto de enganche por si la página recupera controles propios.
   }
 
-  function loadSong(idx) {
+  function loadSong(idx, { broadcastAction = true } = {}) {
     currentIdx = idx;
     // Modo aleatorio sin repetir: cada tema que suena entra en el historial
     // del ciclo actual (cubre reproducciones manuales, cola y saltos).
@@ -1120,7 +1120,7 @@ export function CancionesPage(router) {
     // que el tick no reenvíe el mismo cambio (el broadcast directo es la
     // autoridad: el tick solo detecta lo que este aviso no cubrió).
     lastSync = { key: songKey(s.title, s.artist), playing: isPlaying && !audioEl?.paused, t: audioEl?.currentTime || 0 };
-    maybeBroadcast({ action: 'song', key: songKey(s.title, s.artist), t: audioEl?.currentTime || 0, playing: isPlaying });
+    maybeBroadcast({ action: 'song', key: songKey(s.title, s.artist), t: audioEl?.currentTime || 0, playing: isPlaying }, broadcastAction);
   }
 
   function togglePlay() {
@@ -1139,7 +1139,7 @@ export function CancionesPage(router) {
     // tick no reenvíe el mismo estado (mismo criterio que en loadSong).
     if (currentIdx >= 0 && activeList[currentIdx]) {
       lastSync = { key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist), playing: isPlaying && !audioEl?.paused, t: audioEl?.currentTime || 0 };
-      maybeBroadcast({ action: 'playpause', key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist), t: audioEl?.currentTime || 0, playing: isPlaying });
+      maybeBroadcast({ action: 'playpause', key: songKey(activeList[currentIdx].title, activeList[currentIdx].artist), t: audioEl?.currentTime || 0, playing: isPlaying }, true);
     }
   }
 
@@ -1159,7 +1159,7 @@ export function CancionesPage(router) {
   }
 
   /** Reproduce una canción concreta (venga de donde venga: otra playlist). */
-  function playSongObject(s, t) {
+  function playSongObject(s, t, broadcastAction = true) {
     const sourceList = ALL_SONGS.includes(s) ? ALL_SONGS : (SONGS_RECUERDAN.includes(s) ? SONGS_RECUERDAN : null);
     if (!sourceList) return;
     // Ya está sonando esta misma canción: solo se ajusta la posición (seek),
@@ -1173,7 +1173,7 @@ export function CancionesPage(router) {
     }
     const idx = sourceList.indexOf(s);
     if (idx >= 0 && activeList[idx] === s) {
-      loadSong(idx);
+      loadSong(idx, { broadcastAction });
     } else {
       // La canción no está en la lista activa: se reproduce sobre la biblioteca
       activeList = sourceList;
@@ -1195,9 +1195,9 @@ export function CancionesPage(router) {
    *  decide qué se aplica → elimina el ping-pong entre dispositivos.
    *  Solo se envía si no acabamos de aplicar el estado del servidor
    *  (anti-eco) y si algo cambió realmente. */
-  function maybeBroadcast(payload) {
+  function maybeBroadcast(payload, force = false) {
     if (!listenTogether) return;
-    if (Date.now() - listenSuppress < 1500) return;
+    if (!force && Date.now() - listenSuppress < 1500) return;
     const s = activeList[currentIdx];
     if (!s) return;
     const key = payload.key || songKey(s.title, s.artist);
@@ -1337,10 +1337,18 @@ export function CancionesPage(router) {
       const s = findSongByKey(st.song_key);
       if (!s) return;
       listenSuppress = Date.now();
-      playSongObject(s, serverT);
+      playSongObject(s, serverT, false);
+      if (audioEl && Math.abs((audioEl.currentTime || 0) - serverT) > 2) audioEl.currentTime = serverT;
       applyPlayState(serverPlaying);
       lastSync = { key: st.song_key, playing: serverPlaying, t: serverT };
       return;
+    }
+
+    // Misma canción: posición y play/pausa son estados independientes; el seek
+    // debe converger también cuando el otro dispositivo dejó la canción pausada.
+    if (audioEl && Math.abs(localT - serverT) > 2) {
+      listenSuppress = Date.now();
+      audioEl.currentTime = serverT;
     }
 
     // Misma canción pero el estado cambió → play/pausa.
@@ -1350,13 +1358,7 @@ export function CancionesPage(router) {
       lastSync = { ...lastSync, playing: serverPlaying, t: serverT };
       return;
     }
-
-    // Misma canción y estado: corregir la posición si se desvía >2s.
-    if (serverPlaying && Math.abs(localT - serverT) > 2) {
-      listenSuppress = Date.now();
-      if (audioEl && serverT > 0) audioEl.currentTime = serverT;
-      lastSync = { ...lastSync, t: serverT };
-    }
+    lastSync = { key: st.song_key, playing: serverPlaying, t: serverT };
   }
 
   /** Aplica play/pausa localmente (compartido por applyServerState). */
@@ -2205,6 +2207,12 @@ export function CancionesPage(router) {
     if (e.type === 'next') nextSong();
     else if (e.type === 'prev') prevSong();
     else if (e.type === 'toggle') togglePlay();
+    else if (e.type === 'seek' && listenTogether && currentIdx >= 0 && activeList[currentIdx]) {
+      const s = activeList[currentIdx];
+      const key = songKey(s.title, s.artist);
+      lastSync = { key, playing: isPlaying && !audioEl?.paused, t: e.position };
+      maybeBroadcast({ action: 'seek', key, t: e.position, playing: isPlaying && !audioEl?.paused }, true);
+    }
     else if (e.type === 'change' && typeof e.playing === 'boolean' && e.playing !== isPlaying) {
       isPlaying = e.playing;
       updatePlayBtn();
