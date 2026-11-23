@@ -105,6 +105,16 @@ test('el control no pide activar si Android ya mantiene el servicio vivo', async
   assert.match(sheet, /const on = !!\(bg\.enabled \|\| bg\.running\)/);
 });
 
+test('los cambios de ánimo en primer plano generan notificaciones nativas distintas', async () => {
+  const native = await read('tamp/src/services/native.service.js');
+
+  assert.match(native, /loadLocalNotifications = \(\) => import\('@capacitor\/local-notifications'\)/);
+  assert.match(native, /if \(isMoodPush\(notification\)\) \{\s*await showNativeMoodNotification/);
+  assert.match(native, /LocalNotifications\.schedule\(/);
+  assert.match(native, /id: Math\.max\(1, Math\.trunc\(Date\.now\(\) % 2_147_483_647\)\)/);
+  assert.match(native, /localNotificationActionPerformed/);
+});
+
 test('los widgets se refrescan al reanudar sin depender de abrir Inicio', async () => {
   const native = await read('tamp/src/services/native.service.js');
   const widgets = await read('tamp/src/services/widgets.service.js');

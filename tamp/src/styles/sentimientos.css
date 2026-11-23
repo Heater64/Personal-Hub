@@ -532,21 +532,6 @@
 
 .sent-hist-emoji { font-size: 17px; line-height: 1; }
 
-.sent-hist-changes {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 3px;
-  border-radius: var(--r-full);
-  background: var(--primary);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 15px;
-}
-
 .sent-mood-day-detail { display: grid; gap: var(--sp-10); }
 .sent-mood-day-date {
   margin: 0;

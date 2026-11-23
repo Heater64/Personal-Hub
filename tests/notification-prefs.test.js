@@ -244,13 +244,16 @@ test('el cliente sube sus ajustes y los une por marca de tiempo', async () => {
   assert.match(app, /syncNotifPrefs\(\)\.finally\(\(\) => syncReminderState\(\)\)/);
 });
 
-test('el perfil ofrece el interruptor de recordatorios', async () => {
+test('el perfil ofrece recordatorios y deja claro que no hay horario de silencio', async () => {
   const profile = await readFile(hub('src', 'pages', 'Profile.js'), 'utf8');
+  const service = await readFile(hub('src', 'services', 'notifications.service.js'), 'utf8');
   assert.match(profile, /id="notifReminders"/);
   assert.match(profile, /\$\{s\.reminders \? 'checked' : ''\}/);
   assert.match(profile, /setNotifSettings\(\{ reminders: e\.target\.checked \}\)/);
-  // El texto del silencio tiene que decir la verdad de lo que hace ahora.
-  assert.match(profile, /Los recordatorios que caigan ahí esperan a que termine el silencio/);
+  // Tamp no aplaza avisos: las preferencias antiguas se normalizan a siempre.
+  assert.match(profile, /El de tu estado de ánimo sale siempre\. No hay horario de silencio/);
+  assert.match(service, /const ALWAYS_NOTIFY_TIME = '00:00'/);
+  assert.match(service, /quietFrom: ALWAYS_NOTIFY_TIME,[\s\S]*quietTo: ALWAYS_NOTIFY_TIME/);
 });
 
 test('el silencio se mide igual en el cliente y en el servidor', async () => {

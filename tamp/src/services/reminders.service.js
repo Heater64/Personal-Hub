@@ -11,10 +11,10 @@
    ========================================== */
 
 import { supabase } from './supabase.js';
+export { formatReminderDate, isoToLocalInput, localInputToIso } from '../utils/reminder-time.js';
 
 const REMINDERS_URL = '/api/push?action=reminders';
 const RUN_URL = '/api/push?action=run-reminders';
-
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Sesión no disponible');
@@ -46,37 +46,6 @@ async function call(url, options = {}) {
 export async function listReminders() {
   const data = await call(REMINDERS_URL, { method: 'GET' });
   return { reminders: data.reminders || [], logs: data.logs || [] };
-}
-
-/**
- * Valor de un <input type="datetime-local"> → ISO en UTC.
- *
- * `new Date('2026-10-20T19:00')` sin zona se interpreta en la hora del
- * DISPOSITIVO, que es la que el admin acaba de ver en el formulario. El
- * servidor recibe un instante absoluto y no tiene que adivinar la zona.
- */
-export function localInputToIso(value) {
-  const date = new Date(value);
-  if (!value || Number.isNaN(date.getTime())) throw new Error('Elige una fecha y una hora');
-  return date.toISOString();
-}
-
-/** Instante ISO → valor para rellenar un <input type="datetime-local">. */
-export function isoToLocalInput(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = n => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-    + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-/** Formato corto para la lista: «20 oct, 19:00». */
-export function formatReminderDate(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('es', {
-    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-  });
 }
 
 export async function createReminder(input) {

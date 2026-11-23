@@ -420,197 +420,6 @@
 .prof-push--fallback { color: var(--theme-warning); }
 
 /* ==========================================
-   MOOD — estado de ánimo
-   ========================================== */
-
-.prof-mood-display {
-  padding: var(--sp-12) var(--sp-16);
-}
-
-.prof-mood-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-8);
-  padding: var(--sp-8) var(--sp-16);
-  border-radius: var(--r-full);
-  background: var(--theme-accent-dim);
-}
-
-.prof-mood-emoji {
-  font-size: var(--fs-lg);
-  line-height: 1;
-}
-
-.prof-mood-label {
-  font-size: var(--fs-base);
-  font-weight: 600;
-  color: var(--theme-text-primary);
-}
-
-.prof-mood-empty {
-  font-size: var(--fs-sm);
-  color: var(--theme-text-tertiary);
-}
-
-.prof-mood-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-8);
-  padding: 0 var(--sp-16) var(--sp-8);
-}
-
-/* Atajos + desplegable «Otras» (mismo modelo que Sentimientos). */
-.prof-mood-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-8);
-}
-
-.prof-mood-extra {
-  margin-top: var(--sp-12);
-  padding: var(--sp-12);
-  border-radius: var(--r-sm);
-  border: 1px solid var(--theme-divider-strong);
-  background: var(--theme-surface-pressed);
-}
-
-.prof-mood-extra[hidden] { display: none; }
-
-.prof-mood-extra-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-8);
-}
-
-.prof-mood-custom {
-  display: flex;
-  gap: var(--sp-8);
-  margin-top: var(--sp-12);
-}
-
-.prof-mood-custom-input {
-  flex: 1;
-  min-width: 0;
-  padding: var(--sp-10) var(--sp-12);
-  border-radius: var(--r-sm);
-  border: 1px solid var(--theme-divider-strong);
-  background: var(--theme-surface);
-  color: var(--theme-text-primary);
-  font: inherit;
-  font-size: var(--fs-sm);
-}
-
-.prof-mood-custom-input:focus-visible {
-  outline: 2px solid var(--theme-accent);
-  outline-offset: 2px;
-}
-
-.prof-mood-custom-add {
-  padding: var(--sp-10) var(--sp-12);
-  border-radius: var(--r-sm);
-  border: 1px solid var(--theme-accent);
-  background: var(--theme-accent-dim);
-  color: var(--theme-accent);
-  font: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.prof-mood-custom-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-8);
-  margin-top: var(--sp-10);
-}
-
-.prof-mood-custom-chips:empty { display: none; }
-
-.prof-mood-custom-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-6);
-  padding: var(--sp-6) var(--sp-10);
-  border-radius: var(--r-full);
-  border: 1px solid var(--theme-accent);
-  background: var(--theme-accent-dim);
-  color: var(--theme-accent);
-  font: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.prof-mood-custom-x { opacity: 0.7; }
-
-.prof-mood-btn {
-  position: relative;
-  flex: 1 1 calc(33% - var(--sp-8));
-  min-width: 80px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: var(--sp-12) var(--sp-8);
-  border-radius: var(--r-sm);
-  border: 1px solid var(--theme-divider-strong);
-  background: var(--theme-surface-pressed);
-  color: var(--theme-text-secondary);
-  font-family: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--dur-fast);
-}
-
-.prof-mood-btn:hover {
-  border-color: var(--theme-border-accent);
-}
-
-.prof-mood-btn.selected {
-  border-color: var(--theme-accent);
-  background: var(--theme-accent-dim);
-  color: var(--theme-accent);
-  font-weight: 600;
-}
-
-.prof-mood-btn-emoji {
-  font-size: var(--fs-xl);
-  line-height: 1;
-}
-
-.prof-mood-btn-label {
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: inherit;
-}
-
-.prof-mood-btn-check {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--theme-accent);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--elevation-2);
-}
-
-.prof-mood-btn.selected .prof-mood-btn-check { display: flex; }
-
-.prof-mood-actions {
-  display: flex;
-  gap: var(--sp-8);
-  padding: var(--sp-12) var(--sp-16) var(--sp-16);
-}
-
-/* ==========================================
    BUTTONS
    ========================================== */
 
@@ -1014,14 +823,29 @@
   padding: var(--sp-16);
   border-top: 1px solid var(--theme-divider);
 }
+.prof-days-editor--sheet {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  border-top: 0;
+}
 .prof-days-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 10px;
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--theme-text-secondary);
 }
+.prof-days-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(138px, .9fr);
+  gap: 8px;
+  min-width: 0;
+}
+.prof-days-inputs input { width: 100%; min-width: 0; box-sizing: border-box; }
+.prof-days-recur { grid-column: 2; }
 .prof-days-field input[type="date"],
 .prof-days-field .datefield-input {
   padding: 9px 11px;
@@ -1039,7 +863,13 @@
 }
 .prof-days-events { display: flex; flex-direction: column; gap: var(--sp-8); }
 .prof-days-events-title { font-size: var(--fs-sm); font-weight: 600; color: var(--theme-text-secondary); }
-.prof-days-event-row { display: flex; gap: 6px; align-items: center; }
+.prof-days-event-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(130px, 150px) 28px 36px;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
 .prof-days-event-row input[type="text"] {
   flex: 1;
   min-width: 0;
@@ -1119,6 +949,16 @@
   line-height: 1;
   padding: 0 4px;
 }
+
+@media (max-width: 480px) {
+  .prof-days-inputs { grid-template-columns: minmax(0, 1fr) minmax(126px, .9fr); }
+  .prof-days-event-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .prof-days-event-title { grid-column: 1 / 3; }
+  .prof-days-event-row input[type="date"],
+  .prof-days-event-row .datefield-input { grid-column: 1; width: 100%; min-width: 0; }
+  .prof-days-event-recur { grid-column: 2; }
+  .prof-days-event-del { grid-column: 3; grid-row: 2; }
+}
 .prof-day-note {
   color: var(--theme-text-secondary);
   font-size: var(--fs-xs);
@@ -1127,7 +967,7 @@
 
 /* ==========================================
    AJUSTES DE NOTIFICACIONES (bottom sheet)
-   Toggles por tipo, horario de silencio y prueba.
+   Toggles por tipo y prueba.
    Reutiliza .prof-row / .prof-toggle del perfil.
    ========================================== */
 .notif-settings {
@@ -1171,24 +1011,6 @@
   font-size: var(--fs-xs);
   color: var(--text-3);
   line-height: 1.5;
-}
-
-.notif-quiet {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-10);
-}
-
-.notif-quiet .prof-name-input {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-}
-
-.notif-quiet__sep {
-  color: var(--text-3);
-  font-weight: 700;
-  flex: none;
 }
 
 /* Fila clicable de ajustes de notificaciones */

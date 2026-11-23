@@ -15,6 +15,7 @@ import { CATEGORIES, loadAllOpenWhenLetters } from '../data/openwhen.data.js';
 import { normalizeNotificationRoute } from '../utils/notification-route.js';
 import { readSeenCategories, readSeenUpdates } from '../utils/openwhen-categories.js';
 import { urlBase64ToUint8Array, subscriptionKeyChanged } from '../utils/push-key.js';
+import { callNativeApi, isNative } from './native.service.js';
 
 // VAPID public key — debe coincidir con VAPID_PUBLIC_KEY en el servidor
 const VAPID_PUBLIC_KEY = 'BALzk9q-6CaVPmvMC0h4JIMQ582uOKAhX7AwwqefqLQzAeFxbLMhIaeazaZ8OqSQjFQJVIhwPis7zsJL2SrNY3A';
@@ -32,10 +33,12 @@ const DB_STORE = 'state';
 // ==========================================
 // AJUSTES DE NOTIFICACIONES (estilo habitos-web)
 // - Toggles por tipo de aviso
-// - Horario de silencio: ninguna notificación local suena dentro
+// - Compatibilidad: quietFrom/quietTo se mantienen en la API antigua,
+//   pero ambos quedan iguales para que no exista horario de silencio.
 // - Dedupe diario igual que antes
 // ==========================================
 const NOTIF_SETTINGS_KEY = 'notifSettings';
+const ALWAYS_NOTIFY_TIME = '00:00';
 const DEFAULT_NOTIF_SETTINGS = {
   daily: true,       // recordatorio diario (bienvenida + novedades)
   letters: true,     // cartas nuevas en Open When
@@ -48,15 +51,22 @@ const DEFAULT_NOTIF_SETTINGS = {
   adminNotes: true,       // cuando deja una nota en Mal Día
   adminCycle: true,       // cuando registra su menstruación o un día del ciclo
   adminHealth: true,      // avisos técnicos: envíos fallidos, bajas de dispositivos
-  quietFrom: '23:00', // silencio desde…
-  quietTo: '08:00'    // …hasta
+  quietFrom: ALWAYS_NOTIFY_TIME,
+  quietTo: ALWAYS_NOTIFY_TIME
 };
 
 export function getNotifSettings() {
   try {
     const raw = getUserPref(NOTIF_SETTINGS_KEY, '');
     if (!raw) return { ...DEFAULT_NOTIF_SETTINGS };
-    return { ...DEFAULT_NOTIF_SETTINGS, ...JSON.parse(raw) };
+    // Mantén la compatibilidad con filas antiguas, pero aplica el ajuste
+    // actual: no hay una franja que pueda aplazar notificaciones.
+    return {
+      ...DEFAULT_NOTIF_SETTINGS,
+      ...JSON.parse(raw),
+      quietFrom: ALWAYS_NOTIFY_TIME,
+      quietTo: ALWAYS_NOTIFY_TIME,
+    };
   } catch {
     return { ...DEFAULT_NOTIF_SETTINGS };
   }
@@ -67,9 +77,8 @@ export function setNotifSettings(patch) {
   // cambia sus ajustes desde dos dispositivos (ver syncNotifPrefs).
   const next = { ...getNotifSettings(), ...patch, updatedAt: Date.now() };
   setUserPref(NOTIF_SETTINGS_KEY, JSON.stringify(next));
-  // El servidor necesita saberlo para no despertar a nadie: se refleja en
-  // Supabase sin esperar — un fallo de red no puede romper el ajuste local,
-  // que es el que decide al instante en este dispositivo.
+  // Se refleja en Supabase sin esperar — un fallo de red no puede romper el
+  // ajuste local, que es el que decide al instante en este dispositivo.
   pushNotifPrefs(next);
   return next;
 }
@@ -96,8 +105,8 @@ async function pushNotifPrefs(settings) {
       admin_notes: settings.adminNotes !== false,
       admin_cycle: settings.adminCycle !== false,
       admin_health: settings.adminHealth !== false,
-      quiet_from: settings.quietFrom || '23:00',
-      quiet_to: settings.quietTo || '08:00',
+      quiet_from: ALWAYS_NOTIFY_TIME,
+      quiet_to: ALWAYS_NOTIFY_TIME,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
     if (error) {
@@ -137,9 +146,7 @@ export async function syncNotifPrefs() {
 
     if (!data) {
       // Sin fila en el servidor: se suben los ajustes efectivos de este
-      // dispositivo, haya tocado algo o sean los de por defecto. Si no, el
-      // servidor no sabría su horario de silencio (23:00–08:00) y un
-      // recordatorio programado de madrugada le sonaría a las 3:00.
+      // dispositivo, incluidos los avisos sin franja de silencio.
       await pushNotifPrefs(getNotifSettings());
       return getNotifSettings();
     }
@@ -159,11 +166,14 @@ export async function syncNotifPrefs() {
         adminMoodChanges: data.admin_mood_changes !== false,
         adminNotes: data.admin_notes !== false,
         adminHealth: data.admin_health !== false,
-        quietFrom: data.quiet_from || '23:00',
-        quietTo: data.quiet_to || '08:00',
+        quietFrom: ALWAYS_NOTIFY_TIME,
+        quietTo: ALWAYS_NOTIFY_TIME,
         updatedAt: remoteAt
       };
       setUserPref(NOTIF_SETTINGS_KEY, JSON.stringify(merged));
+      // Migra también la copia del servidor: todos los dispositivos respetan
+      // el ajuste de recibir avisos en cualquier momento.
+      await pushNotifPrefs(merged);
       return merged;
     }
 
@@ -435,7 +445,7 @@ export async function syncReminderState() {
   const enabled = isEnabled() && 'Notification' in window && Notification.permission === 'granted';
   const userId = getUserId();
   const prev = await getState();
-  // El SW respeta el horario de silencio al lanzar el aviso diario.
+  // Conserva el campo antiguo del SW con un intervalo vacío (00:00–00:00).
   const { quietFrom, quietTo } = getNotifSettings();
   const state = {
     enabled: enabled && !!userId,
@@ -484,8 +494,8 @@ export async function showDailyNotification(title, body, url = '/', opts = {}) {
   if (!isEnabled()) return false;
   if (!('Notification' in window) || Notification.permission !== 'granted') return false;
   if (!('serviceWorker' in navigator)) return false;
-  // Horario de silencio: ninguna notificación local mientras dure
-  // (la prueba y otros avisos explícitos pueden saltárselo con ignoreQuiet).
+  // Se conserva la comprobación antigua por compatibilidad; el intervalo
+  // vacío permite que las notificaciones salgan a cualquier hora.
   if (!opts.ignoreQuiet && inQuietHours()) return false;
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -514,8 +524,7 @@ export async function notifyTodayNovelties() {
   const userId = getUserId();
   if (!userId) return;
 
-  // Ajustes: tipo desactivado o horario de silencio → no consume el dedupe
-  // del día (si es silencio, el aviso puede salir más tarde ese mismo día).
+  // Un tipo desactivado no consume el dedupe del día.
   const settings = getNotifSettings();
   if (!settings.daily) return;
   if (inQuietHours(settings)) return;
@@ -574,7 +583,7 @@ export async function notifyNewOpenWhenLetters() {
   if (!userId) return;
   if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
 
-  // Ajustes: cartas desactivadas u horario de silencio → sin aviso.
+  // Ajustes: si las cartas están desactivadas, no se envía el aviso.
   const settings = getNotifSettings();
   if (!settings.letters) return;
   if (inQuietHours(settings)) return;
@@ -664,10 +673,8 @@ export async function notifyNewOpenWhenLetters() {
 
 /* ==========================================
    ESTADO DE ÁNIMO
-   Cada vez que registra cómo está le llega el aviso: es la respuesta a lo
-   que acaba de hacer, no un recordatorio. Silenciarlo a ella misma sería
-   raro (y ella lo ha pedido), así que este aviso NO respeta el horario de
-   silencio: el resto de avisos, sí.
+   Cada vez que registra cómo está le llega el aviso. Como pidió recibir
+   siempre las notificaciones, no hay horario de silencio para ningún tipo.
    ========================================== */
 
 const MOOD_LINES = {
@@ -817,16 +824,32 @@ export async function notifyAdmin(kind = 'mood') {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return false;
 
-    const res = await fetch('/api/push?action=notify-admin', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ kind })
-    });
-    if (!res.ok) {
-      console.warn('[notif] Admin alert failed:', kind, res.status);
+    // El WebView de Capacitor vive en https://localhost: las rutas relativas
+    // apuntan allí y nunca alcanzan Vercel. La APK debe usar el mismo origen
+    // HTTPS dedicado que el alta del token FCM.
+    const native = isNative();
+    const res = native
+      ? await callNativeApi('/api/push?action=notify-admin', 'POST', session.access_token, { kind })
+      : await fetch('/api/push?action=notify-admin', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ kind })
+        });
+    const status = res.status;
+    const body = native ? res.data : await res.json().catch(() => ({}));
+    if (status < 200 || status >= 300) {
+      console.warn('[notif] Admin alert failed:', kind, status, body?.error || '');
+      return false;
+    }
+    const hasNativeDeliveryResult = Object.hasOwn(body || {}, 'nativeSent');
+    const noDelivery = hasNativeDeliveryResult
+      ? (Number(body.sent) || 0) + (Number(body.nativeSent) || 0) === 0
+      : Number(body?.sent) === 0 && Boolean(body?.message);
+    if (body?.skipped || noDelivery) {
+      console.warn('[notif] Admin alert was not delivered:', kind, body?.reason || body?.message || 'no recipients');
       return false;
     }
     return true;
@@ -857,8 +880,8 @@ export function notifyAdminOfCycle(kind = 'cycle_period') {
 }
 
 /**
- * Notificación de prueba desde los ajustes: siempre se muestra aunque
- * estemos en horario de silencio (la usuaria la está pidiendo).
+ * Notificación de prueba desde los ajustes: la usuaria la solicita en ese
+ * momento, por eso no depende de ningún ajuste de tipo.
  */
 export async function sendTestNotification() {
   return showDailyNotification(

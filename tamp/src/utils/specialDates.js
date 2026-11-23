@@ -80,7 +80,11 @@ function mediaFields(source = {}) {
 
 function occursOnDate(value, repeats, iso) {
   if (!value) return false;
-  return repeats ? String(value).slice(5) === iso.slice(5) : value === iso;
+  const date = parseISODate(value);
+  const target = parseISODate(iso);
+  if (!date || !target) return false;
+  if (!repeats) return value === iso;
+  return annualOccurrenceISO(date.getUTCMonth() + 1, date.getUTCDate(), target.getUTCFullYear()) === iso;
 }
 
 function eventOccurrenceKey(prefix, recurring, date, iso) {
@@ -292,6 +296,7 @@ const DEFAULTS = {
 
 let cached = null;
 let loading = null;
+let loadRevision = 0;
 
 export function specialDates() {
   return cached || { ...DEFAULTS };
@@ -300,34 +305,55 @@ export function specialDates() {
 /** Carga las fechas desde Supabase y las deja en caché. Devuelve la promesa. */
 export function loadSpecialDates() {
   if (!loading) {
-    loading = db
+    const revision = loadRevision;
+    const request = db
       .getHubDates()
-      .then(d => { cached = d; return d; })
+      .then(d => {
+        if (revision === loadRevision) cached = d;
+        return d;
+      })
       .catch(() => ({ ...DEFAULTS }))
-      .finally(() => { loading = null; });
+      .finally(() => { if (loading === request) loading = null; });
+    loading = request;
   }
   return loading;
 }
 
 /** Días transcurridos desde el aniversario (contador "días juntos"). */
 export function daysSinceAnniversary() {
-  return Math.floor((Date.now() - new Date(specialDates().anniversary + 'T00:00:00').getTime()) / 86400000);
+  const days = daysUntilDate(specialDates().anniversary, todayISO());
+  return days === null ? 0 : -days;
 }
 
 const MS_DAY = 86400000;
 
-/** Fecha local YYYY-MM-DD (sin desfase de UTC). */
+/** Fecha YYYY-MM-DD normalizada en UTC; evita desfases DST y del dispositivo. */
 function toISO(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
 }
 
-/** 'YYYY-MM-DD' → medianoche local, o null si no es un día real (31 de febrero). */
+/** 'YYYY-MM-DD' → medianoche UTC, o null si no es un día real. */
 function parseISODate(value) {
-  const [year, month, day] = String(value || '').split('-').map(Number);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null;
+  const [year, month, day] = String(value).split('-').map(Number);
   if (!year || !month || !day) return null;
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
   return date;
+}
+
+/** Valida un mes-día anual, incluido el 29 de febrero. */
+export function isValidMonthDay(value) {
+  return /^\d{2}-\d{2}$/.test(String(value || '')) && Boolean(parseISODate(`2000-${value}`));
+}
+
+/** Convierte una fecha anual a su ocurrencia válida en el año indicado. */
+function annualOccurrenceISO(month, day, year) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCMonth() === month - 1 && date.getUTCDate() === day) return toISO(date);
+  // Una fecha recurrente el 29 de febrero se celebra el 28 en años no bisiestos.
+  if (month === 2 && day === 29 && date.getUTCMonth() === 2) return `${year}-02-28`;
+  return null;
 }
 
 /**
@@ -341,15 +367,14 @@ function occurrenceISO(event, from) {
   if (event.recurring !== true) return value;
   const [, month, day] = value.split('-').map(Number);
   const base = parseISODate(from) || todayMidnight();
-  let date = new Date(base.getFullYear(), month - 1, day);
-  if (date < base) date = new Date(base.getFullYear() + 1, month - 1, day);
-  return toISO(date);
+  let occurrence = annualOccurrenceISO(month, day, base.getUTCFullYear());
+  if (occurrence < toISO(base)) occurrence = annualOccurrenceISO(month, day, base.getUTCFullYear() + 1);
+  return occurrence;
 }
 
-/** Medianoche local de hoy, para comparar días sin horas. */
+/** Medianoche UTC de hoy en la zona de España. */
 function todayMidnight() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return parseISODate(todayISO());
 }
 
 /**
@@ -387,17 +412,20 @@ export function upcomingSpecialDates(limit = 6) {
 
   const list = [];
   for (const candidate of candidates) {
-    const [year, month, day] = String(candidate.value).split('-').map(Number);
-    if (!year || !month || !day) continue;
-
-    let date = new Date(year, month - 1, day);
+    const sourceDate = parseISODate(candidate.value);
+    if (!sourceDate) continue;
+    let date = candidate.value;
     if (candidate.repeats) {
-      date = new Date(today.getFullYear(), month - 1, day);
-      if (date < today) date = new Date(today.getFullYear() + 1, month - 1, day);
+      const month = sourceDate.getUTCMonth() + 1;
+      const day = sourceDate.getUTCDate();
+      date = annualOccurrenceISO(month, day, today.getUTCFullYear());
+      if (date < toISO(today)) date = annualOccurrenceISO(month, day, today.getUTCFullYear() + 1);
     }
-    const days = Math.round((date - today) / MS_DAY);
+    const dateValue = parseISODate(date);
+    if (!dateValue) continue;
+    const days = Math.round((dateValue - today) / MS_DAY);
     if (days < 0) continue;
-    list.push({ key: candidate.key, title: candidate.title, date: toISO(date), days });
+    list.push({ key: candidate.key, title: candidate.title, date, days });
   }
 
   list.sort((a, b) => a.days - b.days);
@@ -424,5 +452,7 @@ export function nextSpecialDate() {
  */
 export function refreshSpecialDates() {
   cached = null;
+  loadRevision++;
+  loading = null;
   return loadSpecialDates();
 }

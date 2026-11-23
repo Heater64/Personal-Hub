@@ -52,6 +52,7 @@ const loadApp = () => import('@capacitor/app').catch(() => null);
 const loadStatusBar = () => import('@capacitor/status-bar').catch(() => null);
 const loadSplash = () => import('@capacitor/splash-screen').catch(() => null);
 const loadPush = () => import('@capacitor/push-notifications').catch(() => null);
+const loadLocalNotifications = () => import('@capacitor/local-notifications').catch(() => null);
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -277,13 +278,15 @@ export async function initNativePush({ onNavigate } = {}) {
       console.warn('[native] alta de notificaciones fallida:', err?.error);
     });
 
-    // Con la app ABIERTA, Android no pinta el aviso: entrega el mensaje aquí
-    // y, si nadie lo trata, desaparece sin dejar rastro. Por eso una prueba
-    // enviada con la app en primer plano «no llegaba». Se muestra como banner
-    // dentro de la app, que es lo que la capa web puede hacer sin un plugin
-    // de notificaciones locales.
-    PushNotifications.addListener('pushNotificationReceived', notification => {
+    // Android no muestra el aviso FCM automáticamente cuando Tamp está abierta.
+    // Para los ánimos, crea una notificación local del sistema; el resto de
+    // avisos conserva el banner dentro de la app.
+    PushNotifications.addListener('pushNotificationReceived', async notification => {
       if (document.visibilityState !== 'visible') return;
+      if (isMoodPush(notification)) {
+        await showNativeMoodNotification(notification);
+        return;
+      }
       showInAppBanner(notification);
     });
 
@@ -293,6 +296,12 @@ export async function initNativePush({ onNavigate } = {}) {
       const url = action?.notification?.data?.url;
       if (!url || !pushNavigate) return;
       pushNavigate(url.startsWith('/') ? url : `/${url}`);
+    });
+
+    const localMod = await loadLocalNotifications();
+    localMod?.LocalNotifications.addListener('localNotificationActionPerformed', action => {
+      const url = action?.notification?.extra?.url;
+      if (url && pushNavigate) pushNavigate(url.startsWith('/') ? url : `/${url}`);
     });
   })();
 
@@ -307,6 +316,37 @@ export async function initNativePush({ onNavigate } = {}) {
   });
 
   await registerNativePush();
+}
+
+function isMoodPush(notification) {
+  const tag = notification?.data?.tag || '';
+  return tag === 'admin-mood' || tag === 'admin-mood-bad';
+}
+
+async function showNativeMoodNotification(notification) {
+  const mod = await loadLocalNotifications();
+  if (!mod?.LocalNotifications) return;
+  const title = notification?.title || 'Nuevo estado de ánimo';
+  const body = notification?.body || 'Ha cambiado su estado de ánimo.';
+  const rawUrl = notification?.data?.url || '/sentimientos';
+  const url = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+  try {
+    await mod.LocalNotifications.schedule({
+      notifications: [{
+        // Cada cambio de ánimo debe quedar como una notificación separada;
+        // reutilizar un id fijo hacía que Android reemplazara la anterior.
+        id: Math.max(1, Math.trunc(Date.now() % 2_147_483_647)),
+        title,
+        body,
+        channelId: 'default',
+        foreground: true,
+        autoCancel: true,
+        extra: { url },
+      }],
+    });
+  } catch (err) {
+    console.warn('[native] no se pudo mostrar el aviso de ánimo:', err?.message);
+  }
 }
 
 /**

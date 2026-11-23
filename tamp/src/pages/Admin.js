@@ -26,7 +26,7 @@ import {
   openWhenReadIds, isOpenWhenReadVisit
 } from '../utils/stats-metrics.js';
 import { dailyCounts, dashboardDates, latestDailyMoods, publishedLetterIds } from '../utils/dashboard-metrics.js';
-import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, daysUntilDate, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS, eventTemplateFor, EVENT_TEMPLATES } from '../utils/specialDates.js';
+import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, daysUntilDate, isValidMonthDay, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS, eventTemplateFor, EVENT_TEMPLATES } from '../utils/specialDates.js';
 import { cleanEventActions, MAX_EVENT_ACTIONS } from '../utils/event-actions.js';
 import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import {
@@ -212,9 +212,7 @@ const CONTENT_SUBS = [
   { id: 'audios',    icon: UI.music,     label: 'Audios' }
 ];
 
-// Navegación del panel: menú lateral agrupado. Lo que se usa a diario va
-// primero y sin rodeos; el resto no se esconde, simplemente baja a su grupo
-// para que la lista siga siendo corta y cada sección tenga su sitio.
+// Navegación del panel: accesos horizontales a todas las secciones.
 const NAV_GROUPS = [
   {
     label: 'Principal',
@@ -314,38 +312,15 @@ export function AdminPage(router) {
   });
   const { text: greeting, emoji: greetingEmoji } = greetingFor(hourInSpain());
 
-  // El menú lateral se pinta una sola vez a partir de NAV_GROUPS, para que
-  // el HTML no repita la lista de secciones. En móvil es un cajón que
-  // entra con el botón de la cabecera.
-  const navHTML = NAV_GROUPS.map(g => `
-    <div class="admin-nav-group">
-      <span class="admin-nav-group-label">${g.label}<em>${g.hint}</em></span>
-      ${g.items.map(t => `
-        <button type="button" class="admin-sidebar-item" data-section="${t.id}">
-          ${t.icon}<span>${t.label}</span>
-        </button>`).join('')}
-    </div>`).join('');
+  const navHTML = SECTIONS.map(item => `
+    <button type="button" class="admin-section-tab" data-section="${item.id}">
+      ${item.icon}<span>${item.label}</span>
+    </button>`).join('');
 
   page.innerHTML = `
     <div class="admin-layout">
-      <aside class="admin-sidebar" id="adminSidebar" aria-label="Menú del panel">
-        <div class="admin-sidebar-top">
-          <span class="admin-sidebar-top-label">Panel de Peluche</span>
-          <button type="button" class="admin-sidebar-close" id="adminNavClose" aria-label="Cerrar menú">${UI.close}</button>
-        </div>
-        <nav class="admin-sidebar-nav" id="adminSidebarNav" aria-label="Secciones del panel">${navHTML}</nav>
-        <div class="admin-sidebar-footer">
-          <button type="button" class="admin-btn-ghost admin-sidebar-home" id="adminGoHome" title="Volver al hub">
-            ${UI.back}<span>Volver al hub</span>
-          </button>
-        </div>
-      </aside>
-      <div class="admin-nav-scrim" id="adminNavScrim" hidden></div>
       <main class="admin-main">
         <header class="admin-topbar">
-          <button type="button" class="admin-nav-toggle" id="adminNavToggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="adminSidebar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
           <div class="admin-topbar-title" id="adminTopTitle">${UI.dash}<span>Dashboard</span></div>
           <div class="admin-topbar-actions">
             <span class="admin-time-badge" id="adminTimeBadge">
@@ -358,6 +333,9 @@ export function AdminPage(router) {
             </span>
           </div>
         </header>
+        <nav class="admin-section-nav" id="adminSectionNav" aria-label="Secciones del panel">
+          <div class="admin-section-nav__track">${navHTML}</div>
+        </nav>
         <div class="admin-welcome" id="adminWelcome">
           <div class="admin-welcome-greeting">
             <h1 id="adminGreeting">${greeting}, ${esc(userName)} ${greetingEmoji}</h1>
@@ -424,12 +402,8 @@ export function AdminPage(router) {
   const clockInterval = setInterval(updateClock, 30000);
 
   // ===== NAV =====
-  // Menú lateral en escritorio, cajón en móvil. Un solo sitio decide qué está
-  // marcado, qué pone la cabecera y si el saludo se ve, para que ir a una
-  // sección desde cualquier botón (menú, accesos, atajos) deixe el panel
-  // siempre igual de orientado.
-  const navScrim = page.querySelector('#adminNavScrim');
-  const navToggle = page.querySelector('#adminNavToggle');
+  // La fila de secciones se mantiene visible y sincronizada con cualquier
+  // acceso del dashboard, para saltar de vista sin abrir un cajón lateral.
   const welcomeBox = page.querySelector('#adminWelcome');
   const topTitle = page.querySelector('#adminTopTitle');
   const topbar = page.querySelector('.admin-topbar');
@@ -449,31 +423,15 @@ export function AdminPage(router) {
   document.addEventListener('scroll', onTopScroll, { passive: true, capture: true });
   onTopScroll();
 
-  function setNavOpen(open) {
-    page.classList.toggle('nav-open', open);
-    if (navScrim) navScrim.hidden = !open;
-    navToggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
-    document.documentElement.classList.toggle('admin-nav-locked', open);
-  }
-  navToggle?.addEventListener('click', () => setNavOpen(!page.classList.contains('nav-open')));
-  navScrim?.addEventListener('click', () => setNavOpen(false));
-  page.querySelector('#adminNavClose')?.addEventListener('click', () => setNavOpen(false));
-  // «Volver al hub» apunta a la pantalla diaria, que el admin no usa (su casa
-  // es este panel): para él el botón no tendría destino, así que se retira.
-  const goHomeBtn = page.querySelector('#adminGoHome');
-  if (goHomeBtn) {
-    if (userStore.isAdmin) goHomeBtn.remove();
-    else goHomeBtn.addEventListener('click', () => { setNavOpen(false); router.navigate('/'); });
-  }
   /**
    * Deja el panel orientado a una sección: marca su botón del menú, pone el
    * título en la cabecera pegajosa y esconde el saludo (que solo tiene sentido
    * en el resumen) para que las demás secciones no repitan la bienvenida.
    */
   function activateNav(section) {
-    const known = !!page.querySelector(`.admin-sidebar-item[data-section="${section}"]`);
+    const known = !!page.querySelector(`.admin-section-tab[data-section="${section}"]`);
     const id = known ? section : 'dashboard';
-    page.querySelectorAll('.admin-sidebar-item').forEach(button => {
+    page.querySelectorAll('.admin-section-tab').forEach(button => {
       const active = button.dataset.section === id;
       button.classList.toggle('active', active);
       if (active) button.setAttribute('aria-current', 'page');
@@ -481,18 +439,17 @@ export function AdminPage(router) {
     });
     if (topTitle) topTitle.innerHTML = `${sectionInfo(id).icon}<span>${sectionInfo(id).label}</span>`;
     if (welcomeBox) welcomeBox.classList.toggle('is-hidden', id !== 'dashboard');
-    setNavOpen(false);
   }
 
   function setActiveSection(btn, section) {
     if (modal.busy) return;
     modal.close();
     loadSection(section);
-    // Al cambiar de sección, deja el botón activo a la vista en el menú.
-    btn?.scrollIntoView({ block: 'nearest' });
+    // En móvil, desplaza la fila horizontal hasta dejar visible la sección.
+    btn?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }
 
-  page.querySelectorAll('.admin-sidebar-item').forEach(item => {
+  page.querySelectorAll('.admin-section-tab').forEach(item => {
     item.addEventListener('click', () => setActiveSection(item, item.dataset.section));
   });
 
@@ -595,24 +552,14 @@ export function AdminPage(router) {
   };
   document.addEventListener('keydown', escapeHandler);
 
-  // Escape cierra también el cajón del menú (solo en móvil, donde se superpone).
-  const navEscapeHandler = (e) => {
-    if (e.key === 'Escape' && !e.defaultPrevented && page.classList.contains('nav-open')) setNavOpen(false);
-  };
-  document.addEventListener('keydown', navEscapeHandler);
-
   // Cleanup on navigation
   page.cleanup = () => {
     disposed = true;
     sectionToken++;
     appShell?.classList.remove('has-admin');
     document.removeEventListener('keydown', escapeHandler);
-    document.removeEventListener('keydown', navEscapeHandler);
     document.removeEventListener('scroll', onTopScroll, true);
     clearInterval(clockInterval);
-    // El bloqueo de scroll es global: si se navega con el cajón abierto, se
-    // queda puesto y la web entera deja de hacer scroll al volver.
-    document.documentElement.classList.remove('admin-nav-locked');
     clearInterval(readRefreshTimer);
     clearTimeout(moodRefreshTimer);
     stopMoodRefresh();
@@ -4332,7 +4279,7 @@ export function AdminPage(router) {
       <div class="admin-field"><label>Mensaje</label>
         <textarea id="remEditBody" rows="2" maxlength="500">${esc(r.body || '')}</textarea>
       </div>
-      <div class="admin-field"><label>Cuándo</label>
+      <div class="admin-field"><label>Cuándo · España peninsular</label>
         <input type="datetime-local" id="remEditWhen" value="${when}">
       </div>
       <div class="admin-field"><label>Repetir</label>
@@ -4371,10 +4318,11 @@ export function AdminPage(router) {
           </div>
         </div>
         <p class="admin-section-hint">${SECTION_HINTS.recordatorios}</p>
+        <p class="reminder-scheduler-note">La hora se interpreta en España peninsular. Para enviarlo en el minuto elegido debe estar activo pg_cron cada minuto en Supabase; el cron diario de Vercel es solo un respaldo y puede retrasarlo hasta el día siguiente.</p>
 
         <div class="admin-panel">
           <div class="admin-panel-head"><h4>${UI.plus} Nuevo recordatorio</h4></div>
-          <div class="admin-field"><label>Fecha y hora</label>
+          <div class="admin-field"><label>Fecha y hora · España peninsular</label>
             <input type="datetime-local" id="remWhen">
           </div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -4809,7 +4757,7 @@ export function AdminPage(router) {
           <div class="config-pane" data-config-pane="eventos" hidden>
             <div class="dates-events">
               <span class="dates-events-title">✨ Próximas cosas</span>
-              <p class="muted-text">Cada evento es una tarjeta: ábrela para editarlo en orden (datos, plantilla, ambiente y acciones) y ver cuándo aparece, incluido el aviso previo de 7 días. El día que cae, el Inicio muestra un banner para volver a abrir su bienvenida.</p>
+              <p class="muted-text">Cada evento es una tarjeta: ábrela para editarlo y ver cuándo aparece. El aviso previo sale en pantalla al entrar en Inicio durante los 7 días anteriores; no es un push. El día que cae, un banner permite volver a abrir la bienvenida.</p>
               <div id="datesEventsList"></div>
               <button type="button" class="admin-btn admin-btn-ghost" id="addDatesEventBtn">${UI.plus} Añadir evento</button>
               <div class="dates-events-foot">
@@ -5281,7 +5229,7 @@ export function AdminPage(router) {
     /** '10-31' -> '31 de octubre' (o '' si no es un mes-día). */
     const readableMonthDay = (mmdd) => {
       const m = /^\d{2}-\d{2}$/.exec(String(mmdd || ''));
-      if (!m) return '';
+      if (!m || !isValidMonthDay(mmdd)) return '';
       const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
       return `${Number(mmdd.slice(3, 5))} de ${meses[Number(mmdd.slice(0, 2)) - 1]}`;
     };
@@ -5342,19 +5290,19 @@ export function AdminPage(router) {
           ? {
               tone: 'info',
               text: `Sale el ${readableDate(date)}: ya se anuncia (faltan ${faltan} ${faltan === 1 ? 'día' : 'días'}).`,
-              forecast: `Próximamente: desde el ${desde} se anuncia en el Inicio (aviso previo de 7 días) y su día vuelve a abrir la bienvenida.`
+              forecast: `Próximamente: desde el ${desde} aparece un aviso en pantalla al entrar en Inicio. No es una notificación push. Ese día vuelve a abrir la bienvenida.`
             }
           : {
               tone: 'info',
               text: `Sale el ${readableDate(date)}.`,
-              forecast: `Aparecerá el ${readableDate(date)}. El aviso previo empieza 7 días antes, el ${desde}.`
+              forecast: `Aparecerá el ${readableDate(date)}. El aviso en pantalla empieza 7 días antes, al entrar en Inicio el ${desde}; no es una notificación push.`
             };
       }
       return repeats
         ? {
             tone: 'warn',
             text: `La fecha ya pasó (${readableDate(date)}), pero con ♻️ repetirá el ${readableMonthDay(date.slice(5))}.`,
-            forecast: `La fecha original ya pasó. Al repetirse cada año, volverá el ${readableMonthDay(date.slice(5))}, con su aviso previo de 7 días.`
+            forecast: `La fecha original ya pasó. Al repetirse cada año, volverá el ${readableMonthDay(date.slice(5))}, con un aviso en pantalla 7 días antes.`
           }
         : {
             tone: 'warn',
@@ -5771,7 +5719,7 @@ export function AdminPage(router) {
       }
       const badSeasonal = [...page.querySelectorAll('#datesSeasonalList .dates-event-row')]
         .find(row => row.querySelector('.dates-se-title').value.trim()
-          && !/^\d{2}-\d{2}$/.test(row.querySelector('.dates-se-monthday').value.trim()));
+          && !isValidMonthDay(row.querySelector('.dates-se-monthday').value.trim()));
       if (badSeasonal) {
         blockSave('Falta el mes y el día, tipo 10-31', badSeasonal);
         return;

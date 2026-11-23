@@ -546,13 +546,11 @@ export function SentimientosPage(router) {
       const mood = historyMap[dateStr] ? moodStore.resolveMood(historyMap[dateStr]) : null;
       const isToday = dateStr === todayStr;
       const isFuture = dateStr > todayStr;
-      const changeCount = historyRowsByDate[dateStr]?.length || (mood ? 1 : 0);
       cells += `
         <button type="button" class="sent-hist-cell${mood ? ' has-mood is-openable' : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}"
-             data-history-date="${dateStr}" ${mood ? `title="${escapeHtml(mood.label)}" aria-label="${escapeHtml(`${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}${changeCount > 1 ? ` · ${changeCount} cambios` : ''}`)}"` : 'disabled aria-hidden="true"'}>
+             data-history-date="${dateStr}" ${mood ? `title="${escapeHtml(mood.label)}" aria-label="${escapeHtml(`${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}`)}"` : 'disabled aria-hidden="true"'}>
           <span class="sent-hist-day">${day}</span>
           ${mood ? `<span class="sent-hist-emoji" aria-hidden="true">${escapeHtml(mood.emoji)}</span>` : ''}
-          ${mood && changeCount > 1 ? `<span class="sent-hist-changes" aria-hidden="true">${changeCount}</span>` : ''}
         </button>`;
     }
 
@@ -707,7 +705,7 @@ export function SentimientosPage(router) {
       const body = document.createElement('div');
       body.className = 'sent-mood-day-detail';
       body.innerHTML = `<p class="sent-mood-day-date">${escapeHtml(dateLabel)}</p>
-        ${rows.length > 1 ? `<p class="sent-mood-day-summary">${rows.length} cambios de ánimo</p>` : ''}
+        ${rows.length ? `<p class="sent-mood-day-summary">${rows.length} ${rows.length === 1 ? 'registro' : 'registros'}</p>` : ''}
         ${rows.length ? `<ol class="sent-mood-change-list">${entries}</ol>` : '<p class="sent-mood-day-empty">Ese día no tiene registros disponibles en este dispositivo.</p>'}`;
       sheet.append(body);
       return null;

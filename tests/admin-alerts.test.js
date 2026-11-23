@@ -305,11 +305,16 @@ test('el silencio del dispositivo cubre todos los tags del admin', async () => {
 
 test('el cliente manda la clase del evento y no el texto', async () => {
   const service = await readService();
+  const native = await readFile(hub('src', 'services', 'native.service.js'), 'utf8');
   assert.match(service, /export async function notifyAdmin\(kind = 'mood'\)/);
   assert.match(service, /body: JSON\.stringify\(\{ kind \}\)/);
   assert.match(service, /'Content-Type': 'application\/json'/);
   assert.match(service, /export function notifyAdminOfMood\(kind = 'mood'\)/);
   assert.match(service, /export function notifyAdminOfNote\(\)/);
+  assert.match(service, /isNative\(\)[\s\S]*?callNativeApi\('\/api\/push\?action=notify-admin'/,
+    'la APK alcanza la API del dominio desplegado');
+  assert.match(service, /nativeSent/);
+  assert.match(native, /nativeApiUrl\(path\)/);
   // Fire and forget hacia el servidor: un fallo no rompe lo que ella acaba de hacer.
   assert.match(service, /\[notif\] Could not notify admin/);
   assert.doesNotMatch(service, /SERVICE_ROLE|CRON_SECRET|VAPID_PRIVATE/);

@@ -69,26 +69,7 @@
 
 .login-card {
   position: relative;
-  overflow: hidden;
-  padding: clamp(32px, 6vw, 48px) clamp(24px, 5vw, 44px);
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-  border: 1px solid var(--divider-strong);
-  box-shadow: var(--elevation-3);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-.login-card::before {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 56px;
-  height: 3px;
-  border-radius: 0 0 var(--r-full) var(--r-full);
-  background: var(--accent);
-  content: '';
-  transform: translateX(-50%);
+  padding: clamp(16px, 3vw, 28px) 0;
 }
 
 /* ==========================================
@@ -344,8 +325,7 @@
   }
 
   .login-card {
-    padding: 34px 26px 30px;
-    border-radius: var(--r-lg);
+    padding: 18px 4px;
   }
 
   .login-header {
@@ -385,8 +365,7 @@
   }
 
   .login-card {
-    padding: 24px 20px;
-    border-radius: var(--r-md);
+    padding: 14px 2px;
   }
 
   .login-header h1 {

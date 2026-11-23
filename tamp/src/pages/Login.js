@@ -28,8 +28,8 @@ export function LoginPage(router) {
             </svg>
           </div>
           <p class="login-kicker">NUESTRO ESPACIO</p>
-          <h1>Personal Hub</h1>
-          <p id="loginSubtitle">${isRecovery ? 'Crea una contraseña nueva y segura' : 'Vuestra vida juntos, en un solo lugar'}</p>
+          <h1>Tamp</h1>
+          <p id="loginSubtitle">${isRecovery ? 'Creamos una contraseña nueva y segura' : 'Nuestra vida juntos, en un solo lugar'}</p>
         </div>
 
         <div id="loginError" class="login-error">
@@ -59,26 +59,12 @@ export function LoginPage(router) {
             <span class="btn-text">Iniciar sesión</span>
             <span class="btn-loader"></span>
           </button>
-          <button type="button" class="login-link" id="loginForgot">¿Has olvidado la contraseña?</button>
-        </form>
-
-        <form id="loginResetForm" class="login-form login-panel" hidden>
-          <div class="login-panel__intro">
-            <b>Recupera tu acceso</b>
-            <span>Te enviaremos un enlace seguro para crear una contraseña nueva.</span>
-          </div>
-          <div class="form-group">
-            <label for="loginResetEmail">Correo electrónico</label>
-            <input type="email" id="loginResetEmail" class="form-input" placeholder="tu@correo.com" required autocomplete="email">
-          </div>
-          <button type="submit" class="login-btn" id="loginResetBtn"><span class="btn-text">Enviar enlace</span><span class="btn-loader"></span></button>
-          <button type="button" class="login-link" id="loginBack">Volver a iniciar sesión</button>
         </form>
 
         <form id="loginRecoveryForm" class="login-form login-panel" ${isRecovery ? '' : 'hidden'}>
           <div class="login-panel__intro">
-            <b>Elige una contraseña nueva</b>
-            <span>Usa al menos 12 caracteres para proteger vuestro espacio.</span>
+            <b>Elegimos una contraseña nueva</b>
+            <span>Usamos al menos 12 caracteres para proteger nuestro espacio.</span>
           </div>
           <div class="form-group">
             <label for="loginNewPassword">Contraseña nueva</label>
@@ -91,7 +77,7 @@ export function LoginPage(router) {
           <button type="submit" class="login-btn" id="loginRecoveryBtn"><span class="btn-text">Guardar contraseña</span><span class="btn-loader"></span></button>
         </form>
 
-        <p class="login-footer"><span aria-hidden="true">✦</span> Privado para vosotros dos</p>
+        <p class="login-footer">Privado - Solo para nosotros🤍.</p>
       </div>
     </div>
   `;
@@ -104,11 +90,7 @@ export function LoginPage(router) {
   const errorEl = page.querySelector('#loginError');
   const errorText = page.querySelector('#loginErrorText');
   const toggleBtn = page.querySelector('#togglePassword');
-  const resetForm = page.querySelector('#loginResetForm');
   const recoveryForm = page.querySelector('#loginRecoveryForm');
-  const forgotBtn = page.querySelector('#loginForgot');
-  const backBtn = page.querySelector('#loginBack');
-  const subtitle = page.querySelector('#loginSubtitle');
 
   function showError(msg) {
     errorEl.classList.remove('login-error--success');
@@ -127,18 +109,6 @@ export function LoginPage(router) {
     loginBtn.disabled = loading;
   }
 
-  function showPanel(name) {
-    form.hidden = name !== 'signin';
-    resetForm.hidden = name !== 'reset';
-    recoveryForm.hidden = name !== 'recovery';
-    subtitle.textContent = name === 'reset'
-      ? 'Recupera el acceso a vuestro espacio'
-      : name === 'recovery'
-        ? 'Crea una contraseña nueva y segura'
-        : 'Vuestra vida juntos, en un solo lugar';
-    hideError();
-  }
-
   function setButtonLoading(button, loading) {
     button.classList.toggle('loading', loading);
     button.disabled = loading;
@@ -151,26 +121,6 @@ export function LoginPage(router) {
     toggleBtn.innerHTML = isPassword
       ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
       : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
-  });
-
-  forgotBtn.addEventListener('click', () => showPanel('reset'));
-  backBtn.addEventListener('click', () => showPanel('signin'));
-
-  resetForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const email = page.querySelector('#loginResetEmail').value.trim();
-    if (!email) return;
-    const button = page.querySelector('#loginResetBtn');
-    setButtonLoading(button, true);
-    try {
-      await auth.requestPasswordReset(email);
-      showError('Si ese correo tiene acceso, recibirás un enlace para restablecer la contraseña.');
-      errorEl.classList.add('login-error--success');
-    } catch {
-      showError('No se pudo enviar el enlace. Comprueba tu conexión e inténtalo de nuevo.');
-    } finally {
-      setButtonLoading(button, false);
-    }
   });
 
   recoveryForm.addEventListener('submit', async (event) => {

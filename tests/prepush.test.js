@@ -65,7 +65,7 @@ test('cada plantilla cambia la composición de la bienvenida y el Inicio deja vo
   assert.match(admin, /3 · Ambiente/);
   assert.match(admin, /4 · Acciones de la bienvenida/);
   assert.match(admin, /5 · Cuándo aparece/);
-  assert.match(admin, /aviso previo de 7 días/);
+  assert.match(admin, /aviso previo sale en pantalla al entrar en Inicio durante los 7 días anteriores; no es un push/);
   assert.doesNotMatch(admin, /dates-event-toggle/);
   assert.doesNotMatch(admin, /mediaFieldsHTML|typeOptions|templateHint/);
 });
@@ -352,13 +352,13 @@ test('inicio arranca por la tarjeta de días, sin cabecera ni frases viejas', as
   assert.ok(home.includes('todayISO()'));
 });
 
-test('el acceso permite recuperar y renovar la contraseña sin registro público', async () => {
+test('el acceso conserva la recuperación por enlace sin mostrar un acceso de recuperación', async () => {
   const login = await readFile(hub('src', 'pages', 'Login.js'), 'utf8');
   const authService = await readFile(hub('src', 'services', 'auth.service.js'), 'utf8');
   const loginCss = await readFile(hub('src', 'styles', 'login.css'), 'utf8');
 
-  assert.match(login, /id="loginForgot"/, 'el acceso ofrece recuperación de contraseña');
-  assert.match(login, /id="loginRecoveryForm"/, 'el enlace de recuperación abre una vista propia');
+  assert.doesNotMatch(login, /id="loginForgot"/, 'no se muestra el enlace que se retiró');
+  assert.match(login, /id="loginRecoveryForm"/, 'la app conserva la vista abierta por el enlace seguro');
   assert.match(login, /id="loginNewPassword"/, 'la vista permite elegir una contraseña nueva');
   assert.doesNotMatch(login, /signUp\(/, 'el acceso no abre registros públicos');
   assert.match(authService, /resetPasswordForEmail\(/, 'la solicitud se envía a Supabase Auth');
@@ -2064,12 +2064,12 @@ test('el menú del admin agrupa las secciones y ninguna queda sin acceso', async
     assert.ok(navIds.includes(s), `la sección "${s}" no tiene entrada en el menú`);
   }
 
-  // El menú lateral es lo que navega: no queda ninguna barra de secciones.
-  assert.match(admin, /class="admin-sidebar-item" data-section=/);
-  assert.doesNotMatch(admin, /admin-topbar-tab/, 'la barra de secciones se ha sustituido por el menú lateral');
-  assert.doesNotMatch(css, /\.admin-topbar-tab/, 'el CSS de la barra vieja sobra');
-  assert.match(css, /\.admin-sidebar\b/);
-  assert.match(css, /\.admin-nav-group-label/);
+  // La navegación se mantiene horizontal y desaparece el cajón lateral.
+  assert.match(admin, /class="admin-section-tab" data-section=/);
+  assert.match(admin, /id="adminSectionNav"/);
+  assert.doesNotMatch(admin, /<aside class="admin-sidebar"/);
+  assert.doesNotMatch(admin, /adminNavToggle|adminNavScrim/);
+  assert.match(css, /\.admin-section-nav__track\s*\{[\s\S]*?overflow-x:\s*auto/);
 
   // Todas las entradas a una sección pasan por activateNav: así el menú
   // queda marcado, la cabecera pegajosa con el título y el saludo solo en el
@@ -2078,17 +2078,6 @@ test('el menú del admin agrupa las secciones y ninguna queda sin acceso', async
   assert.match(admin, /topTitle\.innerHTML/);
   assert.match(admin, /welcomeBox\.classList\.toggle\('is-hidden', id !== 'dashboard'\)/);
   assert.match(css, /\.admin-welcome\.is-hidden/);
-
-  // En móvil el menú es un cajón: botón, velo y bloqueo de scroll, y
-  // el bloqueo se suelta al navegar para no dejar la web entera sin scroll.
-  assert.match(admin, /class="admin-nav-scrim" id="adminNavScrim"/);
-  assert.match(admin, /class="admin-nav-toggle" id="adminNavToggle"/);
-  assert.match(css, /@media \(max-width: 920px\)[\s\S]*?translateX\(-100%\)/);
-  assert.match(admin, /page\.cleanup = \(\) => \{[\s\S]*?classList\.remove\('admin-nav-locked'\)/);
-
-  // El cajón arranca bajo la barra móvil de la app: es la única vía de
-  // vuelta atrás y taparla dejaría al usuario sin salida.
-  assert.ok(css.includes('top: var(--header-height, 56px)'), 'el cajón debe empezar bajo la barra móvil');
 
   // El shell mide las páginas como columna de lectura; el panel pide más ancho
   // al montarse y lo devuelve al navegar.
@@ -2542,7 +2531,8 @@ test('registrar el estado de ánimo avisa, y el aviso se puede apagar', async ()
   assert.match(sw, /options\.silent = true;/);
 
   // Y no se promete en el horario de silencio algo que luego no ocurre.
-  assert.match(profile, /El de tu estado de ánimo sale siempre/, 'el texto del silencio no puede mentir');
+  assert.match(profile, /El de tu estado de ánimo sale siempre\. No hay horario de silencio/,
+    'la interfaz comunica que los avisos no se aplazan');
   assert.ok(sw.includes("const appUrl = notificationAppUrl(route);"), 'el aviso abre una URL hash normalizada');
   assert.ok(sw.includes('client.navigate(appUrl)'), 'la pestaña de la app navega al destino aunque el listener no haya arrancado');
 });

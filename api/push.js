@@ -1661,7 +1661,7 @@ async function notifyAdminsOfHealth(summary) {
  * El payload puede ser una cadena o una función de la suscripción.
  */
 async function deliverPush(subscriptions, payload, onResult, additionalFcmUserIds = []) {
-  const results = { sent: 0, failed: 0, removed: 0 };
+  const results = { sent: 0, failed: 0, removed: 0, nativeSent: 0, nativeFailed: 0 };
   const expired = [];
   // El payload puede depender del destinatario (un token de acuse por
   // dispositivo). Acepta una cadena —lo normal— o una función de la suscripción.
@@ -1702,7 +1702,14 @@ async function deliverPush(subscriptions, payload, onResult, additionalFcmUserId
     ...(subscriptions || []).map(sub => sub.userId),
     ...(additionalFcmUserIds || []),
   ];
-  await deliverFcmForUsers(fcmUserIds, payloadFor).catch(() => null);
+  const nativeResults = await deliverFcmForUsers(fcmUserIds, payloadFor).catch(err => {
+    console.error('[fcm] no se pudo completar el envío:', err?.message || err);
+    return null;
+  });
+  if (nativeResults) {
+    results.nativeSent = Number(nativeResults.sent) || 0;
+    results.nativeFailed = Number(nativeResults.failed) || 0;
+  }
   return { results, expired };
 }
 

@@ -7,14 +7,12 @@ import '../styles/profile.css';
 import { userStore } from '../stores/user.store.js';
 import { auth } from '../services/auth.service.js';
 import { theme } from '../services/theme.service.js';
-import { moodStore } from '../stores/mood.store.js';
 import { showToast } from '../components/Toast.js';
 import { db } from '../services/db.service.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
-import { requestEnable, disable, isPushSupported, getNotifSettings, setNotifSettings, notifPermission, inQuietHours, sendTestNotification, syncReminderState } from '../services/notifications.service.js';
+import { requestEnable, disable, isPushSupported, getNotifSettings, setNotifSettings, notifPermission, sendTestNotification } from '../services/notifications.service.js';
 import { getNativePushStatus, registerNativePush } from '../services/native.service.js';
 import { escapeHtml } from '../utils/escape.js';
-import { MAX_CUSTOM_LABEL, makeCustomMood, toggleMoodSelection } from '../data/moods.data.js';
 import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/specialDates.js';
 import { isValidISO } from '../utils/cycleMath.js';
 
@@ -27,6 +25,21 @@ const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '
 // función nueva → minor). Al subir una versión nueva solo hay que añadir
 // su entrada al principio de la lista y actualizar APP_VERSION.
 const WHATS_NEW = [
+  {
+    version: '2.0.0',
+    items: [
+      '🚀 Tamp unifica la web, el backend y la APK en un solo proyecto',
+      '🔄 La app recupera los archivos nuevos después de cada despliegue',
+      '☁️ Publicación de la web y las APIs, con compilación de la APK automatizada'
+    ]
+  },
+  {
+    version: '1.7.0',
+    items: [
+      '🎵 Escuchar juntos sincroniza mejor las invitaciones, los cambios y los controles de reproducción',
+      '🖥️ La barra de canción se adapta mejor a pantallas grandes y móviles'
+    ]
+  },
   {
     version: '1.2.0',
     items: [
@@ -259,13 +272,11 @@ export function ProfilePage(router) {
           </label>
         </div>
 
-        <div class="prof-divider"></div>
-
         <!-- Notifications: toggle maestro + botón a los ajustes finos -->
         <div class="prof-row" id="notifSettingsRow" role="button" tabindex="0" aria-label="Ajustes de notificaciones">
           <div class="prof-row-text">
             <span class="prof-row-title">Notificaciones</span>
-            <span class="prof-row-sub">Recordatorio diario, cartas, ánimo y horario de silencio <span id="pushStatus"></span></span>
+            <span class="prof-row-sub">Recordatorio diario, cartas y avisos personales <span id="pushStatus"></span></span>
           </div>
           <span aria-hidden="true" style="margin-left:auto;color:var(--theme-text-tertiary);font-size:22px;line-height:1">›</span>
         </div>
@@ -278,19 +289,6 @@ export function ProfilePage(router) {
             <input type="checkbox" id="toggleNotifications">
             <span class="prof-toggle-slider"></span>
           </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== ESTADO DE ÁNIMO ===== -->
-    <div class="prof-group">
-      <div class="prof-group-label">Estado de ánimo</div>
-      <div class="prof-card">
-        <div class="prof-mood-display" id="profileMoodDisplay"></div>
-        <div class="prof-mood-picker" id="profileMoodPicker" style="display:none"></div>
-        <div class="prof-mood-actions">
-          <button type="button" class="prof-btn" id="changeMoodBtn">${UI.sparkles} Contar cómo me siento</button>
-          <button type="button" class="prof-btn prof-btn--primary" id="saveMoodBtn" style="display:none">${UI.save} Guardar estado</button>
         </div>
       </div>
     </div>
@@ -429,169 +427,6 @@ export function ProfilePage(router) {
     document.documentElement.setAttribute('data-large-text', largeTextToggle.checked ? 'true' : 'false');
   });
 
-  // ===== MOOD =====
-  // Mismo modelo que Sentimientos y la bienvenida: atajos + desplegable
-  // «Otras» + texto libre, con multi-selección.
-  const moodDisplay = page.querySelector('#profileMoodDisplay');
-  const moodPicker = page.querySelector('#profileMoodPicker');
-  const changeMoodBtn = page.querySelector('#changeMoodBtn');
-  const saveMoodBtn = page.querySelector('#saveMoodBtn');
-  const quickMoods = moodStore.getQuickMoods();
-  const paletteMoods = moodStore.getPaletteMoods();
-  const customMood = moodStore.getCustomMood();
-  const quickIds = new Set(quickMoods.map(m => m.id));
-  let selection = [];
-
-  function renderTodayMood() {
-    const todayMood = moodStore.getTodayMood();
-    if (todayMood) {
-      moodDisplay.innerHTML = `
-        <div class="prof-mood-badge">
-          <span class="prof-mood-emoji">${escapeHtml(todayMood.emoji)}</span>
-          <span class="prof-mood-label">${escapeHtml(todayMood.label)}</span>
-        </div>
-      `;
-      changeMoodBtn.innerHTML = `${UI.edit} Cambiar estado`;
-    } else {
-      moodDisplay.innerHTML = `
-        <span class="prof-mood-empty">Aún no has registrado cómo te sientes hoy 💭</span>
-      `;
-      changeMoodBtn.innerHTML = `${UI.sparkles} Contar cómo me siento`;
-    }
-  }
-
-  const moodChipHTML = (mood) => `
-    <button type="button" class="prof-mood-btn" data-mood="${mood.id}" aria-pressed="false">
-      <span class="prof-mood-btn-emoji">${mood.emoji}</span>
-      <span class="prof-mood-btn-label">${mood.label}</span>
-      <span class="prof-mood-btn-check">✓</span>
-    </button>`;
-
-  function paintPicker() {
-    moodPicker.querySelectorAll('[data-mood]').forEach(btn => {
-      const active = selection.some(item => item.id === btn.dataset.mood);
-      btn.classList.toggle('selected', active);
-      btn.setAttribute('aria-pressed', String(active));
-    });
-
-    const extras = selection.filter(item => !quickIds.has(item.id));
-    const moreBtn = moodPicker.querySelector('[data-more]');
-    const extra = moodPicker.querySelector('#profMoodExtra');
-    if (moreBtn) {
-      moreBtn.classList.toggle('selected', extras.length > 0);
-      moreBtn.setAttribute('aria-expanded', String(extra ? !extra.hidden : false));
-    }
-
-    const customItem = selection.find(item => item.id === customMood.id);
-    const chips = moodPicker.querySelector('#profMoodCustomChips');
-    if (chips) {
-      chips.innerHTML = customItem
-        ? `<button type="button" class="prof-mood-custom-chip" data-custom-remove aria-label="Quitar «${escapeHtml(customItem.label)}»"><span aria-hidden="true">${customItem.emoji}</span>${escapeHtml(customItem.label)}<span class="prof-mood-custom-x" aria-hidden="true">×</span></button>`
-        : '';
-    }
-    const submit = moodPicker.querySelector('.prof-mood-custom-add');
-    if (submit) submit.textContent = customItem ? 'Cambiar' : 'Añadir';
-  }
-
-  function renderMoodPicker() {
-    const todayMood = moodStore.getTodayMood();
-    selection = todayMood ? todayMood.items.map(item => ({ ...item })) : [];
-
-    moodPicker.innerHTML = `
-      <div class="prof-mood-grid">
-        ${quickMoods.map(moodChipHTML).join('')}
-        <button type="button" class="prof-mood-btn" data-more aria-expanded="false" aria-controls="profMoodExtra">
-          <span class="prof-mood-btn-emoji">${customMood.emoji}</span>
-          <span class="prof-mood-btn-label">Otras</span>
-          <span class="prof-mood-btn-check">✓</span>
-        </button>
-      </div>
-      <div class="prof-mood-extra" id="profMoodExtra" hidden>
-        <div class="prof-mood-extra-grid">
-          ${paletteMoods.map(moodChipHTML).join('')}
-        </div>
-        <form class="prof-mood-custom" id="profMoodCustomForm">
-          <input type="text" id="profMoodCustomInput" class="prof-mood-custom-input" maxlength="${MAX_CUSTOM_LABEL}" placeholder="¿No está? Escríbela tú…" aria-label="Escribe tú la emoción" autocomplete="off">
-          <button type="submit" class="prof-mood-custom-add">Añadir</button>
-        </form>
-        <div class="prof-mood-custom-chips" id="profMoodCustomChips"></div>
-      </div>
-    `;
-    moodPicker.style.display = 'block';
-
-    // Si hoy hay emociones fuera de los atajos, el desplegable arranca abierto.
-    const extra = moodPicker.querySelector('#profMoodExtra');
-    if (extra) extra.hidden = !selection.some(item => !quickIds.has(item.id));
-    paintPicker();
-
-    saveMoodBtn.style.display = '';
-    changeMoodBtn.style.display = 'none';
-  }
-
-  // Delegado: atajos y desplegable comparten estado y se marcan juntos.
-  moodPicker.addEventListener('click', (event) => {
-    const removeCustom = event.target.closest('[data-custom-remove]');
-    if (removeCustom) {
-      selection = selection.filter(item => item.id !== customMood.id);
-      paintPicker();
-      return;
-    }
-    if (event.target.closest('[data-more]')) {
-      const extra = moodPicker.querySelector('#profMoodExtra');
-      if (extra) { extra.hidden = !extra.hidden; paintPicker(); }
-      return;
-    }
-    const btn = event.target.closest('[data-mood]');
-    if (!btn) return;
-    selection = toggleMoodSelection(selection, btn.dataset.mood);
-    paintPicker();
-  });
-
-  moodPicker.addEventListener('submit', (event) => {
-    if (event.target.id !== 'profMoodCustomForm') return;
-    event.preventDefault();
-    const input = moodPicker.querySelector('#profMoodCustomInput');
-    const item = makeCustomMood(input.value);
-    if (!item) { input.focus(); showToast('Escribe cómo te sientes', 'info'); return; }
-    selection = [...selection.filter(i => i.id !== customMood.id), item];
-    input.value = item.label;
-    paintPicker();
-  });
-
-  renderTodayMood();
-  moodStore.fetchTodayMood().then(() => renderTodayMood());
-
-  changeMoodBtn.addEventListener('click', () => {
-    renderMoodPicker();
-  });
-
-  saveMoodBtn.addEventListener('click', async () => {
-    saveMoodBtn.disabled = true;
-    saveMoodBtn.textContent = 'Guardando...';
-
-    try {
-      if (selection.length) {
-        await moodStore.saveMoods(selection);
-        showToast('💖 ¡Estado de ánimo actualizado!', 'success');
-      } else {
-        // Sin emoción seleccionada → quita el estado de hoy (si está en su ventana)
-        const res = await moodStore.removeTodayMood();
-        if (res.locked) showToast('Este ánimo ya quedó registrado 🤍', 'info');
-        else if (res.removed) showToast('Ánimo eliminado · hoy sin emoción', 'info');
-      }
-      moodPicker.style.display = 'none';
-      saveMoodBtn.style.display = 'none';
-      changeMoodBtn.style.display = '';
-      saveMoodBtn.disabled = false;
-      saveMoodBtn.innerHTML = `${UI.save} Guardar estado`;
-      renderTodayMood();
-    } catch (err) {
-      showToast('Error al guardar', 'error');
-      saveMoodBtn.disabled = false;
-      saveMoodBtn.innerHTML = `${UI.save} Guardar estado`;
-    }
-  });
-
   // ===== DÍAS ESPECIALES =====
   function dayBadge(iso, recurring) {
     if (!isValidISO(iso)) return '<span class="prof-day-badge is-review">Revisa la fecha</span>';
@@ -660,7 +495,7 @@ export function ProfilePage(router) {
   };
 
   const renderEventRows = () => {
-    const list = page.querySelector('#pdEventsList');
+    const list = daysEditor.querySelector('#pdEventsList');
     if (!list) return;
     list.innerHTML = editingDays.map(eventRowHTML).join('');
     list.querySelectorAll('.prof-days-event-del').forEach(btn => {
@@ -677,30 +512,41 @@ export function ProfilePage(router) {
     const t = d.titles || {};
     const r = d.recurring || {};
     editingDays = (d.events || []).map(e => ({ ...e }));
-    const set = (id, v) => { const el = page.querySelector(id); if (el) el.value = v || ''; };
-    const setCheck = (id, v) => { const el = page.querySelector(id); if (el) el.checked = !!v; };
+    const set = (id, v) => { const el = daysEditor.querySelector(id); if (el) el.value = v || ''; };
+    const setCheck = (id, v) => { const el = daysEditor.querySelector(id); if (el) el.checked = !!v; };
     set('#pdAnniversary', d.anniversary); set('#pdAnniversaryTitle', t.anniversary || ''); setCheck('#pdAnniversaryRecur', r.anniversary !== false);
     set('#pdHubStart', d.hubStart); set('#pdHubStartTitle', t.hubStart || ''); setCheck('#pdHubStartRecur', r.hubStart === true);
     set('#pdBirthday', d.birthday); set('#pdBirthdayTitle', t.birthday || ''); setCheck('#pdBirthdayRecur', r.birthday !== false);
     set('#pdUserBirthday', d.userBirthday); set('#pdUserBirthdayTitle', t.userBirthday || ''); setCheck('#pdUserBirthdayRecur', r.userBirthday !== false);
     renderEventRows();
     daysEditor.hidden = false;
-    daysEditor.scrollIntoView({ block: 'nearest' });
+    daysEditor.classList.add('prof-days-editor--sheet');
+    closeDaysEditorSheet = openSheet({
+      title: 'Editar días especiales',
+      body: '',
+      onClose: () => {
+        daysEditor.hidden = true;
+        daysEditor.classList.remove('prof-days-editor--sheet');
+        page.querySelector('.prof-days-head')?.insertAdjacentElement('afterend', daysEditor);
+      },
+    });
+    document.querySelector('.prof-sheet-overlay .prof-sheet__body')?.append(daysEditor);
   }
 
+  let closeDaysEditorSheet = null;
   editDaysBtn?.addEventListener('click', openDaysEditor);
-  page.querySelector('#pdAddEvent')?.addEventListener('click', () => {
+  daysEditor.querySelector('#pdAddEvent')?.addEventListener('click', () => {
     editingDays.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '' });
     renderEventRows();
   });
-  page.querySelector('#pdSave')?.addEventListener('click', async () => {
+  daysEditor.querySelector('#pdSave')?.addEventListener('click', async () => {
     // Este editor solo toca título/fecha/repetición. El aspecto de la
     // bienvenida (emoji, texto, foto), las acciones que definió el Admin y los
     // días temáticos se reenvían tal cual: si no, al guardar desde el móvil se
     // perdían.
     const current = specialDates();
     const previos = new Map((current.events || []).map(e => [e.id, e]));
-    const rows = [...page.querySelectorAll('.prof-days-event-row')].map(row => {
+    const rows = [...daysEditor.querySelectorAll('.prof-days-event-row')].map(row => {
       const id = row.dataset.evId;
       return {
         ...(previos.get(id) || {}),
@@ -711,21 +557,21 @@ export function ProfilePage(router) {
       };
     });
     const payload = {
-      anniversary: page.querySelector('#pdAnniversary').value,
-      hubStart: page.querySelector('#pdHubStart').value,
-      birthday: page.querySelector('#pdBirthday').value,
-      userBirthday: page.querySelector('#pdUserBirthday').value,
+      anniversary: daysEditor.querySelector('#pdAnniversary').value,
+      hubStart: daysEditor.querySelector('#pdHubStart').value,
+      birthday: daysEditor.querySelector('#pdBirthday').value,
+      userBirthday: daysEditor.querySelector('#pdUserBirthday').value,
       titles: {
-        anniversary: page.querySelector('#pdAnniversaryTitle').value,
-        hubStart: page.querySelector('#pdHubStartTitle').value,
-        birthday: page.querySelector('#pdBirthdayTitle').value,
-        userBirthday: page.querySelector('#pdUserBirthdayTitle').value
+        anniversary: daysEditor.querySelector('#pdAnniversaryTitle').value,
+        hubStart: daysEditor.querySelector('#pdHubStartTitle').value,
+        birthday: daysEditor.querySelector('#pdBirthdayTitle').value,
+        userBirthday: daysEditor.querySelector('#pdUserBirthdayTitle').value
       },
       recurring: {
-        anniversary: page.querySelector('#pdAnniversaryRecur')?.checked === true,
-        hubStart: page.querySelector('#pdHubStartRecur')?.checked === true,
-        birthday: page.querySelector('#pdBirthdayRecur')?.checked === true,
-        userBirthday: page.querySelector('#pdUserBirthdayRecur')?.checked === true
+        anniversary: daysEditor.querySelector('#pdAnniversaryRecur')?.checked === true,
+        hubStart: daysEditor.querySelector('#pdHubStartRecur')?.checked === true,
+        birthday: daysEditor.querySelector('#pdBirthdayRecur')?.checked === true,
+        userBirthday: daysEditor.querySelector('#pdUserBirthdayRecur')?.checked === true
       },
       events: rows,
       looks: current.looks || {},
@@ -738,15 +584,15 @@ export function ProfilePage(router) {
     try {
       await db.saveHubDates(payload);
       await refreshSpecialDates().catch(() => {});
-      daysEditor.hidden = true;
       renderSpecialDays();
       showToast('Días especiales guardados', 'success');
+      closeDaysEditorSheet?.();
     } catch (err) {
       console.error('[profile] fechas especiales:', err);
       showToast(err?.message || 'No se pudieron guardar', 'error');
     }
   });
-  page.querySelector('#pdCancel')?.addEventListener('click', () => { daysEditor.hidden = true; });
+  daysEditor.querySelector('#pdCancel')?.addEventListener('click', () => closeDaysEditorSheet?.());
 
   renderSpecialDays();
   loadSpecialDates().then(() => renderSpecialDays()).catch(() => {});
@@ -870,8 +716,8 @@ export function ProfilePage(router) {
   }
 
   // ===== AJUSTES DE NOTIFICACIONES (estilo habitos-web) =====
-  // Toggle por tipo (diario / cartas / ánimo), horario de silencio y notificación
-  // de prueba. Vive en el perfil; la fila "Notificaciones" lo abre.
+  // Toggle por tipo (diario / cartas / ánimo) y notificación de prueba.
+  // No se aplica un horario de silencio: los avisos pueden llegar siempre.
   function openNotifSettingsSheet() {
     const s = getNotifSettings();
 
@@ -880,6 +726,7 @@ export function ProfilePage(router) {
         <div class="notif-permnote" id="notifPermNote" hidden></div>
 
         <div class="notif-card">
+          <p class="notif-card__hint">El de tu estado de ánimo sale siempre. No hay horario de silencio.</p>
           <div class="prof-row">
             <div class="prof-row-text">
               <span class="prof-row-title">Recordatorio diario</span>
@@ -925,7 +772,7 @@ export function ProfilePage(router) {
         ${userStore.isAdmin ? `
         <div class="notif-card">
           <p class="notif-card__title">Avisos para ti (admin)</p>
-          <p class="notif-card__hint">Lo que ella hace te llega a ti, no a ella. Son los mismos eventos que ves en el panel: apágalos aquí si te suenan de más, cada uno por separado. Dentro de tu horario de silencio llegan sin sonido.</p>
+          <p class="notif-card__hint">Lo que ella hace te llega a ti, no a ella. Son los mismos eventos que ves en el panel: apágalos aquí si te suenan de más, cada uno por separado.</p>
           <div class="prof-row">
             <div class="prof-row-text">
               <span class="prof-row-title">Registra su ánimo</span>
@@ -977,16 +824,6 @@ export function ProfilePage(router) {
             </label>
           </div>
         </div>` : ''}
-
-        <div class="notif-card">
-          <p class="notif-card__title">Horario de silencio</p>
-          <div class="notif-quiet">
-            <input type="time" id="notifQuietFrom" class="prof-name-input" value="${escapeHtml(s.quietFrom)}" aria-label="Silencio desde">
-            <span class="notif-quiet__sep">→</span>
-            <input type="time" id="notifQuietTo" class="prof-name-input" value="${escapeHtml(s.quietTo)}" aria-label="Silencio hasta">
-          </div>
-          <p class="notif-card__hint">Entre esas horas no recibirás avisos automáticos (soporta franjas que cruzan medianoche). Los recordatorios que caigan ahí esperan a que termine el silencio. El de tu estado de ánimo sale siempre: es la respuesta a lo que acabas de hacer.</p>
-        </div>
 
         <button type="button" class="prof-btn prof-btn--primary" id="notifTestBtn">Enviar notificación de prueba</button>
       </div>
@@ -1107,17 +944,6 @@ export function ProfilePage(router) {
       });
     }
 
-    const saveQuiet = () => {
-      const next = setNotifSettings({
-        quietFrom: $('#notifQuietFrom').value || '23:00',
-        quietTo: $('#notifQuietTo').value || '08:00'
-      });
-      syncReminderState(); // el SW lee el silencio del IndexedDB
-      showToast(inQuietHours(next) ? '🌙 Silencio activo ahora' : '⏰ Horario de silencio guardado', 'success');
-    };
-    $('#notifQuietFrom').addEventListener('change', saveQuiet);
-    $('#notifQuietTo').addEventListener('change', saveQuiet);
-
     $('#notifTestBtn').addEventListener('click', async () => {
       const shown = await sendTestNotification();
       showToast(shown ? '📣 Notificación enviada — búscala fuera de la app' : 'No se pudo mostrar (revisa el permiso)', shown ? 'success' : 'error');
@@ -1230,7 +1056,7 @@ export function ProfilePage(router) {
 // ==========================================
 // SHEET GENÉRICO (modal accesible)
 // ==========================================
-function openSheet({ title, body }) {
+function openSheet({ title, body, onClose }) {
   // Elimina sheets previos abiertos (evita apilamiento al reabrir)
   document.querySelectorAll('.prof-sheet-overlay').forEach(o => o.remove());
 
@@ -1251,9 +1077,15 @@ function openSheet({ title, body }) {
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('is-open'));
 
+  let closing = false;
   const close = () => {
+    if (closing) return;
+    closing = true;
     overlay.classList.remove('is-open');
-    setTimeout(() => overlay.remove(), 250);
+    setTimeout(() => {
+      overlay.remove();
+      onClose?.();
+    }, 250);
     document.removeEventListener('keydown', onKey);
   };
   const onKey = (e) => { if (e.key === 'Escape') close(); };

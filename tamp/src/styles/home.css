@@ -2589,6 +2589,8 @@ button.home-map:focus-visible {
     flex-direction: column;
     align-items: flex-start;
     gap: 0;
+    font-size: clamp(1.55rem, 6.2vw, 1.95rem);
+    line-height: 1.08;
     white-space: normal;
   }
 
