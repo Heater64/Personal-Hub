@@ -177,6 +177,15 @@ test('la migración 023 guarda las preferencias con RLS de dueño', async () => 
   assert.doesNotMatch(sinComentario, /\bDELETE\s+FROM\b/i);
 });
 
+test('la migración de endurecimiento impide al admin borrar preferencias ajenas', async () => {
+  const file = projectPath('sql', '041_notification_prefs_delete_owner.sql');
+  assert.equal(existsSync(file), true, 'falta la migración que limita DELETE al dueño');
+  const sql = await readFile(file, 'utf8');
+  assert.match(sql, /DROP POLICY IF EXISTS "notification_prefs_delete_own"/);
+  assert.match(sql, /CREATE POLICY "notification_prefs_delete_own"[\s\S]*?FOR DELETE[\s\S]*?USING \(public\.is_enabled\(\) AND user_id = auth\.uid\(\)\)/);
+  assert.doesNotMatch(sql, /user_id = auth\.uid\(\) OR public\.is_admin\(\)/);
+});
+
 test('el servidor filtra por preferencias y aplaza sin gastar la ocurrencia', async () => {
   const pushApi = await readFile(projectPath('api', 'push.js'), 'utf8');
 

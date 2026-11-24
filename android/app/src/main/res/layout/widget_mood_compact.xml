@@ -18,7 +18,7 @@
         android:layout_height="wrap_content"
         android:includeFontPadding="false"
         android:maxLines="1"
-        android:text="—"
+        android:text="@string/widget_value_placeholder"
         android:textSize="26sp"
         tools:text="🥰" />
 
@@ -32,7 +32,7 @@
         android:maxLines="1"
         android:text="@string/widget_mood_empty"
         android:textColor="#FFFFFF"
-        android:textSize="9sp"
+        android:textSize="11sp"
         tools:text="Muy feliz" />
 
     <TextView
@@ -45,7 +45,7 @@
         android:maxLines="1"
         android:text="@string/widget_mood_hint"
         android:textColor="@color/widget_text_muted"
-        android:textSize="7sp"
+        android:textSize="11sp"
         tools:text="hoy" />
 
 </LinearLayout>

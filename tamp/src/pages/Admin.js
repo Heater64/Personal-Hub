@@ -28,7 +28,7 @@ import {
 import { dailyCounts, dashboardDates, latestDailyMoods, publishedLetterIds } from '../utils/dashboard-metrics.js';
 import { refreshSpecialDates, loadSpecialDates, seasonalEvents, specialEventsToday, daysUntilDate, isValidMonthDay, SPECIAL_EVENT_TONES, FIXED_EVENT_FIELDS, eventTemplateFor, EVENT_TEMPLATES } from '../utils/specialDates.js';
 import { cleanEventActions, MAX_EVENT_ACTIONS } from '../utils/event-actions.js';
-import { isPushSupported, isEnabled, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
+import { isPushSupported, isEnabled, getPushDeliveryStatus, showDailyNotification, requestEnable, disable } from '../services/notifications.service.js';
 import {
   listReminders, createReminder, updateReminder, toggleReminder, deleteReminder,
   runReminder, localInputToIso, isoToLocalInput, formatReminderDate
@@ -4078,6 +4078,8 @@ export function AdminPage(router) {
     const token = sectionToken;
     const supported = isPushSupported();
     const enabled = isEnabled();
+    const deliveryStatus = getPushDeliveryStatus();
+    const pushRegistered = deliveryStatus === 'push';
     // Tres estados distintos que antes iban todos bajo el mismo "No activadas":
     // la preferencia de la usuaria, el permiso del navegador y el service
     // worker. El permiso "denied" además no se puede arreglar desde la web.
@@ -4124,14 +4126,25 @@ export function AdminPage(router) {
                 <div class="muted-text">${swReady ? 'Controlando la página; puede mostrar avisos' : 'Sin él no hay notificaciones aunque el permiso sea correcto'}</div>
               </div>
             </div>
+            <div class="notif-status-card">
+              <span class="notif-status-icon ${pushRegistered ? 'ok' : 'muted'}">${pushRegistered ? iconOk : iconNo}</span>
+              <div>
+                <strong>${pushRegistered ? 'Push remoto registrado' : deliveryStatus === 'fallback' ? 'Push remoto no registrado' : 'Push remoto sin verificar'}</strong>
+                <div class="muted-text">${pushRegistered ? 'El servidor confirmó la suscripción de este dispositivo' : 'Los avisos remotos de pareja requieren registrar Push en el servidor'}</div>
+              </div>
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;">
             <button class="admin-btn ${enabled ? 'admin-btn-secondary' : 'admin-btn-primary'}" id="togglePushBtn"
-              ${!enabled && (permission === 'denied' || !supported) ? 'disabled' : ''}>
+              ${!enabled && (permission === 'denied' || (!supported && !swReady)) ? 'disabled' : ''}>
               ${enabled ? UI.toggleOff + ' Desactivar en este dispositivo' : UI.bell + ' Activar notificaciones'}
             </button>
             <span class="admin-btn-note" id="togglePushState">${enabled
-              ? 'Activas en este dispositivo'
+              ? pushRegistered
+                ? 'Push remoto confirmado en este dispositivo'
+                : deliveryStatus === 'fallback'
+                  ? 'Solo avisos locales; Push remoto no está registrado'
+                  : 'Activadas; estado remoto pendiente de verificar'
               : permission === 'denied'
                 ? 'No se puede activar: el navegador tiene el permiso bloqueado'
                 : supported ? 'Se te pedirá permiso al activar' : 'Este navegador no soporta push'}</span>
@@ -4142,7 +4155,7 @@ export function AdminPage(router) {
           <div class="admin-panel-head"><h4>${UI.send} Notificación de prueba</h4></div>
           <p class="muted-text">Verifica que el service worker y el canal de notificaciones de <strong>este dispositivo</strong> funcionan.</p>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <button class="admin-btn admin-btn-primary" id="testPushBtn"${supported && enabled && perm.ok && swReady ? '' : ' disabled title="El canal de este dispositivo no puede mostrar notificaciones todavía"'}>${UI.send} Enviar ahora</button>
+            <button class="admin-btn admin-btn-primary" id="testPushBtn"${enabled && perm.ok && swReady ? '' : ' disabled title="El canal de este dispositivo no puede mostrar notificaciones todavía"'}>${UI.send} Enviar ahora</button>
             <span class="admin-btn-note" id="testPushState"></span>
           </div>
           <div class="notif-result" id="notifResult"></div>
@@ -4192,7 +4205,11 @@ export function AdminPage(router) {
           showToast('Notificaciones desactivadas en este dispositivo', 'success');
         } else {
           const ok = await requestEnable();
-          showToast(ok ? 'Notificaciones activadas' : 'El navegador no concedió el permiso', ok ? 'success' : 'error');
+          const pushActive = getPushDeliveryStatus() === 'push';
+          showToast(ok
+            ? pushActive ? 'Avisos remotos activados' : 'Solo se activaron avisos locales; Push remoto no se registró'
+            : 'El navegador no concedió permiso o no tiene un canal de notificaciones disponible',
+          ok && pushActive ? 'success' : ok ? 'info' : 'error');
         }
         if (isCurrentSection(token)) await loadNotificaciones();
       } catch (err) {
@@ -4674,6 +4691,8 @@ export function AdminPage(router) {
     const modoActivo = theme.getModo();
     const notifEnabled = isEnabled();
     const pushOk = isPushSupported();
+    const pushRegistered = getPushDeliveryStatus() === 'push';
+    const pushFallback = getPushDeliveryStatus() === 'fallback';
     const account = userStore.getUser();
     const { dates: hubDates, snapshot: datesSnapshot } = await db.getAdminHubDates();
     // La caché global la leen el botón «ver la bienvenida de hoy» y la hoja
@@ -4849,9 +4868,9 @@ export function AdminPage(router) {
                   <span class="config-status-icon">${pushOk ? UI.check : UI.close}</span>
                   <span><b>${pushOk ? 'Este navegador admite push' : 'Push no disponible'}</b><small>Compatibilidad del dispositivo</small></span>
                 </li>
-                <li class="${notifEnabled ? 'ok' : 'muted'}">
-                  <span class="config-status-icon">${notifEnabled ? UI.check : UI.close}</span>
-                  <span><b>${notifEnabled ? 'Suscripción activa' : 'Suscripción apagada'}</b><small>Estado de tus notificaciones</small></span>
+                <li class="${pushRegistered ? 'ok' : 'muted'}">
+                  <span class="config-status-icon">${pushRegistered ? UI.check : UI.close}</span>
+                  <span><b>${pushRegistered ? 'Push remoto registrado' : pushFallback ? 'Solo avisos locales' : notifEnabled ? 'Push sin verificar' : 'Suscripción apagada'}</b><small>${pushRegistered ? 'El servidor aceptó la suscripción de este dispositivo' : 'Sin Push remoto no llegan aquí los avisos de pareja'}</small></span>
                 </li>
               </ul>
 

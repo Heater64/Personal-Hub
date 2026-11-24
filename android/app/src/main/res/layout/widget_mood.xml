@@ -37,7 +37,7 @@
             android:maxLines="1"
             android:text="@string/widget_mood_kicker_large"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             tools:text="ESTADO DE ÁNIMO" />
 
@@ -65,7 +65,7 @@
             android:maxLines="1"
             android:text="@string/widget_mood_hint"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp"
+            android:textSize="11sp"
             tools:text="hoy" />
     </LinearLayout>
 
@@ -76,7 +76,7 @@
         android:layout_marginStart="10dp"
         android:includeFontPadding="false"
         android:maxLines="1"
-        android:text="—"
+        android:text="@string/widget_value_placeholder"
         android:textSize="44sp"
         tools:text="🥰" />
 

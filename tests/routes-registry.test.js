@@ -123,6 +123,10 @@ test('el registro describe cada ruta una sola vez y con lo que la navegación ne
   }
 });
 
+test('la ruta antigua de agenda mantiene el título de marca de Personal Hub', () => {
+  assert.equal(routeFor('/agenda')?.title, 'Calendario · Personal Hub');
+});
+
 test('el registro reconoce rutas con segmento dinámico y su query', () => {
   assert.equal(routeFor('/juegos/online/abc')?.path, '/juegos/online/:gameId');
   assert.equal(routeFor('/calendario?day=2026-10-06&gift=x')?.path, '/calendario');

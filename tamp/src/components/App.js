@@ -565,6 +565,7 @@ export function AppShell(router) {
   // restaurar la sesión. Ese null inicial no es un logout y no debe borrar
   // la configuración persistente del servicio nativo.
   let hadAuthenticatedUser = Boolean(userStore.getUser());
+  let nativePushSessionId = null;
   userStore.onChange(async () => {
     // Al reautenticar, congela la bienvenida temática hasta conocer el ánimo
     // sincronizado de esta cuenta (evita que una sesión previa dé vía libre).
@@ -614,12 +615,16 @@ export function AppShell(router) {
       syncNotifPrefs().finally(() => syncReminderState());
       resyncPushSubscription();
       // En la app Android el canal es FCM: el alta se reintenta con cada inicio de sesión.
-      registerNativePush();
+      const pushUserId = userStore.getUser()?.id || null;
+      const newPushSession = !!pushUserId && pushUserId !== nativePushSessionId;
+      nativePushSessionId = pushUserId;
+      registerNativePush({ activateSession: newPushSession });
       // Notificación diaria de novedades (dedupe 1/día + puerta 8 AM)
       notifyTodayNovelties();
       // Cartas nuevas de Open When sin abrir (dedupe: 1 aviso por carta)
       notifyNewOpenWhenLetters();
     } else {
+      nativePushSessionId = null;
       moodSyncPromise = null;
       syncSharedIdentity(null);
       // Logout: desactiva todo (incluida la sincronización en tiempo real)

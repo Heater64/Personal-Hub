@@ -16,6 +16,7 @@ import { normalizeNotificationRoute } from '../utils/notification-route.js';
 import { readSeenCategories, readSeenUpdates } from '../utils/openwhen-categories.js';
 import { urlBase64ToUint8Array, subscriptionKeyChanged } from '../utils/push-key.js';
 import { callNativeApi, isNative } from './native.service.js';
+import { registerPushSubscription, resolveNotificationActivation } from './push-registration.js';
 
 // VAPID public key — debe coincidir con VAPID_PUBLIC_KEY en el servidor
 const VAPID_PUBLIC_KEY = 'BALzk9q-6CaVPmvMC0h4JIMQ582uOKAhX7AwwqefqLQzAeFxbLMhIaeazaZ8OqSQjFQJVIhwPis7zsJL2SrNY3A';
@@ -38,6 +39,7 @@ const DB_STORE = 'state';
 // - Dedupe diario igual que antes
 // ==========================================
 const NOTIF_SETTINGS_KEY = 'notifSettings';
+const PUSH_DELIVERY_MODE_KEY = 'pushDeliveryMode';
 const ALWAYS_NOTIFY_TIME = '00:00';
 const DEFAULT_NOTIF_SETTINGS = {
   daily: true,       // recordatorio diario (bienvenida + novedades)
@@ -254,6 +256,11 @@ export function isEnabled() {
   return getUserPref('notifications', '0') === '1';
 }
 
+export function getPushDeliveryStatus() {
+  const status = getUserPref(PUSH_DELIVERY_MODE_KEY, 'unknown');
+  return ['push', 'fallback', 'disabled'].includes(status) ? status : 'unknown';
+}
+
 /**
  * Check if Web Push is supported in this browser.
  */
@@ -272,17 +279,34 @@ export function isPushSupported() {
 export async function requestEnable() {
   if (!('Notification' in window)) return false;
 
-  const perm = await Notification.requestPermission();
+  let perm;
+  try {
+    perm = await Notification.requestPermission();
+  } catch (err) {
+    console.warn('[notif] Permission request failed:', err?.message || 'unknown error');
+    return false;
+  }
   if (perm !== 'granted') {
+    setUserPref('notifications', '0');
+    setUserPref(PUSH_DELIVERY_MODE_KEY, 'disabled');
+    return false;
+  }
+
+  const pushRegistered = isPushSupported() && await subscribeToPush();
+  const activation = resolveNotificationActivation({
+    permissionGranted: true,
+    pushRegistered,
+    fallbackAvailable: 'serviceWorker' in navigator,
+  });
+  if (!activation.ok) {
+    setUserPref('notifications', '0');
+    setUserPref(PUSH_DELIVERY_MODE_KEY, 'disabled');
+    await syncReminderState();
     return false;
   }
 
   setUserPref('notifications', '1');
-
-  // Intentar suscribirse a push
-  const pushOk = await subscribeToPush();
-
-  // Sincronizar estado con el SW (fallback)
+  setUserPref(PUSH_DELIVERY_MODE_KEY, activation.push ? 'push' : 'fallback');
   await syncReminderState();
 
   return true;
@@ -293,6 +317,7 @@ export async function requestEnable() {
  */
 export async function disable() {
   setUserPref('notifications', '0');
+  setUserPref(PUSH_DELIVERY_MODE_KEY, 'disabled');
   await unsubscribeFromPush();
   await syncReminderState();
 }
@@ -326,8 +351,7 @@ export async function subscribeToPush() {
 
     if (subscription) {
       // Already subscribed — verify it on the server
-      await sendSubscriptionToServer(subscription);
-      return true;
+      return await sendSubscriptionToServer(subscription);
     }
 
     // Subscribe
@@ -336,11 +360,10 @@ export async function subscribeToPush() {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
 
-    await sendSubscriptionToServer(subscription);
-    return true;
+    return await sendSubscriptionToServer(subscription);
   } catch (err) {
     console.warn('[notif] Push subscription failed:', err.message);
-    // Push no disponible: el fallback (local + periodicSync) sigue activo
+    setUserPref(PUSH_DELIVERY_MODE_KEY, 'fallback');
     return false;
   }
 }
@@ -414,27 +437,15 @@ export async function resyncPushSubscription() {
  * Sends the PushSubscription to the server API.
  */
 async function sendSubscriptionToServer(subscription) {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-
-    const subObj = subscription.toJSON ? subscription.toJSON() : subscription;
-
-    const res = await fetch('/api/push?action=subscribe', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({ subscription: subObj })
-    });
-
-    if (!res.ok) {
-      console.warn('[notif] Server subscribe failed:', res.status);
-    }
-  } catch (err) {
-    console.warn('[notif] Could not send subscription to server:', err.message);
+  const result = await registerPushSubscription(subscription, {
+    getSession: () => supabase.auth.getSession(),
+    fetchImpl: fetch,
+  });
+  setUserPref(PUSH_DELIVERY_MODE_KEY, result.ok ? 'push' : 'fallback');
+  if (!result.ok) {
+    console.warn('[notif] Server subscribe failed:', result.reason, result.status ?? '');
   }
+  return result.ok;
 }
 
 /**

@@ -240,7 +240,7 @@ export const ROUTES = [
     path: '/agenda',
     label: 'Calendario',
     icon: 'calendar',
-    title: 'Calendario · Tamp',
+    title: 'Calendario · Personal Hub',
     lazy: true,
     section: 'sentimientos',
     parent: '/sentimientos',

@@ -178,6 +178,12 @@ function startAudioFile(url) {
   };
 }
 
+function safeAlbumUrls(urls) {
+  return (Array.isArray(urls) ? urls : [])
+    .map((value, index) => ({ url: safeUrl(value), index }))
+    .filter(item => item.url);
+}
+
 function stopAllMedia() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   if (activeAudio) {
@@ -299,9 +305,9 @@ export function OpenWhenPage(router) {
   function mediaWidget(letter) {
     if (!letter.media) return '';
     if (letter.media.kind === 'album') {
-      return `<div class="ow-album">${letter.media.urls.map((u, i) => `
-        <button class="ow-album-thumb" data-photo="${letter.id}" data-idx="${i}" aria-label="Ver foto ${i + 1}">
-          <img src="${safeUrl(u)}" alt="" loading="lazy">
+      return `<div class="ow-album">${safeAlbumUrls(letter.media.urls).map(({ url, index }) => `
+        <button class="ow-album-thumb" data-photo="${letter.id}" data-idx="${index}" aria-label="Ver foto ${index + 1}">
+          <img src="${url}" alt="" loading="lazy">
         </button>`).join('')}</div>`;
     }
     if (letter.media.kind === 'video') {
@@ -346,13 +352,14 @@ export function OpenWhenPage(router) {
     const fresh = isNew(letter);
     const draft = isDraft(letter);
     const updated = !draft && !fresh && isUpdated(letter);
-    const album = letter.media?.kind === 'album' ? letter.media.urls : null;
+    const rawAlbum = letter.media?.kind === 'album' ? letter.media.urls : null;
+    const album = rawAlbum ? safeAlbumUrls(rawAlbum) : null;
 
     const media = album
-      ? `<div class="ow-album">${album.slice(0, 3).map((u, i) => `
-          <button class="ow-album-thumb" data-photo="${letter.id}" data-idx="${i}" aria-label="Ver foto ${i + 1}">
-            <img src="${escapeHtml(u)}" alt="" loading="lazy">
-          </button>`).join('')}${album.length > 3 ? `<span class="ow-album-more">+${album.length - 3}</span>` : ''}</div>`
+      ? `<div class="ow-album">${album.slice(0, 3).map(({ url, index }) => `
+          <button class="ow-album-thumb" data-photo="${letter.id}" data-idx="${index}" aria-label="Ver foto ${index + 1}">
+            <img src="${url}" alt="" loading="lazy">
+          </button>`).join('')}${rawAlbum.length > 3 ? `<span class="ow-album-more">+${rawAlbum.length - 3}</span>` : ''}</div>`
       : '';
 
     const videoThumb = letter.media?.kind === 'video'
@@ -494,8 +501,12 @@ export function OpenWhenPage(router) {
   function openAlbum(letterId, idx) {
     const letter = letterById(letterId);
     if (!letter?.media || letter.media.kind !== 'album') return;
+    const safeUrls = safeAlbumUrls(letter.media.urls);
+    if (!safeUrls.length) return;
+    const selected = safeUrls.findIndex(item => item.index === idx);
+    const safeIndex = selected < 0 ? 0 : selected;
     createLightbox();
-    openLightbox(letter.media.urls.map(src => ({ src, type: 'image' })), idx);
+    openLightbox(safeUrls.map(item => ({ src: item.url, type: 'image' })), safeIndex);
   }
 
   /** Abre el vídeo de una carta en el visor compartido. */

@@ -39,7 +39,7 @@
             android:maxLines="2"
             android:text="@string/widget_watching_empty"
             android:textColor="#FFFFFF"
-            android:textSize="8sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             tools:text="Severance" />
 
@@ -52,7 +52,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="6sp"
+            android:textSize="11sp"
             tools:text="Ep. 4 de 10" />
 
     </LinearLayout>

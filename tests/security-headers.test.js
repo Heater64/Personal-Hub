@@ -21,6 +21,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
@@ -86,6 +87,17 @@ test('script-src no se abre a cualquier origen ni permite eval', () => {
   assert.ok(scriptSrc.includes("'self'"), 'el bundle propio tiene que estar permitido');
 });
 
+test('script-src permite solo el bootstrap inline mediante su hash', () => {
+  const scriptSrc = csp()['script-src'] || [];
+  const inlineScripts = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
+  assert.equal(inlineScripts.length, 1, 'index.html debe tener un único bootstrap inline');
+
+  const normalizedSource = inlineScripts[0][1].replace(/\r\n?/g, '\n');
+  const digest = createHash('sha256').update(normalizedSource).digest('base64');
+  assert.ok(scriptSrc.includes(`'sha256-${digest}'`), 'CSP debe autorizar el hash exacto del bootstrap');
+  assert.ok(!scriptSrc.includes("'unsafe-inline'"), 'script-src no debe permitir scripts inline arbitrarios');
+});
+
 test('todo script externo está permitido por la CSP, también los que se cargan al vuelo', () => {
   const scriptSrc = csp()['script-src'] || [];
   const hosts = externalOrigins(SCRIPT_TAGS);
@@ -129,12 +141,22 @@ test('toda hoja de estilos externa de index.html está permitida por la CSP', ()
   assert.ok(fontSrc.includes('https://cdn.jsdelivr.net'), 'KaTeX sirve sus fuentes desde jsDelivr');
 });
 
-test('connect-src solo habla con el propio origen y Supabase', () => {
+test('las imágenes externas las carga img-src sin abrir connect-src', () => {
   const connectSrc = csp()['connect-src'] || [];
+  const imgSrc = csp()['img-src'] || [];
+  const sw = readFileSync(new URL('../tamp/public/sw.js', import.meta.url), 'utf8');
+
   assert.ok(connectSrc.includes("'self'"));
   assert.ok(connectSrc.includes('https://*.supabase.co'), 'la API de Supabase necesita https');
   assert.ok(connectSrc.includes('wss://*.supabase.co'), 'Realtime necesita wss');
+  assert.ok(imgSrc.includes('https:'), 'mapas y portadas externas se muestran como imágenes HTTPS');
+  assert.ok(!connectSrc.includes('https://*.tile.openstreetmap.org'),
+    'las teselas se cargan como imágenes; no hace falta ampliar la política fetch');
   assert.ok(!connectSrc.includes('*'), 'connect-src abierto permite exfiltrar datos');
+  assert.match(sw, /if \(url\.origin === self\.location\.origin\) \{[\s\S]{0,140}?cacheFirstThenNetwork\(request\)[\s\S]{0,80}?\} else \{[\s\S]{0,250}?return;/,
+    'el service worker no debe convertir imágenes externas en fetch sujetos a connect-src');
+  assert.match(sw, /CACHE_VERSION = '12'/,
+    'el despliegue debe retirar las respuestas externas que quedaron mal cacheadas');
 });
 
 test('Permissions-Policy permite la geolocalización propia y niega cámara y micro', () => {

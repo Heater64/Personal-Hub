@@ -22,7 +22,7 @@
         android:letterSpacing="0.12"
         android:maxLines="1"
         android:textColor="@color/widget_lavender"
-        android:textSize="8sp"
+        android:textSize="11sp"
         android:textStyle="bold"
         tools:text="RAZÓN DEL DÍA" />
 
@@ -47,7 +47,7 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/widget_rose"
-        android:textSize="8sp"
+        android:textSize="11sp"
         tools:text="3 días seguidos" />
 
 </LinearLayout>

@@ -10,7 +10,7 @@ import { theme } from '../services/theme.service.js';
 import { showToast } from '../components/Toast.js';
 import { db } from '../services/db.service.js';
 import { getUserPref, setUserPref } from '../utils/userStorage.js';
-import { requestEnable, disable, isPushSupported, getNotifSettings, setNotifSettings, notifPermission, sendTestNotification } from '../services/notifications.service.js';
+import { requestEnable, disable, isPushSupported, getPushDeliveryStatus, getNotifSettings, setNotifSettings, notifPermission, sendTestNotification } from '../services/notifications.service.js';
 import { getNativePushStatus, registerNativePush } from '../services/native.service.js';
 import { escapeHtml } from '../utils/escape.js';
 import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/specialDates.js';
@@ -682,11 +682,14 @@ export function ProfilePage(router) {
     notifToggle.checked = notifEnabled;
     const pushStatusEl = page.querySelector('#pushStatus');
     if (pushStatusEl) {
-      if (pushSupported && notifEnabled) {
+      const deliveryStatus = getPushDeliveryStatus();
+      if (pushSupported && notifEnabled && deliveryStatus === 'push') {
         pushStatusEl.textContent = '· Push activo';
         pushStatusEl.className = 'prof-push-status prof-push--active';
       } else if (notifEnabled) {
-        pushStatusEl.textContent = '· fallback local';
+        pushStatusEl.textContent = deliveryStatus === 'unknown' && pushSupported
+          ? '· Push sin verificar'
+          : '· Solo avisos locales';
         pushStatusEl.className = 'prof-push-status prof-push--fallback';
       }
     }
@@ -695,17 +698,22 @@ export function ProfilePage(router) {
       if (e.target.checked) {
         const ok = await requestEnable();
         if (ok) {
-          showToast('🔔 Recordatorios activados' + (pushSupported ? ' (Push)' : ''), 'success');
+          const pushActive = getPushDeliveryStatus() === 'push';
+          showToast(pushActive
+            ? '🔔 Avisos remotos activados'
+            : 'Avisos locales activados; los avisos remotos de pareja no están registrados', pushActive ? 'success' : 'info');
           if (pushStatusEl) {
-            pushStatusEl.textContent = pushSupported ? '· Push activo' : '· fallback local';
-            pushStatusEl.className = pushSupported ? 'prof-push-status prof-push--active' : 'prof-push-status prof-push--fallback';
+            pushStatusEl.textContent = pushActive ? '· Push activo' : '· Solo avisos locales';
+            pushStatusEl.className = pushActive ? 'prof-push-status prof-push--active' : 'prof-push-status prof-push--fallback';
           }
           // Tras conceder el permiso, invitamos a configurar los avisos.
           openNotifSettingsSheet();
         } else {
           e.target.checked = false;
           if (pushStatusEl) { pushStatusEl.textContent = ''; pushStatusEl.className = 'prof-push-status'; }
-          showToast('Permiso de notificaciones denegado', 'error');
+          showToast(Notification.permission === 'denied'
+            ? 'Permiso de notificaciones denegado'
+            : 'No hay un canal de notificaciones disponible en este navegador', 'error');
         }
       } else {
         await disable();
@@ -895,7 +903,10 @@ export function ProfilePage(router) {
         ask.addEventListener('click', async () => {
           const ok = await requestEnable();
           if (ok) {
-            showToast('🔔 Notificaciones activadas', 'success');
+            const pushActive = getPushDeliveryStatus() === 'push';
+            showToast(pushActive
+              ? '🔔 Avisos remotos activados'
+              : 'Avisos locales activados; Push remoto no está registrado', pushActive ? 'success' : 'info');
             drawPerm();
           } else {
             showToast('Permiso denegado. Ábrelo con el candado 🔒 → Notificaciones → Permitir', 'error');

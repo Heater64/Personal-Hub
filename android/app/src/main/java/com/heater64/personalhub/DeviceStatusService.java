@@ -57,12 +57,14 @@ public class DeviceStatusService extends Service {
     private static final String PREFS = "device_status";
     private static final String CHANNEL_ID = "device_status";
     private static final String ACTION_STOP = "com.heater64.personalhub.DEVICE_STATUS_STOP";
+    private static final String ACTION_REFRESH = "com.heater64.personalhub.DEVICE_STATUS_REFRESH";
     private static final String TAG = "DeviceStatus";
     private static final int NOTIFICATION_ID = 4310;
     private static final long HEARTBEAT_MS = 5 * 60 * 1000L;
     private static final long LOCATION_INTERVAL_MS = 2 * 60 * 1000L;
     private static final long CHANGE_DELAY_MS = 5_000L;
     private static final long RETRY_MS = 60_000L;
+    private static final long MAX_BATTERY_ALERT_RETRY_MS = 15 * 60_000L;
 
     // La generación invalida envíos y renovaciones en curso al cambiar de cuenta o salir.
     private static final Object CONFIG_LOCK = new Object();
@@ -75,14 +77,20 @@ public class DeviceStatusService extends Service {
     private static Runnable startTimeout;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final ExecutorService events = Executors.newSingleThreadExecutor();
+    // A stalled location upload must not delay the one-shot low-battery alert.
+    private final ExecutorService batteryAlerts = Executors.newSingleThreadExecutor();
     private final Runnable tick = this::publishPending;
     private long scheduledAt = Long.MAX_VALUE;
     private boolean publishing;
     private boolean publishAgain;
+    private boolean batteryAlertSending;
     private volatile Fix lastFix;
 
     private LocationManager locationManager;
     private LocationListener locationListener;
+    private LocationListener singleLocationListener;
+    private Runnable singleFixTimeout;
     private ConnectivityManager connectivityManager;
     private ConnectivityManager.NetworkCallback networkCallback;
     private BroadcastReceiver batteryReceiver;
@@ -100,6 +108,22 @@ public class DeviceStatusService extends Service {
 
     static boolean isRunning() {
         return active != null;
+    }
+
+    /** Atiende una petición de la pareja si el usuario ya activó el seguimiento. */
+    static void requestLocationUpdate(Context context) {
+        DeviceStatusService service = active;
+        if (service != null) {
+            MAIN.post(service::requestFreshLocation);
+            return;
+        }
+        if (!isEnabled(context) || !hasBackgroundLocationPermission(context)) return;
+        try {
+            ContextCompat.startForegroundService(context,
+                    new Intent(context, DeviceStatusService.class).setAction(ACTION_REFRESH));
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Android rechazó la actualización solicitada", error);
+        }
     }
 
     static boolean hasPreciseLocationPermission(Context context) {
@@ -139,6 +163,11 @@ public class DeviceStatusService extends Service {
             if (!sameScope) {
                 generation++;
                 clearSnapshot(edit);
+                // The physical battery pause carries across accounts, but alert delivery
+                // belongs to the previous partner scope and must be attempted again.
+                edit.putBoolean("battery_alert_sent", false)
+                        .putBoolean("battery_alert_delivered", false)
+                        .remove("battery_alert_attempts");
             }
             // Evita reemplazar una sesión que el servicio acaba de renovar.
             if (!sameScope || config.session().expiresAt() >= prefs.getLong("expiresAt", 0L)) {
@@ -229,7 +258,11 @@ public class DeviceStatusService extends Service {
             stop(this);
             return START_NOT_STICKY;
         }
-        if (active == this) return START_STICKY;
+        boolean refreshRequested = intent != null && ACTION_REFRESH.equals(intent.getAction());
+        if (active == this) {
+            if (refreshRequested) requestFreshLocation();
+            return START_STICKY;
+        }
 
         // Android puede recrear un servicio START_STICKY sin el Intent inicial.
         String error = startPrerequisite(this);
@@ -252,9 +285,10 @@ public class DeviceStatusService extends Service {
 
         active = this;
         prefs(this).edit().remove("last_error").remove("running").apply();
-        registerLocationUpdates();
         registerDeviceObservers();
-        schedulePublish(0L);
+        registerLocationUpdates();
+        if (refreshRequested) requestFreshLocation();
+        else schedulePublish(0L);
         finishStart();
         return START_STICKY;
     }
@@ -272,10 +306,13 @@ public class DeviceStatusService extends Service {
         }
         MAIN.removeCallbacks(tick);
         io.shutdownNow();
+        events.shutdownNow();
+        batteryAlerts.shutdownNow();
         if (locationManager != null && locationListener != null) {
             locationManager.removeUpdates(locationListener);
             locationListener = null;
         }
+        clearSingleLocationRequest();
         if (connectivityManager != null && networkCallback != null) {
             connectivityManager.unregisterNetworkCallback(networkCallback);
             networkCallback = null;
@@ -300,9 +337,53 @@ public class DeviceStatusService extends Service {
         MAIN.postAtTime(tick, deadline);
     }
 
+    private void requestFreshLocation() {
+        if (prefs(this).getBoolean("battery_paused", false)) { schedulePublish(0L); return; }
+        if (!hasLocationPermission(this)) return;
+        if (locationManager == null) locationManager = getSystemService(LocationManager.class);
+        if (locationManager == null) { schedulePublish(0L); return; }
+        clearSingleLocationRequest();
+        List<String> providers = locationManager.getAllProviders();
+        String provider = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && providers.contains(LocationManager.FUSED_PROVIDER)
+                ? LocationManager.FUSED_PROVIDER
+                : hasPreciseLocationPermission(this) && providers.contains(LocationManager.GPS_PROVIDER)
+                    ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER;
+        if (!providers.contains(provider)) { schedulePublish(0L); return; }
+        singleLocationListener = new LocationListener() {
+            @Override public void onLocationChanged(Location location) {
+                clearSingleLocationRequest();
+                acceptLocation(location);
+                schedulePublish(0L);
+            }
+            @Override public void onStatusChanged(String providerName, int status, Bundle extras) {}
+            @Override public void onProviderEnabled(String providerName) {}
+            @Override public void onProviderDisabled(String providerName) {}
+        };
+        try {
+            locationManager.requestLocationUpdates(provider, 0L, 0f, singleLocationListener, Looper.getMainLooper());
+            singleFixTimeout = () -> { clearSingleLocationRequest(); schedulePublish(0L); };
+            MAIN.postDelayed(singleFixTimeout, 20_000L);
+        } catch (SecurityException | IllegalArgumentException error) {
+            clearSingleLocationRequest();
+            Log.w(TAG, "No se pudo solicitar una ubicación inmediata", error);
+            schedulePublish(0L);
+        }
+    }
+
+    private void clearSingleLocationRequest() {
+        if (singleFixTimeout != null) MAIN.removeCallbacks(singleFixTimeout);
+        singleFixTimeout = null;
+        if (locationManager != null && singleLocationListener != null) {
+            locationManager.removeUpdates(singleLocationListener);
+        }
+        singleLocationListener = null;
+    }
+
     private void publishPending() {
         scheduledAt = Long.MAX_VALUE;
         if (active != this) return;
+        scheduleBatteryAlert();
         if (publishing) {
             publishAgain = true;
             return;
@@ -319,22 +400,42 @@ public class DeviceStatusService extends Service {
             MAIN.post(() -> {
                 if (active != this) return;
                 publishing = false;
-                long delay = publishAgain ? CHANGE_DELAY_MS : HEARTBEAT_MS;
-                if ("upload-failed".equals(error)) delay = Math.min(delay, RETRY_MS);
                 SharedPreferences prefs = prefs(this);
-                if (prefs.getBoolean("battery_paused", false)
-                        && !prefs.getBoolean("battery_alert_delivered", false)) {
-                    delay = Math.min(delay, RETRY_MS);
-                }
+                long delay = nextPublishDelay(publishAgain, error,
+                        prefs.getBoolean("battery_paused", false),
+                        prefs.getBoolean("battery_alert_delivered", false),
+                        prefs.getInt("battery_alert_attempts", 0));
                 publishAgain = false;
                 schedulePublish(delay);
             });
         });
     }
 
+    static long nextPublishDelay(boolean publishAgain, String error,
+            boolean batteryPaused, boolean batteryAlertDelivered) {
+        return nextPublishDelay(publishAgain, error, batteryPaused, batteryAlertDelivered, 1);
+    }
+
+    static long nextPublishDelay(boolean publishAgain, String error,
+            boolean batteryPaused, boolean batteryAlertDelivered, int batteryAlertAttempts) {
+        long delay = publishAgain ? CHANGE_DELAY_MS : HEARTBEAT_MS;
+        if ("upload-failed".equals(error)) delay = Math.min(delay, RETRY_MS);
+        if (batteryPaused && !batteryAlertDelivered) {
+            delay = Math.min(delay, batteryAlertRetryDelay(batteryAlertAttempts));
+        }
+        return delay;
+    }
+
+    static long batteryAlertRetryDelay(int failedAttempts) {
+        int exponent = Math.max(0, Math.min(failedAttempts - 1, 4));
+        long delay = RETRY_MS * (1L << exponent);
+        return Math.min(delay, MAX_BATTERY_ALERT_RETRY_MS);
+    }
+
     @SuppressWarnings("deprecation")
     private void registerLocationUpdates() {
         if (prefs(this).getBoolean("battery_paused", false)) return;
+        if (locationListener != null) return;
         locationManager = getSystemService(LocationManager.class);
         if (locationManager == null) return;
 
@@ -383,6 +484,9 @@ public class DeviceStatusService extends Service {
     }
 
     private void acceptLocation(Location candidate) {
+        // LocationManager can deliver a callback that was already queued when
+        // the battery threshold was crossed. Do not retain or publish it.
+        if (prefs(this).getBoolean("battery_paused", false)) return;
         if (candidate == null || candidate.getTime() <= 0) return;
         boolean precise = hasPreciseLocationPermission(this);
         Fix previousFix = lastFix;
@@ -444,13 +548,17 @@ public class DeviceStatusService extends Service {
 
     private void handleBatteryLevel(int level) {
         if (level < 0) return;
+        batteryLevel = level;
         SharedPreferences prefs = prefs(this);
         boolean paused = prefs.getBoolean("battery_paused", false);
         if (!paused && level <= 20) {
             prefs.edit().putBoolean("battery_paused", true)
                     .putBoolean("battery_alert_sent", true)
                     .putBoolean("battery_alert_delivered", false)
+                    .putInt("battery_alert_attempts", 0)
                     .apply();
+            updateBatteryPauseNotification(true, level);
+            clearSingleLocationRequest();
             if (locationManager != null && locationListener != null) {
                 locationManager.removeUpdates(locationListener);
                 locationListener = null;
@@ -460,48 +568,132 @@ public class DeviceStatusService extends Service {
         } else if (paused && level >= 30) {
             prefs.edit().putBoolean("battery_paused", false)
                     .putBoolean("battery_alert_sent", false)
+                    .remove("battery_alert_attempts")
                     .remove("battery_alert_delivered")
                     .apply();
+            updateBatteryPauseNotification(false, level);
             registerLocationUpdates();
             schedulePublish(0L);
         }
+        scheduleBatteryAlert();
+    }
+
+    private void updateBatteryPauseNotification(boolean paused, int level) {
+        if (level < 0) return;
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager == null) return;
+        int message = paused
+                ? R.string.notification_status_location_paused
+                : R.string.notification_status_location_resumed;
+        manager.notify(NOTIFICATION_ID, buildNotification(getString(message, level)));
+    }
+
+    /** Starts the partner alert independently of the serialized location upload queue. */
+    private void scheduleBatteryAlert() {
+        if (active != this || batteryAlertSending) return;
+        SharedPreferences prefs = prefs(this);
+        if (!prefs.getBoolean("battery_paused", false)
+                || prefs.getBoolean("battery_alert_delivered", false)) return;
+        Config config = readConfig(this);
+        if (config == null) return;
+
+        batteryAlertSending = true;
+        int level = Math.max(0, batteryLevel);
+        batteryAlerts.execute(() -> {
+            try {
+                sendBatteryAlert(config, level);
+            } finally {
+                MAIN.post(() -> {
+                    batteryAlertSending = false;
+                    if (active != this || !prefs(this).getBoolean("battery_paused", false)) return;
+                    SharedPreferences current = prefs(this);
+                    long delay = nextPublishDelay(false, "battery-low", true,
+                            current.getBoolean("battery_alert_delivered", false),
+                            current.getInt("battery_alert_attempts", 0));
+                    schedulePublish(delay);
+                });
+            }
+        });
     }
 
     private void sendBatteryAlert(Config config, int level) {
-        if (config.apiOrigin().isEmpty() || !canPublish(config)) return;
-        HttpURLConnection conn = null;
+        if (!canPublish(config)) return;
+        if (config.apiOrigin().isEmpty()) {
+            recordBatteryAlertFailure(config);
+            return;
+        }
         try {
-            String base = config.apiOrigin().replaceAll("/+$", "");
-            conn = (HttpURLConnection) new URL(base + "/api/push?action=battery-low").openConnection();
-            conn.setRequestMethod("POST");
-            conn.setConnectTimeout(12_000);
-            conn.setReadTimeout(12_000);
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Authorization", "Bearer " + readSession(prefs(this)).accessToken());
-            conn.setRequestProperty("Content-Type", "application/json");
-            writeBody(conn, new JSONObject().put("level", level));
-            int status = conn.getResponseCode();
-            if (status < 200 || status >= 300) {
-                Log.w(TAG, "No se pudo enviar el aviso de batería: HTTP " + status);
+            Session session = readSession(prefs(this));
+            BatteryAlertResponse response = postBatteryAlert(config, level, session);
+            if (response.status() == 401) {
+                Session renewed = renewSession(config, session.accessToken());
+                if (shouldRetryBatteryAlert(response.status(), session, renewed)) {
+                    response = postBatteryAlert(config, level, renewed);
+                }
+            }
+            if (response.status() < 200 || response.status() >= 300) {
+                recordBatteryAlertFailure(config);
+                Log.w(TAG, "No se pudo enviar el aviso de batería: HTTP " + response.status());
                 return;
             }
-            StringBuilder response = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) response.append(line);
-            }
-            int sent = new JSONObject(response.toString()).optInt("sent", 0);
-            if (sent > 0) {
-                prefs(this).edit().putBoolean("battery_alert_delivered", true).apply();
+            if (response.sent() > 0) {
+                synchronized (CONFIG_LOCK) {
+                    if (canPublish(config)) {
+                        prefs(this).edit().putBoolean("battery_alert_delivered", true)
+                                .remove("battery_alert_attempts").apply();
+                    }
+                }
             } else {
+                recordBatteryAlertFailure(config);
                 Log.w(TAG, "Aviso de batería pendiente: FCM no entregó ningún aviso");
             }
         } catch (Exception err) {
+            recordBatteryAlertFailure(config);
             Log.w(TAG, "No se pudo avisar a la pareja de la batería baja", err);
-        } finally {
-            if (conn != null) conn.disconnect();
         }
+    }
+
+    private void recordBatteryAlertFailure(Config config) {
+        synchronized (CONFIG_LOCK) {
+            if (!canPublish(config)) return;
+            SharedPreferences prefs = prefs(this);
+            prefs.edit().putInt("battery_alert_attempts",
+                    prefs.getInt("battery_alert_attempts", 0) + 1).apply();
+        }
+    }
+
+    private BatteryAlertResponse postBatteryAlert(Config config, int level, Session session) throws Exception {
+        if (!canPublish(config)) return new BatteryAlertResponse(-1, 0);
+        String base = config.apiOrigin().replaceAll("/+$", "");
+        HttpURLConnection conn = (HttpURLConnection) new URL(base + "/api/push?action=battery-low").openConnection();
+        try {
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(12_000);
+            conn.setReadTimeout(12_000);
+            conn.setInstanceFollowRedirects(false);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Authorization", "Bearer " + session.accessToken());
+            conn.setRequestProperty("Content-Type", "application/json");
+            writeBody(conn, new JSONObject().put("level", level));
+            int status = conn.getResponseCode();
+            if (status < 200 || status >= 300) return new BatteryAlertResponse(status, 0);
+
+            StringBuilder body = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) body.append(line);
+            }
+            return new BatteryAlertResponse(status, new JSONObject(body.toString()).optInt("sent", 0));
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    static boolean shouldRetryBatteryAlert(int status, Session current, Session renewed) {
+        return status == 401 && current != null && renewed != null
+                && !renewed.accessToken().isEmpty()
+                && !renewed.accessToken().equals(current.accessToken());
     }
 
     private void handleConnectionChange(NetworkCapabilities caps) {
@@ -576,6 +768,8 @@ public class DeviceStatusService extends Service {
         data.put("name", config.name());
         data.put("avatar", config.avatar());
         data.put("bg", true);
+        data.put("batteryPaused", prefs(this).getBoolean("battery_paused", false));
+        data.put("locationServices", locationServicesState(this));
 
         boolean precise = hasPreciseLocationPermission(this);
         JSONObject previous = config.previous();
@@ -612,9 +806,9 @@ public class DeviceStatusService extends Service {
         Config config = readConfig(this);
         if (config == null) return "session";
         if (prefs(this).getBoolean("battery_paused", false)) {
-            if (!prefs(this).getBoolean("battery_alert_delivered", false)) {
-                sendBatteryAlert(config, Math.max(0, batteryLevel));
-            }
+            // Keep sharing battery/connectivity while paused, without claiming a
+            // fresh GPS fix or triggering a geofence event from an old position.
+            publishBatteryPausedStatus(config);
             return "battery-low";
         }
         JSONObject data = null;
@@ -661,6 +855,8 @@ public class DeviceStatusService extends Service {
 
     record Session(String accessToken, String refreshToken, long expiresAt) {}
 
+    record BatteryAlertResponse(int status, int sent) {}
+
     record Config(String url, String apiOrigin, String anonKey, String userId, String coupleId, boolean isAdmin,
                   String name, String avatar, Session session, long generation, JSONObject previous) {
         boolean valid() {
@@ -699,7 +895,34 @@ public class DeviceStatusService extends Service {
                 .putLong("expiresAt", session.expiresAt());
     }
 
+    /** Comparte batería/conexión pausadas sin reclamar eventos con un GPS antiguo. */
+    private void publishBatteryPausedStatus(Config config) {
+        try {
+            JSONObject data = snapshot(config);
+            if (!data.has("location_at") || !data.has("lat") || !data.has("lng") || !data.optBoolean("online")) return;
+            synchronized (CONFIG_LOCK) {
+                if (!canPublish(config)) return;
+                prefs(this).edit().putString("last_data", data.toString())
+                        .putString("last_attempt_at", data.optString("at")).apply();
+            }
+            String error = upsert(data, config, false);
+            synchronized (CONFIG_LOCK) {
+                if (!canPublish(config)) return;
+                SharedPreferences.Editor edit = prefs(this).edit();
+                if (error.isEmpty()) edit.putString("last_sent_at", data.optString("at")).remove("last_error");
+                else edit.putString("last_error", error);
+                edit.apply();
+            }
+        } catch (Exception error) {
+            Log.w(TAG, "No se pudo sincronizar el estado de batería pausado", error);
+        }
+    }
+
     private String upsert(JSONObject data, Config config) throws Exception {
+        return upsert(data, config, true);
+    }
+
+    private String upsert(JSONObject data, Config config, boolean notifyPlaceEvents) throws Exception {
         JSONObject row = new JSONObject();
         row.put("data", data);
         row.put("updated_at", data.optString("at"));
@@ -726,9 +949,86 @@ public class DeviceStatusService extends Service {
             if (session == null) return "session";
             code = send(path, config, session.accessToken(), row);
         }
-        if (code >= 200 && code < 300) return "";
+        if (code >= 200 && code < 300) {
+            if (notifyPlaceEvents && !config.coupleId().isEmpty() && data.has("location_at")) {
+                try {
+                    events.execute(() -> notifyLocationUpdate(data, config));
+                } catch (RuntimeException ignored) {
+                    // El apagado del servicio también puede cerrar la cola.
+                }
+            }
+            return "";
+        }
         Log.w(TAG, "Supabase respondió HTTP " + code);
         return code == 401 || code == 403 ? "session" : "upload-failed";
+    }
+
+    private void notifyLocationUpdate(JSONObject location, Config config) {
+        if (config.apiOrigin().isEmpty() || !canPublish(config)) return;
+        try {
+            Session session = readSession(prefs(this));
+            int status = postLocationUpdate(config, location, session);
+            if (status == 401) {
+                Session renewed = renewSession(config, session.accessToken());
+                if (shouldRetryLocationUpdate(status, session, renewed)) {
+                    status = postLocationUpdate(config, location, renewed);
+                }
+            }
+            if (status < 200 || status >= 300) Log.w(TAG, "No se pudo procesar la ubicación compartida: HTTP " + status);
+        } catch (Exception err) {
+            Log.w(TAG, "No se pudo enviar el evento de llegada", err);
+        }
+    }
+
+    private int postLocationUpdate(Config config, JSONObject location, Session session) throws Exception {
+        if (!canPublish(config)) return -1;
+        String base = config.apiOrigin().replaceAll("/+$", "");
+        HttpURLConnection conn = (HttpURLConnection) new URL(base + "/api/push?action=location-update").openConnection();
+        try {
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(8_000);
+            conn.setReadTimeout(8_000);
+            conn.setInstanceFollowRedirects(false);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Authorization", "Bearer " + session.accessToken());
+            conn.setRequestProperty("Content-Type", "application/json");
+            JSONObject body = new JSONObject();
+            body.put("lat", location.getDouble("lat"));
+            body.put("lng", location.getDouble("lng"));
+            body.put("accuracy", location.opt("accuracy") == JSONObject.NULL ? JSONObject.NULL : location.opt("accuracy"));
+            body.put("location_at", location.getString("location_at"));
+            writeBody(conn, body);
+            int status = conn.getResponseCode();
+            if (status >= 200 && status < 300) {
+                String response;
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder content = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) content.append(line);
+                    response = content.toString();
+                }
+                prefs(this).edit().putBoolean("geofence_accuracy_warning",
+                        isUnreliableGeofenceResponse(response)).apply();
+            }
+            return status;
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    static boolean shouldRetryLocationUpdate(int status, Session current, Session renewed) {
+        return status == 401 && current != null && renewed != null
+                && !renewed.accessToken().isEmpty()
+                && !renewed.accessToken().equals(current.accessToken());
+    }
+
+    static boolean isUnreliableGeofenceResponse(String body) {
+        try {
+            return "inaccurate-location".equals(new JSONObject(body).optString("reason"));
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private HttpURLConnection open(String path, Config config) throws Exception {
@@ -758,12 +1058,19 @@ public class DeviceStatusService extends Service {
     }
 
     private Session renewSession(Config config) throws Exception {
+        return renewSession(config, config.session().accessToken());
+    }
+
+    private Session renewSession(Config config, String rejectedAccessToken) throws Exception {
         SharedPreferences prefs = prefs(this);
         Session current;
         synchronized (CONFIG_LOCK) {
             if (!canPublish(config)) return null;
             current = readSession(prefs);
-            if (!current.accessToken().equals(config.session().accessToken())) return current;
+            // Otro envío pudo renovar la sesión mientras el aviso se mandaba.
+            // Solo evita renovar otra vez si el token guardado ya es distinto
+            // del token que esta petición acaba de ver rechazado.
+            if (!current.accessToken().equals(rejectedAccessToken)) return current;
         }
         if (current.refreshToken().isEmpty()) return null;
 
@@ -842,8 +1149,12 @@ public class DeviceStatusService extends Service {
     }
 
     private void updateNotification(JSONObject data, String error) {
-        String text = data.has("battery")
-                ? getString(R.string.notification_status_battery, data.optInt("battery"))
+        int level = batteryLevel >= 0 ? batteryLevel : data.optInt("battery", -1);
+        boolean batteryPaused = prefs(this).getBoolean("battery_paused", false);
+        String text = batteryPaused && level >= 0
+                ? getString(R.string.notification_status_location_paused, level)
+                : level >= 0
+                    ? getString(R.string.notification_status_battery, level)
                 : getString(R.string.notification_status_title);
         if (data.optBoolean("charging")) text += " · " + getString(R.string.notification_status_charging);
         if ("offline".equals(error)) text += " · Sin conexión";

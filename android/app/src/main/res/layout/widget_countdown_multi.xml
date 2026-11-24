@@ -24,7 +24,7 @@
         android:maxLines="1"
         android:text="@string/widget_countdown_kicker"
         android:textColor="@color/widget_coral_soft"
-        android:textSize="8sp"
+        android:textSize="11sp"
         android:textStyle="bold"
         tools:text="FALTAN" />
 
@@ -51,7 +51,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
-                android:textSize="9sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 tools:text="Aniversario" />
 
@@ -63,7 +63,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="7sp"
+                android:textSize="11sp"
                 tools:text="3 jul 2026" />
         </LinearLayout>
 
@@ -88,7 +88,7 @@
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="8sp"
+            android:textSize="11sp"
             tools:text="días" />
     </LinearLayout>
 
@@ -115,7 +115,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
-                android:textSize="9sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 tools:text="Cumpleaños de dada" />
 
@@ -127,7 +127,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="7sp"
+                android:textSize="11sp"
                 tools:text="12 sep 2026" />
         </LinearLayout>
 
@@ -152,7 +152,7 @@
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="8sp"
+            android:textSize="11sp"
             tools:text="días" />
     </LinearLayout>
 
@@ -179,7 +179,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="#FFFFFF"
-                android:textSize="9sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 tools:text="Nuestro primer mensaje" />
 
@@ -191,7 +191,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:textColor="@color/widget_text_muted"
-                android:textSize="7sp"
+                android:textSize="11sp"
                 tools:text="14 feb 2027" />
         </LinearLayout>
 
@@ -216,7 +216,7 @@
             android:maxLines="1"
             android:text="@string/widget_countdown_unit_short"
             android:textColor="@color/widget_rose"
-            android:textSize="8sp"
+            android:textSize="11sp"
             tools:text="días" />
     </LinearLayout>
 

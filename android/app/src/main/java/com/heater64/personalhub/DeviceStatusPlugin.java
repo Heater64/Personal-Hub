@@ -97,6 +97,7 @@ public class DeviceStatusPlugin extends Plugin {
         JSObject out = new JSObject();
         out.put("enabled", prefs.getBoolean("enabled", false));
         out.put("running", DeviceStatusService.isRunning());
+        out.put("batteryPaused", prefs.getBoolean("battery_paused", false));
         out.put("lastError", prefs.getString("last_error", ""));
         return out;
     }
@@ -116,6 +117,7 @@ public class DeviceStatusPlugin extends Plugin {
         out.put("batteryUnrestricted", batteryUnrestricted(context));
         out.put("lastAt", prefs.getString("last_sent_at", ""));
         out.put("lastAttemptAt", prefs.getString("last_attempt_at", ""));
+        out.put("geofenceAccuracyWarning", prefs.getBoolean("geofence_accuracy_warning", false));
         out.put("facts", DeviceStatusService.deviceFacts(context));
 
         // La sesión que usa el servicio. El servicio renueva el token cuando
@@ -175,6 +177,34 @@ public class DeviceStatusPlugin extends Plugin {
             call.resolve();
         } catch (Exception err) {
             call.reject("No se pudieron abrir los ajustes");
+        }
+    }
+
+    /** Abre la lista oficial de apps excluidas de optimización de batería. */
+    @PluginMethod
+    public void openBatterySettings(PluginCall call) {
+        Context context = getContext();
+        try {
+            Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            call.resolve();
+        } catch (Exception error) {
+            call.reject("No se pudieron abrir los ajustes de batería");
+        }
+    }
+
+    /** Abre el ajuste del sistema que enciende o apaga la ubicación del móvil. */
+    @PluginMethod
+    public void openLocationSettings(PluginCall call) {
+        Context context = getContext();
+        try {
+            Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            call.resolve();
+        } catch (Exception error) {
+            call.reject("No se pudieron abrir los ajustes de ubicación");
         }
     }
 

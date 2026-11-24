@@ -59,7 +59,7 @@ test('api/push.js no puede morir al importar por unas claves mal formadas', () =
   const source = read('api', 'push.js');
   assert.match(
     source,
-    /try\s*{\s*\n\s*webpush\.setVapidDetails\(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY\);/,
+    /try\s*{\s*\n\s*setVapidDetails\(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY\);/,
     'setVapidDetails tiene que ir dentro de try/catch: rompe la función entera si el par es inválido'
   );
   assert.match(

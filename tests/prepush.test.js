@@ -194,8 +194,9 @@ test('la API de push valida sesión y enabled, y usa la tabla dedicada', async (
   assert.match(pushApi, /42P01/);
   assert.match(pushApi, /getLegacySubscriptions/);
   // Autenticación unificada: token + profiles.enabled.
-  assert.match(pushApi, /async function authenticate\(req, res\)/);
+  assert.match(pushApi, /async function authenticate\(req, res(?:, \{ allowDisabled = false \} = \{\})?\)/);
   assert.match(pushApi, /enabled !== false/);
+  assert.match(pushApi, /if \(profileError\)[\s\S]*?status\(503\)[\s\S]*?return null;/);
   // El envío diario sigue siendo exclusivo de admin y con cron GET/POST.
   assert.match(pushApi, /action === 'send' && !\['GET', 'POST'\]\.includes\(req\.method\)/);
   assert.match(pushApi, /process\.env\.CRON_SECRET/);
@@ -699,6 +700,14 @@ test('las cartas de Open When pueden llevar audio, fotos y vídeo dentro', async
   assert.ok(admin.includes('uploadAudios'));
   assert.ok(admin.includes('uploadMemes'));
   assert.doesNotMatch(admin, /se crean desde el código/);
+});
+
+test('Open When valida las URL de cada foto antes de pintar y abrir el álbum', async () => {
+  const page = await readFile(hub('src', 'pages', 'OpenWhen.js'), 'utf8');
+  assert.match(page, /function safeAlbumUrls\(urls\)/);
+  assert.match(page, /safeAlbumUrls\(letter\.media\.urls\)/);
+  assert.match(page, /const safeUrls = safeAlbumUrls\(letter\.media\.urls\)/);
+  assert.match(page, /openLightbox\(safeUrls\.map\(item => \(\{ src: item\.url, type: 'image' \}\)\), safeIndex\)/);
 });
 
 test('el retroceso cierra las capas sin salir de la página', async () => {
@@ -2637,4 +2646,13 @@ test('el centro de invitaciones detecta llegadas nuevas y limpia suscripciones p
   assert.match(inviteCenter, /catch \(error\) \{ console\.warn\('\[games\] No se pudo cerrar el canal de revanchas:'/);
   assert.ok(inviteCenter.includes('if (offListen) {'), 'al cambiar de usuario limpia la suscripción de música');
   assert.ok(inviteCenter.includes('offListen = null;'), 'olvida el cleanup de música después de cerrarlo');
+});
+
+test('el panel admin conserva una lista parcial local cuando Vite no expone /api/users', async () => {
+  const db = await readFile(hub('src', 'services', 'db.service.js'), 'utf8');
+  assert.match(db, /async function listUsers\(\{ skipAdminApi = false \} = \{\}\)/);
+  assert.match(db, /if \(accessToken && !skipAdminApi\) \{[\s\S]*?fetch\('\/api\/users'/);
+  assert.match(db, /if \(import\.meta\.env\.DEV && error\.message === 'El servicio de cuentas no está disponible\.'\) \{[\s\S]*?return \{ rows: await listUsers\(\{ skipAdminApi: true \}\), source: 'local', truncated: true \}/);
+  assert.match(db, /if \(adminUsersRequest === request\) adminUsersRequest = null/,
+    'libera la promesa compartida también cuando el fallback o la API fallan');
 });

@@ -38,7 +38,7 @@
             android:maxLines="1"
             android:text="@string/widget_cycle_kicker"
             android:textColor="@color/widget_coral_soft"
-            android:textSize="8sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             tools:text="CICLO" />
 
@@ -63,7 +63,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp"
+            android:textSize="11sp"
             tools:text="día 21 de ~28" />
 
         <TextView
@@ -74,7 +74,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="8sp"
+            android:textSize="11sp"
             tools:text="próxima regla en 6 d · 24 nov" />
     </LinearLayout>
 

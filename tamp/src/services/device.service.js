@@ -46,6 +46,7 @@ const background = {
   native: false,
   enabled: false,
   running: false,
+  batteryPaused: false,
   lastError: '',
   location: 'unknown',
   locationPrecision: 'none',
@@ -53,6 +54,7 @@ const background = {
   locationServices: 'unknown',
   notifications: 'unknown',
   batteryUnrestricted: null,
+  geofenceAccuracyWarning: false,
   data: null,
   lastAt: null,
   lastAttemptAt: null,
@@ -196,6 +198,7 @@ export async function refreshBackgroundStatus() {
       native: true,
       enabled: !!res?.enabled,
       running: res?.running === true,
+      batteryPaused: res?.batteryPaused === true,
       lastError: res?.lastError || '',
       location,
       locationPrecision: res?.locationPrecision || (location === 'granted' ? 'precise' : 'none'),
@@ -203,6 +206,7 @@ export async function refreshBackgroundStatus() {
       locationServices: res?.locationServices || 'unknown',
       notifications: res?.notifications || 'unknown',
       batteryUnrestricted: res?.batteryUnrestricted === true,
+      geofenceAccuracyWarning: res?.geofenceAccuracyWarning === true,
       data: res?.data || null,
       lastAt: res?.lastAt || null,
       lastAttemptAt: res?.lastAttemptAt || null,
@@ -250,7 +254,7 @@ async function nativeConfig() {
   // de la API junto con la sesión para que pueda entregar avisos FCM.
   let apiOrigin = '';
   try {
-    const apiUrl = new URL(import.meta.env.VITE_NATIVE_API_ORIGIN);
+    const apiUrl = new URL(import.meta.env.VITE_NATIVE_API_ORIGIN || window.location.origin);
     if (apiUrl.protocol === 'https:') apiOrigin = apiUrl.origin;
   } catch {
     /* sin API nativa configurada: el seguimiento de ubicación sigue activo */
@@ -398,6 +402,30 @@ export async function openDeviceSettings() {
   }
 }
 
+/** Abre el selector de Android para excluir la app del ahorro de batería. */
+export async function openBatteryOptimizationSettings() {
+  const api = plugin();
+  if (!api?.openBatterySettings) return false;
+  try {
+    await api.openBatterySettings();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Abre el ajuste del sistema para volver a activar los servicios de ubicación. */
+export async function openLocationSettings() {
+  const api = plugin();
+  if (!api?.openLocationSettings) return false;
+  try {
+    await api.openLocationSettings();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /* ==========================================
    ARRANQUE / PARADA
    ========================================== */
@@ -459,6 +487,9 @@ export function stopDeviceMonitor() {
 /** Batería y red, tal cual, para adjuntarlas a la posición. */
 export function deviceFactsSnapshot() {
   const facts = {};
+  // El mapa comparte el modo real del servicio Android, no solo la fuente del
+  // último fix. La página web siempre depende de que esté abierta.
+  facts.bg = background.native && background.enabled && background.running;
   if (Number.isFinite(state.battery)) {
     facts.battery = state.battery;
     facts.charging = state.charging;

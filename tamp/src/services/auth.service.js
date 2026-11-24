@@ -117,6 +117,10 @@ class AuthService {
    * la cuenta ya no es válida y no queremos depender del servidor.
    */
   async _forceSignOut() {
+    try {
+      const { unregisterNativePush } = await import('./native.service.js');
+      await unregisterNativePush();
+    } catch { /* cuenta inválida: se prioriza limpiar la sesión local */ }
     try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* */ }
     this.currentUser = null;
     this._profileRole = null;
@@ -175,6 +179,13 @@ class AuthService {
   }
 
   async signOut() {
+    // Retira el token FCM mientras la sesión todavía autentica la petición.
+    // El logout continúa aunque el dispositivo esté sin conexión.
+    try {
+      const { unregisterNativePush } = await import('./native.service.js');
+      await unregisterNativePush();
+    } catch { /* la limpieza local de la sesión no depende del plugin */ }
+
     // Invalidación en servidor (best effort): si la red falla, el logout
     // local continúa — nunca se bloquea el cierre de sesión por estar offline.
     try {

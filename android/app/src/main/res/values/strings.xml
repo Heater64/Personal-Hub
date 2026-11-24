@@ -4,22 +4,25 @@
     <string name="app_name">Tamp</string>
     <!-- Nombre largo: título de la tarea y de Ajustes. -->
     <string name="title_activity_main">Tamp</string>
+    <!-- Comparte canal visible entre FCM cuando la app está cerrada y avisos locales. -->
+    <string name="default_notification_channel_id">default</string>
     <string name="package_name">com.heater64.personalhub</string>
     <string name="custom_url_scheme">com.heater64.personalhub</string>
 
     <!-- Estado del móvil / segundo plano -->
     <string name="notification_channel_status">Conexión y estado</string>
     <string name="notification_channel_status_desc">Mantiene la distancia, batería y widgets actualizados.</string>
+    <string name="notification_channel_location_refresh">Actualizaciones de ubicación</string>
+    <string name="location_refresh_notification_title">Solicitud de ubicación</string>
+    <string name="location_refresh_notification_body">Tu pareja ha pedido actualizar la ubicación compartida.</string>
     <string name="notification_status_title">Tamp activo</string>
-    <string name="notification_status_desc">Conexión y distancia sincronizadas</string>
     <string name="notification_status_battery">%1$d%%</string>
     <string name="notification_status_charging">cargando</string>
-    <string name="widget_days_label">🤍 días juntos</string>
-    <string name="widget_days_caption">desde el 03/07/2025</string>
+    <string name="notification_status_location_paused">Ubicación pausada · batería %1$d%%</string>
+    <string name="notification_status_location_resumed">Ubicación reanudada · batería %1$d%%</string>
     <string name="widget_days_description">Contador de días juntos</string>
 
     <!-- Widget de la distancia -->
-    <string name="widget_distance_label">📍 distancia</string>
     <string name="widget_distance_empty">abre la app</string>
     <string name="widget_distance_stale">ubicación desactualizada</string>
     <string name="widget_distance_unavailable">sin ubicación reciente</string>
@@ -28,23 +31,21 @@
     <string name="widget_distance_description">Distancia entre vosotros</string>
 
     <!-- Textos del rediseño -->
-    <string name="widget_days_unit">días</string>
     <string name="widget_days_unit_short">días</string>
     <string name="widget_days_label_short">DÍAS JUNTOS</string>
     <string name="widget_days_empty">abre la app</string>
-    <string name="widget_days_caption2">juntos</string>
     <string name="widget_days_me">Tu foto</string>
     <string name="widget_days_partner">Su foto</string>
-    <string name="widget_distance_label2">estáis a</string>
     <string name="widget_distance_kicker">ESTÁIS A</string>
 
     <!-- Cuenta atrás -->
-    <string name="widget_countdown_label">🤍 cuenta atrás</string>
     <string name="widget_countdown_kicker">FALTAN</string>
     <string name="widget_countdown_unit">días</string>
     <string name="widget_countdown_empty">sin fechas próximas</string>
+    <string name="widget_value_placeholder">—</string>
+    <string name="widget_value_zero">0</string>
+    <string name="widget_cycle_placeholder">🌙</string>
     <string name="widget_countdown_past">ya pasó</string>
-    <string name="widget_countdown_description">Cuenta atrás para la próxima fecha</string>
     <string name="widget_countdown_description_compact">Cuenta atrás (pequeño)</string>
     <string name="widget_countdown_description_rect">Cuenta atrás (rectangular)</string>
     <string name="widget_countdown_description_wide">Cuenta atrás (grande)</string>
@@ -64,7 +65,6 @@
     </plurals>
 
     <!-- Estado de ánimo -->
-    <string name="widget_mood_label">🙂 estado de ánimo</string>
     <string name="widget_mood_kicker">HOY</string>
     <!-- El ánimo no se borra al acabar el día: si el último es de ayer, el
          widget lo sigue enseñando y lo dice con esta etiqueta. -->
@@ -73,7 +73,6 @@
     <string name="widget_mood_empty">sin registrar</string>
     <string name="widget_mood_hint">toca para registrar</string>
     <string name="widget_mood_today">hoy</string>
-    <string name="widget_mood_description">El ánimo de ella, hoy</string>
     <string name="widget_mood_description_compact">El ánimo de ella (pequeño)</string>
     <string name="widget_mood_description_rect">El ánimo de ella (rectangular)</string>
     <string name="widget_mood_description_wide">El ánimo de ella (grande)</string>
@@ -83,7 +82,6 @@
     <string name="widget_distance_charging">cargando</string>
 
     <!-- Ciclo -->
-    <string name="widget_cycle_label">🌙 ciclo</string>
     <string name="widget_cycle_kicker">CICLO</string>
     <string name="widget_cycle_empty">sin registros</string>
     <string name="widget_cycle_day">día %1$d</string>
@@ -91,25 +89,21 @@
     <string name="widget_cycle_today">próxima regla hoy</string>
     <string name="widget_cycle_tomorrow">próxima regla mañana</string>
     <string name="widget_cycle_next">próxima regla en %1$d d</string>
-    <string name="widget_cycle_description">El ciclo de ella, de un vistazo</string>
     <string name="widget_cycle_description_compact">Ciclo (pequeño)</string>
     <string name="widget_cycle_description_rect">Ciclo (rectangular)</string>
     <string name="widget_cycle_description_wide">Ciclo (grande)</string>
 
     <!-- Seguir viendo -->
-    <string name="widget_watching_label">▶ seguir viendo</string>
     <string name="widget_watching_kicker">SEGUIR VIENDO</string>
     <string name="widget_watching_empty">nada en marcha</string>
     <string name="widget_watching_poster">Portada de la serie</string>
     <string name="widget_watching_episode">Ep. %1$d de %2$d</string>
     <string name="widget_watching_percent">%1$d %% visto</string>
-    <string name="widget_watching_description">La serie que estáis viendo</string>
     <string name="widget_watching_description_compact">Seguir viendo (pequeño)</string>
     <string name="widget_watching_description_rect">Seguir viendo (rectangular)</string>
     <string name="widget_watching_description_wide">Seguir viendo (grande)</string>
 
     <!-- Sorpresas del calendario -->
-    <string name="widget_gifts_label">🎁 sorpresas</string>
     <string name="widget_gifts_kicker">HOY</string>
     <string name="widget_gifts_emoji">🎁</string>
     <string name="widget_gifts_empty">sin sorpresas hoy</string>
@@ -117,7 +111,6 @@
     <string name="widget_gifts_opened">ya las abriste</string>
     <string name="widget_gifts_hint">en el calendario</string>
     <string name="widget_gifts_tomorrow">vuelve mañana</string>
-    <string name="widget_gifts_description">Las sorpresas de hoy en el calendario</string>
     <string name="widget_gifts_description_compact">Sorpresas (pequeño)</string>
     <string name="widget_gifts_description_rect">Sorpresas (rectangular)</string>
     <string name="widget_gifts_description_wide">Sorpresas (grande)</string>

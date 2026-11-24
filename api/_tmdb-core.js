@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 
 const TMDB_API = 'https://api.themoviedb.org/3';
 const IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const requestsByUser = new Map();
 let genreCache = { expires: 0, values: {} };
 
 function json(status, body) {
@@ -31,23 +30,15 @@ function mapTitle(item, genreNames = {}) {
   };
 }
 
-function allowRequest(userId) {
-  const now = Date.now();
-  const recent = (requestsByUser.get(userId) || []).filter(time => now - time < 60_000);
-  if (recent.length >= 40) return false;
-  recent.push(now);
-  requestsByUser.set(userId, recent);
-  return true;
-}
-
 export async function handleTmdbRequest(req) {
   if (req.method !== 'GET') return json(405, { error: 'Método no permitido.' });
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const tmdbToken = process.env.TMDB_ACCESS_TOKEN;
-  if (!supabaseUrl || !anonKey || !tmdbToken) {
-    return json(503, { error: 'Falta configurar TMDB_ACCESS_TOKEN en el servidor.' });
+  if (!supabaseUrl || !anonKey || !serviceRoleKey || !tmdbToken) {
+    return json(503, { error: 'Falta configurar el servicio de búsqueda en el servidor.' });
   }
 
   const accessToken = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '');
@@ -59,13 +50,26 @@ export async function handleTmdbRequest(req) {
     });
     const { data: { user }, error } = await supabase.auth.getUser(accessToken);
     if (error || !user) return json(401, { error: 'La sesión ha caducado. Vuelve a iniciar sesión.' });
-    if (!allowRequest(user.id)) return json(429, { error: 'Has hecho muchas búsquedas seguidas. Espera un momento.' });
 
     const url = new URL(req.url || '/', 'http://localhost');
     const action = url.searchParams.get('action') || 'trending';
     const query = (url.searchParams.get('q') || '').trim().slice(0, 100);
     if (!['search', 'trending', 'upcoming'].includes(action)) return json(400, { error: 'Acción TMDB no válida.' });
     if (action === 'search' && query.length < 2) return json(400, { error: 'Escribe al menos dos caracteres.' });
+
+    // Los límites locales de una función serverless desaparecen al escalar o
+    // reciclar instancias. El RPC serializa el contador por usuario en Postgres.
+    const limiter = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: allowed, error: limitError } = await limiter.rpc('consume_tmdb_request', {
+      p_user_id: user.id,
+    });
+    if (limitError) {
+      console.error('[api/tmdb] no se pudo comprobar el límite de peticiones:', limitError.code || 'unknown');
+      return json(503, { error: 'La búsqueda no está disponible temporalmente.' });
+    }
+    if (allowed !== true) return json(429, { error: 'Has hecho muchas búsquedas seguidas. Espera un momento.' });
 
     const fetchTmdb = async (endpoint, params = {}) => {
       const tmdbUrl = new URL(`${TMDB_API}${endpoint}`);

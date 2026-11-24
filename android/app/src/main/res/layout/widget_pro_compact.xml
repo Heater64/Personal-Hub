@@ -19,7 +19,7 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/widget_lavender"
-        android:textSize="7sp"
+        android:textSize="11sp"
         android:textStyle="bold"
         tools:text="RACHA" />
 
@@ -45,7 +45,7 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/widget_rose"
-        android:textSize="7sp"
+        android:textSize="11sp"
         tools:text="días seguidos" />
 
 </LinearLayout>

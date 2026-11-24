@@ -74,7 +74,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       } catch (err) {
         console.error('[api/users] update error:', err.message);
-        return res.status(500).json({ error: err.message || 'Update failed' });
+        return res.status(500).json({ error: 'No se pudo actualizar la cuenta.' });
       }
     }
 
@@ -108,7 +108,7 @@ export default async function handler(req, res) {
         });
       } catch (err) {
         console.error('[api/users] delete error:', err.message);
-        return res.status(500).json({ error: err.message || 'Delete failed' });
+        return res.status(500).json({ error: 'No se pudo eliminar la cuenta.' });
       }
     }
 
@@ -127,7 +127,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('[api/users] listUsers error:', error.message);
-        return res.status(400).json({ error: error.message });
+        return res.status(503).json({ error: 'No se pudo consultar la lista de cuentas.' });
       }
 
       const pageUsers = data.users || [];
@@ -176,6 +176,6 @@ export default async function handler(req, res) {
     return res.status(200).json(users);
   } catch (err) {
     console.error('[api/users] unexpected error:', err.message);
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(500).json({ error: 'No se pudo completar la solicitud.' });
   }
 }

@@ -120,6 +120,34 @@ borrarlos, y que una tercera sesión o cuenta deshabilitada no obtiene acceso.
   a las 3 de la mañana a quien tenía silencio nocturno. Con esta tabla, el
   servidor lo respeta.
 
+**`sql/041_notification_prefs_delete_owner.sql`**
+
+- Corrige la policy DELETE de la 023: un admin ya no puede borrar la fila de
+  preferencias de otra cuenta. Cada usuario conserva el borrado de su propia fila.
+
+**`sql/042_tmdb_rate_limit.sql`**
+
+- Añade un contador atómico compartido para el límite de TMDB (40 peticiones
+  por usuario y minuto). La API lo llama con `SUPABASE_SERVICE_ROLE_KEY`;
+  la tabla y la RPC no son accesibles desde sesiones de cliente.
+- Aplicar esta migración antes de publicar la actualización de `api/tmdb.js`.
+
+**`sql/043_geofence_radius_accuracy.sql`**
+
+- Corrige la transición de llegada de la 040 para usar el radio que se muestra
+  en el sitio compartido. Mantiene una tolerancia pequeña al salir, para evitar
+  que el GPS envíe avisos duplicados si fluctúa alrededor del borde.
+- Aplicarla en bases que ya tengan `040_lugares_compartidos.sql`.
+
+**`sql/044_scope_place_events_to_current_couple.sql`**
+
+- Limita la cola de entradas y salidas a la pareja actual del usuario. Evita
+  entregar un evento antiguo al miembro de una pareja nueva si cambia la
+  membresía mientras quedan avisos pendientes.
+- Actualiza las RPC privadas de reclamar/finalizar eventos y requiere la API
+  correspondiente, que envía `p_couple_id` en ambas llamadas.
+- Aplicarla después de 043 y antes de publicar la API actualizada.
+
   Comportamiento que cambia: un recordatorio que caiga dentro del silencio
   **se aplaza** al fin del silencio en vez de perderse, y el saludo diario
   no se envía a quien tenga el recordatorio diario apagado (o el silencio

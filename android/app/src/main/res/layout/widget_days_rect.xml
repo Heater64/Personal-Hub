@@ -39,7 +39,7 @@
             android:maxLines="1"
             android:text="@string/widget_days_label_short"
             android:textColor="@color/widget_coral"
-            android:textSize="8sp"
+            android:textSize="11sp"
             android:textStyle="bold"
         tools:text="DÍAS JUNTOS"/>
 
@@ -56,7 +56,7 @@
                 android:layout_height="wrap_content"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="0"
+                android:text="@string/widget_value_zero"
                 android:textColor="#FFFFFF"
                 android:textSize="30sp"
                 android:textStyle="bold"
@@ -72,7 +72,7 @@
                 android:maxLines="1"
                 android:text="@string/widget_days_unit_short"
                 android:textColor="@color/widget_coral"
-                android:textSize="10sp"
+                android:textSize="11sp"
         tools:text="días"/>
         </LinearLayout>
 
@@ -86,7 +86,7 @@
             android:maxLines="1"
             android:text="@string/widget_days_empty"
             android:textColor="@color/widget_text_muted"
-            android:textSize="8sp"
+            android:textSize="11sp"
         tools:text="1 año y 4 meses"/>
     </LinearLayout>
 

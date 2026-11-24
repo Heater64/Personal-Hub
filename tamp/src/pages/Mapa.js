@@ -31,26 +31,28 @@ export function MapaPage(router) {
       <h1 class="mapa-page__title">Dónde estáis</h1>
       <span class="mapa-page__spacer" aria-hidden="true"></span>
     </header>
-    <div class="mapa-page__body" data-body>
-      <p class="mapa-page__loading">Buscando las dos posiciones…</p>
-    </div>
+    <div class="mapa-page__body" data-body></div>
   `;
 
   const body = page.querySelector('[data-body]');
   const user = userStore.getUser() || {};
-  let pintados = 0;
+  let vista = null;
+  let perfilSolicitado = null;
   let identidad = null;
+  let ultimoModelo = null;
 
   const limpiarMapa = () => {
     const nodo = body.querySelector('.distmap');
-    nodo?._offStatus?.();
-    nodo?._map?.remove();
+    nodo?._dispose?.();
   };
 
-  const pintar = ({ me, partner, km }) => {
-    limpiarMapa();
-    body.replaceChildren();
-    body.append(distanceMapBody({ me, partner, km, meName: user.name }));
+  const pintar = model => {
+    if (vista) {
+      vista._refresh(model);
+      return;
+    }
+    vista = distanceMapBody({ ...model, meName: user.name });
+    body.replaceChildren(vista);
   };
 
   startLocationSharing({
@@ -60,15 +62,24 @@ export function MapaPage(router) {
     avatar: user.avatar,
   });
 
-  // Se repinta solo cuando hay más chinchetas que antes: tu posición y la suya
-  // pueden llegar en momentos distintos y no conviene recrear el mapa en cada
-  // latido.
-  const parar = watchDistance(async ({ km, partner, partnerId }) => {
-    if (!identidad && partnerId) {
-      identidad = await fetchProfile(partnerId).catch(() => null);
+  // El mapa base se pinta antes de consultar Supabase/recibir el primer GPS.
+  // Así una red lenta no deja la pantalla negra mientras llegan las posiciones.
+  pintar({ me: fetchMyLocation(), partner: null, km: null });
+
+  // Los cambios de la tabla compartida repintan las tarjetas y las chinchetas
+  // en el mismo mapa: mantiene el zoom y el arrastre que eligió la persona.
+  const parar = watchDistance(({ km, me: own, partner, partnerId }) => {
+    let pedirPerfil = null;
+    if (!partnerId) {
+      perfilSolicitado = null;
+      identidad = null;
+    } else if (perfilSolicitado !== partnerId) {
+      perfilSolicitado = partnerId;
+      identidad = null;
+      pedirPerfil = partnerId;
     }
 
-    const mine = fetchMyLocation();
+    const mine = own || fetchMyLocation();
     const me = mine ? { ...user, ...mine } : null;
     const otro = partner
       ? {
@@ -78,24 +89,44 @@ export function MapaPage(router) {
         }
       : null;
 
-    const puntos = (me ? 1 : 0) + (otro ? 1 : 0);
-    if (puntos <= pintados) return;
-    pintados = puntos;
-    pintar({ me, partner: otro, km });
-  });
+    const currentModel = { me, partner: otro, km };
+    ultimoModelo = currentModel;
+    pintar(currentModel);
 
-  // Si en unos segundos no hay nada, al menos se explica por qué el mapa está
-  // vacío en vez de dejar el «Buscando…» para siempre.
-  const espera = setTimeout(() => {
-    if (!pintados) pintar({ me: null, partner: null, km: null });
-  }, 6000);
+    // El perfil solo añade nombre/avatar; no debe retrasar un marcador cuya
+    // ubicación ya está disponible. Al resolver, enriquece siempre el modelo
+    // más reciente para no restaurar coordenadas de una lectura anterior.
+    if (pedirPerfil) {
+      void fetchProfile(pedirPerfil).then(currentIdentity => {
+        if (perfilSolicitado !== pedirPerfil) return;
+        if (!currentIdentity) {
+          perfilSolicitado = null;
+          return;
+        }
+        identidad = currentIdentity;
+        const latest = ultimoModelo;
+        if (latest?.partner?.userId !== pedirPerfil) return;
+        const enriched = {
+          ...latest,
+          partner: {
+            ...latest.partner,
+            name: latest.partner.name || currentIdentity.name || '',
+            avatar: latest.partner.avatar || currentIdentity.avatar || '',
+          },
+        };
+        ultimoModelo = enriched;
+        pintar(enriched);
+      }).catch(() => {
+        if (perfilSolicitado === pedirPerfil) perfilSolicitado = null;
+      });
+    }
+  });
 
   page.addEventListener('click', event => {
     if (event.target.closest('[data-back]')) router.navigate('/');
   });
 
   page.cleanup = () => {
-    clearTimeout(espera);
     parar?.();
     stopLocationSharing();
     limpiarMapa();

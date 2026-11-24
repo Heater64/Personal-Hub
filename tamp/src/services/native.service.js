@@ -16,7 +16,10 @@
      aquí en vez de hablar con Capacitor desde las pantallas.
    ========================================== */
 
+import { createNotificationIdGenerator } from '../utils/notification-id.js';
+
 const NATIVE_CLASS = 'is-native';
+const nextLocalNotificationId = createNotificationIdGenerator();
 
 let started = false;
 
@@ -55,6 +58,16 @@ const loadPush = () => import('@capacitor/push-notifications').catch(() => null)
 const loadLocalNotifications = () => import('@capacitor/local-notifications').catch(() => null);
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function settleWithin(promise, timeoutMs) {
+  return new Promise(resolve => {
+    const timeout = setTimeout(() => resolve({ timedOut: true }), timeoutMs);
+    Promise.resolve(promise).then(
+      value => { clearTimeout(timeout); resolve({ value }); },
+      error => { clearTimeout(timeout); resolve({ error }); },
+    );
+  });
+}
 
 /* ==========================================
    HÁPTICA
@@ -244,6 +257,11 @@ let pushNavigate = null;
 let lastToken = null;
 let tokenSaved = false;
 let tokenError = null;
+let tokenSavePromise = Promise.resolve();
+let pushOptOut = false;
+let pushUnregisterPromise = null;
+let pushRegistrationRevision = 0;
+let pushRegistrationPromise = null;
 // Resuelve cuando los listeners del plugin ya están puestos. `registerNativePush`
 // la espera: si la sesión se restauraba antes de tiempo, el plugin emitía
 // `registration` antes de que hubiera listener y el token se perdía hasta el
@@ -272,19 +290,23 @@ export async function initNativePush({ onNavigate } = {}) {
     // El plugin devuelve el token cada vez que se registra (también al
     // renovarse): es el único momento en que sabemos que cambió.
     PushNotifications.addListener('registration', ({ value }) => {
-      if (value) saveTokenToServer(value);
+      if (!value || pushOptOut) return;
+      lastToken = value;
+      tokenSavePromise = tokenSavePromise
+        .catch(() => {})
+        .then(() => pushOptOut ? false : saveTokenToServer(value));
     });
     PushNotifications.addListener('registrationError', err => {
       console.warn('[native] alta de notificaciones fallida:', err?.error);
     });
 
     // Android no muestra el aviso FCM automáticamente cuando Tamp está abierta.
-    // Para los ánimos, crea una notificación local del sistema; el resto de
-    // avisos conserva el banner dentro de la app.
+    // Los eventos urgentes de pareja siguen siendo notificaciones del sistema
+    // incluso en primer plano; el resto conserva el banner dentro de la app.
     PushNotifications.addListener('pushNotificationReceived', async notification => {
       if (document.visibilityState !== 'visible') return;
-      if (isMoodPush(notification)) {
-        await showNativeMoodNotification(notification);
+      if (isImmediatePartnerPush(notification)) {
+        await showNativeNotification(notification);
         return;
       }
       showInAppBanner(notification);
@@ -318,34 +340,39 @@ export async function initNativePush({ onNavigate } = {}) {
   await registerNativePush();
 }
 
-function isMoodPush(notification) {
+function isImmediatePartnerPush(notification) {
   const tag = notification?.data?.tag || '';
-  return tag === 'admin-mood' || tag === 'admin-mood-bad';
+  const type = notification?.data?.type || '';
+  return tag === 'admin-mood' || tag === 'admin-mood-bad'
+    || type === 'battery_low' || type === 'place_arrival' || type === 'place_departure';
 }
 
-async function showNativeMoodNotification(notification) {
+async function showNativeNotification(notification) {
   const mod = await loadLocalNotifications();
   if (!mod?.LocalNotifications) return;
-  const title = notification?.title || 'Nuevo estado de ánimo';
-  const body = notification?.body || 'Ha cambiado su estado de ánimo.';
-  const rawUrl = notification?.data?.url || '/sentimientos';
+  const title = notification?.title || 'Hub🧸';
+  const body = notification?.body || '';
+  const rawUrl = notification?.data?.url || '/mapa';
   const url = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
   try {
     await mod.LocalNotifications.schedule({
       notifications: [{
-        // Cada cambio de ánimo debe quedar como una notificación separada;
-        // reutilizar un id fijo hacía que Android reemplazara la anterior.
-        id: Math.max(1, Math.trunc(Date.now() % 2_147_483_647)),
+        // Cada aviso debe quedar como una notificación separada; reutilizar
+        // un id fijo haría que Android reemplazara el aviso anterior.
+        id: nextLocalNotificationId(),
         title,
         body,
         channelId: 'default',
         foreground: true,
+        // Estos avisos se muestran ahora mismo; no necesitan permiso para
+        // programar una alarma exacta en Android 12+.
+        isExactNotification: false,
         autoCancel: true,
         extra: { url },
       }],
     });
   } catch (err) {
-    console.warn('[native] no se pudo mostrar el aviso de ánimo:', err?.message);
+    console.warn('[native] no se pudo mostrar el aviso inmediato:', err?.message);
   }
 }
 
@@ -422,8 +449,29 @@ function showInAppBanner(notification) {
  * Pide permiso (si hace falta) y da de alta el dispositivo. Idempotente:
  * llamarlo en cada inicio de sesión es lo esperado.
  */
-export async function registerNativePush() {
+export async function registerNativePush({ activateSession = false } = {}) {
   if (!isNative()) return false;
+  if (pushUnregisterPromise) return false;
+  if (activateSession) {
+    pushOptOut = false;
+    pushRegistrationRevision++;
+    if (pushRegistrationPromise) {
+      return pushRegistrationPromise.catch(() => false).then(() => registerNativePush());
+    }
+  } else if (pushOptOut) {
+    return false;
+  }
+  if (pushRegistrationPromise) return pushRegistrationPromise;
+  const registrationRevision = pushRegistrationRevision;
+  let registration;
+  registration = performNativePushRegistration(registrationRevision).finally(() => {
+    if (pushRegistrationPromise === registration) pushRegistrationPromise = null;
+  });
+  pushRegistrationPromise = registration;
+  return registration;
+}
+
+async function performNativePushRegistration(registrationRevision) {
   // Nunca registrar antes de que los listeners estén puestos: el token viaja
   // en ese evento y, sin listener, se pierde sin dejar rastro.
   if (pushReady) {
@@ -433,6 +481,15 @@ export async function registerNativePush() {
       /* el plugin no cargó: se intenta igual, register() fallará y se registra el aviso */
     }
   }
+  let session;
+  try {
+    const { supabase } = await import('./supabase.js');
+    ({ data: { session } } = await supabase.auth.getSession());
+  } catch {
+    return false;
+  }
+  if (!session?.access_token) return false;
+  if (registrationRevision !== pushRegistrationRevision) return false;
   const mod = await loadPush();
   if (!mod) return false;
   const { PushNotifications } = mod;
@@ -444,12 +501,83 @@ export async function registerNativePush() {
     }
     if (perm.receive !== 'granted') return false;
 
+    if (registrationRevision !== pushRegistrationRevision) return false;
+    const { supabase } = await import('./supabase.js');
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (!currentSession?.access_token) return false;
+
     await PushNotifications.register();
     return true;
   } catch (err) {
     console.warn('[native] no se pudo registrar para notificaciones:', err?.message);
     return false;
   }
+}
+
+/** Revoca el token remoto antes del logout y limpia avisos del dispositivo. */
+export async function unregisterNativePush() {
+  if (!isNative()) return false;
+  if (pushUnregisterPromise) return pushUnregisterPromise;
+  pushRegistrationRevision++;
+  pushOptOut = true;
+  pushUnregisterPromise = (async () => {
+    // Logout tiene que seguir siendo usable con una red lenta o un diálogo de
+    // permiso abierto. Bloqueamos nuevas altas y damos un margen corto al
+    // registro actual para terminar antes de revocar FCM.
+    if (pushReady) await settleWithin(pushReady, 1000);
+    const pendingRegistration = pushRegistrationPromise;
+    const pendingTokenSave = tokenSavePromise;
+    const registrationResult = pendingRegistration
+      ? await settleWithin(pendingRegistration, 1200)
+      : null;
+    await settleWithin(pendingTokenSave, 1200);
+
+    let serverRemoved = !lastToken;
+    let pushModule = null;
+    try { pushModule = await loadPush(); } catch { /* plugin no disponible */ }
+    if (registrationResult?.timedOut && pendingRegistration && pushModule?.PushNotifications) {
+      // Si la llamada nativa termina después del logout, invalida de nuevo el
+      // token para que una respuesta tardía de register() no deje FCM activo.
+      void pendingRegistration.then(() => pushModule.PushNotifications.unregister()).catch(() => {});
+    }
+    try {
+      const { supabase } = await import('./supabase.js');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token && lastToken) {
+        const token = lastToken;
+        // Serializa con un upsert que pueda seguir en curso; si no, el upsert
+        // tardío podría recrear la fila justo después del borrado.
+        const revokeRequest = Promise.resolve(pendingTokenSave).catch(() => {})
+          .then(() => callNativeApi('/api/push?action=token-unregister', 'POST', session.access_token, { token }));
+        const result = await settleWithin(revokeRequest, 2500);
+        serverRemoved = !!result.value && result.value.status >= 200 && result.value.status < 300;
+      }
+    } catch (err) {
+      console.warn('[native] no se pudo revocar el token FCM:', err?.message);
+    }
+
+    try {
+      const { PushNotifications } = pushModule || {};
+      await PushNotifications?.unregister();
+    } catch (err) {
+      console.warn('[native] no se pudo detener el registro FCM:', err?.message);
+    }
+    try {
+      const local = await loadLocalNotifications();
+      await local?.LocalNotifications?.cancelAll();
+      await local?.LocalNotifications?.removeAllDeliveredNotifications();
+      const { PushNotifications } = pushModule || {};
+      await PushNotifications?.removeAllDeliveredNotifications();
+    } catch (err) {
+      console.warn('[native] no se pudieron limpiar notificaciones:', err?.message);
+    }
+
+    lastToken = null;
+    tokenSaved = false;
+    tokenError = serverRemoved ? null : 'revoke_pending';
+    return serverRemoved;
+  })().finally(() => { pushUnregisterPromise = null; });
+  return pushUnregisterPromise;
 }
 
 /**

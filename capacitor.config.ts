@@ -24,7 +24,13 @@ try {
   /* sin .env: modo local */
 }
 
-const remoteUrl = '';
+const remoteUrl = process.env.CAP_SERVER_URL?.trim() || '';
+if (remoteUrl) {
+  const parsedRemoteUrl = new URL(remoteUrl);
+  if (parsedRemoteUrl.protocol !== 'https:' || parsedRemoteUrl.username || parsedRemoteUrl.password) {
+    throw new Error('CAP_SERVER_URL debe ser una URL HTTPS sin credenciales.');
+  }
+}
 
 const config: CapacitorConfig = {
   appId: 'com.heater64.personalhub',
@@ -34,6 +40,9 @@ const config: CapacitorConfig = {
   // la splash nativa y el primer frame del WebView.
   android: {
     backgroundColor: '#0a0a0c',
+    // Evita que el bridge de Capacitor copie resultados completos de plugins
+    // (tokens de sesión, ubicación y estado del dispositivo) a Logcat.
+    loggingBehavior: 'none',
   },
   server: {
     androidScheme: 'https',

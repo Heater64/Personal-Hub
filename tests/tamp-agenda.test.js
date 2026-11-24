@@ -233,14 +233,18 @@ test('el enlace directo del Calendario respeta la vista mensual', async () => {
   assert.match(agenda, /let monthView = isCalendar && router\?\.currentRoute\?\.query\?\.view === 'month';/);
 });
 
-test('Sentimientos registra una emoción por estado y muestra la última del historial', async () => {
+test('Sentimientos permite varias emociones por estado y muestra la última del historial', async () => {
   const page = await read('tamp', 'src', 'pages', 'Sentimientos.js');
   const store = await read('tamp', 'src', 'stores', 'mood.store.js');
 
-  assert.match(page, /selection = toggleMoodSelection\(\[\], btn\.dataset\.mood\)/,
-    'una emoción nueva reemplaza la selección anterior');
-  assert.match(page, /selection = \[item\]/,
-    'la emoción escrita también sustituye el estado anterior');
+  assert.match(page, /selection = toggleMoodSelection\(selection, btn\.dataset\.mood\)/,
+    'cada emoción se alterna sin borrar las demás');
+  assert.match(page, /selection = toggleMoodSelection\(selection, item\)/,
+    'la emoción escrita se suma a la selección');
+  assert.match(page, /selection = selection\.filter\(item => item\.id !== customMood\.id\)/,
+    'quitar la emoción escrita conserva las demás');
+  assert.match(page, /Puedes marcar varias/,
+    'la interfaz anuncia que admite selección múltiple');
   assert.match(page, /const remoteDates = new Set\(\)/,
     'el historial remoto toma solo la fila más reciente por fecha');
   assert.match(store, /\.order\('date', \{ ascending: false \}\)\s*\.order\('created_at', \{ ascending: false \}\)/,

@@ -19,7 +19,7 @@
         android:layout_marginEnd="12dp"
         android:includeFontPadding="false"
         android:maxLines="1"
-        android:text="—"
+        android:text="@string/widget_value_placeholder"
         android:textSize="34sp"
         tools:text="🥰" />
 
@@ -39,7 +39,7 @@
             android:maxLines="1"
             android:text="@string/widget_mood_kicker"
             android:textColor="@color/widget_rose"
-            android:textSize="8sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             tools:text="HOY" />
 
@@ -66,7 +66,7 @@
             android:maxLines="1"
             android:text="@string/widget_mood_hint"
             android:textColor="@color/widget_text_muted"
-            android:textSize="8sp"
+            android:textSize="11sp"
             tools:text="hoy" />
     </LinearLayout>
 

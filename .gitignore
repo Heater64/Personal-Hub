@@ -62,6 +62,7 @@ android/app/capacitor.build.gradle
 *.jks
 *.keystore
 *.apk
+!apks/Tamp1.8.apk
 
 # Credenciales de Firebase (cuenta de servicio: secreto, va en Vercel)
 firebase-service-account.json

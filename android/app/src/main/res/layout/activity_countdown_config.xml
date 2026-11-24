@@ -5,7 +5,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/widget_ink"
     android:orientation="vertical"
     android:padding="20dp">
 
@@ -58,13 +57,14 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:gravity="end"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        style="?android:attr/buttonBarStyle">
 
         <Button
             android:id="@+id/config_cancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="?android:attr/selectableItemBackground"
+            style="?android:attr/buttonBarButtonStyle"
             android:text="@string/widget_countdown_config_cancel"
             android:textAllCaps="false"
             android:textColor="@color/widget_rose" />
@@ -74,6 +74,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            style="?android:attr/buttonBarButtonStyle"
             android:backgroundTint="@color/widget_coral"
             android:text="@string/widget_countdown_config_save"
             android:textAllCaps="false"

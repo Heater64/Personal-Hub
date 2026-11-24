@@ -156,6 +156,12 @@ recordatorio que caiga dentro del silencio se **aplaza** al fin del silencio en 
 Sin la tabla aplicada, la app funciona igual (el cliente cae a `localStorage` y el servidor, sin
 fila, entrega como antes).
 
+`041_notification_prefs_delete_owner.sql` limita el borrado de esa fila a su dueño; el admin ya no
+puede eliminar las preferencias de la otra cuenta.
+
+`042_tmdb_rate_limit.sql` hace que el límite de búsquedas se comparta de forma atómica entre las
+instancias de la API serverless; hay que aplicarla antes de publicar esa actualización de TMDB.
+
 ### Avisos del admin (024)
 
 La app separa dos públicos. **Ella recibe contenido** (cartas nuevas de Open When, novedades del

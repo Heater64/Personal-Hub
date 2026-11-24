@@ -199,7 +199,7 @@ export function SentimientosPage(router) {
         <h2 class="sent-mood-title" id="sentMoodTitle">¿Cómo te sientes hoy?</h2>
         <span class="sent-mood-saved" id="moodSaved" hidden></span>
       </div>
-      <div class="sent-mood-grid" id="moodGrid" role="group" aria-label="Elige cómo te sientes hoy">
+      <div class="sent-mood-grid" id="moodGrid" role="group" aria-label="Elige cómo te sientes hoy. Puedes marcar varias emociones">
         ${quickMoods
           .map(
             m => `
@@ -220,7 +220,7 @@ export function SentimientosPage(router) {
       <div class="sent-mood-extra" id="moodExtra" hidden>
         <div class="sent-mood-extra-head">
           <span class="sent-mood-extra-title">Más emociones</span>
-          <small class="sent-mood-extra-hint">Elige una emoción · toca otra vez para quitar</small>
+          <small class="sent-mood-extra-hint">Puedes marcar varias · toca otra vez para quitar</small>
         </div>
         <div class="sent-mood-palette" id="moodPalette">
           ${paletteMoods
@@ -724,8 +724,7 @@ export function SentimientosPage(router) {
   page.addEventListener('click', event => {
     const removeCustom = event.target.closest('[data-custom-remove]');
     if (removeCustom && page.contains(removeCustom)) {
-      const remaining = selection.filter(item => item.id !== customMood.id);
-      selection = remaining.length > 1 ? [remaining[0]] : remaining;
+      selection = selection.filter(item => item.id !== customMood.id);
       customInput.value = '';
       paintSelection();
       scheduleSave();
@@ -733,16 +732,7 @@ export function SentimientosPage(router) {
     }
     const btn = event.target.closest('[data-mood]');
     if (!btn || !page.contains(btn)) return;
-    // Cada toque registra una emoción independiente. No acumular la nueva
-    // emoción con las del último estado, porque aparentaría que se eligieron
-    // todas a la vez. Tocar la activa sigue permitiendo quitar el estado.
-    const selected = selection.some(item => item.id === btn.dataset.mood);
-    if (selected) {
-      const remaining = selection.filter(item => item.id !== btn.dataset.mood);
-      selection = remaining.length > 1 ? [remaining[0]] : remaining;
-    } else {
-      selection = toggleMoodSelection([], btn.dataset.mood);
-    }
+    selection = toggleMoodSelection(selection, btn.dataset.mood);
     paintSelection();
     scheduleSave();
   });
@@ -757,8 +747,8 @@ export function SentimientosPage(router) {
       toast('Escribe cómo te sientes', 'info');
       return;
     }
-    // El texto libre también es un estado individual, no se suma al anterior.
-    selection = [item];
+    // La emoción escrita también forma parte de la selección múltiple.
+    selection = toggleMoodSelection(selection, item);
     customInput.value = item.label;
     paintSelection();
     scheduleSave();

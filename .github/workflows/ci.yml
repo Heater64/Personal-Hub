@@ -18,7 +18,7 @@ jobs:
   test-build-audit:
     name: Tests, build y auditoría
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
 
     # Valores de mentira: los builds solo necesitan que existan para no
     # emitir "undefined" en el bundle. Las reales viven en Vercel.
@@ -30,15 +30,21 @@ jobs:
       VITE_CLOUDINARY_UPLOAD_PRESET: placeholder
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           # Node 20 ya no sirve: @supabase/realtime-js exige WebSocket nativo
           # (Node 22+) y los tests de métricas crean un cliente de verdad.
           # Es también el runtime con el que Vercel construye el sitio.
           node-version: 24
           cache: npm
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
 
       - name: Instalar dependencias
         run: npm ci
@@ -49,17 +55,19 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Preparar aplicación Android
+        run: npx cap sync android
+
+      - name: Tests nativos y APK debug
+        working-directory: android
+        run: ./gradlew testDebugUnitTest lint assembleDebug
+
       # El informe de auditoría bloqueaba el lanzamiento por nanoid < 3.3.18.
       - name: Auditoría de dependencias
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=low
+
+      - name: Verificar firmas de dependencias
+        run: npm audit signatures
 
       - name: Comprobar que los builds no arrastran secretos
-        run: |
-          for dir in tamp/dist; do
-            if grep -rIl --exclude-dir=assets --exclude-dir=games \
-                 -E 'eyJ[A-Za-z0-9_-]{20,}\.|service_role' "$dir"; then
-              echo "::error::El bundle ($dir) contiene algo con pinta de clave de Supabase"
-              exit 1
-            fi
-          done
-          echo "Sin claves en los bundles."
+        run: node scripts/check-build-secrets.js

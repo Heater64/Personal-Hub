@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El modo de recorte existe desde API 27; el tema base conserva API 24–26. -->
+    <style name="AppTheme.NoActionBar" parent="@style/AppThemeNoActionBarBase">
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>

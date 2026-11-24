@@ -9,7 +9,7 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <style name="AppThemeNoActionBarBase" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
@@ -17,9 +17,9 @@
              esto, con edge-to-edge (obligatorio desde targetSdk 35) se vería
              el blanco por defecto del tema en el notch. -->
         <item name="android:windowBackground">@color/app_background</item>
-        <!-- El recorte (notch) deja de recortar el contenido en horizontal. -->
-        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
+
+    <style name="AppTheme.NoActionBar" parent="@style/AppThemeNoActionBarBase" />
 
     <!-- Pantalla de configuración del widget de cuenta atrás: misma paleta que
          el propio widget, sin barra de acción. -->

@@ -18,6 +18,8 @@ import { createSign } from 'node:crypto';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
+const OAUTH_TIMEOUT_MS = 5_000;
+const FCM_SEND_TIMEOUT_MS = 7_000;
 
 // Un access token cacheado por instancia caliente. La clave (email de la
 // cuenta) evita reutilizar uno viejo si se rota el secreto.
@@ -63,6 +65,7 @@ async function accessTokenFor(sa) {
 
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(OAUTH_TIMEOUT_MS),
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
@@ -101,6 +104,17 @@ export function buildMessage(deviceToken, payload) {
       },
     };
   }
+  if (payload?.type === 'location_refresh') {
+    return {
+      message: {
+        token: deviceToken,
+        data: { type: 'location_refresh' },
+        android: { priority: 'high', collapse_key: 'location_refresh', ttl: '300s' },
+      },
+    };
+  }
+  const expiresQuickly = ['battery_low', 'place_arrival', 'place_departure'].includes(payload?.type)
+    || ['admin-mood', 'admin-mood-bad'].includes(payload?.tag);
   const data = {};
   for (const [key, value] of Object.entries(payload || {})) {
     if (value === null || value === undefined) continue;
@@ -117,6 +131,7 @@ export function buildMessage(deviceToken, payload) {
       data,
       android: {
         priority: 'high',
+        ...(expiresQuickly ? { ttl: '300s' } : {}),
         notification: {
           // Sin channel_id: la app no crea canales propios, así que se usa el
           // canal por defecto del sistema. Un channel inexistente con Android 8+
@@ -158,10 +173,11 @@ export async function sendFcmToTokens(tokens, payload) {
   const url = `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`;
   const result = { sent: 0, failed: 0, removed: [], configured: true };
 
-  for (const deviceToken of list) {
+  await Promise.all(list.map(async deviceToken => {
     try {
       const res = await fetch(url, {
         method: 'POST',
+        signal: AbortSignal.timeout(FCM_SEND_TIMEOUT_MS),
         headers: {
           authorization: `Bearer ${accessToken}`,
           'content-type': 'application/json'
@@ -171,7 +187,7 @@ export async function sendFcmToTokens(tokens, payload) {
 
       if (res.ok) {
         result.sent++;
-        continue;
+        return;
       }
 
       const body = await res.text();
@@ -185,7 +201,7 @@ export async function sendFcmToTokens(tokens, payload) {
       result.failed++;
       console.warn('[fcm] error de red:', err.message);
     }
-  }
+  }));
 
   return result;
 }

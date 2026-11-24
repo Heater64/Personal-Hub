@@ -7,7 +7,7 @@
    · HTML (navegación)     → network-first → offline.html
    · Fuentes               → cache-first (largo plazo)
    · Imágenes propias      → cache-first
-   · Imágenes externas     → stale-while-revalidate (instantáneas + frescas)
+   · Imágenes externas     → carga directa del navegador (respeta img-src)
    · Audio/Vídeo           → cache-first con PRESUPUESTO EN BYTES (~220 MB)
    · Supabase (content)    → network-first con fallback offline (lecturas públicas)
    · /api/*                → NUNCA se cachea (respuestas con datos de usuario)
@@ -15,7 +15,7 @@
    · Resto                 → network-first
    ========================================== */
 
-const CACHE_VERSION = '11';
+const CACHE_VERSION = '12';
 const CACHE = `personal-hub-v${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `personal-hub-dynamic-v${CACHE_VERSION}`;
 const MEDIA_CACHE = `personal-hub-media-v${CACHE_VERSION}`;
@@ -173,10 +173,10 @@ self.addEventListener('fetch', event => {
       // Propias (del build/static): cache-first
       event.respondWith(cacheFirstThenNetwork(request));
     } else {
-      // Externas (Cloudinary, Spotify, Wikipedia, dragonballlatino…):
-      // stale-while-revalidate — instantáneas en la 2ª visita y se
-      // refrescan en segundo plano (portadas actualizadas sin esperar).
-      event.respondWith(staleWhileRevalidate(request));
+      // No convertir <img> en fetch desde el service worker: eso exige
+      // connect-src y bloquea portadas/teselas aunque img-src permita HTTPS.
+      // El navegador carga estas imágenes bajo img-src y usa su HTTP cache.
+      return;
     }
     return;
   }

@@ -39,7 +39,7 @@
             android:maxLines="1"
             android:text="@string/widget_watching_kicker"
             android:textColor="@color/widget_coral_soft"
-            android:textSize="9sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             tools:text="SEGUIR VIENDO" />
 
@@ -66,7 +66,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp"
+            android:textSize="11sp"
             tools:text="Ep. 4 de 10" />
 
         <TextView
@@ -77,7 +77,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp"
+            android:textSize="11sp"
             tools:text="40 % visto" />
     </LinearLayout>
 

@@ -11,12 +11,13 @@
    - POST /api/push?action=ack — el dispositivo confirma que recibió un push
    ========================================== */
 
-import webpush from 'web-push';
+import { sendNotification, setVapidDetails } from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { sendFcmToTokens, fcmConfigured } from './_fcm.js';
+import { cleanLocationEvent, enabledPartnerUserIds, geofenceFixIsReliable, partnerUserIds } from './_couple-location.js';
 
 // VAPID keys desde variables de entorno
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
@@ -34,7 +35,7 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@personalhub.com
 let vapidConfigError = null;
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   try {
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
   } catch (err) {
     vapidConfigError = err?.message || 'Invalid VAPID details';
     console.error('[api/push] VAPID inválidas:', vapidConfigError);
@@ -51,9 +52,7 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 function requireVapid(res) {
   if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && !vapidConfigError) return false;
   res.status(500).json({
-    error: vapidConfigError
-      ? `VAPID keys not configured: ${vapidConfigError}`
-      : 'VAPID keys not configured',
+    error: 'VAPID keys not configured',
   });
   return true;
 }
@@ -1038,6 +1037,10 @@ export default async function handler(req, res) {
         return await handleNotifyAdmin(req, res);
       case 'battery-low':
         return await handleBatteryLow(req, res);
+      case 'location-update':
+        return await handleLocationUpdate(req, res);
+      case 'request-location':
+        return await handleLocationRefreshRequest(req, res);
       case 'announce':
         return await handleAnnounce(req, res);
       case 'reminders':
@@ -1048,22 +1051,33 @@ export default async function handler(req, res) {
         return await handleAck(req, res);
       case 'token':
         return await handleRegisterToken(req, res);
+      case 'token-unregister':
+        return await handleUnregisterToken(req, res);
       default:
         return res
           .status(400)
           .json({
             error:
-              'Invalid action. Use: subscribe, unsubscribe, send, notify-admin, announce, reminders, run-reminders, ack, token',
+              'Invalid action. Use: subscribe, unsubscribe, send, notify-admin, battery-low, location-update, request-location, announce, reminders, run-reminders, ack, token, token-unregister',
           });
     }
   } catch (err) {
     console.error('[api/push] error:', err.message);
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
 // Battery alerts are emitted by the authenticated background device service.
 // Resolve recipients from couple_members; never accept user IDs from the client.
+async function activePartnerUserIds(supabase, userId, members) {
+  const candidates = partnerUserIds(userId, members);
+  if (!candidates.length) return [];
+  const { data, error } = await supabase.from('profiles').select('id')
+    .in('id', candidates).eq('enabled', true);
+  if (error) throw error;
+  return enabledPartnerUserIds(userId, members, (data || []).map(row => row.id));
+}
+
 async function handleBatteryLow(req, res) {
   const user = await authenticate(req, res);
   if (!user) return;
@@ -1080,16 +1094,107 @@ async function handleBatteryLow(req, res) {
   const { data: members, error: membersError } = await supabase
     .from('couple_members').select('user_id').eq('couple_id', membership.couple_id);
   if (membersError) throw membersError;
-  const userIds = [...new Set((members || []).map(row => row.user_id).filter(Boolean))];
+  const recipients = await activePartnerUserIds(supabase, user.id, members);
+  if (recipients.length === 0) return res.status(200).json({ sent: 0, skipped: true });
   const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).maybeSingle();
-  const payload = {
+  const result = await sendTokensToUsers(recipients, batteryLowPayload(profile?.name, level));
+  return res.status(200).json({ sent: result?.sent || 0, configured: true });
+}
+
+export function batteryLowPayload(name, level) {
+  return {
     type: 'battery_low',
     title: 'Batería baja',
-    body: `${profile?.name || 'Tu pareja'} tiene ${level}% de batería. La ubicación se pausó hasta llegar al 30%.`,
+    body: `${name || 'Tu pareja'} tiene ${level}% de batería. La ubicación se pausó hasta llegar al 30%.`,
     url: '/mapa',
   };
-  const result = await sendTokensToUsers(userIds, payload);
+}
+
+async function handleLocationRefreshRequest(req, res) {
+  const user = await authenticate(req, res);
+  if (!user) return;
+  if (!fcmConfigured()) return res.status(503).json({ error: 'FCM no está configurado' });
+
+  const supabase = getSupabase();
+  const { data: membership, error: membershipError } = await supabase
+    .from('couple_members').select('couple_id').eq('user_id', user.id).maybeSingle();
+  if (membershipError) throw membershipError;
+  if (!membership?.couple_id) return res.status(409).json({ error: 'No hay pareja configurada' });
+  const { data: members, error: membersError } = await supabase
+    .from('couple_members').select('user_id').eq('couple_id', membership.couple_id);
+  if (membersError) throw membersError;
+  const recipients = await activePartnerUserIds(supabase, user.id, members);
+  if (!recipients.length) return res.status(409).json({ error: 'No hay otro miembro en la pareja' });
+
+  const result = await sendTokensToUsers(recipients, { type: 'location_refresh' });
   return res.status(200).json({ sent: result?.sent || 0, configured: true });
+}
+
+async function handleLocationUpdate(req, res) {
+  const user = await authenticate(req, res);
+  if (!user) return;
+  const location = cleanLocationEvent(req.body);
+  if (!location) return res.status(400).json({ error: 'Ubicación no válida o demasiado antigua' });
+  if (!geofenceFixIsReliable(location.accuracy)) {
+    return res.status(200).json({ sent: 0, skipped: true, reason: 'inaccurate-location' });
+  }
+
+  const supabase = getSupabase();
+  const { data: membership, error: membershipError } = await supabase
+    .from('couple_members').select('couple_id').eq('user_id', user.id).maybeSingle();
+  if (membershipError) throw membershipError;
+  if (!membership?.couple_id) return res.status(200).json({ sent: 0, skipped: true });
+
+  const { data: events, error: eventError } = await supabase.rpc('claim_couple_place_entries', {
+    p_user_id: user.id,
+    p_couple_id: membership.couple_id,
+    p_latitude: location.lat,
+    p_longitude: location.lng,
+    p_accuracy_m: location.accuracy,
+    p_location_at: location.locationAt,
+  });
+  if (eventError) throw eventError;
+  if (!events?.length) return res.status(200).json({ sent: 0 });
+
+  const { data: members, error: membersError } = await supabase
+    .from('couple_members').select('user_id').eq('couple_id', membership.couple_id);
+  if (membersError) throw membersError;
+  const recipients = await activePartnerUserIds(supabase, user.id, members);
+  if (!recipients.length) {
+    await supabase.rpc('finish_couple_place_entries', {
+      p_couple_id: membership.couple_id,
+      p_event_ids: events.map(event => event.event_id), p_delivered: false,
+    });
+    return res.status(200).json({ sent: 0, skipped: true });
+  }
+
+  const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).maybeSingle();
+  const deliveredEventIds = [];
+  for (const event of events) {
+    const result = await sendTokensToUsers(recipients, {
+      type: event.event_type === 'departure' ? 'place_departure' : 'place_arrival',
+      title: event.event_type === 'departure'
+        ? `Ha salido de ${event.place_name}`
+        : `Ha llegado a ${event.place_name}`,
+      body: event.event_type === 'departure'
+        ? `${profile?.name || 'Tu pareja'} salió de un lugar compartido.`
+        : `${profile?.name || 'Tu pareja'} llegó a un lugar compartido.`,
+      url: '/mapa',
+    });
+    if ((result?.sent || 0) > 0) deliveredEventIds.push(event.event_id);
+  }
+  const deliveredSet = new Set(deliveredEventIds);
+  await Promise.all([
+    deliveredEventIds.length > 0 && supabase.rpc('finish_couple_place_entries', {
+      p_couple_id: membership.couple_id, p_event_ids: deliveredEventIds, p_delivered: true,
+    }),
+    events.some(event => !deliveredSet.has(event.event_id)) && supabase.rpc('finish_couple_place_entries', {
+      p_couple_id: membership.couple_id,
+      p_event_ids: events.filter(event => !deliveredSet.has(event.event_id)).map(event => event.event_id),
+      p_delivered: false,
+    }),
+  ].filter(Boolean));
+  return res.status(200).json({ sent: deliveredEventIds.length });
 }
 
 // ==========================================
@@ -1098,11 +1203,10 @@ async function handleBatteryLow(req, res) {
 /**
  * Devuelve el usuario del token, o null tras haber respondido 401.
  *
- * Además del token se comprueba profiles.enabled: una cuenta deshabilitada
- * no debe poder registrar ni quitar suscripciones de push. Es la misma
- * fuente de verdad que usa la RLS (017).
+ * Además del token se comprueba profiles.enabled. Solo la baja del token FCM
+ * permite una sesión válida de cuenta deshabilitada para limpiar sus datos.
  */
-async function authenticate(req, res) {
+async function authenticate(req, res, { allowDisabled = false } = {}) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s*/i, '');
   if (!token) {
     res.status(401).json({ error: 'Missing Authorization header' });
@@ -1119,12 +1223,17 @@ async function authenticate(req, res) {
     return null;
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('enabled')
     .eq('id', user.id)
     .maybeSingle();
-  if (profile && profile.enabled === false) {
+  if (profileError) {
+    console.error('[api/push] no se pudo comprobar si la cuenta está habilitada:', profileError.message);
+    res.status(503).json({ error: 'No se pudo comprobar el estado de la cuenta' });
+    return null;
+  }
+  if (!allowDisabled && profile && profile.enabled === false) {
     res.status(403).json({ error: 'Forbidden: account disabled' });
     return null;
   }
@@ -1210,9 +1319,7 @@ async function handleRegisterToken(req, res) {
   );
 
   if (error) {
-    // El motivo se registra y se devuelve: un 503 genérico costó una tarde
-    // entera de diagnóstico cuando la tabla existía pero service_role no
-    // tenía privilegios (42501).
+    // Mantiene el diagnóstico en los logs, sin exponer detalles de Supabase.
     console.error('[push] no se pudo guardar el token:', error.code, error.message);
 
     // 42P01 / PGRST205: falta sql/026 (o PostgREST aún no la ve).
@@ -1220,11 +1327,29 @@ async function handleRegisterToken(req, res) {
     return res.status(missing ? 503 : 500).json({
       error: missing
         ? 'Aplica sql/026_push_tokens.sql en Supabase'
-        : `No se pudo guardar el token (${error.code || 'error'}): ${error.message || 'sin detalle'}`,
-      code: error.code || null,
+        : 'No se pudo guardar el token.',
     });
   }
 
+  return res.status(200).json({ success: true });
+}
+
+/** Revokes one FCM token, and only if it still belongs to this session user. */
+async function handleUnregisterToken(req, res) {
+  const { token } = req.body || {};
+  if (!token || typeof token !== 'string' || token.length < 20) {
+    return res.status(400).json({ error: 'Invalid token' });
+  }
+
+  const user = await authenticate(req, res, { allowDisabled: true });
+  if (!user) return;
+
+  const { error } = await getSupabase().from('push_tokens').delete()
+    .eq('user_id', user.id).eq('token', token);
+  if (error) {
+    console.error('[push] no se pudo retirar el token:', error.code, error.message);
+    return res.status(500).json({ error: 'No se pudo retirar el token.' });
+  }
   return res.status(200).json({ success: true });
 }
 
@@ -1262,7 +1387,7 @@ async function handleSubscribe(req, res) {
     return res.status(200).json({ success: true, message: 'Subscription saved' });
   } catch (err) {
     console.error('[api/push/subscribe] error:', err.message);
-    return res.status(500).json({ error: err.message || 'Could not save subscription' });
+    return res.status(500).json({ error: 'Could not save subscription' });
   }
 }
 
@@ -1669,7 +1794,7 @@ async function deliverPush(subscriptions, payload, onResult, additionalFcmUserId
   const webConfigured = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && !vapidConfigError);
   for (const sub of webConfigured ? subscriptions : []) {
     try {
-      await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payloadFor(sub));
+      await sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payloadFor(sub));
       results.sent++;
       // Se espera a cada resultado: quien lo recibe cierra su fila del historial
       // antes de pasar al siguiente dispositivo.
@@ -2458,7 +2583,7 @@ async function handleSend(req, res) {
 
   for (const sub of webConfigured ? recipients : []) {
     try {
-      await webpush.sendNotification(
+      await sendNotification(
         {
           endpoint: sub.endpoint,
           keys: sub.keys,

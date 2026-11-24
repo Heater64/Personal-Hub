@@ -37,7 +37,7 @@
             android:maxLines="1"
             android:text="@string/widget_gifts_kicker"
             android:textColor="@color/widget_coral_soft"
-            android:textSize="9sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             tools:text="HOY" />
 
@@ -54,7 +54,7 @@
                 android:layout_height="wrap_content"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="—"
+                android:text="@string/widget_value_placeholder"
                 android:textColor="#FFFFFF"
                 android:textSize="42sp"
                 android:textStyle="bold"
@@ -83,7 +83,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_rose"
-            android:textSize="9sp"
+            android:textSize="11sp"
             tools:text="ya las abriste" />
 
         <TextView
@@ -94,7 +94,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="8sp"
+            android:textSize="11sp"
             tools:text="en el calendario" />
     </LinearLayout>
 

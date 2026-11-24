@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:includeFontPadding="false"
         android:maxLines="1"
-        android:text="—"
+        android:text="@string/widget_value_placeholder"
         android:textColor="#FFFFFF"
         android:textSize="22sp"
         android:textStyle="bold"
@@ -44,7 +44,7 @@
         android:maxLines="1"
         android:text="@string/widget_gifts_empty"
         android:textColor="@color/widget_rose"
-        android:textSize="7sp"
+        android:textSize="11sp"
         tools:text="sorpresas" />
 
 </LinearLayout>

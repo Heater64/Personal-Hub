@@ -1104,7 +1104,7 @@ async function uploadAudios(files) {
   return urls;
 }
 
-async function listUsers() {
+async function listUsers({ skipAdminApi = false } = {}) {
   await requireAdmin(); // la lista de usuarios es dato de ADMIN (emails, roles)
   if (listUsersPromise) return listUsersPromise;
 
@@ -1122,7 +1122,7 @@ async function listUsers() {
       const sessionRes = await supabase.auth.getSession();
       const accessToken = sessionRes.data?.session?.access_token;
 
-      if (accessToken) {
+      if (accessToken && !skipAdminApi) {
         const res = await fetch('/api/users', {
           method: 'GET',
           headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -1251,6 +1251,14 @@ async function readAdminUsers() {
     const request = requestAdminUsers().then(({ body, truncated }) => {
       if (!Array.isArray(body)) throw new Error('El servicio devolvió una lista de cuentas inválida.');
       return { rows: body, source: 'supabase', truncated };
+    }).catch(async error => {
+      // Vite devuelve el HTML de la SPA para /api/users. En desarrollo podemos
+      // construir una lista parcial desde profiles/moods y la caché local.
+      // Los errores JSON reales (permisos, sesión, servidor) siguen visibles.
+      if (import.meta.env.DEV && error.message === 'El servicio de cuentas no está disponible.') {
+        return { rows: await listUsers({ skipAdminApi: true }), source: 'local', truncated: true };
+      }
+      throw error;
     }).finally(() => {
       if (adminUsersRequest === request) adminUsersRequest = null;
     });

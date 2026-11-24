@@ -50,6 +50,12 @@ Los archivos **dependen entre sí** — ejecútalos en orden numérico.
 | **034** | `034_agenda_tamp.sql` | **Calendario compartido, sorpresas privadas y registro de Mal Día en `tamp_entries`: RLS por pareja y sorpresas visibles solo para su autor** | 🔴 privacidad / tabla nueva |
 | 035 | `035_sorpresas_regalos.sql` | Presupuesto, enlace de compra y foto en las sorpresas: tres columnas, sus GRANT y un CHECK que las limita a `kind='surprise'` | añade columnas |
 | **036** | `036_tamp_media.sql` | Metadatos de archivos de Tamp y RLS por pareja; los binarios se entregan desde Cloudinary autenticado | tabla nueva |
+| **040** | `040_lugares_compartidos.sql` | Lugares compartidos, estado de geocerca por persona y cola de avisos de entrada y salida | tablas + RPC segura |
+| **041** | `041_notification_prefs_delete_owner.sql` | Limita el borrado de preferencias al dueño de la cuenta | corrige policy |
+| **042** | `042_tmdb_rate_limit.sql` | Contador atómico por usuario para limitar TMDB entre instancias serverless | tabla + RPC privada |
+| **043** | `043_geofence_radius_accuracy.sql` | Respeta el radio elegido al llegar a un sitio y conserva tolerancia GPS solo al salir | reemplaza RPC |
+| **044** | `044_scope_place_events_to_current_couple.sql` | Evita que eventos de geocerca pendientes crucen un cambio de pareja | actualiza RPCs privadas |
+| **045** | `045_reliable_geofence_accuracy.sql` | Descarta lecturas imprecisas y exige certeza GPS al entrar en un sitio | actualiza RPC privada |
 
 ---
 
@@ -60,6 +66,32 @@ efecto destructivo (`DROP TABLE … CASCADE`), y solo actúa si `user_profiles`
 existe **y está vacía**: si tiene filas, avisa con un `WARNING` y no hace
 nada. Aun así, en una base viva lo razonable es **omitir 000–016** (ya están
 aplicados) y subir solo lo nuevo:
+
+Para activar los lugares y las alertas de llegada y salida, aplica también
+`040_lugares_compartidos.sql` después de `029_pareja_ubicacion.sql` y
+`030_inicializar_pareja_actual.sql`.
+
+Aplica también `041_notification_prefs_delete_owner.sql` para cerrar el permiso
+de borrado de preferencias que la 023 había dejado a los administradores.
+
+Aplica `042_tmdb_rate_limit.sql` antes de publicar la nueva versión de la API
+TMDB; la función usa `service_role` y guarda solo un contador temporal por usuario.
+
+Aplica `043_geofence_radius_accuracy.sql` si ya activaste los lugares de la
+040. Corrige los radios de entrada: antes se sumaba un margen GPS al llegar, lo
+que podía avisar fuera del radio configurado. La tolerancia se mantiene solo al
+salir para evitar duplicados por oscilaciones pequeñas de la ubicación.
+
+Aplica `044_scope_place_events_to_current_couple.sql` antes de publicar la API
+actualizada. La llamada de la API ahora incluye el id de la pareja y la función
+rechaza eventos pendientes que no pertenezcan a la membresía actual; la función
+de finalización también limita los cambios a ese id de pareja.
+
+Aplica `045_reliable_geofence_accuracy.sql` después de la 044. Las geocercas
+ignoran lecturas sin precisión o con error superior a 100 m; para avisar de una
+llegada, el margen de precisión completo debe quedar dentro del radio elegido.
+La tolerancia existente al salir mantiene la estabilidad frente a pequeños
+saltos del GPS.
 
 1. `017_enabled_autoritativo.sql` — no toca datos, solo funciones,
    políticas y un `UPDATE` que marca `enabled = false` donde el admin ya
@@ -257,6 +289,7 @@ SELECT policyname, tablename, cmd FROM pg_policies
 | Recordatorios programados | `push_reminders` | Los escribe la API con `service_role`; el cliente solo lee (y solo el admin) |
 | Preferencias de avisos | `notification_prefs` | Por persona y atada a `auth.uid()`; el envío del servidor las lee antes de mandar. Las columnas `admin_*` (024) gobiernan lo que recibe él |
 | Calendario compartido, sorpresas y Mal Día | `tamp_entries` | Una fila por registro, con `kind` y autor; la RLS limita a la pareja y deja las sorpresas solo para su autor |
+| Lugares compartidos y entradas | `couple_places`, `couple_place_presence`, `couple_place_events` | RLS limita los sitios a la pareja; la API valida entradas por ubicación y entrega avisos solo al otro miembro |
 
 ---
 

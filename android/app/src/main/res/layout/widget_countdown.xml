@@ -39,7 +39,7 @@
             android:maxLines="1"
             android:text="@string/widget_countdown_empty"
             android:textColor="@color/widget_coral_soft"
-            android:textSize="9sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             tools:text="Nuestro aniversario" />
 
@@ -56,7 +56,7 @@
                 android:layout_height="wrap_content"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="—"
+                android:text="@string/widget_value_placeholder"
                 android:textColor="#FFFFFF"
                 android:textSize="42sp"
                 android:textStyle="bold"
@@ -85,7 +85,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="9sp"
+            android:textSize="11sp"
             tools:text="3 jul 2026" />
     </LinearLayout>
 

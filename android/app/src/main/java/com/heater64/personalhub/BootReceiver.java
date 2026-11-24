@@ -12,9 +12,12 @@ public class BootReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (intent == null || !Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) return;
+        if (intent == null) return;
+        String action = intent.getAction();
+        if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
+                && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) return;
         if (!DeviceStatusService.isEnabled(context)) return;
-        // Un BOOT_COMPLETED llega con la aplicación en segundo plano. Android
+        // Los dos broadcasts llegan con la app en segundo plano. Android
         // rechaza un FGS de ubicación si no existe el permiso «permitir
         // siempre»; esperar a que el usuario abra la app es más honesto que
         // fingir que el seguimiento continúa.

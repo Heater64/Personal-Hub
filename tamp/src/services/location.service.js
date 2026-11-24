@@ -14,17 +14,66 @@
    ========================================== */
 
 import { supabase } from './supabase.js';
-import { isNative } from './native.service.js';
-import { deviceFactsSnapshot } from './device.service.js';
+import { callNativeApi, isNative } from './native.service.js';
+import { deviceFactsSnapshot, onDeviceStatus } from './device.service.js';
+import { performLocationRefresh } from './location-refresh.js';
 
 const ADMIN_ROW_ID = 'location_admin';
 const SHARE_MS = 120000; // repite tu posición cada 2 min en uso
-const STALE_MS = 30 * 60000; // 30 min sin actualizar: no se muestra
+const STALE_MS = 15 * 60000; // El latido nativo es cada 5 min; 15 min ya es una señal perdida
 
 let self = null; // { userId, isAdmin }
+let sharingRevision = 0;
 let shareTimer = null;
 let onVisible = null;
+let offDeviceStatus = null;
+let sharedBackgroundState = null;
 let myLocation = null; // { lat, lng } de este dispositivo
+
+async function resolveCoupleId() {
+  if (!self?.userId || self.coupleId || !supabase) return self?.coupleId || null;
+  const ownerId = self.userId;
+  const { data, error } = await supabase.from('couple_members')
+    .select('couple_id').eq('user_id', ownerId).maybeSingle();
+  if (error) throw error;
+  if (data?.couple_id && self?.userId === ownerId) self.coupleId = data.couple_id;
+  return self?.userId === ownerId ? data?.couple_id || null : null;
+}
+
+async function callPushApi(action, body = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) throw new Error('session-required');
+  const path = `/api/push?action=${encodeURIComponent(action)}`;
+  if (isNative()) {
+    const response = await callNativeApi(path, 'POST', token, body);
+    if (response?.status >= 400) throw new Error(response?.data?.error || 'request-failed');
+    return response?.data || {};
+  }
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result?.error || 'request-failed');
+  return result;
+}
+
+async function reportLocationUpdate(data, revision) {
+  if (revision !== sharingRevision) return;
+  if (!self?.coupleId || !Number.isFinite(data?.lat) || !Number.isFinite(data?.lng)) return;
+  try {
+    await callPushApi('location-update', {
+      lat: data.lat,
+      lng: data.lng,
+      accuracy: data.accuracy ?? null,
+      location_at: data.location_at || data.at,
+    });
+  } catch {
+    // La subida del mapa no depende del canal de avisos; el siguiente fix reintenta.
+  }
+}
 
 /** ¿La fila está lo bastante fresca para usarla? */
 export function isFresh(at) {
@@ -76,7 +125,7 @@ export async function locationPermissionState() {
   }
 }
 
-async function currentPosition({ prompt = false } = {}) {
+async function currentPosition({ prompt = false, fresh = false } = {}) {
   if (isNative()) {
     const mod = await import('@capacitor/geolocation').catch(() => null);
     if (mod) {
@@ -88,9 +137,9 @@ async function currentPosition({ prompt = false } = {}) {
         if (perm.location !== 'granted' && prompt) perm = await Geolocation.requestPermissions();
         if (perm.location !== 'granted') throw deniedError(perm.location !== 'denied');
         return await Geolocation.getCurrentPosition({
-          enableHighAccuracy: false,
+          enableHighAccuracy: fresh,
           timeout: 12000,
-          maximumAge: 60000,
+          maximumAge: fresh ? 0 : 60000,
         });
       } catch (err) {
         if (err?.code === 1) throw err;
@@ -115,9 +164,9 @@ async function currentPosition({ prompt = false } = {}) {
       return;
     }
     navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: false,
+      enableHighAccuracy: fresh,
       timeout: 12000,
-      maximumAge: 60000,
+      maximumAge: fresh ? 0 : 60000,
     });
   });
 }
@@ -139,6 +188,10 @@ async function deviceFacts(pos) {
   // La fuente es el monitor compartido (device.service): así la posición y el
   // panel cuentan exactamente lo mismo, sin leer dos veces los sensores.
   const shared = deviceFactsSnapshot();
+  // El mapa usa este dato para distinguir el seguimiento nativo del envío
+  // periódico de la app abierta. Si se omite, una escritura reciente puede
+  // reemplazar «Siempre activo» por «Al abrir».
+  if (typeof shared.bg === 'boolean') facts.bg = shared.bg;
   if (Number.isFinite(shared.battery)) {
     facts.battery = shared.battery;
     facts.charging = shared.charging;
@@ -172,11 +225,17 @@ async function deviceFacts(pos) {
 }
 
 /** Escribe tu posición donde la otra persona puede leerla. */
-async function push({ userId, isAdmin, coupleId }, setStatus) {
-  if (!userId || !supabase) return;
+async function push({ userId, isAdmin, coupleId }, setStatus, { fresh = false } = {}) {
+  if (!userId || !supabase) return false;
+  const revision = sharingRevision;
+  const owner = self;
+  if (!owner || owner.userId !== String(userId)) return false;
   try {
-    const pos = await currentPosition();
+    const pos = await currentPosition({ fresh });
+    if (revision !== sharingRevision || self !== owner) return false;
     const at = new Date().toISOString();
+    const facts = await deviceFacts(pos);
+    if (revision !== sharingRevision || self !== owner) return false;
     const data = {
       lat: Number(pos.coords.latitude.toFixed(5)),
       lng: Number(pos.coords.longitude.toFixed(5)),
@@ -185,9 +244,9 @@ async function push({ userId, isAdmin, coupleId }, setStatus) {
       // El nombre y la foto viajan con la posición: la cuenta de ella no
       // puede leer la fila de `profiles` del admin (RLS), así que si esto
       // dependiera de esa lectura el mapa se quedaría sin nombre ni cara.
-      name: self?.name || '',
-      avatar: self?.avatar || '',
-      ...(await deviceFacts(pos)),
+      name: owner.name || '',
+      avatar: owner.avatar || '',
+      ...facts,
     };
 
     if (coupleId) {
@@ -217,12 +276,16 @@ async function push({ userId, isAdmin, coupleId }, setStatus) {
     }
     // La propia se guarda entera en memoria: el panel calcula con ella sin
     // volver a encender el GPS cada minuto y el mapa enseña tus datos.
+    if (revision !== sharingRevision || self !== owner) return false;
     myLocation = data;
+    if (coupleId) await reportLocationUpdate(data, revision);
     setStatus?.('ok');
+    return true;
   } catch (err) {
     // 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT.
     // «prompt» es distinto de «denied»: todavía se puede pedir, con un botón.
     setStatus?.(err?.code === 1 ? (err?.needsPrompt ? 'prompt' : 'denied') : 'error');
+    return false;
   }
 }
 
@@ -237,22 +300,29 @@ export function startLocationSharing({ userId, isAdmin, name, avatar } = {}, onS
   // dejaría de ser suyo y acabaría pintando mi foto en los dos círculos.
   cachedPartnerId = null;
   self = { userId: String(userId), isAdmin: !!isAdmin, coupleId: null, name: name || '', avatar: avatar || '' };
+  myLocation = null;
 
-  // La pareja es el contrato definitivo. Se conserva la ruta heredada solo
-  // mientras una instalación antigua aún no haya aplicado 029/030.
-  void supabase
-    .from('couple_members')
-    .select('couple_id')
-    .eq('user_id', self.userId)
-    .maybeSingle()
-    .then(({ data }) => {
-      if (!self || data?.couple_id == null) return;
-      self.coupleId = data.couple_id;
-      void push(self, onStatus);
-    })
-    .catch(() => {});
+  // Si el plugin aún está consultando Android, la primera escritura puede
+  // reflejar «Al abrir». Cuando el estado real llegue, republica la posición
+  // con el modo correcto sin esperar al intervalo de dos minutos.
+  offDeviceStatus = onDeviceStatus(status => {
+    const current = isNative()
+      && status?.background?.native === true
+      && status.background.enabled === true
+      && status.background.running === true;
+    if (sharedBackgroundState === null) {
+      sharedBackgroundState = current;
+      return;
+    }
+    if (sharedBackgroundState === current) return;
+    sharedBackgroundState = current;
+    if (self?.userId === owner) void push(self, onStatus);
+  });
 
-  push(self, onStatus);
+  const owner = self.userId;
+  void resolveCoupleId()
+    .then(() => { if (self?.userId === owner) void push(self, onStatus); })
+    .catch(() => { if (self?.userId === owner) void push(self, onStatus); });
   shareTimer = setInterval(() => push(self, onStatus), SHARE_MS);
   onVisible = () => {
     if (document.visibilityState === 'visible') push(self, onStatus);
@@ -314,6 +384,10 @@ export async function requestLocationPermission(onStatus) {
 }
 
 export function stopLocationSharing() {
+  sharingRevision++;
+  offDeviceStatus?.();
+  offDeviceStatus = null;
+  sharedBackgroundState = null;
   if (shareTimer) {
     clearInterval(shareTimer);
     shareTimer = null;
@@ -323,6 +397,106 @@ export function stopLocationSharing() {
     onVisible = null;
   }
   self = null;
+  myLocation = null;
+}
+
+/** Fuerza una lectura propia y se la pide al segundo miembro de la pareja. */
+export async function refreshBothLocations(onStatus) {
+  if (!self?.userId) return { ok: false, reason: 'session' };
+  await resolveCoupleId().catch(() => null);
+  let locationStatus = '';
+  return performLocationRefresh({
+    updateOwn: async () => {
+      const updated = await push(self, status => {
+        locationStatus = status;
+        onStatus?.(status);
+      }, { fresh: true });
+      return {
+        updated: updated && !!myLocation,
+        location: myLocation,
+        reason: locationStatus || 'location-unavailable',
+      };
+    },
+    // La solicitud a la pareja no depende del permiso GPS de este dispositivo.
+    requestPartner: self.coupleId ? () => callPushApi('request-location') : null,
+  });
+}
+
+/** Lugares privados de la pareja: ambos pueden ver, añadir y borrar. */
+export async function fetchSharedPlaces() {
+  if (!self?.userId || !supabase || !(await resolveCoupleId().catch(() => null))) return [];
+  const { data, error } = await supabase.from('couple_places')
+    .select('id, name, latitude, longitude, radius_m, created_by, created_at')
+    .eq('couple_id', self.coupleId).eq('enabled', true).order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function addSharedPlace({ name, latitude, longitude, radius_m = 150 } = {}) {
+  const coupleId = await resolveCoupleId();
+  const cleanName = String(name || '').trim().slice(0, 48);
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  const radius = Number(radius_m);
+  if (!self?.userId || !coupleId || !cleanName || !Number.isFinite(lat) || lat < -90 || lat > 90
+      || !Number.isFinite(lng) || lng < -180 || lng > 180 || ![10, 20, 50, 75, 150, 300, 500, 1000].includes(radius)) {
+    throw new Error('Datos del lugar no válidos');
+  }
+  const { data, error } = await supabase.from('couple_places').insert({
+    couple_id: coupleId, created_by: self.userId, name: cleanName,
+    latitude: lat, longitude: lng, radius_m: radius,
+  }).select('id, name, latitude, longitude, radius_m, created_by, created_at').single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateSharedPlace(placeId, { name, latitude, longitude, radius_m } = {}) {
+  const coupleId = await resolveCoupleId();
+  const cleanName = String(name || '').trim().slice(0, 48);
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  const radius = Number(radius_m);
+  if (!self?.userId || !coupleId || !placeId || !cleanName || !Number.isFinite(lat) || lat < -90 || lat > 90
+      || !Number.isFinite(lng) || lng < -180 || lng > 180 || ![10, 20, 50, 75, 150, 300, 500, 1000].includes(radius)) {
+    throw new Error('Datos del lugar no válidos');
+  }
+  const { data, error } = await supabase.from('couple_places').update({
+    name: cleanName, latitude: lat, longitude: lng, radius_m: radius,
+  }).eq('id', placeId).eq('couple_id', coupleId)
+    .select('id, name, latitude, longitude, radius_m, created_by, created_at').single();
+  if (error) throw error;
+  return data;
+}
+
+export async function removeSharedPlace(placeId) {
+  const coupleId = await resolveCoupleId();
+  if (!self?.userId || !coupleId || !placeId) return false;
+  const { error } = await supabase.from('couple_places')
+    .delete().eq('id', placeId).eq('couple_id', coupleId);
+  if (error) throw error;
+  return true;
+}
+
+export async function watchSharedPlaces(onChange) {
+  if (!self?.userId || !supabase) return () => {};
+  let alive = true;
+  let channel = null;
+  const coupleId = await resolveCoupleId().catch(() => null);
+  if (!alive || !coupleId) return () => { alive = false; };
+  channel = supabase.channel(`couple-places-${coupleId}-${self.userId}-${Date.now()}`)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'couple_places', filter: `couple_id=eq.${coupleId}`,
+    }, async () => {
+      try {
+        const places = await fetchSharedPlaces();
+        if (alive) onChange?.(places);
+      } catch { /* el siguiente cambio vuelve a intentarlo */ }
+    })
+    .subscribe();
+  return () => {
+    alive = false;
+    if (channel) void supabase.removeChannel(channel);
+  };
 }
 
 /** Última posición conocida de la otra persona: { lat, lng, at, userId } o null. */
@@ -397,6 +571,8 @@ function toLocation(data, userId) {
     accuracy: Number.isFinite(Number(data?.accuracy)) ? Math.round(Number(data.accuracy)) : null,
     // true = la fila la escribió el servicio en segundo plano del APK.
     bg: data?.bg === true,
+    batteryPaused: data?.batteryPaused === true,
+    locationServices: data?.locationServices || 'unknown',
   };
 }
 
@@ -545,33 +721,50 @@ export function togetherInfo(me, partner) {
 
 export function watchDistance(handler, { intervalMs = 60000 } = {}) {
   let alive = true;
+  let reading = false;
+  let readAgain = false;
 
   const tick = async () => {
-    const partner = await fetchPartnerLocation();
     if (!alive) return;
-    if (!partner) {
-      handler({ km: null, partner: null, partnerId: null, stale: false });
-      return;
-    }
-    // La primera vez el GPS puede tardar más que la lectura del otro lado:
-    // se le da un margen antes de aceptar que no hay distancia.
-    let me = fetchMyLocation();
-    if (!me) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    if (reading) { readAgain = true; return; }
+    reading = true;
+    try {
+      const partner = await fetchPartnerLocation();
       if (!alive) return;
-      me = fetchMyLocation();
+      if (!partner) {
+        handler({ km: null, partner: null, partnerId: null, stale: false, me: fetchMyLocation() });
+        return;
+      }
+      // La primera vez el GPS puede tardar más que la lectura del otro lado.
+      let me = fetchMyLocation();
+      if (!me) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        if (!alive) return;
+        me = fetchMyLocation();
+      }
+      const km = me ? distanceKm(me, partner) : null;
+      handler({ km, me, partner, partnerId: partner.userId, stale: !isFresh(partner.sentAt || partner.at) });
+    } finally {
+      reading = false;
+      if (alive && readAgain) { readAgain = false; void tick(); }
     }
-    const km = me ? distanceKm(me, partner) : null;
-    handler({
-      km,
-      partner,
-      partnerId: partner.userId,
-      stale: !isFresh(partner.at),
-    });
   };
 
   tick();
   const timer = setInterval(tick, intervalMs);
+  let channel = null;
+  void resolveCoupleId().then(coupleId => {
+    if (!alive || !coupleId) return;
+    channel = supabase.channel(`couple-location-${coupleId}-${self.userId}-${Date.now()}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'couple_locations', filter: `couple_id=eq.${coupleId}`,
+      }, payload => {
+        const changedUser = payload.new?.user_id || payload.old?.user_id;
+        if (changedUser && changedUser === self?.userId) return;
+        void tick();
+      })
+      .subscribe();
+  }).catch(() => {});
   const onVis = () => {
     if (document.visibilityState === 'visible') tick();
   };
@@ -581,6 +774,7 @@ export function watchDistance(handler, { intervalMs = 60000 } = {}) {
     alive = false;
     clearInterval(timer);
     document.removeEventListener('visibilitychange', onVis);
+    if (channel) void supabase.removeChannel(channel);
   };
 }
 

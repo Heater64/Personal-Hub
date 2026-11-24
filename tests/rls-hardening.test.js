@@ -100,6 +100,23 @@ test('las funciones internas dejan de ser RPC públicas', async () => {
   );
 });
 
+test('el límite TMDB es atómico y compartido entre instancias serverless', async () => {
+  const sql = await readFile(projectPath('sql', '042_tmdb_rate_limit.sql'), 'utf8');
+  const api = await readFile(projectPath('api', '_tmdb-core.js'), 'utf8');
+
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.tmdb_rate_limits/);
+  assert.match(sql, /ON CONFLICT \(user_id\) DO UPDATE/);
+  assert.match(sql, /request_count.*LEAST/s);
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.consume_tmdb_request/);
+  assert.match(sql, /SECURITY DEFINER[\s\S]*?SET search_path TO 'pg_catalog', 'public'/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.consume_tmdb_request\(UUID\) FROM PUBLIC, anon, authenticated/);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.consume_tmdb_request\(UUID\) TO service_role/);
+  assert.match(api, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(api, /\.rpc\('consume_tmdb_request'/);
+  assert.doesNotMatch(api, /requestsByUser|function allowRequest/,
+    'el límite no puede depender de memoria efímera de una instancia');
+});
+
 test('TRUNCATE deja de estar al alcance del cliente', async () => {
   const sql = await migration();
   assert.match(
