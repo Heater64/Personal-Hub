@@ -18,3 +18,18 @@ test('los minijuegos permiten ampliar la página con los controles del navegador
 
   assert.deepEqual(restricted, [], `juegos que bloquean el zoom: ${restricted.join(', ')}`);
 });
+
+test('el foco de teclado se conserva y se reducen las animaciones del sitio', async () => {
+  const css = await readFile(path.resolve('tamp/src/styles/motion.css'), 'utf8');
+  const focusSelector = ':where(a, button, input, select, textarea, [tabindex]):focus-visible';
+  const focusIndex = css.indexOf(focusSelector);
+  const beforeFocus = css.slice(0, focusIndex).replace(/\/\*[\s\S]*?\*\//g, '');
+  const braceDepth = [...beforeFocus].reduce((depth, char) =>
+    char === '{' ? depth + 1 : char === '}' ? depth - 1 : depth, 0);
+
+  assert.ok(focusIndex >= 0, 'debe existir un anillo de foco para controles interactivos');
+  assert.equal(braceDepth, 0, 'el anillo de foco no debe depender de la preferencia de movimiento');
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?transition-duration:\s*0\.01ms\s*!important/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?transition-delay:\s*0ms\s*!important/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?animation-duration:\s*0\.01ms\s*!important/);
+});

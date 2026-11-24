@@ -134,14 +134,6 @@
     transform: translateX(120%);
   }
 
-  /* Anillo de foco: aparece en vez de encenderse de golpe. Nunca se oculta
-     (outline:none), solo se suaviza. */
-  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-    transition: outline-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
-    outline: 2px solid var(--theme-accent, var(--primary, #e8614f));
-    outline-offset: 2px;
-  }
-
   /* Píldoras y chips de navegación */
   .chip,
   .admin-seg-btn,
@@ -181,6 +173,28 @@
      saltar de golpe al cargar. */
   img {
     transition: opacity var(--dur-slow) ease, transform var(--dur-slow) ease;
+  }
+}
+
+/* El indicador de teclado se mantiene incluso si el usuario reduce el
+   movimiento; su visibilidad no depende de animaciones. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--theme-accent, var(--primary, #e8614f));
+  outline-offset: 2px;
+}
+
+/* Las hojas antiguas declaran transiciones y animaciones propias. Esta regla
+   global respeta la preferencia del sistema en toda la aplicación. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
