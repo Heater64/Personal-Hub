@@ -33,3 +33,8 @@ test('el foco de teclado se conserva y se reducen las animaciones del sitio', as
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?transition-delay:\s*0ms\s*!important/);
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?animation-duration:\s*0\.01ms\s*!important/);
 });
+
+test('los campos del editor de episodios conservan un foco visible', async () => {
+  const css = await readFile(path.resolve('tamp/src/styles/series.css'), 'utf8');
+  assert.match(css, /\.sr-ep-input:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--theme-accent\)/);
+});

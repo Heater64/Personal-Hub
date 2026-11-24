@@ -1651,7 +1651,11 @@
   min-width: 0;
 }
 
-.sr-ep-input:focus { border-color: var(--theme-accent); outline: none; }
+.sr-ep-input:focus { border-color: var(--theme-accent); }
+.sr-ep-input:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
 
 .sr-ep-input--thumb, .sr-ep-input--url { max-width: 180px; }
 
