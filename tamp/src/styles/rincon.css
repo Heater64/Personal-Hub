@@ -1479,7 +1479,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .gallery-photo.is-loaded img { opacity: 1; }
@@ -2133,7 +2133,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
@@ -2515,6 +2515,10 @@
   transition: opacity var(--dur-normal);
 }
 
+/* Las miniaturas arrancan visibles: el shimmer queda detrás y la imagen lo
+   tapa al pintarse. Antes empezaban en opacity 0 y dependían de que JS les
+   añadiera .is-loaded (un onload inline que la CSP de producción bloquea),
+   así que se quedaban en negro para siempre. */
 .meme-album-item img {
   position: relative;
   z-index: 1;
@@ -2522,7 +2526,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.35s ease, transform 0.3s ease;
 }
 

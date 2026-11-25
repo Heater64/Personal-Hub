@@ -163,6 +163,13 @@ self.addEventListener('fetch', event => {
   // desde el archivo completo cacheado; la 1ª vez descarga el archivo
   // entero y lo guarda (música offline + repetición instantánea).
   if (/\.(mp4|m4a|mp3|webm|ogg|wav)$/.test(url.pathname)) {
+    // Solo medios del propio origen pasan por la caché. Los de otros orígenes
+    // (Cloudinary, Supabase Storage) NO se proxyean: `cacheFirstMedia` los
+    // re-descarga con fetch(), y la CSP de producción limita connect-src a
+    // 'self' + Supabase, así que esa petición fallaba y el SW respondía 503.
+    // El <video>/<audio> se quedaba en negro sin cargar nunca. El navegador
+    // los pide directamente bajo media-src, que sí permite HTTPS.
+    if (url.origin !== self.location.origin) return;
     event.respondWith(cacheFirstMedia(request));
     return;
   }

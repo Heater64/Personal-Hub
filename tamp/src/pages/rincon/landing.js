@@ -390,13 +390,19 @@ export function createLanding(ctx) {
     const thumbs = preview?.thumbs || [];
     const stats = preview?.stats || '';
     const delay = index * 0.06;
+    // Las tarjetas de la primera pantalla cargan su portada de inmediato: con
+    // loading="lazy" el WebView tardaba segundos en pedirlas y el Rincón se
+    // abría sin ninguna imagen hasta que el navegador decidía cargarlas.
+    const eager = index < 3;
+    const loadingAttr = eager ? 'eager' : 'lazy';
+    const priorityAttr = eager ? ' fetchpriority="high"' : '';
   
     let visualHTML = '';
     if (!entry && preview?.posters?.length) {
       // Portadas rotatorias dentro de la tarjeta (Series): la primera se muestra
       // y la rotación la va cambiando; si una falla, cae al emoji de la sección.
       visualHTML = `<div class="rincon-card-img-wrap">
-        <img class="sr-rotating-poster rincon-card-img" src="${safeUrl(preview.posters[0])}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <img class="sr-rotating-poster rincon-card-img" src="${safeUrl(preview.posters[0])}" alt="" loading="${loadingAttr}"${priorityAttr} onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <span class="rincon-card-icon-wrap" style="display:none"><span class="rincon-card-emoji">${section.emoji || '✦'}</span></span>
       </div>`;
     } else if (thumbs.length >= 4 && (section.id === 'memes' || section.previewType === 'memes')) {
@@ -404,7 +410,7 @@ export function createLanding(ctx) {
       visualHTML = `<div class="rincon-card-collage">
         ${thumbs.map((t, i) => `
           <div class="rincon-card-collage-cell">
-            <img src="${safeUrl(t.url)}" alt="" loading="lazy">
+            <img src="${safeUrl(t.url)}" alt="" loading="${loadingAttr}"${priorityAttr}>
             ${t.isVideo ? `<span class="rincon-card-collage-play">${ICON_SVGS['play']}</span>` : ''}
           </div>
         `).join('')}
@@ -415,12 +421,12 @@ export function createLanding(ctx) {
         const zoomStyle = entry.z > 1 ? ` style="transform:scale(${entry.z})"` : '';
         visualHTML = `<div class="rincon-card-img-wrap">
           <div class="rincon-card-img-zoom"${zoomStyle}>
-            <img src="${safeUrl(cover)}" alt="" class="rincon-card-img" loading="lazy" style="object-fit:${entry.fit};object-position:${entry.x}% ${entry.y}%;">
+            <img src="${safeUrl(cover)}" alt="" class="rincon-card-img" loading="${loadingAttr}"${priorityAttr} style="object-fit:${entry.fit};object-position:${entry.x}% ${entry.y}%;">
           </div>
         </div>`;
       } else {
         visualHTML = `<div class="rincon-card-img-wrap">
-          <img src="${safeUrl(cover)}" alt="" class="rincon-card-img" loading="lazy">
+          <img src="${safeUrl(cover)}" alt="" class="rincon-card-img" loading="${loadingAttr}"${priorityAttr}>
         </div>`;
       }
     } else {
