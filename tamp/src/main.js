@@ -67,6 +67,9 @@ const PAGES = {
   '/minecraft': lazy(() => import('./pages/Minecraft.js').then(m => m.MinecraftPage)),
   '/canciones': lazy(() => import('./pages/Canciones.js').then(m => m.CancionesPage)),
   '/sentimientos': lazy(() => import('./pages/Sentimientos.js').then(m => m.SentimientosPage)),
+  '/sentimientos/historial': lazy(() =>
+    import('./pages/Sentimientos.js').then(m => m.HistorialEmocionalPage)
+  ),
   '/juegos': lazy(() => import('./pages/Juegos.js').then(m => m.JuegosPage)),
   '/juegos/online/:gameId': lazy(() => import('./pages/OnlineGame.js').then(m => m.OnlineGamePage)),
   // Un solo m�dulo de calendario. Los enlaces antiguos con `gift` o
@@ -88,7 +91,10 @@ const PAGES = {
   ),
   '/ositos': lazy(() => import('./pages/OsitosWorld.js').then(m => m.OsitosWorldPage)),
   '/juntos': lazy(() => import('./pages/Juntos.js').then(m => m.JuntosPage)),
-  '/mapa': lazy(() => import('./pages/Mapa.js').then(m => m.MapaPage)),
+  // Una sola pantalla de ubicación con tres pestañas (Mapa · Lugares ·
+  // Ajustes). El deep link del widget (`personalhub://mapa`) sigue entrando
+  // aquí, igual que los avisos que abrían el mapa.
+  '/mapa': lazy(() => import('./pages/Ubicacion.js').then(m => m.UbicacionPage)),
 };
 
 function init() {

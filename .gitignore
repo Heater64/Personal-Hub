@@ -63,6 +63,7 @@ android/app/capacitor.build.gradle
 *.keystore
 *.apk
 !apks/Tamp1.8.apk
+!apks/Tamp1.9.apk
 
 # Credenciales de Firebase (cuenta de servicio: secreto, va en Vercel)
 firebase-service-account.json
@@ -114,3 +115,9 @@ sintoma-propio.png
 widgets-compact.png
 widgets-grande.png
 widgets-preview.png
+
+# Cachés locales de Gradle y respaldos de trabajo
+android/.gradle-local/
+android/.gradle-user/
+.tamp-migration-backup/
+.vite-profile.*

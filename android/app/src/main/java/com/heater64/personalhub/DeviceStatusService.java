@@ -57,7 +57,8 @@ public class DeviceStatusService extends Service {
     private static final String PREFS = "device_status";
     private static final String CHANNEL_ID = "device_status";
     private static final String ACTION_STOP = "com.heater64.personalhub.DEVICE_STATUS_STOP";
-    private static final String ACTION_REFRESH = "com.heater64.personalhub.DEVICE_STATUS_REFRESH";
+    static final String ACTION_REFRESH = "com.heater64.personalhub.DEVICE_STATUS_REFRESH";
+    static final String ACTION_USER_LOCATION_REFRESH = "com.heater64.personalhub.USER_LOCATION_REFRESH";
     private static final String TAG = "DeviceStatus";
     private static final int NOTIFICATION_ID = 4310;
     private static final long HEARTBEAT_MS = 5 * 60 * 1000L;
@@ -123,6 +124,28 @@ public class DeviceStatusService extends Service {
                     new Intent(context, DeviceStatusService.class).setAction(ACTION_REFRESH));
         } catch (RuntimeException error) {
             Log.w(TAG, "Android rechazó la actualización solicitada", error);
+        }
+    }
+
+    /** A notification tap brings the activity to the foreground, so it can refresh without background permission. */
+    static void requestLocationUpdateFromUser(Context context) {
+        DeviceStatusService service = active;
+        if (service != null) {
+            MAIN.post(service::requestFreshLocation);
+            return;
+        }
+        if (!isEnabled(context) || !hasLocationPermission(context)) return;
+        String prerequisite = startPrerequisite(context);
+        if (!prerequisite.isEmpty()) {
+            recordStartError(context, prerequisite);
+            return;
+        }
+        try {
+            ContextCompat.startForegroundService(context,
+                    new Intent(context, DeviceStatusService.class).setAction(ACTION_REFRESH));
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Android rechazó la actualización solicitada desde la app", error);
+            recordStartError(context, "foreground-service-rejected");
         }
     }
 
@@ -226,7 +249,7 @@ public class DeviceStatusService extends Service {
         for (Runnable callback : callbacks) callback.run();
     }
 
-    private static void recordStartError(Context context, String error) {
+    static void recordStartError(Context context, String error) {
         if (isEnabled(context)) prefs(context).edit().putString("last_error", error).apply();
         finishStart();
     }

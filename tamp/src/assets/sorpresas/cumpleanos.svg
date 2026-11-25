@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="srpCumPiso" x1="26" y1="66" x2="102" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC9A8"/><stop offset="1" stop-color="#E8735A"/>
+    </linearGradient>
+    <linearGradient id="srpCumGlaseado" x1="26" y1="58" x2="102" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3E9"/><stop offset="1" stop-color="#FFD1DC"/>
+    </linearGradient>
+    <linearGradient id="srpCumLlama" x1="64" y1="22" x2="64" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE08A"/><stop offset="1" stop-color="#F2758F"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="64" cy="114" rx="38" ry="6" fill="#2A1512" opacity="0.18"/>
+  <rect x="26" y="76" width="76" height="36" rx="10" fill="url(#srpCumPiso)"/>
+  <path d="M26 86c8 8 16-4 25 0s12 8 20 2 16-6 22 2 9 2 9 2v-16H26v10Z" fill="url(#srpCumGlaseado)"/>
+  <rect x="22" y="62" width="84" height="20" rx="10" fill="url(#srpCumGlaseado)"/>
+  <rect x="46" y="46" width="7" height="18" rx="3.5" fill="#F79BB0"/>
+  <rect x="61" y="42" width="7" height="22" rx="3.5" fill="#FFC77D"/>
+  <rect x="76" y="46" width="7" height="18" rx="3.5" fill="#F79BB0"/>
+  <path d="M49.5 45c-4-4-4-9 0-12 4 3 4 8 0 12Z" fill="url(#srpCumLlama)"/>
+  <path d="M64.5 41c-4-4-4-9 0-12 4 3 4 8 0 12Z" fill="url(#srpCumLlama)"/>
+  <path d="M79.5 45c-4-4-4-9 0-12 4 3 4 8 0 12Z" fill="url(#srpCumLlama)"/>
+  <circle cx="40" cy="98" r="3" fill="#FFF3E9" opacity="0.5"/>
+  <circle cx="64" cy="102" r="3" fill="#FFF3E9" opacity="0.4"/>
+  <circle cx="88" cy="98" r="3" fill="#FFF3E9" opacity="0.5"/>
+</svg>

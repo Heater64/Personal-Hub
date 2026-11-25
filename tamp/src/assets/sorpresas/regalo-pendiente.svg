@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="srpPendCaja" x1="22" y1="48" x2="94" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC29F"/><stop offset="1" stop-color="#E8735A"/>
+    </linearGradient>
+    <linearGradient id="srpPendTapa" x1="16" y1="34" x2="100" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE2D1"/><stop offset="1" stop-color="#F79BB0"/>
+    </linearGradient>
+    <linearGradient id="srpPendReloj" x1="84" y1="70" x2="118" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3E9"/><stop offset="1" stop-color="#FFD9BE"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="62" cy="111" rx="34" ry="6" fill="#2A1512" opacity="0.18"/>
+  <rect x="22" y="50" width="72" height="52" rx="14" fill="url(#srpPendCaja)"/>
+  <rect x="16" y="36" width="84" height="22" rx="11" fill="url(#srpPendTapa)"/>
+  <rect x="50" y="36" width="16" height="66" rx="8" fill="#FFF3E9" opacity="0.85"/>
+  <path d="M58 37c-8-2-17-7-17-14 0-5 7-7 11-3 3 4 6 10 6 17Z" fill="#F79BB0"/>
+  <path d="M58 37c8-2 17-7 17-14 0-5-7-7-11-3-3 4-6 10-6 17Z" fill="#FF8FA3"/>
+  <circle cx="100" cy="89" r="22" fill="url(#srpPendReloj)" stroke="#E8735A" stroke-width="4"/>
+  <path d="M100 76v14l9 6" stroke="#E8735A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="100" cy="89" r="3" fill="#E8735A"/>
+</svg>

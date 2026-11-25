@@ -21,7 +21,10 @@ public class BootReceiver extends BroadcastReceiver {
         // rechaza un FGS de ubicación si no existe el permiso «permitir
         // siempre»; esperar a que el usuario abra la app es más honesto que
         // fingir que el seguimiento continúa.
-        if (!DeviceStatusService.hasBackgroundLocationPermission(context)) return;
+        if (!DeviceStatusService.hasBackgroundLocationPermission(context)) {
+            DeviceStatusService.recordStartError(context, "background-location-permission");
+            return;
+        }
         DeviceStatusService.start(context, null);
     }
 }

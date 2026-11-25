@@ -455,7 +455,12 @@ class MoodStore {
     return null;
   }
 
-  async getMoodHistory(userId, startDate, endDate) {
+  /**
+   * Historial de una persona. Con `strict` propaga el error en vez de
+   * devolver una lista vacía: así quien lo pide distingue «no hay registros»
+   * de «no se pudo cargar» y puede reintentar.
+   */
+  async getMoodHistory(userId, startDate, endDate, { strict = false } = {}) {
     try {
       const { data, error } = await supabase
         .from('moods')
@@ -473,6 +478,7 @@ class MoodStore {
       return data || [];
     } catch (err) {
       console.warn('Error loading mood history:', err);
+      if (strict) throw err;
       return [];
     }
   }

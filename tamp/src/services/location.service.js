@@ -17,6 +17,7 @@ import { supabase } from './supabase.js';
 import { callNativeApi, isNative } from './native.service.js';
 import { deviceFactsSnapshot, onDeviceStatus } from './device.service.js';
 import { performLocationRefresh } from './location-refresh.js';
+import { getUserPref } from '../utils/userStorage.js';
 
 const ADMIN_ROW_ID = 'location_admin';
 const SHARE_MS = 120000; // repite tu posición cada 2 min en uso
@@ -29,6 +30,29 @@ let onVisible = null;
 let offDeviceStatus = null;
 let sharedBackgroundState = null;
 let myLocation = null; // { lat, lng } de este dispositivo
+
+/**
+ * ¿Esta persona quiere compartir su ubicación?
+ *
+ * Es una preferencia LOCAL y solo la cambia su dueño desde Ajustes: nada que
+ * llegue de la otra cuenta puede reactivarla. Por defecto, sí.
+ */
+function ownSharingEnabled() {
+  try {
+    return getUserPref('shareLocation', 'true') !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+/** Cada campo del dispositivo se comparte solo si su dueño lo dejó activo. */
+function prefOn(key) {
+  try {
+    return getUserPref(key, 'true') !== 'false';
+  } catch {
+    return true;
+  }
+}
 
 async function resolveCoupleId() {
   if (!self?.userId || self.coupleId || !supabase) return self?.coupleId || null;
@@ -221,7 +245,53 @@ async function deviceFacts(pos) {
     }
   }
 
+  // Lo que cada persona ha decidido no compartir se queda en su móvil.
+  if (!prefOn('shareDeviceBattery')) {
+    delete facts.battery;
+    delete facts.charging;
+  }
+  if (!prefOn('shareDeviceNetwork')) {
+    delete facts.net;
+    delete facts.mbps;
+  }
+  if (!prefOn('shareDeviceSpeed')) delete facts.speed;
+  if (!prefOn('shareDeviceAccuracy')) delete facts.accuracy;
+
   return facts;
+}
+
+/** Escribe una fila de ubicación en el sitio que la otra persona puede leer. */
+async function writeLocationRow(data, { coupleId, isAdmin, userId } = {}) {
+  const at = data.at;
+  if (coupleId) {
+    const { error } = await supabase.from('couple_locations').upsert(
+      {
+        couple_id: coupleId,
+        user_id: userId,
+        data,
+        location_at: at,
+        sent_at: at,
+        updated_at: at,
+      },
+      { onConflict: 'couple_id,user_id' }
+    );
+    if (error) throw error;
+    return;
+  }
+  if (isAdmin) {
+    const { error } = await supabase
+      .from('content')
+      .upsert({ id: ADMIN_ROW_ID, data, updated_at: at }, { onConflict: 'id' });
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase
+    .from('user_progress')
+    .upsert(
+      { user_id: userId, type: 'location', data, updated_at: at },
+      { onConflict: 'user_id,type' }
+    );
+  if (error) throw error;
 }
 
 /** Escribe tu posición donde la otra persona puede leerla. */
@@ -230,6 +300,10 @@ async function push({ userId, isAdmin, coupleId }, setStatus, { fresh = false } 
   const revision = sharingRevision;
   const owner = self;
   if (!owner || owner.userId !== String(userId)) return false;
+  // Si su dueño ha dejado de compartir, este latido no se escribe: la fila
+  // conserva la última posición con `sharing: false`, que el otro lee como
+  // «no comparte», nunca como «sin conexión».
+  if (!ownSharingEnabled()) return false;
   try {
     const pos = await currentPosition({ fresh });
     if (revision !== sharingRevision || self !== owner) return false;
@@ -246,34 +320,11 @@ async function push({ userId, isAdmin, coupleId }, setStatus, { fresh = false } 
       // dependiera de esa lectura el mapa se quedaría sin nombre ni cara.
       name: owner.name || '',
       avatar: owner.avatar || '',
+      sharing: true,
       ...facts,
     };
 
-    if (coupleId) {
-      const { error } = await supabase.from('couple_locations').upsert(
-        {
-          couple_id: coupleId,
-          user_id: userId,
-          data,
-          location_at: data.at,
-          sent_at: at,
-          updated_at: at,
-        },
-        { onConflict: 'couple_id,user_id' }
-      );
-      if (error) throw error;
-    } else if (isAdmin) {
-      await supabase
-        .from('content')
-        .upsert({ id: ADMIN_ROW_ID, data, updated_at: at }, { onConflict: 'id' });
-    } else {
-      await supabase
-        .from('user_progress')
-        .upsert(
-          { user_id: userId, type: 'location', data, updated_at: at },
-          { onConflict: 'user_id,type' }
-        );
-    }
+    await writeLocationRow(data, { coupleId, isAdmin, userId });
     // La propia se guarda entera en memoria: el panel calcula con ella sin
     // volver a encender el GPS cada minuto y el mapa enseña tus datos.
     if (revision !== sharingRevision || self !== owner) return false;
@@ -328,6 +379,34 @@ export function startLocationSharing({ userId, isAdmin, name, avatar } = {}, onS
     if (document.visibilityState === 'visible') push(self, onStatus);
   };
   document.addEventListener('visibilitychange', onVisible);
+}
+
+/**
+ * Publica el estado de «comparto / no comparto» sin mover la posición.
+ *
+ * Solo lo llama el móvil de quien decide. Sirve para que la otra persona vea
+ * «no comparte su ubicación» en vez de una posición vieja que parezca perdida.
+ */
+export async function publishSharingState(enabled) {
+  if (!self || !supabase) return false;
+  // Sin una posición conocida no se inventa una fila: no hay nada que marcar.
+  if (!myLocation || !Number.isFinite(myLocation.lat)) return false;
+  try {
+    await resolveCoupleId().catch(() => null);
+    const data = {
+      ...myLocation,
+      sharing: !!enabled,
+      at: new Date().toISOString(),
+      user_id: self.userId,
+      name: self.name || myLocation.name || '',
+      avatar: self.avatar || myLocation.avatar || '',
+    };
+    await writeLocationRow(data, { coupleId: self.coupleId, isAdmin: self.isAdmin, userId: self.userId });
+    if (!enabled) myLocation = null;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -438,8 +517,10 @@ export async function addSharedPlace({ name, latitude, longitude, radius_m = 150
   const lat = Number(latitude);
   const lng = Number(longitude);
   const radius = Number(radius_m);
+  // Cualquier radio entero entre 10 m y 1 km vale: los preajustes son atajos,
+  // no una lista cerrada. El CHECK de `couple_places` usa el mismo rango.
   if (!self?.userId || !coupleId || !cleanName || !Number.isFinite(lat) || lat < -90 || lat > 90
-      || !Number.isFinite(lng) || lng < -180 || lng > 180 || ![10, 20, 50, 75, 150, 300, 500, 1000].includes(radius)) {
+      || !Number.isFinite(lng) || lng < -180 || lng > 180 || !(Number.isInteger(radius) && radius >= 10 && radius <= 1000)) {
     throw new Error('Datos del lugar no válidos');
   }
   const { data, error } = await supabase.from('couple_places').insert({
@@ -457,7 +538,7 @@ export async function updateSharedPlace(placeId, { name, latitude, longitude, ra
   const lng = Number(longitude);
   const radius = Number(radius_m);
   if (!self?.userId || !coupleId || !placeId || !cleanName || !Number.isFinite(lat) || lat < -90 || lat > 90
-      || !Number.isFinite(lng) || lng < -180 || lng > 180 || ![10, 20, 50, 75, 150, 300, 500, 1000].includes(radius)) {
+      || !Number.isFinite(lng) || lng < -180 || lng > 180 || !(Number.isInteger(radius) && radius >= 10 && radius <= 1000)) {
     throw new Error('Datos del lugar no válidos');
   }
   const { data, error } = await supabase.from('couple_places').update({
@@ -571,6 +652,8 @@ function toLocation(data, userId) {
     accuracy: Number.isFinite(Number(data?.accuracy)) ? Math.round(Number(data.accuracy)) : null,
     // true = la fila la escribió el servicio en segundo plano del APK.
     bg: data?.bg === true,
+    // false = su dueño ha dejado de compartir desde sus ajustes.
+    sharing: data?.sharing !== false,
     batteryPaused: data?.batteryPaused === true,
     locationServices: data?.locationServices || 'unknown',
   };

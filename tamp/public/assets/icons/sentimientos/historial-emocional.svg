@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="histBody" x1="28" y1="38" x2="100" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff0e3"/>
+      <stop offset=".55" stop-color="#ffd7c4"/>
+      <stop offset="1" stop-color="#f3b49f"/>
+    </linearGradient>
+    <linearGradient id="histTop" x1="28" y1="28" x2="100" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ef8890"/>
+      <stop offset="1" stop-color="#cf566d"/>
+    </linearGradient>
+    <linearGradient id="histHeart" x1="46" y1="60" x2="82" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffa79d"/>
+      <stop offset=".5" stop-color="#f4737f"/>
+      <stop offset="1" stop-color="#d94c66"/>
+    </linearGradient>
+    <linearGradient id="histRing" x1="40" y1="18" x2="48" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffdcbb"/>
+      <stop offset="1" stop-color="#e7a078"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sombra -->
+  <rect x="28" y="40" width="76" height="64" rx="17" fill="#bf4f63" fill-opacity=".45"/>
+
+  <!-- cuerpo -->
+  <rect x="26" y="34" width="76" height="64" rx="17" fill="url(#histBody)"/>
+  <path d="M26 51a17 17 0 0 1 17-17h42a17 17 0 0 1 17 17v7H26z" fill="url(#histTop)"/>
+  <path d="M26 51h76" stroke="#c9536a" stroke-opacity=".22" stroke-width="1.6"/>
+
+  <!-- anillas -->
+  <rect x="43" y="18" width="8" height="26" rx="4" fill="url(#histRing)"/>
+  <rect x="77" y="18" width="8" height="26" rx="4" fill="url(#histRing)"/>
+
+  <!-- panel del día destacado -->
+  <rect x="37" y="63" width="54" height="26" rx="9" fill="#ffd4c2" fill-opacity=".65"/>
+  <path d="M64 88c0 0-13.6-9-13.6-17.2 0-4.6 3.7-8.3 8.4-8.3 2.4 0 4.1 1.1 5.2 2.5 1.1-1.4 2.8-2.5 5.2-2.5 4.7 0 8.4 3.7 8.4 8.3C77.6 79 64 88 64 88z" fill="url(#histHeart)"/>
+  <path d="M55 65.6c-1.6.7-2.6 2.3-2.6 4.3 0 1.6.8 3.3 1.9 4.9" stroke="#fff" stroke-opacity=".55" stroke-width="2.8" stroke-linecap="round"/>
+
+  <!-- brillo -->
+  <path d="M36 60c-1.6 4.6-2 9.6-1.6 14.4" stroke="#fff" stroke-opacity=".5" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M32 46h6" stroke="#fff" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- destellos -->
+  <path d="M100 44l1.3 3.6 3.6 1.3-3.6 1.3-1.3 3.6-1.3-3.6-3.6-1.3 3.6-1.3z" fill="#ffcdb6"/>
+  <path d="M24 82l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z" fill="#ffc3ae" fill-opacity=".85"/>
+</svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="weekBody" x1="26" y1="36" x2="102" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff3e9"/>
+      <stop offset=".6" stop-color="#ffdccc"/>
+      <stop offset="1" stop-color="#f6bda9"/>
+    </linearGradient>
+    <linearGradient id="weekTop" x1="26" y1="26" x2="102" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f79198"/>
+      <stop offset="1" stop-color="#d95f74"/>
+    </linearGradient>
+    <linearGradient id="weekHeart" x1="46" y1="60" x2="82" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff9c96"/>
+      <stop offset="1" stop-color="#e2566a"/>
+    </linearGradient>
+    <linearGradient id="weekRing" x1="40" y1="16" x2="48" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd9b8"/>
+      <stop offset="1" stop-color="#e9a27c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sombra del bloque -->
+  <rect x="24" y="40" width="82" height="62" rx="16" fill="#c9556a" fill-opacity=".5"/>
+
+  <!-- cuerpo -->
+  <rect x="22" y="34" width="82" height="62" rx="16" fill="url(#weekBody)"/>
+  <path d="M22 50a16 16 0 0 1 16-16h50a16 16 0 0 1 16 16v8H22z" fill="url(#weekTop)"/>
+  <path d="M22 50h82" stroke="#c9536a" stroke-opacity=".25" stroke-width="1.6"/>
+
+  <!-- anillas -->
+  <rect x="40" y="16" width="8" height="24" rx="4" fill="url(#weekRing)"/>
+  <rect x="62" y="14" width="8" height="24" rx="4" fill="url(#weekRing)"/>
+  <rect x="84" y="16" width="8" height="24" rx="4" fill="url(#weekRing)"/>
+
+  <!-- rejilla -->
+  <rect x="31" y="63" width="15" height="12" rx="4" fill="#f2a996" fill-opacity=".45"/>
+  <rect x="55" y="63" width="15" height="12" rx="4" fill="#f2a996" fill-opacity=".45"/>
+  <rect x="79" y="63" width="15" height="12" rx="4" fill="#f2a996" fill-opacity=".45"/>
+  <rect x="31" y="79" width="15" height="12" rx="4" fill="#f2a996" fill-opacity=".28"/>
+  <rect x="79" y="79" width="15" height="12" rx="4" fill="#f2a996" fill-opacity=".28"/>
+
+  <!-- corazones registrados -->
+  <path d="M62.5 87c0 0-6.5-4.2-6.5-8.1 0-2.5 1.9-4.5 4.3-4.5 1.1 0 1.8.5 2.2 1.2.4-.7 1.1-1.2 2.2-1.2 2.4 0 4.3 2 4.3 4.5 0 3.9-6.5 8.1-6.5 8.1z" fill="url(#weekHeart)"/>
+  <path d="M97.5 80c0 0-5.2-3.2-5.2-6.2 0-1.9 1.5-3.4 3.4-3.4.9 0 1.5.4 1.8.9.3-.5.9-.9 1.8-.9 1.9 0 3.4 1.5 3.4 3.4 0 3-5.2 6.2-5.2 6.2z" fill="url(#weekHeart)" fill-opacity=".95"/>
+  <!-- brillo -->
+  <path d="M34 72c0 8 1.6 14.6 5 19.6" stroke="#fff" stroke-opacity=".5" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M28 58h6" stroke="#fff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>
+</svg>

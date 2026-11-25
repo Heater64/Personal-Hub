@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="srpPresCartera" x1="20" y1="48" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB08A"/><stop offset="1" stop-color="#D4624A"/>
+    </linearGradient>
+    <linearGradient id="srpPresSolapa" x1="20" y1="54" x2="108" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE2D1"/><stop offset="1" stop-color="#F79BB0"/>
+    </linearGradient>
+    <linearGradient id="srpPresMoneda" x1="26" y1="20" x2="58" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE08A"/><stop offset="1" stop-color="#FFB347"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="64" cy="112" rx="36" ry="6" fill="#2A1512" opacity="0.18"/>
+  <circle cx="42" cy="38" r="18" fill="url(#srpPresMoneda)"/>
+  <circle cx="42" cy="38" r="12" fill="#FFF3E9" opacity="0.4"/>
+  <path d="M42 30v16M38 34h6a4 4 0 0 1 0 8h-4" stroke="#B9791F" stroke-width="2.6" stroke-linecap="round"/>
+  <rect x="20" y="58" width="88" height="46" rx="14" fill="url(#srpPresCartera)"/>
+  <path d="M20 72h88" stroke="#FFF3E9" stroke-width="3" opacity="0.45"/>
+  <rect x="22" y="54" width="84" height="20" rx="10" fill="url(#srpPresSolapa)"/>
+  <rect x="70" y="76" width="38" height="20" rx="10" fill="#FFF3E9" opacity="0.85"/>
+  <circle cx="83" cy="86" r="4" fill="#E8735A"/>
+  <rect x="92" y="84" width="10" height="4" rx="2" fill="#E8735A" opacity="0.5"/>
+  <path d="M96 32v14M89 39h14" stroke="#F79BB0" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+</svg>

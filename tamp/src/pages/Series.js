@@ -25,6 +25,7 @@ import {
 } from '../services/seriesData.js';
 import { seasonEditorHTML, collectSeasons, emptySeasonHTML, bindSeasonEditorEvents } from '../services/seriesEditor.js';
 import { isValidUrlField } from '../utils/format.js';
+import { icon } from '../components/ui.js';
 import { searchTmdbTitles, getTrendingTmdbTitles, getUpcomingTmdbTitles } from '../services/tmdb.service.js';
 
 let page = null;                       // elemento raíz (asignado en SeriesPage)
@@ -161,7 +162,7 @@ function continueSectionHTML(items) {
   return `
     <section class="sr-row" id="srContinueWatching" aria-label="Seguir viendo">
       <div class="sr-row-head">
-        <h3 class="sr-row-title"><span class="sr-row-emoji">▶</span>Seguir viendo</h3>
+        <h3 class="sr-row-title"><span class="sr-row-emoji">${icon('play', 12)}</span>Seguir viendo</h3>
         <span class="sr-row-count">${items.length}</span>
       </div>
       <div class="series-flat-grid">${items.map(continueCardHTML).join('')}</div>
@@ -193,7 +194,7 @@ function gridSectionHTML(title, items, emoji, id) {
   return `
     <section class="sr-row" ${id ? `id="${escapeHtml(id)}"` : ''} aria-label="${escapeHtml(title)}">
       <div class="sr-row-head">
-        <h3 class="sr-row-title">${emoji ? `<span class="sr-row-emoji">${emoji}</span>` : ''}${escapeHtml(title)}</h3>
+        <h3 class="sr-row-title"><span class="sr-row-emoji" aria-hidden="true">${emoji || icon('book', 12)}</span>${escapeHtml(title)}</h3>
         <span class="sr-row-count">${items.length}</span>
       </div>
       <div class="series-flat-grid">${items.map(cardHTML).join('')}</div>
@@ -515,7 +516,10 @@ function renderTmdbCatalog() {
       <div class="sr-tmdb-poster">${poster}<span aria-hidden="true">${item.tipo === 'serie' ? '▣' : '▶'}</span></div>
       <div class="sr-tmdb-copy"><div class="sr-tmdb-meta">${item.tipo === 'serie' ? 'Serie' : 'Película'}${date}${item.valoracion ? ` · ★ ${item.valoracion.toFixed(1)}` : ''}${item.generos?.length ? ` · ${escapeHtml(item.generos.slice(0, 2).join(', '))}` : ''}</div>
         <h4>${escapeHtml(item.titulo)}</h4><p>${escapeHtml(item.descripcion || 'Sin sinopsis disponible.')}</p>
-        <button type="button" class="sr-tmdb-add" data-tmdb-add="${escapeHtml(item.id)}" ${inWatchlist ? 'disabled' : ''}>${inWatchlist ? 'En nuestra lista ✓' : '+ Añadir a nuestra lista'}</button>
+        <div class="sr-tmdb-actions">
+          ${userStore.isAdmin ? `<button type="button" class="sr-tmdb-import" data-tmdb-import="${escapeHtml(item.id)}">+ Al catálogo</button>` : ''}
+          <button type="button" class="sr-tmdb-add" data-tmdb-add="${escapeHtml(item.id)}" ${inWatchlist ? 'disabled' : ''}>${inWatchlist ? 'En nuestra lista ✓' : '+ Nuestra lista'}</button>
+        </div>
       </div>
     </article>`;
   }).join('');
@@ -538,13 +542,63 @@ async function loadTmdbCatalog(query = '') {
   } catch (error) {
     if (requestId !== tmdbRequestId || !page?.isConnected) return;
     tmdbItems = [];
-    tmdbError = error?.message || 'No se pudo conectar con TMDB.';
+    tmdbError = error?.status === 503
+      ? 'La búsqueda de TMDB aún no está activada en el servidor: falta TMDB_ACCESS_TOKEN.'
+      : error?.message || 'No se pudo conectar con TMDB.';
   } finally {
     if (requestId === tmdbRequestId && page?.isConnected) {
       tmdbLoading = false;
       renderTmdbCatalog();
     }
   }
+}
+
+/**
+ * Trae una ficha de TMDB al catálogo (solo admin: el catálogo es compartido y
+ * saveSeries exige admin). Copia título, año, sinopsis, portada, banner,
+ * géneros y nota; las temporadas se añaden después desde el editor.
+ */
+async function addTmdbTitleToCatalog(id) {
+  const item = tmdbItems.find(entry => entry.id === id);
+  if (!item) return;
+  const repeated = catalog.some(entry =>
+    (item.tmdbId && entry.tmdbId === item.tmdbId) ||
+    (normalizeText(entry.titulo) === normalizeText(item.titulo) && entry.tipo === item.tipo)
+  );
+  if (repeated) {
+    showToast('Ya está en el catálogo', 'info');
+    return;
+  }
+  const previous = catalog;
+  catalog = [...catalog, {
+    id: createId(),
+    tmdbId: item.tmdbId || null,
+    tmdbType: item.tmdbType || '',
+    titulo: item.titulo,
+    tipo: item.tipo,
+    anio: item.anio || '',
+    descripcion: item.descripcion || '',
+    portada: item.portada || '',
+    banner: item.banner || '',
+    generos: Array.isArray(item.generos) ? item.generos : [],
+    valoracion: Number(item.valoracion) || 0,
+    categoria: '',
+    destacado: false,
+    recurso: '',
+    webUrl: '',
+    createdAt: Date.now(),
+    temporadas: []
+  }];
+  try {
+    await saveData();
+  } catch (error) {
+    catalog = previous;
+    showToast(error?.message || 'No se pudo añadir al catálogo', 'error');
+    return;
+  }
+  render();
+  renderAll();
+  showToast(`${item.titulo} añadido al catálogo ✓`, 'success');
 }
 
 async function addTmdbTitleToWatchlist(id) {
@@ -798,7 +852,7 @@ function renderDetail(item) {
 
       ${related.length ? `
         <section class="sr-detail-section">
-          <div class="sr-row-head"><h3 class="sr-row-title">También podría gustarte</h3><span class="sr-row-count">${related.length}</span></div>
+          <div class="sr-row-head"><h3 class="sr-row-title"><span class="sr-row-emoji" aria-hidden="true">${icon('spark', 12)}</span>También podría gustarte</h3><span class="sr-row-count">${related.length}</span></div>
           <div class="sr-detail-related">${related.map(cardHTML).join('')}</div>
         </section>` : ''}
     </div>
@@ -1166,10 +1220,8 @@ function render() {
     <div class="series-content">
       <div class="sr-topbar">
         <div class="sr-topbar-left">
-          <div class="sr-page-heading">
-            <span class="sr-page-emoji" aria-hidden="true">🎬</span>
-            <h1 class="sr-page-title">Series y Películas</h1>
-          </div>
+          <p class="sr-page-kicker">${icon('play', 11)} Nuestra videoteca</p>
+          <h1 class="sr-page-title">Series y Películas</h1>
           <div class="sr-page-stats">
             <span class="sr-stat-chip">${catalog.length} títulos</span>
             <span class="sr-stat-chip">${seriesCount} series</span>
@@ -1184,9 +1236,9 @@ function render() {
       </div>
 
       <div class="sr-view-tabs" role="tablist" aria-label="Vistas de la sección">
-        <button class="sr-view-tab ${currentView === 'home' ? 'active' : ''}" data-view="home" role="tab" id="srTabHome" aria-controls="srViewHome" aria-selected="${currentView === 'home'}" tabindex="${currentView === 'home' ? 0 : -1}">Inicio</button>
-        <button class="sr-view-tab ${currentView === 'catalog' ? 'active' : ''}" data-view="catalog" role="tab" id="srTabCatalog" aria-controls="srViewCatalog" aria-selected="${currentView === 'catalog'}" tabindex="${currentView === 'catalog' ? 0 : -1}">Catálogo</button>
-        <button class="sr-view-tab ${currentView === 'top5' ? 'active' : ''}" data-view="top5" role="tab" id="srTabTop5" aria-controls="srViewTop5" aria-selected="${currentView === 'top5'}" tabindex="${currentView === 'top5' ? 0 : -1}">Mi Top 5</button>
+        <button class="sr-view-tab ${currentView === 'home' ? 'active' : ''}" data-view="home" role="tab" id="srTabHome" aria-controls="srViewHome" aria-selected="${currentView === 'home'}" tabindex="${currentView === 'home' ? 0 : -1}">${icon('home', 14)}Inicio</button>
+        <button class="sr-view-tab ${currentView === 'catalog' ? 'active' : ''}" data-view="catalog" role="tab" id="srTabCatalog" aria-controls="srViewCatalog" aria-selected="${currentView === 'catalog'}" tabindex="${currentView === 'catalog' ? 0 : -1}">${icon('book', 14)}Catálogo</button>
+        <button class="sr-view-tab ${currentView === 'top5' ? 'active' : ''}" data-view="top5" role="tab" id="srTabTop5" aria-controls="srViewTop5" aria-selected="${currentView === 'top5'}" tabindex="${currentView === 'top5' ? 0 : -1}">${icon('star', 14)}Mi Top 5</button>
       </div>
 
       <!-- Fase Pro: la lista que los dos veis y editáis (fila de content). -->
@@ -1205,9 +1257,9 @@ function render() {
             <button class="sr-chip ${currentFilter === 'todo' ? 'active' : ''}" data-filter="todo">Todo</button>
             <button class="sr-chip ${currentFilter === 'serie' ? 'active' : ''}" data-filter="serie">Series</button>
             <button class="sr-chip ${currentFilter === 'pelicula' ? 'active' : ''}" data-filter="pelicula">Películas</button>
-            <button class="sr-chip ${currentFilter === 'favoritas' ? 'active' : ''}" data-filter="favoritas">❤ Favoritas</button>
+            <button class="sr-chip ${currentFilter === 'favoritas' ? 'active' : ''}" data-filter="favoritas">${icon('heart', 13)}Favoritas</button>
             <button class="sr-chip ${currentFilter === 'encurso' ? 'active' : ''}" data-filter="encurso">En curso</button>
-            <button class="sr-chip ${currentFilter === 'vistas' ? 'active' : ''}" data-filter="vistas">✓ Vistas</button>
+            <button class="sr-chip ${currentFilter === 'vistas' ? 'active' : ''}" data-filter="vistas">${icon('check', 13)}Vistas</button>
             <button class="sr-chip ${currentFilter === 'porver' ? 'active' : ''}" data-filter="porver">Por ver</button>
           </div>
         </div>
@@ -1360,6 +1412,15 @@ function render() {
     if (modeButton) {
       tmdbMode = modeButton.dataset.tmdbMode === 'upcoming' ? 'upcoming' : 'trending';
       void loadTmdbCatalog('');
+      return;
+    }
+    const importButton = event.target.closest('[data-tmdb-import]');
+    if (importButton) {
+      if (importButton.disabled) return;
+      importButton.disabled = true;
+      void addTmdbTitleToCatalog(importButton.dataset.tmdbImport).finally(() => {
+        if (importButton.isConnected) importButton.disabled = false;
+      });
       return;
     }
     const button = event.target.closest('[data-tmdb-add]');

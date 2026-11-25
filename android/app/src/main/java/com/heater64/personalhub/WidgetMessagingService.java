@@ -72,6 +72,7 @@ public class WidgetMessagingService extends MessagingService {
         }
 
         Intent launch = new Intent(this, MainActivity.class)
+                .setAction(DeviceStatusService.ACTION_USER_LOCATION_REFRESH)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent contentIntent = PendingIntent.getActivity(this, LOCATION_REFRESH_NOTIFICATION_ID,
                 launch, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

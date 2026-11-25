@@ -2,6 +2,7 @@ package com.heater64.personalhub;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertEquals;
 
 import android.Manifest;
 import android.content.Context;
@@ -22,7 +23,7 @@ import org.robolectric.annotation.Config;
 public class BootReceiverTest {
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 29, 33, 34, 36 })
     public void enabledTrackingRestartsAfterBootWhenPermissionsAllowIt() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         prepareEnabledTracking(context);
@@ -37,7 +38,7 @@ public class BootReceiverTest {
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 29, 33, 34, 36 })
     public void enabledTrackingRestartsAfterAppReplacementWhenPermissionsAllowIt() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         prepareEnabledTracking(context);
@@ -52,7 +53,7 @@ public class BootReceiverTest {
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 29, 33, 34, 36 })
     public void enabledTrackingDoesNotStartAfterBootWithoutBackgroundPermission() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         prepareEnabledTracking(context);
@@ -65,10 +66,12 @@ public class BootReceiverTest {
         new BootReceiver().onReceive(context, new Intent(Intent.ACTION_BOOT_COMPLETED));
 
         assertNull(Shadows.shadowOf(RuntimeEnvironment.getApplication()).getNextStartedService());
+        assertEquals("background-location-permission",
+                DeviceStatusService.prefs(context).getString("last_error", ""));
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 29, 33, 34, 36 })
     public void appReplacementDoesNotStartTrackingWithoutBackgroundPermission() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         prepareEnabledTracking(context);
@@ -81,10 +84,12 @@ public class BootReceiverTest {
         new BootReceiver().onReceive(context, new Intent(Intent.ACTION_MY_PACKAGE_REPLACED));
 
         assertNull(Shadows.shadowOf(RuntimeEnvironment.getApplication()).getNextStartedService());
+        assertEquals("background-location-permission",
+                DeviceStatusService.prefs(context).getString("last_error", ""));
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 29, 33, 34, 36 })
     public void unrelatedBroadcastDoesNotStartTracking() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         prepareEnabledTracking(context);

@@ -121,50 +121,50 @@ test('server API errors never return raw provider exception messages', async () 
 });
 
 test('the missing-location notice explains that the shared map can still show the partner', async () => {
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const settings = await read('tamp/src/components/location/settings.js');
 
-  assert.match(sheet, /Sin permiso no se comparte tu ubicación ni se calcula la distancia/);
-  assert.match(sheet, /El mapa puede seguir mostrando los datos de tu pareja/);
-  assert.doesNotMatch(sheet, /Sin permiso no hay distancia ni mapa/);
+  assert.match(settings, /Sin permiso no se comparte tu ubicación ni se calcula la distancia/);
+  assert.match(settings, /El mapa puede seguir mostrando los datos de tu pareja/);
+  assert.doesNotMatch(settings, /Sin permiso no hay distancia ni mapa/);
 });
 
 test('the map exposes tile loading and network failures instead of staying silently dark', async () => {
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
-  const css = await read('tamp/src/styles/distance-map.css');
+  const map = await read('tamp/src/components/location/map.js');
+  const css = await read('tamp/src/styles/ubicacion.css');
 
-  assert.match(sheet, /data-map-state role="status" aria-live="polite"/);
-  assert.match(sheet, /tileLayer\.on\('loading'/);
-  assert.match(sheet, /tileLayer\.on\('tileerror'/);
-  assert.match(sheet, /No se pudieron cargar los mosaicos del mapa/);
-  assert.match(sheet, /new ResizeObserver\(invalidateMapSize\)/,
+  assert.match(map, /data-state role="status" aria-live="polite"/);
+  assert.match(map, /tileLayer\.on\('loading'/);
+  assert.match(map, /tileLayer\.on\('tileerror'/);
+  assert.match(map, /No se pudieron cargar los mosaicos del mapa/);
+  assert.match(map, /new ResizeObserver\(invalidateSize\)/,
     'el mapa se reajusta cuando la transición o el layout cambian el tamaño del contenedor');
-  assert.match(sheet, /requestAnimationFrame\(\(\) => requestAnimationFrame\(invalidateMapSize\)\)/,
+  assert.match(map, /requestAnimationFrame\(\(\) => requestAnimationFrame\(invalidateSize\)\)/,
     'espera a que el navegador pinte el tamaño final antes de recalcular las teselas');
-  assert.match(sheet, /_mapResizeObserver\?\.disconnect\(\)/,
+  assert.match(map, /resizeObserver\?\.disconnect\(\)/,
     'desconecta el observador al vaciar o desmontar el mapa');
-  assert.match(css, /\.distmap__canvas\.leaflet-container\s*\{[^}]*color-scheme:\s*light/s,
-    'las teselas de OpenStreetMap no deben recibir el oscurecimiento forzado del navegador');
+  assert.match(css, /\.locmap \.leaflet-tile-pane\s*\{[^}]*filter:/s,
+    'el oscurecido va solo a las teselas: chinchetas y etiquetas conservan su color');
 });
 
 test('the full map renders immediately while location requests are still pending', async () => {
-  const page = await read('tamp/src/pages/Mapa.js');
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const page = await read('tamp/src/pages/Ubicacion.js');
+  const map = await read('tamp/src/components/location/map.js');
 
   assert.doesNotMatch(page, /Buscando las dos posiciones/,
     'no debe ocupar toda la pantalla con una vista negra mientras espera la red');
   assert.match(page, /pintar\(\{\s*me:\s*fetchMyLocation\(\),\s*partner:\s*null,\s*km:\s*null\s*\}\);/,
     'crea el mapa base inmediatamente, antes de recibir las posiciones remotas');
-  assert.match(sheet, /map\.setView\(\[40\.4,\s*-3\.7\],\s*5\)/,
+  assert.match(map, /const START = \[40\.4, -3\.7\];/,
     'sin una posición todavía, usa una vista genérica de España y no un punto personal');
-  assert.match(sheet, /if \(!points\.length\) \{\s*\/\/ La vista genérica ya muestra el mapa base/,
-    'el estado sin posiciones no debe leer el primer marcador que aún no existe');
-  assert.match(sheet, /!wrap\._hasCenteredOnData/,
+  assert.match(map, /mapInstance\.setView\(START, 5\)/,
+    'el mapa base se pinta con la vista genérica mientras no hay puntos');
+  assert.match(map, /!centeredOnce && !movedByUser/,
     'al llegar la primera ubicación centra el mapa una vez y después respeta el movimiento manual');
 });
 
 test('partner profile lookup cannot delay or overwrite the newest map position', async () => {
-  const page = await read('tamp/src/pages/Mapa.js');
-  const watch = page.slice(page.indexOf('const parar = watchDistance'), page.indexOf("page.addEventListener('click'"));
+  const page = await read('tamp/src/pages/Ubicacion.js');
+  const watch = page.slice(page.indexOf('const parar = watchDistance'), page.indexOf('page.cleanup'));
 
   assert.doesNotMatch(watch, /await fetchProfile\(/,
     'name/avatar are optional and must not hold up a known GPS position');
@@ -403,8 +403,11 @@ test('the Android service refreshes on a partner request and reports new locatio
 
 test('the map refreshes live data without recreating the map and supports shared places', async () => {
   const location = await read('tamp/src/services/location.service.js');
-  const map = await read('tamp/src/components/DistanceMapSheet.js');
-  const screen = await read('tamp/src/pages/Mapa.js');
+  const map = await read('tamp/src/components/location/map.js');
+  const cards = await read('tamp/src/components/location/deviceCard.js');
+  const states = await read('tamp/src/components/location/state.js');
+  const places = await read('tamp/src/components/location/places.js');
+  const screen = await read('tamp/src/pages/Ubicacion.js');
 
   assert.match(location, /postgres_changes[\s\S]*?table: 'couple_locations'/);
   assert.match(location, /refreshBothLocations/);
@@ -412,23 +415,24 @@ test('the map refreshes live data without recreating the map and supports shared
     'the map must request the partner refresh even when the own GPS read fails');
   assert.match(location, /from\('couple_places'\)\.insert/);
   assert.match(location, /updateSharedPlace/);
-  assert.match(location, /\[10, 20, 50, 75, 150, 300, 500, 1000\]/);
-  assert.match(map, /data-edit-place/);
-  assert.match(map, /distmap__place-label/);
-  assert.match(map, /Siempre activo/);
-  assert.match(map, /Ubicación en pausa/);
-  assert.match(map, /Última lectura \$\{updated \|\| 'antigua'\}/);
-  assert.match(map, /Mbps estimados/);
-  assert.match(map, /batteryTile\(person, stale, updated\)/);
-  assert.match(map, /const locationUpdated = timeAgo\(person\.at\)/);
-  assert.match(map, /if \(Number\.isFinite\(person\.speed\)\) \{[\s\S]*?locationStale/);
-  assert.match(map, /if \(Number\.isFinite\(person\.accuracy\)\) \{[\s\S]*?locationStale/);
-  assert.match(map, /stale \? 'Sin señal' : person\.batteryPaused \? 'Ubicación en pausa'/);
-  assert.match(map, /Actualizar ahora/);
-  assert.match(map, /Ver ambos/);
-  assert.match(map, /watchSharedPlaces/);
-  assert.match(map, /coordinates\.length === 1\) map\.setView\(coordinates\[0\], 13\)/);
+  // Los preajustes son atajos: el radio puede ser cualquiera entre 10 m y 1 km.
+  assert.match(location, /radius >= 10 && radius <= 1000/);
+  assert.match(places, /data-edit/);
+  assert.match(places, /removeSharedPlace/);
+  assert.match(places, /watchSharedPlaces/);
+  assert.match(map, /locmap__place-label/);
+  assert.match(states, /Ubicación actualizada/);
+  assert.match(states, /Ubicación en pausa/);
+  assert.match(cards, /Datos de la última conexión/);
+  assert.match(cards, /Mbps/);
+  assert.match(cards, /batteryInfo\(person\)/);
+  assert.match(cards, /timeAgo\(person\.at \|\| person\.sentAt\)/);
+  assert.match(cards, /Number\.isFinite\(person\.speed\)/);
+  assert.match(cards, /Number\.isFinite\(person\.accuracy\)/);
+  assert.match(screen, /Actualizar ahora/);
+  assert.match(map, /Ver las dos ubicaciones/);
+  assert.match(map, /coordinates\.length === 1\) map\.setView\(coordinates\[0\], 14\)/);
   assert.ok(map.indexOf('canvas.replaceChildren()') < map.indexOf('L.map(canvas'),
     'el estado vacío se elimina antes de que Leaflet añada sus capas y controles');
-  assert.match(screen, /vista\._refresh\(model\)/);
+  assert.match(screen, /const pintar = next =>/);
 });

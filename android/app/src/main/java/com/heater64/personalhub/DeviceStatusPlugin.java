@@ -1,6 +1,8 @@
 package com.heater64.personalhub;
 
 import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,6 +13,7 @@ import android.os.PowerManager;
 import android.provider.Settings;
 
 import androidx.core.content.ContextCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -107,6 +110,7 @@ public class DeviceStatusPlugin extends Plugin {
         SharedPreferences prefs = DeviceStatusService.prefs(context);
 
         JSObject out = trackingState(context);
+        out.put("manufacturer", Build.MANUFACTURER);
         boolean locationGranted = DeviceStatusService.hasLocationPermission(context);
         out.put("location", locationGranted ? "granted" : "denied");
         out.put("locationPrecision", DeviceStatusService.hasPreciseLocationPermission(context) ? "precise"
@@ -114,6 +118,7 @@ public class DeviceStatusPlugin extends Plugin {
         out.put("background", backgroundPermissionState(context));
         out.put("locationServices", locationServicesState(context));
         out.put("notifications", notificationPermissionState(context));
+        out.put("partnerNotificationsEnabled", arePartnerNotificationsEnabled(context));
         out.put("batteryUnrestricted", batteryUnrestricted(context));
         out.put("lastAt", prefs.getString("last_sent_at", ""));
         out.put("lastAttemptAt", prefs.getString("last_attempt_at", ""));
@@ -228,6 +233,17 @@ public class DeviceStatusPlugin extends Plugin {
     private String notificationPermissionState(Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return "granted";
         return permissionState(context, Manifest.permission.POST_NOTIFICATIONS);
+    }
+
+    static boolean arePartnerNotificationsEnabled(Context context) {
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true;
+
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager == null) return false;
+        NotificationChannel channel = manager.getNotificationChannel(
+                context.getString(R.string.default_notification_channel_id));
+        return channel != null && channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
     }
 
     private String locationServicesState(Context context) {

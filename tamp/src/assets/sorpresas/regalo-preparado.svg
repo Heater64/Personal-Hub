@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="srpPrepCaja" x1="26" y1="56" x2="100" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC9A8"/><stop offset="1" stop-color="#E8735A"/>
+    </linearGradient>
+    <linearGradient id="srpPrepLazo" x1="40" y1="44" x2="88" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD1DC"/><stop offset="1" stop-color="#F2758F"/>
+    </linearGradient>
+    <linearGradient id="srpPrepBrillo" x1="96" y1="16" x2="120" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3E9"/><stop offset="1" stop-color="#FFC77D"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="64" cy="113" rx="36" ry="6" fill="#2A1512" opacity="0.18"/>
+  <rect x="26" y="58" width="76" height="50" rx="14" fill="url(#srpPrepCaja)"/>
+  <rect x="26" y="58" width="76" height="50" rx="14" fill="#8A3E35" opacity="0.12"/>
+  <rect x="24" y="62" width="80" height="10" rx="5" fill="#FFF3E9" opacity="0.55"/>
+  <rect x="57" y="46" width="14" height="62" rx="7" fill="#FFF3E9" opacity="0.9"/>
+  <path d="M64 47c-11-1-22-6-22-14 0-6 8-9 13-5 5 4 8 11 9 19Z" fill="url(#srpPrepLazo)"/>
+  <path d="M64 47c11-1 22-6 22-14 0-6-8-9-13-5-5 4-8 11-9 19Z" fill="url(#srpPrepLazo)"/>
+  <circle cx="64" cy="44" r="6" fill="#FFF3E9"/>
+  <path d="M104 20l2.5 7 7 2.5-7 2.5-2.5 7-2.5-7-7-2.5 7-2.5 2.5-7Z" fill="url(#srpPrepBrillo)"/>
+  <path d="M24 26l1.8 5 5 1.8-5 1.8-1.8 5-1.8-5-5-1.8 5-1.8 1.8-5Z" fill="#F79BB0" opacity="0.85"/>
+  <rect x="36" y="80" width="14" height="4" rx="2" fill="#FFF3E9" opacity="0.4"/>
+</svg>

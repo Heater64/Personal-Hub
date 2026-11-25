@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="srpIdeaLuz" x1="64" y1="10" x2="64" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3E9"/><stop offset="1" stop-color="#FFC77D"/>
+    </linearGradient>
+    <linearGradient id="srpIdeaCaja" x1="28" y1="68" x2="100" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB08A"/><stop offset="1" stop-color="#E8735A"/>
+    </linearGradient>
+    <linearGradient id="srpIdeaTapa" x1="24" y1="62" x2="104" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFDCC7"/><stop offset="1" stop-color="#F79BB0"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="64" cy="115" rx="34" ry="6" fill="#2A1512" opacity="0.18"/>
+  <path d="M64 12a22 22 0 0 1 13 39.5c-3 2.4-4 5.4-4 8.5H55c0-3.1-1-6.1-4-8.5A22 22 0 0 1 64 12Z" fill="url(#srpIdeaLuz)"/>
+  <path d="M55 64h18l-1.5 7h-15L55 64Z" fill="#E8A05F"/>
+  <path d="M57 73h14" stroke="#C97F44" stroke-width="3" stroke-linecap="round"/>
+  <path d="M64 26v10M53 31l4 6M75 31l-4 6" stroke="#E8735A" stroke-width="3" stroke-linecap="round"/>
+  <rect x="28" y="82" width="72" height="32" rx="12" fill="url(#srpIdeaCaja)"/>
+  <rect x="24" y="72" width="80" height="18" rx="9" fill="url(#srpIdeaTapa)"/>
+  <rect x="58" y="72" width="12" height="42" rx="6" fill="#FFF3E9" opacity="0.8"/>
+  <circle cx="104" cy="30" r="3" fill="#FFC77D"/>
+  <circle cx="24" cy="22" r="2.5" fill="#F79BB0"/>
+</svg>

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="calBody" x1="26" y1="38" x2="102" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff2e5"/>
+      <stop offset=".55" stop-color="#ffdccb"/>
+      <stop offset="1" stop-color="#f5bda9"/>
+    </linearGradient>
+    <linearGradient id="calTop" x1="26" y1="26" x2="102" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f2929a"/>
+      <stop offset="1" stop-color="#d15a70"/>
+    </linearGradient>
+    <linearGradient id="calDay" x1="54" y1="60" x2="76" y2="82" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f9a18f"/>
+      <stop offset="1" stop-color="#e06a76"/>
+    </linearGradient>
+    <linearGradient id="calHeart" x1="60" y1="64" x2="72" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff6ee"/>
+      <stop offset="1" stop-color="#ffdcc9"/>
+    </linearGradient>
+    <linearGradient id="calRing" x1="40" y1="16" x2="48" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffdfbe"/>
+      <stop offset="1" stop-color="#e7a179"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sombra -->
+  <rect x="26" y="42" width="76" height="62" rx="16" fill="#b85165" fill-opacity=".42"/>
+
+  <!-- cuerpo -->
+  <rect x="24" y="36" width="76" height="62" rx="16" fill="url(#calBody)"/>
+  <path d="M24 52a16 16 0 0 1 16-16h44a16 16 0 0 1 16 16v6H24z" fill="url(#calTop)"/>
+
+  <!-- anillas -->
+  <rect x="40" y="20" width="8" height="24" rx="4" fill="url(#calRing)"/>
+  <rect x="76" y="20" width="8" height="24" rx="4" fill="url(#calRing)"/>
+
+  <!-- rejilla de días -->
+  <rect x="32" y="63" width="17" height="14" rx="5" fill="#ebae99" fill-opacity=".4"/>
+  <rect x="79" y="63" width="17" height="14" rx="5" fill="#ebae99" fill-opacity=".4"/>
+  <rect x="32" y="81" width="17" height="14" rx="5" fill="#ebae99" fill-opacity=".26"/>
+  <rect x="55.5" y="81" width="17" height="14" rx="5" fill="#ebae99" fill-opacity=".4"/>
+  <rect x="79" y="81" width="17" height="14" rx="5" fill="#ebae99" fill-opacity=".26"/>
+
+  <!-- fecha especial: el día con corazón -->
+  <rect x="53.5" y="60" width="21" height="17" rx="6" fill="url(#calDay)"/>
+  <path d="M64 73.5c0 0-6.6-4.4-6.6-8.3 0-2.3 1.8-4.2 4.1-4.2 1.2 0 2 .5 2.5 1.2.5-.7 1.3-1.2 2.5-1.2 2.3 0 4.1 1.9 4.1 4.2 0 3.9-6.6 8.3-6.6 8.3z" fill="url(#calHeart)"/>
+
+  <!-- brillo -->
+  <path d="M34 47h7" stroke="#fff" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
+  <path d="M32 62c-.8 4.6-.6 9.4.6 13.8" stroke="#fff" stroke-opacity=".4" stroke-width="2.8" stroke-linecap="round"/>
+
+  <!-- destellos -->
+  <path d="M100 30l1.3 3.5 3.5 1.3-3.5 1.3-1.3 3.5-1.3-3.5-3.5-1.3 3.5-1.3z" fill="#ffcbb3"/>
+  <path d="M112 64c1.6.6 2.8 1.6 3.6 2.8" stroke="#f3ab8f" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

@@ -8,6 +8,9 @@
 import { getVideoPoster, isVideo, cloudinaryThumb, mediaThumb } from '../../services/rincon-data.js';
 import { loadGiftsCatalog, unlockedCalendarVideos } from '../../services/gifts.service.js';
 import { escapeHtml } from '../../utils/escape.js';
+// El estado "cargada/error" de las miniaturas se aplica con listeners
+// delegados: la CSP del despliegue bloquea los handlers inline.
+import '../../utils/imageReveal.js';
 import {
   baseFolders, basePhotos, userPhotos,
   visiblePhotos, hiddenPhotos,
@@ -173,7 +176,7 @@ export function createGaleria(ctx) {
       const vid = isVideo(src);
       const thumb = galleryThumb(src, 480);
       const media = thumb
-        ? `<span class="meme-cell-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="" loading="${prioritize ? 'eager' : 'lazy'}"${prioritize ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="meme-cell-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
+        ? `<span class="meme-cell-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="" loading="${prioritize ? 'eager' : 'lazy'}"${prioritize ? ' fetchpriority="high"' : ''} decoding="async"><span class="meme-cell-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
         : `<span class="meme-cell-fallback" aria-hidden="true">${vid ? ICON_SVGS['play'] : ICON_SVGS['image']}</span>`;
       return `<div class="meme-album-cell${vid ? ' is-video' : ''}${thumb ? '' : ' is-no-poster'}" data-cell-index="${i}">${media}${vid ? `<span class="meme-cell-play" aria-hidden="true">${ICON_SVGS['play']}</span>` : ''}</div>`;
     }).join('');
@@ -277,7 +280,7 @@ export function createGaleria(ctx) {
       const isVid = isVideo(src);
       const thumb = cloudinaryThumb(memePoster(src), 600);
       const media = thumb
-        ? `<span class="meme-cell-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="" loading="${imageLoading}"${imagePriority} decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="meme-cell-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
+        ? `<span class="meme-cell-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="" loading="${imageLoading}"${imagePriority} decoding="async"><span class="meme-cell-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
         : `<span class="meme-cell-fallback" aria-hidden="true">${isVid ? ICON_SVGS['play'] : ICON_SVGS['image']}</span>`;
       return `<div class="meme-album-cell ${isVid ? 'is-video' : ''}${thumb ? '' : ' is-no-poster'}" data-cell-index="${i}">${media}${isVid ? `<span class="meme-cell-play" aria-hidden="true">${ICON_SVGS['play']}</span>` : ''}</div>`;
     }).join('');

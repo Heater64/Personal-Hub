@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="giftBox" x1="30" y1="56" x2="98" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f68f8d"/>
+      <stop offset=".55" stop-color="#e76b78"/>
+      <stop offset="1" stop-color="#c24d67"/>
+    </linearGradient>
+    <linearGradient id="giftLid" x1="24" y1="38" x2="104" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffa79b"/>
+      <stop offset="1" stop-color="#da5c72"/>
+    </linearGradient>
+    <linearGradient id="giftRibbon" x1="56" y1="40" x2="74" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe4d0"/>
+      <stop offset="1" stop-color="#f8bda6"/>
+    </linearGradient>
+    <linearGradient id="giftBow" x1="44" y1="24" x2="86" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff0e2"/>
+      <stop offset="1" stop-color="#f6bfa6"/>
+    </linearGradient>
+    <linearGradient id="giftTag" x1="94" y1="70" x2="112" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff3e8"/>
+      <stop offset="1" stop-color="#f6c6b5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sombra -->
+  <rect x="28" y="60" width="72" height="50" rx="10" fill="#8f3a50" fill-opacity=".35" transform="translate(0 4)"/>
+
+  <!-- caja -->
+  <rect x="28" y="58" width="72" height="50" rx="10" fill="url(#giftBox)"/>
+  <!-- tapa -->
+  <rect x="22" y="42" width="84" height="20" rx="9" fill="url(#giftLid)"/>
+  <path d="M22 54h84" stroke="#b74860" stroke-opacity=".28" stroke-width="1.6"/>
+
+  <!-- lazo vertical -->
+  <rect x="58" y="42" width="12" height="66" fill="url(#giftRibbon)"/>
+  <rect x="22" y="48" width="84" height="9" fill="url(#giftRibbon)" fill-opacity=".9"/>
+
+  <!-- volumen caja -->
+  <path d="M36 66c-2.2 9.8-2.6 22.2-1.2 34" stroke="#fff" stroke-opacity=".28" stroke-width="4" stroke-linecap="round"/>
+  <path d="M94 66c1.2 6.4 1.6 12.8 1.4 19.2" stroke="#fff" stroke-opacity=".18" stroke-width="3.4" stroke-linecap="round"/>
+
+  <!-- lazo -->
+  <path d="M64 42c-6.4-14.6-24-16.4-24-4.6 0 6.4 10.4 9.4 24 5.6z" fill="url(#giftBow)"/>
+  <path d="M64 42c6.4-14.6 24-16.4 24-4.6 0 6.4-10.4 9.4-24 5.6z" fill="url(#giftBow)" fill-opacity=".92"/>
+  <path d="M64 42c-3.6-8.6-11.6-11-15.4-6.8" stroke="#fff" stroke-opacity=".5" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="64" cy="42" r="7" fill="#ffe9d8"/>
+  <circle cx="64" cy="42" r="7" stroke="#eeb096" stroke-width="1.4"/>
+
+  <!-- etiqueta -->
+  <path d="M90 62c4.4 1.2 7 4 7.6 7.6" stroke="#ffd6bf" stroke-width="2.2" stroke-linecap="round"/>
+  <g transform="rotate(12 101 82)">
+    <rect x="91" y="70" width="21" height="26" rx="6" fill="url(#giftTag)"/>
+    <circle cx="101.5" cy="75.5" r="2.2" fill="#e69a8d"/>
+    <path d="M101.5 91c0 0-5.4-3.6-5.4-6.8 0-2.1 1.6-3.8 3.5-3.8.9 0 1.6.5 1.9 1.1.3-.6.9-1.1 1.9-1.1 1.9 0 3.5 1.7 3.5 3.8 0 3.2-5.4 6.8-5.4 6.8z" fill="#e2606f"/>
+  </g>
+
+  <!-- destellos -->
+  <path d="M30 32l1.4 3.8 3.8 1.4-3.8 1.4-1.4 3.8-1.4-3.8-3.9-1.4 3.9-1.4z" fill="#ffceb6"/>
+  <path d="M100 28l1 2.8 2.8 1-2.8 1-1 2.8-1-2.8-2.8-1 2.8-1z" fill="#ffc5b3" fill-opacity=".9"/>
+  <circle cx="42" cy="34" r="2" fill="#ffbca8" fill-opacity=".8"/>
+</svg>

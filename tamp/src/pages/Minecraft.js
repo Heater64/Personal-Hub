@@ -15,6 +15,9 @@ import '../styles/minecraft.css';
 import { showToast } from '../components/Toast.js';
 import { renderPageHeader } from '../components/PageHeader.js';
 import { escapeHtml } from '../utils/escape.js';
+// El estado "cargada/error" de las fotos se aplica con listeners
+// delegados: la CSP del despliegue bloquea los handlers inline.
+import '../utils/imageReveal.js';
 import { userStore } from '../stores/user.store.js';
 import { createLightbox, openLightbox } from '../components/MediaLightbox.js';
 import { db } from '../services/db.service.js';
@@ -114,7 +117,7 @@ function renderWorldsList() {
               ${isAdmin ? `<button class="mc-world-menu" data-menu-world="${escapeHtml(w.id)}" aria-label="Opciones de ${escapeHtml(w.name)}" title="Opciones del mundo">⋮</button>` : ''}
               <div class="mc-world-media${thumb ? '' : ' is-empty'}">
                 ${thumb
-                  ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}"${coverSet ? ` srcset="${escapeHtml(coverSet)}" sizes="(max-width: 599px) 100vw, (max-width: 899px) 48vw, 33vw"` : ''} alt="" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="mc-world-fallback" aria-hidden="true">⛏️</span>`
+                  ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}"${coverSet ? ` srcset="${escapeHtml(coverSet)}" sizes="(max-width: 599px) 100vw, (max-width: 899px) 48vw, 33vw"` : ''} alt="" loading="lazy" decoding="async"><span class="mc-world-fallback" aria-hidden="true">⛏️</span>`
                   : `<span class="mc-world-emoji">⛏️</span><span class="mc-world-open-hint">Abrir mundo</span>`}
               </div>
               <div class="mc-world-info">
@@ -210,7 +213,7 @@ function renderWorldDetail() {
             <div class="mc-item" data-mc-item="${escapeHtml(it.id)}" data-index="${i}">
               <div class="mc-item-media ${isVid ? 'is-video' : ''}${t ? '' : 'is-no-thumb'}" role="button" tabindex="0" aria-label="${isVid ? 'Ver vídeo' : 'Ver foto'} ${escapeHtml(world.name)} ${i + 1}">
                 ${t
-                  ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(t)}"${tSet ? ` srcset="${escapeHtml(tSet)}" sizes="(max-width: 599px) 46vw, (max-width: 899px) 31vw, 24vw"` : ''} alt="${escapeHtml(it.caption || '')}" loading="lazy" decoding="async" onload="this.parentElement.classList.add('is-loaded');var m=this.closest('.mc-item-media');if(m&&this.naturalWidth){m.style.aspectRatio=this.naturalWidth+' / '+this.naturalHeight}" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="mc-world-fallback" aria-hidden="true">${isVid ? UI.play : '🖼️'}</span>`
+                  ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(t)}"${tSet ? ` srcset="${escapeHtml(tSet)}" sizes="(max-width: 599px) 46vw, (max-width: 899px) 31vw, 24vw"` : ''} alt="${escapeHtml(it.caption || '')}" loading="lazy" decoding="async" data-img-ratio><span class="mc-world-fallback" aria-hidden="true">${isVid ? UI.play : '🖼️'}</span>`
                   : `<span class="mc-item-no-thumb">${isVid ? UI.play : '🖼️'}</span>`}
                 ${isVid ? `<span class="mc-item-play" aria-hidden="true">${UI.play}</span>` : ''}
               </div>

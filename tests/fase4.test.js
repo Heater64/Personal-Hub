@@ -31,7 +31,7 @@ test('main.css solo trae lo compartido: ninguna hoja de pantalla', () => {
     'razones.css',
     'agenda.css',
     'juntos.css',
-    'mapa.css',
+    'ubicacion.css',
     'calendario.css',
     'sentimientos.css',
     'rincon.css',
@@ -55,7 +55,7 @@ test('cada pantalla carga su propia hoja desde su módulo', () => {
     'pages/Razones.js': 'razones.css',
     'pages/Agenda.js': 'agenda.css',
     'pages/Juntos.js': 'juntos.css',
-    'pages/Mapa.js': 'mapa.css',
+    'pages/Ubicacion.js': 'ubicacion.css',
   };
   for (const [pagina, hoja] of Object.entries(propias)) {
     assert.ok(

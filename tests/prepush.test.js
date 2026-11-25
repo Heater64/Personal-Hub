@@ -515,7 +515,7 @@ test('cada página diferida importa su propio CSS y main.css solo trae lo compar
     'Menstruacion.js': 'menstruacion.css',
     // Fase 4: también las que antes colgaban de main.css.
     'Home.js': 'home.css', 'Profile.js': 'profile.css', 'Razones.js': 'razones.css',
-    'Agenda.js': 'agenda.css', 'Juntos.js': 'juntos.css', 'Mapa.js': 'mapa.css',
+    'Agenda.js': 'agenda.css', 'Juntos.js': 'juntos.css', 'Ubicacion.js': 'ubicacion.css',
     'Login.js': 'login.css'
   };
 
@@ -1041,16 +1041,29 @@ test('las tarjetas de Explorar en Sentimientos van de una en una', async () => {
   const cover = css.slice(css.indexOf('.sent-card-cover {'), css.indexOf('.sent-card:hover'));
   assert.match(cover, /width:\s*84px/);
   // El alto NO es fijo: la portada se estira con la tarjeta. Con un height
-  // fijo, en móvil (título o descripción a dos líneas) la tarjeta crecía y el
-  // cuadro se quedaba corto, con el separador vertical a medias.
+  // fijo, en móvil (título o descripción a dos líneas) la tarjeta crecía y
+  // el cuadro se quedaba corto.
   assert.match(cover, /min-height:\s*84px/, 'el alto mínimo mantiene la portada grande');
   assert.match(cover, /align-self:\s*stretch/, 'la portada tiene que cubrir todo el alto de la tarjeta');
   assert.doesNotMatch(cover, /[^-]height:\s*84px/, 'nada de alto fijo: descuadra en móvil');
-  assert.match(cover, /border-right:/, 'la separación va ahora en vertical');
+  // La ilustración propia sustituye al cuadro de color: ni fondo ni borde en
+  // el contenedor del icono, que ahora solo centra el SVG.
+  assert.doesNotMatch(cover, /background:/, 'el contenedor del icono ya no pinta fondo propio');
+  assert.doesNotMatch(cover, /border-right:/, 'el separador vertical sobra con la ilustración');
+  assert.match(cover, /width:\s*56px/, 'la ilustración se ve con detalle (56 px)');
 
-  // Ni el icono se queda pequeño en una portada más grande.
   const sent = await readFile(hub('src', 'pages', 'Sentimientos.js'), 'utf8');
-  assert.match(sent, /sent-card-cover">\$\{icon\(card\.icon, 30\)\}/);
+  assert.match(
+    sent,
+    /class="sent-card-art" src="\$\{ART}\/\$\{card\.art\}\.svg"/,
+    'cada tarjeta usa su SVG propio'
+  );
+  // Un SVG por tarjeta, con su dirección artística, no un icono de librería.
+  for (const art of ['razones', 'mal-dia', 'open-when', 'calendario', 'menstruacion', 'mis-sorpresas']) {
+    const svg = await readFile(hub('public', 'assets', 'icons', 'sentimientos', `${art}.svg`), 'utf8');
+    assert.match(svg, /viewBox="0 0 128 128"/, `${art}.svg debe usar el viewBox 0 0 128 128`);
+    assert.doesNotMatch(svg, /<image|xlink:href|\.png|\.jpg|base64/i, `${art}.svg debe ser vectorial, sin rasterizar`);
+  }
 });
 
 test('cambiar de foto llega a la otra cuenta sin recargar', async () => {

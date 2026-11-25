@@ -12,7 +12,12 @@ async function request(action, query = '') {
     credentials: 'same-origin',
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'No se pudo consultar TMDB.');
+  if (!response.ok) {
+    const error = new Error(data.error || 'No se pudo consultar TMDB.');
+    // El 503 es configuración del servidor (falta TMDB_ACCESS_TOKEN), no red.
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }
 

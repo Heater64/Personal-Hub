@@ -1,70 +1,73 @@
 /* ==========================================
-   Mis sorpresas — tus ideas y regalos pendientes
+   MIS SORPRESAS — organizador personal de regalos
 
-   La sección de regalos de DailyHub y nada más: personas con foto y
-   cumpleaños, tarjetas wishlist con presupuesto y enlace, estados de
-   compra (Idea · Por comprar · Comprado · Entregado), favorita, agenda
-   con cuenta atrás y estadísticas de gasto. Sin hábitos, sin Modo Clase
-   y sin repeticiones de calendario.
+   Un espacio privado por usuario (la RLS de `tamp_entries` y
+   `tamp_people` solo devuelve filas con author_id = auth.uid(); esta
+   pantalla no sustituye esa garantía, la acompaña):
 
-   La privacidad no vive aquí: cada sorpresa solo la devuelve la
-   política de lectura de `tamp_entries` (kind='surprise' y
-   author_id = auth.uid()). Esta pantalla no la sustituye.
+     · Regalos  — ideas, pendientes, comprados, preparados y entregados.
+     · Personas — destinatarios con cumpleaños, gustos y notas.
+     · Agenda   — próximas ocasiones, en lista o en calendario.
+     · Presupuesto y estadísticas, archivo y papelera.
+
+   La lógica de negocio (filtros, ordenación, totales, presupuesto y
+   agenda) está en utils/gift-organizer.js y los estados siguen siendo
+   los del modelo de datos existente. Aquí solo hay interfaz y
+   persistencia con los servicios que ya usa la app.
    ========================================== */
 
 import '../styles/sorpresas.css';
 import {
   entries,
   writeEntry,
+  deleteEntryForever,
   supportsGiftFields,
   supportsGiftExtras,
   supportsGiftStates,
+  supportsGiftOrganizer,
 } from '../services/agenda.js';
 import {
   supportsPeople,
+  supportsPeopleOrganizer,
   supportsPersonColumn,
   listPeople,
   savePerson,
   removePerson,
 } from '../services/people.js';
+import {
+  supportsGiftSettings,
+  getGiftSettings,
+  saveMonthlyBudget,
+} from '../services/gift-settings.js';
 import { escapeHtml as esc, safeUrl } from '../utils/escape.js';
 import { todayISO } from '../utils/format.js';
+import { giftArt, artForState } from '../utils/gift-art.js';
 import {
-  offeredGiftStates,
+  GIFT_FILTERS,
+  GIFT_SORTS,
   giftStateMeta,
+  offeredGiftStates,
   storableGiftState,
-} from '../utils/gift-states.js';
+  filterGifts,
+  giftSummary,
+  budgetReport,
+  peopleOccasions,
+  personGiftBuckets,
+  nextOccasionOf,
+  shiftMonth,
+  daysUntil,
+  estimatedValue,
+  isLive,
+} from '../utils/gift-organizer.js';
 import { h, icon, openSheet, closeSheets, toast } from '../components/ui.js';
 import { renderPageHeader } from '../components/PageHeader.js';
 import { emptyStateHTML, skeletonCardsHTML } from '../components/states.js';
 
-const DAY = 86400000;
+const PRIORITY_LABELS = { '': '', baja: 'Baja', media: 'Media', alta: 'Alta' };
 
-const NEW_ACTION = { label: 'Nueva sorpresa', id: 'srpNew' };
-
-const parseDay = iso => Date.parse(`${iso}T12:00:00Z`);
-
-/** Días que faltan (negativo si ya pasó), contando con la fecha de España. */
-function daysUntil(iso) {
-  return Math.round((parseDay(iso) - parseDay(todayISO())) / DAY);
-}
-
-/** 12 dic */
-function fmtDay(iso) {
-  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-    .format(new Date(`${iso}T12:00:00Z`))
-    .replace('.', '');
-}
-
-function monthLabel(key) {
-  const text = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-    .format(new Date(`${key}-01T12:00:00Z`));
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/** Cuenta atrás larga («En 12 días») o corta para listas («12 días»). */
 function countdown(iso, short = false) {
-  const days = daysUntil(iso);
+  if (!iso) return '';
+  const days = daysUntil(iso, todayISO());
   if (short) {
     if (days === 0) return '¡Hoy!';
     if (days === 1) return 'Mañana';
@@ -77,13 +80,47 @@ function countdown(iso, short = false) {
   return `Hace ${-days} días`;
 }
 
+/** 12 dic */
+function fmtDay(iso) {
+  if (!iso) return '';
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+    .format(new Date(`${iso}T12:00:00Z`))
+    .replace('.', '');
+}
+
+/** 12 de diciembre de 2026 */
+function fmtLongDay(iso) {
+  if (!iso) return '';
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(`${iso}T12:00:00Z`));
+}
+
+/** Cumpleaños sin año: «12 de diciembre». */
+function fmtBirthday(iso) {
+  if (!iso) return '';
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+    .format(new Date(`${iso.slice(0, 4)}-${iso.slice(5, 10)}T12:00:00Z`));
+}
+
+function monthLabel(key) {
+  const text = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(`${key}-01T12:00:00Z`));
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function monthShort(key) {
+  return new Intl.DateTimeFormat('es-ES', { month: 'short', timeZone: 'UTC' })
+    .format(new Date(`${key}-01T12:00:00Z`))
+    .replace('.', '');
+}
+
 const eurFormat = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 const fmtEur = value => eurFormat.format(Number(value) || 0);
 
 /**
- * Foto: se recorta a 640 px y se guarda como data URL JPEG. Viaja dentro de
- * la fila, no a un bucket, para que la RLS de 034 siga siendo la única
- * puerta: una imagen en un bucket compartido la vería la pareja.
+ * Foto: se recorta y se guarda como data URL JPEG dentro de la fila, no en
+ * un bucket. Así la privacidad depende de la misma RLS que el resto del
+ * regalo: una imagen en un bucket compartido la vería la pareja.
  */
 function photoFromFile(file, max = 640) {
   return new Promise((resolve, reject) => {
@@ -114,63 +151,96 @@ function photoFromFile(file, max = 640) {
   });
 }
 
-/* Cumpleaños: la próxima vez que cae esa fecha, este año o el que viene. */
-function nextBirthday(ymd, from = todayISO()) {
-  if (!ymd || ymd.length < 10) return null;
-  const mmdd = ymd.slice(5);
-  const year = Number(from.slice(0, 4));
-  const candidate = `${year}-${mmdd}`;
-  return candidate < from ? `${year + 1}-${mmdd}` : candidate;
-}
+const parseLinks = value =>
+  String(value || '')
+    .split(/\s*[\n,]\s*/)
+    .map(item => item.trim())
+    .filter(Boolean);
 
-/** «Faltan 12 días para el cumple de Sofía 🎂», como en la ficha de DailyHub. */
-function birthdayLine(person) {
-  const next = nextBirthday(person?.birthday);
-  if (!next) return '';
-  const days = daysUntil(next);
-  const name = person.name.split(' ')[0];
-  if (days === 0) return `¡Hoy es el cumple de ${name}! 🎂`;
-  if (days === 1) return `Falta 1 día para el cumple de ${name} 🎂`;
-  return `Faltan ${days} días para el cumple de ${name} 🎂`;
-}
-
-export function SorpresasPage() {
+export function SorpresasPage(router) {
   const page = document.createElement('div');
+  page.className = 'srp-page';
 
   let rows = [];
   let people = [];
-  let peopleReady = false;
-  let personColumn = false;
-  let view = 'regalos';
-  // Como en DailyHub, la primera carga abre en Personas cuando ya hay
-  // personas: el cumpleaños de todos se ve de un vistazo. Después manda la
-  // pestaña que elija el usuario.
-  let viewChosen = false;
-  let filter = 'activos';
-  let personFilter = 'todas';
+  let settings = { monthly_budget: null };
+  let peopleById = new Map();
+  let loaded = false;
+  let failed = false;
+  let active = true;
+
+  let tab = 'regalos';
+  let screen = 'tabs';
+  let currentGiftId = null;
+  let currentPersonId = null;
+  let archiveMode = 'archivados';
+  let filter = 'todos';
   let sort = 'fecha';
   let query = '';
-  let active = true;
-  // Presupuesto, enlace y foto solo existen con la 035 aplicada.
-  let giftsSupported = false;
-  // Favorita y estados de compra solo existen con la 037 aplicada.
-  let extrasSupported = false;
-  // «Por comprar» y «Comprado» solo se ofrecen si el CHECK los acepta (039).
-  let statesSupported = false;
+  let personFilter = 'todas';
+  let peopleQuery = '';
+  let budgetMonth = todayISO().slice(0, 7);
+  let agendaMode = 'lista';
+  let agendaMonth = todayISO().slice(0, 7);
 
-  const stateCaps = () => ({ starred: extrasSupported, states: statesSupported });
+  const caps = {
+    gift: false,
+    extras: false,
+    states: false,
+    organizer: false,
+    people: false,
+    personColumn: false,
+    peopleOrganizer: false,
+    settings: false,
+  };
+
+  /* ==========================================
+     MARCO DE LA PANTALLA
+     ========================================== */
+
+  page.innerHTML = `
+    <div class="srp-head" id="srpHead">
+      ${renderPageHeader({
+        title: 'Mis sorpresas',
+        subtitle: 'Tu espacio privado de regalos',
+        back: true,
+        backLabel: 'Volver a Sentimientos',
+        actions: `
+          <span class="srp-privacy" title="Solo tú puedes ver y editar este espacio">
+            ${icon('lock', 13)}<span class="srp-privacy__text">Solo tú</span>
+          </span>
+          <button type="button" class="icon-btn srp-head__more" data-more aria-label="Más opciones" title="Más opciones">${icon('more', 19)}</button>
+          <button type="button" class="btn btn--sm srp-head__new" data-new-gift>${icon('plus', 15)}<span>Nueva</span></button>
+        `,
+      })}
+    </div>
+    <button type="button" class="srp-summary" id="srpSummary" data-summary aria-label="Abrir presupuesto y estadísticas" hidden></button>
+    <div class="srp-tabs" id="srpTabs" role="tablist" aria-label="Secciones de Mis sorpresas" hidden>
+      <button type="button" role="tab" data-tab="regalos" aria-selected="true" class="is-on">${icon('gift', 16)}<span>Regalos</span></button>
+      <button type="button" role="tab" data-tab="personas" aria-selected="false">${icon('user', 16)}<span>Personas</span></button>
+      <button type="button" role="tab" data-tab="agenda" aria-selected="false">${icon('calendar', 16)}<span>Agenda</span></button>
+    </div>
+    <div class="srp-body" id="srpBody"></div>
+  `;
+
+  const headEl = page.querySelector('#srpHead');
+  const summaryEl = page.querySelector('#srpSummary');
+  const tabsEl = page.querySelector('#srpTabs');
+  const bodyEl = page.querySelector('#srpBody');
+
+  /* ==========================================
+     HELPERS DE PRESENTACIÓN
+     ========================================== */
+
+  const stateCaps = () => ({ starred: caps.extras, states: caps.states });
   const statuses = () =>
     Object.fromEntries(offeredGiftStates(stateCaps()).map(state => [state, giftStateMeta(state)]));
-  // Para pintar filas guardadas se entiende cualquier estado, se ofrezca o no.
-  const statusOf = row => giftStateMeta(row.state);
-
-  const personOf = row =>
-    personColumn && row.person_id ? people.find(person => person.id === row.person_id) : null;
-
-  const live = () => rows.filter(row => !row.removed_at);
-  const trashed = () => rows.filter(row => !!row.removed_at);
-  const findRow = id => rows.find(row => row.id === id);
-  const isDone = row => row.state === 'entregado';
+  const statusOf = gift => giftStateMeta(gift?.state);
+  const storableState = state => storableGiftState(state, stateCaps());
+  const personOf = gift =>
+    caps.personColumn && gift?.person_id ? peopleById.get(gift.person_id) : null;
+  const findGift = id => rows.find(row => row.id === id);
+  const findPerson = id => people.find(person => person.id === id);
 
   function avatarHTML(person, size = 44) {
     const style = `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.4)}px`;
@@ -179,572 +249,1287 @@ export function SorpresasPage() {
       return `<span class="srp-avatar" style="${style}"><img src="${photo}" alt=""></span>`;
     }
     const initial = (person?.name || '').trim().charAt(0).toUpperCase();
-    const content = initial || icon('user', Math.round(size * 0.45));
-    return `<span class="srp-avatar" style="${style}" aria-hidden="true">${initial ? esc(initial) : content}</span>`;
+    return `<span class="srp-avatar" style="${style}" aria-hidden="true">${
+      initial ? esc(initial) : icon('user', Math.round(size * 0.45))
+    }</span>`;
   }
 
-  /** Cumpleaños de todos, del más próximo al más lejano. */
-  function birthdays() {
-    return people
-      .filter(person => person.birthday)
-      .map(person => ({ person, day: nextBirthday(person.birthday) }))
-      .filter(item => item.day)
-      .sort((first, second) => first.day.localeCompare(second.day));
+  function emptyBlock({ art = 'regalos-vacios', title, text, action = '' }) {
+    return `
+      <div class="srp-empty">
+        <span class="srp-empty__art">${giftArt(art, { size: 112 })}</span>
+        <b>${esc(title)}</b>
+        ${text ? `<p>${esc(text)}</p>` : ''}
+        ${action}
+      </div>
+    `;
   }
 
-  /** Estado guardable: cae a Idea/Preparado cuando el CHECK no acepta los nuevos. */
-  const storableState = state => storableGiftState(state, stateCaps());
+  const newGiftButton = '<button type="button" class="btn" data-new-gift>Nueva idea</button>';
 
-  const isBought = row => row.state === 'comprado' || row.state === 'preparado';
-  const weightOf = row => (isDone(row) ? 2 : isBought(row) ? 1 : 0);
+  /* ==========================================
+     CARGA DE DATOS
+     ========================================== */
 
-  function compareRows(first, second) {
-    if (sort === 'precio') return (Number(second.price) || 0) - (Number(first.price) || 0);
-    return (
-      weightOf(first) - weightOf(second) ||
-      first.day.localeCompare(second.day) ||
-      first.title.localeCompare(second.title, 'es')
-    );
-  }
+  async function load() {
+    try {
+      const peopleSupported = await supportsPeople();
+      const [loadedRows, loadedPeople] = await Promise.all([
+        entries('surprise'),
+        peopleSupported ? listPeople() : Promise.resolve([]),
+      ]);
+      rows = loadedRows;
+      people = loadedPeople;
+      peopleById = new Map(people.map(person => [person.id, person]));
 
-  const giftsOf = personId => live().filter(row => row.person_id === personId);
+      caps.people = peopleSupported;
+      [caps.gift, caps.extras] = await Promise.all([supportsGiftFields(), supportsGiftExtras()]);
+      caps.states = caps.extras && (await supportsGiftStates());
+      caps.personColumn = peopleSupported && (await supportsPersonColumn());
+      caps.peopleOrganizer = peopleSupported && (await supportsPeopleOrganizer());
+      caps.organizer = await supportsGiftOrganizer();
+      caps.settings = caps.organizer && (await supportsGiftSettings());
+      settings = caps.settings ? await getGiftSettings() : { monthly_budget: null };
 
-  page.innerHTML = `
-    ${renderPageHeader({
-      title: 'Mis sorpresas',
-      subtitle: 'Tus ideas y regalos, solo para ti',
-      actions: `
-        <button type="button" class="icon-btn" id="srpAgendaBtn" aria-label="Agenda de sorpresas" title="Agenda">${icon('cake', 19)}</button>
-        <button type="button" class="icon-btn" id="srpStatsBtn" aria-label="Estadísticas de sorpresas" title="Estadísticas">${icon('chart', 19)}</button>
-        <button type="button" class="icon-btn" id="srpTrashBtn" aria-label="Papelera" title="Papelera">${icon('archive', 19)}</button>
-        <button type="button" class="btn btn--sm" id="srpNewBtn">${icon('plus', 15)} <span>Nueva</span></button>
-      `,
-    })}
-    <div class="seg srp-seg" role="group" aria-label="Vistas de Mis sorpresas">
-      <button type="button" data-view="regalos" aria-pressed="true" class="is-on">Sorpresas</button>
-      <button type="button" data-view="personas" id="srpPeopleTab" aria-pressed="false" hidden>Personas</button>
-      <button type="button" data-view="agenda" aria-pressed="false">Agenda</button>
-      <button type="button" data-view="resumen" aria-pressed="false">Resumen</button>
-    </div>
-    <div id="srpView"></div>
-  `;
+      if (caps.personColumn && caps.gift) {
+        // Un regalo cuya persona ya no existe se sigue mostrando, sin
+        // destinatario: no se borra nada al quitar a alguien.
+        peopleById = new Map(people.map(person => [person.id, person]));
+      }
 
-  const viewEl = page.querySelector('#srpView');
-
-  /** Estado vacío de una vista, con su acción enganchada cuando la lleva. */
-  function showEmpty(container, options) {
-    container.innerHTML = emptyStateHTML(options);
-    container.querySelector(`#${NEW_ACTION.id}`)?.addEventListener('click', () => editor());
+      loaded = true;
+      failed = false;
+      if (!active) return;
+      draw();
+    } catch {
+      if (!active) return;
+      failed = true;
+      draw();
+    }
   }
 
   /* ==========================================
-     VISTA · SORPRESAS (todos los regalos)
+     RENDER
      ========================================== */
 
-  const upcomingList = () =>
-    live()
-      .filter(row => !isDone(row))
-      .sort((first, second) => first.day.localeCompare(second.day));
+  function draw() {
+    if (!active) return;
+    const inner = screen !== 'tabs';
+    page.classList.toggle('srp-page--inner', inner);
+    headEl.hidden = false;
+    summaryEl.hidden = inner || !loaded;
+    tabsEl.hidden = inner || !loaded;
+    syncTabs();
+    if (loaded) drawSummary();
+    bodyEl.replaceChildren(viewForScreen());
+  }
 
-  const linkDomain = value => {
-    try {
-      return new URL(value).hostname.replace(/^www\./, '');
-    } catch {
-      return '';
+  function syncTabs() {
+    tabsEl.querySelectorAll('[data-tab]').forEach(button => {
+      const on = button.dataset.tab === tab;
+      button.classList.toggle('is-on', on);
+      button.setAttribute('aria-selected', String(on));
+      button.tabIndex = on ? 0 : -1;
+    });
+    if (caps.people) {
+      tabsEl.querySelector('[data-tab="personas"]').hidden = false;
+    } else {
+      tabsEl.querySelector('[data-tab="personas"]').hidden = true;
     }
-  };
+  }
 
-  function cardHTML(row) {
-    const meta = statusOf(row);
-    const photo = giftsSupported ? safeUrl(row.photo) : '';
-    const price = giftsSupported && row.price != null ? fmtEur(row.price) : '';
-    const link = giftsSupported ? safeUrl(row.link) : '';
-    const starred = extrasSupported && row.starred;
-    const person = personOf(row);
-    const when = row.removed_at
-      ? `${fmtDay(row.day)} · en la papelera`
-      : `${fmtDay(row.day)} · ${countdown(row.day)}`;
-    const who = `${person ? person.name : 'Sin asignar'} · ${when}`;
-    const art = photo
-      ? `<span class="srp-art has-photo"><img src="${photo}" alt=""></span>`
-      : `<span class="srp-art"><span class="srp-art__emoji" aria-hidden="true">🎁</span></span>`;
-    const copy = `
-      ${art}
-      <span class="srp-card__copy">
-        <span class="srp-card__title">${
-          starred && !row.removed_at
-            ? `<span class="srp-card__star" aria-label="Favorita" title="Favorita">${icon('star', 13)}</span>`
-            : ''
-        }<span>${esc(row.title)}</span></span>
-        <span class="srp-card__who">${esc(who)}</span>
+  function drawSummary() {
+    const summary = giftSummary(rows);
+    summaryEl.innerHTML = `
+      <span class="srp-summary__item">
+        <b>${summary.pendingCount}</b>
+        <span>Pendientes</span>
       </span>
+      <span class="srp-summary__sep" aria-hidden="true"></span>
+      <span class="srp-summary__item">
+        <b>${caps.gift ? esc(fmtEur(summary.planned)) : '—'}</b>
+        <span>Importe previsto</span>
+      </span>
+      <span class="srp-summary__sep" aria-hidden="true"></span>
+      <span class="srp-summary__item">
+        <b>${summary.boughtCount}</b>
+        <span>Comprados</span>
+      </span>
+      <span class="srp-summary__go" aria-hidden="true">${icon('chev', 16)}</span>
     `;
+  }
 
-    const foot = row.removed_at
-      ? `<button type="button" class="btn btn-soft btn--sm" data-restore="${esc(row.id)}">Recuperar</button>`
-      : `<button type="button" class="srp-status is-${meta.tone}" data-status="${esc(row.id)}" aria-label="Estado: ${esc(meta.label)}. Cambiar de estado">
-           <span aria-hidden="true">${meta.emoji}</span>${esc(meta.label)}
-         </button>
-         ${
-           giftsSupported
-             ? `<span class="srp-price${price ? '' : ' is-none'}">${price || 'Sin presupuesto'}</span>`
-             : ''
-         }
-         ${
-           link
-             ? `<a class="srp-link-btn" href="${link}" target="_blank" rel="noopener noreferrer" aria-label="Comprar o ver el enlace de ${esc(row.title)} en ${esc(linkDomain(link))}">${icon('external', 14)}<span>Comprar / Ver enlace</span></a>`
-             : ''
-         }`;
+  function viewForScreen() {
+    if (failed) {
+      const wrap = h('div');
+      wrap.innerHTML = emptyStateHTML({
+        icon: 'cloud',
+        title: 'No se pudo cargar',
+        text: 'Comprueba la conexión y vuelve a intentarlo.',
+        action: { label: 'Reintentar', id: 'srpRetry' },
+      });
+      wrap.querySelector('#srpRetry')?.addEventListener('click', () => {
+        bodyEl.innerHTML = skeletonCardsHTML({ count: 4 });
+        void load();
+      });
+      return wrap;
+    }
+    if (!loaded) {
+      const wrap = h('div');
+      wrap.innerHTML = skeletonCardsHTML({ count: 4 });
+      return wrap;
+    }
+    if (screen === 'gift') return giftDetailView(currentGiftId);
+    if (screen === 'person') return personDetailView(currentPersonId);
+    if (screen === 'budget') return budgetView();
+    if (screen === 'archive') return archiveView();
+    if (tab === 'personas') return peopleView();
+    if (tab === 'agenda') return agendaView();
+    return giftsView();
+  }
+
+  function subheadHTML(title, { back = true, actions = '' } = {}) {
+    return `
+      <div class="srp-subhead">
+        ${
+          back
+            ? `<button type="button" class="icon-btn srp-subhead__back" data-screen-back aria-label="Volver">${icon('back', 18)}</button>`
+            : ''
+        }
+        <h2 class="srp-subhead__title">${esc(title)}</h2>
+        ${actions ? `<div class="srp-subhead__actions">${actions}</div>` : ''}
+      </div>
+    `;
+  }
+
+  function go(next, payload = null) {
+    screen = next;
+    if (next === 'gift') currentGiftId = payload;
+    if (next === 'person') currentPersonId = payload;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    draw();
+  }
+
+  function backToTabs() {
+    screen = 'tabs';
+    currentGiftId = null;
+    currentPersonId = null;
+    draw();
+  }
+
+  /* ==========================================
+     VISTA · REGALOS
+     ========================================== */
+
+  function giftCardHTML(gift, { trash = false, archived = false } = {}) {
+    const person = personOf(gift);
+    const meta = statusOf(gift);
+    const photo = caps.gift ? safeUrl(gift.photo) : '';
+    const art = photo
+      ? `<img src="${photo}" alt="" loading="lazy" decoding="async">`
+      : giftArt(meta.art, { size: 52 });
+    const price = caps.gift && (gift.price != null || gift.actual_price != null)
+      ? fmtEur(estimatedValue(gift))
+      : '';
+    const when = gift.day ? `${fmtDay(gift.day)} · ${countdown(gift.day, true)}` : '';
+    const flags = [
+      person?.name || 'Sin asignar',
+      when,
+    ].filter(Boolean).join(' · ');
 
     return `
-      <article class="srp-card" data-gift-id="${esc(row.id)}">
-        ${
-          row.removed_at
-            ? `<div class="srp-card__body">${copy}</div>`
-            : `<button type="button" class="srp-card__body" data-open="${esc(row.id)}" aria-label="Abrir la sorpresa ${esc(row.title)}">${copy}</button>`
-        }
-        <div class="srp-card__foot">${foot}</div>
+      <article class="srp-gift is-${meta.tone}${trash ? ' is-trashed' : ''}${archived ? ' is-archived' : ''}">
+        <button type="button" class="srp-gift__open" data-gift-open="${esc(gift.id)}" aria-label="Abrir ${esc(gift.title)}">
+          <span class="srp-gift__art${photo ? ' has-photo' : ''}">${art}</span>
+          <span class="srp-gift__copy">
+            <span class="srp-gift__title">
+              ${gift.starred && caps.extras ? `<span class="srp-gift__star" aria-label="Favorito">${icon('star', 12)}</span>` : ''}
+              <span>${esc(gift.title)}</span>
+            </span>
+            <span class="srp-gift__sub">${esc(flags)}</span>
+            <span class="srp-gift__meta">
+              <span class="srp-pill is-${meta.tone}">${esc(meta.label)}</span>
+              ${gift.occasion ? `<span class="srp-gift__tag">${esc(gift.occasion)}</span>` : ''}
+              ${price ? `<span class="srp-gift__price">${esc(price)}</span>` : ''}
+            </span>
+          </span>
+        </button>
+        <button type="button" class="srp-gift__more" data-gift-menu="${esc(gift.id)}" aria-label="Acciones de ${esc(gift.title)}">${icon('more', 18)}</button>
       </article>
     `;
   }
 
-  function regalosView() {
-    const wrap = h('div');
+  function giftsView() {
+    const wrap = h('div', { class: 'srp-view' });
 
-    if (!rows.length) {
-      showEmpty(wrap, {
-        icon: 'gift',
+    if (!rows.some(isLive) && !rows.some(row => row.archived_at || row.removed_at)) {
+      wrap.innerHTML = emptyBlock({
         title: 'Aún no tienes sorpresas',
-        text: 'Crea tu primera idea de regalo y asígnala a una persona.',
-        action: NEW_ACTION,
+        text: 'Crea tu primera idea, asígnala a alguien y añade una fecha. Solo tú puedes verla.',
+        action: newGiftButton,
       });
       return wrap;
     }
 
-    const search = h('input', {
-      class: 'srp-search',
-      type: 'search',
-      placeholder: 'Buscar sorpresa…',
-      'aria-label': 'Buscar sorpresa',
-      autocomplete: 'off',
-      value: query,
-    });
+    const activeFilter = GIFT_FILTERS.find(item => item.id === filter);
+    const activeSort = GIFT_SORTS.find(item => item.id === sort);
+    const isFiltered = filter !== 'todos' || !!query.trim() || personFilter !== 'todas';
+
+    wrap.innerHTML = `
+      <div class="srp-toolbar">
+        <label class="srp-search">
+          ${icon('search', 17)}
+          <input type="search" id="srpSearch" placeholder="Buscar regalo, persona u ocasión…" aria-label="Buscar regalos" autocomplete="off" value="${esc(query)}">
+        </label>
+        <button type="button" class="srp-filter-btn${isFiltered ? ' is-on' : ''}" id="srpFilterBtn" data-filters aria-label="Filtrar y ordenar">
+          ${icon('filter', 17)}<span>Filtros</span>
+          ${isFiltered ? '<span class="srp-filter-btn__dot" aria-hidden="true"></span>' : ''}
+        </button>
+      </div>
+      <div class="srp-active-filters" id="srpActiveFilters"></div>
+      <p class="srp-count" id="srpCount" role="status" aria-live="polite"></p>
+      <div class="srp-list" id="srpGiftList"></div>
+    `;
+
+    const search = wrap.querySelector('#srpSearch');
     search.addEventListener('input', () => {
       query = search.value;
-      drawCards();
+      drawGiftList();
     });
-    const sortButton = h('button', {
-      type: 'button',
-      class: 'icon-btn srp-sort',
-      'aria-label': 'Cambiar orden',
-      title: sort === 'fecha' ? 'Ordenado por fecha' : 'Ordenado por precio',
-      onclick: () => {
-        sort = sort === 'fecha' ? 'precio' : 'fecha';
-        sortButton.title = sort === 'fecha' ? 'Ordenado por fecha' : 'Ordenado por precio';
-        sortButton.innerHTML = icon(sort === 'fecha' ? 'calendar' : 'external', 18);
-        drawCards();
-      },
-      html: icon(sort === 'fecha' ? 'calendar' : 'external', 18),
-    });
-    wrap.append(h('div', { class: 'srp-toolbar' }, search, sortButton));
 
-    if (peopleReady && people.length) {
-      const personChips = h('div', {
-        class: 'chips srp-chips',
-        role: 'group',
-        'aria-label': 'Filtrar por persona',
-      });
-      const drawPersonChips = () => {
-        const chips = [{ id: 'todas', label: 'Todos' }].concat(
-          people.map(person => ({ id: person.id, label: person.name }))
-        );
-        personChips.innerHTML = chips
-          .map(
-            chip => `<button type="button" class="chip${personFilter === chip.id ? ' is-active' : ''}"
-              aria-pressed="${personFilter === chip.id}" data-person-filter="${esc(chip.id)}">${esc(chip.label)}</button>`
-          )
-          .join('');
-      };
-      personChips.addEventListener('click', event => {
-        const chip = event.target.closest('[data-person-filter]');
-        if (!chip) return;
-        personFilter = chip.dataset.personFilter;
-        drawPersonChips();
-        drawCards();
-      });
-      drawPersonChips();
-      wrap.append(personChips);
+    function drawActiveFilters() {
+      const holder = wrap.querySelector('#srpActiveFilters');
+      const bits = [];
+      if (filter !== 'todos') bits.push(activeFilter?.label || filter);
+      if (personFilter !== 'todas') {
+        bits.push(findPerson(personFilter)?.name || 'Persona');
+      }
+      if (sort !== 'fecha') bits.push(`Orden: ${activeSort?.label || sort}`);
+      holder.innerHTML = bits.length
+        ? `<span class="srp-active-filters__label">${bits.map(esc).join(' · ')}</span>
+           <button type="button" class="srp-linkbtn" data-clear-filters>Limpiar</button>`
+        : '';
+      wrap.querySelector('#srpFilterBtn')?.classList.toggle('is-on', bits.length > 0 || !!query.trim());
     }
 
-    const statusChips = h('div', {
-      class: 'chips srp-chips',
-      role: 'group',
-      'aria-label': 'Filtrar por estado',
-    });
-    const drawStatusChips = () => {
-      const chips = [
-        { id: 'activos', label: 'Activos' },
-        { id: 'archivo', label: 'Archivo' },
-      ]
-        .concat(
-          Object.entries(statuses())
-            .filter(([value]) => value !== 'entregado')
-            .map(([value, meta]) => ({ id: value, label: meta.label }))
-        )
-        .concat([{ id: 'papelera', label: 'Papelera' }]);
-      statusChips.innerHTML = chips
-        .map(
-          chip => `<button type="button" class="chip${filter === chip.id ? ' is-active' : ''}"
-            aria-pressed="${filter === chip.id}" data-filter="${esc(chip.id)}">${esc(chip.label)}</button>`
-        )
-        .join('');
-    };
-    statusChips.addEventListener('click', event => {
-      const chip = event.target.closest('[data-filter]');
-      if (!chip) return;
-      filter = chip.dataset.filter;
-      drawStatusChips();
-      drawCards();
-    });
-    drawStatusChips();
-    wrap.append(statusChips);
+    function drawGiftList() {
+      const list = wrap.querySelector('#srpGiftList');
+      const count = wrap.querySelector('#srpCount');
+      if (!list || !count) return;
+      const items = filterGifts({
+        gifts: rows,
+        people,
+        filter,
+        sort,
+        query,
+        personId: personFilter,
+      });
 
-    const count = h('p', { class: 'srp-total' });
-    wrap.append(count);
-
-    const grid = h('div', { class: 'srp-grid' });
-    wrap.append(grid);
-
-    function drawCards() {
-      const base = filter === 'papelera' ? trashed() : live();
-      const needle = query.trim().toLowerCase();
-      const items = base
-        .filter(row => {
-          if (filter === 'activos') return !isDone(row);
-          if (filter === 'archivo') return isDone(row);
-          if (filter !== 'papelera') return row.state === filter;
-          return true;
-        })
-        .filter(row => personFilter === 'todas' || row.person_id === personFilter)
-        .filter(row => {
-          if (!needle) return true;
-          const person = personOf(row);
-          return `${row.title} ${row.detail || ''} ${person ? person.name : ''}`
-            .toLowerCase()
-            .includes(needle);
-        })
-        .sort(compareRows);
-
+      const total = items.reduce((sum, gift) => sum + estimatedValue(gift), 0);
       count.textContent = items.length
-        ? `${items.length} ${items.length === 1 ? 'sorpresa' : 'sorpresas'}${
-            giftsSupported
-              ? ` · ${fmtEur(items.reduce((sum, row) => sum + (Number(row.price) || 0), 0))}`
-              : ''
-          }`
+        ? `${items.length} ${items.length === 1 ? 'regalo' : 'regalos'}${caps.gift ? ` · ${fmtEur(total)}` : ''}`
         : '';
 
       if (!items.length) {
-        const filteredView =
-          needle ||
-          personFilter !== 'todas' ||
-          (filter !== 'activos' && filter !== 'papelera');
-        if (needle || filteredView)
-          showEmpty(grid, {
-            icon: 'search',
-            title: 'Sin resultados',
-            text: 'Prueba con otro filtro o busca por otro nombre.',
-          });
-        else if (filter === 'papelera')
-          showEmpty(grid, {
-            icon: 'archive',
-            title: 'Papelera vacía',
-            text: 'Las sorpresas que elimines se guardan 30 días.',
-          });
-        else if (filter === 'archivo')
-          showEmpty(grid, {
-            icon: 'archive',
-            title: 'Archivo vacío',
-            text: 'Las sorpresas entregadas se guardarán aquí, fuera de la lista diaria.',
-          });
-        else
-          showEmpty(grid, {
-            icon: 'gift',
-            title: 'Aún no tienes sorpresas',
-            text: 'Crea tu primera idea de regalo y asígnala a una persona.',
-            action: NEW_ACTION,
-          });
+        list.innerHTML = emptyBlock({
+          art: 'regalos-vacios',
+          title: isFiltered ? 'Sin resultados' : 'Sin regalos en esta vista',
+          text: isFiltered
+            ? 'Prueba con otro filtro, otra persona o cambia la búsqueda.'
+            : 'Cuando añadas regalos aparecerán aquí, con su estado y su fecha.',
+        });
         return;
       }
-
-      grid.innerHTML = items.map(cardHTML).join('');
+      list.innerHTML = items.map(gift => giftCardHTML(gift)).join('');
+      drawActiveFilters();
     }
 
-    drawCards();
+    drawActiveFilters();
+    drawGiftList();
     return wrap;
+  }
+
+  function filtersSheet() {
+    openSheet('Filtrar y ordenar', () => {
+      const wrap = h('div', { class: 'srp-filters' });
+      wrap.innerHTML = `
+        <p class="srp-field-label">Estado</p>
+        <div class="srp-filter-grid" role="group" aria-label="Filtrar por estado" id="srpFilterGrid">
+          ${GIFT_FILTERS.map(
+            item => `<button type="button" class="srp-chip${filter === item.id ? ' is-on' : ''}" data-choose-filter="${item.id}" aria-pressed="${filter === item.id}">${esc(item.label)}</button>`,
+          ).join('')}
+        </div>
+        <p class="srp-field-label">Ordenar por</p>
+        <div class="srp-sort-list" role="group" aria-label="Ordenar regalos" id="srpSortList">
+          ${GIFT_SORTS.map(
+            item => `<button type="button" class="srp-sort-row${sort === item.id ? ' is-on' : ''}" data-choose-sort="${item.id}" aria-pressed="${sort === item.id}">
+              <span>${esc(item.label)}</span>${sort === item.id ? icon('check', 16) : ''}
+            </button>`,
+          ).join('')}
+        </div>
+        ${
+          people.length
+            ? `<p class="srp-field-label">Destinatario</p>
+               <select class="srp-select" id="srpPersonFilter" aria-label="Filtrar por destinatario">
+                 <option value="todas">Todas las personas</option>
+                 ${people
+                   .map(
+                     person =>
+                       `<option value="${esc(person.id)}"${personFilter === person.id ? ' selected' : ''}>${esc(person.name)}</option>`,
+                   )
+                   .join('')}
+               </select>`
+            : ''
+        }
+        <div class="srp-sheet-actions">
+          <button type="button" class="btn btn-block" data-close-sheet>Ver resultados</button>
+          <button type="button" class="btn btn-soft btn-block" data-clear-filters>Quitar filtros</button>
+        </div>
+      `;
+
+      wrap.querySelector('#srpFilterGrid').addEventListener('click', event => {
+        const button = event.target.closest('[data-choose-filter]');
+        if (!button) return;
+        filter = button.dataset.chooseFilter;
+        wrap.querySelectorAll('[data-choose-filter]').forEach(el => {
+          const on = el.dataset.chooseFilter === filter;
+          el.classList.toggle('is-on', on);
+          el.setAttribute('aria-pressed', String(on));
+        });
+        draw();
+      });
+
+      wrap.querySelector('#srpSortList').addEventListener('click', event => {
+        const button = event.target.closest('[data-choose-sort]');
+        if (!button) return;
+        sort = button.dataset.chooseSort;
+        draw();
+      });
+
+      wrap.querySelector('#srpPersonFilter')?.addEventListener('change', event => {
+        personFilter = event.target.value;
+        draw();
+      });
+
+      return wrap;
+    });
+  }
+
+  function clearFilters() {
+    filter = 'todos';
+    sort = 'fecha';
+    query = '';
+    personFilter = 'todas';
+    closeSheets();
+    draw();
+  }
+
+  function giftMenuSheet(gift) {
+    const isTrashed = !!gift.removed_at;
+    const isArchived = !!gift.archived_at && !isTrashed;
+    const person = personOf(gift);
+
+    const actions = [];
+    if (isTrashed) {
+      actions.push(
+        ['Restaurar', () => restoreGift(gift)],
+        ['Eliminar definitivamente', () => purgeGift(gift), 'danger'],
+      );
+    } else if (isArchived) {
+      actions.push(
+        ['Ver detalle', () => go('gift', gift.id)],
+        ['Desarchivar', () => toggleArchive(gift)],
+        ['Editar', () => giftEditor(gift)],
+        ['Enviar a la papelera', () => trashGift(gift), 'danger'],
+      );
+    } else {
+      actions.push(
+        ['Ver detalle', () => go('gift', gift.id)],
+        ['Editar', () => giftEditor(gift)],
+        ['Cambiar estado', () => statusSheet(gift)],
+        ['Duplicar', () => duplicateGift(gift)],
+        ['Archivar', () => toggleArchive(gift)],
+        ['Eliminar', () => trashGift(gift), 'danger'],
+      );
+    }
+
+    openSheet(person ? `Regalo para ${person.name}` : gift.title, () =>
+      h(
+        'div',
+        { class: 'srp-sheet-menu' },
+        h('p', { class: 'srp-sheet-menu__title' }, gift.title),
+        ...actions.map(([label, run, tone]) =>
+          h(
+            'button',
+            {
+              type: 'button',
+              class: `srp-sheet-menu__item${tone === 'danger' ? ' is-danger' : ''}`,
+              onclick: () => {
+                closeSheets();
+                run();
+              },
+            },
+            label,
+          ),
+        ),
+      ),
+    );
+  }
+
+  function statusSheet(gift) {
+    const list = statuses();
+    openSheet('Cambiar estado', () =>
+      h(
+        'div',
+        null,
+        h('p', { class: 'srp-sheet-menu__title' }, gift.title),
+        h('p', { class: 'srp-hint' }, 'Puedes corregir el estado cuando quieras. No se borra nada.'),
+        h(
+          'div',
+          { class: 'srp-state-menu' },
+          Object.entries(list).map(([value, meta]) =>
+            h(
+              'button',
+              {
+                type: 'button',
+                class: `srp-state is-${meta.tone}${gift.state === value ? ' is-current' : ''}`,
+                'aria-pressed': String(gift.state === value),
+                onclick: () => updateStatus(gift, value),
+              },
+              h('span', { class: 'srp-state__dot', 'aria-hidden': 'true' }),
+              meta.label,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  async function updateStatus(gift, state) {
+    try {
+      await writeEntry('surprise', { state: storableState(state) }, gift);
+      closeSheets();
+      toast(`Estado: ${statusOf({ state: storableState(state) }).label}`);
+      await load();
+    } catch (error) {
+      toast(error?.message?.includes('otro dispositivo') ? error.message : 'No se pudo cambiar el estado');
+    }
+  }
+
+  /* ==========================================
+     VISTA · DETALLE DEL REGALO
+     ========================================== */
+
+  function giftDetailView(id) {
+    const gift = findGift(id);
+    const wrap = h('div', { class: 'srp-view srp-detail' });
+    if (!gift) {
+      wrap.innerHTML = `${subheadHTML('Regalo')}${emptyBlock({
+        title: 'Regalo no encontrado',
+        text: 'Puede que se haya eliminado en otro dispositivo.',
+      })}`;
+      return wrap;
+    }
+
+    const person = personOf(gift);
+    const meta = statusOf(gift);
+    const photo = caps.gift ? safeUrl(gift.photo) : '';
+    const links = caps.organizer ? parseLinks(gift.extra_links) : [];
+    const steps = Object.entries(statuses());
+    const price = caps.gift ? (gift.price != null ? fmtEur(gift.price) : '') : '';
+    const actual = caps.organizer && gift.actual_price != null ? fmtEur(gift.actual_price) : '';
+    const shopLink = caps.gift ? safeUrl(gift.link) : '';
+
+    const info = [
+      ['Destinatario', person?.name || 'Sin asignar'],
+      ['Fecha prevista', gift.day ? fmtLongDay(gift.day) : ''],
+      ['Ocasión', gift.occasion || ''],
+      ['Prioridad', PRIORITY_LABELS[gift.priority] || ''],
+      ['Precio estimado', price],
+      ['Precio real', actual],
+      ['Tienda', gift.store || ''],
+      ['Estado', meta.label],
+    ].filter(([, value]) => value);
+
+    wrap.innerHTML = `
+      ${subheadHTML('Detalle del regalo', {
+        actions: `<button type="button" class="icon-btn" data-gift-menu="${esc(gift.id)}" aria-label="Acciones">${icon('more', 18)}</button>`,
+      })}
+      ${
+        photo
+          ? `<div class="srp-detail__photo"><img src="${photo}" alt="Foto de ${esc(gift.title)}"></div>`
+          : `<div class="srp-detail__art">${giftArt(meta.art, { size: 96 })}</div>`
+      }
+      <div class="srp-detail__title">
+        <h3>${esc(gift.title)}</h3>
+        <span class="srp-pill is-${meta.tone}">${esc(meta.label)}</span>
+      </div>
+      ${gift.removed_at ? '<p class="srp-warning">Está en la papelera. Restáuralo para seguir usándolo.</p>' : ''}
+      ${
+        gift.archived_at && !gift.removed_at
+          ? '<p class="srp-warning">Archivado: no aparece en la lista diaria.</p>'
+          : ''
+      }
+
+      <section class="srp-detail__block">
+        <p class="srp-field-label">Estado rápido</p>
+        <div class="srp-steps" role="group" aria-label="Cambiar estado del regalo">
+          ${steps
+            .map(
+              ([value, stepMeta]) => `
+                <button type="button" class="srp-step is-${stepMeta.tone}${gift.state === value ? ' is-current' : ''}"
+                  data-set-status="${value}" aria-pressed="${gift.state === value}">
+                  <span class="srp-step__dot" aria-hidden="true"></span>${esc(stepMeta.label)}
+                </button>`,
+            )
+            .join('')}
+        </div>
+      </section>
+
+      ${
+        info.length
+          ? `<section class="srp-detail__block">
+               <p class="srp-field-label">Información</p>
+               <dl class="srp-info">
+                 ${info.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}
+               </dl>
+             </section>`
+          : ''
+      }
+
+      ${
+        gift.detail
+          ? `<section class="srp-detail__block">
+               <p class="srp-field-label">Descripción</p>
+               <p class="srp-prose">${esc(gift.detail)}</p>
+             </section>`
+          : ''
+      }
+
+      ${
+        shopLink || links.length
+          ? `<section class="srp-detail__block">
+               <p class="srp-field-label">Enlaces</p>
+               <div class="srp-links">
+                 ${
+                   shopLink
+                     ? `<a class="srp-link" href="${shopLink}" target="_blank" rel="noopener noreferrer">${icon('external', 15)}<span>Ver en la tienda</span></a>`
+                     : ''
+                 }
+                 ${links
+                   .map(value => {
+                     const url = safeUrl(value);
+                     if (!url) return '';
+                     let label = value;
+                     try {
+                       label = new URL(value).hostname.replace(/^www\./, '');
+                     } catch {
+                       /* texto tal cual */
+                     }
+                     return `<a class="srp-link" href="${url}" target="_blank" rel="noopener noreferrer">${icon('external', 15)}<span>${esc(label)}</span></a>`;
+                   })
+                   .join('')}
+               </div>
+             </section>`
+          : ''
+      }
+
+      ${
+        gift.notes
+          ? `<section class="srp-detail__block">
+               <p class="srp-field-label">Información adicional</p>
+               <p class="srp-prose">${esc(gift.notes)}</p>
+             </section>`
+          : ''
+      }
+
+      <div class="srp-detail__actions">
+        <button type="button" class="btn btn-block" data-edit-gift="${esc(gift.id)}">${icon('edit', 15)} Editar regalo</button>
+        ${
+          gift.removed_at
+            ? `<button type="button" class="btn btn-soft btn-block" data-restore-gift="${esc(gift.id)}">Restaurar</button>
+               <button type="button" class="btn btn-danger btn-block" data-purge-gift="${esc(gift.id)}">Eliminar definitivamente</button>`
+            : `<button type="button" class="btn btn-soft btn-block" data-archive-gift="${esc(gift.id)}">
+                 ${gift.archived_at ? 'Desarchivar' : 'Archivar'}
+               </button>
+               <button type="button" class="btn btn-danger btn-block" data-trash-gift="${esc(gift.id)}">Eliminar</button>`
+        }
+      </div>
+    `;
+    return wrap;
+  }
+
+  /* ==========================================
+     EDITOR DE REGALO
+     ========================================== */
+
+  function giftEditor(gift = null, preset = {}) {
+    const editing = !!gift;
+    let detachGuard = () => {};
+    openSheet(
+      editing ? 'Editar regalo' : 'Nuevo regalo',
+      () => {
+      const form = h('form', { class: 'srp-form', novalidate: true });
+      let photoValue = gift?.photo || '';
+      let state = gift ? storableState(gift.state) : 'pendiente';
+      let starred = !!(gift && gift.starred);
+
+      /* --- Información principal --- */
+      const title = h('input', {
+        type: 'text',
+        name: 'title',
+        maxlength: '140',
+        required: true,
+        placeholder: 'Ej. Auriculares con cancelación de ruido',
+        value: gift?.title || '',
+      });
+      const detail = h('textarea', {
+        name: 'detail',
+        maxlength: '4000',
+        placeholder: 'Talla, color, modelo, dónde conseguirlo…',
+      });
+      detail.value = gift?.detail || '';
+
+      const personSelect = caps.personColumn
+        ? h(
+            'select',
+            { name: 'person_id' },
+            h('option', { value: '' }, 'Sin asignar'),
+            ...people.map(person =>
+              h(
+                'option',
+                {
+                  value: person.id,
+                  selected: gift ? gift.person_id === person.id : preset.personId === person.id,
+                },
+                person.name,
+              ),
+            ),
+          )
+        : null;
+
+      const photoInput = h('input', { type: 'file', accept: 'image/*', hidden: true });
+      const photoBox = h('button', {
+        type: 'button',
+        class: 'srp-photo',
+        'aria-label': 'Añadir o cambiar la foto del regalo',
+        onclick: () => photoInput.click(),
+      });
+      const photoActions = h('div', { class: 'srp-photo__actions' });
+      const drawPhoto = () => {
+        photoBox.innerHTML = photoValue
+          ? `<img src="${safeUrl(photoValue)}" alt="Foto del regalo">`
+          : `${giftArt(artForState(state), { size: 64 })}<span>Añadir foto</span>`;
+        photoActions.replaceChildren();
+        if (photoValue) {
+          photoActions.append(
+            h('button', { type: 'button', class: 'btn btn-soft btn--sm', onclick: () => photoInput.click() }, 'Cambiar'),
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'btn btn-soft btn--sm',
+                onclick: () => {
+                  photoValue = '';
+                  drawPhoto();
+                },
+              },
+              'Quitar',
+            ),
+          );
+        }
+      };
+      photoInput.addEventListener('change', async () => {
+        const file = photoInput.files?.[0];
+        photoInput.value = '';
+        if (!file) return;
+        try {
+          photoValue = await photoFromFile(file);
+          drawPhoto();
+        } catch (error) {
+          toast(error.message);
+        }
+      });
+      drawPhoto();
+
+      /* --- Organización --- */
+      const day = h('input', {
+        type: 'date',
+        name: 'day',
+        required: true,
+        value: gift?.day || preset.day || todayISO(),
+      });
+      const occasion = caps.organizer
+        ? h('input', {
+            type: 'text',
+            name: 'occasion',
+            maxlength: '80',
+            placeholder: 'Cumpleaños, aniversario, Navidad…',
+            value: gift?.occasion || preset.occasion || '',
+          })
+        : null;
+      const priority = caps.organizer
+        ? h(
+            'select',
+            { name: 'priority' },
+            h('option', { value: '' }, 'Sin prioridad'),
+            Object.entries(PRIORITY_LABELS)
+              .filter(([value]) => value)
+              .map(([value, label]) =>
+                h('option', { value, selected: (gift?.priority || '') === value }, label),
+              ),
+          )
+        : null;
+
+      const offered = statuses();
+      const stateMenu = h('div', { class: 'srp-state-menu' });
+      const drawStates = () => {
+        stateMenu.innerHTML = '';
+        for (const [value, meta] of Object.entries(offered)) {
+          stateMenu.append(
+            h(
+              'button',
+              {
+                type: 'button',
+                class: `srp-state is-${meta.tone}${state === value ? ' is-current' : ''}`,
+                'aria-pressed': String(state === value),
+                onclick: () => {
+                  state = value;
+                  drawStates();
+                  drawPhoto();
+                },
+              },
+              h('span', { class: 'srp-state__dot', 'aria-hidden': 'true' }),
+              meta.label,
+            ),
+          );
+        }
+      };
+      drawStates();
+
+      /* --- Económica --- */
+      const price = caps.gift
+        ? h('input', {
+            type: 'number',
+            name: 'price',
+            min: '0',
+            max: '100000',
+            step: '0.01',
+            inputmode: 'decimal',
+            placeholder: '0,00',
+            value: gift?.price ?? '',
+          })
+        : null;
+      const actualPrice = caps.organizer
+        ? h('input', {
+            type: 'number',
+            name: 'actual_price',
+            min: '0',
+            max: '100000',
+            step: '0.01',
+            inputmode: 'decimal',
+            placeholder: 'Lo que costó de verdad',
+            value: gift?.actual_price ?? '',
+          })
+        : null;
+      const link = caps.gift
+        ? h('input', {
+            type: 'url',
+            name: 'link',
+            maxlength: '2000',
+            placeholder: 'https://…',
+            value: gift?.link || '',
+          })
+        : null;
+      const store = caps.organizer
+        ? h('input', {
+            type: 'text',
+            name: 'store',
+            maxlength: '120',
+            placeholder: 'Ej. Fnac, Amazon, tienda del barrio',
+            value: gift?.store || '',
+          })
+        : null;
+
+      /* --- Adicional --- */
+      const notes = caps.organizer
+        ? h('textarea', { name: 'notes', maxlength: '4000', placeholder: 'Notas, tallas, dónde esconderlo…' })
+        : null;
+      if (notes) notes.value = gift?.notes || '';
+      const extraLinks = caps.organizer
+        ? h('textarea', {
+            name: 'extra_links',
+            maxlength: '2000',
+            placeholder: 'Un enlace por línea',
+          })
+        : null;
+      if (extraLinks) extraLinks.value = gift?.extra_links || '';
+
+      const starButton = caps.extras
+        ? h(
+            'button',
+            {
+              type: 'button',
+              class: `srp-star-toggle${starred ? ' is-on' : ''}`,
+              'aria-pressed': String(starred),
+              onclick: () => {
+                starred = !starred;
+                starButton.classList.toggle('is-on', starred);
+                starButton.setAttribute('aria-pressed', String(starred));
+                starButton.innerHTML = `${icon('star', 15)} ${starred ? 'Favorito' : 'Marcar como favorito'}`;
+              },
+            },
+            icon('star', 15),
+            starred ? ' Favorito' : ' Marcar como favorito',
+          )
+        : null;
+
+      const error = h('p', { class: 'srp-error', role: 'alert' });
+      const submit = h('button', { type: 'submit', class: 'btn btn-block' }, editing ? 'Guardar cambios' : 'Guardar regalo');
+      const cancel = h('button', { type: 'button', class: 'btn btn-soft btn-block' }, 'Cancelar');
+
+      form.append(...[
+        h('div', { class: 'srp-photo-wrap' }, photoBox, photoActions, photoInput),
+        h('label', { class: 'srp-field' }, h('span', null, 'Nombre del regalo'), title),
+        personSelect
+          ? h('label', { class: 'srp-field' }, h('span', null, 'Para quién'), personSelect)
+          : null,
+        h('label', { class: 'srp-field' }, h('span', null, 'Descripción'), detail),
+
+        h('p', { class: 'srp-form__section' }, 'Organización'),
+        h('div', { class: 'srp-field' }, h('span', null, 'Estado'), stateMenu),
+        h(
+          'div',
+          { class: 'srp-form__row' },
+          h('label', { class: 'srp-field' }, h('span', null, 'Fecha prevista'), day),
+          occasion ? h('label', { class: 'srp-field' }, h('span', null, 'Ocasión'), occasion) : null,
+        ),
+        priority ? h('label', { class: 'srp-field' }, h('span', null, 'Prioridad'), priority) : null,
+
+        caps.gift
+          ? h('p', { class: 'srp-form__section' }, 'Información económica')
+          : null,
+        caps.gift
+          ? h(
+              'div',
+              { class: 'srp-form__row' },
+              h('label', { class: 'srp-field' }, h('span', null, 'Precio estimado (€)'), price),
+              actualPrice
+                ? h('label', { class: 'srp-field' }, h('span', null, 'Precio real (€)'), actualPrice)
+                : null,
+            )
+          : null,
+        caps.gift ? h('label', { class: 'srp-field' }, h('span', null, 'Enlace de compra'), link) : null,
+        store ? h('label', { class: 'srp-field' }, h('span', null, 'Tienda'), store) : null,
+
+        caps.organizer
+          ? h('details', { class: 'srp-details' },
+              h('summary', null, 'Información adicional'),
+              h('div', { class: 'srp-details__body' },
+                notes ? h('label', { class: 'srp-field' }, h('span', null, 'Notas'), notes) : null,
+                extraLinks
+                  ? h('label', { class: 'srp-field' }, h('span', null, 'Enlaces adicionales'), extraLinks)
+                  : null,
+              ),
+            )
+          : null,
+
+        starButton,
+        error,
+        submit,
+        cancel,
+      ].filter(Boolean));
+
+      /* Cambios sin guardar: cerrar la hoja (X, fondo o Escape) pide
+         confirmación. Cancelar también. */
+      let dirty = false;
+      form.addEventListener('input', () => {
+        dirty = true;
+      });
+      form.addEventListener('change', () => {
+        dirty = true;
+      });
+      const confirmLeave = () => {
+        if (!dirty) return true;
+        const goOut = window.confirm('Tienes cambios sin guardar. ¿Salir sin guardar?');
+        if (goOut) dirty = false;
+        return goOut;
+      };
+
+      // El formulario aún no está dentro del overlay cuando se construye:
+      // los listeners viven en el documento y comprueban el overlay al vuelo.
+      const onCapture = event => {
+        const overlay = form.closest('.overlay');
+        if (!overlay || !dirty) return;
+        if (event.target === overlay || event.target.closest('.sheet-head')) {
+          if (!confirmLeave()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
+      };
+      const onKey = event => {
+        if (event.key === 'Escape' && dirty && !confirmLeave()) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      };
+      document.addEventListener('click', onCapture, true);
+      document.addEventListener('keydown', onKey, true);
+      detachGuard = () => {
+        document.removeEventListener('click', onCapture, true);
+        document.removeEventListener('keydown', onKey, true);
+      };
+
+      cancel.addEventListener('click', () => {
+        if (!confirmLeave()) return;
+        dirty = false;
+        closeSheets();
+      });
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const values = {
+          title: title.value.trim(),
+          detail: detail.value.trim(),
+          day: day.value,
+          state: storableState(state),
+          ...(caps.personColumn && personSelect && { person_id: personSelect.value || null }),
+          ...(caps.gift && {
+            price: price.value === '' ? null : Number(price.value),
+            link: link.value.trim(),
+            photo: photoValue,
+          }),
+          ...(caps.extras && { starred }),
+          ...(caps.organizer && {
+            occasion: occasion.value.trim(),
+            store: store.value.trim(),
+            actual_price: actualPrice.value === '' ? null : Number(actualPrice.value),
+            priority: priority.value,
+            extra_links: extraLinks.value.trim(),
+            notes: notes.value.trim(),
+          }),
+        };
+
+        if (!values.title) {
+          error.textContent = 'Ponle un nombre al regalo.';
+          title.focus();
+          return;
+        }
+        if (!values.day) {
+          error.textContent = 'Elige una fecha para el regalo.';
+          day.focus();
+          return;
+        }
+        if (values.price != null && (!Number.isFinite(values.price) || values.price < 0)) {
+          error.textContent = 'El precio no puede ser negativo.';
+          price.focus();
+          return;
+        }
+        if (values.actual_price != null && (!Number.isFinite(values.actual_price) || values.actual_price < 0)) {
+          error.textContent = 'El precio real no puede ser negativo.';
+          actualPrice.focus();
+          return;
+        }
+        if (values.link && !/^https?:\/\/\S+$/i.test(values.link)) {
+          error.textContent = 'El enlace debe empezar por http:// o https://';
+          link.focus();
+          return;
+        }
+        const badLink = parseLinks(values.extra_links || '').find(value => !/^https?:\/\/\S+$/i.test(value));
+        if (badLink) {
+          error.textContent = `Este enlace no es válido: ${badLink}`;
+          extraLinks.focus();
+          return;
+        }
+
+        error.textContent = '';
+        submit.disabled = true;
+        cancel.disabled = true;
+        try {
+          await writeEntry('surprise', values, gift);
+          dirty = false;
+          detachGuard();
+          closeSheets();
+          toast(editing ? 'Regalo actualizado' : 'Regalo guardado');
+          await load();
+        } catch (err) {
+          error.textContent = err?.message?.includes('otro dispositivo')
+            ? err.message
+            : 'No se ha guardado. Vuelve a intentarlo.';
+          submit.disabled = false;
+          cancel.disabled = false;
+        }
+      });
+
+      return form;
+      },
+      () => detachGuard(),
+    );
   }
 
   /* ==========================================
      VISTA · PERSONAS
      ========================================== */
 
-  function birthdayPanelHTML() {
-    const list = birthdays();
-    if (!list.length) return '';
+  function personCardHTML(person) {
+    const buckets = personGiftBuckets(person.id, rows);
+    const next = nextOccasionOf(person, todayISO());
+    const birthday = person.birthday ? fmtBirthday(person.birthday) : '';
+    const count = buckets.all.length;
+    const pending = buckets.ideas.length + buckets.pending.length;
+    const meta = [
+      birthday ? `Cumple el ${birthday}` : 'Sin cumpleaños',
+      next ? countdown(next.date, true) : '',
+    ].filter(Boolean).join(' · ');
+
     return `
-      <section class="srp-panel srp-bdays">
-        <div class="srp-panel__head">
-          <b>Cumpleaños</b>
-          <span>De todos</span>
-        </div>
-        ${list
-          .map(({ person, day }) => {
-            const days = daysUntil(day);
-            return `
-              <button type="button" class="srp-bday" data-person="${esc(person.id)}">
-                ${avatarHTML(person, 36)}
-                <span class="srp-bday__copy">
-                  <b>${esc(person.name)}</b>
-                  <span>Cumple el ${esc(fmtDay(day))}</span>
-                </span>
-                <span class="srp-count${days <= 7 ? ' is-soon' : ''}">${countdown(day, true)}</span>
-              </button>`;
-          })
-          .join('')}
-      </section>
+      <article class="srp-person-card">
+        <button type="button" class="srp-person-card__open" data-person-open="${esc(person.id)}" aria-label="Abrir la ficha de ${esc(person.name)}">
+          ${avatarHTML(person, 52)}
+          <span class="srp-person-card__copy">
+            <span class="srp-person-card__name">${esc(person.name)}</span>
+            <span class="srp-person-card__meta">${esc(meta)}</span>
+            <span class="srp-person-card__stats">
+              <span><b>${count}</b> ${count === 1 ? 'regalo' : 'regalos'}</span>
+              <span><b>${pending}</b> pendientes</span>
+              ${next ? `<span class="srp-person-card__next">${esc(next.title)}</span>` : ''}
+            </span>
+          </span>
+          <span class="srp-person-card__chev" aria-hidden="true">${icon('chev', 16)}</span>
+        </button>
+      </article>
     `;
   }
 
-  function personasView() {
-    const wrap = h('div');
+  function peopleView() {
+    const wrap = h('div', { class: 'srp-view' });
 
-    if (!people.length) {
-      showEmpty(wrap, {
-        icon: 'user',
-        title: 'Aún no hay personas',
-        text: 'Añade a quién le regalas, con su foto y su cumpleaños, y asigna cada sorpresa.',
-        action: { label: 'Añadir persona', id: 'srpNewPerson' },
-      });
-      wrap.querySelector('#srpNewPerson')?.addEventListener('click', () => personEditor());
+    if (!caps.people) {
+      wrap.innerHTML = `
+        <div class="empty">
+          <b>Personas no disponible</b>
+          <p>Aplica la migración 038 para organizar tus regalos por destinatario.</p>
+        </div>`;
       return wrap;
     }
 
-    const bdays = birthdayPanelHTML();
-    if (bdays) wrap.insertAdjacentHTML('beforeend', bdays);
-
-    const grid = h('div', { class: 'srp-people' });
-    grid.innerHTML = people
-      .map(person => {
-        const count = giftsOf(person.id).length;
-        const next = person.birthday ? nextBirthday(person.birthday) : null;
-        return `
-          <button type="button" class="srp-person" data-person="${esc(person.id)}">
-            ${avatarHTML(person, 54)}
-            <b>${esc(person.name)}</b>
-            <span>${count} ${count === 1 ? 'sorpresa' : 'sorpresas'}</span>
-            <span class="srp-person__bday">${
-              next ? `Cumple el ${esc(fmtDay(next))}` : 'Sin cumpleaños'
-            }</span>
-            ${next ? `<span class="srp-person__count">${esc(countdown(next, true))}</span>` : ''}
-          </button>`;
-      })
-      .join('');
-    grid.insertAdjacentHTML(
-      'beforeend',
-      `<button type="button" class="srp-person is-add" data-person-new>${icon('plus', 22)}<b>Añadir persona</b></button>`
-    );
-    wrap.append(grid);
-
-    const upcoming = upcomingList().slice(0, 6);
-    const heading = h('div', { class: 'section-title' });
-    heading.append(h('span', null, 'Próximos regalos'));
-    const seeAll = h('button', { type: 'button', class: 'link' }, 'Ver todos');
-    seeAll.addEventListener('click', () => {
-      view = 'regalos';
-      filter = 'activos';
-      syncSeg();
-      render();
-    });
-    heading.append(seeAll);
-    wrap.append(heading);
-
-    if (!upcoming.length) {
-      wrap.insertAdjacentHTML(
-        'beforeend',
-        emptyStateHTML({
-          icon: 'gift',
-          title: 'Sin ideas todavía',
-          text: 'Añade tu primera idea y asígnala a una persona.',
-          action: NEW_ACTION,
-        })
-      );
-      wrap.querySelector('#srpNew')?.addEventListener('click', () => editor());
-    } else {
-      const giftGrid = h('div', { class: 'srp-grid' });
-      giftGrid.innerHTML = upcoming.map(cardHTML).join('');
-      wrap.append(giftGrid);
+    if (!people.length) {
+      wrap.innerHTML = emptyBlock({
+        art: 'persona',
+        title: 'Aún no hay personas',
+        text: 'Añade a quién le regalas con su cumpleaños y sus gustos. Solo tú verás esta lista.',
+        action: '<button type="button" class="btn" data-person-new>Añadir persona</button>',
+      });
+      return wrap;
     }
 
+    wrap.innerHTML = `
+      <div class="srp-toolbar">
+        <label class="srp-search">
+          ${icon('search', 17)}
+          <input type="search" id="srpPeopleSearch" placeholder="Buscar persona…" aria-label="Buscar personas" autocomplete="off" value="${esc(peopleQuery)}">
+        </label>
+        <button type="button" class="srp-filter-btn" data-person-new>${icon('plus', 16)}<span>Añadir</span></button>
+      </div>
+      <p class="srp-count" id="srpPeopleCount"></p>
+      <div class="srp-people-list" id="srpPeopleList"></div>
+    `;
+
+    const search = wrap.querySelector('#srpPeopleSearch');
+    const list = wrap.querySelector('#srpPeopleList');
+    const count = wrap.querySelector('#srpPeopleCount');
+
+    const drawPeople = () => {
+      const needle = peopleQuery
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      const items = people.filter(person =>
+        !needle
+          ? true
+          : `${person.name} ${person.likes || ''} ${person.interests || ''}`
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .includes(needle),
+      );
+      count.textContent = `${items.length} ${items.length === 1 ? 'persona' : 'personas'}`;
+      list.innerHTML = items.length
+        ? items.map(personCardHTML).join('')
+        : emptyBlock({
+            art: 'persona',
+            title: 'Sin resultados',
+            text: 'Ninguna persona coincide con la búsqueda.',
+          });
+    };
+
+    search.addEventListener('input', () => {
+      peopleQuery = search.value;
+      drawPeople();
+    });
+    drawPeople();
     return wrap;
   }
 
-  function personSheet(person) {
-    const theirs = giftsOf(person.id).sort(compareRows);
-    const next = person.birthday ? nextBirthday(person.birthday) : null;
-    const line = birthdayLine(person);
-    const pending = theirs.filter(row => !isDone(row) && !isBought(row));
-    const bought = theirs.filter(row => isBought(row) && !isDone(row));
-    const delivered = theirs.filter(isDone);
-    const planned = pending.reduce((sum, row) => sum + (Number(row.price) || 0), 0);
-    const spent = bought
-      .concat(delivered)
-      .reduce((sum, row) => sum + (Number(row.price) || 0), 0);
-    const groups = [
-      ['Pendientes', pending],
-      ['Compradas', bought],
-      ['Entregadas', delivered],
-    ];
+  function personDetailView(id) {
+    const person = findPerson(id);
+    const wrap = h('div', { class: 'srp-view srp-person' });
+    if (!person) {
+      wrap.innerHTML = `${subheadHTML('Persona')}${emptyBlock({
+        art: 'persona',
+        title: 'Persona no encontrada',
+        text: 'Puede que la hayas quitado en otro dispositivo.',
+      })}`;
+      return wrap;
+    }
 
+    const buckets = personGiftBuckets(person.id, rows);
+    const next = nextOccasionOf(person, todayISO());
+    const dates = Array.isArray(person.important_dates) ? person.important_dates : [];
+    const group = (title, items) =>
+      items.length
+        ? `<section class="srp-person__group">
+             <div class="srp-section-title"><span>${title}</span><b>${items.length}</b></div>
+             <div class="srp-list">${items.map(gift => giftCardHTML(gift)).join('')}</div>
+           </section>`
+        : '';
+
+    wrap.innerHTML = `
+      ${subheadHTML('Persona', {
+        actions: `<button type="button" class="icon-btn" data-person-menu="${esc(person.id)}" aria-label="Opciones de ${esc(person.name)}">${icon('more', 18)}</button>`,
+      })}
+      <div class="srp-person__hero">
+        ${avatarHTML(person, 84)}
+        <div class="srp-person__hero-copy">
+          <h3>${esc(person.name)}</h3>
+          <p>${person.birthday ? `Cumpleaños: ${esc(fmtBirthday(person.birthday))}` : 'Sin cumpleaños registrado'}</p>
+          ${next ? `<p class="srp-person__next">${esc(next.title)} · ${esc(fmtDay(next.date))} · ${esc(countdown(next.date))}</p>` : ''}
+        </div>
+      </div>
+
+      <div class="srp-person__stats">
+        <div><b>${caps.gift ? esc(fmtEur(buckets.planned)) : buckets.all.length}</b><span>Previsto</span></div>
+        <div class="srp-person__sep"></div>
+        <div><b>${caps.gift ? esc(fmtEur(buckets.spent)) : buckets.delivered.length}</b><span>Gastado</span></div>
+        <div class="srp-person__sep"></div>
+        <div><b>${buckets.all.length}</b><span>Regalos</span></div>
+      </div>
+
+      <button type="button" class="btn btn-block" data-new-gift-for="${esc(person.id)}">${icon('plus', 15)} Nuevo regalo para ${esc(person.name.split(' ')[0])}</button>
+
+      ${group('Ideas', buckets.ideas)}
+      ${group('Pendientes de comprar', buckets.pending)}
+      ${group('Comprados y preparados', buckets.bought)}
+      ${group('Historial de entregados', buckets.delivered)}
+
+      ${
+        buckets.all.length === 0
+          ? `<div class="srp-person__empty">${giftArt('regalos-vacios', { size: 84 })}<p>Todavía no hay regalos para ${esc(person.name)}.</p></div>`
+          : ''
+      }
+
+      ${dates.length
+        ? `<section class="srp-detail__block">
+             <p class="srp-field-label">Fechas importantes</p>
+             <dl class="srp-info">
+               ${dates
+                 .map(
+                   item =>
+                     `<div><dt>${esc(item.label || 'Fecha')}</dt><dd>${esc(fmtBirthday(item.date || ''))}</dd></div>`,
+                 )
+                 .join('')}
+             </dl>
+           </section>`
+        : ''}
+
+      ${person.likes
+        ? `<section class="srp-detail__block"><p class="srp-field-label">Gustos</p><p class="srp-prose">${esc(person.likes)}</p></section>`
+        : ''}
+      ${person.interests
+        ? `<section class="srp-detail__block"><p class="srp-field-label">Intereses</p><p class="srp-prose">${esc(person.interests)}</p></section>`
+        : ''}
+      ${person.notes
+        ? `<section class="srp-detail__block"><p class="srp-field-label">Notas personales</p><p class="srp-prose">${esc(person.notes)}</p></section>`
+        : ''}
+
+      <div class="srp-detail__actions">
+        <button type="button" class="btn btn-soft btn-block" data-person-edit="${esc(person.id)}">Editar persona</button>
+      </div>
+    `;
+    return wrap;
+  }
+
+  function personMenuSheet(person) {
     openSheet(person.name, () =>
       h(
         'div',
-        null,
-        h(
-          'div',
-          { class: 'srp-person-head' },
-          h('span', { html: avatarHTML(person, 72) }),
-          h(
-            'div',
-            { class: 'srp-person-head__copy' },
-            h(
-              'b',
-              null,
-              next ? `${fmtDay(next)} · ${countdown(next)}` : 'Sin cumpleaños'
-            ),
-            h(
-              'span',
-              null,
-              `${theirs.length} ${theirs.length === 1 ? 'sorpresa' : 'sorpresas'}`
-            )
-          )
-        ),
-        line ? h('p', { class: 'srp-bday-card' }, line) : null,
-        person.notes ? h('p', { class: 'srp-note' }, person.notes) : null,
-        theirs.length && giftsSupported
-          ? h(
-              'div',
-              { class: 'srp-person-stats' },
-              h(
-                'div',
-                null,
-                h('b', null, fmtEur(planned)),
-                h('span', null, `planificado · ${pending.length} ${pending.length === 1 ? 'sorpresa' : 'sorpresas'}`)
-              ),
-              h('div', { class: 'srp-person-stats__sep' }),
-              h(
-                'div',
-                null,
-                h('b', null, fmtEur(spent)),
-                h('span', null, 'gastado en total')
-              )
-            )
-          : null,
+        { class: 'srp-sheet-menu' },
         h(
           'button',
           {
             type: 'button',
-            class: 'btn btn-block',
+            class: 'srp-sheet-menu__item',
             onclick: () => {
               closeSheets();
-              editor(null, person.id);
+              go('person', person.id);
             },
           },
-          `Añadir regalo para ${person.name.split(' ')[0]}`
+          'Ver ficha',
         ),
-        ...groups
-          .filter(([, items]) => items.length)
-          .flatMap(([label, items]) => [
-            h('div', { class: 'section-title' }, h('span', null, `${label} · ${items.length}`)),
-            h(
-              'div',
-              { class: 'srp-person-list' },
-              items.map(row =>
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    class: 'srp-person-item',
-                    onclick: () => {
-                      closeSheets();
-                      editor(row);
-                    },
-                  },
-                  h(
-                    'span',
-                    { class: 'srp-person-item__copy' },
-                    h('b', null, row.title),
-                    h(
-                      'span',
-                      null,
-                      `${fmtDay(row.day)} · ${statusOf(row).label}${
-                        giftsSupported && Number(row.price) ? ` · ${fmtEur(row.price)}` : ''
-                      }`
-                    )
-                  ),
-                  h('span', { class: 'ic', html: icon('chev', 15) })
-                )
-              )
-            ),
-          ]),
         h(
-          'div',
-          { class: 'srp-sheet-actions' },
-          h(
-            'button',
-            {
-              type: 'button',
-              class: 'btn btn-soft btn-block',
-              onclick: () => {
-                closeSheets();
-                personEditor(person);
-              },
+          'button',
+          {
+            type: 'button',
+            class: 'srp-sheet-menu__item',
+            onclick: () => {
+              closeSheets();
+              personEditor(person);
             },
-            'Editar persona'
-          ),
-          h(
-            'button',
-            { type: 'button', class: 'btn btn-danger btn-block', onclick: () => deletePerson(person) },
-            'Quitar persona'
-          )
-        )
-      )
+          },
+          'Editar persona',
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'srp-sheet-menu__item',
+            onclick: () => {
+              closeSheets();
+              giftEditor(null, { personId: person.id });
+            },
+          },
+          'Nuevo regalo para esta persona',
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'srp-sheet-menu__item is-danger',
+            onclick: () => {
+              closeSheets();
+              void deletePerson(person);
+            },
+          },
+          'Quitar persona',
+        ),
+      ),
     );
-  }
-
-  async function deletePerson(person) {
-    if (!confirm(`¿Quitar a ${person.name}? Sus sorpresas se quedan sin asignar.`)) return;
-    try {
-      await removePerson(person);
-      closeSheets();
-      toast('Persona quitada');
-      await load();
-    } catch (error) {
-      toast(
-        error?.message?.includes('otro dispositivo') ? error.message : 'No se pudo quitar la persona'
-      );
-    }
   }
 
   function personEditor(person = null) {
     openSheet(person ? 'Editar persona' : 'Nueva persona', () => {
-      // `novalidate`: los avisos los pinta la propia hoja (role="alert");
-      // si el navegador bloquea el submit por `required`, no se ve ninguno.
       const form = h('form', { class: 'srp-form', novalidate: true });
       let photoValue = person?.photo || '';
+      const dates = (Array.isArray(person?.important_dates) ? person.important_dates : []).map(item => ({
+        label: item.label || '',
+        date: item.date || '',
+      }));
 
-      const preview = h('button', { type: 'button', class: 'srp-person-photo' });
-      const pick = h('button', { type: 'button', class: 'btn btn-soft btn--sm' });
-      const clear = h('button', { type: 'button', class: 'btn btn-soft btn--sm' }, 'Quitar foto');
+      const preview = h('button', { type: 'button', class: 'srp-photo srp-photo--round' });
       const fileInput = h('input', { type: 'file', accept: 'image/*', hidden: true });
+      const photoActions = h('div', { class: 'srp-photo__actions' });
 
       const name = h('input', {
         type: 'text',
@@ -759,32 +1544,47 @@ export function SorpresasPage() {
         name: 'birthday',
         value: person?.birthday || '',
       });
+      const likes = caps.peopleOrganizer
+        ? h('textarea', { name: 'likes', maxlength: '2000', placeholder: 'Colores, marcas, cosas que le gustan…' })
+        : null;
+      if (likes) likes.value = person?.likes || '';
+      const interests = caps.peopleOrganizer
+        ? h('textarea', { name: 'interests', maxlength: '2000', placeholder: 'Aficiones, series, música, deportes…' })
+        : null;
+      if (interests) interests.value = person?.interests || '';
       const notes = h('textarea', {
         name: 'notes',
         maxlength: '2000',
-        placeholder: 'Gustos, tallas, ideas que le gustan…',
+        placeholder: 'Tallas, alergias, ideas que ha mencionado…',
       });
       notes.value = person?.notes || '';
 
       const drawPhoto = () => {
         const personLike = { name: name.value.trim() || person?.name || '', photo: photoValue };
-        preview.innerHTML = avatarHTML(personLike, 88);
-        if (!photoValue) {
-          preview.insertAdjacentHTML(
-            'beforeend',
-            `<span class="srp-person-photo__flag" aria-hidden="true">${icon('plus', 13)}</span>`
+        preview.innerHTML = avatarHTML(personLike, 84);
+        photoActions.replaceChildren();
+        photoActions.append(
+          h('button', { type: 'button', class: 'btn btn-soft btn--sm', onclick: () => fileInput.click() }, photoValue ? 'Cambiar foto' : 'Añadir foto'),
+        );
+        if (photoValue) {
+          photoActions.append(
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'btn btn-soft btn--sm',
+                onclick: () => {
+                  photoValue = '';
+                  drawPhoto();
+                },
+              },
+              'Quitar foto',
+            ),
           );
         }
-        pick.textContent = photoValue ? 'Cambiar foto' : 'Añadir foto';
-        clear.hidden = !photoValue;
       };
       name.addEventListener('input', drawPhoto);
       preview.addEventListener('click', () => fileInput.click());
-      pick.addEventListener('click', () => fileInput.click());
-      clear.addEventListener('click', () => {
-        photoValue = '';
-        drawPhoto();
-      });
       fileInput.addEventListener('change', async () => {
         const file = fileInput.files?.[0];
         fileInput.value = '';
@@ -798,32 +1598,85 @@ export function SorpresasPage() {
       });
       drawPhoto();
 
-      const error = h('p', { class: 'srp-error', role: 'alert' });
-      const submit = h(
-        'button',
-        { type: 'submit', class: 'btn btn-block' },
-        person ? 'Guardar cambios' : 'Guardar persona'
-      );
-      const cancel = h(
-        'button',
-        { type: 'button', class: 'btn btn-soft btn-block', onclick: closeSheets },
-        'Cancelar'
-      );
+      const datesBox = h('div', { class: 'srp-dates' });
+      const drawDates = () => {
+        datesBox.replaceChildren();
+        dates.forEach((item, index) => {
+          const label = h('input', {
+            type: 'text',
+            maxlength: '40',
+            placeholder: 'Aniversario, santo…',
+            value: item.label,
+            'aria-label': `Nombre de la fecha ${index + 1}`,
+          });
+          const date = h('input', { type: 'date', value: item.date, 'aria-label': `Fecha importante ${index + 1}` });
+          label.addEventListener('input', () => {
+            item.label = label.value;
+          });
+          date.addEventListener('change', () => {
+            item.date = date.value;
+          });
+          datesBox.append(
+            h(
+              'div',
+              { class: 'srp-date-row' },
+              label,
+              date,
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'icon-btn',
+                  'aria-label': 'Quitar fecha',
+                  onclick: () => {
+                    dates.splice(index, 1);
+                    drawDates();
+                  },
+                },
+                icon('x', 15),
+              ),
+            ),
+          );
+        });
+        datesBox.append(
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'srp-linkbtn',
+              onclick: () => {
+                dates.push({ label: '', date: '' });
+                drawDates();
+              },
+            },
+            '+ Añadir fecha importante',
+          ),
+        );
+      };
+      if (caps.peopleOrganizer) drawDates();
 
-      form.append(
-        h('div', { class: 'srp-person-photo-wrap' }, preview, pick, clear, fileInput),
+      const error = h('p', { class: 'srp-error', role: 'alert' });
+      const submit = h('button', { type: 'submit', class: 'btn btn-block' }, person ? 'Guardar cambios' : 'Añadir persona');
+      const cancel = h('button', { type: 'button', class: 'btn btn-soft btn-block' }, 'Cancelar');
+
+      form.append(...[
+        h('div', { class: 'srp-photo-wrap' }, preview, photoActions, fileInput),
         h('label', { class: 'srp-field' }, h('span', null, 'Nombre'), name),
-        h(
-          'label',
-          { class: 'srp-field' },
-          h('span', null, 'Cumpleaños'),
-          birthday
-        ),
-        h('label', { class: 'srp-field' }, h('span', null, 'Información'), notes),
+        h('label', { class: 'srp-field' }, h('span', null, 'Cumpleaños'), birthday),
+        caps.peopleOrganizer ? h('p', { class: 'srp-form__section' }, 'Fechas importantes') : null,
+        caps.peopleOrganizer ? datesBox : null,
+        caps.peopleOrganizer
+          ? h('p', { class: 'srp-form__section' }, 'Gustos e intereses')
+          : null,
+        likes ? h('label', { class: 'srp-field' }, h('span', null, 'Gustos'), likes) : null,
+        interests ? h('label', { class: 'srp-field' }, h('span', null, 'Intereses'), interests) : null,
+        h('label', { class: 'srp-field' }, h('span', null, 'Notas'), notes),
         error,
         submit,
-        cancel
-      );
+        cancel,
+      ].filter(Boolean));
+
+      cancel.addEventListener('click', closeSheets);
 
       form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -832,6 +1685,11 @@ export function SorpresasPage() {
           birthday: birthday.value || null,
           photo: photoValue,
           notes: notes.value.trim(),
+          ...(caps.peopleOrganizer && {
+            likes: likes.value.trim(),
+            interests: interests.value.trim(),
+            important_dates: dates.filter(item => item.date),
+          }),
         };
         if (!values.name) {
           error.textContent = 'Escribe un nombre.';
@@ -859,342 +1717,450 @@ export function SorpresasPage() {
     });
   }
 
+  async function deletePerson(person) {
+    if (!window.confirm(`¿Quitar a ${person.name}? Sus regalos se quedan sin asignar.`)) return;
+    try {
+      await removePerson(person);
+      screen = 'tabs';
+      toast('Persona quitada');
+      await load();
+    } catch (error) {
+      toast(error?.message?.includes('otro dispositivo') ? error.message : 'No se pudo quitar la persona');
+    }
+  }
+
   /* ==========================================
      VISTA · AGENDA
      ========================================== */
 
-  function agendaView() {
-    const wrap = h('div');
-    const events = [];
+  function occasionMeta(event) {
+    const person = event.personId ? findPerson(event.personId) : null;
+    if (event.kind === 'birthday') {
+      return event.years ? `Cumple ${event.years} años` : 'Cumpleaños';
+    }
+    return [person?.name, event.years ? `${event.years} años` : ''].filter(Boolean).join(' · ') || 'Fecha importante';
+  }
 
-    for (const { person, day } of birthdays()) {
-      events.push({
-        kind: 'Cumpleaños',
-        iconName: 'cake',
-        label: `Cumpleaños de ${person.name}`,
-        date: day,
-        personId: person.id,
-      });
-    }
-    for (const row of upcomingList()) {
-      events.push({
-        kind: statusOf(row).label,
-        iconName: 'gift',
-        label: row.title,
-        date: row.day,
-        rowId: row.id,
-        personId: row.person_id || null,
-      });
-    }
-    events.sort((first, second) => (first.date < second.date ? -1 : first.date > second.date ? 1 : 0));
+  function agendaView() {
+    const wrap = h('div', { class: 'srp-view srp-agenda' });
+    const today = todayISO();
+    // Solo personas: cumpleaños y fechas propias. Los regalos y sus fechas
+    // de entrega se consultan en la pestaña Regalos.
+    const events = peopleOccasions({ people, today });
+
+    wrap.innerHTML = `
+      <p class="srp-agenda__intro">Cumpleaños y fechas de tus personas, en orden. Los regalos viven en su propia pestaña.</p>
+      <div class="srp-agenda__head">
+        <div class="srp-seg" role="group" aria-label="Vista de la agenda">
+          <button type="button" data-agenda-mode="lista" class="${agendaMode === 'lista' ? 'is-on' : ''}" aria-pressed="${agendaMode === 'lista'}">Agenda</button>
+          <button type="button" data-agenda-mode="mes" class="${agendaMode === 'mes' ? 'is-on' : ''}" aria-pressed="${agendaMode === 'mes'}">Mes</button>
+        </div>
+        ${
+          agendaMode === 'mes'
+            ? `<div class="srp-month-nav">
+                 <button type="button" class="icon-btn" data-agenda-month="-1" aria-label="Mes anterior">${icon('back', 17)}</button>
+                 <b>${esc(monthLabel(agendaMonth))}</b>
+                 <button type="button" class="icon-btn" data-agenda-month="1" aria-label="Mes siguiente">${icon('chev', 17)}</button>
+               </div>`
+            : ''
+        }
+      </div>
+      <div id="srpAgendaBody"></div>
+    `;
+
+    const body = wrap.querySelector('#srpAgendaBody');
 
     if (!events.length) {
-      showEmpty(wrap, {
-        icon: 'calendar',
-        title: 'Sin ocasiones a la vista',
-        text: 'Añade cumpleaños a tus personas y ponles fecha a tus sorpresas; aquí verás la cuenta atrás.',
-        action: NEW_ACTION,
+      body.innerHTML = emptyBlock({
+        art: 'agenda-regalos',
+        title: 'Sin cumpleaños todavía',
+        text: people.length
+          ? 'Añade el cumpleaños o una fecha importante a tus personas y aparecerán aquí en orden.'
+          : 'Primero añade a alguien en Personas y después su cumpleaños.',
+        action: `<button type="button" class="btn" data-tab="personas">${
+          people.length ? 'Ir a Personas' : 'Añadir persona'
+        }</button>`,
       });
       return wrap;
     }
 
+    if (agendaMode === 'mes') {
+      body.innerHTML = calendarHTML(events, agendaMonth, today);
+      return wrap;
+    }
+
+    let lastMonth = '';
     const html = [];
-    let month = '';
-    for (const event of events.slice(0, 40)) {
+    for (const event of events) {
       const key = event.date.slice(0, 7);
-      if (key !== month) {
-        month = key;
-        html.push(`<div class="srp-section">${esc(monthLabel(key))}</div>`);
+      if (key !== lastMonth) {
+        lastMonth = key;
+        html.push(`<div class="srp-section-title"><span>${esc(monthLabel(key))}</span></div>`);
       }
-      const days = daysUntil(event.date);
-      const person = event.personId ? people.find(item => item.id === event.personId) : null;
+      const days = daysUntil(event.date, today);
       html.push(`
-        <button type="button" class="srp-row" ${
-          person ? `data-person="${esc(person.id)}"` : `data-open="${esc(event.rowId)}"`
-        } aria-label="${esc(event.label)}">
-          <span class="srp-row__ic">${icon(event.iconName, 17)}</span>
-          <span class="srp-row__copy">
-            <b>${esc(event.label)}</b>
-            <span>${esc(fmtDay(event.date))} · ${esc(event.kind)}</span>
+        <button type="button" class="srp-occasion" data-person-open="${esc(event.personId || '')}">
+          <span class="srp-occasion__date">
+            <b>${esc(event.date.slice(8, 10))}</b>
+            <span>${esc(monthShort(event.date))}</span>
           </span>
-          <span class="srp-count${days <= 7 && days >= 0 ? ' is-soon' : ''}">${countdown(event.date, true)}</span>
+          <span class="srp-occasion__art">${giftArt(event.art, { size: 34 })}</span>
+          <span class="srp-occasion__copy">
+            <span class="srp-occasion__title">${esc(event.title)}</span>
+            <span class="srp-occasion__meta">${esc(occasionMeta(event))}</span>
+          </span>
+          <span class="srp-occasion__when${days <= 7 && days >= 0 ? ' is-soon' : ''}">${esc(countdown(event.date, true))}</span>
         </button>
       `);
     }
-    wrap.innerHTML = html.join('');
+    body.innerHTML = html.join('');
     return wrap;
   }
 
-  /* ==========================================
-     VISTA · RESUMEN (estadísticas)
-     ========================================== */
-
-  function summaryView() {
-    const wrap = h('div');
-    const list = live();
-
-    if (!list.length) {
-      showEmpty(wrap, {
-        icon: 'chart',
-        title: 'Sin datos todavía',
-        text: 'Guarda sorpresas con precio y aquí verás cuánto planificas y cuánto gastas.',
-        action: NEW_ACTION,
-      });
-      return wrap;
+  function calendarHTML(events, month, today) {
+    const [year, monthNumber] = month.split('-').map(Number);
+    const first = new Date(Date.UTC(year, monthNumber - 1, 1));
+    const startOffset = (first.getUTCDay() + 6) % 7;
+    const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+    const byDay = new Map();
+    for (const event of events) {
+      if (!event.date.startsWith(month)) continue;
+      const day = Number(event.date.slice(8, 10));
+      if (!byDay.has(day)) byDay.set(day, []);
+      byDay.get(day).push(event);
     }
 
-    const spent = list
-      .filter(row => isDone(row) || isBought(row))
-      .reduce((sum, row) => sum + (Number(row.price) || 0), 0);
-    const planned = list
-      .filter(row => !isDone(row) && !isBought(row))
-      .reduce((sum, row) => sum + (Number(row.price) || 0), 0);
-    const priced = list.filter(row => Number(row.price) > 0);
-    const average = priced.length
-      ? priced.reduce((sum, row) => sum + Number(row.price), 0) / priced.length
-      : 0;
-    const delivered = list.filter(isDone).length;
-
-    const byYear = new Map();
-    for (const row of list) {
-      if (!isDone(row) && !isBought(row)) continue;
-      const year = (row.day || todayISO()).slice(0, 4);
-      byYear.set(year, (byYear.get(year) || 0) + (Number(row.price) || 0));
+    const cells = [];
+    for (let i = 0; i < startOffset; i++) cells.push('<span class="srp-cal__pad"></span>');
+    for (let day = 1; day <= daysInMonth; day++) {
+      const iso = `${month}-${String(day).padStart(2, '0')}`;
+      const dayEvents = byDay.get(day) || [];
+      cells.push(`
+        <button type="button" class="srp-cal__day${iso === today ? ' is-today' : ''}${dayEvents.length ? ' has-events' : ''}"
+          data-cal-day="${iso}" aria-label="${esc(fmtLongDay(iso))}${dayEvents.length ? `, ${dayEvents.length} ocasiones` : ''}">
+          <span>${day}</span>
+          ${dayEvents.length ? `<span class="srp-cal__dot" aria-hidden="true"></span>` : ''}
+        </button>
+      `);
     }
-    const years = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 4);
-    const maxYear = Math.max(1, ...years.map(entry => entry[1]));
 
-    const byPerson = people
-      .map(person => ({
-        person,
-        total: list
-          .filter(row => row.person_id === person.id && (isDone(row) || isBought(row)))
-          .reduce((sum, row) => sum + (Number(row.price) || 0), 0),
-      }))
-      .filter(entry => entry.total > 0)
-      .sort((first, second) => second.total - first.total)
-      .slice(0, 5);
-    const maxPerson = Math.max(1, ...byPerson.map(entry => entry.total));
-
-    const statCard = (value, label) => `
-      <div class="srp-stat">
-        <b>${esc(value)}</b>
-        <span>${esc(label)}</span>
+    const future = events.filter(event => event.date >= today).slice(0, 5);
+    return `
+      <div class="srp-cal">
+        <div class="srp-cal__weekdays" aria-hidden="true">
+          ${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => `<span>${day}</span>`).join('')}
+        </div>
+        <div class="srp-cal__grid">${cells.join('')}</div>
+      </div>
+      <p class="srp-field-label">Próximas</p>
+      <div class="srp-list">
+        ${future
+          .map(
+            event => `<button type="button" class="srp-occasion" data-person-open="${esc(event.personId || '')}">
+              <span class="srp-occasion__date"><b>${esc(event.date.slice(8, 10))}</b><span>${esc(monthShort(event.date))}</span></span>
+              <span class="srp-occasion__copy">
+                <span class="srp-occasion__title">${esc(event.title)}</span>
+                <span class="srp-occasion__meta">${esc(occasionMeta(event))}</span>
+              </span>
+              <span class="srp-occasion__when">${esc(countdown(event.date, true))}</span>
+            </button>`,
+          )
+          .join('')}
       </div>
     `;
+  }
+
+  /* ==========================================
+     VISTA · PRESUPUESTO Y ESTADÍSTICAS
+     ========================================== */
+
+  function budgetView() {
+    const wrap = h('div', { class: 'srp-view srp-budget' });
+    const budgetValue = Number(settings.monthly_budget) || 0;
+    const report = budgetReport({
+      gifts: rows,
+      people,
+      month: budgetMonth,
+      budget: budgetValue,
+    });
+    const maxPerson = Math.max(1, ...report.byPerson.map(entry => entry.total));
+    const maxHistory = Math.max(1, ...report.history.map(entry => entry.total));
+    const used = report.budget ? Math.min(100, Math.round((report.spent / report.budget) * 100)) : 0;
 
     wrap.innerHTML = `
-      <div class="srp-stats">
-        ${statCard(giftsSupported ? fmtEur(spent) : delivered, 'Gastado en total')}
-        ${statCard(
-          giftsSupported ? fmtEur(planned) : list.filter(row => row.state === 'pendiente').length,
-          'Planificado ahora'
-        )}
-        ${statCard(giftsSupported && priced.length ? fmtEur(average) : '—', 'Regalo medio')}
-        ${statCard(list.length, 'Sorpresas')}
+      ${subheadHTML('Presupuesto y estadísticas')}
+      <div class="srp-budget__range">
+        <select id="srpBudgetMonthSel" aria-label="Mes">
+          ${Array.from({ length: 12 }, (_, index) => {
+            const value = String(index + 1).padStart(2, '0');
+            const name = new Intl.DateTimeFormat('es-ES', { month: 'long', timeZone: 'UTC' })
+              .format(new Date(`2024-${value}-01T12:00:00Z`));
+            return `<option value="${value}"${budgetMonth.slice(5) === value ? ' selected' : ''}>${esc(name)}</option>`;
+          }).join('')}
+        </select>
+        <select id="srpBudgetYearSel" aria-label="Año">
+          ${[...new Set([
+            String(new Date().getFullYear()),
+            budgetMonth.slice(0, 4),
+            ...rows.map(gift => String(gift.day || '').slice(0, 4)).filter(Boolean),
+          ])]
+            .sort()
+            .reverse()
+            .map(year => `<option value="${esc(year)}"${budgetMonth.slice(0, 4) === year ? ' selected' : ''}>${esc(year)}</option>`)
+            .join('')}
+        </select>
       </div>
 
-      <section class="srp-panel">
-        <div class="srp-panel__head">
-          <b>Gasto por año</b>
-          <span>Compras y entregas</span>
-        </div>
+      ${
+        caps.settings
+          ? `<form class="srp-budget__form" id="srpBudgetForm">
+               <label class="srp-field">
+                 <span>Presupuesto mensual (opcional)</span>
+                 <input type="number" id="srpBudgetInput" min="0" max="100000" step="1" inputmode="decimal" placeholder="Sin límite" value="${budgetValue || ''}">
+               </label>
+               <button type="submit" class="btn btn--sm">Guardar</button>
+             </form>`
+          : `<p class="srp-hint">Configura un presupuesto mensual cuando apliques la migración 046.</p>`
+      }
+
+      <div class="srp-budget__stats">
+        <div class="srp-stat"><b>${esc(fmtEur(report.planned))}</b><span>Previsto ahora</span></div>
+        <div class="srp-stat"><b>${esc(fmtEur(report.spent))}</b><span>Gastado real</span></div>
+        <div class="srp-stat"><b>${report.budget ? esc(fmtEur(report.available)) : '—'}</b><span>Disponible</span></div>
+      </div>
+      ${report.budget
+        ? `<div class="srp-progress${report.overflow ? ' is-over' : ''}">
+             <div class="srp-progress__head"><span>${esc(fmtEur(report.spent))} de ${esc(fmtEur(report.budget))}</span><b>${used}%</b></div>
+             <div class="srp-progress__bar"><i style="width:${used}%"></i></div>
+             ${report.overflow ? '<p class="srp-warning">Has superado el presupuesto de este mes.</p>' : ''}
+           </div>`
+        : ''}
+      <p class="srp-hint">El importe previsto son los regalos aún sin comprar. El gastado, lo que ya has comprado: una idea nunca cuenta como gasto.</p>
+
+      <section class="srp-detail__block">
+        <p class="srp-field-label">Gasto por destinatario</p>
         ${
-          years.length
-            ? years
+          report.byPerson.length
+            ? report.byPerson
                 .map(
-                  ([year, total]) => `
-          <div class="srp-breakdown">
-            <b class="srp-year">${esc(year)}</b>
-            <div class="bar"><i style="width:${Math.round((total / maxYear) * 100)}%"></i></div>
-            <b>${esc(fmtEur(total))}</b>
-          </div>`
+                  entry => `
+                    <button type="button" class="srp-bar-row"${entry.id ? ` data-person-open="${esc(entry.id)}"` : ' disabled'}>
+                      <span class="srp-bar-row__label">${esc(entry.name)}</span>
+                      <span class="srp-bar"><i style="width:${Math.round((entry.total / maxPerson) * 100)}%"></i></span>
+                      <b>${esc(fmtEur(entry.total))}</b>
+                    </button>`,
                 )
                 .join('')
-            : '<p class="srp-hint">Aún no hay compras registradas.</p>'
+            : '<p class="srp-hint">Sin compras este mes.</p>'
         }
       </section>
 
-      ${
-        byPerson.length
-          ? `<section class="srp-panel">
-        <div class="srp-panel__head"><b>A quién más regalas</b></div>
-        ${byPerson
+      <section class="srp-detail__block">
+        <p class="srp-field-label">Por estado</p>
+        ${
+          report.byState.length
+            ? report.byState
+                .map(
+                  entry => `
+                    <div class="srp-bar-row">
+                      <span class="srp-pill is-${entry.tone}">${esc(entry.label)}</span>
+                      <span class="srp-bar"><i style="width:${Math.round((entry.count / Math.max(1, report.pendingCount + report.boughtCount)) * 100)}%"></i></span>
+                      <b>${entry.count}</b>
+                    </div>`,
+                )
+                .join('')
+            : '<p class="srp-hint">No hay regalos con fecha en este mes.</p>'
+        }
+      </section>
+
+      <section class="srp-detail__block">
+        <p class="srp-field-label">Últimos meses</p>
+        ${report.history
           .map(
             entry => `
-          <button type="button" class="srp-breakdown is-button" data-person="${esc(entry.person.id)}">
-            <span class="srp-who">${avatarHTML(entry.person, 24)}${esc(entry.person.name)}</span>
-            <div class="bar"><i style="width:${Math.round((entry.total / maxPerson) * 100)}%"></i></div>
-            <b>${esc(fmtEur(entry.total))}</b>
-          </button>`
+              <div class="srp-bar-row">
+                <span class="srp-bar-row__label">${esc(monthShort(entry.month))} ${esc(entry.month.slice(2, 4))}</span>
+                <span class="srp-bar"><i style="width:${Math.round((entry.total / maxHistory) * 100)}%"></i></span>
+                <b>${esc(fmtEur(entry.total))}</b>
+              </div>`,
           )
           .join('')}
-      </section>`
-          : ''
-      }
-
-      <section class="srp-panel">
-        <div class="srp-panel__head"><b>Por estado</b></div>
-        ${Object.entries(statuses())
-          .map(([key, meta]) => {
-            const count = list.filter(row => row.state === key).length;
-            const pct = Math.round((count / list.length) * 100);
-            return `
-              <div class="srp-breakdown">
-                <span class="srp-status is-${meta.tone}"><span aria-hidden="true">${meta.emoji}</span>${esc(meta.label)}</span>
-                <div class="bar"><i style="width:${pct}%"></i></div>
-                <b>${count}</b>
-              </div>`;
-          })
-          .join('')}
       </section>
+    `;
+
+    const monthSelect = wrap.querySelector('#srpBudgetMonthSel');
+    const yearSelect = wrap.querySelector('#srpBudgetYearSel');
+    const syncBudgetMonth = () => {
+      budgetMonth = `${yearSelect.value}-${monthSelect.value}`;
+      draw();
+    };
+    monthSelect?.addEventListener('change', syncBudgetMonth);
+    yearSelect?.addEventListener('change', syncBudgetMonth);
+
+    wrap.querySelector('#srpBudgetForm')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const input = wrap.querySelector('#srpBudgetInput');
+      try {
+        const saved = await saveMonthlyBudget(input.value);
+        settings.monthly_budget = saved;
+        toast(saved ? 'Presupuesto guardado' : 'Presupuesto quitado');
+        draw();
+      } catch (error) {
+        toast(error?.message || 'No se pudo guardar el presupuesto');
+      }
+    });
+
+    return wrap;
+  }
+
+  /* ==========================================
+     VISTA · ARCHIVO Y PAPELERA
+     ========================================== */
+
+  function archiveView() {
+    const wrap = h('div', { class: 'srp-view srp-archive' });
+    const archived = rows.filter(gift => isLive(gift) && gift.archived_at);
+    const trashed = rows.filter(gift => !!gift.removed_at);
+    const items = archiveMode === 'archivados' ? archived : trashed;
+
+    wrap.innerHTML = `
+      ${subheadHTML('Archivo y papelera')}
+      <div class="srp-seg" role="group" aria-label="Archivo o papelera">
+        <button type="button" data-archive-mode="archivados" class="${archiveMode === 'archivados' ? 'is-on' : ''}" aria-pressed="${archiveMode === 'archivados'}">Archivados · ${archived.length}</button>
+        <button type="button" data-archive-mode="papelera" class="${archiveMode === 'papelera' ? 'is-on' : ''}" aria-pressed="${archiveMode === 'papelera'}">Papelera · ${trashed.length}</button>
+      </div>
+      <p class="srp-hint">${
+        archiveMode === 'archivados'
+          ? 'Los regalos archivados no aparecen en la lista diaria. Puedes desarchivarlos cuando quieras.'
+          : 'La papelera conserva los regalos 30 días. También puedes eliminarlos definitivamente.'
+      }</p>
+      <div class="srp-list">
+        ${
+          items.length
+            ? items
+                .map(
+                  gift => `
+                    <article class="srp-gift is-${statusOf(gift).tone}">
+                      <button type="button" class="srp-gift__open" data-gift-open="${esc(gift.id)}" aria-label="Abrir ${esc(gift.title)}">
+                        <span class="srp-gift__art${caps.gift && gift.photo ? ' has-photo' : ''}">
+                          ${
+                            caps.gift && gift.photo
+                              ? `<img src="${safeUrl(gift.photo)}" alt="" loading="lazy">`
+                              : giftArt(statusOf(gift).art, { size: 48 })
+                          }
+                        </span>
+                        <span class="srp-gift__copy">
+                          <span class="srp-gift__title"><span>${esc(gift.title)}</span></span>
+                          <span class="srp-gift__sub">${esc(personOf(gift)?.name || 'Sin asignar')}${gift.day ? ` · ${esc(fmtDay(gift.day))}` : ''}</span>
+                        </span>
+                      </button>
+                      <span class="srp-archive__actions">
+                        ${
+                          archiveMode === 'archivados'
+                            ? `<button type="button" class="btn btn-soft btn--sm" data-unarchive-gift="${esc(gift.id)}">Desarchivar</button>`
+                            : `<button type="button" class="btn btn-soft btn--sm" data-restore-gift="${esc(gift.id)}">Recuperar</button>
+                               <button type="button" class="btn btn-danger btn--sm" data-purge-gift="${esc(gift.id)}">Eliminar</button>`
+                        }
+                      </span>
+                    </article>`,
+                )
+                .join('')
+            : emptyBlock({
+                art: 'regalos-vacios',
+                title: archiveMode === 'archivados' ? 'No hay regalos archivados' : 'La papelera está vacía',
+                text:
+                  archiveMode === 'archivados'
+                    ? 'Archiva un regalo desde su menú para guardarlo fuera de la lista.'
+                    : 'Los regalos que elimines se guardan aquí durante 30 días.',
+              })
+        }
+      </div>
     `;
     return wrap;
   }
 
   /* ==========================================
-     RENDER
+     ACCIONES
      ========================================== */
 
-  function render() {
-    if (!active) return;
-    viewEl.replaceChildren();
-    if (view === 'agenda') viewEl.append(agendaView());
-    else if (view === 'resumen') viewEl.append(summaryView());
-    else if (view === 'personas' && peopleReady) viewEl.append(personasView());
-    else viewEl.append(regalosView());
-  }
-
-  function syncSeg() {
-    page.querySelectorAll('[data-view]').forEach(button => {
-      const on = button.dataset.view === view;
-      button.classList.toggle('is-on', on);
-      button.setAttribute('aria-pressed', String(on));
-    });
-  }
-
-  function setView(next) {
-    if (view === next) return;
-    viewChosen = true;
-    view = next;
-    filter = 'activos';
-    syncSeg();
-    render();
-  }
-
-  /* ==========================================
-     DATOS
-     ========================================== */
-
-  async function load() {
+  async function toggleArchive(gift) {
     try {
-      peopleReady = await supportsPeople();
-      personColumn = peopleReady ? await supportsPersonColumn() : false;
-      const [loadedRows, loadedPeople] = await Promise.all([
-        entries('surprise'),
-        peopleReady ? listPeople() : Promise.resolve([]),
-      ]);
-      rows = loadedRows;
-      people = loadedPeople;
-      [giftsSupported, extrasSupported] = await Promise.all([
-        supportsGiftFields(),
-        supportsGiftExtras(),
-      ]);
-      statesSupported = extrasSupported && (await supportsGiftStates());
-      page.querySelector('#srpPeopleTab').hidden = !peopleReady;
-      if (!viewChosen) {
-        viewChosen = true;
-        if (peopleReady && people.length) view = 'personas';
-        syncSeg();
-      }
-      if (!peopleReady && view === 'personas') {
-        view = 'regalos';
-        syncSeg();
-      }
-      render();
-    } catch {
-      if (!active) return;
-      showEmpty(viewEl, {
-        icon: 'cloud',
-        title: 'No se pudo cargar',
-        text: 'Comprueba la conexión y vuelve a intentarlo.',
-        action: { label: 'Reintentar', id: 'srpRetry' },
-      });
-      viewEl.querySelector('#srpRetry')?.addEventListener('click', () => {
-        viewEl.innerHTML = skeletonCardsHTML({ count: 4 });
-        void load();
-      });
-    }
-  }
-
-  async function setStatus(row, state) {
-    const next = storableState(state);
-    try {
-      await writeEntry('surprise', { state: next }, row);
-      closeSheets();
-      toast(`Estado: ${statusOf({ state: next }).label}`);
-      await load();
-    } catch (error) {
-      toast(
-        error?.message?.includes('otro dispositivo')
-          ? error.message
-          : 'No se ha guardado. Inténtalo de nuevo.'
+      await writeEntry(
+        'surprise',
+        { archived_at: gift.archived_at ? null : new Date().toISOString() },
+        gift,
       );
-    }
-  }
-
-  async function toggleStar(row) {
-    try {
-      await writeEntry('surprise', { starred: !row.starred }, row);
       closeSheets();
-      toast(row.starred ? 'Quitada de favoritas' : 'Marcada como favorita');
+      toast(gift.archived_at ? 'Regalo desarchivado' : 'Regalo archivado');
       await load();
     } catch {
-      toast('No se pudo cambiar la favorita');
+      toast('No se pudo archivar el regalo');
     }
   }
 
-  async function restoreRow(row) {
+  async function restoreGift(gift) {
     try {
-      await writeEntry('surprise', { removed_at: null }, row);
-      toast('Sorpresa recuperada');
+      await writeEntry('surprise', { removed_at: null }, gift);
+      closeSheets();
+      toast('Regalo recuperado');
       await load();
     } catch {
       toast('No se pudo recuperar. Actualiza la página.');
     }
   }
 
-  async function restoreById(id) {
-    const row = findRow(id);
-    if (row) await restoreRow(row);
-  }
-
-  async function trashRow(row) {
+  async function trashGift(gift) {
     try {
-      await writeEntry('surprise', { removed_at: new Date().toISOString() }, row);
+      await writeEntry('surprise', { removed_at: new Date().toISOString() }, gift);
       closeSheets();
-      const id = row.id;
-      toast('Sorpresa en la papelera', { label: 'Deshacer', fn: () => restoreById(id) });
+      toast('Regalo en la papelera', {
+        label: 'Deshacer',
+        fn: () => {
+          const row = findGift(gift.id);
+          if (row) void restoreGift(row);
+        },
+      });
       await load();
     } catch {
       toast('No se pudo enviar a la papelera');
     }
   }
 
-  async function duplicateRow(row) {
+  async function purgeGift(gift) {
+    if (!window.confirm(`¿Eliminar «${gift.title}» definitivamente? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteEntryForever('surprise', gift.id);
+      closeSheets();
+      screen = 'tabs';
+      toast('Regalo eliminado definitivamente');
+      await load();
+    } catch {
+      toast('No se pudo eliminar el regalo');
+    }
+  }
+
+  async function duplicateGift(gift) {
     try {
       await writeEntry(
         'surprise',
         {
-          title: `${row.title} (copia)`.slice(0, 140),
-          detail: row.detail,
-          day: row.day,
+          title: `${gift.title} (copia)`.slice(0, 140),
+          detail: gift.detail,
+          day: gift.day,
           state: 'pendiente',
-          ...(personColumn && { person_id: row.person_id }),
-          ...(giftsSupported && { price: row.price, link: row.link, photo: row.photo }),
-          ...(extrasSupported && { starred: false }),
+          ...(caps.personColumn && { person_id: gift.person_id }),
+          ...(caps.gift && { price: gift.price, link: gift.link, photo: gift.photo }),
+          ...(caps.extras && { starred: false }),
+          ...(caps.organizer && {
+            occasion: gift.occasion,
+            store: gift.store,
+            actual_price: null,
+            priority: gift.priority,
+            extra_links: gift.extra_links,
+            notes: gift.notes,
+          }),
         },
-        null
+        null,
       );
       closeSheets();
       toast('Copia creada');
@@ -1204,331 +2170,48 @@ export function SorpresasPage() {
     }
   }
 
-  /* ==========================================
-     HOJAS
-     ========================================== */
-
-  function openStatusSheet(row) {
-    const list = statuses();
-    openSheet('Estado de la sorpresa', () =>
+  function moreMenu() {
+    openSheet('Más opciones', () =>
       h(
         'div',
-        null,
-        h('p', { class: 'srp-sheet-title' }, row.title),
+        { class: 'srp-sheet-menu' },
+        h('button', {
+          type: 'button',
+          class: 'srp-sheet-menu__item',
+          html: `${icon('chart', 17)} Presupuesto y estadísticas`,
+          onclick: () => {
+            closeSheets();
+            budgetMonth = todayISO().slice(0, 7);
+            go('budget');
+          },
+        }),
+        h('button', {
+          type: 'button',
+          class: 'srp-sheet-menu__item',
+          html: `${icon('archive', 17)} Archivo`,
+          onclick: () => {
+            closeSheets();
+            archiveMode = 'archivados';
+            go('archive');
+          },
+        }),
+        h('button', {
+          type: 'button',
+          class: 'srp-sheet-menu__item',
+          html: `${icon('trash', 17)} Papelera`,
+          onclick: () => {
+            closeSheets();
+            archiveMode = 'papelera';
+            go('archive');
+          },
+        }),
         h(
           'p',
-          { class: 'srp-hint' },
-          row.day ? `${fmtDay(row.day)} · ${countdown(row.day)}. Solo lo ves tú.` : 'Solo lo ves tú.'
+          { class: 'srp-hint srp-sheet-menu__note' },
+          'Todo lo que guardas aquí es privado: solo tu cuenta puede verlo.',
         ),
-        h(
-          'div',
-          { class: 'srp-status-menu' },
-          Object.entries(list).map(([value, meta]) =>
-            h(
-              'button',
-              {
-                type: 'button',
-                class: `srp-status is-${meta.tone}${row.state === value ? ' is-current' : ''}`,
-                'aria-pressed': String(row.state === value),
-                onclick: () => setStatus(row, value),
-              },
-              h('span', { 'aria-hidden': 'true' }, meta.emoji),
-              meta.label
-            )
-          )
-        ),
-        h(
-          'div',
-          { class: 'srp-sheet-actions' },
-          extrasSupported
-            ? h(
-                'button',
-                { type: 'button', class: 'btn btn-soft btn-block', onclick: () => toggleStar(row) },
-                row.starred ? 'Quitar de favoritas' : 'Marcar como favorita'
-              )
-            : null,
-          h(
-            'button',
-            {
-              type: 'button',
-              class: 'btn btn-soft btn-block',
-              onclick: () => {
-                closeSheets();
-                editor(row);
-              },
-            },
-            'Editar sorpresa'
-          ),
-          h(
-            'button',
-            { type: 'button', class: 'btn btn-soft btn-block', onclick: () => duplicateRow(row) },
-            'Duplicar'
-          ),
-          h(
-            'button',
-            { type: 'button', class: 'btn btn-danger btn-block', onclick: () => trashRow(row) },
-            'Enviar a la papelera'
-          )
-        )
-      )
+      ),
     );
-  }
-
-  function editor(row = null, presetPersonId = null) {
-    openSheet(row ? 'Editar sorpresa' : 'Nueva idea de regalo', () => {
-      const form = h('form', { class: 'srp-form', novalidate: true });
-
-      const title = h('input', {
-        type: 'text',
-        name: 'title',
-        maxlength: '140',
-        required: true,
-        placeholder: 'Ej. Auriculares',
-        value: row?.title || '',
-      });
-      const detail = h('textarea', {
-        name: 'detail',
-        maxlength: '4000',
-        placeholder: 'Talla, color, detalles…',
-      });
-      detail.value = row?.detail || '';
-      const day = h('input', {
-        type: 'date',
-        name: 'day',
-        required: true,
-        value: row?.day || todayISO(),
-      });
-
-      const price = h('input', {
-        type: 'number',
-        name: 'price',
-        min: '0',
-        max: '100000',
-        step: '0.01',
-        inputmode: 'decimal',
-        placeholder: '0,00',
-        value: row?.price ?? '',
-      });
-      const link = h('input', {
-        type: 'url',
-        name: 'link',
-        maxlength: '2000',
-        placeholder: 'Pegar enlace…',
-        value: row?.link || '',
-      });
-
-      let photoValue = row?.photo || '';
-      const photoInput = h('input', { type: 'file', accept: 'image/*', hidden: true });
-      const dropZone = h('button', {
-        type: 'button',
-        class: 'srp-drop',
-        'aria-label': 'Añadir o cambiar la imagen del regalo',
-        onclick: () => photoInput.click(),
-      });
-      const photoActions = h('div', { class: 'srp-drop-actions' });
-      const drawPhoto = () => {
-        dropZone.innerHTML = photoValue
-          ? `<img src="${safeUrl(photoValue)}" alt="Foto del regalo">`
-          : `<span class="srp-drop__ic">${icon('image', 26)}</span><span>Añadir imagen</span>`;
-        photoActions.innerHTML = '';
-        // Como en DailyHub, la zona de imagen ya es el botón de añadir: los
-        // botones solo aparecen cuando hay foto que cambiar o quitar.
-        if (photoValue) {
-          photoActions.append(
-            h(
-              'button',
-              { type: 'button', class: 'btn btn-soft btn--sm', onclick: () => photoInput.click() },
-              'Cambiar'
-            ),
-            h(
-              'button',
-              {
-                type: 'button',
-                class: 'btn btn-soft btn--sm',
-                onclick: () => {
-                  photoValue = '';
-                  drawPhoto();
-                },
-              },
-              'Quitar'
-            )
-          );
-        }
-      };
-      photoInput.addEventListener('change', async () => {
-        const file = photoInput.files?.[0];
-        photoInput.value = '';
-        if (!file) return;
-        try {
-          photoValue = await photoFromFile(file);
-          drawPhoto();
-        } catch (error) {
-          toast(error.message);
-        }
-      });
-      drawPhoto();
-
-      const personSelect = peopleReady
-        ? h(
-            'select',
-            { name: 'person_id' },
-            h('option', { value: '' }, 'Sin asignar'),
-            ...people.map(person =>
-              h(
-                'option',
-                {
-                  value: person.id,
-                  selected: row ? row.person_id === person.id : presetPersonId === person.id,
-                },
-                person.name
-              )
-            )
-          )
-        : null;
-
-      // La lista no cambia mientras la hoja está abierta: se calcula una vez.
-      const offered = statuses();
-      let state = row ? storableState(row.state) : 'pendiente';
-      // «preparado» es el valor antiguo de «Comprado»: si el estado nuevo se
-      // ofrece, al editar se muestra como ese.
-      if (state === 'preparado' && offered.comprado) state = 'comprado';
-      const statusButtons = h('div', { class: 'srp-status-menu' });
-      const drawStatusButtons = () => {
-        statusButtons.innerHTML = '';
-        for (const [value, meta] of Object.entries(offered)) {
-          statusButtons.append(
-            h(
-              'button',
-              {
-                type: 'button',
-                class: `srp-status is-${meta.tone}${state === value ? ' is-current' : ''}`,
-                'aria-pressed': String(state === value),
-                onclick: () => {
-                  state = value;
-                  drawStatusButtons();
-                },
-              },
-              h('span', { 'aria-hidden': 'true' }, meta.emoji),
-              meta.label
-            )
-          );
-        }
-      };
-      drawStatusButtons();
-
-      let starred = !!(row && row.starred);
-      const starButton = h(
-        'button',
-        {
-          type: 'button',
-          class: 'btn btn-soft btn-block srp-fav-toggle',
-          'aria-pressed': String(starred),
-          onclick: () => {
-            starred = !starred;
-            starButton.classList.toggle('is-on', starred);
-            starButton.setAttribute('aria-pressed', String(starred));
-            starButton.innerHTML = `${icon('star', 16)} ${starred ? 'Favorita' : 'Marcar como favorita'}`;
-          },
-        },
-        h('span', { class: 'ic', html: icon('star', 16) }),
-        starred ? ' Favorita' : ' Marcar como favorita'
-      );
-      starButton.classList.toggle('is-on', starred);
-
-      const error = h('p', { class: 'srp-error', role: 'alert' });
-      const submit = h(
-        'button',
-        { type: 'submit', class: 'btn btn-block' },
-        row ? 'Guardar cambios' : 'Guardar regalo'
-      );
-      const cancel = h(
-        'button',
-        { type: 'button', class: 'btn btn-soft btn-block', onclick: closeSheets },
-        'Cancelar'
-      );
-
-      form.append(
-        h('div', { class: 'srp-field' }, dropZone, photoActions, photoInput),
-        h('label', { class: 'srp-field' }, h('span', null, '¿Qué quieres regalar?'), title),
-        ...(personSelect
-          ? [h('label', { class: 'srp-field' }, h('span', null, '¿Para quién?'), personSelect)]
-          : []),
-        h(
-          'div',
-          { class: 'srp-form__row' },
-          h(
-            'label',
-            { class: 'srp-field' },
-            h('span', null, 'Precio aproximado (€)'),
-            price
-          ),
-          h('label', { class: 'srp-field' }, h('span', null, '¿Para cuándo?'), day)
-        ),
-        h('label', { class: 'srp-field' }, h('span', null, 'Enlace de la tienda'), link),
-        h('div', { class: 'srp-field' }, h('span', null, 'Estado'), statusButtons),
-        ...(extrasSupported ? [starButton] : []),
-        h('label', { class: 'srp-field' }, h('span', null, 'Notas'), detail),
-        error,
-        submit,
-        cancel
-      );
-
-      form.addEventListener('submit', async event => {
-        event.preventDefault();
-        const values = {
-          title: title.value.trim(),
-          detail: detail.value.trim(),
-          day: day.value,
-          state: storableState(state),
-          ...(personColumn && personSelect && { person_id: personSelect.value || null }),
-          ...(giftsSupported && {
-            price: price.value === '' ? null : Number(price.value),
-            link: link.value.trim(),
-            photo: photoValue,
-          }),
-          ...(extrasSupported && { starred }),
-        };
-
-        if (!values.title) {
-          error.textContent = 'Ponle un título a la sorpresa.';
-          title.focus();
-          return;
-        }
-        if (!values.day) {
-          error.textContent = 'Elige una fecha para la sorpresa.';
-          day.parentElement?.querySelector('.datefield-input')?.focus();
-          return;
-        }
-        if (values.price != null && (!Number.isFinite(values.price) || values.price < 0)) {
-          error.textContent = 'El presupuesto no puede ser negativo.';
-          price.focus();
-          return;
-        }
-        if (values.link && !/^https?:\/\/\S+$/i.test(values.link)) {
-          error.textContent = 'El enlace debe empezar por http:// o https://';
-          link.focus();
-          return;
-        }
-
-        error.textContent = '';
-        submit.disabled = true;
-        cancel.disabled = true;
-        try {
-          await writeEntry('surprise', values, row);
-          closeSheets();
-          toast(row ? 'Sorpresa actualizada' : 'Sorpresa guardada');
-          await load();
-        } catch (err) {
-          error.textContent = err?.message?.includes('otro dispositivo')
-            ? err.message
-            : 'No se ha guardado. Puedes volver a intentarlo.';
-          submit.disabled = false;
-          cancel.disabled = false;
-        }
-      });
-
-      return form;
-    });
   }
 
   /* ==========================================
@@ -1536,45 +2219,225 @@ export function SorpresasPage() {
      ========================================== */
 
   page.addEventListener('click', event => {
-    const viewButton = event.target.closest('[data-view]');
-    if (viewButton) {
-      setView(viewButton.dataset.view);
+    const target = event.target;
+
+    if (target.closest('[data-back]')) {
+      router.navigate('/sentimientos');
+      return;
+    }
+    if (target.closest('[data-screen-back]')) {
+      backToTabs();
+      return;
+    }
+    if (target.closest('[data-more]')) {
+      moreMenu();
+      return;
+    }
+    if (target.closest('[data-summary]')) {
+      budgetMonth = todayISO().slice(0, 7);
+      go('budget');
       return;
     }
 
-    const personButton = event.target.closest('[data-person-new], [data-person]');
-    if (personButton) {
-      if (personButton.hasAttribute('data-person-new')) {
-        personEditor();
-        return;
+    const tabButton = target.closest('[data-tab]');
+    if (tabButton) {
+      tab = tabButton.dataset.tab;
+      screen = 'tabs';
+      syncTabs();
+      draw();
+      return;
+    }
+
+    if (target.closest('[data-new-gift]')) {
+      giftEditor();
+      return;
+    }
+    const newForPerson = target.closest('[data-new-gift-for]');
+    if (newForPerson) {
+      giftEditor(null, { personId: newForPerson.dataset.newGiftFor });
+      return;
+    }
+    if (target.closest('[data-person-new]')) {
+      personEditor();
+      return;
+    }
+    if (target.closest('[data-filters]')) {
+      filtersSheet();
+      return;
+    }
+    if (target.closest('[data-clear-filters]')) {
+      clearFilters();
+      return;
+    }
+    if (target.closest('[data-close-sheet]')) {
+      closeSheets();
+      return;
+    }
+
+    const giftMenu = target.closest('[data-gift-menu]');
+    if (giftMenu) {
+      const gift = findGift(giftMenu.dataset.giftMenu);
+      if (gift) giftMenuSheet(gift);
+      return;
+    }
+    const giftOpen = target.closest('[data-gift-open]');
+    if (giftOpen) {
+      go('gift', giftOpen.dataset.giftOpen);
+      return;
+    }
+    const editGift = target.closest('[data-edit-gift]');
+    if (editGift) {
+      const gift = findGift(editGift.dataset.editGift);
+      if (gift) giftEditor(gift);
+      return;
+    }
+    const setStatusButton = target.closest('[data-set-status]');
+    if (setStatusButton) {
+      const gift = findGift(currentGiftId);
+      if (gift) void updateStatus(gift, setStatusButton.dataset.setStatus);
+      return;
+    }
+    const trashButton = target.closest('[data-trash-gift]');
+    if (trashButton) {
+      const gift = findGift(trashButton.dataset.trashGift);
+      if (gift) void trashGift(gift);
+      return;
+    }
+    const archiveButton = target.closest('[data-archive-gift]');
+    if (archiveButton) {
+      const gift = findGift(archiveButton.dataset.archiveGift);
+      if (gift) void toggleArchive(gift);
+      return;
+    }
+    const unarchiveButton = target.closest('[data-unarchive-gift]');
+    if (unarchiveButton) {
+      const gift = findGift(unarchiveButton.dataset.unarchiveGift);
+      if (gift) void toggleArchive(gift);
+      return;
+    }
+    const restoreButton = target.closest('[data-restore-gift]');
+    if (restoreButton) {
+      const gift = findGift(restoreButton.dataset.restoreGift);
+      if (gift) void restoreGift(gift);
+      return;
+    }
+    const purgeButton = target.closest('[data-purge-gift]');
+    if (purgeButton) {
+      const gift = findGift(purgeButton.dataset.purgeGift);
+      if (gift) void purgeGift(gift);
+      return;
+    }
+
+    const personOpen = target.closest('[data-person-open]');
+    if (personOpen) {
+      go('person', personOpen.dataset.personOpen);
+      return;
+    }
+    const personEdit = target.closest('[data-person-edit]');
+    if (personEdit) {
+      const person = findPerson(personEdit.dataset.personEdit);
+      if (person) personEditor(person);
+      return;
+    }
+    const personMenu = target.closest('[data-person-menu]');
+    if (personMenu) {
+      const person = findPerson(personMenu.dataset.personMenu);
+      if (person) personMenuSheet(person);
+      return;
+    }
+
+    const agendaModeButton = target.closest('[data-agenda-mode]');
+    if (agendaModeButton) {
+      agendaMode = agendaModeButton.dataset.agendaMode;
+      draw();
+      return;
+    }
+    const agendaMonthButton = target.closest('[data-agenda-month]');
+    if (agendaMonthButton) {
+      agendaMonth = shiftMonth(agendaMonth, Number(agendaMonthButton.dataset.agendaMonth));
+      draw();
+      return;
+    }
+    const calendarDay = target.closest('[data-cal-day]');
+    if (calendarDay) {
+      const iso = calendarDay.dataset.calDay;
+      const events = peopleOccasions({ people, today: todayISO() }).filter(
+        item => item.date === iso,
+      );
+      if (!events.length) {
+        openSheet(fmtLongDay(iso), () =>
+          h(
+            'div',
+            null,
+            h('p', { class: 'srp-hint' }, 'No hay ningún cumpleaños ni fecha importante este día.'),
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'btn btn-block',
+                onclick: () => {
+                  closeSheets();
+                  tab = 'personas';
+                  screen = 'tabs';
+                  draw();
+                },
+              },
+              'Ir a Personas',
+            ),
+          ),
+        );
+      } else if (events.length === 1) {
+        go('person', events[0].personId);
+      } else {
+        openSheet(
+          fmtLongDay(iso),
+          () =>
+            h(
+              'div',
+              { class: 'srp-list' },
+              ...events.map(event =>
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    class: 'srp-occasion',
+                    onclick: () => {
+                      closeSheets();
+                      go('person', event.personId);
+                    },
+                  },
+                  h(
+                    'span',
+                    { class: 'srp-occasion__copy' },
+                    h('span', { class: 'srp-occasion__title' }, event.title),
+                    h('span', { class: 'srp-occasion__meta' }, occasionMeta(event)),
+                  ),
+                ),
+              ),
+            ),
+        );
       }
-      const person = people.find(item => item.id === personButton.dataset.person);
-      if (person) personSheet(person);
       return;
     }
 
-    const rowButton = event.target.closest('[data-open], [data-status], [data-restore]');
-    if (!rowButton) return;
-    const row = findRow(
-      rowButton.dataset.open || rowButton.dataset.status || rowButton.dataset.restore
-    );
-    if (!row) return;
-    if (rowButton.dataset.restore) void restoreRow(row);
-    else if (rowButton.dataset.status) openStatusSheet(row);
-    else editor(row);
+    const archiveModeButton = target.closest('[data-archive-mode]');
+    if (archiveModeButton) {
+      archiveMode = archiveModeButton.dataset.archiveMode;
+      draw();
+      return;
+    }
+    const budgetStep = target.closest('[data-budget-month]');
+    if (budgetStep) {
+      budgetMonth = shiftMonth(budgetMonth, Number(budgetStep.dataset.budgetMonth));
+      draw();
+    }
   });
 
-  page.querySelector('#srpNewBtn').addEventListener('click', () => editor());
-  page.querySelector('#srpAgendaBtn').addEventListener('click', () => setView('agenda'));
-  page.querySelector('#srpStatsBtn').addEventListener('click', () => setView('resumen'));
-  page.querySelector('#srpTrashBtn').addEventListener('click', () => {
-    view = 'regalos';
-    filter = 'papelera';
-    syncSeg();
-    render();
-  });
+  /* ==========================================
+     ARRANQUE
+     ========================================== */
 
-  viewEl.innerHTML = skeletonCardsHTML({ count: 4 });
+  bodyEl.innerHTML = skeletonCardsHTML({ count: 4 });
   void load();
 
   page.cleanup = () => {

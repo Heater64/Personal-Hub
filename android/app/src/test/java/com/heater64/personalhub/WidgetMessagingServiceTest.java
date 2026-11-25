@@ -19,6 +19,7 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowNotificationManager;
+import org.robolectric.shadows.ShadowPendingIntent;
 
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,7 @@ public class WidgetMessagingServiceTest {
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 26, 29, 31, 33, 34, 36 })
     public void locationRefreshPostsASilentNotificationBeforeRefresh() {
         Context context = RuntimeEnvironment.getApplication();
         Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(Manifest.permission.POST_NOTIFICATIONS);
@@ -56,10 +57,13 @@ public class WidgetMessagingServiceTest {
                 notification.extras.getString(Notification.EXTRA_TEXT));
         assertEquals(NotificationManager.IMPORTANCE_LOW,
                 manager.getNotificationChannel("location_refresh").getImportance());
+        ShadowPendingIntent tap = Shadows.shadowOf(notification.contentIntent);
+        assertTrue("tapping the fallback notification must open the app", tap.isActivityIntent());
+        assertEquals(DeviceStatusService.ACTION_USER_LOCATION_REFRESH, tap.getSavedIntent().getAction());
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 33, 34, 36 })
     public void locationRefreshDoesNotPostWithoutNotificationPermission() {
         Context context = RuntimeEnvironment.getApplication();
         Shadows.shadowOf(RuntimeEnvironment.getApplication()).denyPermissions(Manifest.permission.POST_NOTIFICATIONS);

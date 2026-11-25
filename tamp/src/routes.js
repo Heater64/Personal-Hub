@@ -186,6 +186,17 @@ export const ROUTES = [
     sidebarGroup: 'sentimientos',
   },
   {
+    // El calendario mensual del ánimo, aparte del calendario de planes.
+    path: '/sentimientos/historial',
+    label: 'Historial emocional',
+    icon: 'calendar',
+    title: 'Historial emocional · Personal Hub',
+    lazy: true,
+    section: 'sentimientos',
+    parent: '/sentimientos',
+    sidebarGroup: 'sentimientos',
+  },
+  {
     path: '/juegos',
     label: 'Juegos',
     icon: 'game',

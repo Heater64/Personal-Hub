@@ -46,6 +46,8 @@
 }
 
 .sent-mood-title {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-ui);
   font-size: var(--fs-md);
   font-weight: 700;
@@ -398,9 +400,178 @@
 }
 
 /* ==========================================
-   3 · TU MES DE ÁNIMOS
+   3 · NUESTRO ÁNIMO — los últimos siete días
+   ========================================== */
+.sent-week { margin-top: var(--sp-12); }
+
+.sent-week-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-12);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-14);
+}
+
+.sent-week-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.sent-week-sub {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.sent-week-people {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+}
+
+.sent-week-person {
+  min-height: 32px;
+  padding: 0 var(--sp-12);
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sent-week-person.is-active {
+  background: var(--primary);
+  color: var(--text-on-primary, #fff);
+}
+
+.sent-week-person:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.sent-week-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--sp-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sent-week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: var(--sp-8) 2px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+}
+
+.sent-week-day.has-mood {
+  background: var(--primary-soft);
+  border-color: var(--primary-softer);
+}
+
+.sent-week-day.is-today { border-color: var(--primary); }
+
+.sent-week-day-wd {
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+
+.sent-week-day-num {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.sent-week-day.has-mood .sent-week-day-num,
+.sent-week-day.is-today .sent-week-day-num { color: var(--text); }
+
+.sent-week-day-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  max-width: 100%;
+  /* Varias emociones el mismo día caben en una sola línea: la fila de la
+     semana no puede crecer solo porque ese día hubiera tres. */
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+/* Sin registro: un hueco discreto, nunca una emoción inventada. */
+.sent-week-day-mark.is-empty {
+  width: 12px;
+  min-height: 12px;
+  margin: 4px 0;
+  border-radius: 50%;
+  border: 1.5px dashed var(--border);
+}
+
+.sent-week-link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  width: 100%;
+  margin-top: var(--sp-14);
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sent-week-link:hover,
+.sent-week-link:focus-visible {
+  border-color: var(--primary-softer);
+  background: var(--surface);
+}
+
+.sent-week-link-text { flex: 1; min-width: 0; }
+.sent-week-link-chev { display: inline-flex; color: var(--text-3); }
+
+/* ==========================================
+   4 · HISTORIAL EMOCIONAL (pantalla propia)
    ========================================== */
 .sent-history { margin-top: var(--sp-12); }
+
+.sent-history-page .sent-history { margin-top: var(--sp-4); }
+
+.sent-history-note {
+  margin: var(--sp-12) 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-3);
+}
 
 .sent-history-person {
   display: grid;
@@ -623,24 +794,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Sin alto fijo: la portada se estira con la tarjeta. Con 84px fijos, en
-     móvil (donde el título o la descripción ocupan dos líneas) la tarjeta
-     crecía y el cuadro se quedaba corto: el separador vertical empezaba y
-     acababa antes que el borde, y se veía descuadrado. El mínimo mantiene el
-     cuadro grande cuando el texto es corto. */
+  /* Sin fondo, degradado ni borde propios: la ilustración es la que da
+     identidad a la tarjeta. Se estira con ella (align-self) y mantiene un
+     mínimo para que la ilustración no se encoja cuando el texto es corto. */
   width: 84px;
   min-height: 84px;
   flex: none;
   align-self: stretch;
-  color: var(--card-color);
-  background:
-    radial-gradient(120% 130% at 25% 0%, color-mix(in srgb, var(--card-color) 18%, transparent) 0%, transparent 62%),
-    var(--surface-2);
-  border-right: 1px solid var(--border-soft);
-  transition: background var(--dur-fast);
+  padding-left: var(--sp-14);
 }
 
-.sent-card:hover .sent-card-cover { background-color: color-mix(in srgb, var(--card-color) 10%, var(--surface-2)); }
+.sent-card-art {
+  display: block;
+  width: 56px;
+  height: 56px;
+  transition: transform var(--dur-fast);
+}
+
+.sent-card:hover .sent-card-art { transform: scale(1.06) rotate(-2deg); }
+
+/* Indicador discreto de navegación. */
+.sent-card-chev {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding-right: var(--sp-14);
+  color: var(--text-3);
+}
 
 .sent-card-body {
   display: flex;
@@ -686,11 +866,16 @@
   .sent-hist-cell { min-height: 40px; }
   .sent-hist-emoji { font-size: 15px; }
   .sent-history { padding: var(--sp-14); }
+  .sent-week-days { gap: var(--sp-4); }
+  .sent-week-day { padding: var(--sp-6) 1px; }
+  .sent-week-day-mark { font-size: 14px; }
   /* Sigue siendo una tarjeta por fila, solo con la portada más estrecha.
      El alto lo sigue poniendo la tarjeta: aquí no se fija. */
   .sent-card { gap: var(--sp-10); }
-  .sent-card-cover { width: 62px; min-height: 62px; }
-  .sent-card-body { padding-right: var(--sp-12); }
+  .sent-card-cover { width: 68px; min-height: 68px; padding-left: var(--sp-10); }
+  .sent-card-art { width: 48px; height: 48px; }
+  .sent-card-body { padding-right: var(--sp-8); }
+  .sent-card-chev { padding-right: var(--sp-10); }
 }
 
 @media (prefers-reduced-motion: reduce) {

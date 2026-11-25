@@ -56,7 +56,6 @@ import {
   togetherInfo,
 } from '../services/location.service.js';
 import { fetchPartnerProfile } from '../services/presence.service.js';
-import { openDistanceMap } from '../components/DistanceMapSheet.js';
 import { openDeviceSettings } from '../services/device.service.js';
 import { openWidgetsSheet } from '../components/WidgetsSheet.js';
 import { initHomePortada } from '../components/HomePortada.js';
@@ -621,7 +620,7 @@ function watchSectionHTML() {
 // ==========================================
 // Dos círculos con las fotos y el número en medio, como el diseño. Este de
 // aquí es un dibujo ligero que se ve siempre; al tocarlo se abre el mapa real
-// (DistanceMapSheet), que es el único sitio donde se cargan las teselas.
+// (components/location), que es el único sitio donde se cargan las teselas.
 function avatarCircle(who, { name = '', avatar = '' } = {}) {
   const initial = (name || '').trim().charAt(0).toUpperCase();
   const label = who === 'me' ? 'Tú' : 'Tu pareja';
@@ -707,7 +706,7 @@ function distancePanelHTML() {
  * Arranca el panel: comparte tu posición, pinta la de la otra persona y
  * actualiza el número. Devuelve la función para parar (page.cleanup).
  */
-function initDistancePanel(page, onChange) {
+function initDistancePanel(page, onChange, router) {
   const valueEl = page.querySelector('#homeDistanceValue');
   const labelEl = page.querySelector('#homeDistanceLabel');
   const meEl = page.querySelector('.home-map__avatar--me');
@@ -857,16 +856,10 @@ function initDistancePanel(page, onChange) {
     onChange?.(state);
   });
 
-  // Tocar el panel abre el mapa real con las dos posiciones y los datos de
-  // cada móvil (batería, red, velocidad).
+  // Tocar el panel abre la pantalla de ubicación: mapa, lugares y ajustes.
+  // Ya no es una hoja emergente, así que el botón Atrás vuelve a Inicio.
   page.querySelector('#homeMapOpen')?.addEventListener('click', () => {
-    const mine = fetchMyLocation();
-    openDistanceMap({
-      me: mine ? { ...state.me, ...mine } : null,
-      partner: state.partner,
-      km: state.km,
-      meName: state.me?.name,
-    });
+    router?.navigate('/mapa');
   });
 
   return () => {
@@ -1159,7 +1152,7 @@ export function HomePage(router) {
 
   // Distancia primero: es quien guarda la identidad de la sesión y de la otra
   // persona; las caras de la cabecera la aprovechan justo después.
-  const stopDistance = initDistancePanel(page, handleDistanceChange);
+  const stopDistance = initDistancePanel(page, handleDistanceChange, router);
   const stopHeaderFaces = initHeaderFaces(page);
 
   // Pestaña de widgets (solo existe dentro del APK)

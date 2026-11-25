@@ -46,6 +46,27 @@ test('las notificaciones FCM y locales usan un canal Android que la app crea', a
   assert.match(localPlugin, /manager\.createNotificationChannel\(\)/);
 });
 
+test('la notificación de solicitud remota vuelve a pedir ubicación al tocarla', async () => {
+  const messaging = await read('android/app/src/main/java/com/heater64/personalhub/WidgetMessagingService.java');
+  const service = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusService.java');
+  const activity = await read('android/app/src/main/java/com/heater64/personalhub/MainActivity.java');
+
+  assert.match(messaging, /shouldStartLocationRefresh\(message\.getPriority\(\)\)/,
+    'background FCM can only start location when Android keeps its high priority');
+  assert.match(messaging, /setAction\(DeviceStatusService\.ACTION_USER_LOCATION_REFRESH\)/,
+    'the fallback notification must carry a distinct refresh action');
+  assert.match(activity, /onNewIntent\(Intent intent\)[\s\S]*?setIntent\(intent\)/,
+    'an already-open singleTask activity must retain the notification tap');
+  assert.match(activity, /onResume\(\)[\s\S]*?handleLocationRefreshIntent\(getIntent\(\)\)/,
+    'the notification tap is handled only after the activity is foreground');
+  assert.match(activity, /requestLocationUpdateFromUser\(this\)/,
+    'the notification tap must trigger a fresh location request');
+  assert.match(service, /requestLocationUpdate\(Context context\)[\s\S]*?!hasBackgroundLocationPermission\(context\)/,
+    'remote background refreshes must still require background location permission');
+  assert.match(service, /requestLocationUpdateFromUser\(Context context\)[\s\S]*?!hasLocationPermission\(context\)/,
+    'a visible user tap can refresh with foreground location permission');
+});
+
 test('la ubicación compartida se aísla por pareja y no por rol', async () => {
   const sql = await read('sql/029_pareja_ubicacion.sql');
 
@@ -73,6 +94,16 @@ test('el cliente distingue que el servicio está en marcha de que fue activado',
   assert.match(plugin, /out\.put\("locationServices", locationServicesState\(context\)\)/);
   assert.match(device, /running: res\?\.running === true/);
   assert.match(device, /locationServices: res\?\.locationServices/);
+});
+
+test('el estado detenido explica el inicio automático de Xiaomi tras limpiar Recientes', async () => {
+  const plugin = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusPlugin.java');
+  const device = await read('tamp/src/services/device.service.js');
+  const settings = await read('tamp/src/components/location/settings.js');
+
+  assert.match(plugin, /out\.put\("manufacturer", Build\.MANUFACTURER\)/);
+  assert.match(device, /manufacturer: res\?\.manufacturer/);
+  assert.match(settings, /manufacturer[\s\S]*?xiaomi[\s\S]*?limpiar Recientes[\s\S]*?Inicio automático/);
 });
 
 test('el servicio publica fuera del hilo principal y solo confirma envíos aceptados', async () => {
@@ -180,11 +211,11 @@ test('el aviso de llegada renueva la sesión si caduca justo tras guardar la ubi
 test('el servicio conserva y muestra cuando una geocerca no pudo evaluarse por poca precisión', async () => {
   const service = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusService.java');
   const plugin = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusPlugin.java');
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const settings = await read('tamp/src/components/location/settings.js');
 
   assert.match(service, /geofence_accuracy_warning/);
   assert.match(plugin, /geofenceAccuracyWarning/);
-  assert.match(sheet, /geofenceAccuracyWarning[\s\S]*?precisión[\s\S]*?lugares compartidos/i);
+  assert.match(settings, /geofenceAccuracyWarning[\s\S]*?precisión[\s\S]*?lugares compartidos/i);
 });
 
 test('los textos de widgets no bajan de 11sp para conservar legibilidad', async () => {
@@ -210,14 +241,14 @@ test('los iconos adaptativos incluyen capa monocroma para Android 13 y posterior
 test('al pausar por batería el mapa recibe la telemetría sin inventar ubicación ni geocercas', async () => {
   const service = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusService.java');
   const location = await read('tamp/src/services/location.service.js');
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const states = await read('tamp/src/components/location/state.js');
 
   assert.match(service, /if \(prefs\(this\)\.getBoolean\("battery_paused", false\)\) \{[\s\S]*?publishBatteryPausedStatus\(config\)/);
   assert.match(service, /data\.put\("batteryPaused", prefs\(this\)\.getBoolean\("battery_paused", false\)\)/);
   assert.match(service, /upsert\(data, config, false\)/);
   assert.match(service, /if \(notifyPlaceEvents && !config\.coupleId\(\)\.isEmpty\(\) && data\.has\("location_at"\)\)/);
   assert.match(location, /batteryPaused: data\?\.batteryPaused === true/);
-  assert.match(sheet, /person\.batteryPaused \? 'Ubicación en pausa'/);
+  assert.match(states, /paused: \{ label: 'Ubicación en pausa'/);
 });
 
 test('el seguimiento conserva el último punto y respeta el permiso de ubicación aproximada', async () => {
@@ -239,55 +270,56 @@ test('web y servicio nativo prefieren la ubicación de pareja al contrato admin 
 });
 
 test('el control no pide activar si Android ya mantiene el servicio vivo', async () => {
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const settings = await read('tamp/src/components/location/settings.js');
 
-  assert.match(sheet, /const running = bg\.running === true/);
-  assert.match(sheet, /bg\.batteryPaused/);
+  assert.match(settings, /const running = bg\.running === true/);
+  assert.match(settings, /bg\.batteryPaused/);
 });
 
 test('el mapa no dice siempre activo si Android tiene la ubicación del sistema apagada', async () => {
   const service = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusService.java');
   const location = await read('tamp/src/services/location.service.js');
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const states = await read('tamp/src/components/location/state.js');
 
   assert.match(service, /data\.put\("locationServices", locationServicesState\(this\)\)/);
   assert.match(location, /locationServices: data\?\.locationServices \|\| 'unknown'/);
-  assert.match(sheet, /const locationDisabled = person\.locationServices === 'disabled'/);
-  assert.match(sheet, /locationDisabled \? 'Ubicación desactivada'/);
+  assert.match(states, /person\.locationServices === 'disabled'/);
+  assert.match(states, /'location-off': \{ label: 'Ubicación desactivada'/);
 });
 
 test('el panel Android explica el GPS apagado y ofrece abrir sus ajustes', async () => {
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const settings = await read('tamp/src/components/location/settings.js');
   const device = await read('tamp/src/services/device.service.js');
   const plugin = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusPlugin.java');
 
-  assert.match(sheet, /const locationDisabled = bg\.locationServices === 'disabled'/);
-  assert.match(sheet, /locationDisabled \? 'Ubicación desactivada'/);
-  assert.match(sheet, /openLocationSettings/);
+  assert.match(settings, /const locationOff = bg\.locationServices === 'disabled'/);
+  assert.match(settings, /La ubicación del sistema está apagada/);
+  assert.match(settings, /openLocationSettings/);
   assert.match(device, /api\?\.openLocationSettings/);
   assert.match(plugin, /Settings\.ACTION_LOCATION_SOURCE_SETTINGS/);
 });
 
 test('el panel permite abrir ajustes de batería cuando Android puede optimizar el servicio', async () => {
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const settings = await read('tamp/src/components/location/settings.js');
   const device = await read('tamp/src/services/device.service.js');
   const plugin = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusPlugin.java');
 
-  assert.match(sheet, /const needsBatteryOptimization = enabled && running && bg\.batteryUnrestricted === false/);
-  assert.match(sheet, /settings\.hidden = !\(needsLocationSettings \|\| needsPermission \|\| needsNotifications \|\| needsBatteryOptimization\)/);
-  assert.match(sheet, /openBatteryOptimizationSettings/);
+  assert.match(settings, /bg\.batteryUnrestricted === false/);
+  assert.match(settings, /Android puede pausar el servicio para ahorrar batería/);
+  assert.match(settings, /openBatteryOptimizationSettings/);
   assert.match(device, /api\?\.openBatterySettings/);
   assert.match(plugin, /Settings\.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS/);
 });
 
 test('el panel avisa si Android bloquea las notificaciones para este móvil', async () => {
-  const sheet = await read('tamp/src/components/DistanceMapSheet.js');
+  const settings = await read('tamp/src/components/location/settings.js');
+  const device = await read('tamp/src/services/device.service.js');
+  const plugin = await read('android/app/src/main/java/com/heater64/personalhub/DeviceStatusPlugin.java');
 
-  assert.match(sheet, /const needsNotifications = enabled && bg\.notifications === 'denied'/);
-  assert.match(sheet, /needsNotifications/);
-  assert.match(sheet, /Ajustes de notificaciones/);
-  assert.match(sheet, /else if \(needsNotifications\)/);
-  assert.match(sheet, /bg\.background !== 'granted' \|\| bg\.notifications === 'denied'[\s\S]*?openDeviceSettings\(\)/);
+  assert.match(settings, /enabled && \(bg\.notifications === 'denied' \|\| bg\.partnerNotificationsEnabled === false\)/);
+  assert.match(settings, /Las notificaciones están bloqueadas/);
+  assert.match(device, /partnerNotificationsEnabled: typeof res\?\.partnerNotificationsEnabled === 'boolean'[\s\S]*?\? res\.partnerNotificationsEnabled[\s\S]*?: null/);
+  assert.match(plugin, /out\.put\("partnerNotificationsEnabled", arePartnerNotificationsEnabled\(context\)\)/);
 });
 
 test('los atributos de grid de widgets identifican su API mínima de Android', async () => {

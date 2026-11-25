@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="srpRegaloCaja" x1="26" y1="54" x2="102" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB08A"/><stop offset="1" stop-color="#E8735A"/>
+    </linearGradient>
+    <linearGradient id="srpRegaloTapa" x1="20" y1="38" x2="108" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFDCC7"/><stop offset="1" stop-color="#F79BB0"/>
+    </linearGradient>
+    <linearGradient id="srpRegaloLazo" x1="56" y1="40" x2="72" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3E9"/><stop offset="1" stop-color="#FFC9A8"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="64" cy="113" rx="36" ry="6" fill="#2A1512" opacity="0.18"/>
+  <rect x="26" y="54" width="76" height="56" rx="14" fill="url(#srpRegaloCaja)"/>
+  <rect x="20" y="40" width="88" height="24" rx="12" fill="url(#srpRegaloTapa)"/>
+  <rect x="56" y="40" width="16" height="70" rx="8" fill="url(#srpRegaloLazo)"/>
+  <path d="M64 41c-9-2-19-8-19-16 0-6 8-8 12-4 4 5 7 11 7 20Z" fill="#F79BB0"/>
+  <path d="M64 41c9-2 19-8 19-16 0-6-8-8-12-4-4 5-7 11-7 20Z" fill="#FF8FA3"/>
+  <circle cx="64" cy="37" r="5" fill="#FFF3E9"/>
+  <rect x="34" y="66" width="12" height="4" rx="2" fill="#FFF3E9" opacity="0.5"/>
+  <rect x="82" y="66" width="12" height="4" rx="2" fill="#FFF3E9" opacity="0.3"/>
+</svg>

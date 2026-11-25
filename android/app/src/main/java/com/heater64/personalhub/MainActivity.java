@@ -1,6 +1,7 @@
 package com.heater64.personalhub;
 
 import android.os.Bundle;
+import android.content.Intent;
 import android.view.View;
 
 import androidx.core.graphics.Insets;
@@ -35,5 +36,25 @@ public class MainActivity extends BridgeActivity {
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
             return windowInsets;
         });
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Wait until the tapped activity is visibly in the foreground. This
+        // lets Android grant while-in-use location access to the refresh FGS.
+        handleLocationRefreshIntent(getIntent());
+    }
+
+    private void handleLocationRefreshIntent(Intent intent) {
+        if (intent == null || !DeviceStatusService.ACTION_USER_LOCATION_REFRESH.equals(intent.getAction())) return;
+        intent.setAction(null);
+        DeviceStatusService.requestLocationUpdateFromUser(this);
     }
 }

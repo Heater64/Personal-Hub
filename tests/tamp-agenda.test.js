@@ -156,10 +156,12 @@ test('sin la 039 la pantalla esconde «Por comprar» y «Comprado»', async () =
 
   const withExtras = { starred: true, states: false };
   assert.deepEqual(offeredGiftStates(withExtras), ['pendiente', 'entregado']);
+  // Con los cinco estados del organizador, «Preparado» es su propio estado.
   assert.deepEqual(offeredGiftStates({ starred: true, states: true }), [
     'pendiente',
     'comprar',
     'comprado',
+    'preparado',
     'entregado',
   ]);
   // Sin la 037 se mantiene el juego antiguo de tres valores de 034.
@@ -175,7 +177,7 @@ test('sin la 039 la pantalla esconde «Por comprar» y «Comprado»', async () =
   assert.equal(storableGiftState('comprar', { starred: true, states: true }), 'comprar');
 
   // Una fila antigua sigue mostrando su etiqueta aunque no se ofrezca.
-  assert.equal(giftStateMeta('preparado').label, 'Comprado');
+  assert.equal(giftStateMeta('preparado').label, 'Preparado');
   assert.equal(giftStateMeta('comprar').label, 'Por comprar');
 
   const page = await read('tamp', 'src', 'pages', 'Sorpresas.js');
@@ -191,8 +193,24 @@ test('sin la 035 los campos de regalo se apagan, no rompen la pantalla', async (
 
   const page = await read('tamp', 'src', 'pages', 'Sorpresas.js');
   assert.match(page, /supportsGiftFields/);
-  // Los tres valores solo viajan al escribir cuando la migración está puesta.
-  assert.match(page, /\.\.\.\(giftsSupported && \{/);
+  // Los valores de regalo solo viajan al escribir cuando la migración está puesta.
+  assert.match(page, /\.\.\.\(caps\.gift && \{/);
+});
+
+test('046 aísla personas y presupuesto por usuario', async () => {
+  const sql = await read('sql', '046_sorpresas_organizador_privado.sql');
+
+  // Cada usuario solo ve y edita sus personas (antes eran de la pareja).
+  assert.match(sql, /CREATE POLICY tamp_people_read[\s\S]*?author_id = auth\.uid\(\)/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.tamp_gift_settings/);
+  assert.match(sql, /CREATE POLICY tamp_gift_settings_read[\s\S]*?author_id = auth\.uid\(\)/);
+
+  // Un regalo no puede apuntar a la persona de la otra cuenta.
+  assert.match(sql, /p\.author_id = auth\.uid\(\)/);
+
+  // Borrado definitivo solo del propio autor.
+  assert.match(sql, /CREATE POLICY tamp_entries_purge[\s\S]*?author_id = auth\.uid\(\)/);
+  assert.match(sql, /GRANT DELETE ON public\.tamp_entries TO authenticated/);
 });
 
 test('las tres pantallas existen y Sentimientos lleva a ellas', async () => {

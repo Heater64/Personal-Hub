@@ -9,6 +9,7 @@ abstract class HubWidgetProvider extends AppWidgetProvider {
     @Override
     public void onEnabled(Context context) {
         WidgetSync.request(context);
+        WidgetAddedNotifier.notifyAdded(context, getClass());
     }
 
     @Override

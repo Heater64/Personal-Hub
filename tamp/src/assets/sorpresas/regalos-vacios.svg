@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="srpVacioCaja" x1="26" y1="70" x2="102" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC9A8"/><stop offset="1" stop-color="#E8735A"/>
+    </linearGradient>
+    <linearGradient id="srpVacioTapa" x1="18" y1="44" x2="86" y2="66" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE2D1"/><stop offset="1" stop-color="#F79BB0"/>
+    </linearGradient>
+    <linearGradient id="srpVacioBrillo" x1="88" y1="24" x2="116" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3E9"/><stop offset="1" stop-color="#FFC77D"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="64" cy="115" rx="36" ry="6" fill="#2A1512" opacity="0.18"/>
+  <path d="M30 96V80l34-14 34 14v16a10 10 0 0 1-10 10H40a10 10 0 0 1-10-10Z" fill="url(#srpVacioCaja)"/>
+  <path d="M30 80l34-14 34 14-34 12-34-12Z" fill="#8A3E35" opacity="0.25"/>
+  <rect x="90" y="52" width="30" height="12" rx="6" transform="rotate(18 90 52)" fill="url(#srpVacioTapa)"/>
+  <path d="M96 22l3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8Z" fill="url(#srpVacioBrillo)"/>
+  <path d="M26 34l2 5.5 5.5 2-5.5 2-2 5.5-2-5.5-5.5-2 5.5-2 2-5.5Z" fill="#F79BB0" opacity="0.85"/>
+  <circle cx="72" cy="60" r="2.5" fill="#FFC77D"/>
+  <rect x="58" y="86" width="12" height="4" rx="2" fill="#FFF3E9" opacity="0.5"/>
+</svg>

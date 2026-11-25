@@ -2599,6 +2599,8 @@ button.home-map:focus-visible {
   }
 
   .home-topbar__name {
+    /* El apodo manda en Inicio: un punto más grande que el saludo. */
+    font-size: clamp(1.7rem, 7vw, 2.15rem);
     max-width: 100%;
     overflow: visible;
     overflow-wrap: anywhere;

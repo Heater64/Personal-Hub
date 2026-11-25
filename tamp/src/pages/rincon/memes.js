@@ -10,6 +10,9 @@ import { hapticTap } from '../../services/native.service.js';
 import { db } from '../../services/db.service.js';
 import { showToast } from '../../components/Toast.js';
 import { escapeHtml, safeUrl } from '../../utils/escape.js';
+// El estado "cargada/error" de las miniaturas se aplica con listeners
+// delegados: la CSP del despliegue bloquea los handlers inline.
+import '../../utils/imageReveal.js';
 import { openLightbox, closeLightbox, playSlideshow, pauseSlideshow } from '../../components/MediaLightbox.js';
 import {
   userPhotos, addUserPhotos, hidePhoto, saveFavPhotos, toggleFavPhoto,
@@ -78,7 +81,7 @@ export function createMemes(ctx) {
       const thumb = mediaThumb(poster || src, 640);
       const isFav = favs.has(src);
       const media = thumb
-        ? `<span class="meme-item-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="${escapeHtml(albumTitle)} ${i + 1}" loading="${i < 6 ? 'eager' : 'lazy'}"${i < 6 ? ' fetchpriority="high"' : ''} decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="meme-item-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
+        ? `<span class="meme-item-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}" alt="${escapeHtml(albumTitle)} ${i + 1}" loading="${i < 6 ? 'eager' : 'lazy'}"${i < 6 ? ' fetchpriority="high"' : ''} decoding="async"><span class="meme-item-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
         : `<div class="meme-item-posterless">${isVid ? `<span class="meme-item-play">${ICON_SVGS['play']}</span>` : '🎞️'}</div>`;
       return `<article class="meme-album-item animate-in" style="--enter-delay:${(i % 12) * 25}ms" data-index="${i}">
         ${media}
@@ -582,7 +585,7 @@ export function createMemes(ctx) {
         const loading = i < 6 ? 'eager' : 'lazy';
         const priority = i < 6 ? ' fetchpriority="high"' : '';
         const media = poster
-          ? `<span class="meme-item-loader" aria-hidden="true"></span><img src="${escapeHtml(poster)}" alt="Meme ${i + 1}" loading="${loading}"${priority} decoding="async" onload="this.parentElement.classList.add('is-loaded')" onerror="this.parentElement.classList.add('is-error');this.remove()"><span class="meme-item-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
+          ? `<span class="meme-item-loader" aria-hidden="true"></span><img src="${escapeHtml(poster)}" alt="Meme ${i + 1}" loading="${loading}"${priority} decoding="async"><span class="meme-item-fallback" aria-hidden="true">${ICON_SVGS['image']}</span>`
           : `<div class="meme-item-posterless">${isVid ? `<span class="meme-item-play">${ICON_SVGS['play']}</span>` : '🎞️'}</div>`;
         return `<article class="meme-album-item animate-in" style="--enter-delay:${(i % 12) * 25}ms" data-index="${i}">
           ${media}

@@ -68,6 +68,28 @@ export async function supportsGiftStates() {
   return false;
 }
 
+/**
+ * ¿Están aplicados los campos del organizador de la 046?
+ *
+ * Ocasión, tienda, precio real, prioridad, enlaces extra, notas y
+ * archivado. Igual que las demás sondas: se pregunta una vez por sesión y
+ * un fallo de red no se memoriza. Sin ellos la pantalla funciona con los
+ * campos de 035/037.
+ */
+let organizerFields = null;
+export async function supportsGiftOrganizer() {
+  if (organizerFields) return true;
+  const { error } = await supabase
+    .from('tamp_entries')
+    .select('occasion, store, actual_price, priority, extra_links, notes, archived_at')
+    .limit(1);
+  if (!error) {
+    organizerFields = true;
+    return true;
+  }
+  return false;
+}
+
 export async function entries(kind) {
   const rows = [];
   for (let offset=0; ; offset+=500) {
@@ -86,6 +108,19 @@ export async function writeEntry(kind, values, original) {
   if (error) throw error;
   if (!data) throw new Error('El registro ha cambiado en otro dispositivo. Actualiza antes de editar.');
 }
+/** Borrado definitivo de una sorpresa (política `tamp_entries_purge`). */
+export async function deleteEntryForever(kind, id) {
+  const { data, error } = await supabase
+    .from('tamp_entries')
+    .delete()
+    .eq('kind', kind)
+    .eq('id', id)
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('No se pudo eliminar el registro');
+}
+
 export function nextEvent(rows,today) {
   let best=null;
   for (const row of rows.filter(r=>!r.removed_at && r.kind==='event')) {

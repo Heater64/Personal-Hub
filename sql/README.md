@@ -56,6 +56,7 @@ Los archivos **dependen entre sí** — ejecútalos en orden numérico.
 | **043** | `043_geofence_radius_accuracy.sql` | Respeta el radio elegido al llegar a un sitio y conserva tolerancia GPS solo al salir | reemplaza RPC |
 | **044** | `044_scope_place_events_to_current_couple.sql` | Evita que eventos de geocerca pendientes crucen un cambio de pareja | actualiza RPCs privadas |
 | **045** | `045_reliable_geofence_accuracy.sql` | Descarta lecturas imprecisas y exige certeza GPS al entrar en un sitio | actualiza RPC privada |
+| **046** | `046_sorpresas_organizador_privado.sql` | **Organizador de Mis sorpresas: personas privadas por usuario, regalos ligados a personas propias, campos de ocasión/tienda/precio real/archivo y presupuesto mensual por cuenta** | 🔴 privacidad / columnas + tabla nueva |
 
 ---
 

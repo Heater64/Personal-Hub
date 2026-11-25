@@ -186,7 +186,7 @@ public class DeviceStatusServiceBatteryTest {
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 24, 26, 29, 31, 33, 34, 36 })
     public void batteryReceiverPausesAtTwentyAndResumesAtThirty() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         DeviceStatusService.prefs(context).edit().clear().commit();
@@ -250,7 +250,7 @@ public class DeviceStatusServiceBatteryTest {
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 24, 26, 29, 31, 33, 34, 36 })
     public void foregroundNotificationShowsBatteryPauseAndResumeImmediately() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         Shadows.shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(
@@ -314,7 +314,7 @@ public class DeviceStatusServiceBatteryTest {
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 24, 26, 29, 31, 33, 34, 36 })
     public void batteryPauseCancelsAnOutstandingOneShotLocationRequest() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         DeviceStatusService.prefs(context).edit().clear().commit();
@@ -374,7 +374,7 @@ public class DeviceStatusServiceBatteryTest {
     }
 
     @Test
-    @Config(sdk = 34)
+    @Config(sdk = { 24, 26, 29, 31, 33, 34, 36 })
     public void recreatedServiceResumesFromStickyBatterySnapshotAtThirtyPercent() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         DeviceStatusService.prefs(context).edit().clear().commit();

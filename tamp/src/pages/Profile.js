@@ -13,6 +13,7 @@ import { getUserPref, setUserPref } from '../utils/userStorage.js';
 import { requestEnable, disable, isPushSupported, getPushDeliveryStatus, getNotifSettings, setNotifSettings, notifPermission, sendTestNotification } from '../services/notifications.service.js';
 import { getNativePushStatus, registerNativePush } from '../services/native.service.js';
 import { escapeHtml } from '../utils/escape.js';
+import { icon } from '../components/ui.js';
 import { specialDates, loadSpecialDates, refreshSpecialDates } from '../utils/specialDates.js';
 import { isValidISO } from '../utils/cycleMath.js';
 
@@ -25,6 +26,16 @@ const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '
 // función nueva → minor). Al subir una versión nueva solo hay que añadir
 // su entrada al principio de la lista y actualizar APP_VERSION.
 const WHATS_NEW = [
+  {
+    version: '2.1.0',
+    items: [
+      '📍 «Dónde estáis» a pantalla completa: mapa, lugares y ajustes en tres pestañas',
+      '👤 Perfil renovado de arriba abajo, con el nuevo lenguaje visual',
+      '🎬 Series: buscador de TMDB y fichas que entran al catálogo sin escribirlas a mano',
+      '🔔 Confirmación al colocar un widget en la pantalla de inicio',
+      '🔧 La app avisa mejor cuando Android pausa el servicio o faltan permisos'
+    ]
+  },
   {
     version: '2.0.0',
     items: [
@@ -144,26 +155,26 @@ const WHATS_NEW = [
 ];
 
 // ==========================================
-// SVG ICONS
+// ICONOS — el set compartido de components/ui.js
 // ==========================================
 const UI = {
-  palette: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.56 1.5-1.5 0-.37-.14-.72-.38-1-.23-.28-.37-.63-.37-1 0-.93.67-1.5 1.5-1.5H16c5 0 8-3.48 8-8C24 6.5 19.5 2 12 2z"/></svg>',
-  sun: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 3v1m0 16v1m-9-9H2m20 0h-1M5.6 5.6l.7.7m12.1-.7-.7.7m0 11.4.7.7m-12.1-.7-.7.7"/></svg>',
-  moon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
-  monitor: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
-  camera: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
-  edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
-  save: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
-  trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
-  logout: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
-  settings: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-  arrowRight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
-  sparkles: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 0 0 9 9 9 9 0 0 0-9 9 9 9 0 0 0-9-9 9 9 0 0 0 9-9Z"/><path d="M8 8a5 5 0 0 0 5 5 5 5 0 0 0-5 5 5 5 0 0 0-5-5 5 5 0 0 0 5-5Z"/></svg>',
-  adminShield: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-  heart: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
-  info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
-  lock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
-  user: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+  palette: icon('palette', 15),
+  sun: icon('sun', 15),
+  moon: icon('moon', 15),
+  monitor: icon('phone', 15),
+  camera: icon('camera', 14),
+  edit: icon('edit', 14),
+  save: icon('check', 14),
+  trash: icon('trash', 14),
+  logout: icon('logout', 16),
+  settings: icon('gear', 20),
+  arrowRight: icon('chev', 16),
+  sparkles: icon('spark', 14),
+  adminShield: icon('shield', 13),
+  heart: icon('heart', 13),
+  info: icon('info', 16),
+  lock: icon('lock', 16),
+  user: icon('user', 16)
 };
 
 export function ProfilePage(router) {
@@ -227,7 +238,7 @@ export function ProfilePage(router) {
 
     <!-- ===== PREFERENCIAS ===== -->
     <div class="prof-group">
-      <div class="prof-group-label">Preferencias</div>
+      <div class="prof-group-label">${icon('palette', 13)}<span>Preferencias</span></div>
       <div class="prof-card">
 
         <!-- Theme -->
@@ -295,7 +306,7 @@ export function ProfilePage(router) {
 
     <!-- ===== DÍAS ESPECIALES ===== -->
     <div class="prof-group">
-      <div class="prof-group-label">Días especiales</div>
+      <div class="prof-group-label">${icon('heart', 13)}<span>Días especiales</span></div>
       <div class="prof-card">
         <div class="prof-days-head">
           <span class="prof-days-sub">Nuestros días importantes y lo que viene ✨</span>
@@ -323,7 +334,7 @@ export function ProfilePage(router) {
 
     <!-- ===== ALMACENAMIENTO ===== -->
     <div class="prof-group">
-      <div class="prof-group-label">Almacenamiento</div>
+      <div class="prof-group-label">${icon('cloud', 13)}<span>Almacenamiento</span></div>
       <div class="prof-card">
         <div class="prof-storage-bar-wrap">
           <div class="prof-storage-bar" id="storageBar"><div class="prof-storage-bar-fill" id="storageBarFill" style="width:0%"></div></div>
@@ -338,7 +349,7 @@ export function ProfilePage(router) {
 
     <!-- ===== APP ===== -->
     <div class="prof-group">
-      <div class="prof-group-label">App</div>
+      <div class="prof-group-label">${icon('info', 13)}<span>App</span></div>
       <div class="prof-card">
         <div class="prof-row">
           <div class="prof-row-text">
@@ -349,6 +360,7 @@ export function ProfilePage(router) {
         </div>
         <div class="prof-divider"></div>
         <button class="prof-app-btn" id="noveltiesBtn" type="button">
+          ${icon('spark', 17)}
           <span class="prof-app-btn-text">
             <strong>Novedades</strong>
             <small>Qué hay de nuevo en cada versión</small>
@@ -357,6 +369,7 @@ export function ProfilePage(router) {
         </button>
         <div class="prof-divider"></div>
         <button class="prof-app-btn" id="tmdbCreditsBtn" type="button">
+          ${icon('info', 17)}
           <span class="prof-app-btn-text">
             <strong>Créditos y fuentes</strong>
             <small>Datos de películas y series</small>
@@ -380,7 +393,7 @@ export function ProfilePage(router) {
 
     <!-- ===== SEGURIDAD ===== -->
     <div class="prof-group">
-      <div class="prof-group-label">Seguridad</div>
+      <div class="prof-group-label">${icon('shield', 13)}<span>Seguridad</span></div>
       <div class="prof-card">
         <button class="prof-btn prof-btn--danger" id="logoutBtn">${UI.logout} Cerrar sesión</button>
       </div>

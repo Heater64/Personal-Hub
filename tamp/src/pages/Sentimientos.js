@@ -1,13 +1,19 @@
 /* ==========================================
-   SENTIMIENTOS — el día y el mes en una mirada
-   Cabecera del sistema + registro de ánimo + historial
-   mensual + accesos. Sin hero propio ni decoración:
-   el saludo es el título y el ánimo manda.
+   SENTIMIENTOS — el ánimo de hoy, la semana y los accesos
 
-   Cada registro guarda una sola emoción. Los atajos van en la
-   rejilla y el resto (más la que ella escriba) en el desplegable
-   «Otras». Cada cambio se guarda solo, con la misma ventana de
-   5 minutos del modelo de estados.
+   Dos pantallas comparten este módulo y la misma fuente de datos:
+
+   · Sentimientos: cabecera, registro del ánimo de hoy, cifras plegadas,
+     tarjeta compacta «Nuestro ánimo» (últimos siete días, Peluche o
+     Princesa) y los accesos con sus ilustraciones SVG.
+   · Historial emocional: el calendario mensual completo, con selector de
+     persona, navegación de meses, leyenda y detalle del día. Vive aparte
+     del calendario de planes, fechas y regalos.
+
+   Cada registro guarda una sola emoción o varias. Los atajos van en la
+   rejilla y el resto (más la que ella escriba) en el desplegable «Otras».
+   Cada cambio se guarda solo, con la misma ventana de 5 minutos del modelo
+   de estados.
    ========================================== */
 
 import '../styles/sentimientos.css';
@@ -29,50 +35,52 @@ import {
   toggleMoodSelection,
 } from '../data/moods.data.js';
 
-// Los cuatro accesos de Sentimientos, en el orden en que se leen.
+// Ilustraciones propias de Sentimientos (SVG, sin fondo).
+const ART = '/assets/icons/sentimientos';
+
+// Los accesos de Sentimientos, en el orden en que se leen.
 const CARDS = [
   {
     id: 'razones',
-    icon: 'spark',
+    art: 'razones',
     title: 'Razones',
     desc: 'Una razón nueva para quererte',
     href: '/razones',
-    color: 'var(--violet-c)',
   },
   {
     id: 'maldia',
-    icon: 'sun',
+    art: 'mal-dia',
     title: 'Mal Día',
     desc: 'Lo que nos ha afectado y cómo nos sentimos',
     href: '/maldia',
-    color: 'var(--warn)',
   },
   {
     id: 'openwhen',
-    icon: 'mail',
+    art: 'open-when',
     title: 'Open When',
     desc: 'Cartas para cuando las necesites',
     href: '/openwhen',
-    color: 'var(--primary)',
   },
   {
     id: 'calendario',
-    icon: 'calendar',
+    art: 'calendario',
     title: 'Calendario',
     desc: 'Planes, fechas y regalos recibidos en un solo sitio',
     href: '/calendario',
-    color: 'var(--ok)',
   },
   {
     id: 'menstruacion',
-    icon: 'droplet',
+    art: 'menstruacion',
     title: 'Menstruación',
     desc: 'Tu ciclo, con tus datos y tus reglas',
     href: '/menstruacion',
-    color: 'var(--primary)',
   },
   {
-    id: 'sorpresas', icon: 'gift', title: 'Mis sorpresas', desc: 'Ideas y regalos que solo tú puedes ver', href: '/sorpresas', color: 'var(--primary)',
+    id: 'sorpresas',
+    art: 'mis-sorpresas',
+    title: 'Mis sorpresas',
+    desc: 'Ideas y regalos que solo tú puedes ver',
+    href: '/sorpresas',
   },
 ];
 
@@ -90,11 +98,247 @@ const HIST_MONTHS = [
   'Noviembre',
   'Diciembre',
 ];
+const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 // La semana empieza en lunes (como el resto de calendarios de la app)
 const HIST_WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+// Inicial del día de la semana con getDay() (domingo = 0).
+const WEEKDAY_INITIALS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
 const pad2 = n => String(n).padStart(2, '0');
 
+// ==========================================
+// HISTORIAL — una sola fuente para la semana y el mes
+// date → estado COMPLETO ({ mood, label, emoji, score }), no solo el id: así
+// los días registrados con el catálogo anterior se siguen viendo tal cual se
+// pusieron, aunque ya no exista ese id en el catálogo actual.
+// Se siembra con el historial local y se completa con Supabase (una consulta)
+// para que lo que se ve sea lo real también en otro dispositivo.
+// ==========================================
+function createHistoryState(todayMood) {
+  const state = { historyMap: {}, rowsByDate: {}, localMap: {} };
+  for (const entry of moodStore.getHistory() || []) {
+    if (!entry?.date || !entry.moodId) continue;
+    const stored = {
+      mood: entry.moodId,
+      label: entry.label,
+      emoji: entry.emoji,
+      score: entry.score,
+    };
+    state.localMap[entry.date] = stored;
+    state.historyMap[entry.date] = stored;
+    state.rowsByDate[entry.date] = [{ ...stored }];
+  }
+  if (todayMood?.id) {
+    const stored = encodeMood(todayMood.items);
+    if (stored) {
+      state.historyMap[todayISO()] = stored;
+      state.localMap[todayISO()] = stored;
+    }
+  }
+  return state;
+}
+
+/** Fila remota → estado que se pinta (fiel a lo que se guardó ese día). */
+function rowToEntry(row) {
+  return {
+    mood: row.mood,
+    label: row.label,
+    emoji: row.emoji,
+    score: row.score,
+  };
+}
+
+/**
+ * Añade las filas del servidor encima de lo local. Vienen de la más reciente
+ * a la más antigua: la primera fila de cada día es la vigente.
+ */
+function mergeRemoteRows(state, rows) {
+  const { historyMap, rowsByDate } = state;
+  const remoteDates = new Set();
+  for (const row of rows || []) {
+    if (row?.date && row.mood) (rowsByDate[row.date] ||= []).push(row);
+    if (!row?.date || !row.mood || remoteDates.has(row.date)) continue;
+    remoteDates.add(row.date);
+    historyMap[row.date] = rowToEntry(row);
+  }
+}
+
+/**
+ * Historial completo de una persona: local primero, después el servidor.
+ * Devuelve `false` si la consulta falló, para poder reintentar (y para no
+ * pisar con un vacío lo que ya se estaba mostrando).
+ */
+async function fetchHistory(state, ownerId, selfId) {
+  let rows;
+  try {
+    rows = (await moodStore.getMoodHistory(ownerId, '2000-01-01', todayISO(), { strict: true })) || [];
+  } catch {
+    return false;
+  }
+  for (const date of Object.keys(state.historyMap)) delete state.historyMap[date];
+  for (const date of Object.keys(state.rowsByDate)) delete state.rowsByDate[date];
+  if (ownerId === selfId) {
+    Object.assign(state.historyMap, state.localMap);
+    for (const [date, entry] of Object.entries(state.localMap)) {
+      state.rowsByDate[date] = [{ ...entry }];
+    }
+  }
+  mergeRemoteRows(state, rows);
+  return true;
+}
+
+/** Cifras del historial: los mismos cálculos para la tarjeta y el historial. */
+function computeStats(historyMap) {
+  const dates = Object.keys(historyMap);
+  const thisMonth = todayISO().slice(0, 7);
+
+  // Racha: cuenta desde hoy y, si hoy todavía no hay estado, sigue desde
+  // ayer (si no, saltaría a 0 cada mañana hasta que se marcara el día).
+  let streak = 0;
+  const cursor = new Date();
+  if (!historyMap[todayISO(cursor)]) cursor.setDate(cursor.getDate() - 1);
+  while (historyMap[todayISO(cursor)]) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  // Cada emoción marcada cuenta: un día con «Triste + Cansada» suma uno a
+  // cada una, no uno a un estado combinado que no existe en el catálogo.
+  const counts = {};
+  dates.forEach(date => {
+    const ids = moodStore.resolveMood(historyMap[date])?.ids || [];
+    ids.forEach(id => {
+      counts[id] = (counts[id] || 0) + 1;
+    });
+  });
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    totalDays: dates.length,
+    daysThisMonth: dates.filter(date => date.startsWith(thisMonth)).length,
+    streak,
+    // «Mejor racha» y la tira de la quincena: mismo historial, otra lectura.
+    best: bestStreak(historyMap),
+    recent: lastNDays(historyMap, 14, todayISO()),
+    mostCommon: top ? moodStore.resolveMood({ mood: top[0] }) : null,
+  };
+}
+
+/**
+ * Calendario de un mes, con sus emociones resueltas desde la fila guardada
+ * (no desde el catálogo actual). Devuelve el marcado, la leyenda y el número
+ * de días con registro para que cada pantalla decida qué enseñar.
+ */
+function monthCalendar(state, month) {
+  const { historyMap } = state;
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth() + 1;
+  const monthKey = `${year}-${pad2(monthIndex)}`;
+  const daysInMonth = new Date(year, monthIndex, 0).getDate();
+  const todayStr = todayISO();
+  const monthEntries = Object.keys(historyMap).filter(date => date.startsWith(monthKey));
+  const firstWeekday = (new Date(year, monthIndex - 1, 1).getDay() + 6) % 7; // lunes = 0
+
+  let cells = '';
+  for (let i = 0; i < firstWeekday; i++)
+    cells += '<span class="sent-hist-cell is-offset" aria-hidden="true"></span>';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${monthKey}-${pad2(day)}`;
+    const mood = historyMap[dateStr] ? moodStore.resolveMood(historyMap[dateStr]) : null;
+    const isToday = dateStr === todayStr;
+    const isFuture = dateStr > todayStr;
+    cells += `
+      <button type="button" class="sent-hist-cell${mood ? ' has-mood is-openable' : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}"
+           data-history-date="${dateStr}" ${mood ? `title="${escapeHtml(mood.label)}" aria-label="${escapeHtml(`${day} de ${HIST_MONTHS[monthIndex - 1]} · ${mood.label}`)}"` : 'disabled aria-hidden="true"'}>
+        <span class="sent-hist-day">${day}</span>
+        ${mood ? `<span class="sent-hist-emoji" aria-hidden="true">${escapeHtml(mood.emoji)}</span>` : ''}
+      </button>`;
+  }
+
+  // Una entrada por emoción DISTINTA del mes, con la etiqueta real: la de
+  // «Otras» es la que escribió ella, no la palabra «Otras».
+  const present = new Map();
+  for (const date of monthEntries) {
+    const resolved = moodStore.resolveMood(historyMap[date]);
+    for (const item of resolved?.items || []) {
+      if (!present.has(item.id)) present.set(item.id, item);
+    }
+  }
+
+  return {
+    label: `${HIST_MONTHS[monthIndex - 1]} ${year}`,
+    count: monthEntries.length,
+    legend: [...present.values()],
+    html: `
+      <div class="sent-hist-grid">
+        ${HIST_WEEKDAYS.map(day => `<span class="sent-hist-hd">${day}</span>`).join('')}
+        ${cells}
+      </div>
+      ${monthEntries.length ? '' : `<p class="sent-hist-empty">Aún no hay ánimos este mes.<br><small>Cada día que lo cuentas queda guardado aquí.</small></p>`}
+    `,
+  };
+}
+
+/** Detalle de un día: cada estado con su hora, como quedó guardado. */
+function openMoodDay(state, date, ownerLabel) {
+  const rows = [...(state.rowsByDate[date] || [])].sort((a, b) =>
+    String(a.created_at || '').localeCompare(String(b.created_at || ''))
+  );
+  const dayDate = new Date(`${date}T12:00:00`);
+  const dateLabel = dayDate.toLocaleDateString('es', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const entries = rows.map(row => {
+    const mood = moodStore.resolveMood({
+      mood: row.mood,
+      label: row.label,
+      emoji: row.emoji,
+      score: row.score,
+    });
+    const at = row.created_at ? new Date(row.created_at) : null;
+    const time = at && !Number.isNaN(at.getTime())
+      ? at.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+      : '';
+    return `<li class="sent-mood-change">
+      <span class="sent-mood-change-emoji" aria-hidden="true">${escapeHtml(mood?.emoji || '💭')}</span>
+      <span class="sent-mood-change-label">${escapeHtml(mood?.label || 'Estado de ánimo')}</span>
+      ${time ? `<time class="sent-mood-change-time" datetime="${escapeHtml(row.created_at)}">${time}</time>` : ''}
+    </li>`;
+  }).join('');
+  openSheet(`Ánimo de ${ownerLabel}`, sheet => {
+    const body = document.createElement('div');
+    body.className = 'sent-mood-day-detail';
+    body.innerHTML = `<p class="sent-mood-day-date">${escapeHtml(dateLabel)}</p>
+      ${rows.length ? `<p class="sent-mood-day-summary">${rows.length} ${rows.length === 1 ? 'registro' : 'registros'}</p>` : ''}
+      ${rows.length ? `<ol class="sent-mood-change-list">${entries}</ol>` : '<p class="sent-mood-day-empty">Ese día no tiene registros disponibles en este dispositivo.</p>'}`;
+    sheet.append(body);
+    return null;
+  });
+}
+
+// ==========================================
+// PAREJA — quién es la otra cuenta
+// ==========================================
+async function resolvePartnerId(selfId) {
+  let partnerId = null;
+  try {
+    if (selfId && supabase) {
+      const { data: membership } = await supabase.from('couple_members')
+        .select('couple_id').eq('user_id', selfId).maybeSingle();
+      if (membership?.couple_id) {
+        const { data: members } = await supabase.from('couple_members')
+          .select('user_id').eq('couple_id', membership.couple_id).neq('user_id', selfId).limit(1);
+        partnerId = members?.[0]?.user_id || null;
+      }
+    }
+  } catch { /* intenta la identidad heredada de presencia */ }
+  if (!partnerId) partnerId = (await fetchPartnerPresence())?.userId || null;
+  return partnerId;
+}
+
+// ==========================================
+// PANTALLA · SENTIMIENTOS
+// ==========================================
 export function SentimientosPage(router) {
   const page = document.createElement('div');
   page.className = 'sentimientos-page';
@@ -107,88 +351,17 @@ export function SentimientosPage(router) {
   let todayMood = moodStore.getTodayMood();
   let selection = todayMood ? todayMood.items.map(item => ({ ...item })) : [];
 
-  /* ==========================================
-     HISTORIAL — una sola fuente para el mes y las cifras.
-     date → estado COMPLETO ({ mood, label, emoji, score }), no
-     solo el id: así los días registrados con el catálogo
-     anterior se siguen viendo tal cual se pusieron, aunque ya
-     no exista ese id en el catálogo actual.
-     Se siembra con el historial local y se completa con Supabase
-     (una consulta) para que las estadísticas sean las reales
-     también en otro dispositivo.
-     ========================================== */
-  const historyMap = {};
-  const historyRowsByDate = {};
-  const localHistoryMap = {};
   const selfUser = userStore.getUser();
   const selfId = selfUser?.id || null;
   const selfLabel = userStore.isAdmin ? 'Peluche' : 'Princesa';
   const partnerLabel = userStore.isAdmin ? 'Princesa' : 'Peluche';
   let partnerId = null;
-  let historyOwnerId = selfId;
-  let historyOwnerLabel = selfLabel;
-  let historyLoadToken = 0;
-  let histMonth = new Date();
-  for (const entry of moodStore.getHistory() || []) {
-    if (entry?.date && entry.moodId) {
-      localHistoryMap[entry.date] = {
-        mood: entry.moodId,
-        label: entry.label,
-        emoji: entry.emoji,
-        score: entry.score,
-      };
-      historyRowsByDate[entry.date] = [{
-        mood: entry.moodId,
-        label: entry.label,
-        emoji: entry.emoji,
-        score: entry.score,
-      }];
-    }
-  }
-  Object.assign(historyMap, localHistoryMap);
-  if (todayMood?.id) {
-    const stored = encodeMood(todayMood.items);
-    if (stored) {
-      historyMap[todayISO()] = stored;
-      localHistoryMap[todayISO()] = stored;
-    }
-  }
+  // idle → loading → ready | error. Desde «error», tocar el botón reintenta.
+  let partnerStatus = 'idle';
+  let weekPerson = 'self';
 
-  function computeStats() {
-    const dates = Object.keys(historyMap);
-    const thisMonth = todayISO().slice(0, 7);
-
-    // Racha: cuenta desde hoy y, si hoy todavía no hay estado, sigue desde
-    // ayer (si no, saltaría a 0 cada mañana hasta que se marcara el día).
-    let streak = 0;
-    const cursor = new Date();
-    if (!historyMap[todayISO(cursor)]) cursor.setDate(cursor.getDate() - 1);
-    while (historyMap[todayISO(cursor)]) {
-      streak++;
-      cursor.setDate(cursor.getDate() - 1);
-    }
-
-    // Cada emoción marcada cuenta: un día con «Triste + Cansada» suma uno a
-    // cada una, no uno a un estado combinado que no existe en el catálogo.
-    const counts = {};
-    dates.forEach(date => {
-      const ids = moodStore.resolveMood(historyMap[date])?.ids || [];
-      ids.forEach(id => {
-        counts[id] = (counts[id] || 0) + 1;
-      });
-    });
-    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-
-    return {
-      totalDays: dates.length,
-      daysThisMonth: dates.filter(date => date.startsWith(thisMonth)).length,
-      streak,
-      // «Mejor racha» y la tira de la quincena: mismo historial, otra lectura.
-      best: bestStreak(historyMap),
-      recent: lastNDays(historyMap, 14, todayISO()),
-      mostCommon: top ? moodStore.resolveMood({ mood: top[0] }) : null,
-    };
-  }
+  const selfHistory = createHistoryState(todayMood);
+  const partnerHistory = createHistoryState(null);
 
   page.innerHTML = `
     ${renderPageHeader({ title: 'Sentimientos', subtitle: 'Cómo estamos y qué nos hace bien' })}
@@ -262,33 +435,33 @@ export function SentimientosPage(router) {
     </button>
     <div class="sent-stats" id="sentStats" hidden></div>
 
-    <!-- ===== TU MES DE ÁNIMOS ===== -->
-    <section class="card sent-history" aria-labelledby="sentHistoryTitle">
-      <div class="sent-history-person" role="group" aria-label="Ver ánimo de">
-        <button type="button" class="sent-history-person-btn is-active" data-history-person="self" aria-pressed="true">${selfLabel}</button>
-        <button type="button" class="sent-history-person-btn" data-history-person="partner" aria-pressed="false" disabled>${partnerLabel}</button>
-      </div>
-      <div class="sent-history-head">
-        <div class="sent-history-copy">
-          <h2 class="sent-history-title" id="sentHistoryTitle">Ánimo de ${selfLabel}</h2>
-          <p class="sent-history-sub" id="sentHistorySub"></p>
+    <!-- ===== NUESTRO ÁNIMO · últimos siete días ===== -->
+    <section class="card sent-week" aria-labelledby="sentWeekTitle">
+      <div class="sent-week-head">
+        <div class="sent-week-copy">
+          <h2 class="sent-week-title" id="sentWeekTitle">Nuestro ánimo</h2>
+          <p class="sent-week-sub" id="sentWeekSub">Últimos siete días</p>
         </div>
-        <div class="sent-history-nav">
-          <button type="button" class="icon-btn" id="histPrev" aria-label="Mes anterior">${icon('back', 18)}</button>
-          <span class="sent-history-label" id="histLabel"></span>
-          <button type="button" class="icon-btn" id="histNext" aria-label="Mes siguiente">${icon('chev', 18)}</button>
+        <div class="sent-week-people" role="group" aria-label="Ver el ánimo de">
+          <button type="button" class="sent-week-person is-active" data-week-person="self" aria-pressed="true">${selfLabel}</button>
+          <button type="button" class="sent-week-person" data-week-person="partner" aria-pressed="false">${partnerLabel}</button>
         </div>
       </div>
-      <div class="sent-hist-cal" id="histCal"></div>
-      <div class="sent-history-legend" id="histLegend"></div>
+      <ul class="sent-week-days" id="sentWeekDays"></ul>
+      <button type="button" class="sent-week-link" data-href="/sentimientos/historial">
+        <span class="sent-week-link-text">Historial emocional completo</span>
+        <span class="sent-week-link-chev" aria-hidden="true">${icon('chev', 16)}</span>
+      </button>
     </section>
 
     <!-- ===== ACCESOS ===== -->
     <div class="sent-cards-grid">
       ${CARDS.map(
         card => `
-        <button type="button" class="sent-card lift" data-href="${card.href}" style="--card-color:${card.color}">
-          <span class="sent-card-cover">${icon(card.icon, 30)}</span>
+        <button type="button" class="sent-card lift" data-href="${card.href}">
+          <span class="sent-card-cover">
+            <img class="sent-card-art" src="${ART}/${card.art}.svg" alt="" width="56" height="56" loading="lazy" decoding="async">
+          </span>
           <span class="sent-card-body">
             <span class="sent-card-title">${card.title}</span>
             <span class="sent-card-desc">${
@@ -297,6 +470,7 @@ export function SentimientosPage(router) {
                 : card.desc
             }</span>
           </span>
+          <span class="sent-card-chev" aria-hidden="true">${icon('chev', 18)}</span>
         </button>`
       ).join('')}
     </div>
@@ -349,15 +523,15 @@ export function SentimientosPage(router) {
     selection = mood ? mood.items.map(item => ({ ...item })) : [];
 
     const today = todayISO();
-    if (historyOwnerId === selfId && mood) {
+    if (mood) {
       const stored = encodeMood(mood.items);
       if (stored) {
-        historyMap[today] = stored;
-        localHistoryMap[today] = stored;
+        selfHistory.historyMap[today] = stored;
+        selfHistory.localMap[today] = stored;
       }
-    } else if (historyOwnerId === selfId) {
-      delete historyMap[today];
-      delete localHistoryMap[today];
+    } else {
+      delete selfHistory.historyMap[today];
+      delete selfHistory.localMap[today];
     }
 
     paintSelection();
@@ -379,6 +553,7 @@ export function SentimientosPage(router) {
       if (saved) saved.hidden = true;
       if (feedback) feedback.hidden = true;
     }
+    if (weekPerson === 'self') renderWeek();
   }
 
   // ==========================================
@@ -438,10 +613,8 @@ export function SentimientosPage(router) {
   }
 
   function refreshMoodSide() {
-    if (historyOwnerId === selfId) {
-      renderStats();
-      renderHistory();
-    }
+    renderStats();
+    renderWeek();
   }
 
   function openPalette(open) {
@@ -474,7 +647,7 @@ export function SentimientosPage(router) {
   function renderStats() {
     const box = page.querySelector('#sentStats');
     if (!box) return;
-    const stats = computeStats();
+    const stats = computeStats(selfHistory.historyMap);
     const hasStats = stats.totalDays > 0;
     paintStatsToggle(hasStats);
     if (!hasStats) {
@@ -521,206 +694,109 @@ export function SentimientosPage(router) {
     saveStreakWidget({ days: stats.streak, best: stats.best });
   }
 
-  function renderHistory() {
-    const cal = page.querySelector('#histCal');
-    const label = page.querySelector('#histLabel');
-    const legend = page.querySelector('#histLegend');
-    const sub = page.querySelector('#sentHistorySub');
-    if (!cal || !label) return;
+  // ==========================================
+  // NUESTRO ÁNIMO — siete días, sin inventar registros
+  // ==========================================
+  function renderWeek() {
+    const box = page.querySelector('#sentWeekDays');
+    const sub = page.querySelector('#sentWeekSub');
+    if (!box) return;
 
-    const year = histMonth.getFullYear();
-    const month = histMonth.getMonth() + 1;
-    const monthKey = `${year}-${pad2(month)}`;
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const todayStr = todayISO();
-    label.textContent = `${HIST_MONTHS[month - 1]} ${year}`;
+    const isPartner = weekPerson === 'partner';
+    const state = isPartner ? partnerHistory : selfHistory;
+    const label = isPartner ? partnerLabel : selfLabel;
+    const loading = isPartner && partnerStatus === 'loading';
+    const failed = isPartner && partnerStatus === 'error';
+    const days = lastNDays(state.historyMap, 7, todayISO());
+    const registered = days.filter(day => day.mood).length;
 
-    const monthEntries = Object.keys(historyMap).filter(date => date.startsWith(monthKey));
-    const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7; // lunes = 0
-
-    let cells = '';
-    for (let i = 0; i < firstWeekday; i++)
-      cells += '<span class="sent-hist-cell is-offset" aria-hidden="true"></span>';
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${monthKey}-${pad2(day)}`;
-      const mood = historyMap[dateStr] ? moodStore.resolveMood(historyMap[dateStr]) : null;
-      const isToday = dateStr === todayStr;
-      const isFuture = dateStr > todayStr;
-      cells += `
-        <button type="button" class="sent-hist-cell${mood ? ' has-mood is-openable' : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}"
-             data-history-date="${dateStr}" ${mood ? `title="${escapeHtml(mood.label)}" aria-label="${escapeHtml(`${day} de ${HIST_MONTHS[month - 1]} · ${mood.label}`)}"` : 'disabled aria-hidden="true"'}>
-          <span class="sent-hist-day">${day}</span>
-          ${mood ? `<span class="sent-hist-emoji" aria-hidden="true">${escapeHtml(mood.emoji)}</span>` : ''}
-        </button>`;
-    }
-
-    cal.innerHTML = `
-      <div class="sent-hist-grid">
-        ${HIST_WEEKDAYS.map(day => `<span class="sent-hist-hd">${day}</span>`).join('')}
-        ${cells}
-      </div>
-      ${monthEntries.length ? '' : `<p class="sent-hist-empty">Aún no hay ánimos este mes.<br><small>Cada día que lo cuentas queda guardado aquí.</small></p>`}
-    `;
-
-    if (legend) {
-      // Una entrada por emoción DISTINTA del mes, con la etiqueta real: la de
-      // «Otras» es la que escribió ella, no la palabra «Otras».
-      const present = new Map();
-      for (const date of monthEntries) {
-        const resolved = moodStore.resolveMood(historyMap[date]);
-        for (const item of resolved?.items || []) {
-          if (!present.has(item.id)) present.set(item.id, item);
+    box.innerHTML = days
+      .map(({ date, mood }) => {
+        const dayDate = new Date(`${date}T12:00:00`);
+        const number = Number(date.slice(8, 10));
+        const isToday = date === todayISO();
+        // Mientras se carga (o si falló) no se pinta «sin registro»: eso sería
+        // afirmar algo que todavía no se sabe.
+        let resolved = null;
+        let status = 'sin registro';
+        if (loading) status = 'cargando';
+        else if (failed) status = 'sin datos';
+        else if (mood) {
+          resolved = moodStore.resolveMood(mood);
+          status = resolved?.label || 'sin registro';
         }
-      }
-      legend.innerHTML = present.size
-        ? [...present.values()]
-            .map(
-              mood =>
-                `<span class="sent-hist-legend-item"><span aria-hidden="true">${escapeHtml(mood.emoji)}</span>${escapeHtml(mood.label)}</span>`
-            )
-            .join('')
-        : '';
-    }
-    if (sub)
-      sub.textContent = monthEntries.length
-        ? `${monthEntries.length} ${monthEntries.length === 1 ? 'día guardado' : 'días guardados'} este mes`
-        : 'Todavía sin registros este mes';
-  }
+        const readOut = `${number} de ${MONTHS_SHORT[dayDate.getMonth()]}${
+          isToday ? ' (hoy)' : ''
+        }: ${status}`;
+        return `<li class="sent-week-day${resolved ? ' has-mood' : ''}${isToday ? ' is-today' : ''}" aria-label="${escapeHtml(readOut)}">
+          <span class="sent-week-day-wd" aria-hidden="true">${WEEKDAY_INITIALS[dayDate.getDay()]}</span>
+          <span class="sent-week-day-num" aria-hidden="true">${number}</span>
+          ${
+            resolved
+              ? `<span class="sent-week-day-mark" aria-hidden="true">${escapeHtml(resolved.emoji)}</span>`
+              : '<span class="sent-week-day-mark is-empty" aria-hidden="true"></span>'
+          }
+        </li>`;
+      })
+      .join('');
 
-  // Mientras llega el historial del servidor la rejilla se sustituye por
-  // huecos con forma (solo si no hay nada local que enseñar).
-  let histSkeletonShown = false;
+    if (sub) {
+      if (loading) sub.textContent = `Cargando el ánimo de ${label}…`;
+      else if (failed) sub.textContent = `No se pudo cargar · toca ${label} para reintentar`;
+      else
+        sub.textContent = registered
+          ? `${registered} de 7 días con ánimo · ${label}`
+          : `Sin registros estos siete días · ${label}`;
+    }
 
-  // Historial completo desde el servidor: una sola consulta para toda la vida
-  // del usuario (un estado por día, poco peso) y las cifras ya son las reales.
-  async function loadRemoteHistory() {
-    const targetId = historyOwnerId;
-    if (!targetId) return;
-    const token = ++historyLoadToken;
-    let changed = false;
-    const remoteDates = new Set();
-    try {
-      const rows = await moodStore.getMoodHistory(targetId, '2000-01-01', todayISO());
-      if (!page.isConnected || token !== historyLoadToken) return;
-      if (targetId === selfId) {
-        Object.keys(historyMap).forEach(date => delete historyMap[date]);
-        Object.keys(historyRowsByDate).forEach(date => delete historyRowsByDate[date]);
-        Object.assign(historyMap, localHistoryMap);
-      } else {
-        Object.keys(historyMap).forEach(date => delete historyMap[date]);
-        Object.keys(historyRowsByDate).forEach(date => delete historyRowsByDate[date]);
-      }
-      for (const row of rows || []) {
-        if (row?.date && row.mood) {
-          (historyRowsByDate[row.date] ||= []).push(row);
-        }
-        // Vienen de la más reciente a la más antigua. La primera fila por día
-        // es la vigente y sustituye cualquier copia local desactualizada.
-        if (!row?.date || !row.mood || remoteDates.has(row.date)) continue;
-        remoteDates.add(row.date);
-        historyMap[row.date] = {
-          mood: row.mood,
-          label: row.label,
-          emoji: row.emoji,
-          score: row.score,
-        };
-        changed = true;
-      }
-      if (targetId === selfId) {
-        for (const [date, entry] of Object.entries(localHistoryMap)) {
-          if (!historyRowsByDate[date]?.length) historyRowsByDate[date] = [{ ...entry }];
-        }
-      }
-    } catch {
-      /* sin conexión: vale el historial local */
-    }
-    // El hueco de carga se sustituye SIEMPRE: con el historial remoto, con el
-    // local o con el mensaje de «aún no hay ánimos». Si no, un fallo de red
-    // dejaría la rejilla cargando para siempre.
-    if (token === historyLoadToken && (changed || histSkeletonShown || historyOwnerId !== selfId)) {
-      histSkeletonShown = false;
-      renderStats();
-      renderHistory();
-    }
-  }
-
-  async function selectHistoryPerson(person) {
-    const isSelf = person === 'self';
-    historyOwnerId = isSelf ? selfId : partnerId;
-    historyOwnerLabel = isSelf ? selfLabel : partnerLabel;
-    if (!historyOwnerId) {
-      toast('No se pudo encontrar la cuenta de tu pareja', 'error');
-      return;
-    }
-    page.querySelectorAll('[data-history-person]').forEach(button => {
-      const active = button.dataset.historyPerson === person;
-      button.classList.toggle('is-active', active);
-      button.setAttribute('aria-pressed', String(active));
+    page.querySelectorAll('[data-week-person]').forEach(btn => {
+      const active = btn.dataset.weekPerson === weekPerson;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', String(active));
     });
-    const title = page.querySelector('#sentHistoryTitle');
-    if (title) title.textContent = `Ánimo de ${historyOwnerLabel}`;
-    Object.keys(historyMap).forEach(date => delete historyMap[date]);
-    Object.keys(historyRowsByDate).forEach(date => delete historyRowsByDate[date]);
-    if (isSelf) Object.assign(historyMap, localHistoryMap);
-    if (isSelf) for (const [date, entry] of Object.entries(localHistoryMap)) historyRowsByDate[date] = [{ ...entry }];
-    histSkeletonShown = !Object.keys(historyMap).length;
-    if (histSkeletonShown) page.querySelector('#histCal').innerHTML = skeletonHTML({ rows: 3, label: `Cargando ánimo de ${historyOwnerLabel}` });
-    renderStats();
-    if (!histSkeletonShown) renderHistory();
-    await loadRemoteHistory();
   }
 
+  /**
+   * El ánimo de la pareja se pide SOLO al tocar su nombre: ni al abrir la
+   * pantalla ni al volver de otra sección. Quién es se resuelve en ese
+   * momento (no antes) y, si la consulta falla, se reintenta una vez; el
+   * botón sigue activo, así que volver a tocarlo también reintenta.
+   */
+  async function loadPartner() {
+    if (partnerStatus === 'loading' || partnerStatus === 'ready') return;
+    partnerStatus = 'loading';
+    renderWeek();
+    if (!partnerId) partnerId = await resolvePartnerId(selfId);
+    let ok = false;
+    if (partnerId) ok = await fetchHistory(partnerHistory, partnerId, selfId);
+    if (!ok && partnerId && page.isConnected) {
+      ok = await fetchHistory(partnerHistory, partnerId, selfId);
+    }
+    if (!page.isConnected) return;
+    partnerStatus = ok ? 'ready' : 'error';
+    renderWeek();
+  }
+
+  page.querySelectorAll('[data-week-person]').forEach(button => {
+    button.addEventListener('click', () => {
+      weekPerson = button.dataset.weekPerson;
+      // La pareja se pinta en cuanto su carga lo diga (cargando o lista):
+      // así no parpadea un «sin registros» que todavía no se sabe.
+      if (weekPerson === 'partner' && partnerStatus !== 'ready') loadPartner();
+      else renderWeek();
+    });
+  });
+
+  // ==========================================
+  // EVENTOS
+  // ==========================================
   page.querySelectorAll('.sent-card').forEach(card => {
     card.addEventListener('click', () => router.navigate(card.dataset.href));
   });
-  page.querySelectorAll('[data-history-person]').forEach(button => {
-    button.addEventListener('click', () => selectHistoryPerson(button.dataset.historyPerson));
+  page.querySelector('.sent-week-link')?.addEventListener('click', event => {
+    router.navigate(event.currentTarget.dataset.href);
   });
 
-  function openMoodDay(date) {
-    const rows = [...(historyRowsByDate[date] || [])]
-      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
-    const dayDate = new Date(`${date}T12:00:00`);
-    const dateLabel = dayDate.toLocaleDateString('es', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    });
-    const entries = rows.map(row => {
-      const mood = moodStore.resolveMood({
-        mood: row.mood,
-        label: row.label,
-        emoji: row.emoji,
-        score: row.score,
-      });
-      const at = row.created_at ? new Date(row.created_at) : null;
-      const time = at && !Number.isNaN(at.getTime())
-        ? at.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
-        : '';
-      return `<li class="sent-mood-change">
-        <span class="sent-mood-change-emoji" aria-hidden="true">${escapeHtml(mood?.emoji || '💭')}</span>
-        <span class="sent-mood-change-label">${escapeHtml(mood?.label || 'Estado de ánimo')}</span>
-        ${time ? `<time class="sent-mood-change-time" datetime="${escapeHtml(row.created_at)}">${time}</time>` : ''}
-      </li>`;
-    }).join('');
-    openSheet(`Ánimo de ${historyOwnerLabel}`, sheet => {
-      const body = document.createElement('div');
-      body.className = 'sent-mood-day-detail';
-      body.innerHTML = `<p class="sent-mood-day-date">${escapeHtml(dateLabel)}</p>
-        ${rows.length ? `<p class="sent-mood-day-summary">${rows.length} ${rows.length === 1 ? 'registro' : 'registros'}</p>` : ''}
-        ${rows.length ? `<ol class="sent-mood-change-list">${entries}</ol>` : '<p class="sent-mood-day-empty">Ese día no tiene registros disponibles en este dispositivo.</p>'}`;
-      sheet.append(body);
-      return null;
-    });
-  }
-
-  page.querySelector('#histCal')?.addEventListener('click', event => {
-    const cell = event.target.closest('[data-history-date]');
-    if (!cell || cell.disabled) return;
-    openMoodDay(cell.dataset.historyDate);
-  });
-
-  // ==========================================
-  // EVENTOS DE LA TARJETA
-  // ==========================================
   page.addEventListener('click', event => {
     const removeCustom = event.target.closest('[data-custom-remove]');
     if (removeCustom && page.contains(removeCustom)) {
@@ -754,50 +830,19 @@ export function SentimientosPage(router) {
     scheduleSave();
   });
 
-  // Meses del historial
-  page.querySelector('#histPrev')?.addEventListener('click', () => {
-    histMonth = new Date(histMonth.getFullYear(), histMonth.getMonth() - 1, 1);
-    renderHistory();
-  });
-  page.querySelector('#histNext')?.addEventListener('click', () => {
-    histMonth = new Date(histMonth.getFullYear(), histMonth.getMonth() + 1, 1);
-    renderHistory();
-  });
-
   // Estado inicial
   applyMoodUI(todayMood);
   // Si hoy hay emociones que no son atajos, el desplegable arranca abierto:
   // si no, parecería que solo hay una marcada.
   openPalette(selection.some(item => !quickIds.has(item.id)));
   renderStats();
-  renderHistory();
-  const histCal = page.querySelector('#histCal');
-  if (histCal && !Object.keys(historyMap).length) {
-    histCal.innerHTML = skeletonHTML({ rows: 3, label: 'Cargando tu historial' });
-    histSkeletonShown = true;
-  }
-  loadRemoteHistory();
-  (async () => {
-    // Resolver la pareja desde la relación compartida; los latidos de
-    // presencia solo existen cuando el otro dispositivo está conectado.
-    try {
-      if (selfId && supabase) {
-        const { data: membership } = await supabase.from('couple_members')
-          .select('couple_id').eq('user_id', selfId).maybeSingle();
-        if (membership?.couple_id) {
-          const { data: members } = await supabase.from('couple_members')
-            .select('user_id').eq('couple_id', membership.couple_id).neq('user_id', selfId).limit(1);
-          partnerId = members?.[0]?.user_id || null;
-        }
-      }
-    } catch { /* intenta la identidad heredada de presencia */ }
-    if (!partnerId) partnerId = (await fetchPartnerPresence())?.userId || null;
-    return partnerId;
-  })().then(userId => {
-    if (!page.isConnected || !userId) return;
-    partnerId = userId;
-    const partnerButton = page.querySelector('[data-history-person="partner"]');
-    if (partnerButton) partnerButton.disabled = false;
+  renderWeek();
+
+  // El historial propio, al abrir; el de la pareja, solo cuando se pide.
+  fetchHistory(selfHistory, selfId, selfId).then(() => {
+    if (!page.isConnected) return;
+    renderStats();
+    renderWeek();
   });
 
   // El ánimo puede haber cambiado en otro dispositivo mientras mirábamos
@@ -807,6 +852,159 @@ export function SentimientosPage(router) {
       applyMoodUI(remoteMood);
       refreshMoodSide();
     }
+  });
+
+  return page;
+}
+
+// ==========================================
+// PANTALLA · HISTORIAL EMOCIONAL
+// El calendario mensual completo, separado del calendario de planes.
+// ==========================================
+export function HistorialEmocionalPage(router) {
+  const page = document.createElement('div');
+  page.className = 'sentimientos-page sent-history-page';
+
+  const selfUser = userStore.getUser();
+  const selfId = selfUser?.id || null;
+  const selfLabel = userStore.isAdmin ? 'Peluche' : 'Princesa';
+  const partnerLabel = userStore.isAdmin ? 'Princesa' : 'Peluche';
+  let partnerId = null;
+  let owner = 'self';
+
+  const selfHistory = createHistoryState(moodStore.getTodayMood());
+  const partnerHistory = createHistoryState(null);
+  let month = new Date();
+  let loadToken = 0;
+
+  const stateFor = who => (who === 'self' ? selfHistory : partnerHistory);
+  const ownerIdFor = who => (who === 'self' ? selfId : partnerId);
+  const ownerLabelFor = who => (who === 'self' ? selfLabel : partnerLabel);
+
+  page.innerHTML = `
+    ${renderPageHeader({
+      title: 'Historial emocional',
+      subtitle: 'Los días que habéis registrado, mes a mes',
+      back: true,
+    })}
+
+    <section class="card sent-history" aria-labelledby="sentHistoryTitle">
+      <div class="sent-history-person" role="group" aria-label="Ver el historial de">
+        <button type="button" class="sent-history-person-btn is-active" data-history-person="self" aria-pressed="true">${selfLabel}</button>
+        <button type="button" class="sent-history-person-btn" data-history-person="partner" aria-pressed="false" disabled>${partnerLabel}</button>
+      </div>
+      <div class="sent-history-head">
+        <div class="sent-history-copy">
+          <h2 class="sent-history-title" id="sentHistoryTitle">Ánimo de ${selfLabel}</h2>
+          <p class="sent-history-sub" id="sentHistorySub"></p>
+        </div>
+        <div class="sent-history-nav">
+          <button type="button" class="icon-btn" id="histPrev" aria-label="Mes anterior">${icon('back', 18)}</button>
+          <span class="sent-history-label" id="histLabel"></span>
+          <button type="button" class="icon-btn" id="histNext" aria-label="Mes siguiente">${icon('chev', 18)}</button>
+        </div>
+      </div>
+      <div class="sent-hist-cal" id="histCal"></div>
+      <div class="sent-history-legend" id="histLegend"></div>
+    </section>
+
+    <p class="sent-history-note">
+      Solo el ánimo que cada persona decide compartir. Los planes, las fechas y los regalos
+      siguen en su calendario.
+    </p>
+  `;
+
+  function renderCalendar() {
+    const cal = page.querySelector('#histCal');
+    const label = page.querySelector('#histLabel');
+    const legend = page.querySelector('#histLegend');
+    const sub = page.querySelector('#sentHistorySub');
+    if (!cal || !label) return;
+
+    const calendar = monthCalendar(stateFor(owner), month);
+    label.textContent = calendar.label;
+    cal.innerHTML = calendar.html;
+    if (legend) {
+      legend.innerHTML = calendar.legend.length
+        ? calendar.legend
+            .map(
+              mood =>
+                `<span class="sent-hist-legend-item"><span aria-hidden="true">${escapeHtml(mood.emoji)}</span>${escapeHtml(mood.label)}</span>`
+            )
+            .join('')
+        : '';
+    }
+    if (sub) {
+      sub.textContent = calendar.count
+        ? `${calendar.count} ${calendar.count === 1 ? 'día guardado' : 'días guardados'} este mes`
+        : 'Todavía sin registros este mes';
+    }
+  }
+
+  async function loadOwner(who) {
+    const targetId = ownerIdFor(who);
+    if (!targetId) return;
+    const token = ++loadToken;
+    const state = stateFor(who);
+    const hadLocal = Object.keys(state.historyMap).length > 0;
+    if (!hadLocal) {
+      page.querySelector('#histCal').innerHTML = skeletonHTML({
+        rows: 3,
+        label: `Cargando ánimo de ${ownerLabelFor(who)}`,
+      });
+    }
+    await fetchHistory(state, targetId, selfId);
+    if (!page.isConnected || token !== loadToken) return;
+    renderCalendar();
+  }
+
+  function selectOwner(who) {
+    owner = who;
+    page.querySelectorAll('[data-history-person]').forEach(button => {
+      const active = button.dataset.historyPerson === who;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    const title = page.querySelector('#sentHistoryTitle');
+    if (title) title.textContent = `Ánimo de ${ownerLabelFor(who)}`;
+    renderCalendar();
+    loadOwner(who);
+  }
+
+  page.querySelectorAll('[data-history-person]').forEach(button => {
+    button.addEventListener('click', () => {
+      if (button.disabled) return;
+      selectOwner(button.dataset.historyPerson);
+    });
+  });
+
+  page.querySelector('#histPrev')?.addEventListener('click', () => {
+    month = new Date(month.getFullYear(), month.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  page.querySelector('#histNext')?.addEventListener('click', () => {
+    month = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
+  page.querySelector('#histCal')?.addEventListener('click', event => {
+    const cell = event.target.closest('[data-history-date]');
+    if (!cell || cell.disabled) return;
+    openMoodDay(stateFor(owner), cell.dataset.historyDate, ownerLabelFor(owner));
+  });
+
+  page.querySelector('[data-back]')?.addEventListener('click', () => {
+    router.navigate('/sentimientos');
+  });
+
+  renderCalendar();
+  loadOwner('self');
+
+  resolvePartnerId(selfId).then(userId => {
+    if (!page.isConnected || !userId) return;
+    partnerId = userId;
+    const partnerButton = page.querySelector('[data-history-person="partner"]');
+    if (partnerButton) partnerButton.disabled = false;
   });
 
   return page;

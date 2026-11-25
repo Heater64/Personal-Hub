@@ -15,6 +15,10 @@
     <string name="notification_channel_location_refresh">Actualizaciones de ubicación</string>
     <string name="location_refresh_notification_title">Solicitud de ubicación</string>
     <string name="location_refresh_notification_body">Tu pareja ha pedido actualizar la ubicación compartida.</string>
+    <string name="notification_channel_widgets">Widgets</string>
+    <string name="notification_channel_widgets_desc">Confirma que un widget se ha colocado en la pantalla de inicio.</string>
+    <string name="widget_added_notification_title">Widget añadido</string>
+    <string name="widget_added_notification_body">%1$s ya está en tu pantalla de inicio. Mantén pulsado para moverlo o cambiar su tamaño.</string>
     <string name="notification_status_title">Tamp activo</string>
     <string name="notification_status_battery">%1$d%%</string>
     <string name="notification_status_charging">cargando</string>
