@@ -9,8 +9,20 @@
 
 const BG = '#15151c';
 
+/**
+ * Data URI base64. Debe ser base64: `safeUrl` (el filtro de URLs de las
+ * tarjetas del Rincón) solo admite imágenes data: en base64, así que con el
+ * formato anterior la portada del juego llegaba sin `src` y salía rota.
+ */
+function svgDataUri(markup) {
+  const bytes = new TextEncoder().encode(markup);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return 'data:image/svg+xml;base64,' + btoa(binary);
+}
+
 function svg(body) {
-  return 'data:image/svg+xml,' + encodeURIComponent(
+  return svgDataUri(
     `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'>` +
     `<rect width='600' height='600' fill='${BG}'/>` + body + `</svg>`
   );

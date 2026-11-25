@@ -18,7 +18,8 @@ export function escapeHtml(str) {
  * descarta cualquier esquema ejecutable. Sin esto, un avatar con
  * `x" onerror="…` o un `javascript:` en la portada rompe el HTML.
  *
- * Acepta: http(s)://, data:image/*, blob:, rutas relativas y anclas.
+ * Acepta: http(s)://, data:image/* en base64 (incluidas las portadas SVG
+ * generadas por gameCovers), blob:, rutas relativas y anclas.
  * Devuelve '' si no es una URL válida, de modo que el caller cae en su
  * fallback (initial, portada por defecto…) en vez de emitir algo roto.
  */
@@ -29,9 +30,11 @@ export function safeUrl(value) {
 
   const lower = url.toLowerCase();
 
-  // data: solo imágenes (svg+xml puede llevar script).
+  // data: solo imágenes y solo en base64: un SVG base64 viaja como bytes
+  // opacos y, usado en <img>, no ejecuta script. El SVG en crudo
+  // (data:image/svg+xml,<markup>) se sigue rechazando.
   if (lower.startsWith('data:')) {
-    return /^data:image\/(png|jpe?g|gif|webp|avif|bmp);base64,[a-z0-9+/=\s]+$/i.test(url)
+    return /^data:image\/(png|jpe?g|gif|webp|avif|bmp|svg\+xml);base64,[a-z0-9+/=\s]+$/i.test(url)
       ? escapeHtml(url)
       : '';
   }
