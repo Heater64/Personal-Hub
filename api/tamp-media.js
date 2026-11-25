@@ -5,10 +5,13 @@ const LIMITS = { image: 20e6, gif: 20e6, audio: 25e6, pdf: 25e6, video: 100e6 };
 const TYPES = { image: 'image', gif: 'image', audio: 'video', video: 'video', pdf: 'raw' };
 
 function json(res, status, body) { return res.status(status).json(body); }
-function configCloudinary() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+export function configCloudinary(env = process.env) {
+  // Cloudinary SDKs read CLOUDINARY_URL at process start. Vercel currently
+  // stores credentials in that format, while local setups may use split vars.
+  const sdkConfig = cloudinary.config();
+  const cloudName = env.CLOUDINARY_CLOUD_NAME || sdkConfig.cloud_name;
+  const apiKey = env.CLOUDINARY_API_KEY || sdkConfig.api_key;
+  const apiSecret = env.CLOUDINARY_API_SECRET || sdkConfig.api_secret;
   if (!cloudName || !apiKey || !apiSecret) throw new Error('Cloudinary no está configurado en el servidor.');
   cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true });
   return { cloudName, apiKey };
@@ -64,7 +67,7 @@ export default async function handler(req, res) {
       const publicId = `tamp/${ctx.coupleId}/${crypto.randomUUID()}`;
       const folder = `tamp/${ctx.coupleId}`;
       const params = { timestamp, folder, public_id: publicId, type: 'authenticated', overwrite: false, context: `kind=${kind}|visibility=${visibility}` };
-      const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
+      const signature = cloudinary.utils.api_sign_request(params, cloudinary.config().api_secret);
       return json(res, 200, { ...params, signature, api_key: cloud.apiKey, cloud_name: cloud.cloudName, upload_url: `https://api.cloudinary.com/v1_1/${cloud.cloudName}/${TYPES[kind]}/upload` });
     }
     if (action === 'commit') {
