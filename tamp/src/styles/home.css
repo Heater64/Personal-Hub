@@ -1013,7 +1013,9 @@
     padding: var(--sp-12);
   }
 }
-@media (min-width: 768px) {
+/* En tablet la sidebar ya ocupa 250 px: mantener las tarjetas en dos
+   columnas hasta que el área útil permita una rejilla de cuatro legible. */
+@media (min-width: 1024px) {
   .home-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
