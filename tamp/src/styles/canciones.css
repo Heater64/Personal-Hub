@@ -123,8 +123,9 @@
 }
 
 .music-hero-title {
+  font-family: var(--font-display, Georgia, serif);
   font-size: clamp(1.7rem, 3.4vw, 2.5rem);
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.15;
   color: var(--theme-text-primary, #fff);
   letter-spacing: -0.02em;
@@ -132,7 +133,7 @@
 }
 
 .music-hero-heart {
-  color: #fff;
+  color: var(--theme-accent, #e8735a);
   display: inline-flex;
   align-items: center;
   vertical-align: -2px;

@@ -22,6 +22,8 @@ import { getUserPref } from '../utils/userStorage.js';
 const ADMIN_ROW_ID = 'location_admin';
 const SHARE_MS = 120000; // repite tu posición cada 2 min en uso
 const STALE_MS = 15 * 60000; // El latido nativo es cada 5 min; 15 min ya es una señal perdida
+const PARTNER_REFRESH_COOLDOWN_MS = 90_000;
+const partnerRefreshStates = new Map();
 
 let self = null; // { userId, isAdmin }
 let sharingRevision = 0;
@@ -82,6 +84,41 @@ async function callPushApi(action, body = {}) {
   const result = await response.json();
   if (!response.ok) throw new Error(result?.error || 'request-failed');
   return result;
+}
+
+function partnerRefreshState(userId) {
+  if (!partnerRefreshStates.has(userId)) {
+    let lastAt = 0;
+    try {
+      lastAt = Number(localStorage.getItem(`ph-location-refresh:${userId}`)) || 0;
+    } catch { /* almacenamiento local no disponible */ }
+    partnerRefreshStates.set(userId, { lastAt, promise: null });
+  }
+  return partnerRefreshStates.get(userId);
+}
+
+async function requestPartnerLocationRefresh({ force = false } = {}) {
+  const userId = self?.userId;
+  if (!userId) return { sent: 0 };
+  const state = partnerRefreshState(userId);
+  if (state.promise) return state.promise;
+  if (!force && Date.now() - state.lastAt < PARTNER_REFRESH_COOLDOWN_MS) {
+    return { sent: 0, throttled: true };
+  }
+
+  const request = callPushApi('request-location').then(response => {
+    const sent = Number(response?.data?.sent ?? response?.sent) || 0;
+    if (sent > 0) {
+      state.lastAt = Date.now();
+      try { localStorage.setItem(`ph-location-refresh:${userId}`, String(state.lastAt)); }
+      catch { /* el límite de memoria sigue activo */ }
+    }
+    return response;
+  }).finally(() => {
+    if (state.promise === request) state.promise = null;
+  });
+  state.promise = request;
+  return request;
 }
 
 async function reportLocationUpdate(data, revision) {
@@ -480,7 +517,7 @@ export function stopLocationSharing() {
 }
 
 /** Fuerza una lectura propia y se la pide al segundo miembro de la pareja. */
-export async function refreshBothLocations(onStatus) {
+export async function refreshBothLocations(onStatus, { forcePartner = false } = {}) {
   if (!self?.userId) return { ok: false, reason: 'session' };
   await resolveCoupleId().catch(() => null);
   let locationStatus = '';
@@ -497,7 +534,9 @@ export async function refreshBothLocations(onStatus) {
       };
     },
     // La solicitud a la pareja no depende del permiso GPS de este dispositivo.
-    requestPartner: self.coupleId ? () => callPushApi('request-location') : null,
+    // Al abrir varias pantallas seguidas, no mandes avisos repetidos al otro
+    // móvil. El botón «Actualizar» puede saltarse el enfriamiento.
+    requestPartner: self.coupleId ? () => requestPartnerLocationRefresh({ force: forcePartner }) : null,
   });
 }
 

@@ -1003,7 +1003,8 @@ test('el panel de ánimo resume los últimos siete días', async () => {
 
 test('una serie completada sale de Inicio y las películas se marcan como vistas', async () => {
   const data = await readFile(hub('src', 'services', 'seriesData.js'), 'utf8');
-  const series = await readFile(hub('src', 'pages', 'Series.js'), 'utf8');
+  const detail = await readFile(hub('src', 'pages', 'series', 'detail.js'), 'utf8');
+  const cards = await readFile(hub('src', 'pages', 'series', 'cards.js'), 'utf8');
 
   // getStartedSeries es lo que pinta «Estás viendo» en Inicio: solo las que
   // siguen en marcha; al completarlas dejan de aparecer.
@@ -1013,18 +1014,26 @@ test('una serie completada sale de Inicio y las películas se marcan como vistas
   // Las películas no tienen episodios: botón de vista sí / no en su ficha.
   assert.match(data, /export function isMovieWatched/);
   assert.match(data, /export function toggleMovieWatched/);
-  assert.match(series, /id="srDetailSeen"/, 'la ficha de película tiene el botón');
-  assert.match(series, /toggleMovieWatched\(item\.id\)/, 'el botón guarda el estado');
-  assert.match(series, /series-card-watched/, 'la tarjeta marca las películas ya vistas');
+  assert.match(detail, /id="srDetailSeen"/, 'la ficha de película tiene el botón');
+  assert.match(detail, /toggleMovieSeen\(item\.id\)/, 'el botón guarda el estado y su historial');
+  assert.match(cards, /series-card-watched/, 'la tarjeta marca las películas ya vistas');
 });
 
-test('el catálogo de Series filtra vistas y pendientes', async () => {
-  const series = await readFile(hub('src', 'pages', 'Series.js'), 'utf8');
-  assert.match(series, /data-filter="vistas"/, 'chip de vistas');
-  assert.match(series, /data-filter="porver"/, 'chip de pendientes');
-  assert.match(series, /'vistas'\) filtered = filtered\.filter\(isSeenItem\)/, 'vistas = series terminadas y películas vistas');
-  assert.match(series, /function isSeenItem\(item\) \{[\s\S]{0,220}getCompletedCount\(item\.id, total\) >= total/, 'una serie acabada cuenta como vista');
-  assert.match(series, /'porver'\) filtered = filtered\.filter\(i => i\.tipo === 'pelicula' && !isMovieWatched\(i\.id\)\)/, 'por ver = películas pendientes');
+test('el catálogo de Series filtra por estado real y separa por origen', async () => {
+  const library = await readFile(hub('src', 'pages', 'series', 'library.js'), 'utf8');
+  const data = await readFile(hub('src', 'services', 'seriesData.js'), 'utf8');
+
+  // Los cinco estados del rediseño, aplicados sobre getItemStatus.
+  for (const estado of ['sin_empezar', 'pendiente', 'en_curso', 'terminada', 'abandonada']) {
+    assert.ok(library.includes(`id: '${estado}'`), `el filtro ${estado} existe`);
+  }
+  assert.match(library, /getItemStatus\(item\) !== estado/, 'el filtro usa el estado real del título');
+  assert.match(data, /export function getItemStatus/, 'el estado se calcula en la capa de datos');
+
+  // Manuales e importados se consultan por separado sin duplicar el modelo.
+  assert.match(library, /Importados del catálogo/);
+  assert.match(library, /Añadidos manualmente/);
+  assert.match(data, /export function getOrigin/, 'el origen se deriva de tmdbId');
 });
 
 test('las tarjetas de Explorar en Sentimientos van de una en una', async () => {
@@ -1618,7 +1627,8 @@ test('los eventos especiales abren una bienvenida temática única por usuario',
   assert.match(sheet, /export function setMoodWelcomeState\(state\)/);
   assert.match(sheet, /pendingEventRequests/);
   assert.match(sheet, /moodWelcomeState !== 'clear'/);
-  assert.match(sheet, /document\.querySelector\('\.welcome-overlay'\)/);
+  assert.match(sheet, /const DAILY_CHECKIN_OVERLAYS = '\.welcome-overlay, \.sleep-checkin-overlay'/);
+  assert.match(sheet, /document\.querySelector\(DAILY_CHECKIN_OVERLAYS\)/);
   assert.doesNotMatch(sheet, /MOOD_WELCOME_MAX_WAIT|setTimeout\(tick/);
 });
 
@@ -2487,8 +2497,8 @@ test('el check-in de ánimo aparece en el primer inicio diario y se reinicia al 
     'no vuelve a aparecer tras responder o posponerlo ese día');
   assert.match(app, /const nextDayCheck = spainMsOnDate\(nextDayISO\(now\), 0\)/,
     'se vuelve a comprobar a medianoche de España, no a una hora fija de la mañana');
-  assert.match(app, /if \(!moodStore\.hasSeenToday\(\)\) \{\s+if \(!showWelcome\(\)\)/,
-    'se muestra en el primer inicio en que todavía no se ha registrado el día');
+  assert.match(app, /if \(!moodStore\.hasSeenToday\(\) && moodDeferredDate !== today\) \{\s+if \(!showWelcome\(\)/,
+    'se muestra en el primer inicio en que todavía no se ha registrado el día y no se aplazó');
   assert.match(app, /setMoodWelcomeState\('showing'\)/,
     'la bienvenida anuncia que está visible antes de esperar a que acabe la animación');
   assert.match(app, /scheduleNextDay\(\);/,

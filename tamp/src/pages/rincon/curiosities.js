@@ -188,15 +188,15 @@ export function createCuriosities(ctx) {
       <div class="curio-search-row">
         <div class="discovery-search">
           <span class="discovery-search-icon">${ICON_SVGS['search']}</span>
-          <input type="text" class="discovery-search-input" id="discoGlobalSearch" placeholder="Buscar curiosidades..." autocomplete="off">
+          <input type="text" class="discovery-search-input" id="discoGlobalSearch" placeholder="Buscar curiosidades..." aria-label="Buscar curiosidades" autocomplete="off">
           <button class="discovery-search-clear" id="discoGlobalClear" style="display:none" aria-label="Limpiar búsqueda"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <button class="curio-filter-btn" id="curioFilterBtn" aria-label="Filtros" title="Filtros">${ICON_SVGS['sliders']}</button>
       </div>
-      <p class="discovery-results-count" id="discoveryResultsCount"></p>
+      <p class="discovery-results-count" id="discoveryResultsCount" role="status" aria-live="polite"></p>
   
       <div class="disco-category-row" aria-label="Filtrar por categoría">
-        ${DISCO_CATEGORIES.map(c => `<button class="disco-filter-chip${state.discoCat === c.id ? ' is-active' : ''}" data-disco-cat="${c.id}" role="tab" aria-selected="${state.discoCat === c.id ? 'true' : 'false'}"><span class="disco-filter-chip-icon">${ICON_SVGS[c.icon] || ''}</span>${c.label}<span class="disco-filter-chip-count">${chipCounts[c.id]}</span></button>`).join('')}
+        ${DISCO_CATEGORIES.map(c => `<button type="button" class="disco-filter-chip${state.discoCat === c.id ? ' is-active' : ''}" data-disco-cat="${c.id}" aria-pressed="${state.discoCat === c.id ? 'true' : 'false'}"><span class="disco-filter-chip-icon">${ICON_SVGS[c.icon] || ''}</span>${c.label}<span class="disco-filter-chip-count">${chipCounts[c.id]}</span></button>`).join('')}
       </div>
   
       ${dayItem ? `
@@ -225,7 +225,7 @@ export function createCuriosities(ctx) {
       <section class="curio-section">
         <div class="curio-sec-head">
           <h3 class="curio-sec-title">Explora por colección</h3>
-          <span class="curio-sec-link" data-scroll="curioCollGrid">Ver todas ${ICON_SVGS['arrow-right']}</span>
+          <button type="button" class="curio-sec-link" data-scroll="curioCollGrid" aria-label="Ver todas las colecciones">Ver todas ${ICON_SVGS['arrow-right']}</button>
         </div>
         <div class="curio-coll-grid" id="curioCollGrid">
           ${CATEGORIES.map((cat, i) => renderCategoryCard(cat, i)).join('')}
@@ -235,7 +235,7 @@ export function createCuriosities(ctx) {
       <section class="curio-section">
         <div class="curio-sec-head">
           <h3 class="curio-sec-title">Añadido recientemente</h3>
-          <span class="curio-sec-link" data-scroll="curioRecentGrid">Ver todas ${ICON_SVGS['arrow-right']}</span>
+          <button type="button" class="curio-sec-link" data-scroll="curioRecentGrid" aria-label="Ver todas las curiosidades recientes">Ver todas ${ICON_SVGS['arrow-right']}</button>
         </div>
         <div class="curio-recent-grid" id="curioRecentGrid"></div>
       </section>
@@ -318,11 +318,11 @@ export function createCuriosities(ctx) {
       const wasActive = chip.classList.contains('is-active');
       page.querySelectorAll('.disco-filter-chip').forEach(c => {
         c.classList.remove('is-active');
-        c.setAttribute('aria-selected', 'false');
+        c.setAttribute('aria-pressed', 'false');
       });
       if (!wasActive) {
         chip.classList.add('is-active');
-        chip.setAttribute('aria-selected', 'true');
+        chip.setAttribute('aria-pressed', 'true');
         state.discoCat = chip.dataset.discoCat;
       } else {
         state.discoCat = 'todas';

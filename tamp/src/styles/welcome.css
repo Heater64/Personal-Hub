@@ -371,6 +371,152 @@
   vertical-align: middle;
 }
 
+/* Check-in independiente de sueño; comparte la entrada a pantalla completa,
+   pero conserva su propia vista y su propio registro del calendario. */
+.sleep-checkin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 81);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(20px, env(safe-area-inset-top, 0px)) 16px max(20px, env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  background: var(--theme-bg-overlay);
+  backdrop-filter: blur(var(--blur-md));
+  animation: fade-in var(--dur-slow) forwards;
+}
+
+.sleep-checkin-card {
+  width: min(100%, 560px);
+  padding: clamp(24px, 6vw, 40px);
+  border: 1px solid var(--theme-divider);
+  border-radius: var(--r-lg);
+  background: var(--theme-bg-primary);
+  box-shadow: var(--elevation-3);
+  text-align: center;
+  animation: slide-up var(--dur-slow) forwards;
+}
+
+.sleep-checkin-icon {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  margin: 0 auto 18px;
+  border-radius: var(--r-full);
+  background: var(--accent-dim);
+  font-size: 2rem;
+}
+
+.sleep-checkin-eyebrow {
+  margin: 0 0 8px;
+  color: var(--theme-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.sleep-checkin-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(var(--fs-xl), 7vw, var(--fs-2xl));
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+
+.sleep-checkin-title span { color: var(--theme-accent); }
+
+.sleep-checkin-copy {
+  max-width: 390px;
+  margin: 12px auto 26px;
+  color: var(--theme-text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+
+.sleep-checkin-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sleep-checkin-option {
+  display: flex;
+  min-width: 0;
+  min-height: 94px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 4px;
+  border: 1px solid var(--theme-divider);
+  border-radius: var(--r-md);
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast), transform var(--dur-fast), color var(--dur-fast);
+}
+
+.sleep-checkin-option:hover { border-color: var(--theme-border-accent); transform: translateY(-2px); }
+.sleep-checkin-option.is-selected { border-color: var(--theme-accent); background: var(--accent-dim); color: var(--theme-text-primary); }
+.sleep-checkin-option:focus-visible,
+.sleep-checkin-save:focus-visible,
+.sleep-checkin-later:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 3px; }
+.sleep-checkin-option__emoji { font-size: 1.7rem; line-height: 1; }
+
+.sleep-checkin-status {
+  margin: 14px 0 0;
+  color: var(--red);
+  font-size: var(--fs-sm);
+}
+
+.sleep-checkin-actions { display: grid; justify-items: center; gap: 6px; margin-top: 24px; }
+
+.sleep-checkin-save {
+  min-height: 46px;
+  padding: 0 24px;
+  border: 1px solid var(--theme-border-accent);
+  border-radius: var(--r-full);
+  background: var(--accent-dim);
+  color: var(--theme-accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), opacity var(--dur-fast);
+}
+
+.sleep-checkin-save:not(:disabled):hover { background: var(--theme-accent); color: #fff; }
+.sleep-checkin-save:disabled { opacity: .45; cursor: not-allowed; }
+
+.sleep-checkin-later {
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--theme-text-secondary);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.sleep-checkin-footnote { margin: 14px 0 0; color: var(--theme-text-tertiary); font-size: var(--fs-xs); }
+
+@media (max-width: 380px) {
+  .sleep-checkin-options { gap: 5px; }
+  .sleep-checkin-option { min-height: 84px; padding-inline: 2px; font-size: 11px; }
+  .sleep-checkin-option__emoji { font-size: 1.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sleep-checkin-overlay, .sleep-checkin-card { animation: none; }
+  .sleep-checkin-option, .sleep-checkin-save { transition: none; }
+}
+
 /* Background animated particles */
 .welcome-bg {
   position: absolute;

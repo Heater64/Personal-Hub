@@ -122,7 +122,7 @@ export function UbicacionPage(router) {
         void publishSharingState(false);
         updateStatusText();
       } else {
-        void publishSharingState(true).then(() => refreshBothLocations());
+        void publishSharingState(true).then(() => refreshBothLocations(undefined, { forcePartner: true }));
       }
       render();
     },
@@ -261,7 +261,7 @@ export function UbicacionPage(router) {
     refreshButton.classList.add('is-busy');
     statusEl.textContent = 'Leyendo tu ubicación…';
     try {
-      const result = await refreshBothLocations();
+      const result = await refreshBothLocations(undefined, { forcePartner: true });
       if (result.requested) {
         statusEl.textContent = result.ownUpdated
           ? 'Pedido a su móvil. Tu posición ya está actualizada.'
@@ -342,6 +342,10 @@ export function UbicacionPage(router) {
       });
     }
   });
+
+  // Al entrar directamente en «Dónde estáis», pide una posición fresca a los
+  // dos móviles. La tarjeta de Inicio ya hace esta petición al abrirse.
+  void refreshBothLocations();
 
   page.cleanup = () => {
     parar?.();

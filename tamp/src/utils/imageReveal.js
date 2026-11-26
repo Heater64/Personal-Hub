@@ -35,11 +35,34 @@ function markLoaded(img) {
   }
 }
 
-function markFailed(img) {
+function markFailed(img, afterErrorHandlers = false) {
   // Marca el hueco como fallido (así aparece el icono de fallback) y quita
-  // la imagen rota, igual que hacía el onerror inline.
+  // la imagen rota, igual que hacía el onerror inline. En fase de captura,
+  // espera a que termine la propagación: las plantillas antiguas todavía
+  // usan `onerror` para mostrar su hermano de fallback y necesitan que el
+  // `<img>` siga conectado hasta que ese manejador termine.
   img.parentElement?.classList.add('is-error');
-  img.remove();
+
+  const sibling = img.nextElementSibling;
+  if (
+    sibling?.classList?.contains('tile__fallback') ||
+    sibling?.classList?.contains('rincon-card-icon-wrap')
+  ) {
+    sibling.style.display = 'flex';
+  }
+
+  const removeImage = () => {
+    if (!img.parentElement) return;
+    const fallbackText = img.dataset?.fallback;
+    if (fallbackText !== undefined && typeof document.createTextNode === 'function') {
+      img.replaceWith(document.createTextNode(fallbackText));
+    } else {
+      img.remove();
+    }
+  };
+
+  if (afterErrorHandlers) queueMicrotask(removeImage);
+  else removeImage();
 }
 
 /** Imagen que ya terminó (bien o mal) antes de que la escucháramos. */
@@ -65,7 +88,7 @@ function onImageLoad(event) {
 }
 
 function onImageError(event) {
-  if (event.target instanceof HTMLImageElement) markFailed(event.target);
+  if (event.target instanceof HTMLImageElement) markFailed(event.target, true);
 }
 
 export function installImageReveal() {

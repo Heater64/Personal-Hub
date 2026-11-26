@@ -240,7 +240,7 @@ export function WelcomeScreen({ onDone } = {}) {
     try {
       await moodStore.saveMoods(selection);
       showToast('💖 ¡Gracias por compartir cómo te sientes!', 'success');
-      close(onDone);
+      close(onDone, { saved: true });
     } catch (err) {
       showToast('Error al guardar', 'error');
       continueBtn.disabled = false;
@@ -249,14 +249,14 @@ export function WelcomeScreen({ onDone } = {}) {
   }
 
   let isClosing = false;
-  function close(onClose) {
+  function close(onClose, result = {}) {
     if (isClosing) return;
     isClosing = true;
     overlay.style.animation = 'fade-out 0.35s ease forwards';
     document.body.style.overflow = '';
     setTimeout(() => {
       if (overlay.isConnected) overlay.remove();
-      if (onClose) onClose();
+      if (onClose) onClose(result);
       window.dispatchEvent(new CustomEvent('ph:mood-welcome-done'));
     }, 350);
   }
@@ -264,7 +264,7 @@ export function WelcomeScreen({ onDone } = {}) {
   continueBtn.addEventListener('click', handleContinue);
 
   // «Más tarde»: cierra sin registrar ánimo. Vuelve a salir en la próxima entrada.
-  overlay.querySelector('#welcomeLaterBtn').addEventListener('click', () => close(onDone));
+  overlay.querySelector('#welcomeLaterBtn').addEventListener('click', () => close(onDone, { deferred: true }));
 
   return overlay;
 }

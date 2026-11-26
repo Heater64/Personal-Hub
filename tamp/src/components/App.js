@@ -21,8 +21,10 @@ import {
 } from '../routes.js';
 import { NowPlayingBar } from './NowPlayingBar.js';
 import { WelcomeScreen } from './WelcomeScreen.js';
+import { SleepCheckinScreen } from './SleepCheckinScreen.js';
 import { setMoodWelcomeState } from './SpecialEventSheet.js';
 import { moodStore } from '../stores/mood.store.js';
+import * as cycleService from '../services/cycle.service.js';
 import { initMoodWidgetSync, initWidgetSync } from '../services/widgets.service.js';
 import { initPWA, isStandalone } from '../services/pwa.service.js';
 import {
@@ -255,7 +257,10 @@ export function AppShell(router) {
 
   // Store ref to remove welcome overlay on route change
   let currentWelcomeOverlay = null;
+  let currentSleepOverlay = null;
   let moodTimer = null;
+  let moodCheckGeneration = 0;
+  let moodDeferredDate = null;
   let moodSyncPromise = null; // resolves once today's mood has been synced with the server
   let moodNotifCleanup = null; // unsubscribe del aviso de ánimo al admin (sólo admin)
 
@@ -327,6 +332,11 @@ export function AppShell(router) {
       currentWelcomeOverlay = null;
       setMoodWelcomeState('clear');
       window.dispatchEvent(new CustomEvent('ph:mood-welcome-done'));
+    }
+    if (currentSleepOverlay) {
+      currentSleepOverlay.remove();
+      currentSleepOverlay = null;
+      setMoodWelcomeState('clear');
     }
 
     document.body.style.overflow = '';
@@ -431,7 +441,7 @@ export function AppShell(router) {
     if (!user) return false;
     if (userStore.isAdmin) return false;
     // Already showing?
-    if (currentWelcomeOverlay || document.querySelector('.welcome-overlay')) return false;
+    if (currentWelcomeOverlay || currentSleepOverlay || document.querySelector('.welcome-overlay, .sleep-checkin-overlay')) return false;
     // Don't show on login page
     if (window.location.hash === '#/login') return false;
     // Already answered/skipped today?
@@ -445,7 +455,7 @@ export function AppShell(router) {
     const today = todayISO();
 
     // Prevent double-show if a welcome is already displayed
-    if (currentWelcomeOverlay || document.querySelector('.welcome-overlay')) return false;
+    if (currentWelcomeOverlay || currentSleepOverlay || document.querySelector('.welcome-overlay, .sleep-checkin-overlay')) return false;
 
     // El overlay se pregunta en cada entrada hasta que se responde (lo filtra
     // shouldShowWelcome). El aviso de sistema sí sale sólo 1 vez al día.
@@ -469,9 +479,13 @@ export function AppShell(router) {
     }
 
     const ws = WelcomeScreen({
-      onDone: () => {
+      onDone: ({ deferred = false } = {}) => {
         currentWelcomeOverlay = null;
-        setMoodWelcomeState('clear');
+        if (deferred) moodDeferredDate = todayISO();
+        // La pregunta de sueño es independiente y puede abrirse al cerrar
+        // esta bienvenida; mantiene en espera las hojas de eventos especiales.
+        setMoodWelcomeState('pending');
+        scheduleMoodCheck();
       },
     });
     currentWelcomeOverlay = ws;
@@ -483,8 +497,22 @@ export function AppShell(router) {
     return true;
   }
 
+  function showSleepCheckin() {
+    if (currentWelcomeOverlay || currentSleepOverlay || document.querySelector('.welcome-overlay, .sleep-checkin-overlay')) return false;
+    currentSleepOverlay = SleepCheckinScreen({
+      onDone: () => {
+        currentSleepOverlay = null;
+        setMoodWelcomeState('pending');
+        scheduleMoodCheck();
+      },
+    });
+    setMoodWelcomeState('showing');
+    return true;
+  }
+
   async function scheduleMoodCheck() {
     clearTimeout(moodTimer);
+    const generation = ++moodCheckGeneration;
     // Invalida el estado anterior (también al cambiar el día): hasta terminar
     // la sincronización no se debe abrir un evento con el ánimo aún pendiente.
     const user = userStore.getUser();
@@ -492,6 +520,7 @@ export function AppShell(router) {
 
     // Make sure we have the latest server state before deciding
     await awaitMoodSync();
+    if (generation !== moodCheckGeneration) return;
 
     // Novedades diarias (la dedupe interna evita repetir; es barato si ya se notificó)
     notifyTodayNovelties();
@@ -511,15 +540,48 @@ export function AppShell(router) {
       moodTimer = setTimeout(scheduleMoodCheck, Math.max(1000, nextDayCheck - Date.now()));
     };
 
-    if (!moodStore.hasSeenToday()) {
+    const today = todayISO();
+    if (moodDeferredDate !== today) moodDeferredDate = null;
+    if (!moodStore.hasSeenToday() && moodDeferredDate !== today) {
       if (!showWelcome()) {
-        setMoodWelcomeState(document.querySelector('.welcome-overlay') ? 'showing' : 'clear');
+        setMoodWelcomeState(document.querySelector('.welcome-overlay, .sleep-checkin-overlay') ? 'showing' : 'clear');
       }
     } else {
-      setMoodWelcomeState('clear');
+      const deferredOnThisDevice = getUserPref('sleepPromptDismissedDate') === today;
+      if (!deferredOnThisDevice) {
+        let checkin;
+        try {
+          checkin = await cycleService.getSleepCheckinStatus(today);
+        } catch (error) {
+          console.warn('[sueño] No se pudo comprobar el registro diario:', error?.message || error);
+          showToast(error?.message || 'No se pudo revisar el registro diario de sueño', 'error');
+          setMoodWelcomeState('clear');
+          scheduleNextDay();
+          return;
+        }
+        if (generation !== moodCheckGeneration) return;
+        if (!checkin.completed) {
+          if (!showSleepCheckin()) {
+            setMoodWelcomeState(document.querySelector('.welcome-overlay, .sleep-checkin-overlay') ? 'showing' : 'clear');
+          }
+        } else {
+          setMoodWelcomeState('clear');
+        }
+      } else {
+        setMoodWelcomeState('clear');
+      }
     }
     scheduleNextDay();
   }
+
+  // Los temporizadores pueden quedar suspendidos cuando Android/WebView duerme.
+  // Recalcular al volver al primer plano cubre el cambio de día durante la pausa.
+  const recheckDailyCheckins = () => {
+    if (document.visibilityState === 'visible') scheduleMoodCheck();
+  };
+  document.addEventListener('visibilitychange', recheckDailyCheckins);
+  window.addEventListener('focus', recheckDailyCheckins);
+  window.addEventListener('personalhub:native-resume', recheckDailyCheckins);
 
   // ── Navegación desde notificaciones ──
   // El SW envía { type: 'NAVIGATE', url } al tocar una notificación

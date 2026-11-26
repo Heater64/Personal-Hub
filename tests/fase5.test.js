@@ -221,24 +221,26 @@ test('Juntos añade próximas fechas y estado del móvil de la otra persona', as
   const page = await read('tamp/src/pages/Juntos.js');
 
   assert.match(page, /upcomingSpecialDates\(3\)/);
-  assert.match(page, /import \{ fetchPartnerLocation \}/);
+  assert.match(page, /import \{[\s\S]*?fetchPartnerLocation,[\s\S]*?\} from '\.\.\/services\/location\.service\.js'/);
   assert.match(page, /id="juntosDevice"/);
-  assert.match(page, /async function fillPartnerDevice\(\)/);
+  assert.match(page, /async function fillPartnerDevice\(force = false\)/);
   assert.match(page, /void fillPartnerDevice\(\)/);
   assert.match(page, /loc\.charging/);
 });
 
 test('la watchlist compartida vive en una fila de `content` y se edita desde Series', async () => {
   const service = await read('tamp/src/services/pro.service.js');
-  const page = await read('tamp/src/pages/Series.js');
+  const page = await read('tamp/src/pages/series/store.js');
 
   assert.match(service, /const DOC_ID = 'series_watchlist'/);
   assert.match(service, /from\('content'\)/);
   assert.match(service, /onConflict: 'id'/);
   assert.match(service, /export function toggleInWatchlist/);
+  // La lista compartida se carga en el estado y se pinta en Inicio y en la
+  // hoja de pendientes; las acciones viven en el menú contextual.
   assert.match(page, /loadSharedWatchlist/);
-  assert.match(page, /id="srSharedWatchlist"/);
-  assert.match(page, /id="srWatchlistBtn"/);
+  assert.match(page, /export function pendingTogether/);
+  assert.match(page, /toggleSharedWatchlist/);
 });
 
 test('los tres widgets nuevos tienen datos, hoja y lado nativo', async () => {

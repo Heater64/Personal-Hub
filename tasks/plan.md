@@ -42,3 +42,27 @@ Recorrer las rutas, pestañas, tarjetas y acciones visibles de Tamp desde las cu
 
 - No publicar ni desplegar cambios, no cambiar datos reales y no crear una APK nueva sin petición expresa.
 - Si un flujo requiere una cuenta, contraseña o dispositivo que no está disponible, verificar el código y la ruta navegable sin asumir que el comportamiento remoto quedó probado.
+
+---
+
+# Mejora: check-in diario de sueño
+
+## Objetivo
+
+Añadir al primer acceso diario de Princesa una pregunta sobre la calidad del sueño, guardada en el diario existente y visible a Peluche solo mediante el permiso explícito de compartir. Corregir también la comprobación diaria al volver de segundo plano.
+
+## Decisiones
+
+- Reutilizar `cycle_daily_logs.sleep_quality`, sin guardar el sueño en la tabla de estados de ánimo.
+- Añadir `sleep_prompt_completed` para sincronizar en los dos dispositivos la respuesta o el «Más tarde» y evitar repetir la pregunta durante el mismo día.
+- Mantener el filtrado del RPC de pareja; el nuevo campo solo viajará cuando Princesa lo incluya en `shared_fields`.
+- El check-in de ánimo se sigue mostrando solo si no hay ánimo para hoy; en el navegador local ya existe uno, por eso no apareció en esta sesión.
+- Revalidar la bienvenida al volver de segundo plano (Android) o al recuperar visibilidad (web).
+
+## Tareas
+
+1. Añadir la migración SQL idempotente para el marcador del check-in y el campo de sueño compartible.
+2. Persistir y leer el check-in diario mediante el servicio de ciclo, conservando cualquier otro dato del día.
+3. Implementar la pantalla de sueño y encadenarla tras Sentimientos; «Más tarde» también se sincroniza como completado.
+4. Añadir sueño al selector de campos compartidos y renderizarlo solo desde el snapshot autorizado.
+5. Verificar el flujo en localhost y compilar; aplicar la migración SQL en Supabase antes de depender de sincronización/compartición en producción.

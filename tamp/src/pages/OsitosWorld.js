@@ -381,8 +381,8 @@ export function OsitosWorldPage(router) {
       })}
 
       <div class="chips os-chips" role="tablist" aria-label="Secciones de OsitosWorld">
-        ${SECTIONS.filter(s => s.id !== 'favoritos' || favorites.size > 0).map(s => `
-          <button type="button" class="chip os-chip${activeSection === s.id ? ' is-active' : ''}" data-section="${s.id}" role="tab" aria-selected="${activeSection === s.id}">
+        ${SECTIONS.map(s => `
+          <button type="button" id="osTab-${s.id}" class="chip os-chip${activeSection === s.id ? ' is-active' : ''}" data-section="${s.id}" role="tab" aria-controls="osContent" aria-selected="${activeSection === s.id}" tabindex="${activeSection === s.id ? '0' : '-1'}">
             ${icon(s.icon, 15)} ${s.label}${s.id === 'favoritos' ? ` <span class="os-chip__count">${n}</span>` : ''}
           </button>
         `).join('')}
@@ -411,10 +411,11 @@ export function OsitosWorldPage(router) {
   function paintAll() {
     const prevBar = page.querySelector('#osSearchbar');
     const wasSearchOpen = !!prevBar && !prevBar.hidden; // primer render: cerrada
-    page.innerHTML = renderHead() + `<section id="osContent" aria-live="polite">${currentView()}</section>`;
+    page.innerHTML = renderHead() + `<section id="osContent" role="tabpanel" aria-labelledby="osTab-${activeSection}" tabindex="0" aria-live="polite">${currentView()}</section>`;
 
     // Navegación por chips
-    page.querySelectorAll('.os-chip').forEach(chip => {
+    const sectionTabs = [...page.querySelectorAll('.os-chip')];
+    sectionTabs.forEach((chip, index) => {
       chip.addEventListener('click', () => {
         activeSection = chip.dataset.section;
         searchQuery = '';
@@ -422,6 +423,20 @@ export function OsitosWorldPage(router) {
         if (activeSection === 'favoritos' || activeSection === 'personajes') {
           page.querySelector('#osContent')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+      });
+      chip.addEventListener('keydown', e => {
+        let nextIndex = index;
+        if (e.key === 'ArrowRight') nextIndex = (index + 1) % sectionTabs.length;
+        else if (e.key === 'ArrowLeft') nextIndex = (index - 1 + sectionTabs.length) % sectionTabs.length;
+        else if (e.key === 'Home') nextIndex = 0;
+        else if (e.key === 'End') nextIndex = sectionTabs.length - 1;
+        else return;
+
+        e.preventDefault();
+        activeSection = sectionTabs[nextIndex].dataset.section;
+        searchQuery = '';
+        paintAll();
+        page.querySelector(`.os-chip[data-section="${activeSection}"]`)?.focus();
       });
     });
 

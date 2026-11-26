@@ -162,6 +162,26 @@ test('the full map renders immediately while location requests are still pending
     'al llegar la primera ubicación centra el mapa una vez y después respeta el movimiento manual');
 });
 
+test('opening the map requests fresh locations from both phones', async () => {
+  const page = await read('tamp/src/pages/Ubicacion.js');
+
+  assert.match(page, /void refreshBothLocations\(\)/,
+    'entrar en Dónde estáis debe pedir una posición reciente a la pareja, igual que Inicio');
+});
+
+test('Juntos refreshes its saved device status and follows new partner positions', async () => {
+  const page = await read('tamp/src/pages/Juntos.js');
+
+  assert.match(page, /startLocationSharing\(/,
+    'Juntos también debe guardar la posición propia al abrirse, aunque Inicio no siga montado');
+  assert.match(page, /void refreshBothLocations\(\)/,
+    'al entrar debe pedir una ubicación nueva al otro móvil');
+  assert.match(page, /watchDistance\([\s\S]*?intervalMs:\s*10000/,
+    'la tarjeta debe releer la posición mientras espera la respuesta del otro móvil');
+  assert.match(page, /stopLocationSharing\(\)/,
+    'al salir de Juntos debe detener su observador de ubicación');
+});
+
 test('partner profile lookup cannot delay or overwrite the newest map position', async () => {
   const page = await read('tamp/src/pages/Ubicacion.js');
   const watch = page.slice(page.indexOf('const parar = watchDistance'), page.indexOf('page.cleanup'));

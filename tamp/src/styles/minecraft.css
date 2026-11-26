@@ -136,7 +136,21 @@
   border-color: var(--theme-accent);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
 }
-.mc-world-card:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
+.mc-world-open {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mc-world-open:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: -3px; }
 .mc-world-menu {
   position: absolute;
   top: 10px;

@@ -1,0 +1,27 @@
+# Matriz de pruebas
+
+**Estado: En progreso.**
+
+| Área                                          | Evidencia / comando                                                                     | Resultado actual                                                                                                                              | Estado                                       |
+| --------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Build web                                     | `npm run build` · 2026-11-26                                                            | Exit 0, Vite emitió 270 módulos                                                                                                               | Verificada                                   |
+| Suite automatizada                            | `npm test` · 2026-11-26 (tras A-08)                                                     | 482 pasaron, 0 fallaron                                                                                                                       | Verificada                                   |
+| Lint enfocado                                 | `npx eslint tamp/src/utils/imageReveal.js tests/web-accessibility.test.js` · 2026-11-26 | Exit 0, sin diagnósticos                                                                                                                      | Verificada                                   |
+| Recarga visual tras A-08                      | Navegador integrado, escritorio                                                         | Rincón e Inicio montaron tras recarga con sesión ya existente; sin reproducción visible del error de `.style` nulo                            | Verificada parcialmente; lectura solamente   |
+| Inicio web sin sesión                         | Navegador integrado, localhost                                                          | `/login` visible; inputs rotulados, toggle de contraseña                                                                                      | Verificada en escritorio; responsive parcial |
+| Navegación con sesión Peluche                 | Navegador integrado, escritorio                                                         | Inicio, Rincón, Sentimientos y Series visibles; Atrás volvió a Rincón, scroll de Rincón se restauró y Biblioteca persistió al volver a Series | Verificada parcialmente; solo lectura        |
+| Rutas con rol admin                           | Evidencia heredada en `tasks/plan.md`                                                   | 23 rutas visitadas en auditoría previa                                                                                                        | Parcial; controles/estados incompletos       |
+| Perfil no-admin                               | Sesión actual                                                                           | No se dispuso de sesión de Princesa                                                                                                           | Bloqueada                                    |
+| Navegación visual responsive                  | Navegador actual                                                                        | No se fijaron viewports móviles en esta sesión                                                                                                | Pendiente                                    |
+| Android físico                                | `adb devices -l` · 2026-11-26                                                           | No hay dispositivos conectados                                                                                                                | Bloqueada                                    |
+| APK instalada y ciclo de vida                 | Sin instalación en esta sesión                                                          | No ejecutada                                                                                                                                  | Pendiente                                    |
+| Ubicación, notificaciones, widgets, servicios | Suite de contratos + evidencia previa                                                   | Contratos automatizados; runtime actual no probado                                                                                            | Pendiente dispositivo                        |
+| Rendimiento de campo                          | Sin captura Lighthouse/trace de teléfono                                                | Sin métrica                                                                                                                                   | Pendiente                                    |
+
+## Reglas de evidencia
+
+- Registrar comando/flujo, fecha, entorno, rol, ruta, resultado y limitación.
+- No etiquetar como verificado el mero análisis de código o una compilación.
+- Probar ambos perfiles con sesiones legítimas; no cambiar datos reales ni permisos en una auditoría visual.
+- Para creación/edición/eliminación en backend real, usar solo datos de prueba reversibles acordados; falta definir entorno de staging seguro.
+- Repetir casos afectados tras cada corrección importante.

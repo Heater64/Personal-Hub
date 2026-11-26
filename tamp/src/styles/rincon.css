@@ -337,10 +337,10 @@
   gap: var(--sp-12);
 }
 
-/* En escritorio mandan 3–4 columnas según el hueco real (con sidebar
-   el contenido es más estrecho que sin ella). */
+/* En escritorio las columnas se calculan con el ancho real del Rincón,
+   no con el viewport (la sidebar también ocupa espacio). */
 @media (min-width: 720px) {
-  .rincon-cards-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .rincon-cards-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 }
 
 .rincon-card {
@@ -2077,10 +2077,16 @@
 }
 
 .meme-album-card {
+  position: relative;
+  display: block;
+  width: 100%;
   padding: 0;
   border-radius: var(--r-lg);
   overflow: hidden;
   cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   background: var(--theme-surface);
   border: 1px solid var(--theme-divider);
   transition: transform var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
@@ -2097,6 +2103,24 @@
 .meme-album-card:focus-visible {
   outline: 2px solid var(--theme-accent);
   outline-offset: 2px;
+}
+
+.meme-album-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.meme-album-open:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: -2px;
 }
 
 .meme-album-media {
@@ -2271,6 +2295,9 @@
   cursor: pointer;
   transition: all var(--dur-fast);
 }
+
+.meme-album-card > .meme-album-open .meme-album-info { padding-right: 60px; }
+.meme-album-card > .meme-album-menu { position: absolute; right: 12px; bottom: 14px; z-index: 2; }
 
 .meme-album-menu:hover {
   background: var(--theme-surface-elevated);

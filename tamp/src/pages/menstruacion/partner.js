@@ -7,7 +7,7 @@
 import { icon } from '../../components/ui.js';
 import { escapeHtml } from '../../utils/escape.js';
 import { computeCycle, periodDurations } from '../../utils/cycleMath.js';
-import { flowLabel } from '../../data/cycle.data.js';
+import { flowLabel, SLEEP_LABELS } from '../../data/cycle.data.js';
 import {
   badge,
   emptyHtml,
@@ -165,7 +165,7 @@ export function renderPartner(ctx) {
     }
 
     ${
-      fields.has('symptoms') || fields.has('notes')
+      fields.has('symptoms') || fields.has('notes') || fields.has('sleep_quality')
         ? `
       <section class="cy-section">
         ${sectionTitle('🗓️', 'Últimos días')}
@@ -189,6 +189,9 @@ export function renderPartner(ctx) {
                     const symptom = symptomChip(id);
                     tags.push(`<span class="cy-tag cy-tag--symptom">${symptom.emoji} ${escapeHtml(symptom.label)}</span>`);
                   }
+                }
+                if (fields.has('sleep_quality') && log.sleep_quality != null) {
+                  tags.push(`<span class="cy-tag cy-tag--sleep">😴 Sueño: ${escapeHtml(SLEEP_LABELS[log.sleep_quality] || 'Registrado')}</span>`);
                 }
                 return `
               <li class="cy-day-card">

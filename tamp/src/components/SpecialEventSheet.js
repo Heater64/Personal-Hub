@@ -30,13 +30,14 @@ import { playCelebration, stopCelebration } from './Celebration.js';
 import { normalizeDecor, normalizeVideoMode, emojisFor } from '../utils/celebration.js';
 
 const MOOD_WELCOME_DONE = 'ph:mood-welcome-done';
+const DAILY_CHECKIN_OVERLAYS = '.welcome-overlay, .sleep-checkin-overlay';
 let moodWelcomeState = 'pending';
 const pendingEventRequests = [];
 
 /** El check-in diario publica su estado; el evento espera a que quede libre. */
 export function setMoodWelcomeState(state) {
   if (!['pending', 'showing', 'clear'].includes(state)) return;
-  if (state === 'clear' && typeof document !== 'undefined' && document.querySelector('.welcome-overlay')) {
+  if (state === 'clear' && typeof document !== 'undefined' && document.querySelector(DAILY_CHECKIN_OVERLAYS)) {
     moodWelcomeState = 'showing';
     return;
   }
@@ -46,7 +47,7 @@ export function setMoodWelcomeState(state) {
 
 function openQueuedEvent(request) {
   if (!request.page.isConnected || request.router?.getCurrentPath?.().split('?')[0] !== '/') return;
-  if (moodWelcomeState !== 'clear' || document.querySelector('.welcome-overlay')) {
+  if (moodWelcomeState !== 'clear' || document.querySelector(DAILY_CHECKIN_OVERLAYS)) {
     pendingEventRequests.push(request);
     return;
   }
@@ -65,7 +66,7 @@ function openQueuedEvent(request) {
 }
 
 function queueSpecialEvent(request) {
-  if (moodWelcomeState === 'clear' && !document.querySelector('.welcome-overlay')) {
+  if (moodWelcomeState === 'clear' && !document.querySelector(DAILY_CHECKIN_OVERLAYS)) {
     openQueuedEvent(request);
     return;
   }
@@ -76,8 +77,13 @@ function queueSpecialEvent(request) {
 // Esperar un frame también deja terminar las navegaciones que lo hayan cerrado.
 if (typeof window !== 'undefined') {
   window.addEventListener(MOOD_WELCOME_DONE, () => {
-    if (document.querySelector('.welcome-overlay')) return;
-    requestAnimationFrame(() => setMoodWelcomeState('clear'));
+    if (document.querySelector(DAILY_CHECKIN_OVERLAYS)) return;
+    requestAnimationFrame(() => {
+      // AppShell puede haber empezado el siguiente check-in mientras se cierra
+      // la bienvenida; el evento de cierre no debe abrir una hoja encima.
+      if (moodWelcomeState === 'pending' || moodWelcomeState === 'showing') return;
+      setMoodWelcomeState('clear');
+    });
   });
 }
 

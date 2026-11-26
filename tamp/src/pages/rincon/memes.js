@@ -308,8 +308,11 @@ export function createMemes(ctx) {
         rerenderGallery();
       };
       card.addEventListener('click', openAlbum);
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAlbum(); }
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openAlbum();
+        }
       });
     });
     const searchInput = container.querySelector('#gallerySearchInput');
@@ -703,14 +706,13 @@ export function createMemes(ctx) {
     container.querySelector('#memeEmptyAddBtn')?.addEventListener('click', () => openMemeAlbumEditor());
     container.querySelector('#memeCtaBtn')?.addEventListener('click', () => openMemeAlbumEditor());
     // Tarjetas de álbum + menú
-    container.querySelectorAll('.meme-album-card').forEach(card => {
-      const openIt = () => openMemeAlbum(card.dataset.album);
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.meme-album-menu')) return;
-        openIt();
-      });
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIt(); }
+    container.querySelectorAll('.meme-album-open').forEach(btn => {
+      btn.addEventListener('click', () => openMemeAlbum(btn.dataset.album));
+      btn.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openMemeAlbum(btn.dataset.album);
+        }
       });
     });
     container.querySelectorAll('.meme-album-menu').forEach(btn => {

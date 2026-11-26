@@ -19,11 +19,18 @@ import {
   specialDates,
   upcomingSpecialDates,
 } from '../utils/specialDates.js';
-import { fetchPartnerLocation } from '../services/location.service.js';
+import {
+  fetchPartnerLocation,
+  refreshBothLocations,
+  startLocationSharing,
+  stopLocationSharing,
+  watchDistance,
+} from '../services/location.service.js';
 import { togetherBreakdown } from '../services/widgets.service.js';
 import { cargarFotos } from '../services/fondos.service.js';
 import { mediaUrl, prepareMedia } from '../services/media.service.js';
 import { supabase } from '../services/supabase.js';
+import { userStore } from '../stores/user.store.js';
 import { icon } from '../components/ui.js';
 import { abrirPortadaFotos } from '../components/PortadaFotos.js';
 import { escapeHtml } from '../utils/escape.js';
@@ -212,6 +219,7 @@ export function JuntosPage(router) {
     `;
 
     pintarFotos();
+    if (deviceCache.at) renderPartnerDevice(deviceCache.loc);
   };
 
   /** El engranaje abre las fotos de fondo de esta pantalla. */
@@ -223,24 +231,20 @@ export function JuntosPage(router) {
     });
   };
 
-  // Estado del móvil de la otra persona: batería, carga y red tal como
-  // llegaron con su última posición. Se cachea un minuto para no repetir la
-  // consulta en cada repintado de la pantalla.
+  // Estado del móvil de la otra persona: primero se enseña la última posición
+  // guardada y después se repinta cuando llega una nueva desde el otro móvil.
   let deviceCache = { at: 0, loc: null };
+  let deviceFetchRevision = 0;
 
-  async function fillPartnerDevice() {
+  function renderPartnerDevice(loc) {
     const host = page.querySelector('#juntosDevice');
     if (!host) return;
-    if (Date.now() - deviceCache.at > 60000) {
-      try {
-        deviceCache = { at: Date.now(), loc: await fetchPartnerLocation() };
-      } catch {
-        deviceCache = { at: Date.now(), loc: null };
-      }
-    }
-    const loc = deviceCache.loc;
     const battery = Number(loc?.battery);
-    if (!loc || !Number.isFinite(battery) || !page.querySelector('#juntosDevice')) return;
+    if (!loc || !Number.isFinite(battery)) {
+      host.hidden = true;
+      host.replaceChildren();
+      return;
+    }
 
     const at = loc.at ? new Date(loc.at) : null;
     const mins =
@@ -268,8 +272,45 @@ export function JuntosPage(router) {
       </ul>`;
   }
 
+  async function fillPartnerDevice(force = false) {
+    if (!force && deviceCache.at && Date.now() - deviceCache.at <= 60000) {
+      renderPartnerDevice(deviceCache.loc);
+      return;
+    }
+
+    const revision = ++deviceFetchRevision;
+    try {
+      const loc = await fetchPartnerLocation();
+      if (!montada || revision !== deviceFetchRevision) return;
+      deviceCache = { at: Date.now(), loc };
+    } catch {
+      if (!montada || revision !== deviceFetchRevision) return;
+      deviceCache = { at: Date.now(), loc: null };
+    }
+    renderPartnerDevice(deviceCache.loc);
+  }
+
   render();
+  const me = userStore.getUser() || {};
+  startLocationSharing({
+    userId: me.id,
+    isAdmin: userStore.isAdmin,
+    name: me.name,
+    avatar: me.avatar,
+  });
+  const stopLocationWatch = watchDistance(({ partner }) => {
+    if (!montada || !partner) return;
+    const oldSentAt = Date.parse(deviceCache.loc?.sentAt || deviceCache.loc?.at || '');
+    const newSentAt = Date.parse(partner.sentAt || partner.at || '');
+    if (Number.isFinite(oldSentAt) && Number.isFinite(newSentAt) && newSentAt < oldSentAt) return;
+    deviceFetchRevision += 1;
+    deviceCache = { at: Date.now(), loc: partner };
+    renderPartnerDevice(partner);
+  }, { intervalMs: 10000 });
   void fillPartnerDevice();
+  void refreshBothLocations().then(() => {
+    if (montada) void fillPartnerDevice(true);
+  });
 
   // Fotos de fondo de esta pantalla: la lista de la pareja (ver sql/031).
   void recargarFotos();
@@ -314,6 +355,8 @@ export function JuntosPage(router) {
   page.cleanup = () => {
     montada = false;
     clearInterval(timer);
+    stopLocationWatch();
+    stopLocationSharing();
     document.removeEventListener('visibilitychange', alVolver);
     if (canal) {
       try {

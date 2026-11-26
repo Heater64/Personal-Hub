@@ -1090,6 +1090,10 @@
 .menstruacion-page .cy-tag--symptom {
   color: var(--cy-muted);
 }
+.menstruacion-page .cy-tag--sleep {
+  background: var(--warm-amber-dim);
+  color: var(--theme-text-primary);
+}
 .menstruacion-page .cy-tag--empty {
   background: transparent;
   border-color: var(--cy-line);
@@ -1772,6 +1776,11 @@
 }
 .menstruacion-page .cy-chip--symptom {
   color: var(--text, #e8e6e3);
+}
+.menstruacion-page .cy-chip--sleep {
+  border-color: transparent;
+  background: var(--warm-amber-dim);
+  color: var(--theme-text-primary);
 }
 .menstruacion-page .cy-chip--more {
   border-style: dashed;

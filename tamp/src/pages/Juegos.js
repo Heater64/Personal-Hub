@@ -167,7 +167,10 @@ export async function JuegosPage(router) {
     <!-- ===== SECTION HEADER ===== -->
     <div class="juegos-section-header">
       <span class="juegos-section-chip">${ICONS['gamepad']}</span>
-      <h3 class="juegos-section-title">Todos los juegos</h3>
+      <div class="juegos-section-heading">
+        <h3 class="juegos-section-title">Todos los juegos</h3>
+        <p class="juegos-section-hint">Mantén pulsada una tarjeta para guardar tu favorito.</p>
+      </div>
       <span class="juegos-section-line"></span>
     </div>
 
@@ -177,7 +180,7 @@ export async function JuegosPage(router) {
         const isFav = favGameId() === game.id;
         const title = escapeHtml(game.title);
         return `
-        <div class="juego-card glass-card card" role="link" tabindex="0" data-href="${gameHref(game)}" data-id="${game.id}" style="--game-color:${game.color};--game-accent:${game.accent};--enter-delay:${i * 50}ms">
+        <div class="juego-card glass-card card" role="link" tabindex="0" aria-label="Jugar a ${title}. Mantén pulsado para guardar como favorito." data-href="${gameHref(game)}" data-id="${game.id}" style="--game-color:${game.color};--game-accent:${game.accent};--enter-delay:${i * 50}ms">
           ${isFav ? `<span class="juego-card-fav-badge" title="Tu favorito">${ICONS['heart']}</span>` : ''}
           <div class="juego-card-glow"></div>
           <div class="juego-card-cover" style="--game-color:${game.color};--game-accent:${game.accent}">

@@ -54,7 +54,7 @@ export async function handleTmdbRequest(req) {
     const url = new URL(req.url || '/', 'http://localhost');
     const action = url.searchParams.get('action') || 'trending';
     const query = (url.searchParams.get('q') || '').trim().slice(0, 100);
-    if (!['search', 'trending', 'upcoming'].includes(action)) return json(400, { error: 'Acción TMDB no válida.' });
+    if (!['search', 'trending', 'upcoming', 'details', 'season', 'discover'].includes(action)) return json(400, { error: 'Acción TMDB no válida.' });
     if (action === 'search' && query.length < 2) return json(400, { error: 'Escribe al menos dos caracteres.' });
 
     // Los límites locales de una función serverless desaparecen al escalar o
@@ -99,6 +99,67 @@ export async function handleTmdbRequest(req) {
       genreCache = { expires: Date.now() + 24 * 60 * 60 * 1000, values };
       return values;
     };
+
+    // Fichas y temporadas: completan metadatos sin importar nada por su cuenta.
+    if (action === 'details' || action === 'season' || action === 'discover') {
+      const mediaType = url.searchParams.get('type') === 'movie' ? 'movie' : 'tv';
+      const tmdbId = Number(url.searchParams.get('id'));
+      if (action === 'discover') {
+        const genreNames = await getGenreNames();
+        const genre = String(Number(url.searchParams.get('genre')) || '');
+        const params = { sort_by: 'popularity.desc', 'vote_count.gte': 10 };
+        if (genre) params.with_genres = genre;
+        const data = await fetchTmdb(`/discover/${mediaType}`, params);
+        const results = (data.results || [])
+          .filter(item => item && item.id && (item.title || item.name))
+          .slice(0, 20)
+          .map(item => mapTitle({ ...item, media_type: mediaType }, genreNames));
+        return json(200, { results, page: 1, totalResults: results.length, attribution: 'Datos e imágenes proporcionados por TMDB.' });
+      }
+
+      if (!tmdbId) return json(400, { error: 'Falta el identificador del título.' });
+
+      if (action === 'season') {
+        const seasonNumber = Math.max(0, Number(url.searchParams.get('season')) || 0);
+        const data = await fetchTmdb(`/tv/${tmdbId}/season/${seasonNumber}`);
+        const episodes = (data.episodes || []).map(episode => ({
+          numero: Number(episode.episode_number) || 0,
+          titulo: String(episode.name || '').slice(0, 180),
+          descripcion: String(episode.overview || '').slice(0, 1200),
+          miniatura: episode.still_path ? `${IMAGE_BASE}/w300${episode.still_path}` : '',
+          duracion: Number(episode.runtime) || 0,
+          fecha: episode.air_date || '',
+        }));
+        return json(200, { season: seasonNumber, episodes, attribution: 'Datos e imágenes proporcionados por TMDB.' });
+      }
+
+      const genreNames = await getGenreNames();
+      const data = await fetchTmdb(`/${mediaType}/${tmdbId}`);
+      const base = mapTitle({ ...data, media_type: mediaType }, genreNames);
+      const seasons = mediaType === 'tv' && Array.isArray(data.seasons)
+        ? data.seasons
+            .filter(season => Number(season.season_number) > 0)
+            .map(season => ({
+              numero: Number(season.season_number) || 0,
+              titulo: String(season.name || '').slice(0, 120),
+              episodios: Number(season.episode_count) || 0,
+              anio: /^\d{4}/.test(season.air_date || '') ? season.air_date.slice(0, 4) : '',
+            }))
+        : [];
+      return json(200, {
+        result: {
+          ...base,
+          generos: (data.genres || []).map(genre => genre.name).filter(Boolean).slice(0, 8),
+          duracion: mediaType === 'movie' ? Number(data.runtime) || 0 : Number(data.episode_run_time?.[0]) || 0,
+          fechaEstreno: data.release_date || data.first_air_date || '',
+          estadoExterno: data.status || '',
+          totalTemporadas: seasons.length,
+          totalEpisodios: seasons.reduce((sum, season) => sum + season.episodios, 0),
+          temporadasMeta: seasons,
+        },
+        attribution: 'Datos e imágenes proporcionados por TMDB.',
+      });
+    }
 
     let rawResults = [];
     if (action === 'search') {

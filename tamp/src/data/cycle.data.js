@@ -64,6 +64,7 @@ export const SHARE_FIELDS = [
     hint: 'Los días de sangrado registrados y el flujo.',
   },
   { id: 'symptoms', label: 'Síntomas', hint: 'Lo que has marcado cada día.' },
+  { id: 'sleep_quality', label: 'Calidad del sueño', hint: 'La valoración que has registrado en cada día.' },
   { id: 'notes', label: 'Notas personales', hint: 'Tus notas del registro diario.' },
   { id: 'stats', label: 'Estadísticas', hint: 'Duraciones medias y número de ciclos.' },
 ];

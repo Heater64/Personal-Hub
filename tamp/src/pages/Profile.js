@@ -547,65 +547,67 @@ export function ProfilePage(router) {
   }
 
   let closeDaysEditorSheet = null;
-  editDaysBtn?.addEventListener('click', openDaysEditor);
-  daysEditor.querySelector('#pdAddEvent')?.addEventListener('click', () => {
-    editingDays.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '' });
-    renderEventRows();
-  });
-  daysEditor.querySelector('#pdSave')?.addEventListener('click', async () => {
-    // Este editor solo toca título/fecha/repetición. El aspecto de la
-    // bienvenida (emoji, texto, foto), las acciones que definió el Admin y los
-    // días temáticos se reenvían tal cual: si no, al guardar desde el móvil se
-    // perdían.
-    const current = specialDates();
-    const previos = new Map((current.events || []).map(e => [e.id, e]));
-    const rows = [...daysEditor.querySelectorAll('.prof-days-event-row')].map(row => {
-      const id = row.dataset.evId;
-      return {
-        ...(previos.get(id) || {}),
-        id,
-        title: row.querySelector('.prof-days-event-title').value.trim(),
-        date: row.querySelector('.prof-days-event-date').value,
-        recurring: row.querySelector('.prof-days-event-recur-cb')?.checked === true
-      };
+  if (daysEditor) {
+    editDaysBtn?.addEventListener('click', openDaysEditor);
+    daysEditor.querySelector('#pdAddEvent')?.addEventListener('click', () => {
+      editingDays.push({ id: 'ev' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', date: '' });
+      renderEventRows();
     });
-    const payload = {
-      anniversary: daysEditor.querySelector('#pdAnniversary').value,
-      hubStart: daysEditor.querySelector('#pdHubStart').value,
-      birthday: daysEditor.querySelector('#pdBirthday').value,
-      userBirthday: daysEditor.querySelector('#pdUserBirthday').value,
-      titles: {
-        anniversary: daysEditor.querySelector('#pdAnniversaryTitle').value,
-        hubStart: daysEditor.querySelector('#pdHubStartTitle').value,
-        birthday: daysEditor.querySelector('#pdBirthdayTitle').value,
-        userBirthday: daysEditor.querySelector('#pdUserBirthdayTitle').value
-      },
-      recurring: {
-        anniversary: daysEditor.querySelector('#pdAnniversaryRecur')?.checked === true,
-        hubStart: daysEditor.querySelector('#pdHubStartRecur')?.checked === true,
-        birthday: daysEditor.querySelector('#pdBirthdayRecur')?.checked === true,
-        userBirthday: daysEditor.querySelector('#pdUserBirthdayRecur')?.checked === true
-      },
-      events: rows,
-      looks: current.looks || {},
-      seasonal: current.seasonal || []
-    };
-    if (!payload.anniversary || !payload.hubStart || !payload.birthday || !payload.userBirthday) {
-      showToast('Rellena las cuatro fechas principales', 'error');
-      return;
-    }
-    try {
-      await db.saveHubDates(payload);
-      await refreshSpecialDates().catch(() => {});
-      renderSpecialDays();
-      showToast('Días especiales guardados', 'success');
-      closeDaysEditorSheet?.();
-    } catch (err) {
-      console.error('[profile] fechas especiales:', err);
-      showToast(err?.message || 'No se pudieron guardar', 'error');
-    }
-  });
-  daysEditor.querySelector('#pdCancel')?.addEventListener('click', () => closeDaysEditorSheet?.());
+    daysEditor.querySelector('#pdSave')?.addEventListener('click', async () => {
+      // Este editor solo toca título/fecha/repetición. El aspecto de la
+      // bienvenida (emoji, texto, foto), las acciones que definió el Admin y los
+      // días temáticos se reenvían tal cual: si no, al guardar desde el móvil se
+      // perdían.
+      const current = specialDates();
+      const previos = new Map((current.events || []).map(e => [e.id, e]));
+      const rows = [...daysEditor.querySelectorAll('.prof-days-event-row')].map(row => {
+        const id = row.dataset.evId;
+        return {
+          ...(previos.get(id) || {}),
+          id,
+          title: row.querySelector('.prof-days-event-title').value.trim(),
+          date: row.querySelector('.prof-days-event-date').value,
+          recurring: row.querySelector('.prof-days-event-recur-cb')?.checked === true
+        };
+      });
+      const payload = {
+        anniversary: daysEditor.querySelector('#pdAnniversary').value,
+        hubStart: daysEditor.querySelector('#pdHubStart').value,
+        birthday: daysEditor.querySelector('#pdBirthday').value,
+        userBirthday: daysEditor.querySelector('#pdUserBirthday').value,
+        titles: {
+          anniversary: daysEditor.querySelector('#pdAnniversaryTitle').value,
+          hubStart: daysEditor.querySelector('#pdHubStartTitle').value,
+          birthday: daysEditor.querySelector('#pdBirthdayTitle').value,
+          userBirthday: daysEditor.querySelector('#pdUserBirthdayTitle').value
+        },
+        recurring: {
+          anniversary: daysEditor.querySelector('#pdAnniversaryRecur')?.checked === true,
+          hubStart: daysEditor.querySelector('#pdHubStartRecur')?.checked === true,
+          birthday: daysEditor.querySelector('#pdBirthdayRecur')?.checked === true,
+          userBirthday: daysEditor.querySelector('#pdUserBirthdayRecur')?.checked === true
+        },
+        events: rows,
+        looks: current.looks || {},
+        seasonal: current.seasonal || []
+      };
+      if (!payload.anniversary || !payload.hubStart || !payload.birthday || !payload.userBirthday) {
+        showToast('Rellena las cuatro fechas principales', 'error');
+        return;
+      }
+      try {
+        await db.saveHubDates(payload);
+        await refreshSpecialDates().catch(() => {});
+        renderSpecialDays();
+        showToast('Días especiales guardados', 'success');
+        closeDaysEditorSheet?.();
+      } catch (err) {
+        console.error('[profile] fechas especiales:', err);
+        showToast(err?.message || 'No se pudieron guardar', 'error');
+      }
+    });
+    daysEditor.querySelector('#pdCancel')?.addEventListener('click', () => closeDaysEditorSheet?.());
+  }
 
   renderSpecialDays();
   loadSpecialDates().then(() => renderSpecialDays()).catch(() => {});

@@ -38,3 +38,65 @@ test('los campos del editor de episodios conservan un foco visible', async () =>
   const css = await readFile(path.resolve('tamp/src/styles/series.css'), 'utf8');
   assert.match(css, /\.sr-ep-input:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--theme-accent\)/);
 });
+
+test('una imagen fallida conserva el fallback hasta que termina su onerror', async () => {
+  const previous = {
+    document: globalThis.document,
+    HTMLImageElement: globalThis.HTMLImageElement,
+    MutationObserver: globalThis.MutationObserver,
+  };
+  const listeners = [];
+
+  class FakeImage {
+    constructor() {
+      this.style = {};
+      this.parentElement = { classList: { add() {} } };
+      this.nextElementSibling = {
+        classList: { contains: (name) => name === 'tile__fallback' },
+        style: { display: 'none' },
+      };
+      this.removed = false;
+    }
+
+    remove() {
+      this.removed = true;
+      this.parentElement = null;
+      this.nextElementSibling = null;
+    }
+  }
+
+  globalThis.document = {
+    addEventListener(type, listener) {
+      if (type === 'error') listeners.push(listener);
+    },
+    querySelectorAll: () => [],
+    documentElement: {},
+  };
+  globalThis.HTMLImageElement = FakeImage;
+  globalThis.MutationObserver = class {
+    observe() {}
+  };
+
+  try {
+    const { installImageReveal } = await import('../tamp/src/utils/imageReveal.js');
+    installImageReveal();
+
+    const image = new FakeImage();
+    const fallback = image.nextElementSibling;
+    listeners.at(-1)({ target: image });
+
+    assert.doesNotThrow(() => {
+      image.style.display = 'none';
+      image.nextElementSibling.style.display = 'flex';
+    });
+    assert.equal(fallback.style.display, 'flex');
+
+    await new Promise(queueMicrotask);
+    assert.equal(image.removed, true);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key];
+      else globalThis[key] = value;
+    }
+  }
+});

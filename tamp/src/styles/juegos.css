@@ -188,6 +188,17 @@
   white-space: nowrap;
 }
 
+.juegos-section-heading {
+  min-width: 0;
+}
+
+.juegos-section-hint {
+  margin: 3px 0 0;
+  color: var(--theme-text-tertiary);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
 .juegos-section-line {
   flex: 1;
   height: 1px;
@@ -233,6 +244,12 @@
 }
 
 .juego-card:active { transform: scale(0.98); }
+
+.juego-card:focus-visible {
+  outline: 2px solid var(--game-color, var(--theme-accent));
+  outline-offset: 3px;
+  border-color: var(--game-color, var(--theme-accent));
+}
 
 /* Fav badge */
 .juego-card-fav-badge {
@@ -325,4 +342,16 @@
 @media (max-width: 360px) {
   .juegos-header { padding: var(--sp-24) var(--sp-12); }
   .juego-card-title { font-size: var(--fs-sm); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juegos-page,
+  .juegos-header-particle,
+  .juego-card,
+  .juego-card-cover img {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .juego-card { opacity: 1; transform: none; }
 }

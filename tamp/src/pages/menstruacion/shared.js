@@ -6,7 +6,7 @@
 
 import { escapeHtml } from '../../utils/escape.js';
 import { addDaysISO, daysBetween } from '../../utils/cycleMath.js';
-import { flowLabel, symptomById } from '../../data/cycle.data.js';
+import { flowLabel, symptomById, SLEEP_LABELS } from '../../data/cycle.data.js';
 
 /* Mismos emojis en las dos caras del módulo: lo que ve ella y lo que ve él. */
 export const PHASE_EMOJI = {
@@ -113,6 +113,9 @@ export function logChips(log) {
     chips.push({ tone: 'symptom', text: symptom.label, emoji: symptom.emoji });
   }
   if (symptoms.length > 3) chips.push({ tone: 'more', text: `+${symptoms.length - 3}` });
+  if (log.sleep_quality != null) {
+    chips.push({ tone: 'sleep', text: `Sueño: ${SLEEP_LABELS[log.sleep_quality] || 'Registrado'}`, emoji: '😴' });
+  }
   if (log.notes) chips.push({ tone: 'note', text: 'Nota', emoji: '📝' });
   return chips;
 }

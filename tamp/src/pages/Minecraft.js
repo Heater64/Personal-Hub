@@ -113,8 +113,9 @@ function renderWorldsList() {
             const thumb = cover ? (getVideoPoster(cover, 960) || mediaThumb(cover, 960)) : '';
             const coverSet = cover ? mediaSrcset(cover, [480, 960]) : '';
             return `
-            <div class="mc-world-card card animate-in" data-mc-world="${escapeHtml(w.id)}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir mundo ${escapeHtml(w.name)}">
+            <article class="mc-world-card card animate-in" style="--enter-delay:${Math.min(i, 8) * 0.05}s">
               ${isAdmin ? `<button class="mc-world-menu" data-menu-world="${escapeHtml(w.id)}" aria-label="Opciones de ${escapeHtml(w.name)}" title="Opciones del mundo">⋮</button>` : ''}
+              <div class="mc-world-open" data-mc-world="${escapeHtml(w.id)}" role="button" tabindex="0" aria-label="Abrir mundo ${escapeHtml(w.name)}, ${stats.total} ${stats.total === 1 ? 'recuerdo' : 'recuerdos'}">
               <div class="mc-world-media${thumb ? '' : ' is-empty'}">
                 ${thumb
                   ? `<span class="mc-world-loader" aria-hidden="true"></span><img src="${escapeHtml(thumb)}"${coverSet ? ` srcset="${escapeHtml(coverSet)}" sizes="(max-width: 599px) 100vw, (max-width: 899px) 48vw, 33vw"` : ''} alt="" loading="lazy" decoding="async"><span class="mc-world-fallback" aria-hidden="true">⛏️</span>`
@@ -130,7 +131,8 @@ function renderWorldsList() {
                   ${w.createdAt ? `<span>· ${formatDate(w.createdAt)}</span>` : ''}
                 </div>
               </div>
-            </div>`;
+              </div>
+            </article>`;
           }).join('')}
         </div>
       ` : `
@@ -505,7 +507,12 @@ function bind() {
       bind();
     };
     card.addEventListener('click', open);
-    card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    card.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        open();
+      }
+    });
   });
 
   // Nuevo mundo

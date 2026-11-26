@@ -80,7 +80,12 @@ export async function loadAll() {
       preferences: normalizePreferences(settings.preferences)
     },
     periods: periodsRes.data || [],
-    logs: logsRes.data || []
+    // Una marca de «Ahora no» sin datos visibles no pinta un día vacío en el
+    // calendario menstrual ni en el historial.
+    logs: (logsRes.data || []).filter(log => Boolean(
+      log?.flow || log?.spotting || log?.energy || log?.sleep_quality != null ||
+      log?.notes?.trim() || log?.symptoms?.length || log?.mood?.length
+    ))
   };
 }
 
@@ -238,6 +243,104 @@ export async function saveLog(log = {}) {
   if (changed) notifyAdminOfCycle('cycle_log');
 
   return data;
+}
+
+/** Estado diario sincronizado para mostrar una sola pregunta en todos los dispositivos. */
+export async function getSleepCheckinStatus(logDate) {
+  const user_id = requireUser();
+  const log_date = cleanDate(logDate);
+  if (!log_date) throw new CycleError('Fecha no válida.');
+
+  const { data, error } = await supabase
+    .from(TABLES.logs)
+    .select('sleep_quality,sleep_prompt_completed')
+    .eq('user_id', user_id)
+    .eq('log_date', log_date)
+    .maybeSingle();
+
+  // La calidad ya existía en la tabla desde la migración 027. Si falta la
+  // columna de control de la migración 048, las respuestas guardadas siguen
+  // bastando para no volver a preguntar; solo los «Ahora no» serán locales.
+  if (error?.code === '42703') {
+    const fallback = await supabase
+      .from(TABLES.logs)
+      .select('sleep_quality')
+      .eq('user_id', user_id)
+      .eq('log_date', log_date)
+      .maybeSingle();
+    if (fallback.error) throw translate(fallback.error, 'No se pudo leer el sueño de hoy.');
+    const quality = fallback.data?.sleep_quality ?? null;
+    return { quality, completed: quality != null, syncedDismissal: false };
+  }
+  if (error) throw translate(error, 'No se pudo leer el sueño de hoy.');
+
+  const quality = data?.sleep_quality ?? null;
+  return {
+    quality,
+    completed: data?.sleep_prompt_completed === true || quality != null,
+    syncedDismissal: true,
+  };
+}
+
+/**
+ * Guarda solo el sueño para no sobrescribir síntomas, flujo o notas del mismo día.
+ * El upsert usa la clave diaria existente y la RLS mantiene el registro en su cuenta.
+ */
+export async function saveSleepQuality(logDate, value) {
+  const user_id = requireUser();
+  const log_date = cleanDate(logDate);
+  const sleep_quality = Number(value);
+  if (!log_date) throw new CycleError('Fecha no válida.');
+  if (!Number.isInteger(sleep_quality) || sleep_quality < 1 || sleep_quality > 5) {
+    throw new CycleError('Elige una opción para guardar el sueño.');
+  }
+
+  const payload = {
+    user_id,
+    log_date,
+    sleep_quality,
+    sleep_prompt_completed: true,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from(TABLES.logs)
+    .upsert(payload, { onConflict: 'user_id,log_date' })
+    .select('log_date,sleep_quality')
+    .maybeSingle();
+
+  // La calidad se puede guardar en el esquema original; si aún no se ha
+  // aplicado 048, reintenta sin el marcador y conserva el dato del calendario.
+  if (error?.code === '42703') {
+    const fallback = await supabase
+      .from(TABLES.logs)
+      .upsert(
+        { user_id, log_date, sleep_quality, updated_at: payload.updated_at },
+        { onConflict: 'user_id,log_date' }
+      )
+      .select('log_date,sleep_quality')
+      .maybeSingle();
+    if (fallback.error) throw translate(fallback.error, 'No se pudo guardar el sueño.');
+    return fallback.data;
+  }
+  if (error) throw translate(error, 'No se pudo guardar el sueño.');
+  return data;
+}
+
+/** Completa «Ahora no» sin inventar una calidad; tras 048 se sincroniza entre dispositivos. */
+export async function dismissSleepCheckin(logDate) {
+  const user_id = requireUser();
+  const log_date = cleanDate(logDate);
+  if (!log_date) throw new CycleError('Fecha no válida.');
+
+  const { error } = await supabase
+    .from(TABLES.logs)
+    .upsert(
+      { user_id, log_date, sleep_prompt_completed: true, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,log_date' }
+    );
+  if (error?.code === '42703') return { synced: false };
+  if (error) throw translate(error, 'No se pudo cerrar el recordatorio del sueño.');
+  return { synced: true };
 }
 
 export async function deleteLog(log_date) {

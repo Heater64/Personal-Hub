@@ -51,9 +51,11 @@ import {
   fetchPartnerIdentity,
   fetchProfile,
   fetchMyLocation,
+  refreshBothLocations,
   requestLocationPermission,
   formatDistance,
   togetherInfo,
+  isFresh,
 } from '../services/location.service.js';
 import { fetchPartnerProfile } from '../services/presence.service.js';
 import { openDeviceSettings } from '../services/device.service.js';
@@ -223,6 +225,35 @@ function countdownLabel(days) {
   if (days <= 0) return '¡Hoy!';
   if (days === 1) return 'Mañana';
   return `${days} días`;
+}
+
+function locationFreshness(me, partner) {
+  if (partner?.sharing === false) {
+    return { text: 'Tu pareja ha pausado su ubicación', stale: false };
+  }
+
+  const meAt = Date.parse(me?.at || '');
+  const partnerAt = Date.parse(partner?.at || '');
+  if (!Number.isFinite(partnerAt)) {
+    return { text: 'Esperando la ubicación de tu pareja', stale: false };
+  }
+  if (!Number.isFinite(meAt)) {
+    return { text: 'Esperando tu ubicación', stale: false };
+  }
+
+  const oldestAt = Math.min(meAt, partnerAt);
+  const ageMs = Math.max(0, Date.now() - oldestAt);
+  let age;
+  if (ageMs < 60_000) age = 'ahora';
+  else if (ageMs < 3_600_000) age = `hace ${Math.floor(ageMs / 60_000)} min`;
+  else if (ageMs < 86_400_000) age = `hace ${Math.floor(ageMs / 3_600_000)} h`;
+  else age = `hace ${Math.floor(ageMs / 86_400_000)} días`;
+
+  const stale = !isFresh(new Date(oldestAt).toISOString());
+  return {
+    text: stale ? `Ubicación desactualizada · ${age}` : `Actualizada ${age}`,
+    stale,
+  };
 }
 
 // La bienvenida temática vive en components/SpecialEventSheet.js: el Inicio
@@ -694,6 +725,7 @@ function distancePanelHTML() {
         <div class="home-map__dist">
           <strong id="homeDistanceValue">—</strong>
           <span id="homeDistanceLabel">Distancia</span>
+          <small class="home-map__freshness" id="homeLocationFreshness">Esperando ubicaciones</small>
         </div>
         ${avatarCircle('them')}
       </div>
@@ -709,6 +741,7 @@ function distancePanelHTML() {
 function initDistancePanel(page, onChange, router) {
   const valueEl = page.querySelector('#homeDistanceValue');
   const labelEl = page.querySelector('#homeDistanceLabel');
+  const freshnessEl = page.querySelector('#homeLocationFreshness');
   const meEl = page.querySelector('.home-map__avatar--me');
   const themEl = page.querySelector('.home-map__avatar--them');
   const hintEl = page.querySelector('#homeMapHint');
@@ -819,16 +852,22 @@ function initDistancePanel(page, onChange, router) {
     }
   })();
 
-  const stopWatch = watchDistance(({ km, partner }) => {
+  const stopWatch = watchDistance(({ km, me: myPosition, partner }) => {
     if (stopped) return;
     // A menos de 10 m (más el margen del GPS) el panel dice «Juntos» en vez
     // de una cifra que ya no distingue nada.
-    const mine = fetchMyLocation();
-    const near = Number.isFinite(km) ? togetherInfo(mine, partner) : null;
+    const mine = myPosition || fetchMyLocation();
+    const partnerSharing = partner?.sharing !== false;
+    const near = partnerSharing && Number.isFinite(km) ? togetherInfo(mine, partner) : null;
     state.together = !!near?.together;
-    if (valueEl) valueEl.textContent = near?.together ? 'Juntos' : formatDistance(km);
-    if (labelEl) labelEl.textContent = near?.together ? 'en el mismo sitio' : 'Distancia';
-    state.km = km;
+    if (valueEl) valueEl.textContent = !partnerSharing ? '—' : near?.together ? 'Juntos' : formatDistance(km);
+    if (labelEl) labelEl.textContent = !partnerSharing ? 'Pausada' : near?.together ? 'en el mismo sitio' : 'Distancia';
+    const freshness = locationFreshness(mine, partner);
+    if (freshnessEl) {
+      freshnessEl.textContent = freshness.text;
+      freshnessEl.dataset.freshness = freshness.stale ? 'stale' : 'current';
+    }
+    state.km = partnerSharing ? km : null;
     if (!partner && state.partner) {
       state.partner = { name: state.partner.name, avatar: state.partner.avatar };
     }
@@ -855,6 +894,11 @@ function initDistancePanel(page, onChange, router) {
     }
     onChange?.(state);
   });
+
+  // Al abrir Inicio, la distancia arranca con la última posición guardada.
+  // Pide también una lectura nueva al otro móvil para que la web no se quede
+  // mostrando una ubicación antigua hasta que el usuario pulse «Actualizar».
+  void refreshBothLocations();
 
   // Tocar el panel abre la pantalla de ubicación: mapa, lugares y ajustes.
   // Ya no es una hoja emergente, así que el botón Atrás vuelve a Inicio.
@@ -1008,10 +1052,10 @@ export function HomePage(router) {
       <button class="link" type="button" data-route="/rincon">Ver el Rincón</button>
     </h2>
 
-    <div class="home-grid">
+    <div class="home-grid${continueList.length ? ' home-grid--three' : ''}">
       ${tileMeme(meme)}
       ${tileMessage(message)}
-      ${tileSeries(continueList, posters, continueFirst)}
+      ${continueList.length ? '' : tileSeries(continueList, posters, continueFirst)}
       ${tileSong(song)}
     </div>
 
@@ -1238,27 +1282,24 @@ export function HomePage(router) {
     if (res && watchSlot) watchSlot.innerHTML = watchSectionHTML();
   });
 
-  // La tarjeta "Seguir viendo" de Destacados también refleja el progreso
-  // que acaba de llegar de otro dispositivo.
-  function refreshContinueTile() {
-    const tile = page.querySelector('[data-poster-rotate]');
-    if (!tile) return;
-    const first = getContinueWatching()[0];
-    if (!first) return;
-    const t = tile.querySelector('[data-role="title"]');
-    const s = tile.querySelector('[data-role="sub"]');
-    const bar = tile.querySelector('[data-role="bar"]');
-    if (t) t.textContent = first.item.titulo;
-    if (s) s.textContent = `Ep. ${first.watched} de ${first.total} · ${first.percent}%`;
-    if (bar) bar.style.width = `${Math.max(first.percent, 4)}%`;
-  }
+  let stopRotation = () => {};
 
   // Progreso de la cuenta: lo visto en otro dispositivo llega después del
   // primer pintado, así que las tarjetas se repintan cuando termina.
   hydrateProgress()
     .then(() => {
       if (watchSlot) watchSlot.innerHTML = watchSectionHTML();
-      refreshContinueTile();
+      // Si el progreso compartido llega después del primer pintado, la misma
+      // serie pasa a «Estás viendo» y se quita de Destacados para no repetirla.
+      if (getContinueWatching().length) {
+        const grid = page.querySelector('.home-grid');
+        const seriesTile = grid?.querySelector('[data-poster-rotate]');
+        if (seriesTile) {
+          stopRotation();
+          seriesTile.remove();
+          grid.classList.add('home-grid--three');
+        }
+      }
       persistWatching();
     })
     .catch(() => {
@@ -1267,7 +1308,6 @@ export function HomePage(router) {
 
   // Rotación de portadas (10s) cuando no hay nada que seguir viendo
   const rotateEl = page.querySelector('[data-poster-rotate]');
-  let stopRotation = () => {};
   if (rotateEl && posters.length > 1) {
     stopRotation = startPosterRotation(rotateEl, posters, {
       onChange: i => {

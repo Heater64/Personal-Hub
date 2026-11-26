@@ -372,6 +372,7 @@ export function typeLabel(item) {
 }
 
 export function getSeasons(item) {
+  if (!item) return [];
   if (Array.isArray(item.temporadas) && item.temporadas.length) return item.temporadas;
   const total = parseInt(item.totalEpisodios) || 0;
   if (total > 0) {
@@ -379,6 +380,19 @@ export function getSeasons(item) {
       titulo: 'Temporada 1',
       episodios: Array.from({ length: total }, (_, i) => ({ num: i + 1, titulo: `Episodio ${i + 1}` }))
     }];
+  }
+  // Series importadas de la API: TMDB solo da el recuento por temporada. Se
+  // sintetizan los episodios para poder seguir el progreso sin reimportar.
+  if (Array.isArray(item.temporadasMeta) && item.temporadasMeta.length) {
+    return item.temporadasMeta
+      .map((season, si) => ({
+        titulo: season.titulo || `Temporada ${season.numero || si + 1}`,
+        episodios: Array.from(
+          { length: Math.max(0, Number(season.episodios) || 0) },
+          (_, i) => ({ num: i + 1, titulo: `Episodio ${i + 1}` })
+        )
+      }))
+      .filter(season => season.episodios.length > 0);
   }
   return [];
 }
@@ -427,4 +441,368 @@ export function detectGenres(item) {
 /** Enlace de reproducción (nuevo `recurso`/`webUrl` o legacy `videoUrl`) */
 export function playUrl(item) {
   return item.recurso || item.webUrl || item.videoUrl || '';
+}
+
+// ==========================================
+// VIDEOTECA — origen, estado, valoraciones, historial y vinculación
+// Amplía el modelo existente sin cambiar el formato guardado: los títulos
+// antiguos siguen funcionando y `origen` se deriva de `tmdbId` cuando falta.
+// ==========================================
+
+export const STATUS_LABELS = {
+  sin_empezar: 'Sin empezar',
+  pendiente: 'Pendiente',
+  en_curso: 'En curso',
+  terminada: 'Terminada',
+  abandonada: 'Abandonada'
+};
+
+/** 'api' si vino del catálogo externo; 'manual' si se creó a mano. */
+export function getOrigin(item) {
+  if (!item) return 'manual';
+  if (item.origen === 'api' || item.origen === 'manual') return item.origen;
+  return item.tmdbId ? 'api' : 'manual';
+}
+
+export function isImported(item) {
+  return getOrigin(item) === 'api';
+}
+
+export function originLabel(item) {
+  return isImported(item) ? 'Catálogo' : 'Manual';
+}
+
+/** Minúsculas, sin acentos y sin signos: para buscar y detectar duplicados. */
+export function normalizeSeriesText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Estado real de un título para el usuario actual. Combina el estado explícito
+ * (pendiente/abandonada) con el progreso guardado, para no duplicar datos.
+ */
+export function getItemStatus(item, entry = null) {
+  if (!item) return 'sin_empezar';
+  const progress = entry || loadProgressFor(item.id);
+  if (progress.status === 'abandonada') return 'abandonada';
+  if (item.tipo === 'pelicula') {
+    if (progress.movieWatched) return 'terminada';
+    return progress.status === 'pendiente' ? 'pendiente' : 'sin_empezar';
+  }
+  const total = getTotal(item);
+  const done = Math.min((progress.watched || []).length, total);
+  if (total > 0 && done >= total) return 'terminada';
+  if (done > 0) return 'en_curso';
+  return progress.status === 'pendiente' ? 'pendiente' : 'sin_empezar';
+}
+
+export function statusLabel(status) {
+  return STATUS_LABELS[status] || STATUS_LABELS.sin_empezar;
+}
+
+function pushHistory(entry, event) {
+  const history = Array.isArray(entry.history) ? entry.history.slice(-79) : [];
+  history.push({ at: Date.now(), ...event });
+  return { ...entry, history };
+}
+
+/** Lectura de la entrada de progreso sin mutarla. */
+export function getProgressEntry(itemId) {
+  return loadProgressFor(itemId);
+}
+export { loadProgressFor as getRawProgress };
+
+/** Borra el progreso de un título (al fusionar duplicados). */
+export function deleteProgressFor(itemId) {
+  const all = readAllProgress();
+  if (!all[itemId]) return;
+  delete all[itemId];
+  writeAllProgress(all);
+  scheduleSyncPush();
+}
+
+/** Guarda una entrada ya construida (se usa para deshacer sin perder datos). */
+export function restoreProgress(itemId, entry) {
+  if (!entry || !Object.keys(entry).length) {
+    const all = readAllProgress();
+    delete all[itemId];
+    writeAllProgress(all);
+    scheduleSyncPush();
+    return;
+  }
+  saveProgressFor(itemId, entry);
+}
+
+/** Fija el estado personal (pendiente, abandonada, terminada…). */
+export function setItemStatus(itemId, status, item = null) {
+  const entry = { ...loadProgressFor(itemId) };
+  if (status) entry.status = status;
+  else delete entry.status;
+  if (status === 'terminada' && item) {
+    if (item.tipo === 'pelicula') entry.movieWatched = true;
+    else {
+      const total = getTotal(item);
+      entry.watched = Array.from({ length: total }, (_, i) => i + 1);
+    }
+    entry.finishedAt = Date.now();
+  }
+  if (item?.tipo === 'pelicula' && status !== 'terminada') entry.movieWatched = false;
+  saveProgressFor(itemId, pushHistory(entry, { type: 'status', status: status || '' }));
+  return entry;
+}
+
+/** Valoración personal (1–10). 0 la borra. */
+export function getMyRating(itemId) {
+  const rating = Number(loadProgressFor(itemId).rating);
+  return Number.isFinite(rating) && rating > 0 ? rating : 0;
+}
+
+export function setMyRating(itemId, rating) {
+  const entry = { ...loadProgressFor(itemId) };
+  const value = Math.max(0, Math.min(10, Number(rating) || 0));
+  if (value > 0) entry.rating = value;
+  else delete entry.rating;
+  saveProgressFor(itemId, entry);
+  return value;
+}
+
+/** Posición global → temporada, episodio y títulos legibles. */
+export function getEpisodeAt(item, globalNumber) {
+  const seasons = getSeasons(item);
+  let n = 0;
+  for (let si = 0; si < seasons.length; si++) {
+    const episodes = seasons[si].episodios || [];
+    for (let ei = 0; ei < episodes.length; ei++) {
+      n += 1;
+      if (n === globalNumber) {
+        return {
+          globalNumber: n,
+          seasonIndex: si,
+          episodeIndex: ei,
+          season: seasons[si],
+          episode: episodes[ei],
+          seasonTitle: seasons[si].titulo || `Temporada ${si + 1}`,
+          episodeNumber: ei + 1,
+          episodeTitle: episodes[ei].titulo || `Episodio ${ei + 1}`
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/** { done, total, percent, current, next } para pintar progreso y «siguiente». */
+export function getProgressPosition(item) {
+  const total = getTotal(item);
+  const done = Math.min(getCompletedCount(item.id, total), total);
+  return {
+    done,
+    total,
+    percent: total > 0 ? Math.round((done / total) * 100) : 0,
+    current: done > 0 ? getEpisodeAt(item, done) : null,
+    next: done < total ? getEpisodeAt(item, done + 1) : null
+  };
+}
+
+/**
+ * Marca un episodio de forma acumulativa (marcar el N deja vistos 1..N).
+ * Devuelve la entrada anterior para poder deshacer con restoreProgress().
+ */
+export function markEpisodeSeen(itemId, globalNumber, item, previousEntry = null) {
+  const previous = previousEntry || { ...loadProgressFor(itemId) };
+  const total = item ? getTotal(item) : Number(globalNumber) || 0;
+  const target = Math.max(0, Math.min(Number(globalNumber) || 0, total));
+  let entry = { ...previous, watched: Array.from({ length: target }, (_, i) => i + 1) };
+  if (total > 0 && target >= total) entry.status = 'terminada';
+  else if (entry.status === 'terminada') delete entry.status;
+  entry = pushHistory(entry, { type: 'episode', ep: target, total });
+  saveProgressFor(itemId, entry);
+  return { previous, entry, done: target, total };
+}
+
+/** Marca o desmarca un episodio concreto sin tocar los demás. */
+export function toggleEpisodeWatched(itemId, globalNumber, item, previousEntry = null) {
+  const previous = previousEntry || { ...loadProgressFor(itemId) };
+  const total = item ? getTotal(item) : Number(globalNumber) || 0;
+  const target = Math.max(0, Math.min(Number(globalNumber) || 0, total));
+  const watched = new Set(Array.isArray(previous.watched) ? previous.watched : []);
+  if (watched.has(target)) watched.delete(target);
+  else watched.add(target);
+  const entry = { ...previous, watched: [...watched].sort((a, b) => a - b) };
+  if (total > 0 && entry.watched.length >= total) entry.status = 'terminada';
+  else if (entry.status === 'terminada') delete entry.status;
+  saveProgressFor(itemId, pushHistory(entry, { type: watched.has(target) ? 'episode' : 'unepisode', ep: target, total }));
+  return { previous, entry, watched: watched.has(target) };
+}
+
+/** Desmarca desde el episodio indicado en adelante. */
+export function unwatchFromEpisode(itemId, globalNumber, item, previousEntry = null) {
+  const previous = previousEntry || { ...loadProgressFor(itemId) };
+  const total = item ? getTotal(item) : Number(globalNumber) || 0;
+  const target = Math.max(0, Math.min(Number(globalNumber) || 0, total));
+  const entry = { ...previous, watched: Array.from({ length: Math.max(0, target - 1) }, (_, i) => i + 1) };
+  delete entry.status;
+  saveProgressFor(itemId, entry);
+  return { previous, entry };
+}
+
+/** Marca o desmarca una temporada completa. */
+export function setSeasonWatched(item, seasonIndex, watched) {
+  const seasons = getSeasons(item);
+  const season = seasons[seasonIndex];
+  if (!season) return null;
+  let start = 0;
+  for (let i = 0; i < seasonIndex; i++) start += (seasons[i].episodios || []).length;
+  const count = (season.episodios || []).length;
+  const end = start + count;
+  const previous = { ...loadProgressFor(item.id) };
+  const entry = { ...previous };
+  if (watched) entry.watched = Array.from({ length: end }, (_, i) => i + 1);
+  else entry.watched = Array.from({ length: start }, (_, i) => i + 1);
+  const total = getTotal(item);
+  if (watched && entry.watched.length >= total) entry.status = 'terminada';
+  else if (entry.status === 'terminada') delete entry.status;
+  saveProgressFor(item.id, pushHistory(entry, { type: watched ? 'season' : 'unseason', season: seasonIndex + 1 }));
+  return { previous, entry };
+}
+
+/** Marca/desmarca una película vista y deja el registro en el historial. */
+export function toggleMovieSeen(itemId) {
+  const entry = { ...loadProgressFor(itemId) };
+  const seen = !entry.movieWatched;
+  if (seen) {
+    entry.movieWatched = true;
+    entry.finishedAt = Date.now();
+    delete entry.status;
+    saveProgressFor(itemId, pushHistory(entry, { type: 'movie' }));
+  } else {
+    delete entry.movieWatched;
+    delete entry.finishedAt;
+    saveProgressFor(itemId, entry);
+  }
+  return seen;
+}
+
+/** Estadísticas reales de la biblioteca compartida. */
+export function getLibraryStats(catalog = getCatalogSync()) {
+  const stats = { total: catalog.length, series: 0, movies: 0, inProgress: 0, pending: 0, finished: 0 };
+  catalog.forEach(item => {
+    if (item.tipo === 'serie') stats.series += 1;
+    else stats.movies += 1;
+    const status = getItemStatus(item);
+    if (status === 'en_curso') stats.inProgress += 1;
+    else if (status === 'pendiente') stats.pending += 1;
+    else if (status === 'terminada') stats.finished += 1;
+  });
+  return stats;
+}
+
+/** Metadatos de TMDB que se pueden completar al vincular un título manual. */
+const LINK_FIELDS = [
+  ['titulo', 'Título'],
+  ['anio', 'Año'],
+  ['descripcion', 'Sinopsis'],
+  ['portada', 'Portada'],
+  ['banner', 'Imagen de fondo'],
+  ['generos', 'Géneros'],
+  ['valoracion', 'Nota externa'],
+  ['duracion', 'Duración'],
+  ['fechaEstreno', 'Fecha de estreno']
+];
+
+function isEmptyValue(value) {
+  return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0) || value === 0;
+}
+
+function valuesDiffer(a, b) {
+  if (Array.isArray(a) || Array.isArray(b)) return JSON.stringify(a || []) !== JSON.stringify(b || []);
+  return String(a ?? '') !== String(b ?? '');
+}
+
+/** Lista de cambios que aplicaría la vinculación (para la vista previa). */
+export function getLinkPreview(item, tmdb) {
+  return LINK_FIELDS
+    .filter(([key]) => !isEmptyValue(tmdb?.[key]))
+    .map(([key, label]) => ({
+      key,
+      label,
+      before: item?.[key],
+      after: tmdb[key],
+      conflicts: !isEmptyValue(item?.[key]) && valuesDiffer(item[key], tmdb[key])
+    }));
+}
+
+/**
+ * Aplica la vinculación conservando id, progreso, estado, favoritos, notas,
+ * rankings e historial. Solo rellena huecos, salvo que el usuario marque un
+ * campo concreto para sobrescribir.
+ */
+export function applyTmdbLink(item, tmdb, overwriteKeys = []) {
+  const next = { ...item };
+  LINK_FIELDS.forEach(([key]) => {
+    const incoming = tmdb?.[key];
+    if (isEmptyValue(incoming)) return;
+    const empty = isEmptyValue(next[key]);
+    if (empty || overwriteKeys.includes(key)) next[key] = incoming;
+  });
+  if (!next.tipo && tmdb?.tipo) next.tipo = tmdb.tipo;
+  if (tmdb?.tmdbId) next.tmdbId = tmdb.tmdbId;
+  if (tmdb?.tmdbType) next.tmdbType = tmdb.tmdbType;
+  next.origen = 'api';
+  if (Array.isArray(tmdb?.temporadasMeta) && tmdb.temporadasMeta.length) {
+    const hasEpisodes = Array.isArray(next.temporadas) && next.temporadas.some(season => (season.episodios || []).length);
+    if (!hasEpisodes) {
+      next.temporadasMeta = tmdb.temporadasMeta;
+      if (!next.totalEpisodios && tmdb.totalEpisodios) next.totalEpisodios = tmdb.totalEpisodios;
+    }
+  } else if (!next.totalEpisodios && tmdb?.totalEpisodios) {
+    next.totalEpisodios = tmdb.totalEpisodios;
+  }
+  next.updatedAt = Date.now();
+  return next;
+}
+
+/** Busca un título de la biblioteca equivalente a un resultado externo. */
+export function findCatalogMatch(catalog, external) {
+  if (!Array.isArray(catalog) || !external) return null;
+  if (external.tmdbId) {
+    const byTmdb = catalog.find(item => item.tmdbId && String(item.tmdbId) === String(external.tmdbId) && (item.tipo === external.tipo || !external.tipo));
+    if (byTmdb) return byTmdb;
+  }
+  const title = normalizeSeriesText(external.titulo);
+  if (!title) return null;
+  return catalog.find(item => normalizeSeriesText(item.titulo) === title && item.tipo === external.tipo) || null;
+}
+
+/** Grupos de posibles duplicados (mismo tmdbId o mismo título + tipo). */
+export function findDuplicateGroups(catalog) {
+  const buckets = new Map();
+  (catalog || []).forEach(item => {
+    const keys = [`title:${item.tipo}:${normalizeSeriesText(item.titulo)}`];
+    if (item.tmdbId) keys.push(`tmdb:${item.tmdbId}`);
+    keys.forEach(key => {
+      if (!buckets.has(key)) buckets.set(key, new Set());
+      buckets.get(key).add(item);
+    });
+  });
+  const seen = new Set();
+  const groups = [];
+  buckets.forEach(set => {
+    const items = [...set].filter(item => !seen.has(item.id));
+    if (items.length > 1) {
+      items.forEach(item => seen.add(item.id));
+      groups.push(items);
+    }
+  });
+  return groups;
+}
+
+/** Títulos manuales que aún no tienen equivalente en la API. */
+export function getUnlinkedManual(catalog) {
+  return (catalog || []).filter(item => !isImported(item));
 }

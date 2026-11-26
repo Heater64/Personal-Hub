@@ -209,7 +209,7 @@ export function createGaleria(ctx) {
       </header>
       <div class="meme-albums-grid" id="galleryCollections">
         ${collections.map((album, i) => `
-          <div class="meme-album-card card animate-in visible" data-album="${escapeHtml(album.id)}" data-search="${escapeHtml((album.title + ' ' + album.id).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(album.title)}">
+          <div class="meme-album-card card animate-in visible" data-album="${escapeHtml(album.id)}" data-search="${escapeHtml((album.title + ' ' + album.id).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(album.title)}, ${album.photos.length} ${album.photos.length === 1 ? 'recuerdo' : 'recuerdos'}">
             <div class="meme-album-media">${galleryCollage(album.photos, i === 0)}</div>
             <div class="meme-album-info">
               <div class="meme-album-name-row">
@@ -337,16 +337,18 @@ export function createGaleria(ctx) {
           ${albums.map((a, i) => {
             const s = albumSummary(a.items);
             const isFavCount = a.items.filter(u => state.memeFavs.has(u)).length;
-            return `<div class="meme-album-card card animate-in visible" data-album="${escapeHtml(a.id)}" data-search="${escapeHtml((a.name + ' ' + a.items.join(' ')).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(a.name)}">
+            return `<article class="meme-album-card card animate-in visible" data-search="${escapeHtml((a.name + ' ' + a.items.join(' ')).toLowerCase())}" style="--enter-delay:${Math.min(i, 8) * 0.05}s">
+              <div class="meme-album-open" data-album="${escapeHtml(a.id)}" role="button" tabindex="0" aria-label="Abrir álbum ${escapeHtml(a.name)}, ${s.total} ${s.total === 1 ? 'meme' : 'memes'}">
               <div class="meme-album-media">${memeCollage(a.items, a.id, i === 0)}</div>
               <div class="meme-album-info">
                 <div class="meme-album-name-row">
                   <h3 class="meme-album-name">${escapeHtml(a.name)}${a.isUser ? ' <span class="meme-album-own">●</span>' : ''}</h3>
-                  <button class="meme-album-menu" data-menu="${escapeHtml(a.id)}" aria-label="Opciones de ${escapeHtml(a.name)}" title="Opciones del álbum">⋮</button>
                 </div>
                 <p class="meme-album-sub">${s.total} ${s.total === 1 ? 'meme' : 'memes'} · ${s.typeLabel}${isFavCount ? ` · ❤ ${isFavCount}` : ''}</p>
               </div>
-            </div>`;
+              </div>
+              <button class="meme-album-menu" data-menu="${escapeHtml(a.id)}" aria-label="Opciones de ${escapeHtml(a.name)}" title="Opciones del álbum">⋮</button>
+            </article>`;
           }).join('')}
         </div>
         <div class="meme-search-empty" style="display:none">

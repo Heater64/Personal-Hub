@@ -1,0 +1,10 @@
+# Registro de decisiones
+
+| Fecha      | Decisión                                                                                                                                         | Motivo                                                                                                                              | Estado        |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 2026-11-26 | Conservar todos los cambios locales existentes y no editar `tasks/plan.md` ni `tasks/todo.md` durante la apertura de esta auditoría.             | `git status` muestra 41 archivos modificados y varios no versionados; parte del trabajo ya pertenece a una auditoría relacionada.   | Aplicada      |
+| 2026-11-26 | Reutilizar `tasks/plan.md`, `tasks/todo.md` y `docs/audit-readiness.md` como evidencias históricas, con su alcance y fecha claramente separados. | Evita duplicar hallazgos y evita dar por actuales mediciones anteriores.                                                            | Aplicada      |
+| 2026-11-26 | Mantener las cuatro pestañas compartidas y la estructura de secciones como hipótesis vigente durante la auditoría.                               | El registro de rutas y pruebas automatizadas las definen explícitamente; cualquier cambio debe justificarse con observación de uso. | En evaluación |
+| 2026-11-26 | No cambiar lógica de negocio, permisos, datos ni despliegues como parte del levantamiento inicial.                                               | La auditoría inicial es de lectura y el usuario prohíbe cambios de permisos o datos reales sin autorización.                        | Aplicada      |
+
+Nuevas decisiones deben anotar evidencia, alcance y alternativas consideradas cuando afecten navegación, privacidad, permisos o estructura de producto.

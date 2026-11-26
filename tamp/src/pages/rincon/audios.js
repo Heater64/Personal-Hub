@@ -456,7 +456,7 @@ export function createAudiosView(ctx) {
           <div class="audios-player-controls">
             <button class="audios-play-btn" aria-label="Reproducir ${escapeHtml(title)}" data-play="${escapeHtml(a.id)}">${ICON_SVGS['play']}</button>
             <div class="audios-progress">
-              <input type="range" class="audios-progress-bar" min="0" max="100" value="0" step="0.1" aria-label="Progreso" data-progress="${escapeHtml(a.id)}">
+              <input type="range" class="audios-progress-bar" min="0" max="100" value="0" step="0.1" aria-label="Progreso de ${escapeHtml(title)}" data-progress="${escapeHtml(a.id)}">
               <div class="audios-time"><span class="audios-time-cur">0:00</span><span class="audios-time-dur" data-dur-for="${escapeHtml(a.id)}">—:—</span></div>
             </div>
           </div>
